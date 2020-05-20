@@ -1,0 +1,19 @@
+[package]
+name = "helix-term"
+version = "0.1.0"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "hx"
+path = "src/main.rs"
+
+# [[bin]]
+# name = "line"
+# path = "src/line.rs"
+
+[dependencies]
+termwiz = { git = "https://github.com/wez/wezterm", features = ["widgets"] }
+anyhow = "1.0.31"
