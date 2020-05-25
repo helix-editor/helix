@@ -78,3 +78,4 @@ conceal for markdown markers, etc
 
 codemirror uses offsets exclusively with Line being computed when necessary
 (with start/end extents)
+lines are temporarily cached in a lineCache

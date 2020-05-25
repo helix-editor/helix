@@ -15,5 +15,8 @@ path = "src/main.rs"
 # path = "src/line.rs"
 
 [dependencies]
-termwiz = { git = "https://github.com/wez/wezterm", features = ["widgets"] }
+# termwiz = { git = "https://github.com/wez/wezterm", features = ["widgets"] }
+termwiz = { path = "../../wezterm/termwiz", default-features = false, features = ["widgets"] }
 anyhow = "1.0.31"
+argh = "0.1.3"
+helix-core = { path = "../helix-core" }

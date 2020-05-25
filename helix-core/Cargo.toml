@@ -8,4 +8,6 @@ edition = "2018"
 
 [dependencies]
 ropey = "1.1.0"
+anyhow = "1.0.31"
+smallvec = "1.4.0"
 # slab = "0.4.2"

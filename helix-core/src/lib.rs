@@ -1,5 +1,13 @@
-mod position;
-mod range;
+mod buffer;
+mod selection;
+mod state;
+mod transaction;
 
-use position::Position;
-use range::Range;
+pub use buffer::Buffer;
+
+pub use selection::Range as SelectionRange;
+pub use selection::Selection;
+
+pub use state::State;
+
+pub use transaction::{Change, Transaction};

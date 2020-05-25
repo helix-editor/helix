@@ -1,0 +1,38 @@
+use crate::{Buffer, Selection};
+
+/// A state represents the current editor state of a single buffer.
+pub struct State {
+    // TODO: maybe doc: ?
+    buffer: Buffer,
+    selection: Selection,
+}
+
+impl State {
+    pub fn new(buffer: Buffer) -> Self {
+        Self {
+            buffer,
+            selection: Selection::single(0, 0),
+        }
+    }
+
+    // TODO: buf/selection accessors
+
+    // update/transact
+    // replaceSelection (transaction that replaces selection)
+    // changeByRange
+    // changes
+    // slice
+    //
+    // getters:
+    // tabSize
+    // indentUnit
+    // languageDataAt()
+    //
+    // config:
+    // indentation
+    // tabSize
+    // lineUnit
+    // syntax
+    // foldable
+    // changeFilter/transactionFilter
+}
