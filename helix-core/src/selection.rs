@@ -83,7 +83,7 @@ impl Range {
 /// A selection consists of one or more selection ranges.
 pub struct Selection {
     // TODO: decide how many ranges to inline SmallVec<[Range; 1]>
-    ranges: Vec<Range>,
+    ranges: SmallVec<[Range; 1]>,
     primary_index: usize,
 }
 
@@ -100,7 +100,7 @@ impl Selection {
             self
         } else {
             Self {
-                ranges: vec![self.ranges[self.primary_index]],
+                ranges: smallvec![self.ranges[self.primary_index]],
                 primary_index: 0,
             }
         }
@@ -112,18 +112,18 @@ impl Selection {
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {
         Self {
-            ranges: vec![Range { anchor, head }],
+            ranges: smallvec![Range { anchor, head }],
             primary_index: 0,
         }
     }
 
-    pub fn new(ranges: Vec<Range>, primary_index: usize) -> Self {
-        fn normalize(mut ranges: Vec<Range>, primary_index: usize) -> Selection {
+    pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
+        fn normalize(mut ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Selection {
             let primary = ranges[primary_index];
             ranges.sort_unstable_by_key(|range| range.from());
             let mut primary_index = ranges.iter().position(|&range| range == primary).unwrap();
 
-            let mut result: Vec<Range> = Vec::new();
+            let mut result: SmallVec<[Range; 1]> = SmallVec::new();
 
             // TODO: we could do with one vec by removing elements as we mutate
 
@@ -174,7 +174,7 @@ mod test {
     #[test]
     fn test_create_normalizes_and_merges() {
         let sel = Selection::new(
-            vec![
+            smallvec![
                 Range::new(10, 12),
                 Range::new(6, 7),
                 Range::new(4, 5),
@@ -200,7 +200,7 @@ mod test {
     #[test]
     fn test_create_merges_adjacent_points() {
         let sel = Selection::new(
-            vec![
+            smallvec![
                 Range::new(10, 12),
                 Range::new(12, 12),
                 Range::new(12, 12),

@@ -10,4 +10,4 @@ pub use selection::Selection;
 
 pub use state::State;
 
-pub use transaction::{Change, Transaction};
+pub use transaction::{Change, ChangeSet, Transaction};
