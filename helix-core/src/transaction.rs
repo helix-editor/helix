@@ -14,10 +14,7 @@
 //     distance: usize,
 // }
 
-use crate::{Buffer, Selection};
-
-use ropey::Rope;
-use tendril::StrTendril as Tendril;
+use crate::{Buffer, Rope, Selection, Tendril};
 
 // TODO: divided into three different operations, I sort of like having just
 // Splice { extent, Option<text>, distance } better.
@@ -56,6 +53,7 @@ pub struct ChangeSet {
 }
 
 impl ChangeSet {
+    #[must_use]
     pub fn new(buf: &Buffer) -> Self {
         let len = buf.contents.len_chars();
         Self {
@@ -105,8 +103,7 @@ impl ChangeSet {
                     head_a = a;
                     head_b = changes_b.next();
                 }
-                (None, _) => return Err(()),
-                (_, None) => return Err(()),
+                (None, _) | (_, None) => return Err(()),
                 (Some(Retain(i)), Some(Retain(j))) => match i.cmp(&j) {
                     Ordering::Less => {
                         changes.push(Retain(i));
@@ -221,7 +218,7 @@ impl ChangeSet {
 
         let mut pos = 0;
 
-        for change in self.changes.iter() {
+        for change in &self.changes {
             use Change::*;
             match change {
                 Retain(n) => {

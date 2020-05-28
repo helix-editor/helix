@@ -30,12 +30,14 @@ impl Range {
 
     /// Start of the range.
     #[inline]
+    #[must_use]
     pub fn from(&self) -> usize {
         std::cmp::min(self.anchor, self.head)
     }
 
     /// End of the range.
     #[inline]
+    #[must_use]
     pub fn to(&self) -> usize {
         std::cmp::max(self.anchor, self.head)
     }
@@ -47,6 +49,7 @@ impl Range {
     }
 
     /// Check two ranges for overlap.
+    #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {
         // cursor overlap is checked differently
         if self.is_empty() {
@@ -59,6 +62,7 @@ impl Range {
     // TODO: map
 
     /// Extend the range to cover at least `from` `to`.
+    #[must_use]
     pub fn extend(&self, from: usize, to: usize) -> Self {
         if from <= self.anchor && to >= self.anchor {
             return Range {
@@ -90,12 +94,14 @@ pub struct Selection {
 impl Selection {
     // map
     // eq
+
+    #[must_use]
     pub fn primary(&self) -> Range {
         self.ranges[self.primary_index]
     }
 
     /// Ensure selection containing only the primary selection.
-    pub fn as_single(self) -> Self {
+    pub fn into_single(self) -> Self {
         if self.ranges.len() == 1 {
             self
         } else {
@@ -109,6 +115,7 @@ impl Selection {
     // add_range // push
     // replace_range
 
+    #[must_use]
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {
         Self {
@@ -117,11 +124,12 @@ impl Selection {
         }
     }
 
+    #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
-        fn normalize(mut ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Selection {
+        fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Selection {
             let primary = ranges[primary_index];
-            ranges.sort_unstable_by_key(|range| range.from());
-            let mut primary_index = ranges.iter().position(|&range| range == primary).unwrap();
+            ranges.sort_unstable_by_key(Range::from);
+            primary_index = ranges.iter().position(|&range| range == primary).unwrap();
 
             let mut result: SmallVec<[Range; 1]> = SmallVec::new();
 

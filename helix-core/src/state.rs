@@ -8,6 +8,7 @@ pub struct State {
 }
 
 impl State {
+    #[must_use]
     pub fn new(buffer: Buffer) -> Self {
         Self {
             buffer,
