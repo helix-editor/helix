@@ -13,4 +13,4 @@ pub use selection::Selection;
 
 pub use state::State;
 
-pub use transaction::{Change, ChangeSet, Transaction};
+pub use transaction::{Assoc, Change, ChangeSet, Transaction};

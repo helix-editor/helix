@@ -2,6 +2,7 @@
 //! single selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
+use crate::{Assoc, ChangeSet};
 use smallvec::{smallvec, SmallVec};
 
 #[inline]
@@ -59,7 +60,18 @@ impl Range {
         }
     }
 
-    // TODO: map
+    /// Map a range through a set of changes. Returns a new range representing the same position
+    /// after the changes are applied.
+    pub fn map(self, changes: &ChangeSet) -> Self {
+        let anchor = changes.map_pos(self.anchor, Assoc::Before);
+        let head = changes.map_pos(self.head, Assoc::Before);
+
+        // TODO: possibly unnecessary
+        if self.anchor == anchor && self.head == head {
+            return self;
+        }
+        Self { anchor, head }
+    }
 
     /// Extend the range to cover at least `from` `to`.
     #[must_use]
@@ -114,6 +126,22 @@ impl Selection {
 
     // add_range // push
     // replace_range
+
+    /// Map selections over a set of changes. Useful for adjusting the selection position after
+    /// applying changes to a document.
+    pub fn map(self, changes: &ChangeSet) -> Self {
+        if changes.is_empty() {
+            return self;
+        }
+
+        Self::new(
+            self.ranges
+                .into_iter()
+                .map(|range| range.map(changes))
+                .collect(),
+            self.primary_index,
+        )
+    }
 
     #[must_use]
     /// Constructs a selection holding a single range.

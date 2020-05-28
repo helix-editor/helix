@@ -242,6 +242,13 @@ impl ChangeSet {
         }
     }
 
+    /// `true` when the set is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        let len = self.changes.len();
+        len == 0 || (len == 1 && self.changes[0] == Change::Retain(self.len))
+    }
+
     /// Map a position through the changes.
     ///
     /// `assoc` indicates which size to associate the position with. `Before` will keep the
