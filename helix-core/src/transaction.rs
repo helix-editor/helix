@@ -1,19 +1,3 @@
-// pub struct Change {
-//     from: usize,
-//     to: usize,
-//     insert: Option<String>,
-// }
-
-// 40 bytes (8 + 24 + 8) -> strings are really big 24 as String, 16 as &str
-// pub struct Change {
-//     /// old extent
-//     old_extent: usize,
-//     /// inserted text, new extent equal to insert length
-//     insert: Option<String>,
-//     /// distance from the previous change
-//     distance: usize,
-// }
-
 use crate::{Buffer, Rope, Selection, Tendril};
 
 // TODO: divided into three different operations, I sort of like having just
@@ -33,11 +17,11 @@ pub enum Change {
     Insert(Tendril),
 }
 
-impl Change {
-    pub fn new(from: usize, to: usize, insert: Option<Tendril>) {
-        // old_extent, new_extent, insert
-    }
-}
+// impl Change {
+//     pub fn new(from: usize, to: usize, insert: Option<Tendril>) {
+//         // old_extent, new_extent, insert
+//     }
+// }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Assoc {
@@ -46,13 +30,8 @@ pub enum Assoc {
 }
 
 // ChangeSpec = Change | ChangeSet | Vec<Change>
-// ChangeDesc as a ChangeSet without text: can't be applied, cheaper to store.
-// ChangeSet = ChangeDesc with Text
 #[derive(Debug)]
 pub struct ChangeSet {
-    // basically Vec<ChangeDesc> where ChangeDesc = (current len, replacement len?)
-    // (0, n>0) for insertion, (n>0, 0) for deletion, (>0, >0) for replacement
-    // sections: Vec<(usize, isize)>,
     changes: Vec<Change>,
     /// The required document length. Will refuse to apply changes unless it matches.
     len: usize,
@@ -340,6 +319,8 @@ pub struct Transaction {
     // effects, annotations
     // scroll_into_view
 }
+
+impl Transaction {}
 
 #[cfg(test)]
 mod test {

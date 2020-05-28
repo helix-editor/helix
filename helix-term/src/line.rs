@@ -1,111 +1,97 @@
-use termwiz::cell::AttributeChange;
-use termwiz::color::{AnsiColor, ColorAttribute, RgbColor};
-use termwiz::lineedit::*;
+//! Demonstrates how to read events asynchronously with async-std.
+//!
+//! cargo run --features="event-stream" --example event-stream-async-std
 
-#[derive(Default)]
-struct Host {
-    history: BasicHistory,
-}
+use std::{
+    io::{stdout, Write},
+    time::Duration,
+};
 
-impl LineEditorHost for Host {
-    // Render the prompt with a darkslateblue background color if
-    // the terminal supports true color, otherwise render it with
-    // a navy blue ansi color.
-    fn render_prompt(&self, prompt: &str) -> Vec<OutputElement> {
-        vec![
-            OutputElement::Attribute(AttributeChange::Background(
-                ColorAttribute::TrueColorWithPaletteFallback(
-                    RgbColor::from_named("darkslateblue").unwrap(),
-                    AnsiColor::Navy.into(),
-                ),
-            )),
-            OutputElement::Text(prompt.to_owned()),
-        ]
-    }
+use futures::{future::FutureExt, select, StreamExt};
+use smol::Timer;
+// use futures_timer::Delay;
 
-    fn history(&mut self) -> &mut dyn History {
-        &mut self.history
-    }
+use crossterm::{
+    cursor::position,
+    event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode},
+    Result,
+};
 
-    /// Demo of the completion API for words starting with "h" or "he"
-    fn complete(&self, line: &str, cursor_position: usize) -> Vec<CompletionCandidate> {
-        let mut candidates = vec![];
-        if let Some((range, word)) = word_at_cursor(line, cursor_position) {
-            let words = &["hello", "help", "he-man"];
+const HELP: &str = r#"EventStream based on futures::Stream with async-std
+ - Keyboard, mouse and terminal resize events enabled
+ - Prints "." every second if there's no event
+ - Hit "c" to print current cursor position
+ - Use Esc to quit
+"#;
 
-            for w in words {
-                if w.starts_with(word) {
-                    candidates.push(CompletionCandidate {
-                        range: range.clone(),
-                        text: w.to_string(),
-                    });
+async fn print_events() {
+    let mut reader = EventStream::new();
+
+    loop {
+        let mut delay = Timer::after(Duration::from_millis(1_000)).fuse();
+        let mut event = reader.next().fuse();
+
+        select! {
+            _ = delay => { println!(".\r"); },
+            maybe_event = event => {
+                match maybe_event {
+                    Some(Ok(event)) => {
+                        println!("Event::{:?}\r", event);
+
+                        if event == Event::Key(KeyCode::Char('c').into()) {
+                            println!("Cursor position: {:?}\r", position());
+                        }
+
+                        if event == Event::Key(KeyCode::Esc.into()) {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => println!("Error: {:?}\r", e),
+                    None => break,
                 }
             }
-        }
-        candidates
+        };
     }
 }
 
-/// This is a conceptually simple function that computes the bounds
-/// of the whitespace delimited word at the specified cursor position
-/// in the supplied line string.
-/// It returns the range and the corresponding slice out of the line.
-/// This function is sufficient for example purposes; in a real application
-/// the equivalent function would need to be aware of quoting and other
-/// application specific context.
-fn word_at_cursor(line: &str, cursor_position: usize) -> Option<(std::ops::Range<usize>, &str)> {
-    let char_indices: Vec<(usize, char)> = line.char_indices().collect();
-    if char_indices.is_empty() {
-        return None;
-    }
-    let char_position = char_indices
-        .iter()
-        .position(|(idx, _)| *idx == cursor_position)
-        .unwrap_or(char_indices.len());
+fn main() -> Result<()> {
+    println!("{}", HELP);
 
-    // Look back until we find whitespace
-    let mut start_position = char_position;
-    while start_position > 0
-        && start_position <= char_indices.len()
-        && !char_indices[start_position - 1].1.is_whitespace()
-    {
-        start_position -= 1;
+    enable_raw_mode()?;
+
+    let mut stdout = stdout();
+    execute!(stdout, EnableMouseCapture)?;
+
+    use std::thread;
+
+    // Same number of threads as there are CPU cores.
+    let num_threads = num_cpus::get().max(1);
+
+    // A channel that sends the shutdown signal.
+    let (s, r) = piper::chan::<()>(0);
+    let mut threads = Vec::new();
+
+    // Create an executor thread pool.
+    for _ in 0..num_threads {
+        // Spawn an executor thread that waits for the shutdown signal.
+        let r = r.clone();
+        threads.push(thread::spawn(move || smol::run(r.recv())));
     }
 
-    // Look forwards until we find whitespace
-    let mut end_position = char_position;
-    while end_position < char_indices.len() && !char_indices[end_position].1.is_whitespace() {
-        end_position += 1;
+    // No need to `run()`, now we can just block on the main future.
+    smol::block_on(print_events());
+
+    // Send a shutdown signal.
+    drop(s);
+
+    // Wait for threads to finish.
+    for t in threads {
+        t.join().unwrap();
     }
 
-    if end_position > start_position {
-        let range = char_indices[start_position].0
-            ..char_indices
-                .get(end_position)
-                .map(|c| c.0 + 1)
-                .unwrap_or(line.len());
-        Some((range.clone(), &line[range]))
-    } else {
-        None
-    }
-}
+    execute!(stdout, DisableMouseCapture)?;
 
-fn main() -> anyhow::Result<()> {
-    println!("Type `exit` to quit this example, or start a word with `h` and press Tab.");
-    let mut terminal = line_editor_terminal()?;
-    let mut editor = LineEditor::new(&mut terminal);
-
-    let mut host = Host::default();
-    loop {
-        if let Some(line) = editor.read_line(&mut host)? {
-            println!("read line: {:?}", line);
-            if line == "exit" {
-                break;
-            }
-
-            host.history().add(&line);
-        }
-    }
-
-    Ok(())
+    disable_raw_mode()
 }

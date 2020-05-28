@@ -18,7 +18,11 @@ impl State {
 
     // TODO: buf/selection accessors
 
-    // update/transact
+    // update/transact:
+    // update(desc) => transaction ?  transaction.doc() for applied doc
+    // transaction.apply(doc)
+    // doc.transact(fn -> ... end)
+
     // replaceSelection (transaction that replaces selection)
     // changeByRange
     // changes

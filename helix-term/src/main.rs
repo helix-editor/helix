@@ -1,6 +1,6 @@
-mod editor;
+// mod editor;
 
-use editor::Editor;
+// use editor::Editor;
 
 use argh::FromArgs;
 use std::{env, path::PathBuf};
@@ -16,9 +16,9 @@ pub struct Args {
 
 fn main() -> Result<(), Error> {
     let args: Args = argh::from_env();
-    let mut editor = Editor::new(args)?;
+    // let mut editor = Editor::new(args)?;
 
-    editor.run()?;
+    // editor.run()?;
 
     Ok(())
 }
