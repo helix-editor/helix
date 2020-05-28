@@ -39,6 +39,12 @@ impl Change {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum Assoc {
+    Before,
+    After,
+}
+
 // ChangeSpec = Change | ChangeSet | Vec<Change>
 // ChangeDesc as a ChangeSet without text: can't be applied, cheaper to store.
 // ChangeSet = ChangeDesc with Text
@@ -236,7 +242,82 @@ impl ChangeSet {
         }
     }
 
-    // iter over changes
+    /// Map a position through the changes.
+    ///
+    /// `assoc` indicates which size to associate the position with. `Before` will keep the
+    /// position close to the character before, and will place it before insertions over that
+    /// range, or at that point. `After` will move it forward, placing it at the end of such
+    /// insertions.
+    pub fn map_pos(&self, pos: usize, assoc: Assoc) -> usize {
+        use Change::*;
+        let mut old_pos = 0;
+        let mut new_pos = 0;
+
+        let mut iter = self.changes.iter().peekable();
+
+        while let Some(change) = iter.next() {
+            let len = match change {
+                Delete(i) | Retain(i) => *i,
+                Insert(_) => 0,
+            };
+            let old_end = old_pos + len;
+
+            match change {
+                Retain(_len) => {
+                    if old_end > pos {
+                        return new_pos + (pos - old_pos);
+                    }
+                    new_pos += len;
+                }
+                Delete(_len) => {
+                    // a subsequent ins means a replace, consume it
+                    let ins = if let Some(Insert(s)) = iter.peek() {
+                        iter.next();
+                        s.chars().count()
+                    } else {
+                        0
+                    };
+
+                    // in range
+                    if old_end > pos {
+                        // at point or tracking before
+                        if pos == old_pos || assoc == Assoc::Before {
+                            return new_pos;
+                        } else {
+                            // place to end of delete
+                            return new_pos + ins;
+                        }
+                    }
+
+                    new_pos += ins;
+                }
+                Insert(s) => {
+                    let ins = s.chars().count();
+                    // at insert point
+                    if old_pos == pos {
+                        // return position before inserted text
+                        if assoc == Assoc::Before {
+                            return new_pos;
+                        } else {
+                            // after text
+                            return new_pos + ins;
+                        }
+                    }
+
+                    new_pos += ins;
+                }
+            }
+            old_pos = old_end;
+        }
+
+        if pos > old_pos {
+            panic!(
+                "Position {} is out of range for changeset len {}!",
+                pos, old_pos
+            )
+        }
+        new_pos
+    }
 }
 
 // trait Transaction
@@ -282,9 +363,48 @@ mod test {
         // should probably return cloned text
         a.compose(b).unwrap().apply(&mut text);
 
-        unimplemented!("{:?}", text);
+        // unimplemented!("{:?}", text);
+        // TODO: assert
     }
 
     #[test]
-    fn map() {}
+    fn map_pos() {
+        use Change::*;
+
+        // maps inserts
+        let cs = ChangeSet {
+            changes: vec![Retain(4), Insert("!!".into()), Retain(4)],
+            len: 8,
+        };
+
+        assert_eq!(cs.map_pos(0, Assoc::Before), 0); // before insert region
+        assert_eq!(cs.map_pos(4, Assoc::Before), 4); // at insert, track before
+        assert_eq!(cs.map_pos(4, Assoc::After), 6); // at insert, track after
+        assert_eq!(cs.map_pos(5, Assoc::Before), 7); // after insert region
+
+        // maps deletes
+        let cs = ChangeSet {
+            changes: vec![Retain(4), Delete(4), Retain(4)],
+            len: 12,
+        };
+        assert_eq!(cs.map_pos(0, Assoc::Before), 0); // at start
+        assert_eq!(cs.map_pos(4, Assoc::Before), 4); // before a delete
+        assert_eq!(cs.map_pos(5, Assoc::Before), 4); // inside a delete
+        assert_eq!(cs.map_pos(5, Assoc::After), 4); // inside a delete
+
+        // TODO: delete tracking
+
+        // stays inbetween replacements
+        let cs = ChangeSet {
+            changes: vec![
+                Delete(2),
+                Insert("ab".into()),
+                Delete(2),
+                Insert("cd".into()),
+            ],
+            len: 4,
+        };
+        assert_eq!(cs.map_pos(2, Assoc::Before), 2);
+        assert_eq!(cs.map_pos(2, Assoc::After), 2);
+    }
 }
