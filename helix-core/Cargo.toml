@@ -12,4 +12,6 @@ ropey = { git = "https://github.com/cessen/ropey" }
 anyhow = "1.0.31"
 smallvec = "1.4.0"
 tendril = { git = "https://github.com/servo/tendril" }
+unicode-segmentation = "1.6.0"
+unicode-width = "0.1.7"
 # slab = "0.4.2"

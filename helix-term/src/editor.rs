@@ -278,4 +278,11 @@ impl Editor {
         println!("The text you entered: {}", typed_text);
         Ok(())
     }
+
+    pub fn render(&self) {
+        // create a new window sized surface
+        // paint all components
+        // diff vs last frame, swap
+        // paint diff
+    }
 }

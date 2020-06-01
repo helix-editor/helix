@@ -11,6 +11,8 @@ use futures::{future::FutureExt, select, StreamExt};
 use smol::Timer;
 // use futures_timer::Delay;
 
+use tui::{backend::CrosstermBackend, Terminal};
+
 use crossterm::{
     cursor::position,
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyCode},
@@ -63,6 +65,9 @@ fn main() -> Result<()> {
 
     let mut stdout = stdout();
     execute!(stdout, EnableMouseCapture)?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
 
     use std::thread;
 

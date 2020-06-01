@@ -1,4 +1,5 @@
 // mod editor;
+mod component;
 
 // use editor::Editor;
 

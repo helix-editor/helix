@@ -1,4 +1,5 @@
 mod buffer;
+mod graphemes;
 mod selection;
 mod state;
 mod transaction;
