@@ -1,4 +1,3 @@
-#![allow(unused)]
 use anyhow::Error;
 use termwiz::caps::Capabilities;
 use termwiz::cell::AttributeChange;

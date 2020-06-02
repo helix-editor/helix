@@ -1,10 +1,11 @@
+#![allow(unused)]
 // mod editor;
 mod component;
 
 // use editor::Editor;
 
 use argh::FromArgs;
-use std::{env, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Error;
 

@@ -8,7 +8,7 @@ pub struct Buffer {
 
 impl Buffer {
     pub fn load(path: PathBuf) -> Result<Self, Error> {
-        let current_dir = env::current_dir()?;
+        let _current_dir = env::current_dir()?;
 
         let contents = Rope::from_reader(BufReader::new(File::open(path)?))?;
 

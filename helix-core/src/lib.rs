@@ -1,3 +1,4 @@
+#![allow(unused)]
 mod buffer;
 mod graphemes;
 mod selection;

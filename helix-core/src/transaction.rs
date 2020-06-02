@@ -189,7 +189,7 @@ impl ChangeSet {
     /// provides a basic form of [operational
     /// transformation](https://en.wikipedia.org/wiki/Operational_transformation),
     /// and can be used for collaborative editing.
-    pub fn map(self, other: Self) -> Self {
+    pub fn map(self, _other: Self) -> Self {
         unimplemented!()
     }
 
