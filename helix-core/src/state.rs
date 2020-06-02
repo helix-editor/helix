@@ -92,7 +92,7 @@ impl State {
             //         range.to()
             //     }
             // } else {
-                let pos = self.move_pos(range.head, dir, granularity, 1)
+            let pos = self.move_pos(range.head, dir, granularity, 1);
             // };
             SelectionRange::new(pos, pos)
         });
