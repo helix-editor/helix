@@ -29,4 +29,4 @@ futures = { version = "0.3.5", default-features = false, features = ["std"] }
 smol = "0.1.10"
 num_cpus = "1.13.0"
 piper = "0.1.2"
-tui = { version = "0.9.5", default-features = false }
+# tui = { version = "0.9.5", default-features = false }
