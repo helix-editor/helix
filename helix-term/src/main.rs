@@ -20,6 +20,7 @@ pub struct Args {
 
 fn main() -> Result<(), Error> {
     let args: Args = argh::from_env();
+    println!("{:?}", args.files);
 
     editor::Editor::run()?;
 

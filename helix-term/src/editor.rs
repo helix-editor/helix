@@ -1,10 +1,11 @@
 use std::io::{self, stdout, Write};
+use std::path::PathBuf;
 
 use crossterm::{
     cursor,
     cursor::position,
     event::{self, read, Event, KeyCode, KeyEvent},
-    execute, style,
+    execute, queue, style,
     terminal::{self, disable_raw_mode, enable_raw_mode},
     Result,
 };
@@ -14,7 +15,9 @@ const HELP: &str = r#"
  - Move cursor with h, j, k, l
 "#;
 
-pub struct Editor {}
+pub struct Editor {
+    file: PathBuf,
+}
 
 impl Editor {
     pub fn read_char() -> Result<char> {
@@ -29,7 +32,7 @@ impl Editor {
         }
     }
 
-    pub fn print_events() -> Result<()> {
+    pub async fn print_events() -> Result<()> {
         loop {
             // Handle key events
             match Editor::read_char()? {
@@ -56,12 +59,35 @@ impl Editor {
     pub fn run() -> Result<()> {
         enable_raw_mode()?;
 
-        // used for clearing the screen
-        execute!(io::stdout(), terminal::EnterAlternateScreen)?;
-        println!("{}", HELP);
         let mut stdout = stdout();
-        if let Err(e) = Editor::print_events() {
-            println!("Error: {:?}\r", e);
+
+        execute!(stdout, terminal::EnterAlternateScreen)?;
+
+        use std::thread;
+
+        // Same number of threads as there are CPU cores.
+        let num_threads = num_cpus::get().max(1);
+
+        // A channel that sends the shutdown signal.
+        let (s, r) = piper::chan::<()>(0);
+        let mut threads = Vec::new();
+
+        // Create an executor thread pool.
+        for _ in 0..num_threads {
+            // Spawn an executor thread that waits for the shutdown signal.
+            let r = r.clone();
+            threads.push(thread::spawn(move || smol::run(r.recv())));
+        }
+
+        // No need to `run()`, now we can just block on the main future.
+        smol::block_on(Editor::print_events());
+
+        // Send a shutdown signal.
+        drop(s);
+
+        // Wait for threads to finish.
+        for t in threads {
+            t.join().unwrap();
         }
 
         disable_raw_mode()
