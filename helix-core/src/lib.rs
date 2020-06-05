@@ -5,7 +5,7 @@ mod selection;
 mod state;
 mod transaction;
 
-pub use ropey::Rope;
+pub use ropey::{Rope, RopeSlice};
 pub use tendril::StrTendril as Tendril;
 
 pub use buffer::Buffer;
