@@ -1,6 +1,7 @@
 #![allow(unused)]
 // mod editor;
-mod component;
+// mod component;
+mod keymap;
 
 // use editor::Editor;
 
