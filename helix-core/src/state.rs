@@ -69,6 +69,7 @@ impl State {
             (Direction::Forward, Granularity::Character) => {
                 nth_next_grapheme_boundary(&text.slice(..), pos, n)
             }
+            (_, Granularity::Line) => move_vertically(&text.slice(..), dir, pos, n),
             _ => pos,
         }
     }
@@ -125,7 +126,8 @@ type Coords = (usize, usize); // line, col
 pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Coords {
     let line = text.char_to_line(pos);
     let line_start = text.line_to_char(line);
-    let col = RopeGraphemes::new(&text.slice(line_start..pos)).count();
+    // convert to 0-indexed
+    let col = text.slice(line_start..pos).len_chars().saturating_sub(1);
     (line, col)
 }
 
@@ -136,6 +138,31 @@ pub fn pos_at_coords(text: &RopeSlice, coords: Coords) -> usize {
     nth_next_grapheme_boundary(text, line_start, col)
 }
 
+fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, n: usize) -> usize {
+    let (line, col) = coords_at_pos(text, pos);
+
+    let new_line = match dir {
+        Direction::Backward => line.saturating_sub(n),
+        Direction::Forward => std::cmp::min(line.saturating_add(n), text.len_lines() - 1),
+    };
+
+    // convert to 0-indexed
+    let new_line_len = text.line(new_line).len_chars().saturating_sub(1);
+
+    let new_col = if new_line_len < col {
+        // TODO: preserve horiz here
+        new_line_len
+    } else {
+        col
+    };
+
+    pos_at_coords(text, (new_line, new_col))
+}
+
+/// A command is a function that takes the current state and a count, and does a side-effect on the
+/// state (usually by creating and applying a transaction).
+type Command = fn(state: &mut State, count: usize) -> bool;
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -144,9 +171,9 @@ mod test {
     fn test_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         assert_eq!(coords_at_pos(&text.slice(..), 0), (0, 0));
-        assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 5)); // position on \n
+        assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 4)); // position on \n
         assert_eq!(coords_at_pos(&text.slice(..), 6), (1, 0)); // position on w
-        assert_eq!(coords_at_pos(&text.slice(..), 11), (1, 5)); // position on d
+        assert_eq!(coords_at_pos(&text.slice(..), 11), (1, 4)); // position on d
     }
 
     #[test]
@@ -156,5 +183,17 @@ mod test {
         assert_eq!(pos_at_coords(&text.slice(..), (0, 5)), 5); // position on \n
         assert_eq!(pos_at_coords(&text.slice(..), (1, 0)), 6); // position on w
         assert_eq!(pos_at_coords(&text.slice(..), (1, 5)), 11); // position on d
+    }
+
+    #[test]
+    fn test_vertical_move() {
+        let text = Rope::from("abcd\nefg\nwrs");
+        let pos = pos_at_coords(&text.slice(..), (0, 4));
+        let slice = text.slice(..);
+
+        assert_eq!(
+            coords_at_pos(&slice, move_vertically(&slice, Direction::Forward, pos, 1)),
+            (1, 2)
+        );
     }
 }
