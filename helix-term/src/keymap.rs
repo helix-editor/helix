@@ -1,4 +1,4 @@
-use crossterm::event::{KeyEvent as Key, KeyModifiers as Modifiers};
+use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 use helix_core::commands::{self, Command};
 use std::collections::HashMap;
 
@@ -97,20 +97,20 @@ type Keymap = HashMap<Key, Command>;
 fn default() -> Keymap {
     hashmap!(
         Key {
-            code: "h",
+            code: KeyCode::Char('h'),
             modifiers: Modifiers::NONE
-        } => commands::move_char_left,
+        } => commands::move_char_left as Command,
         Key {
-            code: "j",
+            code: KeyCode::Char('j'),
             modifiers: Modifiers::NONE
-        } => commands::move_line_down,
+        } => commands::move_line_down as Command,
         Key {
-            code: "k",
+            code: KeyCode::Char('k'),
             modifiers: Modifiers::NONE
-        } => commands::move_line_up,
+        } => commands::move_line_up as Command,
         Key {
-            code: "l",
+            code: KeyCode::Char('l'),
             modifiers: Modifiers::NONE
-        } => commands::move_char_right,
-    );
+        } => commands::move_char_right as Command,
+    )
 }

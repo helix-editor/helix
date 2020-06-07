@@ -10,10 +10,6 @@ edition = "2018"
 name = "hx"
 path = "src/main.rs"
 
-[[bin]]
-name = "line"
-path = "src/line.rs"
-
 [dependencies]
 # termwiz = { git = "https://github.com/wez/wezterm", features = ["widgets"] }
 # termwiz = { path = "../../wezterm/termwiz", default-features = false, features = ["widgets"] }

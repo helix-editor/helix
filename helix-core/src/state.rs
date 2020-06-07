@@ -142,8 +142,8 @@ fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -
     let (line, col) = coords_at_pos(text, pos);
 
     let new_line = match dir {
-        Direction::Backward => line.saturating_sub(n),
-        Direction::Forward => std::cmp::min(line.saturating_add(n), text.len_lines() - 1),
+        Direction::Backward => line.saturating_sub(count),
+        Direction::Forward => std::cmp::min(line.saturating_add(count), text.len_lines() - 1),
     };
 
     // convert to 0-indexed
