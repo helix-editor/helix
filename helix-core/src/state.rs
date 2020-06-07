@@ -3,8 +3,8 @@ use crate::{Buffer, Rope, RopeSlice, Selection, SelectionRange};
 
 /// A state represents the current editor state of a single buffer.
 pub struct State {
-    doc: Buffer,
-    selection: Selection,
+    pub(crate) doc: Buffer,
+    pub(crate) selection: Selection,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -59,17 +59,17 @@ impl State {
         pos: usize,
         dir: Direction,
         granularity: Granularity,
-        n: usize,
+        count: usize,
     ) -> usize {
         let text = &self.doc.contents;
         match (dir, granularity) {
             (Direction::Backward, Granularity::Character) => {
-                nth_prev_grapheme_boundary(&text.slice(..), pos, n)
+                nth_prev_grapheme_boundary(&text.slice(..), pos, count)
             }
             (Direction::Forward, Granularity::Character) => {
-                nth_next_grapheme_boundary(&text.slice(..), pos, n)
+                nth_next_grapheme_boundary(&text.slice(..), pos, count)
             }
-            (_, Granularity::Line) => move_vertically(&text.slice(..), dir, pos, n),
+            (_, Granularity::Line) => move_vertically(&text.slice(..), dir, pos, count),
             _ => pos,
         }
     }
@@ -79,7 +79,7 @@ impl State {
         sel: Selection,
         dir: Direction,
         granularity: Granularity,
-        // TODO: n
+        count: usize,
     ) -> Selection {
         // TODO: move all selections according to normal cursor move semantics by collapsing it
         // into cursors and moving them vertically
@@ -93,7 +93,7 @@ impl State {
             //         range.to()
             //     }
             // } else {
-            let pos = self.move_pos(range.head, dir, granularity, 1);
+            let pos = self.move_pos(range.head, dir, granularity, count);
             // };
             SelectionRange::new(pos, pos)
         });
@@ -107,10 +107,10 @@ impl State {
         sel: Selection,
         dir: Direction,
         granularity: Granularity,
-        n: usize,
+        count: usize,
     ) -> Selection {
         let ranges = sel.ranges.into_iter().map(|range| {
-            let pos = self.move_pos(range.head, dir, granularity, n);
+            let pos = self.move_pos(range.head, dir, granularity, count);
             SelectionRange::new(range.anchor, pos)
         });
 
@@ -138,7 +138,7 @@ pub fn pos_at_coords(text: &RopeSlice, coords: Coords) -> usize {
     nth_next_grapheme_boundary(text, line_start, col)
 }
 
-fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, n: usize) -> usize {
+fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -> usize {
     let (line, col) = coords_at_pos(text, pos);
 
     let new_line = match dir {
@@ -158,10 +158,6 @@ fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, n: usize) -> us
 
     pos_at_coords(text, (new_line, new_col))
 }
-
-/// A command is a function that takes the current state and a count, and does a side-effect on the
-/// state (usually by creating and applying a transaction).
-type Command = fn(state: &mut State, count: usize) -> bool;
 
 #[cfg(test)]
 mod test {

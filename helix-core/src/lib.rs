@@ -1,5 +1,6 @@
 #![allow(unused)]
 mod buffer;
+pub mod commands;
 mod graphemes;
 mod selection;
 mod state;
