@@ -1,14 +1,15 @@
-use std::io::{self, stdout, Write};
-use std::path::PathBuf;
-
 use crossterm::{
     cursor,
     cursor::position,
-    event::{self, read, Event, KeyCode, KeyEvent},
+    event::{self, read, Event, EventStream, KeyCode, KeyEvent},
     execute, queue, style,
     terminal::{self, disable_raw_mode, enable_raw_mode},
     Result,
 };
+use futures::{future::FutureExt, select, StreamExt};
+use std::io::{self, stdout, Write};
+use std::path::PathBuf;
+use std::time::Duration;
 
 const HELP: &str = r#"
  - Use q to quit
@@ -20,40 +21,40 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn read_char() -> Result<char> {
-        loop {
-            if let Ok(Event::Key(KeyEvent {
-                code: KeyCode::Char(c),
-                ..
-            })) = event::read()
-            {
-                return Ok(c);
-            }
-        }
-    }
-
-    pub async fn print_events() -> Result<()> {
+    pub async fn print_events() {
+        let mut reader = EventStream::new();
         loop {
             // Handle key events
-            match Editor::read_char()? {
-                'h' => execute!(io::stdout(), cursor::MoveLeft(1))?,
-                'j' => execute!(io::stdout(), cursor::MoveDown(1))?,
-                'k' => execute!(io::stdout(), cursor::MoveUp(1))?,
-                'l' => execute!(io::stdout(), cursor::MoveRight(1))?,
-                'q' => {
-                    execute!(
-                        io::stdout(),
-                        style::ResetColor,
-                        cursor::Show,
-                        terminal::LeaveAlternateScreen
-                    )?;
-                    break;
+            let mut event = reader.next().await;
+            match event {
+                Some(Ok(x)) => {
+                    if let Event::Key(KeyEvent {
+                        code: KeyCode::Char(c),
+                        ..
+                    }) = x
+                    {
+                        match c {
+                            'h' => execute!(io::stdout(), cursor::MoveLeft(1)).unwrap(),
+                            'j' => execute!(io::stdout(), cursor::MoveDown(1)).unwrap(),
+                            'k' => execute!(io::stdout(), cursor::MoveUp(1)).unwrap(),
+                            'l' => execute!(io::stdout(), cursor::MoveRight(1)).unwrap(),
+                            'q' => {
+                                execute!(
+                                    io::stdout(),
+                                    style::ResetColor,
+                                    cursor::Show,
+                                    terminal::LeaveAlternateScreen
+                                );
+                                break;
+                            }
+                            _ => println!("{:?}", x),
+                        }
+                    }
                 }
-                _ => println!("use 'q' to quit."),
+                Some(Err(x)) => panic!(x),
+                None => break,
             }
         }
-
-        Ok(())
     }
 
     pub fn run() -> Result<()> {
@@ -84,6 +85,8 @@ impl Editor {
 
         // Send a shutdown signal.
         drop(s);
+
+        execute!(stdout, terminal::LeaveAlternateScreen)?;
 
         // Wait for threads to finish.
         for t in threads {
