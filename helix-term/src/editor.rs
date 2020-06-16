@@ -4,52 +4,73 @@ use crossterm::{
     event::{self, read, Event, EventStream, KeyCode, KeyEvent},
     execute, queue, style,
     terminal::{self, disable_raw_mode, enable_raw_mode},
-    Result,
 };
 use futures::{future::FutureExt, select, StreamExt};
 use std::io::{self, stdout, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
-const HELP: &str = r#"
- - Use q to quit
- - Move cursor with h, j, k, l
-"#;
+use anyhow::Error;
+
+use crate::{keymap, Args};
+use helix_core::{Buffer, State};
 
 pub struct Editor {
-    file: PathBuf,
+    state: Option<State>,
 }
 
 impl Editor {
-    pub async fn print_events() {
+    pub fn new(mut args: Args) -> Result<Self, Error> {
+        let mut editor = Editor { state: None };
+
+        if let Some(file) = args.files.pop() {
+            editor.open(file)?;
+        }
+
+        Ok(editor)
+    }
+
+    pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
+        let buffer = Buffer::load(path)?;
+        let state = State::new(buffer);
+        self.state = Some(state);
+        Ok(())
+    }
+
+    fn render(&self) {
+        // TODO:
+    }
+
+    pub async fn print_events(&mut self) {
         let mut reader = EventStream::new();
+        let keymap = keymap::default();
+
+        self.render();
+
         loop {
             // Handle key events
             let mut event = reader.next().await;
             match event {
-                Some(Ok(x)) => {
-                    if let Event::Key(KeyEvent {
-                        code: KeyCode::Char(c),
-                        ..
-                    }) = x
-                    {
-                        match c {
-                            'h' => execute!(io::stdout(), cursor::MoveLeft(1)).unwrap(),
-                            'j' => execute!(io::stdout(), cursor::MoveDown(1)).unwrap(),
-                            'k' => execute!(io::stdout(), cursor::MoveUp(1)).unwrap(),
-                            'l' => execute!(io::stdout(), cursor::MoveRight(1)).unwrap(),
-                            'q' => {
-                                execute!(
-                                    io::stdout(),
-                                    style::ResetColor,
-                                    cursor::Show,
-                                    terminal::LeaveAlternateScreen
-                                );
-                                break;
-                            }
-                            _ => println!("{:?}", x),
+                // TODO: handle resize events
+                Some(Ok(Event::Key(KeyEvent {
+                    code: KeyCode::Char('q'),
+                    ..
+                }))) => {
+                    break;
+                }
+                Some(Ok(Event::Key(event))) => {
+                    // TODO: handle modes and sequences (`gg`)
+                    if let Some(command) = keymap.get(&event) {
+                        if let Some(state) = &mut self.state {
+                            // TODO: handle count other than 1
+                            command(state, 1);
+                            self.render();
                         }
                     }
+                }
+                Some(Ok(_)) => {
+                    // unhandled event
+                    ()
                 }
                 Some(Err(x)) => panic!(x),
                 None => break,
@@ -57,7 +78,7 @@ impl Editor {
         }
     }
 
-    pub fn run() -> Result<()> {
+    pub fn run(&mut self) -> Result<(), Error> {
         enable_raw_mode()?;
 
         let mut stdout = stdout();
@@ -81,7 +102,7 @@ impl Editor {
         }
 
         // No need to `run()`, now we can just block on the main future.
-        smol::block_on(Editor::print_events());
+        smol::block_on(self.print_events());
 
         // Send a shutdown signal.
         drop(s);
@@ -93,6 +114,8 @@ impl Editor {
             t.join().unwrap();
         }
 
-        disable_raw_mode()
+        disable_raw_mode()?;
+
+        Ok(())
     }
 }

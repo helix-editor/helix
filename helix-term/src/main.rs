@@ -22,7 +22,8 @@ fn main() -> Result<(), Error> {
     let args: Args = argh::from_env();
     println!("{:?}", args.files);
 
-    editor::Editor::run()?;
+    let mut editor = editor::Editor::new(args)?;
+    editor.run();
 
     Ok(())
 }

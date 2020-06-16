@@ -94,7 +94,7 @@ macro_rules! hashmap {
 
 type Keymap = HashMap<Key, Command>;
 
-fn default() -> Keymap {
+pub fn default() -> Keymap {
     hashmap!(
         Key {
             code: KeyCode::Char('h'),
