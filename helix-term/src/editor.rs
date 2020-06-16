@@ -2,7 +2,8 @@ use crossterm::{
     cursor,
     cursor::position,
     event::{self, read, Event, EventStream, KeyCode, KeyEvent},
-    execute, queue, style,
+    execute, queue,
+    style::Print,
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use futures::{future::FutureExt, select, StreamExt};
@@ -39,6 +40,10 @@ impl Editor {
 
     fn render(&self) {
         // TODO:
+        match &self.state {
+            Some(s) => execute!(stdout(), cursor::MoveTo(0, 0), Print(s.file())).unwrap(),
+            None => (),
+        }
     }
 
     pub async fn print_events(&mut self) {

@@ -117,6 +117,12 @@ impl State {
         Selection::new(ranges.collect(), sel.primary_index)
         // TODO: update selection in state via transaction
     }
+
+    pub fn file(&self) -> &Rope {
+        // used to access file contents for rendering to screen
+        let copy = &self.doc.contents;
+        copy
+    }
 }
 
 /// Coordinates are a 0-indexed line and column pair.
