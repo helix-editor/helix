@@ -120,8 +120,7 @@ impl State {
 
     pub fn file(&self) -> &Rope {
         // used to access file contents for rendering to screen
-        let copy = &self.doc.contents;
-        copy
+        &self.doc.contents
     }
 }
 

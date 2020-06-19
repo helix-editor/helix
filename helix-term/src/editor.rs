@@ -16,13 +16,35 @@ use anyhow::Error;
 use crate::{keymap, Args};
 use helix_core::{Buffer, State};
 
+pub struct View<'a> {
+    x: u16,
+    y: u16,
+    contents: &'a str,
+}
+
+impl View<'_> {
+    pub fn render(&self) {
+        execute!(
+            stdout(),
+            cursor::MoveTo(self.x, self.y),
+            Print(self.contents)
+        );
+    }
+}
+
 pub struct Editor {
     state: Option<State>,
+    current_line: u16,
+    size: (u16, u16),
 }
 
 impl Editor {
     pub fn new(mut args: Args) -> Result<Self, Error> {
-        let mut editor = Editor { state: None };
+        let mut editor = Editor {
+            state: None,
+            current_line: 0,
+            size: terminal::size().unwrap(),
+        };
 
         if let Some(file) = args.files.pop() {
             editor.open(file)?;
@@ -38,10 +60,25 @@ impl Editor {
         Ok(())
     }
 
-    fn render(&self) {
+    fn render(&mut self) {
         // TODO:
+
         match &self.state {
-            Some(s) => execute!(stdout(), cursor::MoveTo(0, 0), Print(s.file())).unwrap(),
+            Some(s) => {
+                for line in s
+                    .file()
+                    .lines_at(self.current_line as usize)
+                    .take(self.size.1 as usize)
+                {
+                    let view = View {
+                        x: 0,
+                        y: self.current_line,
+                        contents: line.as_str().unwrap(),
+                    };
+                    view.render();
+                    self.current_line += 1;
+                }
+            }
             None => (),
         }
     }
