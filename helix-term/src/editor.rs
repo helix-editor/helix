@@ -3,7 +3,7 @@ use crossterm::{
     cursor::position,
     event::{self, read, Event, EventStream, KeyCode, KeyEvent},
     execute, queue,
-    style::Print,
+    style::{Color, Print, SetForegroundColor},
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use futures::{future::FutureExt, select, StreamExt};
@@ -16,25 +16,37 @@ use anyhow::Error;
 use crate::{keymap, Args};
 use helix_core::{Buffer, State};
 
-pub struct View<'a> {
+pub struct BufferComponent<'a> {
     x: u16,
     y: u16,
-    contents: &'a str,
+    contents: Vec<&'a str>,
 }
 
-impl View<'_> {
+impl BufferComponent<'_> {
     pub fn render(&self) {
-        execute!(
-            stdout(),
-            cursor::MoveTo(self.x, self.y),
-            Print(self.contents)
-        );
+        let mut line_count = 0;
+        for line in &self.contents {
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::DarkCyan),
+                cursor::MoveTo(self.x, self.y + line_count),
+                Print((line_count + 1).to_string())
+            );
+            execute!(
+                stdout(),
+                SetForegroundColor(Color::Reset),
+                cursor::MoveTo(self.x + 2, self.y + line_count),
+                Print(line)
+            )
+            .unwrap();
+            line_count += 1;
+        }
     }
 }
 
 pub struct Editor {
     state: Option<State>,
-    current_line: u16,
+    first_line: u16,
     size: (u16, u16),
 }
 
@@ -42,7 +54,7 @@ impl Editor {
     pub fn new(mut args: Args) -> Result<Self, Error> {
         let mut editor = Editor {
             state: None,
-            current_line: 0,
+            first_line: 0,
             size: terminal::size().unwrap(),
         };
 
@@ -65,19 +77,17 @@ impl Editor {
 
         match &self.state {
             Some(s) => {
-                for line in s
-                    .file()
-                    .lines_at(self.current_line as usize)
-                    .take(self.size.1 as usize)
-                {
-                    let view = View {
-                        x: 0,
-                        y: self.current_line,
-                        contents: line.as_str().unwrap(),
-                    };
-                    view.render();
-                    self.current_line += 1;
-                }
+                let view = BufferComponent {
+                    x: 0,
+                    y: self.first_line,
+                    contents: s
+                        .file()
+                        .lines_at(self.first_line as usize)
+                        .take(self.size.1 as usize)
+                        .map(|x| x.as_str().unwrap())
+                        .collect::<Vec<&str>>(),
+                };
+                view.render();
             }
             None => (),
         }
