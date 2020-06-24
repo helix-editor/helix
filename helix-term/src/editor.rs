@@ -1,3 +1,5 @@
+use crate::{keymap, Args};
+use anyhow::Error;
 use crossterm::{
     cursor,
     cursor::position,
@@ -7,14 +9,10 @@ use crossterm::{
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use futures::{future::FutureExt, select, StreamExt};
+use helix_core::{state::coords_at_pos, Buffer, State};
 use std::io::{self, stdout, Write};
 use std::path::PathBuf;
 use std::time::Duration;
-
-use anyhow::Error;
-
-use crate::{keymap, Args};
-use helix_core::{state::coords_at_pos, Buffer, State};
 
 pub struct BufferComponent<'a> {
     x: u16,

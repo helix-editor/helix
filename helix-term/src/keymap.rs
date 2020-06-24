@@ -5,7 +5,6 @@ use crossterm::{
 };
 use helix_core::commands::{self, Command};
 use std::collections::HashMap;
-use std::io::{stdout, Write};
 
 // Kakoune-inspired:
 // mode = {
