@@ -14,7 +14,7 @@ use std::time::Duration;
 use anyhow::Error;
 
 use crate::{keymap, Args};
-use helix_core::{Buffer, State};
+use helix_core::{state::coords_at_pos, Buffer, State};
 
 pub struct BufferComponent<'a> {
     x: u16,
@@ -37,8 +37,7 @@ impl BufferComponent<'_> {
                 SetForegroundColor(Color::Reset),
                 cursor::MoveTo(self.x + 2, self.y + line_count),
                 Print(line)
-            )
-            .unwrap();
+            );
             line_count += 1;
         }
     }
@@ -117,6 +116,16 @@ impl Editor {
                             // TODO: handle count other than 1
                             command(state, 1);
                             self.render();
+                            // render the cursor
+                            let pos = self.state.as_ref().unwrap().selection.primary().head;
+                            let coords = coords_at_pos(
+                                &self.state.as_ref().unwrap().doc.contents.slice(..),
+                                pos,
+                            );
+                            execute!(
+                                stdout(),
+                                cursor::MoveTo((coords.1 + 2) as u16, coords.0 as u16)
+                            );
                         }
                     }
                 }

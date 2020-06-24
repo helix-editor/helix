@@ -3,8 +3,8 @@ use crate::{Buffer, Rope, RopeSlice, Selection, SelectionRange};
 
 /// A state represents the current editor state of a single buffer.
 pub struct State {
-    pub(crate) doc: Buffer,
-    pub(crate) selection: Selection,
+    pub doc: Buffer,
+    pub selection: Selection,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

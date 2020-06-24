@@ -3,7 +3,7 @@ mod buffer;
 pub mod commands;
 mod graphemes;
 mod selection;
-mod state;
+pub mod state;
 mod transaction;
 
 pub use ropey::{Rope, RopeSlice};
