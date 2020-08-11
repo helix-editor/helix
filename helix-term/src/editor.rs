@@ -22,21 +22,19 @@ pub struct BufferComponent<'a> {
 
 impl BufferComponent<'_> {
     pub fn render(&self) {
-        let mut line_count = 0;
-        for line in &self.contents {
+        for (n, line) in self.contents.iter().enumerate() {
             execute!(
                 stdout(),
                 SetForegroundColor(Color::DarkCyan),
-                cursor::MoveTo(self.x, self.y + line_count),
-                Print((line_count + 1).to_string())
+                cursor::MoveTo(self.x, self.y + n as u16),
+                Print((n + 1).to_string())
             );
             execute!(
                 stdout(),
                 SetForegroundColor(Color::Reset),
-                cursor::MoveTo(self.x + 2, self.y + line_count),
+                cursor::MoveTo(self.x + 2, self.y + n as u16),
                 Print(line)
             );
-            line_count += 1;
         }
     }
 }
@@ -129,7 +127,6 @@ impl Editor {
                 }
                 Some(Ok(_)) => {
                     // unhandled event
-                    ()
                 }
                 Some(Err(x)) => panic!(x),
                 None => break,
