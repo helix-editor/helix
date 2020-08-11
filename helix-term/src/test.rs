@@ -42,7 +42,7 @@ async fn print_events() {
 
                         if event == Event::Key(KeyCode::Char('c').into()) {
                             println!("Cursor position: {:?}\r", position());
-                        
+
                         }
 
                             println!("test");
@@ -67,32 +67,8 @@ fn main() -> Result<()> {
     let mut stdout = stdout();
     execute!(stdout, EnableMouseCapture)?;
 
-    use std::thread;
-
-    // Same number of threads as there are CPU cores.
-    let num_threads = num_cpus::get().max(1);
-
-    // A channel that sends the shutdown signal.
-    let (s, r) = piper::chan::<()>(0);
-    let mut threads = Vec::new();
-
-    // Create an executor thread pool.
-    for _ in 0..num_threads {
-        // Spawn an executor thread that waits for the shutdown signal.
-        let r = r.clone();
-        threads.push(thread::spawn(move || smol::run(r.recv())));
-    }
-
     // No need to `run()`, now we can just block on the main future.
-    smol::block_on(print_events());
-
-    // Send a shutdown signal.
-    drop(s);
-
-    // Wait for threads to finish.
-    for t in threads {
-        t.join().unwrap();
-    }
+    smol::run(print_events());
 
     execute!(stdout, DisableMouseCapture)?;
 

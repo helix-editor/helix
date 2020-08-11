@@ -17,12 +17,11 @@ path = "src/main.rs"
 anyhow = "1.0.31"
 argh = "0.1.3"
 helix-core = { path = "../helix-core" }
-# crossterm = { version = "0.17.5", features = ["event-stream"] }
-crossterm = { git = "https://github.com/crossterm-rs/crossterm", branch = "mio-update", features = ["event-stream"] }
+crossterm = { version = "0.17.7", features = ["event-stream"] }
 
-futures = { version = "0.3.5", default-features = false, features = ["std"] }
+smol = "0.3"
+futures = { version = "0.3.5", default-features = false, features = ["std", "async-await"] }
 # futures-timer = "3.0.2"
-smol = "0.1.10"
-num_cpus = "1.13.0"
-piper = "0.1.2"
+# async-channel = "1.4.0"
+
 # tui = { version = "0.9.5", default-features = false }
