@@ -63,6 +63,7 @@ impl State {
     ) -> usize {
         let text = &self.doc.contents;
         match (dir, granularity) {
+            // TODO: clamp movement to line, prevent moving onto \n at the end
             (Direction::Backward, Granularity::Character) => {
                 nth_prev_grapheme_boundary(&text.slice(..), pos, count)
             }
@@ -131,8 +132,7 @@ type Coords = (usize, usize); // line, col
 pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Coords {
     let line = text.char_to_line(pos);
     let line_start = text.line_to_char(line);
-    // convert to 0-indexed
-    let col = text.slice(line_start..pos).len_chars().saturating_sub(1);
+    let col = text.slice(line_start..pos).len_chars();
     (line, col)
 }
 
@@ -151,8 +151,8 @@ fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -
         Direction::Forward => std::cmp::min(line.saturating_add(count), text.len_lines() - 1),
     };
 
-    // convert to 0-indexed
-    let new_line_len = text.line(new_line).len_chars().saturating_sub(1);
+    // convert to 0-indexed, subtract another 1 because len_chars() counts \n
+    let new_line_len = text.line(new_line).len_chars().saturating_sub(2);
 
     let new_col = if new_line_len < col {
         // TODO: preserve horiz here
@@ -172,9 +172,11 @@ mod test {
     fn test_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         assert_eq!(coords_at_pos(&text.slice(..), 0), (0, 0));
-        assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 4)); // position on \n
+        // TODO: what is the coordinate of newline?
+        assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 5)); // position on \n
         assert_eq!(coords_at_pos(&text.slice(..), 6), (1, 0)); // position on w
-        assert_eq!(coords_at_pos(&text.slice(..), 11), (1, 4)); // position on d
+        assert_eq!(coords_at_pos(&text.slice(..), 7), (1, 1)); // position on o
+        assert_eq!(coords_at_pos(&text.slice(..), 10), (1, 4)); // position on d
     }
 
     #[test]
@@ -183,7 +185,8 @@ mod test {
         assert_eq!(pos_at_coords(&text.slice(..), (0, 0)), 0);
         assert_eq!(pos_at_coords(&text.slice(..), (0, 5)), 5); // position on \n
         assert_eq!(pos_at_coords(&text.slice(..), (1, 0)), 6); // position on w
-        assert_eq!(pos_at_coords(&text.slice(..), (1, 5)), 11); // position on d
+        assert_eq!(pos_at_coords(&text.slice(..), (1, 1)), 7); // position on o
+        assert_eq!(pos_at_coords(&text.slice(..), (1, 4)), 10); // position on d
     }
 
     #[test]
