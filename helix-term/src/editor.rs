@@ -39,6 +39,8 @@ impl BufferComponent<'_> {
     }
 }
 
+static EX: smol::Executor = smol::Executor::new();
+
 pub struct Editor {
     state: Option<State>,
     first_line: u16,
@@ -134,14 +136,14 @@ impl Editor {
         }
     }
 
-    pub fn run(&mut self) -> Result<(), Error> {
+    pub async fn run(&mut self) -> Result<(), Error> {
         enable_raw_mode()?;
 
         let mut stdout = stdout();
 
         execute!(stdout, terminal::EnterAlternateScreen)?;
 
-        smol::run(self.print_events());
+        self.print_events().await;
 
         execute!(stdout, terminal::LeaveAlternateScreen)?;
 

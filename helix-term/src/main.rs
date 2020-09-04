@@ -18,12 +18,19 @@ pub struct Args {
     files: Vec<PathBuf>,
 }
 
+static EX: smol::Executor = smol::Executor::new();
+
 fn main() -> Result<(), Error> {
     let args: Args = argh::from_env();
     println!("{:?}", args.files);
 
-    let mut editor = editor::Editor::new(args)?;
-    editor.run();
+    for _ in 0..num_cpus::get() {
+        std::thread::spawn(move || smol::block_on(EX.run(smol::future::pending::<()>())));
+    }
+
+    smol::block_on(EX.run(async {
+        editor::Editor::new(args).unwrap().run().await;
+    }));
 
     Ok(())
 }
