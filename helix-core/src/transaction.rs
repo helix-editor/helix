@@ -47,6 +47,18 @@ impl ChangeSet {
         }
     }
 
+    pub fn insert(buf: &Buffer, pos: usize, c: char) -> Self {
+        let len = buf.contents.len_chars();
+        Self {
+            changes: vec![
+                Change::Retain(pos),
+                Change::Insert(Tendril::from_char(c)),
+                Change::Retain(len - pos),
+            ],
+            len,
+        }
+    }
+
     // TODO: from iter
 
     /// Combine two changesets together.

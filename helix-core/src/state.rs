@@ -1,10 +1,16 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
 use crate::{Buffer, Rope, RopeSlice, Selection, SelectionRange};
 
+pub enum Mode {
+    Normal,
+    Insert,
+}
+
 /// A state represents the current editor state of a single buffer.
 pub struct State {
     pub doc: Buffer,
     pub selection: Selection,
+    pub mode: Mode,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -26,6 +32,7 @@ impl State {
         Self {
             doc,
             selection: Selection::single(0, 0),
+            mode: Mode::Normal,
         }
     }
 
@@ -119,9 +126,14 @@ impl State {
         // TODO: update selection in state via transaction
     }
 
-    pub fn file(&self) -> &Rope {
+    pub fn contents(&self) -> &Rope {
         // used to access file contents for rendering to screen
         &self.doc.contents
+    }
+
+    pub fn contents_mut(&mut self) -> &mut Rope {
+        // used to access file contents for rendering to screen
+        &mut self.doc.contents
     }
 }
 

@@ -116,5 +116,20 @@ pub fn default() -> Keymap {
             code: KeyCode::Char('l'),
             modifiers: Modifiers::NONE
         } => commands::move_char_right as Command,
+        Key {
+            code: KeyCode::Char('i'),
+            modifiers: Modifiers::NONE
+        } => commands::insert_mode as Command,
+        Key {
+            code: KeyCode::Esc,
+            modifiers: Modifiers::NONE
+        } => commands::normal_mode as Command,
     )
+
+    // hashmap!(
+    //     Key {
+    //         code: KeyCode::Esc,
+    //         modifiers: Modifiers::NONE
+    //     } => commands::normal_mode as Command,
+    // )
 }

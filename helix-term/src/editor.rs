@@ -9,35 +9,10 @@ use crossterm::{
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use futures::{future::FutureExt, select, StreamExt};
-use helix_core::{state::coords_at_pos, Buffer, State};
+use helix_core::{state::coords_at_pos, state::Mode, Buffer, State};
 use std::io::{self, stdout, Write};
 use std::path::PathBuf;
 use std::time::Duration;
-
-pub struct BufferComponent<'a> {
-    x: u16,
-    y: u16,
-    contents: Vec<&'a str>,
-}
-
-impl BufferComponent<'_> {
-    pub fn render(&self) {
-        for (n, line) in self.contents.iter().enumerate() {
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::DarkCyan),
-                cursor::MoveTo(self.x, self.y + n as u16),
-                Print((n + 1).to_string())
-            );
-            execute!(
-                stdout(),
-                SetForegroundColor(Color::Reset),
-                cursor::MoveTo(self.x + 2, self.y + n as u16),
-                Print(line)
-            );
-        }
-    }
-}
 
 static EX: smol::Executor = smol::Executor::new();
 
@@ -70,21 +45,56 @@ impl Editor {
     }
 
     fn render(&mut self) {
-        // TODO:
-
         match &self.state {
-            Some(s) => {
-                let view = BufferComponent {
-                    x: 0,
-                    y: self.first_line,
-                    contents: s
-                        .file()
-                        .lines_at(self.first_line as usize)
-                        .take(self.size.1 as usize)
-                        .map(|x| x.as_str().unwrap())
-                        .collect::<Vec<&str>>(),
+            Some(state) => {
+                let lines = state
+                    .contents()
+                    .lines_at(self.first_line as usize)
+                    .take(self.size.1 as usize)
+                    .map(|x| x.as_str().unwrap());
+
+                let mut stdout = stdout();
+
+                for (n, line) in lines.enumerate() {
+                    execute!(
+                        stdout,
+                        SetForegroundColor(Color::DarkCyan),
+                        cursor::MoveTo(0, n as u16),
+                        Print((n + 1).to_string())
+                    );
+                    execute!(
+                        stdout,
+                        SetForegroundColor(Color::Reset),
+                        cursor::MoveTo(2, n as u16),
+                        Print(line)
+                    );
+                }
+
+                let mode = match state.mode {
+                    Mode::Insert => "INS",
+                    Mode::Normal => "NOR",
                 };
-                view.render();
+
+                execute!(
+                    stdout,
+                    SetForegroundColor(Color::Reset),
+                    cursor::MoveTo(0, self.size.1),
+                    Print(mode)
+                );
+
+                // set cursor shape
+                match state.mode {
+                    Mode::Insert => write!(stdout, "\x1B[6 q"),
+                    Mode::Normal => write!(stdout, "\x1B[2 q"),
+                };
+
+                // render the cursor
+                let pos = state.selection.primary().head;
+                let coords = coords_at_pos(&state.doc.contents.slice(..), pos);
+                execute!(
+                    stdout,
+                    cursor::MoveTo((coords.1 + 2) as u16, coords.0 as u16)
+                );
             }
             None => (),
         }
@@ -108,22 +118,30 @@ impl Editor {
                     break;
                 }
                 Some(Ok(Event::Key(event))) => {
-                    // TODO: handle modes and sequences (`gg`)
-                    if let Some(command) = keymap.get(&event) {
-                        if let Some(state) = &mut self.state {
-                            // TODO: handle count other than 1
-                            command(state, 1);
-                            self.render();
-                            // render the cursor
-                            let pos = self.state.as_ref().unwrap().selection.primary().head;
-                            let coords = coords_at_pos(
-                                &self.state.as_ref().unwrap().doc.contents.slice(..),
-                                pos,
-                            );
-                            execute!(
-                                stdout(),
-                                cursor::MoveTo((coords.1 + 2) as u16, coords.0 as u16)
-                            );
+                    if let Some(state) = &mut self.state {
+                        match state.mode {
+                            Mode::Insert => {
+                                match event {
+                                    KeyEvent {
+                                        code: KeyCode::Esc, ..
+                                    } => helix_core::commands::normal_mode(state, 1),
+                                    KeyEvent {
+                                        code: KeyCode::Char(c),
+                                        ..
+                                    } => helix_core::commands::insert(state, c),
+                                    _ => (), // skip
+                                }
+                                self.render();
+                            }
+                            Mode::Normal => {
+                                // TODO: handle modes and sequences (`gg`)
+                                if let Some(command) = keymap.get(&event) {
+                                    // TODO: handle count other than 1
+                                    command(state, 1);
+
+                                    self.render();
+                                }
+                            }
                         }
                     }
                 }
@@ -144,6 +162,9 @@ impl Editor {
         execute!(stdout, terminal::EnterAlternateScreen)?;
 
         self.print_events().await;
+
+        // reset cursor shape
+        write!(stdout, "\x1B[2 q");
 
         execute!(stdout, terminal::LeaveAlternateScreen)?;
 

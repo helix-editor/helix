@@ -63,8 +63,8 @@ impl Range {
     /// Map a range through a set of changes. Returns a new range representing the same position
     /// after the changes are applied.
     pub fn map(self, changes: &ChangeSet) -> Self {
-        let anchor = changes.map_pos(self.anchor, Assoc::Before);
-        let head = changes.map_pos(self.head, Assoc::Before);
+        let anchor = changes.map_pos(self.anchor, Assoc::After);
+        let head = changes.map_pos(self.head, Assoc::After);
 
         // TODO: possibly unnecessary
         if self.anchor == anchor && self.head == head {
