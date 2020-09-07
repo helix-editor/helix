@@ -113,6 +113,11 @@ impl Selection {
         self.ranges[self.primary_index]
     }
 
+    #[must_use]
+    pub fn cursor(&self) -> usize {
+        self.primary().head
+    }
+
     /// Ensure selection containing only the primary selection.
     pub fn into_single(self) -> Self {
         if self.ranges.len() == 1 {
@@ -142,6 +147,10 @@ impl Selection {
                 .collect(),
             self.primary_index,
         )
+    }
+
+    pub fn ranges(&self) -> &[Range] {
+        &self.ranges
     }
 
     #[must_use]
@@ -199,6 +208,14 @@ impl Selection {
 
         // TODO: only normalize if needed (any ranges out of order)
         normalize(ranges, primary_index)
+    }
+
+    /// Takes a closure and maps each selection over the closure.
+    pub fn transform<F>(self, f: F) -> Self
+    where
+        F: Fn(Range) -> Range,
+    {
+        Self::new(self.ranges.into_iter().map(f).collect(), self.primary_index)
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{Rope, Selection, Tendril};
+use crate::{Rope, Selection, SelectionRange, State, Tendril};
 
 // TODO: divided into three different operations, I sort of like having just
 // Splice { extent, Option<text>, distance } better.
@@ -43,18 +43,6 @@ impl ChangeSet {
         let len = doc.len_chars();
         Self {
             changes: vec![Change::Retain(len)],
-            len,
-        }
-    }
-
-    pub fn insert(doc: &Rope, pos: usize, c: char) -> Self {
-        let len = doc.len_chars();
-        Self {
-            changes: vec![
-                Change::Retain(pos),
-                Change::Insert(Tendril::from_char(c)),
-                Change::Retain(len - pos),
-            ],
             len,
         }
     }
@@ -210,8 +198,11 @@ impl ChangeSet {
         unimplemented!()
     }
 
-    pub fn apply(&self, text: &mut Rope) {
-        // TODO: validate text.chars() == self.len
+    /// Returns true if applied successfully.
+    pub fn apply(&self, text: &mut Rope) -> bool {
+        if text.len_chars() != self.len {
+            return false;
+        }
 
         let mut pos = 0;
 
@@ -231,6 +222,7 @@ impl ChangeSet {
                 }
             }
         }
+        true
     }
 
     /// `true` when the set is empty.
@@ -332,7 +324,60 @@ pub struct Transaction {
     // scroll_into_view
 }
 
-impl Transaction {}
+impl Transaction {
+    /// Returns true if applied successfully.
+    pub fn apply(&self, state: &mut State) -> bool {
+        // apply changes to the document
+        if !self.changes.apply(&mut state.doc) {
+            return false;
+        }
+
+        // update the selection: either take the selection specified in the transaction, or map the
+        // current selection through changes.
+        state.selection = self
+            .selection
+            .clone()
+            .unwrap_or_else(|| state.selection.clone().map(&self.changes));
+
+        true
+    }
+
+    pub fn insert(state: &State, text: Tendril) -> Self {
+        let len = state.doc.len_chars();
+        let ranges = state.selection.ranges();
+        let mut changes = Vec::with_capacity(2 * ranges.len() + 1);
+        let mut last = 0;
+
+        for range in state.selection.ranges() {
+            let cur = range.head;
+            changes.push(Change::Retain(cur));
+            changes.push(Change::Insert(text.clone()));
+            last = cur;
+        }
+        changes.push(Change::Retain(len - last));
+
+        Self::from(ChangeSet { changes, len })
+    }
+
+    pub fn change_selection<F>(selection: Selection, f: F) -> Self
+    where
+        F: Fn(SelectionRange) -> ChangeSet,
+    {
+        selection.ranges().iter().map(|range| true);
+        // TODO: most idiomatic would be to return a
+        // Change { from: x, to: y, insert: "str" }
+        unimplemented!()
+    }
+}
+
+impl From<ChangeSet> for Transaction {
+    fn from(changes: ChangeSet) -> Self {
+        Self {
+            changes,
+            selection: None,
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {

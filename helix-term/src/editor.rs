@@ -87,7 +87,7 @@ impl Editor {
                 };
 
                 // render the cursor
-                let pos = state.selection.primary().head;
+                let pos = state.selection.cursor();
                 let coords = coords_at_pos(&state.doc.slice(..), pos);
                 execute!(
                     stdout,
@@ -126,7 +126,7 @@ impl Editor {
                                     KeyEvent {
                                         code: KeyCode::Char(c),
                                         ..
-                                    } => helix_core::commands::insert(state, c),
+                                    } => helix_core::commands::insert_char(state, c),
                                     _ => (), // skip
                                 }
                                 self.render();
