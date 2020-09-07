@@ -1,3 +1,4 @@
+use crate::graphemes::next_grapheme_boundary;
 use crate::selection::Range;
 use crate::state::{Direction, Granularity, Mode, State};
 use crate::transaction::{ChangeSet, Transaction};
@@ -74,9 +75,10 @@ pub fn append_mode(state: &mut State, _count: usize) {
     state.mode = Mode::Insert;
 
     // TODO: as transaction
+    let text = &state.doc.slice(..);
     state.selection = state.selection.clone().transform(|range| {
         // TODO: to() + next char
-        Range::new(range.from(), range.to())
+        Range::new(range.from(), next_grapheme_boundary(text, range.to()))
     })
 }
 
@@ -86,6 +88,7 @@ pub fn append_mode(state: &mut State, _count: usize) {
 // O inserts a new line after each line with a selection
 
 pub fn normal_mode(state: &mut State, _count: usize) {
+    // TODO: if leaving append mode, move cursor back by 1
     state.mode = Mode::Normal;
 }
 

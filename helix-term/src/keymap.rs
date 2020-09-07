@@ -121,6 +121,10 @@ pub fn default() -> Keymap {
             modifiers: Modifiers::NONE
         } => commands::insert_mode as Command,
         Key {
+            code: KeyCode::Char('a'),
+            modifiers: Modifiers::NONE
+        } => commands::append_mode as Command,
+        Key {
             code: KeyCode::Esc,
             modifiers: Modifiers::NONE
         } => commands::normal_mode as Command,
