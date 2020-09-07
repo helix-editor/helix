@@ -22,6 +22,5 @@ crossterm = { version = "0.17.7", features = ["event-stream"] }
 smol = "0.4"
 futures = { version = "0.3.5", default-features = false, features = ["std", "async-await"] }
 num_cpus = "1.13.0"
+tui = { version = "0.10.0", default-features = false, features = ["crossterm"] }
 # futures-timer = "3.0.2"
-
-# tui = { version = "0.9.5", default-features = false }

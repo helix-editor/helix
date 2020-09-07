@@ -14,9 +14,17 @@ use std::io::{self, stdout, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use tui::backend::CrosstermBackend;
+use tui::buffer::Buffer as Surface;
+use tui::layout::Rect;
+use tui::style::Style;
+
+type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
+
 static EX: smol::Executor = smol::Executor::new();
 
 pub struct Editor {
+    terminal: Terminal,
     state: Option<State>,
     first_line: u16,
     size: (u16, u16),
@@ -24,7 +32,12 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(mut args: Args) -> Result<Self, Error> {
+        let backend = CrosstermBackend::new(stdout());
+
+        let mut terminal = Terminal::new(backend)?;
+
         let mut editor = Editor {
+            terminal,
             state: None,
             first_line: 0,
             size: terminal::size().unwrap(),
@@ -45,6 +58,9 @@ impl Editor {
     fn render(&mut self) {
         match &self.state {
             Some(state) => {
+                let area = Rect::new(0, 0, self.size.0, self.size.1);
+                let mut surface = Surface::empty(area);
+
                 let lines = state
                     .doc
                     .lines_at(self.first_line as usize)
@@ -60,12 +76,33 @@ impl Editor {
                         cursor::MoveTo(0, n as u16),
                         Print((n + 1).to_string())
                     );
-                    execute!(
-                        stdout,
-                        SetForegroundColor(Color::Reset),
-                        cursor::MoveTo(2, n as u16),
-                        Print(line)
+
+                    surface.set_string(2, n as u16, line, Style::default());
+                    // execute!(
+                    //     stdout,
+                    //     SetForegroundColor(Color::Reset),
+                    //     cursor::MoveTo(2, n as u16),
+                    //     Print(line)
+                    // );
+                }
+
+                // iterate over selections and render them
+                let select = Style::default().bg(tui::style::Color::LightBlue);
+                let text = state.doc.slice(..);
+                for range in state.selection.ranges() {
+                    // get terminal coords for x,y for each range pos
+                    // TODO: this won't work with multiline
+                    let (y1, x1) = coords_at_pos(&text, range.from());
+                    let (y2, x2) = coords_at_pos(&text, range.to());
+                    let area = Rect::new(
+                        (x1 + 2) as u16,
+                        y1 as u16,
+                        (x2 - x1 + 1) as u16,
+                        (y2 - y1 + 1) as u16,
                     );
+                    surface.set_style(area, select);
+
+                    // TODO: don't highlight next char in append mode
                 }
 
                 let mode = match state.mode {
@@ -79,6 +116,13 @@ impl Editor {
                     cursor::MoveTo(0, self.size.1),
                     Print(mode)
                 );
+
+                use tui::backend::Backend;
+                // TODO: double buffer and diff here
+                let empty = Surface::empty(area);
+                self.terminal
+                    .backend_mut()
+                    .draw(empty.diff(&surface).into_iter());
 
                 // set cursor shape
                 match state.mode {
