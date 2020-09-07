@@ -65,6 +65,6 @@ pub fn insert(state: &mut State, c: char) {
     let pos = state.selection.primary().head;
     let changes = ChangeSet::insert(&state.doc, pos, c);
     // TODO: need to store history
-    changes.apply(state.contents_mut());
+    changes.apply(&mut state.doc);
     state.selection = state.selection.clone().map(&changes);
 }

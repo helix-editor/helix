@@ -1,5 +1,8 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
-use crate::{Buffer, Rope, RopeSlice, Selection, SelectionRange};
+use crate::{Rope, RopeSlice, Selection, SelectionRange};
+use anyhow::Error;
+
+use std::path::PathBuf;
 
 pub enum Mode {
     Normal,
@@ -8,7 +11,9 @@ pub enum Mode {
 
 /// A state represents the current editor state of a single buffer.
 pub struct State {
-    pub doc: Buffer,
+    /// Path to file on disk.
+    pub path: Option<PathBuf>,
+    pub doc: Rope,
     pub selection: Selection,
     pub mode: Mode,
 }
@@ -28,15 +33,31 @@ pub enum Granularity {
 
 impl State {
     #[must_use]
-    pub fn new(doc: Buffer) -> Self {
+    pub fn new(doc: Rope) -> Self {
         Self {
+            path: None,
             doc,
             selection: Selection::single(0, 0),
             mode: Mode::Normal,
         }
     }
 
-    // TODO: buf/selection accessors
+    #[must_use]
+    pub fn load(path: PathBuf) -> Result<Self, Error> {
+        use std::{env, fs::File, io::BufReader, path::PathBuf};
+        let _current_dir = env::current_dir()?;
+
+        let doc = Rope::from_reader(BufReader::new(File::open(path.clone())?))?;
+
+        // TODO: create if not found
+
+        let mut state = Self::new(doc);
+        state.path = Some(path);
+
+        Ok(state)
+    }
+
+    // TODO: doc/selection accessors
 
     // update/transact:
     // update(desc) => transaction ?  transaction.doc() for applied doc
@@ -68,7 +89,7 @@ impl State {
         granularity: Granularity,
         count: usize,
     ) -> usize {
-        let text = &self.doc.contents;
+        let text = &self.doc;
         match (dir, granularity) {
             // TODO: clamp movement to line, prevent moving onto \n at the end
             (Direction::Backward, Granularity::Character) => {
@@ -124,16 +145,6 @@ impl State {
 
         Selection::new(ranges.collect(), sel.primary_index)
         // TODO: update selection in state via transaction
-    }
-
-    pub fn contents(&self) -> &Rope {
-        // used to access file contents for rendering to screen
-        &self.doc.contents
-    }
-
-    pub fn contents_mut(&mut self) -> &mut Rope {
-        // used to access file contents for rendering to screen
-        &mut self.doc.contents
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{Buffer, Rope, Selection, Tendril};
+use crate::{Rope, Selection, Tendril};
 
 // TODO: divided into three different operations, I sort of like having just
 // Splice { extent, Option<text>, distance } better.
@@ -39,16 +39,16 @@ pub struct ChangeSet {
 
 impl ChangeSet {
     #[must_use]
-    pub fn new(buf: &Buffer) -> Self {
-        let len = buf.contents.len_chars();
+    pub fn new(doc: &Rope) -> Self {
+        let len = doc.len_chars();
         Self {
             changes: vec![Change::Retain(len)],
             len,
         }
     }
 
-    pub fn insert(buf: &Buffer, pos: usize, c: char) -> Self {
-        let len = buf.contents.len_chars();
+    pub fn insert(doc: &Rope, pos: usize, c: char) -> Self {
+        let len = doc.len_chars();
         Self {
             changes: vec![
                 Change::Retain(pos),

@@ -9,7 +9,7 @@ use crossterm::{
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use futures::{future::FutureExt, select, StreamExt};
-use helix_core::{state::coords_at_pos, state::Mode, Buffer, State};
+use helix_core::{state::coords_at_pos, state::Mode, State};
 use std::io::{self, stdout, Write};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -38,9 +38,7 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
-        let buffer = Buffer::load(path)?;
-        let state = State::new(buffer);
-        self.state = Some(state);
+        self.state = Some(State::load(path)?);
         Ok(())
     }
 
@@ -48,7 +46,7 @@ impl Editor {
         match &self.state {
             Some(state) => {
                 let lines = state
-                    .contents()
+                    .doc
                     .lines_at(self.first_line as usize)
                     .take(self.size.1 as usize)
                     .map(|x| x.as_str().unwrap());
@@ -90,7 +88,7 @@ impl Editor {
 
                 // render the cursor
                 let pos = state.selection.primary().head;
-                let coords = coords_at_pos(&state.doc.contents.slice(..), pos);
+                let coords = coords_at_pos(&state.doc.slice(..), pos);
                 execute!(
                     stdout,
                     cursor::MoveTo((coords.1 + 2) as u16, coords.0 as u16)
