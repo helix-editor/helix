@@ -8,8 +8,9 @@ use crossterm::{
     style::{Color, Print, SetForegroundColor},
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
-use futures::{future::FutureExt, select, StreamExt};
+
 use helix_core::{state::coords_at_pos, state::Mode, State};
+use smol::prelude::*;
 use std::io::{self, stdout, Write};
 use std::path::PathBuf;
 use std::time::Duration;
