@@ -42,7 +42,6 @@ impl State {
         }
     }
 
-    #[must_use]
     pub fn load(path: PathBuf) -> Result<Self, Error> {
         use std::{env, fs::File, io::BufReader, path::PathBuf};
         let _current_dir = env::current_dir()?;
