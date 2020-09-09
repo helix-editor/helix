@@ -216,3 +216,118 @@ impl Editor {
         Ok(())
     }
 }
+
+// TODO: language configs:
+// tabSize, fileExtension etc, mapping to tree sitter parser
+// themes:
+// map tree sitter highlights to color values
+//
+// TODO: expand highlight thing so we're able to render only viewport range
+// TODO: async: maybe pre-cache scopes as empty so we render all graphemes initially as regular
+////text until calc finishes
+// TODO: scope matching: biggest union match? [string] & [html, string], [string, html] & [ string, html]
+// can do this by sorting our theme matches based on array len (longest first) then stopping at the
+// first rule that matches (rule.all(|scope| scopes.contains(scope)))
+//
+// let visual_x = 0;
+// let line = ?;
+// for span in spans {
+// start(scope) => scopes.push(scope)
+//  span =>
+//      let text = rope.slice(span.start..span.end);
+//      let style = calculate_style(scopes);
+//      for each grapheme in text.graphemes() {
+//          // if newline += lines, continue
+//
+//          if state.selection.ranges().any(|range| range.contains(char_index)) {
+//              if exactly on cursor {
+//              }
+//              if on primary cursor? {
+//              }
+//              modify style temporarily
+//          }
+//
+//          // if in bounds
+//
+//          // if tab, draw tab width
+//          // draw(visual_x, line, grapheme, style)
+//          // increment visual_x by grapheme_width(grapheme)
+//          // increment char_index by grapheme.len_chars()
+//      }
+//  end => scopes.pop()
+// }
+#[test]
+fn test_parser() {
+    use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
+
+    let source_code = include_str!("./main.rs");
+
+    let highlight_names: Vec<String> = [
+        "attribute",
+        "constant",
+        "function.builtin",
+        "function",
+        "keyword",
+        "operator",
+        "property",
+        "punctuation",
+        "punctuation.bracket",
+        "punctuation.delimiter",
+        "string",
+        "string.special",
+        "tag",
+        "type",
+        "type.builtin",
+        "variable",
+        "variable.builtin",
+        "variable.parameter",
+    ]
+    .iter()
+    .cloned()
+    .map(String::from)
+    .collect();
+
+    let language = helix_syntax::get_language(&helix_syntax::LANG::Rust);
+    // let mut parser = tree_sitter::Parser::new();
+    // parser.set_language(language).unwrap();
+    // let tree = parser.parse(source_code, None).unwrap();
+
+    let mut highlighter = Highlighter::new();
+
+    let mut config = HighlightConfiguration::new(
+        language,
+        &std::fs::read_to_string(
+            "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
+        )
+        .unwrap(),
+        &std::fs::read_to_string(
+            "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
+        )
+        .unwrap(),
+        "", // locals.scm
+    )
+    .unwrap();
+
+    config.configure(&highlight_names);
+
+    let highlights = highlighter
+        .highlight(&config, source_code.as_bytes(), None, |_| None)
+        .unwrap();
+
+    for event in highlights {
+        match event.unwrap() {
+            HighlightEvent::Source { start, end } => {
+                eprintln!("source: {}-{}", start, end);
+                // iterate over range char by char
+            }
+            HighlightEvent::HighlightStart(s) => {
+                eprintln!("highlight style started: {:?}", highlight_names[s.0]);
+                // store/push highlight styles
+            }
+            HighlightEvent::HighlightEnd => {
+                eprintln!("highlight style ended");
+                // pop highlight styles
+            }
+        }
+    }
+}

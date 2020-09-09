@@ -81,6 +81,17 @@ impl State {
     // foldable
     // changeFilter/transactionFilter
 
+    // TODO: move that accepts a boundary matcher fn/list, we keep incrementing until we hit
+    // a boundary
+
+    // TODO: edits, does each keypress trigger a full command? I guess it's adding to the same
+    // transaction
+    // There should be three pieces of the state: current transaction, the original doc, "preview"
+    // of the new state.
+    // 1. apply the newly generated keypress as a transaction
+    // 2. compose onto a ongoing transaction
+    // 3. on insert mode leave, that transaction gets stored into undo history
+
     pub fn move_pos(
         &self,
         pos: usize,

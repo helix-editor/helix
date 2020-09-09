@@ -393,8 +393,11 @@ dependencies = [
  "argh",
  "crossterm",
  "helix-core",
+ "helix-syntax",
  "num_cpus",
  "smol",
+ "tree-sitter",
+ "tree-sitter-highlight",
  "tui",
 ]
 
@@ -714,6 +717,16 @@ checksum = "1df33680edb07e4fb76edcbdd9c7b849b96709fb878afcf0ada678d6bda167af"
 dependencies = [
  "cc",
  "regex",
+]
+
+[[package]]
+name = "tree-sitter-highlight"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6e3c800ac0db1562a045a4893cbbd7c484eb93426cae5632f9e5d24dd588cd1"
+dependencies = [
+ "regex",
+ "tree-sitter",
 ]
 
 [[package]]
