@@ -1,0 +1,80 @@
+[submodule "helix-syntax/languages/tree-sitter-cpp"]
+	path = helix-syntax/languages/tree-sitter-cpp
+	url = https://github.com/tree-sitter/tree-sitter-cpp
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-javascript"]
+	path = helix-syntax/languages/tree-sitter-javascript
+	url = https://github.com/tree-sitter/tree-sitter-javascript
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-julia"]
+	path = helix-syntax/languages/tree-sitter-julia
+	url = https://github.com/tree-sitter/tree-sitter-julia
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-python"]
+	path = helix-syntax/languages/tree-sitter-python
+	url = https://github.com/tree-sitter/tree-sitter-python
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-typescript"]
+	path = helix-syntax/languages/tree-sitter-typescript
+	url = https://github.com/tree-sitter/tree-sitter-typescript
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-agda"]
+	path = helix-syntax/languages/tree-sitter-agda
+	url = https://github.com/tree-sitter/tree-sitter-agda
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-go"]
+	path = helix-syntax/languages/tree-sitter-go
+	url = https://github.com/tree-sitter/tree-sitter-go
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-ruby"]
+	path = helix-syntax/languages/tree-sitter-ruby
+	url = https://github.com/tree-sitter/tree-sitter-ruby
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-java"]
+	path = helix-syntax/languages/tree-sitter-java
+	url = https://github.com/tree-sitter/tree-sitter-java
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-php"]
+	path = helix-syntax/languages/tree-sitter-php
+	url = https://github.com/tree-sitter/tree-sitter-php
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-html"]
+	path = helix-syntax/languages/tree-sitter-html
+	url = https://github.com/tree-sitter/tree-sitter-html
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-scala"]
+	path = helix-syntax/languages/tree-sitter-scala
+	url = https://github.com/tree-sitter/tree-sitter-scala
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-bash"]
+	path = helix-syntax/languages/tree-sitter-bash
+	url = https://github.com/tree-sitter/tree-sitter-bash
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-rust"]
+	path = helix-syntax/languages/tree-sitter-rust
+	url = https://github.com/tree-sitter/tree-sitter-rust
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-json"]
+	path = helix-syntax/languages/tree-sitter-json
+	url = https://github.com/tree-sitter/tree-sitter-json
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-css"]
+	path = helix-syntax/languages/tree-sitter-css
+	url = https://github.com/tree-sitter/tree-sitter-css
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-c-sharp"]
+	path = helix-syntax/languages/tree-sitter-c-sharp
+	url = https://github.com/tree-sitter/tree-sitter-c-sharp
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-c"]
+	path = helix-syntax/languages/tree-sitter-c
+	url = https://github.com/tree-sitter/tree-sitter-c
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-haskell"]
+	path = helix-syntax/languages/tree-sitter-haskell
+	url = https://github.com/tree-sitter/tree-sitter-haskell
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-swift"]
+	path = helix-syntax/languages/tree-sitter-swift
+	url = https://github.com/tree-sitter/tree-sitter-swift
+	shallow = true

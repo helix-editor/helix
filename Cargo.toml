@@ -2,4 +2,5 @@
 members = [
   "helix-core",
   "helix-term",
+  "helix-syntax",
 ]
