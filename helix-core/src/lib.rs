@@ -1,6 +1,6 @@
 #![allow(unused)]
 pub mod commands;
-mod graphemes;
+pub mod graphemes;
 mod selection;
 pub mod state;
 mod transaction;

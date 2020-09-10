@@ -1,6 +1,6 @@
 #![allow(unused)]
-// mod editor;
-// mod component;
+#[macro_use]
+mod macros;
 mod editor;
 mod keymap;
 
