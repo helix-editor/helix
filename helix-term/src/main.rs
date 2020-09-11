@@ -3,6 +3,7 @@
 mod macros;
 mod editor;
 mod keymap;
+mod theme;
 
 use editor::Editor;
 

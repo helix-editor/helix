@@ -24,5 +24,3 @@ crossterm = { version = "0.17", features = ["event-stream"] }
 smol = "1"
 num_cpus = "1.13.0"
 tui = { version = "0.10.0", default-features = false, features = ["crossterm"] }
-tree-sitter = "0.16.1"
-tree-sitter-highlight = "0.2.0"

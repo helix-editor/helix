@@ -14,3 +14,4 @@ tendril = { git = "https://github.com/servo/tendril" }
 unicode-segmentation = "1.6.0"
 unicode-width = "0.1.7"
 # slab = "0.4.2"
+tree-sitter = "0.16.1"

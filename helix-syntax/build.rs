@@ -1,7 +1,4 @@
-use cc::Build;
-
-use std::io::{BufWriter, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::{env, fs};
 
 fn get_opt_level() -> u32 {

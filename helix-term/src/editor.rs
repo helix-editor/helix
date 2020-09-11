@@ -1,5 +1,21 @@
-use crate::{keymap, Args};
+use crate::{keymap, theme::Theme, Args};
+use helix_core::{
+    language_mode::{HighlightConfiguration, HighlightEvent, Highlighter},
+    state::coords_at_pos,
+    state::Mode,
+    State,
+};
+
+use std::{
+    io::{self, stdout, Write},
+    path::PathBuf,
+    time::Duration,
+};
+
+use smol::prelude::*;
+
 use anyhow::Error;
+
 use crossterm::{
     cursor,
     cursor::position,
@@ -9,17 +25,7 @@ use crossterm::{
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 
-use helix_core::{state::coords_at_pos, state::Mode, State};
-use smol::prelude::*;
-use std::collections::HashMap;
-use std::io::{self, stdout, Write};
-use std::path::PathBuf;
-use std::time::Duration;
-
-use tui::backend::CrosstermBackend;
-use tui::buffer::Buffer as Surface;
-use tui::layout::Rect;
-use tui::style::Style;
+use tui::{backend::CrosstermBackend, buffer::Buffer as Surface, layout::Rect, style::Style};
 
 type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
@@ -31,7 +37,10 @@ pub struct Editor {
     first_line: u16,
     size: (u16, u16),
     surface: Surface,
-    theme: HashMap<&'static str, Style>,
+    theme: Theme,
+    highlighter: Highlighter,
+    highlight_config: HighlightConfiguration,
+    highlight_names: Vec<String>,
 }
 
 impl Editor {
@@ -42,43 +51,60 @@ impl Editor {
         let size = terminal::size().unwrap();
         let area = Rect::new(0, 0, size.0, size.1);
 
-        use tui::style::Color;
-        let theme = hashmap! {
-            "attribute" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "keyword" => Style::default().fg(Color::Rgb(236, 205, 186)), // almond
-            "punctuation" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            "punctuation.delimiter" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            "operator" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "property" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            "variable.parameter" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            // TODO distinguish type from type.builtin?
-            "type" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "type.builtin" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "constructor" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "function" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "function.macro" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "comment" => Style::default().fg(Color::Rgb(105, 124, 129)), // sirocco
-            "variable.builtin" => Style::default().fg(Color::Rgb(159, 242, 143)), // mint
-            "constant" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "constant.builtin" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "string" => Style::default().fg(Color::Rgb(204, 204, 204)), // silver
-            "escape" => Style::default().fg(Color::Rgb(239, 186, 93)), // honey
-            // used for lifetimes
-            "label" => Style::default().fg(Color::Rgb(239, 186, 93)), // honey
+        let highlight_names: Vec<String> = [
+            "attribute",
+            "constant.builtin",
+            "constant",
+            "function.builtin",
+            "function.macro",
+            "function",
+            "keyword",
+            "operator",
+            "property",
+            "punctuation",
+            "comment",
+            "escape",
+            "label",
+            // "punctuation.bracket",
+            "punctuation.delimiter",
+            "string",
+            "string.special",
+            "tag",
+            "type",
+            "type.builtin",
+            "constructor",
+            "variable",
+            "variable.builtin",
+            "variable.parameter",
+            "path",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
 
-            // TODO: diferentiate number builtin
-            // TODO: diferentiate doc comment
-            // TODO: variable as lilac
-            // TODO: mod/use statements as white
-            // TODO: mod stuff as chamoise
-            // TODO: add "(scoped_identifier) @path" for std::mem::
-            //
-            // concat (ERROR) @syntax-error and "MISSING ;" selectors for errors
+        // let mut parser = tree_sitter::Parser::new();
+        // parser.set_language(language).unwrap();
+        // let tree = parser.parse(source_code, None).unwrap();
 
-            "module" => Style::default().fg(Color::Rgb(255, 0, 0)), // white
-            "variable" => Style::default().fg(Color::Rgb(255, 0, 0)), // white
-            "function.builtin" => Style::default().fg(Color::Rgb(255, 0, 0)), // white
-        };
+        let language = helix_syntax::get_language(&helix_syntax::LANG::Rust);
+
+        let highlighter = Highlighter::new();
+
+        let mut highlight_config = HighlightConfiguration::new(
+            language,
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
+            )
+            .unwrap(),
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
+            )
+            .unwrap(),
+            "", // locals.scm
+        )
+        .unwrap();
+
+        highlight_config.configure(&highlight_names);
 
         let mut editor = Editor {
             terminal,
@@ -86,7 +112,11 @@ impl Editor {
             first_line: 0,
             size,
             surface: Surface::empty(area),
-            theme,
+            theme: Theme::default(),
+            // TODO; move to state
+            highlighter,
+            highlight_config,
+            highlight_names,
         };
 
         if let Some(file) = args.files.pop() {
@@ -108,72 +138,16 @@ impl Editor {
                 let mut surface = Surface::empty(area);
                 let mut stdout = stdout();
 
-                //
-                use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
-
-                let highlight_names: Vec<String> = [
-                    "attribute",
-                    "constant.builtin",
-                    "constant",
-                    "function.builtin",
-                    "function.macro",
-                    "function",
-                    "keyword",
-                    "operator",
-                    "property",
-                    "punctuation",
-                    "comment",
-                    "escape",
-                    "label",
-                    // "punctuation.bracket",
-                    "punctuation.delimiter",
-                    "string",
-                    "string.special",
-                    "tag",
-                    "type",
-                    "type.builtin",
-                    "constructor",
-                    "variable",
-                    "variable.builtin",
-                    "variable.parameter",
-                    "path",
-                ]
-                .iter()
-                .cloned()
-                .map(String::from)
-                .collect();
-
-                let language = helix_syntax::get_language(&helix_syntax::LANG::Rust);
-                // let mut parser = tree_sitter::Parser::new();
-                // parser.set_language(language).unwrap();
-                // let tree = parser.parse(source_code, None).unwrap();
-
-                let mut highlighter = Highlighter::new();
-
-                let mut config = HighlightConfiguration::new(
-                    language,
-                    &std::fs::read_to_string(
-                        "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-                    )
-                    .unwrap(),
-                    &std::fs::read_to_string(
-                        "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-                    )
-                    .unwrap(),
-                    "", // locals.scm
-                )
-                .unwrap();
-
-                config.configure(&highlight_names);
-
-                // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset,
-                // pos|)
+                // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
                 let source_code = state.doc.to_string();
 
                 // TODO: cache highlight results
                 // TODO: only recalculate when state.doc is actually modified
-                let highlights = highlighter
-                    .highlight(&config, source_code.as_bytes(), None, |_| None)
+                let highlights = self
+                    .highlighter
+                    .highlight(&self.highlight_config, source_code.as_bytes(), None, |_| {
+                        None
+                    })
                     .unwrap();
 
                 let mut spans = Vec::new();
@@ -186,12 +160,10 @@ impl Editor {
                 for event in highlights {
                     match event.unwrap() {
                         HighlightEvent::HighlightStart(span) => {
-                            // eprintln!("highlight style started: {:?}", highlight_names[span.0]);
                             spans.push(span);
                         }
                         HighlightEvent::HighlightEnd => {
                             spans.pop();
-                            // eprintln!("highlight style ended");
                         }
                         HighlightEvent::Source { start, end } => {
                             // TODO: filter out spans out of viewport for now..
@@ -204,16 +176,15 @@ impl Editor {
                             use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                             use tui::style::Color;
-                            let style = match spans.first() {
-                                Some(span) => self
-                                    .theme
-                                    .get(highlight_names[span.0].as_str())
-                                    .map(|style| *style)
-                                    .unwrap_or(Style::default().fg(Color::Rgb(0, 0, 255))),
 
+                            let style = match spans.first() {
+                                Some(span) => self.theme.get(self.highlight_names[span.0].as_str()),
                                 None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-                                                                                        // None => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
                             };
+
+                            // TODO: we could render the text to a surface, then cache that, that
+                            // way if only the selection/cursor changes we can copy from cache
+                            // and paint the new cursor.
 
                             // iterate over range char by char
                             for grapheme in RopeGraphemes::new(&text) {
