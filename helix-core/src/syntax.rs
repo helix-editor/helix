@@ -859,26 +859,24 @@ where
                 }
                 // If the node represents a reference, then try to find the corresponding
                 // definition in the scope stack.
-                else if Some(capture.index) == layer.config.local_ref_capture_index {
-                    if definition_highlight.is_none() {
-                        definition_highlight = None;
-                        if let Ok(name) = str::from_utf8(&self.source[range.clone()]) {
-                            for scope in layer.scope_stack.iter().rev() {
-                                if let Some(highlight) =
-                                    scope.local_defs.iter().rev().find_map(|def| {
-                                        if def.name == name && range.start >= def.value_range.end {
-                                            Some(def.highlight)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                {
-                                    reference_highlight = highlight;
-                                    break;
+                else if Some(capture.index) == layer.config.local_ref_capture_index
+                    && definition_highlight.is_none()
+                {
+                    definition_highlight = None;
+                    if let Ok(name) = str::from_utf8(&self.source[range.clone()]) {
+                        for scope in layer.scope_stack.iter().rev() {
+                            if let Some(highlight) = scope.local_defs.iter().rev().find_map(|def| {
+                                if def.name == name && range.start >= def.value_range.end {
+                                    Some(def.highlight)
+                                } else {
+                                    None
                                 }
-                                if !scope.inherits {
-                                    break;
-                                }
+                            }) {
+                                reference_highlight = highlight;
+                                break;
+                            }
+                            if !scope.inherits {
+                                break;
                             }
                         }
                     }

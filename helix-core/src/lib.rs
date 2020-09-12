@@ -1,9 +1,9 @@
 #![allow(unused)]
 pub mod commands;
 pub mod graphemes;
-pub mod syntax;
 mod selection;
 pub mod state;
+pub mod syntax;
 mod transaction;
 
 pub use ropey::{Rope, RopeSlice};

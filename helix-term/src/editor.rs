@@ -1,8 +1,8 @@
 use crate::{keymap, theme::Theme, Args};
 use helix_core::{
-    syntax::{HighlightConfiguration, HighlightEvent, Highlighter},
     state::coords_at_pos,
     state::Mode,
+    syntax::{HighlightConfiguration, HighlightEvent, Highlighter},
     State,
 };
 
