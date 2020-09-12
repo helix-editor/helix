@@ -211,11 +211,14 @@ impl Selection {
     }
 
     /// Takes a closure and maps each selection over the closure.
-    pub fn transform<F>(self, f: F) -> Self
+    pub fn transform<F>(&self, f: F) -> Self
     where
         F: Fn(Range) -> Range,
     {
-        Self::new(self.ranges.into_iter().map(f).collect(), self.primary_index)
+        Self::new(
+            self.ranges.iter().copied().map(f).collect(),
+            self.primary_index,
+        )
     }
 }
 

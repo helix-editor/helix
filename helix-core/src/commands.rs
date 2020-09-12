@@ -10,47 +10,23 @@ pub type Command = fn(state: &mut State, count: usize);
 
 pub fn move_char_left(state: &mut State, count: usize) {
     // TODO: use a transaction
-    let selection = state.move_selection(
-        // TODO: remove the clone here
-        state.selection.clone(),
-        Direction::Backward,
-        Granularity::Character,
-        count,
-    );
+    let selection = state.move_selection(Direction::Backward, Granularity::Character, count);
     state.selection = selection;
 }
 
 pub fn move_char_right(state: &mut State, count: usize) {
     // TODO: use a transaction
-    state.selection = state.move_selection(
-        // TODO: remove the clone here
-        state.selection.clone(),
-        Direction::Forward,
-        Granularity::Character,
-        count,
-    );
+    state.selection = state.move_selection(Direction::Forward, Granularity::Character, count);
 }
 
 pub fn move_line_up(state: &mut State, count: usize) {
     // TODO: use a transaction
-    state.selection = state.move_selection(
-        // TODO: remove the clone here
-        state.selection.clone(),
-        Direction::Backward,
-        Granularity::Line,
-        count,
-    );
+    state.selection = state.move_selection(Direction::Backward, Granularity::Line, count);
 }
 
 pub fn move_line_down(state: &mut State, count: usize) {
     // TODO: use a transaction
-    state.selection = state.move_selection(
-        // TODO: remove the clone here
-        state.selection.clone(),
-        Direction::Forward,
-        Granularity::Line,
-        count,
-    );
+    state.selection = state.move_selection(Direction::Forward, Granularity::Line, count);
 }
 
 // avoid select by default by having a visual mode switch that makes movements into selects
@@ -66,7 +42,6 @@ pub fn insert_mode(state: &mut State, _count: usize) {
 
     state.selection = state
         .selection
-        .clone()
         .transform(|range| Range::new(range.to(), range.from()))
 }
 
@@ -76,7 +51,7 @@ pub fn append_mode(state: &mut State, _count: usize) {
 
     // TODO: as transaction
     let text = &state.doc.slice(..);
-    state.selection = state.selection.clone().transform(|range| {
+    state.selection = state.selection.transform(|range| {
         // TODO: to() + next char
         Range::new(range.from(), next_grapheme_boundary(text, range.to()))
     })
