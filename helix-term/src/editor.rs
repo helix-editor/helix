@@ -374,7 +374,7 @@ impl Editor {
 // }
 #[test]
 fn test_parser() {
-    use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
+    use helix_core::syntax::{HighlightConfiguration, HighlightEvent, Highlighter};
 
     let source_code = include_str!("../test.rs");
 
