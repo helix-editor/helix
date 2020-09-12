@@ -3,8 +3,37 @@ use tui::style::{Color, Style};
 
 /// Color theme for syntax highlighting.
 pub struct Theme {
+    scopes: Vec<String>,
     mapping: HashMap<&'static str, Style>,
 }
+
+// let highlight_names: Vec<String> = [
+//     "attribute",
+//     "constant.builtin",
+//     "constant",
+//     "function.builtin",
+//     "function.macro",
+//     "function",
+//     "keyword",
+//     "operator",
+//     "property",
+//     "punctuation",
+//     "comment",
+//     "escape",
+//     "label",
+//     // "punctuation.bracket",
+//     "punctuation.delimiter",
+//     "string",
+//     "string.special",
+//     "tag",
+//     "type",
+//     "type.builtin",
+//     "constructor",
+//     "variable",
+//     "variable.builtin",
+//     "variable.parameter",
+//     "path",
+// ];
 
 impl Default for Theme {
     fn default() -> Self {
@@ -45,7 +74,9 @@ impl Default for Theme {
             "function.builtin" => Style::default().fg(Color::Rgb(255, 0, 0)), // white
         };
 
-        Self { mapping }
+        let scopes = mapping.keys().map(ToString::to_string).collect();
+
+        Self { mapping, scopes }
     }
 }
 
@@ -55,5 +86,9 @@ impl Theme {
             .get(scope)
             .copied()
             .unwrap_or_else(|| Style::default().fg(Color::Rgb(0, 0, 255)))
+    }
+
+    pub fn scopes(&self) -> &[String] {
+        &self.scopes
     }
 }

@@ -11,9 +11,6 @@ name = "hx"
 path = "src/main.rs"
 
 [dependencies]
-# termwiz = { git = "https://github.com/wez/wezterm", features = ["widgets"] }
-# termwiz = { path = "../../wezterm/termwiz", default-features = false, features = ["widgets"] }
-
 helix-syntax = { path = "../helix-syntax" }
 
 anyhow = "1"

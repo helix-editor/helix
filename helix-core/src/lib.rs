@@ -1,7 +1,7 @@
 #![allow(unused)]
 pub mod commands;
 pub mod graphemes;
-pub mod language_mode;
+pub mod syntax;
 mod selection;
 pub mod state;
 mod transaction;

@@ -65,6 +65,32 @@ impl LanguageLayer {
 // -- refactored from tree-sitter-highlight to be able to retain state
 // TODO: add seek() to iter
 
+// problem: any time a layer is updated it must update it's injections on the parent (potentially
+// removing some from use)
+// can't modify to vec and exist in it at the same time since that would violate borrows
+// maybe we can do with an arena
+// maybe just caching on the top layer and nevermind the injections for now?
+//
+// Grammar {
+//  layers: Vec<Box<Layer>> to prevent memory moves when vec is modified
+// }
+// injections tracked by marker:
+// if marker areas match it's fine and update
+// if not found add new layer
+// if length 0 then area got removed, clean up the layer
+//
+// layer update:
+// if range.len = 0 then remove the layer
+// for change in changes { tree.edit(change) }
+// tree = parser.parse(.., tree, ..)
+// calculate affected range and update injections
+// injection update:
+// look for existing injections
+// if present, range = (first injection start, last injection end)
+//
+// For now cheat and just throw out non-root layers if they exist. This should still improve
+// parsing in majority of cases.
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
@@ -73,8 +99,6 @@ use tree_sitter::{
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
-const BUFFER_HTML_RESERVE_CAPACITY: usize = 10 * 1024;
-const BUFFER_LINES_RESERVE_CAPACITY: usize = 1000;
 
 /// Indicates which highlight should be applied to a region of source code.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -207,7 +231,7 @@ impl Highlighter {
             cancellation_flag,
             highlighter: self,
             iter_count: 0,
-            layers: layers,
+            layers,
             next_event: None,
             last_highlight_range: None,
         };
@@ -405,7 +429,7 @@ impl<'a> HighlightIterLayer<'a> {
                     .parse(source, None)
                     .ok_or(Error::Cancelled)?;
                 unsafe { highlighter.parser.set_cancellation_flag(None) };
-                let mut cursor = highlighter.cursors.pop().unwrap_or(QueryCursor::new());
+                let mut cursor = highlighter.cursors.pop().unwrap_or_else(QueryCursor::new);
 
                 // Process combined injections.
                 if let Some(combined_injections_query) = &config.combined_injections_query {
@@ -642,7 +666,7 @@ where
                     break;
                 }
                 if i > 0 {
-                    &self.layers[0..(i + 1)].rotate_left(1);
+                    self.layers[0..(i + 1)].rotate_left(1);
                 }
                 break;
             } else {
@@ -802,12 +826,9 @@ where
                         local_defs: Vec::new(),
                     };
                     for prop in layer.config.query.property_settings(match_.pattern_index) {
-                        match prop.key.as_ref() {
-                            "local.scope-inherits" => {
-                                scope.inherits =
-                                    prop.value.as_ref().map_or(true, |r| r.as_ref() == "true");
-                            }
-                            _ => {}
+                        if let "local.scope-inherits" = prop.key.as_ref() {
+                            scope.inherits =
+                                prop.value.as_ref().map_or(true, |r| r.as_ref() == "true");
                         }
                     }
                     layer.scope_stack.push(scope);

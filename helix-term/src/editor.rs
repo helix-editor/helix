@@ -1,6 +1,6 @@
 use crate::{keymap, theme::Theme, Args};
 use helix_core::{
-    language_mode::{HighlightConfiguration, HighlightEvent, Highlighter},
+    syntax::{HighlightConfiguration, HighlightEvent, Highlighter},
     state::coords_at_pos,
     state::Mode,
     State,
@@ -40,7 +40,6 @@ pub struct Editor {
     theme: Theme,
     highlighter: Highlighter,
     highlight_config: HighlightConfiguration,
-    highlight_names: Vec<String>,
 }
 
 impl Editor {
@@ -51,36 +50,7 @@ impl Editor {
         let size = terminal::size().unwrap();
         let area = Rect::new(0, 0, size.0, size.1);
 
-        let highlight_names: Vec<String> = [
-            "attribute",
-            "constant.builtin",
-            "constant",
-            "function.builtin",
-            "function.macro",
-            "function",
-            "keyword",
-            "operator",
-            "property",
-            "punctuation",
-            "comment",
-            "escape",
-            "label",
-            // "punctuation.bracket",
-            "punctuation.delimiter",
-            "string",
-            "string.special",
-            "tag",
-            "type",
-            "type.builtin",
-            "constructor",
-            "variable",
-            "variable.builtin",
-            "variable.parameter",
-            "path",
-        ]
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
+        let theme = Theme::default();
 
         // let mut parser = tree_sitter::Parser::new();
         // parser.set_language(language).unwrap();
@@ -104,7 +74,7 @@ impl Editor {
         )
         .unwrap();
 
-        highlight_config.configure(&highlight_names);
+        highlight_config.configure(theme.scopes());
 
         let mut editor = Editor {
             terminal,
@@ -112,11 +82,10 @@ impl Editor {
             first_line: 0,
             size,
             surface: Surface::empty(area),
-            theme: Theme::default(),
+            theme,
             // TODO; move to state
             highlighter,
             highlight_config,
-            highlight_names,
         };
 
         if let Some(file) = args.files.pop() {
@@ -178,7 +147,7 @@ impl Editor {
                             use tui::style::Color;
 
                             let style = match spans.first() {
-                                Some(span) => self.theme.get(self.highlight_names[span.0].as_str()),
+                                Some(span) => self.theme.get(self.theme.scopes()[span.0].as_str()),
                                 None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
                             };
 

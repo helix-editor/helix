@@ -4,3 +4,7 @@ members = [
   "helix-term",
   "helix-syntax",
 ]
+
+# Build helix-syntax in release mode to make the code path faster in development.
+[profile.dev.package."helix-syntax"]
+opt-level = 3
