@@ -185,23 +185,6 @@ impl Editor {
                 //     .take(self.size.1 as usize)
                 //     .map(|x| x.as_str().unwrap());
 
-                // for (n, line) in lines.enumerate() {
-                //     execute!(
-                //         stdout,
-                //         SetForegroundColor(Color::DarkCyan),
-                //         cursor::MoveTo(0, n as u16),
-                //         Print((n + 1).to_string())
-                //     );
-
-                //     surface.set_string(2, n as u16, line, Style::default());
-                //     // execute!(
-                //     //     stdout,
-                //     //     SetForegroundColor(Color::Reset),
-                //     //     cursor::MoveTo(2, n as u16),
-                //     //     Print(line)
-                //     // );
-                // }
-
                 // // iterate over selections and render them
                 // let select = Style::default().bg(tui::style::Color::LightBlue);
                 // let text = state.doc.slice(..);
@@ -234,7 +217,7 @@ impl Editor {
                 // );
 
                 use tui::backend::Backend;
-                // // TODO: double buffer and diff here
+
                 self.terminal
                     .backend_mut()
                     .draw(self.surface.diff(&surface).into_iter());
@@ -296,6 +279,10 @@ impl Editor {
                                         code: KeyCode::Char(c),
                                         ..
                                     } => helix_core::commands::insert_char(state, c),
+                                    KeyEvent {
+                                        code: KeyCode::Enter,
+                                        ..
+                                    } => helix_core::commands::insert_char(state, '\n'),
                                     _ => (), // skip
                                 }
                                 self.render();
