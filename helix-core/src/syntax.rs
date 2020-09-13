@@ -1,52 +1,52 @@
-pub struct LanguageMode {
-    parser: Parser,
-}
+// pub struct Syntax {
+//     parser: Parser,
+// }
 
-impl LanguageMode {
-    // buffer, grammar, config, grammars, sync_timeout?
-    pub fn new() -> Self {
-        unimplemented!()
-        // make a new root layer
-        // track markers of injections
-        //
-        // track scope_descriptor: a Vec of scopes for item in tree
-        //
-        // fetch grammar for parser based on language string
-        // update root layer
-    }
+//impl Syntax {
+//    // buffer, grammar, config, grammars, sync_timeout?
+//    pub fn new() -> Self {
+//        unimplemented!()
+//        // make a new root layer
+//        // track markers of injections
+//        //
+//        // track scope_descriptor: a Vec of scopes for item in tree
+//        //
+//        // fetch grammar for parser based on language string
+//        // update root layer
+//    }
 
-    // fn buffer_changed -> call layer.update(range, new_text) on root layer and then all marker layers
+//    // fn buffer_changed -> call layer.update(range, new_text) on root layer and then all marker layers
 
-    // call this on transaction.apply() -> buffer_changed(changes)
-    //
-    // fn parse(language, old_tree, ranges)
-    //
-    // fn tree() -> Tree
-    //
-    // <!--update_for_injection(grammar)-->
+//    // call this on transaction.apply() -> buffer_changed(changes)
+//    //
+//    // fn parse(language, old_tree, ranges)
+//    //
+//    // fn tree() -> Tree
+//    //
+//    // <!--update_for_injection(grammar)-->
 
-    // Highlighting
-    // fn highlight_iter() -> iterates over all the scopes
-    // on_tokenize
-    // on_change_highlighting
+//    // Highlighting
+//    // fn highlight_iter() -> iterates over all the scopes
+//    // on_tokenize
+//    // on_change_highlighting
 
-    // Commenting
-    // comment_strings_for_pos
-    // is_commented
+//    // Commenting
+//    // comment_strings_for_pos
+//    // is_commented
 
-    // Indentation
-    // suggested_indent_for_line_at_buffer_row
-    // suggested_indent_for_buffer_row
-    // indent_level_for_line
+//    // Indentation
+//    // suggested_indent_for_line_at_buffer_row
+//    // suggested_indent_for_buffer_row
+//    // indent_level_for_line
 
-    // TODO: Folding
+//    // TODO: Folding
 
-    // Syntax APIs
-    // get_syntax_node_containing_range ->
-    // ...
-    // get_syntax_node_at_pos
-    // buffer_range_for_scope_at_pos
-}
+//    // Syntax APIs
+//    // get_syntax_node_containing_range ->
+//    // ...
+//    // get_syntax_node_at_pos
+//    // buffer_range_for_scope_at_pos
+//}
 
 pub struct LanguageLayer {
     // mode
@@ -55,12 +55,12 @@ pub struct LanguageLayer {
 // tree: Tree,
 }
 
-impl LanguageLayer {
-    // fn highlight_iter() -> same as Mode but for this layer. Mode composits these
-    // fn buffer_changed
-    // fn update(range)
-    // fn update_injections()
-}
+// impl LanguageLayer {
+//     // fn highlight_iter() -> same as Mode but for this layer. Mode composits these
+//     // fn buffer_changed
+//     // fn update(range)
+//     // fn update_injections()
+// }
 
 // -- refactored from tree-sitter-highlight to be able to retain state
 // TODO: add seek() to iter
@@ -189,12 +189,18 @@ struct HighlightIterLayer<'a> {
     depth: usize,
 }
 
-impl Highlighter {
-    pub fn new() -> Self {
+impl Default for Highlighter {
+    fn default() -> Self {
         Highlighter {
             parser: Parser::new(),
             cursors: Vec::new(),
         }
+    }
+}
+
+impl Highlighter {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn parser(&mut self) -> &mut Parser {
