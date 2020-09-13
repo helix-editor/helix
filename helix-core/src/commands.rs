@@ -1,5 +1,5 @@
 use crate::graphemes;
-use crate::selection::Range;
+use crate::selection::{Range, Selection};
 use crate::state::{Direction, Granularity, Mode, State};
 use crate::transaction::{ChangeSet, Transaction};
 use crate::Tendril;
@@ -62,8 +62,55 @@ pub fn append_mode(state: &mut State, _count: usize) {
 
 // I inserts at the start of each line with a selection
 // A inserts at the end of each line with a selection
-// o inserts a new line before each line with a selection
-// O inserts a new line after each line with a selection
+
+// o inserts a new line after each line with a selection
+pub fn open_below(state: &mut State, _count: usize) {
+    state.mode = Mode::Insert;
+
+    // calculate line numbers for each selection range
+    let mut lines = state
+        .selection
+        .ranges()
+        .iter()
+        .map(|range| state.doc.char_to_line(range.head))
+        .collect::<Vec<_>>();
+
+    lines.sort();
+    lines.dedup();
+
+    let positions: Vec<_> = lines
+        .into_iter()
+        .map(|index| {
+            // adjust all positions to the end of the line.
+            let line = state.doc.line(index);
+            let line_start = state.doc.line_to_char(index);
+            line_start + line.len_chars()
+        })
+        .collect();
+
+    let changes = positions.iter().copied().map(|index|
+        // generate changes
+        (index, index, Some(Tendril::from_char('\n'))));
+
+    // TODO: count actually inserts "n" new lines and starts editing on all of them.
+    // TODO: append "count" newlines and modify cursors to those lines
+
+    let selection = Selection::new(
+        positions
+            .iter()
+            .copied()
+            .map(|pos| Range::new(pos, pos))
+            .collect(),
+        0,
+    );
+
+    let transaction = Transaction::change(state, changes.collect()).with_selection(selection);
+
+    transaction.apply(state);
+    // TODO: need to store into history if successful
+}
+
+// O inserts a new line before each line with a selection
 
 pub fn normal_mode(state: &mut State, _count: usize) {
     // TODO: if leaving append mode, move cursor back by 1

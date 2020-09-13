@@ -339,6 +339,11 @@ impl Transaction {
         true
     }
 
+    pub fn with_selection(mut self, selection: Selection) -> Self {
+        self.selection = Some(selection);
+        self
+    }
+
     /// Generate a transaction from a set of changes.
     // TODO: take an owned iter instead of Vec
     pub fn change(state: &State, changes: Vec<Change>) -> Self {

@@ -108,6 +108,10 @@ pub fn default() -> Keymap {
             modifiers: Modifiers::NONE
         } => commands::append_mode as Command,
         Key {
+            code: KeyCode::Char('o'),
+            modifiers: Modifiers::NONE
+        } => commands::open_below as Command,
+        Key {
             code: KeyCode::Esc,
             modifiers: Modifiers::NONE
         } => commands::normal_mode as Command,
