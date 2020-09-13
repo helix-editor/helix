@@ -62,8 +62,8 @@ pub fn append_mode(state: &mut State, _count: usize) {
 
 // TODO: I, A, o and O can share a lot of the primitives.
 
+// calculate line numbers for each selection range
 fn selection_lines(state: &State) -> Vec<usize> {
-    // calculate line numbers for each selection range
     let mut lines = state
         .selection
         .ranges()

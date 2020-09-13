@@ -100,8 +100,8 @@ impl Range {
 #[derive(Debug, Clone)]
 pub struct Selection {
     // TODO: decide how many ranges to inline SmallVec<[Range; 1]>
-    pub(crate) ranges: SmallVec<[Range; 1]>,
-    pub(crate) primary_index: usize,
+    ranges: SmallVec<[Range; 1]>,
+    primary_index: usize,
 }
 
 impl Selection {
@@ -203,6 +203,14 @@ impl Selection {
                 ranges: result,
                 primary_index,
             }
+        }
+
+        // fast path for a single selection (cursor)
+        if ranges.len() == 1 {
+            return Selection {
+                ranges,
+                primary_index: 0,
+            };
         }
 
         // TODO: only normalize if needed (any ranges out of order)

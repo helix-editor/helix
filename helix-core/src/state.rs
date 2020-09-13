@@ -122,7 +122,7 @@ impl State {
         // TODO: move all selections according to normal cursor move semantics by collapsing it
         // into cursors and moving them vertically
 
-        let ranges = self.selection.ranges.iter().map(|range| {
+        self.selection.transform(|range| {
             // let pos = if !range.is_empty() {
             //     // if selection already exists, bump it to the start or end of current select first
             //     if dir == Direction::Backward {
@@ -134,10 +134,7 @@ impl State {
             let pos = self.move_pos(range.head, dir, granularity, count);
             // };
             SelectionRange::new(pos, pos)
-        });
-
-        Selection::new(ranges.collect(), self.selection.primary_index)
-        // TODO: update selection in state via transaction
+        })
     }
 
     pub fn extend_selection(
@@ -146,13 +143,10 @@ impl State {
         granularity: Granularity,
         count: usize,
     ) -> Selection {
-        let ranges = self.selection.ranges.iter().map(|range| {
+        self.selection.transform(|range| {
             let pos = self.move_pos(range.head, dir, granularity, count);
             SelectionRange::new(range.anchor, pos)
-        });
-
-        Selection::new(ranges.collect(), self.selection.primary_index)
-        // TODO: update selection in state via transaction
+        })
     }
 }
 
@@ -203,7 +197,6 @@ mod test {
     fn test_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         assert_eq!(coords_at_pos(&text.slice(..), 0), (0, 0));
-        // TODO: what is the coordinate of newline?
         assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 5)); // position on \n
         assert_eq!(coords_at_pos(&text.slice(..), 6), (1, 0)); // position on w
         assert_eq!(coords_at_pos(&text.slice(..), 7), (1, 1)); // position on o

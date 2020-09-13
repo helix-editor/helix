@@ -3,13 +3,6 @@ use crate::{Rope, Selection, SelectionRange, State, Tendril};
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
 
-// TODO: divided into three different operations, I sort of like having just
-// Splice { extent, Option<text>, distance } better.
-// insert: Splice { extent: 0, text: Some("a"), distance: 2 }
-// delete: Splice { extent: 2, text: None, distance: 2 }
-// replace: Splice { extent: 2, text: Some("abc"), distance: 2 }
-// unchanged?: Splice { extent: 0, text: None, distance: 2 }
-// harder to compose though.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Operation {
     /// Move cursor by n characters.
@@ -364,7 +357,6 @@ impl Transaction {
 
         let mut last = 0;
         for (from, to, tendril) in changes {
-            // TODO: need to fill the in-between ranges too
             // Retain from last "to" to current "from"
             acc.push(Operation::Retain(from - last));
             match tendril {
@@ -383,7 +375,7 @@ impl Transaction {
     where
         F: Fn(&SelectionRange) -> Change,
     {
-        Self::change(state, state.selection.ranges.iter().map(f))
+        Self::change(state, state.selection.ranges().iter().map(f))
     }
 
     /// Insert text at each selection head.
