@@ -1,5 +1,9 @@
 use crate::{Rope, Selection, SelectionRange, State, Tendril};
 
+// TODO: make Change enum internal and export this as the public Change type
+/// (from, to, replacement)
+type Change2 = (usize, usize, Option<Tendril>);
+
 // TODO: divided into three different operations, I sort of like having just
 // Splice { extent, Option<text>, distance } better.
 // insert: Splice { extent: 0, text: Some("a"), distance: 2 }
@@ -342,15 +346,11 @@ impl Transaction {
         true
     }
 
-    pub fn change_by_selection<F>(state: &State, f: F) -> Self
-    where
-        F: Fn(&SelectionRange) -> (usize, usize, Option<Tendril>),
-    {
+    /// Generate a transaction from a set of changes.
+    // TODO: take an owned iter instead of Vec
+    pub fn change(state: &State, changes: Vec<Change2>) -> Self {
         let len = state.doc.len_chars();
-        let ranges = state.selection.ranges();
-        let mut acc = Vec::with_capacity(2 * ranges.len() + 1);
-
-        let changes = ranges.iter().map(f);
+        let mut acc = Vec::with_capacity(2 * changes.len() + 1);
 
         // TODO: verify ranges are ordered and not overlapping.
 
@@ -368,6 +368,14 @@ impl Transaction {
         acc.push(Change::Retain(len - last));
 
         Self::from(ChangeSet { changes: acc, len })
+    }
+
+    /// Generate a transaction with a change per selection range.
+    pub fn change_by_selection<F>(state: &State, f: F) -> Self
+    where
+        F: Fn(&SelectionRange) -> Change2,
+    {
+        Self::change(state, state.selection.ranges.iter().map(f).collect())
     }
 
     /// Insert text at each selection head.
