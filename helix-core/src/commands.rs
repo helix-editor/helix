@@ -80,9 +80,8 @@ pub fn prepend_to_line(state: &mut State, _count: usize) {
     let positions: Vec<_> = lines
         .into_iter()
         .map(|index| {
-            // adjust all positions to the end of the line.
-            let line_start = state.doc.line_to_char(index);
-            line_start
+            // adjust all positions to the start of the line.
+            state.doc.line_to_char(index)
         })
         .collect();
 
