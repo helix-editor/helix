@@ -1,8 +1,7 @@
 use crate::{Rope, Selection, SelectionRange, State, Tendril};
 
-// TODO: make Change enum internal and export this as the public Change type
 /// (from, to, replacement)
-type Change2 = (usize, usize, Option<Tendril>);
+pub type Change = (usize, usize, Option<Tendril>);
 
 // TODO: divided into three different operations, I sort of like having just
 // Splice { extent, Option<text>, distance } better.
@@ -12,7 +11,7 @@ type Change2 = (usize, usize, Option<Tendril>);
 // unchanged?: Splice { extent: 0, text: None, distance: 2 }
 // harder to compose though.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Change {
+enum Operation {
     /// Move cursor by n characters.
     Retain(usize),
     /// Delete n characters.
@@ -20,12 +19,6 @@ pub enum Change {
     /// Insert text at position.
     Insert(Tendril),
 }
-
-// impl Change {
-//     pub fn new(from: usize, to: usize, insert: Option<Tendril>) {
-//         // old_extent, new_extent, insert
-//     }
-// }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Assoc {
@@ -36,7 +29,7 @@ pub enum Assoc {
 // ChangeSpec = Change | ChangeSet | Vec<Change>
 #[derive(Debug)]
 pub struct ChangeSet {
-    changes: Vec<Change>,
+    changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
     len: usize,
 }
@@ -46,7 +39,7 @@ impl ChangeSet {
     pub fn new(doc: &Rope) -> Self {
         let len = doc.len_chars();
         Self {
-            changes: vec![Change::Retain(len)],
+            changes: vec![Operation::Retain(len)],
             len,
         }
     }
@@ -70,11 +63,11 @@ impl ChangeSet {
         let mut head_a = changes_a.next();
         let mut head_b = changes_b.next();
 
-        let mut changes: Vec<Change> = Vec::with_capacity(len); // TODO: max(a, b), shrink_to_fit() afterwards
+        let mut changes: Vec<Operation> = Vec::with_capacity(len); // TODO: max(a, b), shrink_to_fit() afterwards
 
         loop {
             use std::cmp::Ordering;
-            use Change::*;
+            use Operation::*;
             match (head_a, head_b) {
                 // we are done
                 (None, None) => {
@@ -211,7 +204,7 @@ impl ChangeSet {
         let mut pos = 0;
 
         for change in &self.changes {
-            use Change::*;
+            use Operation::*;
             match change {
                 Retain(n) => {
                     pos += n;
@@ -233,7 +226,7 @@ impl ChangeSet {
     #[inline]
     pub fn is_empty(&self) -> bool {
         let len = self.changes.len();
-        len == 0 || (len == 1 && self.changes[0] == Change::Retain(self.len))
+        len == 0 || (len == 1 && self.changes[0] == Operation::Retain(self.len))
     }
 
     /// Map a position through the changes.
@@ -243,7 +236,7 @@ impl ChangeSet {
     /// range, or at that point. `After` will move it forward, placing it at the end of such
     /// insertions.
     pub fn map_pos(&self, pos: usize, assoc: Assoc) -> usize {
-        use Change::*;
+        use Operation::*;
         let mut old_pos = 0;
         let mut new_pos = 0;
 
@@ -348,7 +341,7 @@ impl Transaction {
 
     /// Generate a transaction from a set of changes.
     // TODO: take an owned iter instead of Vec
-    pub fn change(state: &State, changes: Vec<Change2>) -> Self {
+    pub fn change(state: &State, changes: Vec<Change>) -> Self {
         let len = state.doc.len_chars();
         let mut acc = Vec::with_capacity(2 * changes.len() + 1);
 
@@ -358,14 +351,14 @@ impl Transaction {
         for (from, to, tendril) in changes {
             // TODO: need to fill the in-between ranges too
             // Retain from last "to" to current "from"
-            acc.push(Change::Retain(from - last));
+            acc.push(Operation::Retain(from - last));
             match tendril {
-                Some(text) => acc.push(Change::Insert(text)),
-                None => acc.push(Change::Delete(to - from)),
+                Some(text) => acc.push(Operation::Insert(text)),
+                None => acc.push(Operation::Delete(to - from)),
             }
             last = to;
         }
-        acc.push(Change::Retain(len - last));
+        acc.push(Operation::Retain(len - last));
 
         Self::from(ChangeSet { changes: acc, len })
     }
@@ -373,7 +366,7 @@ impl Transaction {
     /// Generate a transaction with a change per selection range.
     pub fn change_by_selection<F>(state: &State, f: F) -> Self
     where
-        F: Fn(&SelectionRange) -> Change2,
+        F: Fn(&SelectionRange) -> Change,
     {
         Self::change(state, state.selection.ranges.iter().map(f).collect())
     }
@@ -399,7 +392,7 @@ mod test {
 
     #[test]
     fn composition() {
-        use Change::*;
+        use Operation::*;
 
         let a = ChangeSet {
             changes: vec![
@@ -428,7 +421,7 @@ mod test {
 
     #[test]
     fn map_pos() {
-        use Change::*;
+        use Operation::*;
 
         // maps inserts
         let cs = ChangeSet {

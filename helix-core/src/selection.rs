@@ -105,7 +105,6 @@ pub struct Selection {
 }
 
 impl Selection {
-    // map
     // eq
 
     #[must_use]
