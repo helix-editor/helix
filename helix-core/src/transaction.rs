@@ -322,6 +322,14 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    /// Create a new, empty transaction.
+    pub fn new(state: &mut State) -> Self {
+        Self {
+            changes: ChangeSet::new(&state.doc),
+            selection: None,
+        }
+    }
+
     /// Returns true if applied successfully.
     pub fn apply(&self, state: &mut State) -> bool {
         // apply changes to the document

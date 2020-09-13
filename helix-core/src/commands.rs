@@ -60,8 +60,86 @@ pub fn append_mode(state: &mut State, _count: usize) {
     })
 }
 
+// TODO: I, A, o and O can share a lot of the primitives.
+
 // I inserts at the start of each line with a selection
+pub fn prepend_to_line(state: &mut State, _count: usize) {
+    state.mode = Mode::Insert;
+
+    // calculate line numbers for each selection range
+    let mut lines = state
+        .selection
+        .ranges()
+        .iter()
+        .map(|range| state.doc.char_to_line(range.head))
+        .collect::<Vec<_>>();
+
+    lines.sort();
+    lines.dedup();
+
+    let positions: Vec<_> = lines
+        .into_iter()
+        .map(|index| {
+            // adjust all positions to the end of the line.
+            let line_start = state.doc.line_to_char(index);
+            line_start
+        })
+        .collect();
+
+    let selection = Selection::new(
+        positions
+            .iter()
+            .copied()
+            .map(|pos| Range::new(pos, pos))
+            .collect(),
+        0,
+    );
+
+    let transaction = Transaction::new(state).with_selection(selection);
+
+    transaction.apply(state);
+    // TODO: need to store into history if successful
+}
+
 // A inserts at the end of each line with a selection
+pub fn append_to_line(state: &mut State, _count: usize) {
+    state.mode = Mode::Insert;
+
+    // calculate line numbers for each selection range
+    let mut lines = state
+        .selection
+        .ranges()
+        .iter()
+        .map(|range| state.doc.char_to_line(range.head))
+        .collect::<Vec<_>>();
+
+    lines.sort();
+    lines.dedup();
+
+    let positions: Vec<_> = lines
+        .into_iter()
+        .map(|index| {
+            // adjust all positions to the end of the line.
+            let line = state.doc.line(index);
+            let line_start = state.doc.line_to_char(index);
+            line_start + line.len_chars() - 1
+        })
+        .collect();
+
+    let selection = Selection::new(
+        positions
+            .iter()
+            .copied()
+            .map(|pos| Range::new(pos, pos))
+            .collect(),
+        0,
+    );
+
+    let transaction = Transaction::new(state).with_selection(selection);
+
+    transaction.apply(state);
+    // TODO: need to store into history if successful
+}
 
 // o inserts a new line after each line with a selection
 pub fn open_below(state: &mut State, _count: usize) {

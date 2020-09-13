@@ -104,9 +104,17 @@ pub fn default() -> Keymap {
             modifiers: Modifiers::NONE
         } => commands::insert_mode as Command,
         Key {
+            code: KeyCode::Char('I'),
+            modifiers: Modifiers::SHIFT,
+        } => commands::prepend_to_line as Command,
+        Key {
             code: KeyCode::Char('a'),
             modifiers: Modifiers::NONE
         } => commands::append_mode as Command,
+        Key {
+            code: KeyCode::Char('A'),
+            modifiers: Modifiers::SHIFT,
+        } => commands::append_to_line as Command,
         Key {
             code: KeyCode::Char('o'),
             modifiers: Modifiers::NONE
