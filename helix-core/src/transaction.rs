@@ -342,31 +342,37 @@ impl Transaction {
         true
     }
 
-    pub fn insert(state: &State, text: Tendril) -> Self {
+    pub fn change_by_selection<F>(state: &State, f: F) -> Self
+    where
+        F: Fn(&SelectionRange) -> (usize, usize, Option<Tendril>),
+    {
         let len = state.doc.len_chars();
         let ranges = state.selection.ranges();
-        let mut changes = Vec::with_capacity(2 * ranges.len() + 1);
+        let mut acc = Vec::with_capacity(2 * ranges.len() + 1);
+
+        let changes = ranges.iter().map(f);
+
+        // TODO: verify ranges are ordered and not overlapping.
+
         let mut last = 0;
-
-        for range in state.selection.ranges() {
-            let cur = range.head;
-            changes.push(Change::Retain(cur));
-            changes.push(Change::Insert(text.clone()));
-            last = cur;
+        for (from, to, tendril) in changes {
+            // TODO: need to fill the in-between ranges too
+            // Retain from last "to" to current "from"
+            acc.push(Change::Retain(from - last));
+            match tendril {
+                Some(text) => acc.push(Change::Insert(text)),
+                None => acc.push(Change::Delete(to - from)),
+            }
+            last = to;
         }
-        changes.push(Change::Retain(len - last));
+        acc.push(Change::Retain(len - last));
 
-        Self::from(ChangeSet { changes, len })
+        Self::from(ChangeSet { changes: acc, len })
     }
 
-    pub fn change_selection<F>(selection: Selection, f: F) -> Self
-    where
-        F: Fn(SelectionRange) -> ChangeSet,
-    {
-        selection.ranges().iter().map(|range| true);
-        // TODO: most idiomatic would be to return a
-        // Change { from: x, to: y, insert: "str" }
-        unimplemented!()
+    /// Insert text at each selection head.
+    pub fn insert(state: &State, text: Tendril) -> Self {
+        Self::change_by_selection(state, |range| (range.head, range.head, Some(text.clone())))
     }
 }
 

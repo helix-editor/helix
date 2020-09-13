@@ -1,4 +1,4 @@
-use crate::graphemes::next_grapheme_boundary;
+use crate::graphemes;
 use crate::selection::Range;
 use crate::state::{Direction, Granularity, Mode, State};
 use crate::transaction::{ChangeSet, Transaction};
@@ -53,7 +53,10 @@ pub fn append_mode(state: &mut State, _count: usize) {
     let text = &state.doc.slice(..);
     state.selection = state.selection.transform(|range| {
         // TODO: to() + next char
-        Range::new(range.from(), next_grapheme_boundary(text, range.to()))
+        Range::new(
+            range.from(),
+            graphemes::next_grapheme_boundary(text, range.to()),
+        )
     })
 }
 
@@ -72,6 +75,33 @@ pub fn insert_char(state: &mut State, c: char) {
     let c = Tendril::from_char(c);
     let transaction = Transaction::insert(&state, c);
 
+    transaction.apply(state);
+    // TODO: need to store into history if successful
+}
+
+// TODO: handle indent-aware delete
+pub fn delete_char_backward(state: &mut State, count: usize) {
+    let text = &state.doc.slice(..);
+    let transaction = Transaction::change_by_selection(state, |range| {
+        (
+            graphemes::nth_prev_grapheme_boundary(text, range.head, count),
+            range.head,
+            None,
+        )
+    });
+    transaction.apply(state);
+    // TODO: need to store into history if successful
+}
+
+pub fn delete_char_forward(state: &mut State, count: usize) {
+    let text = &state.doc.slice(..);
+    let transaction = Transaction::change_by_selection(state, |range| {
+        (
+            graphemes::nth_next_grapheme_boundary(text, range.head, count),
+            range.head,
+            None,
+        )
+    });
     transaction.apply(state);
     // TODO: need to store into history if successful
 }

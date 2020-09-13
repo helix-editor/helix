@@ -259,7 +259,7 @@ impl Editor {
         }
     }
 
-    pub async fn print_events(&mut self) {
+    pub async fn event_loop(&mut self) {
         let mut reader = EventStream::new();
         let keymap = keymap::default();
 
@@ -284,6 +284,14 @@ impl Editor {
                                     KeyEvent {
                                         code: KeyCode::Esc, ..
                                     } => helix_core::commands::normal_mode(state, 1),
+                                    KeyEvent {
+                                        code: KeyCode::Backspace,
+                                        ..
+                                    } => helix_core::commands::delete_char_backward(state, 1),
+                                    KeyEvent {
+                                        code: KeyCode::Delete,
+                                        ..
+                                    } => helix_core::commands::delete_char_forward(state, 1),
                                     KeyEvent {
                                         code: KeyCode::Char(c),
                                         ..
@@ -320,7 +328,7 @@ impl Editor {
 
         execute!(stdout, terminal::EnterAlternateScreen)?;
 
-        self.print_events().await;
+        self.event_loop().await;
 
         // reset cursor shape
         write!(stdout, "\x1B[2 q");
