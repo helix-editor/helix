@@ -353,8 +353,10 @@ impl Transaction {
     }
 
     /// Generate a transaction from a set of changes.
-    // TODO: take an owned iter instead of Vec
-    pub fn change(state: &State, changes: Vec<Change>) -> Self {
+    pub fn change<I>(state: &State, changes: I) -> Self
+    where
+        I: IntoIterator<Item = Change> + ExactSizeIterator,
+    {
         let len = state.doc.len_chars();
         let mut acc = Vec::with_capacity(2 * changes.len() + 1);
 
@@ -381,7 +383,7 @@ impl Transaction {
     where
         F: Fn(&SelectionRange) -> Change,
     {
-        Self::change(state, state.selection.ranges.iter().map(f).collect())
+        Self::change(state, state.selection.ranges.iter().map(f))
     }
 
     /// Insert text at each selection head.

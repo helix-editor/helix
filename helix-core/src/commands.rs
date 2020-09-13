@@ -155,7 +155,7 @@ pub fn open_below(state: &mut State, _count: usize) {
         0,
     );
 
-    let transaction = Transaction::change(state, changes.collect()).with_selection(selection);
+    let transaction = Transaction::change(state, changes).with_selection(selection);
 
     transaction.apply(state);
     // TODO: need to store into history if successful
