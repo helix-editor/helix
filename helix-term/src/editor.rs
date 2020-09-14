@@ -108,7 +108,7 @@ impl Editor {
                 let mut stdout = stdout();
 
                 // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
-                let source_code = state.doc.to_string();
+                let source_code = state.doc().to_string();
 
                 // TODO: cache highlight results
                 // TODO: only recalculate when state.doc is actually modified
@@ -137,10 +137,10 @@ impl Editor {
                         HighlightEvent::Source { start, end } => {
                             // TODO: filter out spans out of viewport for now..
 
-                            let start = state.doc.byte_to_char(start);
-                            let end = state.doc.byte_to_char(end);
+                            let start = state.doc().byte_to_char(start);
+                            let end = state.doc().byte_to_char(end);
 
-                            let text = state.doc.slice(start..end);
+                            let text = state.doc().slice(start..end);
 
                             use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
@@ -225,14 +225,14 @@ impl Editor {
                 self.surface = surface;
 
                 // set cursor shape
-                match state.mode {
+                match state.mode() {
                     Mode::Insert => write!(stdout, "\x1B[6 q"),
                     Mode::Normal => write!(stdout, "\x1B[2 q"),
                 };
 
                 // render the cursor
-                let pos = state.selection.cursor();
-                let coords = coords_at_pos(&state.doc.slice(..), pos);
+                let pos = state.selection().cursor();
+                let coords = coords_at_pos(&state.doc().slice(..), pos);
                 execute!(
                     stdout,
                     cursor::MoveTo((coords.1 + 2) as u16, coords.0 as u16)
@@ -261,7 +261,7 @@ impl Editor {
                 }
                 Some(Ok(Event::Key(event))) => {
                     if let Some(state) = &mut self.state {
-                        match state.mode {
+                        match state.mode() {
                             Mode::Insert => {
                                 match event {
                                     KeyEvent {

@@ -4,6 +4,7 @@ use anyhow::Error;
 
 use std::path::PathBuf;
 
+#[derive(Copy, Clone)]
 pub enum Mode {
     Normal,
     Insert,
@@ -12,10 +13,10 @@ pub enum Mode {
 /// A state represents the current editor state of a single buffer.
 pub struct State {
     /// Path to file on disk.
-    pub path: Option<PathBuf>,
-    pub doc: Rope,
-    pub selection: Selection,
-    pub mode: Mode,
+    pub(crate) path: Option<PathBuf>,
+    pub(crate) doc: Rope,
+    pub(crate) selection: Selection,
+    pub(crate) mode: Mode,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -57,6 +58,29 @@ impl State {
     }
 
     // TODO: doc/selection accessors
+
+    // TODO: be able to take either Rope or RopeSlice
+    #[inline]
+    pub fn doc(&self) -> &Rope {
+        &self.doc
+    }
+
+    #[inline]
+    pub fn selection(&self) -> &Selection {
+        &self.selection
+    }
+
+    #[inline]
+    pub fn mode(&self) -> Mode {
+        self.mode
+    }
+
+    // pub fn doc<R>(&self, range: R) -> RopeSlice
+    // where
+    //     R: std::ops::RangeBounds<usize>,
+    // {
+    //     self.doc.slice(range)
+    // }
 
     // update/transact:
     // update(desc) => transaction ?  transaction.doc() for applied doc
