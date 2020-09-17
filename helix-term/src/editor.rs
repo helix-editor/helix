@@ -37,6 +37,7 @@ pub struct Editor {
     first_line: u16,
     size: (u16, u16),
     surface: Surface,
+    cache: Surface,
     theme: Theme,
 }
 
@@ -55,6 +56,7 @@ impl Editor {
             first_line: 0,
             size,
             surface: Surface::empty(area),
+            cache: Surface::empty(area),
             theme,
             // TODO; move to state
         };
@@ -82,8 +84,8 @@ impl Editor {
         match &mut self.state {
             Some(state) => {
                 let area = Rect::new(0, 0, self.size.0, self.size.1);
-                let mut surface = Surface::empty(area);
                 let mut stdout = stdout();
+                self.surface.reset(); // reset is faster than allocating new empty surface
 
                 // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
                 let source_code = state.doc().to_string();
@@ -146,7 +148,12 @@ impl Editor {
                                     // which should really be the majority case
                                     let grapheme = std::borrow::Cow::from(grapheme);
                                     let width = grapheme_width(&grapheme) as u16;
-                                    surface.set_string(offset + visual_x, line, grapheme, style);
+                                    self.surface.set_string(
+                                        offset + visual_x,
+                                        line,
+                                        grapheme,
+                                        style,
+                                    );
 
                                     visual_x += width;
                                 }
@@ -178,7 +185,7 @@ impl Editor {
                 //         (x2 - x1 + 1) as u16,
                 //         (y2 - y1 + 1) as u16,
                 //     );
-                //     surface.set_style(area, select);
+                //     self.surface.set_style(area, select);
 
                 //     // TODO: don't highlight next char in append mode
                 // }
@@ -199,9 +206,9 @@ impl Editor {
 
                 self.terminal
                     .backend_mut()
-                    .draw(self.surface.diff(&surface).into_iter());
+                    .draw(self.cache.diff(&self.surface).into_iter());
                 // swap the buffer
-                self.surface = surface;
+                std::mem::swap(&mut self.surface, &mut self.cache);
 
                 // set cursor shape
                 match state.mode() {
