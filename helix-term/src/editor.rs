@@ -38,8 +38,6 @@ pub struct Editor {
     size: (u16, u16),
     surface: Surface,
     theme: Theme,
-    highlighter: Highlighter,
-    highlight_config: HighlightConfiguration,
 }
 
 impl Editor {
@@ -49,32 +47,7 @@ impl Editor {
         let mut terminal = Terminal::new(backend)?;
         let size = terminal::size().unwrap();
         let area = Rect::new(0, 0, size.0, size.1);
-
         let theme = Theme::default();
-
-        // let mut parser = tree_sitter::Parser::new();
-        // parser.set_language(language).unwrap();
-        // let tree = parser.parse(source_code, None).unwrap();
-
-        let language = helix_syntax::get_language(&helix_syntax::LANG::Rust);
-
-        let highlighter = Highlighter::new();
-
-        let mut highlight_config = HighlightConfiguration::new(
-            language,
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-            )
-            .unwrap(),
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-            )
-            .unwrap(),
-            "", // locals.scm
-        )
-        .unwrap();
-
-        highlight_config.configure(theme.scopes());
 
         let mut editor = Editor {
             terminal,
@@ -84,8 +57,6 @@ impl Editor {
             surface: Surface::empty(area),
             theme,
             // TODO; move to state
-            highlighter,
-            highlight_config,
         };
 
         if let Some(file) = args.files.pop() {
@@ -96,12 +67,19 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
-        self.state = Some(State::load(path)?);
+        let mut state = State::load(path)?;
+        state
+            .syntax
+            .as_mut()
+            .unwrap()
+            .configure(self.theme.scopes());
+        self.state = Some(state);
         Ok(())
     }
 
     fn render(&mut self) {
-        match &self.state {
+        // TODO: ideally not mut but highlights require it because of cursor cache
+        match &mut self.state {
             Some(state) => {
                 let area = Rect::new(0, 0, self.size.0, self.size.1);
                 let mut surface = Surface::empty(area);
@@ -112,12 +90,13 @@ impl Editor {
 
                 // TODO: cache highlight results
                 // TODO: only recalculate when state.doc is actually modified
-                let highlights = self
-                    .highlighter
-                    .highlight(&self.highlight_config, source_code.as_bytes(), None, |_| {
-                        None
-                    })
-                    .unwrap();
+                let highlights: Vec<_> = state
+                    .syntax
+                    .as_mut()
+                    .unwrap()
+                    .highlight_iter(source_code.as_bytes(), None, |_| None)
+                    .unwrap()
+                    .collect(); // TODO: we collect here to avoid double borrow, fix later
 
                 let mut spans = Vec::new();
 
@@ -235,7 +214,7 @@ impl Editor {
                 let coords = coords_at_pos(&state.doc().slice(..), pos);
                 execute!(
                     stdout,
-                    cursor::MoveTo((coords.1 + 2) as u16, coords.0 as u16)
+                    cursor::MoveTo((coords.col + 2) as u16, coords.row as u16)
                 );
             }
             None => (),

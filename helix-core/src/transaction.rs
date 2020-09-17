@@ -4,7 +4,7 @@ use crate::{Rope, Selection, SelectionRange, State, Tendril};
 pub type Change = (usize, usize, Option<Tendril>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Operation {
+pub(crate) enum Operation {
     /// Move cursor by n characters.
     Retain(usize),
     /// Delete n characters.
@@ -22,7 +22,7 @@ pub enum Assoc {
 // ChangeSpec = Change | ChangeSet | Vec<Change>
 #[derive(Debug)]
 pub struct ChangeSet {
-    changes: Vec<Operation>,
+    pub(crate) changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
     len: usize,
 }
@@ -307,7 +307,7 @@ impl ChangeSet {
 /// a single transaction.
 pub struct Transaction {
     /// Changes made to the buffer.
-    changes: ChangeSet,
+    pub(crate) changes: ChangeSet,
     /// When set, explicitly updates the selection.
     selection: Option<Selection>,
     // effects, annotations
@@ -337,6 +337,14 @@ impl Transaction {
             .clone()
             .unwrap_or_else(|| state.selection.clone().map(&self.changes));
 
+        // TODO: no unwrap
+        state
+            .syntax
+            .as_mut()
+            .unwrap()
+            .update(&state.doc, &self.changes)
+            .unwrap();
+
         true
     }
 
@@ -359,9 +367,15 @@ impl Transaction {
         for (from, to, tendril) in changes {
             // Retain from last "to" to current "from"
             acc.push(Operation::Retain(from - last));
+            let span = to - from;
             match tendril {
-                Some(text) => acc.push(Operation::Insert(text)),
-                None => acc.push(Operation::Delete(to - from)),
+                Some(text) => {
+                    if span > 0 {
+                        acc.push(Operation::Delete(span));
+                    }
+                    acc.push(Operation::Insert(text));
+                }
+                None => acc.push(Operation::Delete(span)),
             }
             last = to;
         }
@@ -465,5 +479,16 @@ mod test {
         };
         assert_eq!(cs.map_pos(2, Assoc::Before), 2);
         assert_eq!(cs.map_pos(2, Assoc::After), 2);
+    }
+
+    #[test]
+    fn transaction_change() {
+        let mut state = State::new("hello world!\ntest 123".into());
+        let transaction = Transaction::change(
+            &state,
+            vec![(6, 11, Some("void".into())), (12, 17, None)].into_iter(),
+        );
+        transaction.apply(&mut state);
+        assert_eq!(state.doc, Rope::from_str("hello void! 123"));
     }
 }

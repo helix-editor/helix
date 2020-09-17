@@ -1,5 +1,5 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
-use crate::{Rope, RopeSlice, Selection, SelectionRange};
+use crate::{Position, Rope, RopeSlice, Selection, SelectionRange, Syntax};
 use anyhow::Error;
 
 use std::path::PathBuf;
@@ -17,6 +17,9 @@ pub struct State {
     pub(crate) doc: Rope,
     pub(crate) selection: Selection,
     pub(crate) mode: Mode,
+
+    //
+    pub syntax: Option<Syntax>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -40,6 +43,7 @@ impl State {
             doc,
             selection: Selection::single(0, 0),
             mode: Mode::Normal,
+            syntax: None,
         }
     }
 
@@ -53,6 +57,29 @@ impl State {
 
         let mut state = Self::new(doc);
         state.path = Some(path);
+
+        let language = helix_syntax::get_language(&helix_syntax::LANG::Rust);
+
+        let mut highlight_config = crate::syntax::HighlightConfiguration::new(
+            language,
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
+            )
+            .unwrap(),
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
+            )
+            .unwrap(),
+            "", // locals.scm
+        )
+        .unwrap();
+
+        // TODO: config.configure(scopes) is now delayed, is that ok?
+
+        // TODO: get_language is called twice
+        let syntax = Syntax::new(helix_syntax::LANG::Rust, &state.doc, highlight_config);
+
+        state.syntax = Some(syntax);
 
         Ok(state)
     }
@@ -175,29 +202,29 @@ impl State {
 }
 
 /// Coordinates are a 0-indexed line and column pair.
-type Coords = (usize, usize); // line, col
+pub type Coords = (usize, usize); // line, col
 
 /// Convert a character index to (line, column) coordinates.
-pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Coords {
+pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Position {
     let line = text.char_to_line(pos);
     let line_start = text.line_to_char(line);
     let col = text.slice(line_start..pos).len_chars();
-    (line, col)
+    Position::new(line, col)
 }
 
 /// Convert (line, column) coordinates to a character index.
-pub fn pos_at_coords(text: &RopeSlice, coords: Coords) -> usize {
-    let (line, col) = coords;
-    let line_start = text.line_to_char(line);
+pub fn pos_at_coords(text: &RopeSlice, coords: Position) -> usize {
+    let Position { row, col } = coords;
+    let line_start = text.line_to_char(row);
     nth_next_grapheme_boundary(text, line_start, col)
 }
 
 fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -> usize {
-    let (line, col) = coords_at_pos(text, pos);
+    let Position { row, col } = coords_at_pos(text, pos);
 
     let new_line = match dir {
-        Direction::Backward => line.saturating_sub(count),
-        Direction::Forward => std::cmp::min(line.saturating_add(count), text.len_lines() - 1),
+        Direction::Backward => row.saturating_sub(count),
+        Direction::Forward => std::cmp::min(row.saturating_add(count), text.len_lines() - 1),
     };
 
     // convert to 0-indexed, subtract another 1 because len_chars() counts \n
@@ -210,7 +237,7 @@ fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -
         col
     };
 
-    pos_at_coords(text, (new_line, new_col))
+    pos_at_coords(text, Position::new(new_line, new_col))
 }
 
 #[cfg(test)]
@@ -220,32 +247,32 @@ mod test {
     #[test]
     fn test_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        assert_eq!(coords_at_pos(&text.slice(..), 0), (0, 0));
-        assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 5)); // position on \n
-        assert_eq!(coords_at_pos(&text.slice(..), 6), (1, 0)); // position on w
-        assert_eq!(coords_at_pos(&text.slice(..), 7), (1, 1)); // position on o
-        assert_eq!(coords_at_pos(&text.slice(..), 10), (1, 4)); // position on d
+        assert_eq!(coords_at_pos(&text.slice(..), 0), (0, 0).into());
+        assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 5).into()); // position on \n
+        assert_eq!(coords_at_pos(&text.slice(..), 6), (1, 0).into()); // position on w
+        assert_eq!(coords_at_pos(&text.slice(..), 7), (1, 1).into()); // position on o
+        assert_eq!(coords_at_pos(&text.slice(..), 10), (1, 4).into()); // position on d
     }
 
     #[test]
     fn test_pos_at_coords() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        assert_eq!(pos_at_coords(&text.slice(..), (0, 0)), 0);
-        assert_eq!(pos_at_coords(&text.slice(..), (0, 5)), 5); // position on \n
-        assert_eq!(pos_at_coords(&text.slice(..), (1, 0)), 6); // position on w
-        assert_eq!(pos_at_coords(&text.slice(..), (1, 1)), 7); // position on o
-        assert_eq!(pos_at_coords(&text.slice(..), (1, 4)), 10); // position on d
+        assert_eq!(pos_at_coords(&text.slice(..), (0, 0).into()), 0);
+        assert_eq!(pos_at_coords(&text.slice(..), (0, 5).into()), 5); // position on \n
+        assert_eq!(pos_at_coords(&text.slice(..), (1, 0).into()), 6); // position on w
+        assert_eq!(pos_at_coords(&text.slice(..), (1, 1).into()), 7); // position on o
+        assert_eq!(pos_at_coords(&text.slice(..), (1, 4).into()), 10); // position on d
     }
 
     #[test]
     fn test_vertical_move() {
         let text = Rope::from("abcd\nefg\nwrs");
-        let pos = pos_at_coords(&text.slice(..), (0, 4));
+        let pos = pos_at_coords(&text.slice(..), (0, 4).into());
         let slice = text.slice(..);
 
         assert_eq!(
             coords_at_pos(&slice, move_vertically(&slice, Direction::Forward, pos, 1)),
-            (1, 2)
+            (1, 2).into()
         );
     }
 }

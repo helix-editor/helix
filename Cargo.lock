@@ -369,6 +369,7 @@ name = "helix-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "helix-syntax",
  "ropey",
  "smallvec",
  "tendril",
