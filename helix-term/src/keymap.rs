@@ -1,9 +1,9 @@
+use crate::commands::{self, Command};
 use crossterm::{
     event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers},
     execute,
     style::Print,
 };
-use helix_core::commands::{self, Command};
 use std::collections::HashMap;
 
 // Kakoune-inspired:

@@ -1,5 +1,4 @@
 #![allow(unused)]
-pub mod commands;
 pub mod graphemes;
 mod position;
 mod selection;
@@ -11,7 +10,7 @@ pub use ropey::{Rope, RopeSlice};
 pub use tendril::StrTendril as Tendril;
 
 pub use position::Position;
-pub use selection::Range as SelectionRange;
+pub use selection::Range;
 pub use selection::Selection;
 pub use syntax::Syntax;
 

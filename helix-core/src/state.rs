@@ -1,5 +1,5 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
-use crate::{Position, Rope, RopeSlice, Selection, SelectionRange, Syntax};
+use crate::{Position, Range, Rope, RopeSlice, Selection, Syntax};
 use anyhow::Error;
 
 use std::path::PathBuf;
@@ -12,11 +12,12 @@ pub enum Mode {
 
 /// A state represents the current editor state of a single buffer.
 pub struct State {
+    // TODO: fields should be private but we need to refactor commands.rs first
     /// Path to file on disk.
-    pub(crate) path: Option<PathBuf>,
-    pub(crate) doc: Rope,
-    pub(crate) selection: Selection,
-    pub(crate) mode: Mode,
+    pub path: Option<PathBuf>,
+    pub doc: Rope,
+    pub selection: Selection,
+    pub mode: Mode,
 
     //
     pub syntax: Option<Syntax>,
@@ -189,7 +190,7 @@ impl State {
             // } else {
             let pos = self.move_pos(range.head, dir, granularity, count);
             // };
-            SelectionRange::new(pos, pos)
+            Range::new(pos, pos)
         })
     }
 
@@ -201,7 +202,7 @@ impl State {
     ) -> Selection {
         self.selection.transform(|range| {
             let pos = self.move_pos(range.head, dir, granularity, count);
-            SelectionRange::new(range.anchor, pos)
+            Range::new(range.anchor, pos)
         })
     }
 }

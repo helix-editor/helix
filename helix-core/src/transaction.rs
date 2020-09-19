@@ -1,4 +1,4 @@
-use crate::{Rope, Selection, SelectionRange, State, Tendril};
+use crate::{Range, Rope, Selection, State, Tendril};
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
@@ -387,7 +387,7 @@ impl Transaction {
     /// Generate a transaction with a change per selection range.
     pub fn change_by_selection<F>(state: &State, f: F) -> Self
     where
-        F: Fn(&SelectionRange) -> Change,
+        F: Fn(&Range) -> Change,
     {
         Self::change(state, state.selection.ranges().iter().map(f))
     }

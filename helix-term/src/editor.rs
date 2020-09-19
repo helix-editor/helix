@@ -1,4 +1,4 @@
-use crate::{keymap, theme::Theme, Args};
+use crate::{commands, keymap, theme::Theme, Args};
 use helix_core::{
     state::coords_at_pos,
     state::Mode,
@@ -31,10 +31,15 @@ type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 static EX: smol::Executor = smol::Executor::new();
 
+pub struct View {
+    pub state: State,
+    pub first_line: u16,
+    pub size: (u16, u16),
+}
+
 pub struct Editor {
     terminal: Terminal,
-    state: Option<State>,
-    first_line: u16,
+    view: Option<View>,
     size: (u16, u16),
     surface: Surface,
     cache: Surface,
@@ -52,8 +57,7 @@ impl Editor {
 
         let mut editor = Editor {
             terminal,
-            state: None,
-            first_line: 0,
+            view: None,
             size,
             surface: Surface::empty(area),
             cache: Surface::empty(area),
@@ -75,7 +79,14 @@ impl Editor {
             .as_mut()
             .unwrap()
             .configure(self.theme.scopes());
-        self.state = Some(state);
+
+        let view = View {
+            state,
+            first_line: 0,
+            size: self.size,
+        };
+
+        self.view = Some(view);
         Ok(())
     }
 
@@ -83,8 +94,8 @@ impl Editor {
         use tui::backend::Backend;
         use tui::style::Color;
         // TODO: ideally not mut but highlights require it because of cursor cache
-        match &mut self.state {
-            Some(state) => {
+        match &mut self.view {
+            Some(view) => {
                 let area = Rect::new(0, 0, self.size.0, self.size.1);
                 let mut stdout = stdout();
                 self.surface.reset(); // reset is faster than allocating new empty surface
@@ -97,18 +108,18 @@ impl Editor {
                 let viewport = Rect::new(offset, 0, self.size.0, self.size.1 - 1); // - 1 for statusline
 
                 // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
-                let source_code = state.doc().to_string();
+                let source_code = view.state.doc().to_string();
 
                 let last_line = std::cmp::min(
-                    (self.first_line + viewport.height - 1) as usize,
-                    state.doc().len_lines() - 1,
+                    (view.first_line + viewport.height - 1) as usize,
+                    view.state.doc().len_lines() - 1,
                 );
 
                 let range = {
                     // calculate viewport byte ranges
-                    let start = state.doc().line_to_byte(self.first_line.into());
-                    let end = state.doc().line_to_byte(last_line)
-                        + state.doc().line(last_line).len_bytes();
+                    let start = view.state.doc().line_to_byte(view.first_line.into());
+                    let end = view.state.doc().line_to_byte(last_line)
+                        + view.state.doc().line(last_line).len_bytes();
 
                     start..end
                 };
@@ -117,7 +128,8 @@ impl Editor {
 
                 // TODO: cache highlight results
                 // TODO: only recalculate when state.doc is actually modified
-                let highlights: Vec<_> = state
+                let highlights: Vec<_> = view
+                    .state
                     .syntax
                     .as_mut()
                     .unwrap()
@@ -141,10 +153,10 @@ impl Editor {
                         HighlightEvent::Source { start, end } => {
                             // TODO: filter out spans out of viewport for now..
 
-                            let start = state.doc().byte_to_char(start);
-                            let end = state.doc().byte_to_char(end);
+                            let start = view.state.doc().byte_to_char(start);
+                            let end = view.state.doc().byte_to_char(end);
 
-                            let text = state.doc().slice(start..end);
+                            let text = view.state.doc().slice(start..end);
 
                             use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
@@ -191,7 +203,7 @@ impl Editor {
 
                 let mut line = 0;
                 let style = self.theme.get("ui.linenr");
-                for i in self.first_line..(last_line as u16) {
+                for i in view.first_line..(last_line as u16) {
                     self.surface
                         .set_stringn(0, line, format!("{:>5}", i + 1), 5, style); // lavender
                     line += 1;
@@ -223,7 +235,7 @@ impl Editor {
                 // }
 
                 // statusline
-                let mode = match state.mode() {
+                let mode = match view.state.mode() {
                     Mode::Insert => "INS",
                     Mode::Normal => "NOR",
                 };
@@ -235,7 +247,7 @@ impl Editor {
                 let text_color = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
                 self.surface
                     .set_string(1, self.size.1 - 1, mode, text_color);
-                if let Some(path) = state.path() {
+                if let Some(path) = view.state.path() {
                     self.surface
                         .set_string(6, self.size.1 - 1, path.to_string_lossy(), text_color);
                 }
@@ -247,19 +259,19 @@ impl Editor {
                 std::mem::swap(&mut self.surface, &mut self.cache);
 
                 // set cursor shape
-                match state.mode() {
+                match view.state.mode() {
                     Mode::Insert => write!(stdout, "\x1B[6 q"),
                     Mode::Normal => write!(stdout, "\x1B[2 q"),
                 };
 
                 // render the cursor
-                let pos = state.selection().cursor();
-                let coords = coords_at_pos(&state.doc().slice(..), pos);
+                let pos = view.state.selection().cursor();
+                let coords = coords_at_pos(&view.state.doc().slice(..), pos);
                 execute!(
                     stdout,
                     cursor::MoveTo(
                         coords.col as u16 + viewport.x,
-                        coords.row as u16 - self.first_line + viewport.y,
+                        coords.row as u16 - view.first_line + viewport.y,
                     )
                 );
             }
@@ -295,29 +307,29 @@ impl Editor {
                     break;
                 }
                 Some(Ok(Event::Key(event))) => {
-                    if let Some(state) = &mut self.state {
-                        match state.mode() {
+                    if let Some(view) = &mut self.view {
+                        match view.state.mode() {
                             Mode::Insert => {
                                 match event {
                                     KeyEvent {
                                         code: KeyCode::Esc, ..
-                                    } => helix_core::commands::normal_mode(state, 1),
+                                    } => commands::normal_mode(view, 1),
                                     KeyEvent {
                                         code: KeyCode::Backspace,
                                         ..
-                                    } => helix_core::commands::delete_char_backward(state, 1),
+                                    } => commands::delete_char_backward(view, 1),
                                     KeyEvent {
                                         code: KeyCode::Delete,
                                         ..
-                                    } => helix_core::commands::delete_char_forward(state, 1),
+                                    } => commands::delete_char_forward(view, 1),
                                     KeyEvent {
                                         code: KeyCode::Char(c),
                                         ..
-                                    } => helix_core::commands::insert_char(state, c),
+                                    } => commands::insert_char(view, c),
                                     KeyEvent {
                                         code: KeyCode::Enter,
                                         ..
-                                    } => helix_core::commands::insert_char(state, '\n'),
+                                    } => commands::insert_char(view, '\n'),
                                     _ => (), // skip
                                 }
                                 // TODO: simplistic ensure cursor in view for now
@@ -329,7 +341,7 @@ impl Editor {
                                 // TODO: handle modes and sequences (`gg`)
                                 if let Some(command) = keymap.get(&event) {
                                     // TODO: handle count other than 1
-                                    command(state, 1);
+                                    command(view, 1);
 
                                     // TODO: simplistic ensure cursor in view for now
                                     self.ensure_cursor_in_view();
@@ -350,10 +362,10 @@ impl Editor {
     }
 
     fn ensure_cursor_in_view(&mut self) {
-        if let Some(state) = &mut self.state {
-            let cursor = state.selection().cursor();
-            let line = state.doc().char_to_line(cursor) as u16;
-            let document_end = self.first_line + self.size.1.saturating_sub(1) - 1;
+        if let Some(view) = &mut self.view {
+            let cursor = view.state.selection().cursor();
+            let line = view.state.doc().char_to_line(cursor) as u16;
+            let document_end = view.first_line + self.size.1.saturating_sub(1) - 1;
 
             let padding = 5u16;
 
@@ -361,10 +373,10 @@ impl Editor {
 
             if line > document_end.saturating_sub(padding) {
                 // scroll down
-                self.first_line += line - (document_end.saturating_sub(padding));
-            } else if line < self.first_line + padding {
+                view.first_line += line - (document_end.saturating_sub(padding));
+            } else if line < view.first_line + padding {
                 // scroll up
-                self.first_line = line.saturating_sub(padding);
+                view.first_line = line.saturating_sub(padding);
             }
         }
     }
