@@ -104,13 +104,24 @@ impl Editor {
                     state.doc().len_lines() - 1,
                 );
 
+                let range = {
+                    // calculate viewport byte ranges
+                    let start = state.doc().line_to_byte(self.first_line.into());
+                    let end = state.doc().line_to_byte(last_line)
+                        + state.doc().line(last_line).len_bytes();
+
+                    start..end
+                };
+
+                // TODO: range doesn't actually restrict source, just highlight range
+
                 // TODO: cache highlight results
                 // TODO: only recalculate when state.doc is actually modified
                 let highlights: Vec<_> = state
                     .syntax
                     .as_mut()
                     .unwrap()
-                    .highlight_iter(source_code.as_bytes(), None, |_| None)
+                    .highlight_iter(source_code.as_bytes(), Some(range), None, |_| None)
                     .unwrap()
                     .collect(); // TODO: we collect here to avoid double borrow, fix later
 

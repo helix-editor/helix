@@ -77,6 +77,7 @@ impl Syntax {
     pub fn highlight_iter<'a>(
         &'a mut self,
         source: &'a [u8],
+        range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
         mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
     ) -> Result<impl Iterator<Item = Result<HighlightEvent, Error>> + 'a, Error> {
@@ -90,6 +91,12 @@ impl Syntax {
         let query_ref = unsafe { mem::transmute::<_, &'static mut Query>(&mut self.config.query) };
         let config_ref =
             unsafe { mem::transmute::<_, &'static HighlightConfiguration>(&self.config) };
+
+        // TODO: if reusing cursors this might need resetting
+        if let Some(range) = &range {
+            cursor_ref.set_byte_range(range.start, range.end);
+        }
+
         let captures = cursor_ref
             .captures(query_ref, tree_ref.root_node(), move |n: Node| {
                 &source[n.byte_range()]
@@ -119,7 +126,7 @@ impl Syntax {
 
         let mut result = HighlightIter {
             source,
-            byte_offset: 0,
+            byte_offset: range.map(|r| r.start).unwrap_or(0), // TODO: simplify
             injection_callback,
             cancellation_flag,
             highlighter: self,
@@ -1098,7 +1105,8 @@ where
                 layer.highlight_end_stack.pop();
                 return self.emit_event(end_byte, Some(HighlightEvent::HighlightEnd));
             } else {
-                return self.emit_event(self.source.len(), None);
+                // return self.emit_event(self.source.len(), None);
+                return None;
             };
 
             let (mut match_, capture_index) = layer.captures.next().unwrap();
