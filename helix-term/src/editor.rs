@@ -376,6 +376,14 @@ impl Editor {
 
         execute!(stdout, terminal::EnterAlternateScreen)?;
 
+        // Exit the alternate screen and disable raw mode before panicking
+        let hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
+            disable_raw_mode();
+            hook(info);
+        }));
+
         self.event_loop().await;
 
         // reset cursor shape
