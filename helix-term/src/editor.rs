@@ -277,7 +277,17 @@ impl Editor {
             // Handle key events
             let mut event = reader.next().await;
             match event {
-                // TODO: handle resize events
+                Some(Ok(Event::Resize(width, height))) => {
+                    self.size = (width, height);
+                    let area = Rect::new(0, 0, width, height);
+                    self.surface = Surface::empty(area);
+                    self.cache = Surface::empty(area);
+
+                    // TODO: simplistic ensure cursor in view for now
+                    self.ensure_cursor_in_view();
+
+                    self.render();
+                }
                 Some(Ok(Event::Key(KeyEvent {
                     code: KeyCode::Char('q'),
                     ..
@@ -310,6 +320,9 @@ impl Editor {
                                     } => helix_core::commands::insert_char(state, '\n'),
                                     _ => (), // skip
                                 }
+                                // TODO: simplistic ensure cursor in view for now
+                                self.ensure_cursor_in_view();
+
                                 self.render();
                             }
                             Mode::Normal => {
@@ -317,6 +330,9 @@ impl Editor {
                                 if let Some(command) = keymap.get(&event) {
                                     // TODO: handle count other than 1
                                     command(state, 1);
+
+                                    // TODO: simplistic ensure cursor in view for now
+                                    self.ensure_cursor_in_view();
 
                                     self.render();
                                 }
@@ -329,6 +345,26 @@ impl Editor {
                 }
                 Some(Err(x)) => panic!(x),
                 None => break,
+            }
+        }
+    }
+
+    fn ensure_cursor_in_view(&mut self) {
+        if let Some(state) = &mut self.state {
+            let cursor = state.selection().cursor();
+            let line = state.doc().char_to_line(cursor) as u16;
+            let document_end = self.first_line + self.size.1.saturating_sub(1) - 1;
+
+            let padding = 5u16;
+
+            // TODO: side scroll
+
+            if line > document_end.saturating_sub(padding) {
+                // scroll down
+                self.first_line += line - (document_end.saturating_sub(padding));
+            } else if line < self.first_line + padding {
+                // scroll up
+                self.first_line = line.saturating_sub(padding);
             }
         }
     }
