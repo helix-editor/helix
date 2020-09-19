@@ -23,7 +23,6 @@ static EX: smol::Executor = smol::Executor::new();
 
 fn main() -> Result<(), Error> {
     let args: Args = argh::from_env();
-    println!("{:?}", args.files);
 
     for _ in 0..num_cpus::get() {
         std::thread::spawn(move || smol::block_on(EX.run(smol::future::pending::<()>())));
