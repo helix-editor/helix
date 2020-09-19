@@ -173,7 +173,7 @@ impl LanguageLayer {
         self.tree.as_ref().unwrap()
     }
 
-    fn parse<'a>(
+    fn parse(
         &mut self,
         parser: &mut Parser,
         config: &HighlightConfiguration,

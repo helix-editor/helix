@@ -80,6 +80,8 @@ impl Editor {
     }
 
     fn render(&mut self) {
+        use tui::backend::Backend;
+        use tui::style::Color;
         // TODO: ideally not mut but highlights require it because of cursor cache
         match &mut self.state {
             Some(state) => {
@@ -87,8 +89,20 @@ impl Editor {
                 let mut stdout = stdout();
                 self.surface.reset(); // reset is faster than allocating new empty surface
 
+                //  clear with background color
+                self.surface
+                    .set_style(area, self.theme.get("ui.background"));
+
+                let offset = 5 + 1; // 5 linenr + 1 gutter
+                let viewport = Rect::new(offset, 0, self.size.0, self.size.1 - 1); // - 1 for statusline
+
                 // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
                 let source_code = state.doc().to_string();
+
+                let last_line = std::cmp::min(
+                    (self.first_line + viewport.height - 1) as usize,
+                    state.doc().len_lines() - 1,
+                );
 
                 // TODO: cache highlight results
                 // TODO: only recalculate when state.doc is actually modified
@@ -102,12 +116,10 @@ impl Editor {
 
                 let mut spans = Vec::new();
 
-                let offset = 2;
-
                 let mut visual_x = 0;
-                let mut line = 0;
+                let mut line = 0u16;
 
-                for event in highlights {
+                'outer: for event in highlights {
                     match event.unwrap() {
                         HighlightEvent::HighlightStart(span) => {
                             spans.push(span);
@@ -125,8 +137,6 @@ impl Editor {
 
                             use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                            use tui::style::Color;
-
                             let style = match spans.first() {
                                 Some(span) => self.theme.get(self.theme.scopes()[span.0].as_str()),
                                 None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
@@ -143,6 +153,11 @@ impl Editor {
                                 if grapheme == "\n" {
                                     visual_x = 0;
                                     line += 1;
+
+                                    // TODO: with proper iter this shouldn't be necessary
+                                    if line >= viewport.height {
+                                        break 'outer;
+                                    }
                                 } else {
                                     // Cow will prevent allocations if span contained in a single slice
                                     // which should really be the majority case
@@ -163,7 +178,13 @@ impl Editor {
                     }
                 }
 
-                //
+                let mut line = 0;
+                let style = self.theme.get("ui.linenr");
+                for i in self.first_line..(last_line as u16) {
+                    self.surface
+                        .set_stringn(0, line, format!("{:>5}", i + 1), 5, style); // lavender
+                    line += 1;
+                }
 
                 // let lines = state
                 //     .doc
@@ -190,19 +211,23 @@ impl Editor {
                 //     // TODO: don't highlight next char in append mode
                 // }
 
-                // let mode = match state.mode {
-                //     Mode::Insert => "INS",
-                //     Mode::Normal => "NOR",
-                // };
-
-                // execute!(
-                //     stdout,
-                //     SetForegroundColor(Color::Reset),
-                //     cursor::MoveTo(0, self.size.1),
-                //     Print(mode)
-                // );
-
-                use tui::backend::Backend;
+                // statusline
+                let mode = match state.mode() {
+                    Mode::Insert => "INS",
+                    Mode::Normal => "NOR",
+                };
+                self.surface.set_style(
+                    Rect::new(0, self.size.1 - 1, self.size.0, 1),
+                    self.theme.get("ui.statusline"),
+                );
+                // TODO: unfocused one with different color
+                let text_color = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
+                self.surface
+                    .set_string(1, self.size.1 - 1, mode, text_color);
+                if let Some(path) = state.path() {
+                    self.surface
+                        .set_string(6, self.size.1 - 1, path.to_string_lossy(), text_color);
+                }
 
                 self.terminal
                     .backend_mut()
@@ -221,7 +246,10 @@ impl Editor {
                 let coords = coords_at_pos(&state.doc().slice(..), pos);
                 execute!(
                     stdout,
-                    cursor::MoveTo((coords.col + 2) as u16, coords.row as u16)
+                    cursor::MoveTo(
+                        coords.col as u16 + viewport.x,
+                        coords.row as u16 - self.first_line + viewport.y,
+                    )
                 );
             }
             None => (),

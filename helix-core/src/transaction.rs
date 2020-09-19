@@ -243,13 +243,13 @@ impl ChangeSet {
             let old_end = old_pos + len;
 
             match change {
-                Retain(_len) => {
+                Retain(_) => {
                     if old_end > pos {
                         return new_pos + (pos - old_pos);
                     }
                     new_pos += len;
                 }
-                Delete(_len) => {
+                Delete(_) => {
                     // a subsequent ins means a replace, consume it
                     let ins = if let Some(Insert(s)) = iter.peek() {
                         iter.next();

@@ -102,6 +102,11 @@ impl State {
         self.mode
     }
 
+    #[inline]
+    pub fn path(&self) -> Option<&PathBuf> {
+        self.path.as_ref()
+    }
+
     // pub fn doc<R>(&self, range: R) -> RopeSlice
     // where
     //     R: std::ops::RangeBounds<usize>,
