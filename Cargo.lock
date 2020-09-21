@@ -410,9 +410,19 @@ dependencies = [
  "argh",
  "crossterm",
  "helix-core",
- "helix-syntax",
+ "helix-view",
  "num_cpus",
  "smol",
+ "tui",
+]
+
+[[package]]
+name = "helix-view"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crossterm",
+ "helix-core",
  "tui",
 ]
 

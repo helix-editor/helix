@@ -1,11 +1,6 @@
 #![allow(unused)]
-#[macro_use]
-mod macros;
 
-mod commands;
 mod editor;
-mod keymap;
-mod theme;
 
 use editor::Editor;
 

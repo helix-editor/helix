@@ -4,7 +4,7 @@ use anyhow::Error;
 
 use std::path::PathBuf;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
     Insert,

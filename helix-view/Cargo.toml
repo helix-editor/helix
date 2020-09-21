@@ -1,0 +1,18 @@
+[package]
+name = "helix-view"
+version = "0.1.0"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+term = ["tui", "crossterm"]
+
+[dependencies]
+anyhow = "1.0.32"
+helix-core = { path = "../helix-core" }
+
+# Conversion traits
+tui = { version = "0.10.0", default-features = false, features = ["crossterm"], optional = true}
+crossterm = { version = "0.17", features = ["event-stream"], optional = true}

@@ -12,12 +12,12 @@ path = "src/main.rs"
 
 [dependencies]
 helix-core = { path = "../helix-core" }
-helix-syntax = { path = "../helix-syntax" }
+helix-view = { path = "../helix-view", features = ["term"]}
 
 anyhow = "1"
 argh = "0.1.3"
-crossterm = { version = "0.17", features = ["event-stream"] }
 
 smol = "1"
 num_cpus = "1.13.0"
 tui = { version = "0.10.0", default-features = false, features = ["crossterm"] }
+crossterm = { version = "0.17", features = ["event-stream"] }

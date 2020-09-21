@@ -1,10 +1,10 @@
 use helix_core::{
     graphemes,
     state::{Direction, Granularity, Mode, State},
-    ChangeSet, Range, Selection, Tendril, Transaction,
+    Range, Selection, Tendril, Transaction,
 };
 
-use crate::editor::View;
+use crate::view::View;
 
 /// A command is a function that takes the current state and a count, and does a side-effect on the
 /// state (usually by creating and applying a transaction).

@@ -1,10 +1,11 @@
-use crate::{commands, keymap, theme::Theme, Args};
+use crate::Args;
 use helix_core::{
     state::coords_at_pos,
     state::Mode,
     syntax::{HighlightConfiguration, HighlightEvent, Highlighter},
     State,
 };
+use helix_view::{commands, keymap, View};
 
 use std::{
     io::{self, stdout, Write},
@@ -31,19 +32,12 @@ type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 static EX: smol::Executor = smol::Executor::new();
 
-pub struct View {
-    pub state: State,
-    pub first_line: u16,
-    pub size: (u16, u16),
-}
-
 pub struct Editor {
     terminal: Terminal,
     view: Option<View>,
     size: (u16, u16),
     surface: Surface,
     cache: Surface,
-    theme: Theme,
 }
 
 impl Editor {
@@ -53,7 +47,6 @@ impl Editor {
         let mut terminal = Terminal::new(backend)?;
         let size = terminal::size().unwrap();
         let area = Rect::new(0, 0, size.0, size.1);
-        let theme = Theme::default();
 
         let mut editor = Editor {
             terminal,
@@ -61,7 +54,6 @@ impl Editor {
             size,
             surface: Surface::empty(area),
             cache: Surface::empty(area),
-            theme,
             // TODO; move to state
         };
 
@@ -73,20 +65,7 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
-        let mut state = State::load(path)?;
-        state
-            .syntax
-            .as_mut()
-            .unwrap()
-            .configure(self.theme.scopes());
-
-        let view = View {
-            state,
-            first_line: 0,
-            size: self.size,
-        };
-
-        self.view = Some(view);
+        self.view = Some(View::open(path, self.size)?);
         Ok(())
     }
 
@@ -102,7 +81,7 @@ impl Editor {
 
                 //  clear with background color
                 self.surface
-                    .set_style(area, self.theme.get("ui.background"));
+                    .set_style(area, view.theme.get("ui.background").into());
 
                 let offset = 5 + 1; // 5 linenr + 1 gutter
                 let viewport = Rect::new(offset, 0, self.size.0, self.size.1 - 1); // - 1 for statusline
@@ -161,7 +140,9 @@ impl Editor {
                             use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                             let style = match spans.first() {
-                                Some(span) => self.theme.get(self.theme.scopes()[span.0].as_str()),
+                                Some(span) => {
+                                    view.theme.get(view.theme.scopes()[span.0].as_str()).into()
+                                }
                                 None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
                             };
 
@@ -202,7 +183,7 @@ impl Editor {
                 }
 
                 let mut line = 0;
-                let style = self.theme.get("ui.linenr");
+                let style: Style = view.theme.get("ui.linenr").into();
                 for i in view.first_line..(last_line as u16) {
                     self.surface
                         .set_stringn(0, line, format!("{:>5}", i + 1), 5, style); // lavender
@@ -241,7 +222,7 @@ impl Editor {
                 };
                 self.surface.set_style(
                     Rect::new(0, self.size.1 - 1, self.size.0, 1),
-                    self.theme.get("ui.statusline"),
+                    view.theme.get("ui.statusline").into(),
                 );
                 // TODO: unfocused one with different color
                 let text_color = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
@@ -296,7 +277,9 @@ impl Editor {
                     self.cache = Surface::empty(area);
 
                     // TODO: simplistic ensure cursor in view for now
-                    self.ensure_cursor_in_view();
+                    if let Some(view) = &mut self.view {
+                        view.ensure_cursor_in_view()
+                    };
 
                     self.render();
                 }
@@ -333,18 +316,19 @@ impl Editor {
                                     _ => (), // skip
                                 }
                                 // TODO: simplistic ensure cursor in view for now
-                                self.ensure_cursor_in_view();
+                                view.ensure_cursor_in_view();
 
                                 self.render();
                             }
                             Mode::Normal => {
                                 // TODO: handle modes and sequences (`gg`)
-                                if let Some(command) = keymap.get(&event) {
+                                let keys = vec![event];
+                                if let Some(command) = keymap[&Mode::Normal].get(&keys) {
                                     // TODO: handle count other than 1
                                     command(view, 1);
 
                                     // TODO: simplistic ensure cursor in view for now
-                                    self.ensure_cursor_in_view();
+                                    view.ensure_cursor_in_view();
 
                                     self.render();
                                 }
@@ -357,26 +341,6 @@ impl Editor {
                 }
                 Some(Err(x)) => panic!(x),
                 None => break,
-            }
-        }
-    }
-
-    fn ensure_cursor_in_view(&mut self) {
-        if let Some(view) = &mut self.view {
-            let cursor = view.state.selection().cursor();
-            let line = view.state.doc().char_to_line(cursor) as u16;
-            let document_end = view.first_line + self.size.1.saturating_sub(1) - 1;
-
-            let padding = 5u16;
-
-            // TODO: side scroll
-
-            if line > document_end.saturating_sub(padding) {
-                // scroll down
-                view.first_line += line - (document_end.saturating_sub(padding));
-            } else if line < view.first_line + padding {
-                // scroll up
-                view.first_line = line.saturating_sub(padding);
             }
         }
     }

@@ -1,9 +1,5 @@
 use crate::commands::{self, Command};
-use crossterm::{
-    event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers},
-    execute,
-    style::Print,
-};
+use helix_core::{hashmap, state};
 use std::collections::HashMap;
 
 // Kakoune-inspired:
@@ -79,56 +75,57 @@ use std::collections::HashMap;
 //      }
 // }
 
-type Keymap = HashMap<Key, Command>;
+#[cfg(feature = "term")]
+pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 
-pub fn default() -> Keymap {
+// TODO: could be trie based
+type Keymap = HashMap<Vec<Key>, Command>;
+type Keymaps = HashMap<state::Mode, Keymap>;
+
+pub fn default() -> Keymaps {
     hashmap!(
-        Key {
-            code: KeyCode::Char('h'),
-            modifiers: Modifiers::NONE
-        } => commands::move_char_left as Command,
-        Key {
-            code: KeyCode::Char('j'),
-            modifiers: Modifiers::NONE
-        } => commands::move_line_down as Command,
-        Key {
-            code: KeyCode::Char('k'),
-            modifiers: Modifiers::NONE
-        } => commands::move_line_up as Command,
-        Key {
-            code: KeyCode::Char('l'),
-            modifiers: Modifiers::NONE
-        } => commands::move_char_right as Command,
-        Key {
-            code: KeyCode::Char('i'),
-            modifiers: Modifiers::NONE
-        } => commands::insert_mode as Command,
-        Key {
-            code: KeyCode::Char('I'),
-            modifiers: Modifiers::SHIFT,
-        } => commands::prepend_to_line as Command,
-        Key {
-            code: KeyCode::Char('a'),
-            modifiers: Modifiers::NONE
-        } => commands::append_mode as Command,
-        Key {
-            code: KeyCode::Char('A'),
-            modifiers: Modifiers::SHIFT,
-        } => commands::append_to_line as Command,
-        Key {
-            code: KeyCode::Char('o'),
-            modifiers: Modifiers::NONE
-        } => commands::open_below as Command,
-        Key {
-            code: KeyCode::Esc,
-            modifiers: Modifiers::NONE
-        } => commands::normal_mode as Command,
+        state::Mode::Normal =>
+            hashmap!(
+                vec![Key {
+                    code: KeyCode::Char('h'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_char_left as Command,
+                vec![Key {
+                    code: KeyCode::Char('j'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_line_down as Command,
+                vec![Key {
+                    code: KeyCode::Char('k'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_line_up as Command,
+                vec![Key {
+                    code: KeyCode::Char('l'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_char_right as Command,
+                vec![Key {
+                    code: KeyCode::Char('i'),
+                    modifiers: Modifiers::NONE
+                }] => commands::insert_mode as Command,
+                vec![Key {
+                    code: KeyCode::Char('I'),
+                    modifiers: Modifiers::SHIFT,
+                }] => commands::prepend_to_line as Command,
+                vec![Key {
+                    code: KeyCode::Char('a'),
+                    modifiers: Modifiers::NONE
+                }] => commands::append_mode as Command,
+                vec![Key {
+                    code: KeyCode::Char('A'),
+                    modifiers: Modifiers::SHIFT,
+                }] => commands::append_to_line as Command,
+                vec![Key {
+                    code: KeyCode::Char('o'),
+                    modifiers: Modifiers::NONE
+                }] => commands::open_below as Command,
+                vec![Key {
+                    code: KeyCode::Esc,
+                    modifiers: Modifiers::NONE
+                }] => commands::normal_mode as Command,
+            )
     )
-
-    // hashmap!(
-    //     Key {
-    //         code: KeyCode::Esc,
-    //         modifiers: Modifiers::NONE
-    //     } => commands::normal_mode as Command,
-    // )
 }

@@ -1,5 +1,86 @@
+use helix_core::hashmap;
 use std::collections::HashMap;
-use tui::style::{Color, Style};
+
+#[cfg(feature = "term")]
+pub use tui::style::{Color, Style};
+
+// #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
+// pub struct Color {
+//     pub r: u8,
+//     pub g: u8,
+//     pub b: u8,
+// }
+
+// impl Color {
+//     pub fn new(r: u8, g: u8, b: u8) -> Self {
+//         Self { r, g, b }
+//     }
+// }
+
+// #[cfg(feature = "term")]
+// impl Into<tui::style::Color> for Color {
+//     fn into(self) -> tui::style::Color {
+//         tui::style::Color::Rgb(self.r, self.g, self.b)
+//     }
+// }
+
+// impl std::str::FromStr for Color {
+//     type Err = ();
+
+//     /// Tries to parse a string (`'#FFFFFF'` or `'FFFFFF'`) into RGB.
+//     fn from_str(input: &str) -> Result<Self, Self::Err> {
+//         let input = input.trim();
+//         let input = match (input.chars().next(), input.len()) {
+//             (Some('#'), 7) => &input[1..],
+//             (_, 6) => input,
+//             _ => return Err(()),
+//         };
+
+//         u32::from_str_radix(&input, 16)
+//             .map(|s| Color {
+//                 r: ((s >> 16) & 0xFF) as u8,
+//                 g: ((s >> 8) & 0xFF) as u8,
+//                 b: (s & 0xFF) as u8,
+//             })
+//             .map_err(|_| ())
+//     }
+// }
+
+// #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
+// pub struct Style {
+//     pub fg: Option<Color>,
+//     pub bg: Option<Color>,
+//     // TODO: modifiers (bold, underline, italic, etc)
+// }
+
+// impl Style {
+//     pub fn fg(mut self, fg: Color) -> Self {
+//         self.fg = Some(fg);
+//         self
+//     }
+
+//     pub fn bg(mut self, bg: Color) -> Self {
+//         self.bg = Some(bg);
+//         self
+//     }
+// }
+
+// #[cfg(feature = "term")]
+// impl Into<tui::style::Style> for Style {
+//     fn into(self) -> tui::style::Style {
+//         let style = tui::style::Style::default();
+
+//         if let Some(fg) = self.fg {
+//             style.fg(fg.into());
+//         }
+
+//         if let Some(bg) = self.bg {
+//             style.bg(bg.into());
+//         }
+
+//         style
+//     }
+// }
 
 /// Color theme for syntax highlighting.
 pub struct Theme {

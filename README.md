@@ -1,3 +1,12 @@
+# Helix
+
+| Crate        | Description                                            |
+| -----------  | -----------                                            |
+| helix-core   | Core editing primitives, functional.                   |
+| helix-syntax | Tree-sitter grammars                                   |
+| helix-view   | UI abstractions for use in backends, imperative shell. |
+| helix-term   | Terminal UI                                            |
+
 - server-client architecture via gRPC, UI separate from core
 - multi cursor based editing and slicing
 - WASM based plugins (builtin LSP & fuzzy file finder)
