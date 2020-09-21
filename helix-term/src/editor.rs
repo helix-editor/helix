@@ -278,6 +278,7 @@ impl Editor {
 
                     // TODO: simplistic ensure cursor in view for now
                     if let Some(view) = &mut self.view {
+                        view.size = self.size;
                         view.ensure_cursor_in_view()
                     };
 
