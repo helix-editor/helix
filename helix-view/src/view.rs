@@ -14,9 +14,8 @@ pub struct View {
 
 impl View {
     pub fn open(path: PathBuf, size: (u16, u16)) -> Result<View, Error> {
-        let mut state = State::load(path)?;
         let theme = Theme::default();
-        state.syntax.as_mut().unwrap().configure(theme.scopes());
+        let state = State::load(path, theme.scopes())?;
 
         let view = View {
             state,

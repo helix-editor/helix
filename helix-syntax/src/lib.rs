@@ -82,6 +82,7 @@ mk_langs!(
     (Rust, tree_sitter_rust),
     (Scala, tree_sitter_scala),
     (Swift, tree_sitter_swift),
+    (Toml, tree_sitter_toml),
     (Tsx, tree_sitter_tsx),
     (Typescript, tree_sitter_typescript)
 );

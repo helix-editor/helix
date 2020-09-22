@@ -2,21 +2,161 @@ use crate::{Change, Rope, RopeSlice, Transaction};
 pub use helix_syntax::LANG;
 pub use helix_syntax::{get_language, get_language_name};
 
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use once_cell::sync::OnceCell;
+
+// largely based on tree-sitter/cli/src/loader.rs
+pub struct LanguageConfiguration {
+    pub(crate) scope: String,           // source.rust
+    pub(crate) file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+
+    pub(crate) path: PathBuf,
+
+    // content_regex
+    // injection_regex
+    // first_line_regex
+    //
+    // root_path
+    //
+    pub(crate) language_id: LANG,
+    pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
+    // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
+}
+
+impl LanguageConfiguration {
+    pub fn highlight_config(
+        &self,
+        scopes: &[String],
+    ) -> Result<Option<&Arc<HighlightConfiguration>>, anyhow::Error> {
+        self.highlight_config
+            .get_or_try_init(|| {
+                // let name = get_language_name(&self.language_id);
+
+                let highlights_query =
+                    std::fs::read_to_string(self.path.join("queries/highlights.scm"))
+                        .unwrap_or(String::new());
+
+                let injections_query =
+                    std::fs::read_to_string(self.path.join("queries/injections.scm"))
+                        .unwrap_or(String::new());
+
+                let locals_query = "";
+
+                if highlights_query.is_empty() {
+                    Ok(None)
+                } else {
+                    let language = get_language(&self.language_id);
+                    let mut config = HighlightConfiguration::new(
+                        language,
+                        &highlights_query,
+                        &injections_query,
+                        &locals_query,
+                    )
+                    .unwrap(); // TODO: no unwrap
+                    config.configure(&scopes);
+                    Ok(Some(Arc::new(config)))
+                }
+            })
+            .map(Option::as_ref)
+    }
+}
+
+use once_cell::sync::Lazy;
+
+pub(crate) static LOADER: Lazy<Loader> = Lazy::new(|| Loader::init());
+
+pub struct Loader {
+    // highlight_names ?
+    language_configs: Vec<Arc<LanguageConfiguration>>,
+    language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+}
+
+impl Loader {
+    fn init() -> Loader {
+        let mut loader = Loader {
+            language_configs: Vec::new(),
+            language_config_ids_by_file_type: HashMap::new(),
+        };
+
+        // hardcoded from now, might load from toml
+        let configs = vec![
+            LanguageConfiguration {
+                scope: "source.rust".to_string(),
+                file_types: vec!["rs".to_string()],
+                language_id: LANG::Rust,
+                highlight_config: OnceCell::new(),
+                //
+                path: "../helix-syntax/languages/tree-sitter-rust".into(),
+            },
+            LanguageConfiguration {
+                scope: "source.toml".to_string(),
+                file_types: vec!["toml".to_string()],
+                language_id: LANG::Toml,
+                highlight_config: OnceCell::new(),
+                //
+                path: "../helix-syntax/languages/tree-sitter-toml".into(),
+            },
+        ];
+
+        for config in configs {
+            // get the next id
+            let language_id = loader.language_configs.len();
+
+            for file_type in &config.file_types {
+                // entry().or_insert(Vec::new).push(language_id);
+                loader
+                    .language_config_ids_by_file_type
+                    .insert(file_type.clone(), language_id);
+            }
+
+            loader.language_configs.push(Arc::new(config));
+        }
+
+        loader
+    }
+
+    pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
+        // Find all the language configurations that match this file name
+        // or a suffix of the file name.
+        let configuration_id = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .and_then(|file_name| self.language_config_ids_by_file_type.get(file_name))
+            .or_else(|| {
+                path.extension()
+                    .and_then(|extension| extension.to_str())
+                    .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
+            });
+
+        configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
+
+        // TODO: content_regex handling conflict resolution
+    }
+}
+
+//
+
 pub struct Syntax {
-    grammar: Language,
+    // grammar: Grammar,
     parser: Parser,
     cursors: Vec<QueryCursor>,
 
-    config: HighlightConfiguration,
+    config: Arc<HighlightConfiguration>,
 
     root_layer: LanguageLayer,
 }
 
 impl Syntax {
     // buffer, grammar, config, grammars, sync_timeout?
-    pub fn new(language: LANG, source: &Rope, config: HighlightConfiguration) -> Self {
+    pub fn new(
+        /*language: LANG,*/ source: &Rope,
+        config: Arc<HighlightConfiguration>,
+    ) -> Self {
         // fetch grammar for parser based on language string
-        let grammar = get_language(&language);
+        // let grammar = get_language(&language);
         let parser = Parser::new();
 
         let root_layer = LanguageLayer::new();
@@ -25,7 +165,7 @@ impl Syntax {
         // track scope_descriptor: a Vec of scopes for item in tree
 
         let mut syntax = Self {
-            grammar,
+            // grammar,
             parser,
             cursors: Vec::new(),
             config,
@@ -46,10 +186,6 @@ impl Syntax {
             }],
         );
         syntax
-    }
-
-    pub fn configure(&mut self, scopes: &[String]) {
-        self.config.configure(scopes)
     }
 
     pub fn update(&mut self, source: &Rope, changeset: &ChangeSet) -> Result<(), Error> {
@@ -88,9 +224,9 @@ impl Syntax {
         let mut cursor = QueryCursor::new(); // reuse a pool
         let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(self.tree()) };
         let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-        let query_ref = unsafe { mem::transmute::<_, &'static mut Query>(&mut self.config.query) };
+        let query_ref = unsafe { mem::transmute::<_, &'static Query>(&self.config.query) };
         let config_ref =
-            unsafe { mem::transmute::<_, &'static HighlightConfiguration>(&self.config) };
+            unsafe { mem::transmute::<_, &'static HighlightConfiguration>(self.config.as_ref()) };
 
         // TODO: if reusing cursors this might need resetting
         if let Some(range) = &range {
@@ -432,8 +568,8 @@ impl LanguageLayer {
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
-    Language, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError, QueryMatch,
-    Range, Tree,
+    Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
+    QueryMatch, Range, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -462,7 +598,7 @@ pub enum HighlightEvent {
 ///
 /// This struct is immutable and can be shared between threads.
 pub struct HighlightConfiguration {
-    pub language: Language,
+    pub language: Grammar,
     pub query: Query,
     combined_injections_query: Option<Query>,
     locals_pattern_index: usize,
@@ -475,16 +611,6 @@ pub struct HighlightConfiguration {
     local_def_capture_index: Option<u32>,
     local_def_value_capture_index: Option<u32>,
     local_ref_capture_index: Option<u32>,
-}
-
-/// Performs syntax highlighting, recognizing a given list of highlight names.
-///
-/// For the best performance `Highlighter` values should be reused between
-/// syntax highlighting calls. A separate highlighter is needed for each thread that
-/// is performing highlighting.
-pub struct Highlighter {
-    parser: Parser,
-    cursors: Vec<QueryCursor>,
 }
 
 #[derive(Debug)]
@@ -527,70 +653,13 @@ struct HighlightIterLayer<'a> {
     depth: usize,
 }
 
-impl Default for Highlighter {
-    fn default() -> Self {
-        Highlighter {
-            parser: Parser::new(),
-            cursors: Vec::new(),
-        }
-    }
-}
-
-impl Highlighter {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn parser(&mut self) -> &mut Parser {
-        &mut self.parser
-    }
-
-    // /// Iterate over the highlighted regions for a given slice of source code.
-    // pub fn highlight<'a>(
-    //     &'a mut self,
-    //     config: &'a HighlightConfiguration,
-    //     source: &'a [u8],
-    //     cancellation_flag: Option<&'a AtomicUsize>,
-    //     mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
-    // ) -> Result<impl Iterator<Item = Result<HighlightEvent, Error>> + 'a, Error> {
-    //     let layers = HighlightIterLayer::new(
-    //         source,
-    //         self,
-    //         cancellation_flag,
-    //         &mut injection_callback,
-    //         config,
-    //         0,
-    //         vec![Range {
-    //             start_byte: 0,
-    //             end_byte: usize::MAX,
-    //             start_point: Point::new(0, 0),
-    //             end_point: Point::new(usize::MAX, usize::MAX),
-    //         }],
-    //     )?;
-    //     assert_ne!(layers.len(), 0);
-    //     let mut result = HighlightIter {
-    //         source,
-    //         byte_offset: 0,
-    //         injection_callback,
-    //         cancellation_flag,
-    //         highlighter: self,
-    //         iter_count: 0,
-    //         layers,
-    //         next_event: None,
-    //         last_highlight_range: None,
-    //     };
-    //     result.sort_layers();
-    //     Ok(result)
-    // }
-}
-
 impl HighlightConfiguration {
-    /// Creates a `HighlightConfiguration` for a given `Language` and set of highlighting
+    /// Creates a `HighlightConfiguration` for a given `Grammar` and set of highlighting
     /// queries.
     ///
     /// # Parameters
     ///
-    /// * `language`  - The Tree-sitter `Language` that should be used for parsing.
+    /// * `language`  - The Tree-sitter `Grammar` that should be used for parsing.
     /// * `highlights_query` - A string containing tree patterns for syntax highlighting. This
     ///   should be non-empty, otherwise no syntax highlights will be added.
     /// * `injections_query` -  A string containing tree patterns for injecting other languages
@@ -600,7 +669,7 @@ impl HighlightConfiguration {
     ///
     /// Returns a `HighlightConfiguration` that can then be used with the `highlight` method.
     pub fn new(
-        language: Language,
+        language: Grammar,
         highlights_query: &str,
         injection_query: &str,
         locals_query: &str,

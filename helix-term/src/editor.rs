@@ -1,10 +1,5 @@
 use crate::Args;
-use helix_core::{
-    state::coords_at_pos,
-    state::Mode,
-    syntax::{HighlightConfiguration, HighlightEvent, Highlighter},
-    State,
-};
+use helix_core::{state::coords_at_pos, state::Mode, syntax::HighlightEvent, State};
 use helix_view::{commands, keymap, View};
 
 use std::{
@@ -107,14 +102,18 @@ impl Editor {
 
                 // TODO: cache highlight results
                 // TODO: only recalculate when state.doc is actually modified
-                let highlights: Vec<_> = view
-                    .state
-                    .syntax
-                    .as_mut()
-                    .unwrap()
-                    .highlight_iter(source_code.as_bytes(), Some(range), None, |_| None)
-                    .unwrap()
-                    .collect(); // TODO: we collect here to avoid double borrow, fix later
+                let highlights: Vec<_> = match view.state.syntax.as_mut() {
+                    Some(syntax) => {
+                        syntax
+                            .highlight_iter(source_code.as_bytes(), Some(range), None, |_| None)
+                            .unwrap()
+                            .collect() // TODO: we collect here to avoid double borrow, fix later
+                    }
+                    None => vec![Ok(HighlightEvent::Source {
+                        start: range.start,
+                        end: range.end,
+                    })],
+                };
 
                 let mut spans = Vec::new();
 

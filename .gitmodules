@@ -78,3 +78,7 @@
 	path = helix-syntax/languages/tree-sitter-swift
 	url = https://github.com/tree-sitter/tree-sitter-swift
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-toml"]
+	path = helix-syntax/languages/tree-sitter-toml
+	url = https://github.com/ikatyang/tree-sitter-toml
+	shallow = true

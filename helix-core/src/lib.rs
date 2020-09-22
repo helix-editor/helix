@@ -1,5 +1,4 @@
 #![allow(unused)]
-pub mod config;
 pub mod graphemes;
 pub mod macros;
 mod position;

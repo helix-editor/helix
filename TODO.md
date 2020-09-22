@@ -1,5 +1,6 @@
-- Implement backspace/delete
-- Implement marks
+helper methods: iterate over selection spans in the document.
+
+- Implement marks (superset of Selection/Range)
 - Implement style configs, tab settings
 - Visual tab width
 - Refactor tree-sitter-highlight to work like the atom one, recomputing partial tree updates.

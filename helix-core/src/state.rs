@@ -1,4 +1,5 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
+use crate::syntax::LOADER;
 use crate::{Position, Range, Rope, RopeSlice, Selection, Syntax};
 use anyhow::Error;
 
@@ -48,7 +49,8 @@ impl State {
         }
     }
 
-    pub fn load(path: PathBuf) -> Result<Self, Error> {
+    // TODO: passing scopes here is awkward
+    pub fn load(path: PathBuf, scopes: &[String]) -> Result<Self, Error> {
         use std::{env, fs::File, io::BufReader, path::PathBuf};
         let _current_dir = env::current_dir()?;
 
@@ -57,30 +59,17 @@ impl State {
         // TODO: create if not found
 
         let mut state = Self::new(doc);
+
+        if let Some(language_config) = LOADER.language_config_for_file_name(path.as_path()) {
+            let highlight_config = language_config.highlight_config(scopes).unwrap().unwrap();
+            // TODO: config.configure(scopes) is now delayed, is that ok?
+
+            let syntax = Syntax::new(&state.doc, highlight_config.clone());
+
+            state.syntax = Some(syntax);
+        };
+
         state.path = Some(path);
-
-        let language = helix_syntax::get_language(&helix_syntax::LANG::Rust);
-
-        let mut highlight_config = crate::syntax::HighlightConfiguration::new(
-            language,
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-            )
-            .unwrap(),
-            &std::fs::read_to_string(
-                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-            )
-            .unwrap(),
-            "", // locals.scm
-        )
-        .unwrap();
-
-        // TODO: config.configure(scopes) is now delayed, is that ok?
-
-        // TODO: get_language is called twice
-        let syntax = Syntax::new(helix_syntax::LANG::Rust, &state.doc, highlight_config);
-
-        state.syntax = Some(syntax);
 
         Ok(state)
     }
