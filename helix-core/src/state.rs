@@ -154,9 +154,89 @@ impl State {
             (Direction::Forward, Granularity::Character) => {
                 nth_next_grapheme_boundary(&text.slice(..), pos, count)
             }
+            (Direction::Forward, Granularity::Word) => {
+                Self::move_next_word_start(&text.slice(..), pos)
+            }
+            (Direction::Backward, Granularity::Word) => {
+                Self::move_prev_word_start(&text.slice(..), pos)
+            }
             (_, Granularity::Line) => move_vertically(&text.slice(..), dir, pos, count),
             _ => pos,
         }
+    }
+
+    pub fn move_next_word_start(slice: &RopeSlice, mut pos: usize) -> usize {
+        // TODO: confirm it's fine without using graphemes, I think it should be
+        let ch = slice.char(pos);
+        let next = slice.char(pos.saturating_add(1));
+        if categorize(ch) != categorize(next) {
+            pos += 1;
+        }
+
+        // refetch
+        let ch = slice.char(pos);
+
+        if is_word(ch) {
+            skip_over_next(slice, &mut pos, is_word);
+        } else if ch.is_ascii_punctuation() {
+            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+        }
+
+        // TODO: don't include newline?
+        skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+
+        pos
+    }
+
+    pub fn move_prev_word_start(slice: &RopeSlice, mut pos: usize) -> usize {
+        // TODO: confirm it's fine without using graphemes, I think it should be
+        let ch = slice.char(pos);
+        let prev = slice.char(pos.saturating_sub(1)); // TODO: just return original pos if at start
+
+        if categorize(ch) != categorize(prev) {
+            pos -= 1;
+        }
+
+        // TODO: skip while eol
+
+        // TODO: don't include newline?
+        skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+
+        // refetch
+        let ch = slice.char(pos);
+
+        if is_word(ch) {
+            skip_over_prev(slice, &mut pos, is_word);
+        } else if ch.is_ascii_punctuation() {
+            skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+        }
+
+        pos.saturating_add(1)
+    }
+
+    pub fn move_next_word_end(slice: &RopeSlice, mut pos: usize, _count: usize) -> usize {
+        // TODO: confirm it's fine without using graphemes, I think it should be
+        let ch = slice.char(pos);
+        let next = slice.char(pos.saturating_add(1));
+        if categorize(ch) != categorize(next) {
+            pos += 1;
+        }
+
+        // TODO: don't include newline?
+        skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+
+        // refetch
+        let ch = slice.char(pos);
+
+        if is_word(ch) {
+            skip_over_next(slice, &mut pos, is_word);
+        } else if ch.is_ascii_punctuation() {
+            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+        }
+
+        // TODO: stops on spaces
+
+        pos.saturating_sub(1)
     }
 
     pub fn move_selection(
@@ -233,6 +313,63 @@ fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -
     };
 
     pos_at_coords(text, Position::new(new_line, new_col))
+}
+
+// used for by-word movement
+
+fn is_word(ch: char) -> bool {
+    ch.is_alphanumeric() || ch == '_'
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum Category {
+    Whitespace,
+    EOL,
+    Word,
+    Punctuation,
+}
+fn categorize(ch: char) -> Category {
+    if ch == '\n' {
+        Category::EOL
+    } else if ch.is_ascii_whitespace() {
+        Category::Whitespace
+    } else if ch.is_ascii_punctuation() {
+        Category::Punctuation
+    } else if ch.is_ascii_alphanumeric() {
+        Category::Word
+    } else {
+        unreachable!()
+    }
+}
+
+fn skip_over_next<F>(slice: &RopeSlice, pos: &mut usize, fun: F)
+where
+    F: Fn(char) -> bool,
+{
+    let mut chars = slice.chars_at(*pos);
+
+    while let Some(ch) = chars.next() {
+        if !fun(ch) {
+            break;
+        }
+        *pos += 1;
+    }
+}
+
+fn skip_over_prev<F>(slice: &RopeSlice, pos: &mut usize, fun: F)
+where
+    F: Fn(char) -> bool,
+{
+    // need to +1 so that prev() includes current char
+    let mut chars = slice.chars_at(*pos + 1);
+    let mut chars = slice.chars_at(*pos + 1);
+
+    while let Some(ch) = chars.prev() {
+        if !fun(ch) {
+            break;
+        }
+        *pos -= 1;
+    }
 }
 
 #[cfg(test)]

@@ -39,6 +39,41 @@ pub fn move_line_down(view: &mut View, count: usize) {
         .move_selection(Direction::Forward, Granularity::Line, count);
 }
 
+pub fn move_next_word_start(view: &mut View, count: usize) {
+    let pos = view.state.move_pos(
+        view.state.selection.cursor(),
+        Direction::Forward,
+        Granularity::Word,
+        count,
+    );
+
+    // TODO: use a transaction
+    view.state.selection = Selection::single(pos, pos);
+}
+
+pub fn move_prev_word_start(view: &mut View, count: usize) {
+    let pos = view.state.move_pos(
+        view.state.selection.cursor(),
+        Direction::Backward,
+        Granularity::Word,
+        count,
+    );
+
+    // TODO: use a transaction
+    view.state.selection = Selection::single(pos, pos);
+}
+
+pub fn move_next_word_end(view: &mut View, count: usize) {
+    let pos = State::move_next_word_end(
+        &view.state.doc().slice(..),
+        view.state.selection.cursor(),
+        count,
+    );
+
+    // TODO: use a transaction
+    view.state.selection = Selection::single(pos, pos);
+}
+
 // avoid select by default by having a visual mode switch that makes movements into selects
 
 // insert mode:

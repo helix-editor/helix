@@ -103,6 +103,18 @@ pub fn default() -> Keymaps {
                     modifiers: Modifiers::NONE
                 }] => commands::move_char_right as Command,
                 vec![Key {
+                    code: KeyCode::Char('w'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_next_word_start as Command,
+                vec![Key {
+                    code: KeyCode::Char('b'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_prev_word_start as Command,
+                vec![Key {
+                    code: KeyCode::Char('e'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_next_word_end as Command,
+                vec![Key {
                     code: KeyCode::Char('i'),
                     modifiers: Modifiers::NONE
                 }] => commands::insert_mode as Command,
