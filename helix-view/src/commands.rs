@@ -39,6 +39,45 @@ pub fn move_line_down(view: &mut View, count: usize) {
         .move_selection(Direction::Forward, Granularity::Line, count);
 }
 
+pub fn move_line_end(view: &mut View, count: usize) {
+    // TODO: use a transaction
+    let lines = selection_lines(&view.state);
+
+    let positions = lines
+        .into_iter()
+        .map(|index| {
+            // adjust all positions to the end of the line.
+            let line = view.state.doc.line(index);
+            let line_start = view.state.doc.line_to_char(index);
+            line_start + line.len_chars() - 1
+        })
+        .map(|pos| Range::new(pos, pos));
+
+    let selection = Selection::new(positions.collect(), 0);
+
+    let transaction = Transaction::new(&mut view.state).with_selection(selection);
+
+    transaction.apply(&mut view.state);
+}
+
+pub fn move_line_start(view: &mut View, count: usize) {
+    let lines = selection_lines(&view.state);
+
+    let positions = lines
+        .into_iter()
+        .map(|index| {
+            // adjust all positions to the start of the line.
+            view.state.doc.line_to_char(index)
+        })
+        .map(|pos| Range::new(pos, pos));
+
+    let selection = Selection::new(positions.collect(), 0);
+
+    let transaction = Transaction::new(&mut view.state).with_selection(selection);
+
+    transaction.apply(&mut view.state);
+}
+
 pub fn move_next_word_start(view: &mut View, count: usize) {
     let pos = view.state.move_pos(
         view.state.selection.cursor(),
@@ -127,46 +166,14 @@ fn selection_lines(state: &State) -> Vec<usize> {
 pub fn prepend_to_line(view: &mut View, _count: usize) {
     view.state.mode = Mode::Insert;
 
-    let lines = selection_lines(&view.state);
-
-    let positions = lines
-        .into_iter()
-        .map(|index| {
-            // adjust all positions to the start of the line.
-            view.state.doc.line_to_char(index)
-        })
-        .map(|pos| Range::new(pos, pos));
-
-    let selection = Selection::new(positions.collect(), 0);
-
-    let transaction = Transaction::new(&mut view.state).with_selection(selection);
-
-    transaction.apply(&mut view.state);
-    // TODO: need to store into history if successful
+    move_line_start(view, _count);
 }
 
 // A inserts at the end of each line with a selection
 pub fn append_to_line(view: &mut View, _count: usize) {
     view.state.mode = Mode::Insert;
 
-    let lines = selection_lines(&view.state);
-
-    let positions = lines
-        .into_iter()
-        .map(|index| {
-            // adjust all positions to the end of the line.
-            let line = view.state.doc.line(index);
-            let line_start = view.state.doc.line_to_char(index);
-            line_start + line.len_chars() - 1
-        })
-        .map(|pos| Range::new(pos, pos));
-
-    let selection = Selection::new(positions.collect(), 0);
-
-    let transaction = Transaction::new(&mut view.state).with_selection(selection);
-
-    transaction.apply(&mut view.state);
-    // TODO: need to store into history if successful
+    move_line_end(view, _count);
 }
 
 // o inserts a new line after each line with a selection

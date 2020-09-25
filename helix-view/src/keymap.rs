@@ -99,6 +99,14 @@ pub fn default() -> Keymaps {
                     modifiers: Modifiers::NONE
                 }] => commands::move_line_up as Command,
                 vec![Key {
+                    code: KeyCode::Char('0'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_line_start as Command,
+                vec![Key {
+                    code: KeyCode::Char('$'),
+                    modifiers: Modifiers::NONE
+                }] => commands::move_line_end as Command,
+                vec![Key {
                     code: KeyCode::Char('l'),
                     modifiers: Modifiers::NONE
                 }] => commands::move_char_right as Command,
