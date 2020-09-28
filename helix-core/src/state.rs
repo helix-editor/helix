@@ -147,12 +147,23 @@ impl State {
     ) -> usize {
         let text = &self.doc;
         match (dir, granularity) {
-            // TODO: clamp movement to line, prevent moving onto \n at the end
             (Direction::Backward, Granularity::Character) => {
-                nth_prev_grapheme_boundary(&text.slice(..), pos, count)
+                // Clamp to line
+                let line = text.char_to_line(pos);
+                let start = text.line_to_char(line);
+                std::cmp::max(
+                    nth_prev_grapheme_boundary(&text.slice(..), pos, count),
+                    start,
+                )
             }
             (Direction::Forward, Granularity::Character) => {
-                nth_next_grapheme_boundary(&text.slice(..), pos, count)
+                // Clamp to line
+                let line = text.char_to_line(pos);
+                let start = text.line_to_char(line);
+                let len = text.line(line).len_chars();
+                // convert to 0-indexed, subtract another 1 because len_chars() counts \n
+                let end = start + len.saturating_sub(2);
+                std::cmp::min(nth_next_grapheme_boundary(&text.slice(..), pos, count), end)
             }
             (Direction::Forward, Granularity::Word) => {
                 Self::move_next_word_start(&text.slice(..), pos)
