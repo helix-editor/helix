@@ -2,7 +2,7 @@
 pub mod graphemes;
 pub mod macros;
 mod position;
-mod selection;
+pub mod selection;
 pub mod state;
 pub mod syntax;
 mod transaction;
@@ -10,6 +10,9 @@ mod transaction;
 pub use ropey::{Rope, RopeSlice};
 
 pub use tendril::StrTendril as Tendril;
+
+#[doc(inline)]
+pub use {regex, tree_sitter};
 
 pub use position::Position;
 pub use selection::Range;

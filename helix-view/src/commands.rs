@@ -1,8 +1,11 @@
 use helix_core::{
     graphemes,
+    regex::Regex,
+    selection,
     state::{Direction, Granularity, Mode, State},
     Range, Selection, Tendril, Transaction,
 };
+use once_cell::sync::Lazy;
 
 use crate::view::View;
 
@@ -142,6 +145,14 @@ pub fn extend_line_down(view: &mut View, count: usize) {
     view.state.selection =
         view.state
             .extend_selection(Direction::Forward, Granularity::Line, count);
+}
+
+pub fn split_selection_on_newline(view: &mut View, _count: usize) {
+    let text = &view.state.doc.slice(..);
+    // only compile the regex once
+    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\n").unwrap());
+    // TODO: use a transaction
+    view.state.selection = selection::split_on_matches(text, view.state.selection(), &REGEX)
 }
 
 pub fn delete_selection(view: &mut View, _count: usize) {

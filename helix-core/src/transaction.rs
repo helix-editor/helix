@@ -326,9 +326,20 @@ impl Transaction {
 
     /// Returns true if applied successfully.
     pub fn apply(&self, state: &mut State) -> bool {
-        // apply changes to the document
-        if !self.changes.apply(&mut state.doc) {
-            return false;
+        if !self.changes.is_empty() {
+            // TODO: also avoid mapping the selection if not necessary
+
+            let old_doc = state.doc().clone();
+
+            // apply changes to the document
+            if !self.changes.apply(&mut state.doc) {
+                return false;
+            }
+
+            if let Some(syntax) = &mut state.syntax {
+                // TODO: no unwrap
+                syntax.update(&old_doc, &state.doc, &self.changes).unwrap();
+            }
         }
 
         // update the selection: either take the selection specified in the transaction, or map the
@@ -337,14 +348,6 @@ impl Transaction {
             .selection
             .clone()
             .unwrap_or_else(|| state.selection.clone().map(&self.changes));
-
-        // TODO: no unwrap
-        state
-            .syntax
-            .as_mut()
-            .unwrap()
-            .update(&state.doc, &self.changes)
-            .unwrap();
 
         true
     }

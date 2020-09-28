@@ -175,6 +175,10 @@ pub fn default() -> Keymaps {
                     modifiers: Modifiers::NONE
                 }] => commands::change_selection as Command,
                 vec![Key {
+                    code: KeyCode::Char('s'),
+                    modifiers: Modifiers::NONE
+                }] => commands::split_selection_on_newline as Command,
+                vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
                 }] => commands::normal_mode as Command,

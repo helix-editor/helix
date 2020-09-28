@@ -2,8 +2,9 @@
 //! single selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
-use crate::{Assoc, ChangeSet};
+use crate::{Assoc, ChangeSet, Rope, RopeSlice};
 use smallvec::{smallvec, SmallVec};
+use std::borrow::Cow;
 
 #[inline]
 fn abs_difference(x: usize, y: usize) -> usize {
@@ -22,7 +23,7 @@ pub struct Range {
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
-}
+} // TODO: might be cheaper to store normalized as from/to and an inverted flag
 
 impl Range {
     pub fn new(anchor: usize, head: usize) -> Self {
@@ -106,6 +107,11 @@ impl Range {
     }
 
     // groupAt
+
+    #[inline]
+    pub fn fragment<'a>(&'a self, text: &'a RopeSlice) -> Cow<'a, str> {
+        Cow::from(text.slice(self.from()..self.to()))
+    }
 }
 
 /// A selection consists of one or more selection ranges.
@@ -239,9 +245,49 @@ impl Selection {
             self.primary_index,
         )
     }
+
+    pub fn fragments<'a>(&'a self, text: &'a RopeSlice) -> impl Iterator<Item = Cow<str>> + 'a {
+        self.ranges.iter().map(move |range| range.fragment(text))
+    }
 }
 
 // TODO: checkSelection -> check if valid for doc length
+
+// TODO: support to split on capture #N instead of whole match
+pub fn split_on_matches(
+    text: &RopeSlice,
+    selections: &Selection,
+    regex: &crate::regex::Regex,
+) -> Selection {
+    let mut result = SmallVec::with_capacity(selections.ranges().len());
+
+    for sel in selections.ranges() {
+        // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
+        let fragment = sel.fragment(&text);
+
+        let mut sel_start = sel.from();
+        let sel_end = sel.to();
+
+        let mut start_byte = text.char_to_byte(sel_start);
+
+        let mut start = sel_start;
+
+        for mat in regex.find_iter(&fragment) {
+            // TODO: retain range direction
+
+            let end = text.byte_to_char(start_byte + mat.start());
+            result.push(Range::new(start, end - 1));
+            start = text.byte_to_char(start_byte + mat.end());
+        }
+
+        if start <= sel_end {
+            result.push(Range::new(start, sel_end));
+        }
+    }
+
+    // TODO: figure out a new primary index
+    Selection::new(result, 0)
+}
 
 #[cfg(test)]
 mod test {
@@ -312,4 +358,30 @@ mod test {
         assert_eq!(range.contains(6), false);
     }
 
+    #[test]
+    fn test_split_on_matches() {
+        use crate::regex::Regex;
+
+        let text = Rope::from("abcd efg wrs   xyz 123 456");
+
+        let selections = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 19),], 0);
+
+        let result = split_on_matches(&text.slice(..), &selections, &Regex::new(r"\s+").unwrap());
+
+        assert_eq!(
+            result.ranges(),
+            &[
+                Range::new(0, 4),
+                Range::new(5, 8),
+                Range::new(10, 12),
+                Range::new(15, 18),
+                Range::new(19, 19),
+            ]
+        );
+
+        assert_eq!(
+            result.fragments(&text.slice(..)).collect::<Vec<_>>(),
+            &["abcd", "efg", "rs", "xyz", ""]
+        );
+    }
 }
