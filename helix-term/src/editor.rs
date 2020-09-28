@@ -1,8 +1,9 @@
 use crate::Args;
-use helix_core::{state::coords_at_pos, state::Mode, syntax::HighlightEvent, State};
+use helix_core::{state::coords_at_pos, state::Mode, syntax::HighlightEvent, Range, State};
 use helix_view::{commands, keymap, View};
 
 use std::{
+    borrow::Cow,
     io::{self, stdout, Write},
     path::PathBuf,
     time::Duration,
@@ -120,6 +121,16 @@ impl Editor {
                 let mut visual_x = 0;
                 let mut line = 0u16;
 
+                let visible_selections: Vec<Range> = view
+                    .state
+                    .selection()
+                    .ranges()
+                    .iter()
+                    // TODO: limit selection to one in viewport
+                    .filter(|range| !range.is_empty()) // && range.overlaps(&Range::new(start, end + 1))
+                    .copied()
+                    .collect();
+
                 'outer: for event in highlights {
                     match event.unwrap() {
                         HighlightEvent::HighlightStart(span) => {
@@ -149,6 +160,8 @@ impl Editor {
                             // way if only the selection/cursor changes we can copy from cache
                             // and paint the new cursor.
 
+                            let mut char_index = start;
+
                             // iterate over range char by char
                             for grapheme in RopeGraphemes::new(&text) {
                                 // TODO: track current char_index
@@ -164,8 +177,21 @@ impl Editor {
                                 } else {
                                     // Cow will prevent allocations if span contained in a single slice
                                     // which should really be the majority case
-                                    let grapheme = std::borrow::Cow::from(grapheme);
+                                    let grapheme = Cow::from(grapheme);
                                     let width = grapheme_width(&grapheme) as u16;
+
+                                    let style = if visible_selections
+                                        .iter()
+                                        .any(|range| range.contains(char_index))
+                                    {
+                                        // cedar
+                                        style.clone().bg(Color::Rgb(128, 47, 0))
+                                    } else {
+                                        style
+                                    };
+
+                                    // TODO: paint cursor heads except primary
+
                                     self.surface.set_string(
                                         offset + visual_x,
                                         line,
@@ -176,6 +202,8 @@ impl Editor {
                                     visual_x += width;
                                 }
                                 // if grapheme == "\t"
+
+                                char_index += 1;
                             }
                         }
                     }

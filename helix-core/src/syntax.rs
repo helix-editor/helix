@@ -48,7 +48,7 @@ impl LanguageConfiguration {
                 if highlights_query.is_empty() {
                     Ok(None)
                 } else {
-                    let language = get_language(&self.language_id);
+                    let language = get_language(self.language_id);
                     let mut config = HighlightConfiguration::new(
                         language,
                         &highlights_query,
@@ -1456,7 +1456,7 @@ fn test_parser() {
     .map(String::from)
     .collect();
 
-    let language = get_language(&LANG::Rust);
+    let language = get_language(LANG::Rust);
     let mut config = HighlightConfiguration::new(
         language,
         &std::fs::read_to_string(
@@ -1478,7 +1478,7 @@ fn test_parser() {
         fn main() {}
     ",
     );
-    let syntax = Syntax::new(LANG::Rust, &source, config);
+    let syntax = Syntax::new(&source, Arc::new(config));
     let tree = syntax.root_layer.tree.unwrap();
     let root = tree.root_node();
     assert_eq!(root.kind(), "source_file");

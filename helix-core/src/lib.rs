@@ -8,6 +8,7 @@ pub mod syntax;
 mod transaction;
 
 pub use ropey::{Rope, RopeSlice};
+
 pub use tendril::StrTendril as Tendril;
 
 pub use position::Position;

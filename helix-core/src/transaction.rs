@@ -1,4 +1,5 @@
 use crate::{Range, Rope, Selection, State, Tendril};
+use std::convert::TryFrom;
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
@@ -112,7 +113,7 @@ impl ChangeSet {
                             let (pos, _) = s.char_indices().nth(len - j).unwrap();
                             // calculate the difference
                             let to_drop = s.len() - pos;
-                            s.pop_back(to_drop as u32);
+                            s.pop_back(u32::try_from(to_drop).unwrap());
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }
@@ -136,7 +137,7 @@ impl ChangeSet {
                             let (pos, _) = s.char_indices().nth(j).unwrap();
                             // calculate the difference
                             let to_drop = s.len() - pos;
-                            s.pop_back(to_drop as u32);
+                            s.pop_back(u32::try_from(to_drop).unwrap());
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }

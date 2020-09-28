@@ -7,7 +7,9 @@ use std::collections::HashMap;
 //      normal = {
 //          q = record_macro
 //          w = (next) word
+//          W = next WORD
 //          e = end of word
+//          E = end of WORD
 //          r =
 //          t = 'till char
 //          y = yank
@@ -54,6 +56,12 @@ use std::collections::HashMap;
 //          @ = convert tabs to spaces
 //          & = align cursor
 //          ? = extend to next given regex match (alt = to prev)
+//
+//          in kakoune these are alt-h alt-l / gh gl
+//                              select from curs to begin end / move curs to begin end
+//          0 = start of line
+//          ^ = start of line (first non blank char)
+//          $ = end of line
 //
 //          z = save selections
 //          Z = restore selections
@@ -111,6 +119,22 @@ pub fn default() -> Keymaps {
                     modifiers: Modifiers::NONE
                 }] => commands::move_char_right as Command,
                 vec![Key {
+                    code: KeyCode::Char('H'),
+                    modifiers: Modifiers::SHIFT
+                }] => commands::extend_char_left as Command,
+                vec![Key {
+                    code: KeyCode::Char('J'),
+                    modifiers: Modifiers::SHIFT
+                }] => commands::extend_line_down as Command,
+                vec![Key {
+                    code: KeyCode::Char('K'),
+                    modifiers: Modifiers::SHIFT
+                }] => commands::extend_line_up as Command,
+                vec![Key {
+                    code: KeyCode::Char('L'),
+                    modifiers: Modifiers::SHIFT
+                }] => commands::extend_char_right as Command,
+                vec![Key {
                     code: KeyCode::Char('w'),
                     modifiers: Modifiers::NONE
                 }] => commands::move_next_word_start as Command,
@@ -142,6 +166,14 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Char('o'),
                     modifiers: Modifiers::NONE
                 }] => commands::open_below as Command,
+                vec![Key {
+                    code: KeyCode::Char('d'),
+                    modifiers: Modifiers::NONE
+                }] => commands::delete_selection as Command,
+                vec![Key {
+                    code: KeyCode::Char('c'),
+                    modifiers: Modifiers::NONE
+                }] => commands::change_selection as Command,
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE

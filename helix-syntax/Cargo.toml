@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tree-sitter = "0.16"
+tree-sitter = "0.17"
 enum-iterator = "0.6"
 
 [build-dependencies]

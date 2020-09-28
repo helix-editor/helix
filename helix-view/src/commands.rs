@@ -115,6 +115,46 @@ pub fn move_next_word_end(view: &mut View, count: usize) {
 
 // avoid select by default by having a visual mode switch that makes movements into selects
 
+pub fn extend_char_left(view: &mut View, count: usize) {
+    // TODO: use a transaction
+    let selection = view
+        .state
+        .extend_selection(Direction::Backward, Granularity::Character, count);
+    view.state.selection = selection;
+}
+
+pub fn extend_char_right(view: &mut View, count: usize) {
+    // TODO: use a transaction
+    view.state.selection =
+        view.state
+            .extend_selection(Direction::Forward, Granularity::Character, count);
+}
+
+pub fn extend_line_up(view: &mut View, count: usize) {
+    // TODO: use a transaction
+    view.state.selection =
+        view.state
+            .extend_selection(Direction::Backward, Granularity::Line, count);
+}
+
+pub fn extend_line_down(view: &mut View, count: usize) {
+    // TODO: use a transaction
+    view.state.selection =
+        view.state
+            .extend_selection(Direction::Forward, Granularity::Line, count);
+}
+
+pub fn delete_selection(view: &mut View, _count: usize) {
+    let transaction =
+        Transaction::change_by_selection(&view.state, |range| (range.from(), range.to(), None));
+    transaction.apply(&mut view.state);
+}
+
+pub fn change_selection(view: &mut View, count: usize) {
+    delete_selection(view, count);
+    insert_mode(view, count);
+}
+
 // insert mode:
 // first we calculate the correct cursors/selections
 // then we just append at each cursor

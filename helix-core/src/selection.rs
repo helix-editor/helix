@@ -60,6 +60,18 @@ impl Range {
         }
     }
 
+    pub fn contains(&self, pos: usize) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+
+        if self.anchor < self.head {
+            self.anchor <= pos && pos < self.head
+        } else {
+            self.head < pos && pos <= self.anchor
+        }
+    }
+
     /// Map a range through a set of changes. Returns a new range representing the same position
     /// after the changes are applied.
     pub fn map(self, changes: &ChangeSet) -> Self {
@@ -283,4 +295,21 @@ mod test {
 
         assert_eq!(res, "8/10,10/12");
     }
+
+    #[test]
+    fn test_contains() {
+        let range = Range::new(10, 12);
+
+        assert_eq!(range.contains(9), false);
+        assert_eq!(range.contains(10), true);
+        assert_eq!(range.contains(11), true);
+        assert_eq!(range.contains(12), false);
+        assert_eq!(range.contains(13), false);
+
+        let range = Range::new(9, 6);
+        assert_eq!(range.contains(9), true);
+        assert_eq!(range.contains(7), true);
+        assert_eq!(range.contains(6), false);
+    }
+
 }
