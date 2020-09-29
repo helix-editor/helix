@@ -50,9 +50,10 @@ pub fn move_line_end(view: &mut View, count: usize) {
         .into_iter()
         .map(|index| {
             // adjust all positions to the end of the line.
-            let line = view.state.doc.line(index);
-            let line_start = view.state.doc.line_to_char(index);
-            line_start + line.len_chars() - 1
+
+            // Line end is pos at the start of next line - 1
+            // subtract another 1 because the line ends with \n
+            view.state.doc.line_to_char(index + 1).saturating_sub(2)
         })
         .map(|pos| Range::new(pos, pos));
 
@@ -236,10 +237,8 @@ pub fn open_below(view: &mut View, _count: usize) {
     let positions: Vec<_> = lines
         .into_iter()
         .map(|index| {
-            // adjust all positions to the end of the line.
-            let line = view.state.doc.line(index);
-            let line_start = view.state.doc.line_to_char(index);
-            line_start + line.len_chars()
+            // adjust all positions to the end of the line/start of the next one.
+            view.state.doc.line_to_char(index + 1)
         })
         .collect();
 

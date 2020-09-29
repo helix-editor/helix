@@ -159,10 +159,9 @@ impl State {
             (Direction::Forward, Granularity::Character) => {
                 // Clamp to line
                 let line = text.char_to_line(pos);
-                let start = text.line_to_char(line);
-                let len = text.line(line).len_chars();
-                // convert to 0-indexed, subtract another 1 because len_chars() counts \n
-                let end = start + len.saturating_sub(2);
+                // Line end is pos at the start of next line - 1
+                // subtract another 1 because the line ends with \n
+                let end = text.line_to_char(line + 1).saturating_sub(2);
                 std::cmp::min(nth_next_grapheme_boundary(&text.slice(..), pos, count), end)
             }
             (Direction::Forward, Granularity::Word) => {
