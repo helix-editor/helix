@@ -209,12 +209,11 @@ impl Editor {
                     }
                 }
 
-                let mut line = 0;
                 let style: Style = view.theme.get("ui.linenr").into();
-                for i in view.first_line..(last_line as u16) {
+                for (i, line) in (view.first_line..(last_line as u16)).enumerate() {
                     self.surface
-                        .set_stringn(0, line, format!("{:>5}", i + 1), 5, style); // lavender
-                    line += 1;
+                        .set_stringn(0, line, format!("{:>5}", i + 1), 5, style);
+                    // lavender
                 }
 
                 // let lines = state

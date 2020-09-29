@@ -42,7 +42,7 @@ pub fn move_line_down(view: &mut View, count: usize) {
         .move_selection(Direction::Forward, Granularity::Line, count);
 }
 
-pub fn move_line_end(view: &mut View, count: usize) {
+pub fn move_line_end(view: &mut View, _count: usize) {
     // TODO: use a transaction
     let lines = selection_lines(&view.state);
 
@@ -64,7 +64,7 @@ pub fn move_line_end(view: &mut View, count: usize) {
     transaction.apply(&mut view.state);
 }
 
-pub fn move_line_start(view: &mut View, count: usize) {
+pub fn move_line_start(view: &mut View, _count: usize) {
     let lines = selection_lines(&view.state);
 
     let positions = lines
@@ -208,24 +208,24 @@ fn selection_lines(state: &State) -> Vec<usize> {
         .map(|range| state.doc.char_to_line(range.head))
         .collect::<Vec<_>>();
 
-    lines.sort();
+    lines.sort_unstable(); // sorting by usize so _unstable is preferred
     lines.dedup();
 
     lines
 }
 
 // I inserts at the start of each line with a selection
-pub fn prepend_to_line(view: &mut View, _count: usize) {
+pub fn prepend_to_line(view: &mut View, count: usize) {
     view.state.mode = Mode::Insert;
 
-    move_line_start(view, _count);
+    move_line_start(view, count);
 }
 
 // A inserts at the end of each line with a selection
-pub fn append_to_line(view: &mut View, _count: usize) {
+pub fn append_to_line(view: &mut View, count: usize) {
     view.state.mode = Mode::Insert;
 
-    move_line_end(view, _count);
+    move_line_end(view, count);
 }
 
 // o inserts a new line after each line with a selection

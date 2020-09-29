@@ -13,11 +13,11 @@ pub struct View {
 }
 
 impl View {
-    pub fn open(path: PathBuf, size: (u16, u16)) -> Result<View, Error> {
+    pub fn open(path: PathBuf, size: (u16, u16)) -> Result<Self, Error> {
         let theme = Theme::default();
         let state = State::load(path, theme.scopes())?;
 
-        let view = View {
+        let view = Self {
             state,
             first_line: 0,
             size, // TODO: pass in from term

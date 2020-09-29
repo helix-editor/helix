@@ -173,6 +173,7 @@ impl Theme {
             .unwrap_or_else(|| Style::default().fg(Color::Rgb(0, 0, 255)))
     }
 
+    #[inline]
     pub fn scopes(&self) -> &[String] {
         &self.scopes
     }

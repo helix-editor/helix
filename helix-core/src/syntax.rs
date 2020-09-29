@@ -37,11 +37,11 @@ impl LanguageConfiguration {
 
                 let highlights_query =
                     std::fs::read_to_string(self.path.join("queries/highlights.scm"))
-                        .unwrap_or(String::new());
+                        .unwrap_or_default();
 
                 let injections_query =
                     std::fs::read_to_string(self.path.join("queries/injections.scm"))
-                        .unwrap_or(String::new());
+                        .unwrap_or_default();
 
                 let locals_query = "";
 
@@ -66,7 +66,7 @@ impl LanguageConfiguration {
 
 use once_cell::sync::Lazy;
 
-pub(crate) static LOADER: Lazy<Loader> = Lazy::new(|| Loader::init());
+pub(crate) static LOADER: Lazy<Loader> = Lazy::new(Loader::init);
 
 pub struct Loader {
     // highlight_names ?
@@ -159,7 +159,7 @@ impl Syntax {
         // let grammar = get_language(&language);
         let parser = Parser::new();
 
-        let root_layer = LanguageLayer::new();
+        let root_layer = LanguageLayer { tree: None };
 
         // track markers of injections
         // track scope_descriptor: a Vec of scopes for item in tree
@@ -317,9 +317,9 @@ use crate::transaction::{ChangeSet, Operation};
 use crate::Tendril;
 
 impl LanguageLayer {
-    pub fn new() -> Self {
-        Self { tree: None }
-    }
+    // pub fn new() -> Self {
+    //     Self { tree: None }
+    // }
 
     fn tree(&self) -> &Tree {
         // TODO: no unwrap

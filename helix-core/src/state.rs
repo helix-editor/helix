@@ -358,7 +358,7 @@ where
 {
     let mut chars = slice.chars_at(*pos);
 
-    while let Some(ch) = chars.next() {
+    for ch in chars {
         if !fun(ch) {
             break;
         }
@@ -371,7 +371,6 @@ where
     F: Fn(char) -> bool,
 {
     // need to +1 so that prev() includes current char
-    let mut chars = slice.chars_at(*pos + 1);
     let mut chars = slice.chars_at(*pos + 1);
 
     while let Some(ch) = chars.prev() {
