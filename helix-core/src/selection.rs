@@ -276,7 +276,7 @@ pub fn split_on_matches(
             // TODO: retain range direction
 
             let end = text.byte_to_char(start_byte + mat.start());
-            result.push(Range::new(start, end - 1));
+            result.push(Range::new(start, end));
             start = text.byte_to_char(start_byte + mat.end());
         }
 
