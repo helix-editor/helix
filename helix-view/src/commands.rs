@@ -280,6 +280,10 @@ pub fn insert_char(view: &mut View, c: char) {
     // TODO: need to store into history if successful
 }
 
+pub fn insert_newline(view: &mut View, _count: usize) {
+    insert_char(view, '\n');
+}
+
 // TODO: handle indent-aware delete
 pub fn delete_char_backward(view: &mut View, count: usize) {
     let text = &view.state.doc.slice(..);

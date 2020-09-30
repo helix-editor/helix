@@ -320,29 +320,23 @@ impl Editor {
                     if let Some(view) = &mut self.view {
                         match view.state.mode() {
                             Mode::Insert => {
-                                match event {
-                                    KeyEvent {
-                                        code: KeyCode::Esc, ..
-                                    } => commands::normal_mode(view, 1),
-                                    KeyEvent {
-                                        code: KeyCode::Backspace,
-                                        ..
-                                    } => commands::delete_char_backward(view, 1),
-                                    KeyEvent {
-                                        code: KeyCode::Delete,
-                                        ..
-                                    } => commands::delete_char_forward(view, 1),
-                                    KeyEvent {
+                                // TODO: handle modes and sequences (`gg`)
+                                let keys = vec![event];
+                                if let Some(command) = keymap[&Mode::Insert].get(&keys) {
+                                    // TODO: handle count other than 1
+                                    command(view, 1);
+
+                                    // TODO: simplistic ensure cursor in view for now
+                                    view.ensure_cursor_in_view();
+                                } else {
+                                    if let KeyEvent {
                                         code: KeyCode::Char(c),
                                         ..
-                                    } => commands::insert_char(view, c),
-                                    KeyEvent {
-                                        code: KeyCode::Enter,
-                                        ..
-                                    } => commands::insert_char(view, '\n'),
-                                    _ => (), // skip
+                                    } = event
+                                    {
+                                        commands::insert_char(view, c);
+                                    }
                                 }
-                                // TODO: simplistic ensure cursor in view for now
                                 view.ensure_cursor_in_view();
 
                                 self.render();

@@ -8,6 +8,7 @@ edition = "2018"
 
 [features]
 term = ["tui", "crossterm"]
+default = ["term"]
 
 [dependencies]
 anyhow = "1"
