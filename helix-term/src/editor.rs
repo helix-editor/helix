@@ -325,9 +325,6 @@ impl Editor {
                                 if let Some(command) = keymap[&Mode::Insert].get(&keys) {
                                     // TODO: handle count other than 1
                                     command(view, 1);
-
-                                    // TODO: simplistic ensure cursor in view for now
-                                    view.ensure_cursor_in_view();
                                 } else {
                                     if let KeyEvent {
                                         code: KeyCode::Char(c),
