@@ -182,6 +182,24 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
                 }] => commands::normal_mode as Command,
+            ),
+            state::Mode::Insert => hashmap!(
+                vec![Key {
+                    code: KeyCode::Esc,
+                    modifiers: Modifiers::NONE
+                }] => commands::normal_mode as Command,
+                vec![Key {
+                    code: KeyCode::Backspace,
+                    modifiers: Modifiers::NONE
+                }] => commands::delete_char_backward as Command,
+                vec![Key {
+                    code: KeyCode::Delete,
+                    modifiers: Modifiers::NONE
+                }] => commands::delete_char_forward as Command,
+                vec![Key {
+                    code: KeyCode::Enter,
+                    modifiers: Modifiers::NONE
+                }] => commands::insert_newline as Command,
             )
     )
 }
