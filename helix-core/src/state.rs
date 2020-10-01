@@ -244,8 +244,6 @@ impl State {
             skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
         }
 
-        // TODO: stops on spaces
-
         pos.saturating_sub(1)
     }
 

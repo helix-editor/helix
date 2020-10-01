@@ -1,4 +1,3 @@
-use enum_iterator::IntoEnumIterator;
 use tree_sitter::Language;
 
 #[macro_export]
@@ -13,7 +12,7 @@ macro_rules! mk_extern {
 #[macro_export]
 macro_rules! mk_enum {
     ( $( $camel:ident ),* ) => {
-        #[derive(Clone, Copy, Debug, IntoEnumIterator, PartialEq)]
+        #[derive(Clone, Copy, Debug, PartialEq)]
         pub enum LANG {
             $(
                 $camel,

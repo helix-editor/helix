@@ -1,4 +1,4 @@
-use crate::Args;
+use clap::ArgMatches as Args;
 use helix_core::{state::coords_at_pos, state::Mode, syntax::HighlightEvent, Range, State};
 use helix_view::{commands, keymap, View};
 
@@ -53,7 +53,7 @@ impl Editor {
             // TODO; move to state
         };
 
-        if let Some(file) = args.files.pop() {
+        if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
             editor.open(file)?;
         }
 

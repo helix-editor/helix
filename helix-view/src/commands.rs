@@ -151,6 +151,7 @@ pub fn extend_line_down(view: &mut View, count: usize) {
 pub fn split_selection_on_newline(view: &mut View, _count: usize) {
     let text = &view.state.doc.slice(..);
     // only compile the regex once
+    #[allow(clippy::trivial_regex)]
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\n").unwrap());
     // TODO: use a transaction
     view.state.selection = selection::split_on_matches(text, view.state.selection(), &REGEX)

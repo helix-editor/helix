@@ -15,9 +15,10 @@ helix-core = { path = "../helix-core" }
 helix-view = { path = "../helix-view", features = ["term"]}
 
 anyhow = "1"
-argh = "0.1"
 
 smol = "1"
 num_cpus = "1.13"
-tui = { version = "0.11", default-features = false, features = ["crossterm"] }
-crossterm = { version = "0.17", features = ["event-stream"] }
+# tui = { version = "0.12", default-features = false, features = ["crossterm"] }
+tui = { git = "https://github.com/fdehau/tui-rs", default-features = false, features = ["crossterm"] }
+crossterm = { version = "0.18", features = ["event-stream"] }
+clap = { version = "3.0.0-beta.2 ", default-features = false, features = ["std"] }

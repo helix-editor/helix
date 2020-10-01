@@ -15,6 +15,7 @@ anyhow = "1"
 helix-core = { path = "../helix-core" }
 
 # Conversion traits
-tui = { version = "0.11", default-features = false, features = ["crossterm"], optional = true}
-crossterm = { version = "0.17", features = ["event-stream"], optional = true}
+# tui = { version = "0.12", default-features = false, features = ["crossterm"], optional = true}
+tui = { git = "https://github.com/fdehau/tui-rs", default-features = false, features = ["crossterm"], optional = true}
+crossterm = { version = "0.18", features = ["event-stream"], optional = true}
 once_cell = "1.4"

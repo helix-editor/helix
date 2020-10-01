@@ -4,22 +4,25 @@ mod editor;
 
 use editor::Editor;
 
-use argh::FromArgs;
+use clap::{App, Arg};
 use std::path::PathBuf;
 
 use anyhow::Error;
 
-#[derive(FromArgs)]
-/// A post-modern text editor.
-pub struct Args {
-    #[argh(positional)]
-    files: Vec<PathBuf>,
-}
-
 static EX: smol::Executor = smol::Executor::new();
 
 fn main() -> Result<(), Error> {
-    let args: Args = argh::from_env();
+    let args = App::new("helix")
+        .version("0.1")
+        .about("A post-modern text editor.")
+        .arg(
+            Arg::new("files")
+                .about("Sets the input file to use")
+                .required(true)
+                .multiple(true)
+                .index(1),
+        )
+        .get_matches();
 
     for _ in 0..num_cpus::get() {
         std::thread::spawn(move || smol::block_on(EX.run(smol::future::pending::<()>())));
