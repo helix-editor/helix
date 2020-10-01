@@ -77,7 +77,7 @@ impl Editor {
 
                 //  clear with background color
                 self.surface
-                    .set_style(area, view.theme.get("ui.background").into());
+                    .set_style(area, view.theme.get("ui.background"));
 
                 let offset = 5 + 1; // 5 linenr + 1 gutter
                 let viewport = Rect::new(offset, 0, self.size.0, self.size.1 - 1); // - 1 for statusline
@@ -143,16 +143,14 @@ impl Editor {
                             // TODO: filter out spans out of viewport for now..
 
                             let start = view.state.doc().byte_to_char(start);
-                            let end = view.state.doc().byte_to_char(end);
+                            let end = view.state.doc().byte_to_char(end); // <-- index 744, len 743
 
                             let text = view.state.doc().slice(start..end);
 
                             use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                             let style = match spans.first() {
-                                Some(span) => {
-                                    view.theme.get(view.theme.scopes()[span.0].as_str()).into()
-                                }
+                                Some(span) => view.theme.get(view.theme.scopes()[span.0].as_str()),
                                 None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
                             };
 
@@ -209,7 +207,7 @@ impl Editor {
                     }
                 }
 
-                let style: Style = view.theme.get("ui.linenr").into();
+                let style: Style = view.theme.get("ui.linenr");
                 for (i, line) in (view.first_line..(last_line as u16)).enumerate() {
                     self.surface
                         .set_stringn(0, line, format!("{:>5}", i + 1), 5, style);
@@ -248,7 +246,7 @@ impl Editor {
                 };
                 self.surface.set_style(
                     Rect::new(0, self.size.1 - 1, self.size.0, 1),
-                    view.theme.get("ui.statusline").into(),
+                    view.theme.get("ui.statusline"),
                 );
                 // TODO: unfocused one with different color
                 let text_color = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
@@ -325,14 +323,12 @@ impl Editor {
                                 if let Some(command) = keymap[&Mode::Insert].get(&keys) {
                                     // TODO: handle count other than 1
                                     command(view, 1);
-                                } else {
-                                    if let KeyEvent {
-                                        code: KeyCode::Char(c),
-                                        ..
-                                    } = event
-                                    {
-                                        commands::insert_char(view, c);
-                                    }
+                                } else if let KeyEvent {
+                                    code: KeyCode::Char(c),
+                                    ..
+                                } = event
+                                {
+                                    commands::insert_char(view, c);
                                 }
                                 view.ensure_cursor_in_view();
 
