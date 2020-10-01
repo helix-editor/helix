@@ -90,98 +90,54 @@ pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 type Keymap = HashMap<Vec<Key>, Command>;
 type Keymaps = HashMap<state::Mode, Keymap>;
 
+macro_rules! key {
+    ($ch:expr) => {
+        Key {
+            code: KeyCode::Char($ch),
+            modifiers: Modifiers::NONE,
+        }
+    };
+}
+
+macro_rules! shift {
+    ($ch:expr) => {
+        Key {
+            code: KeyCode::Char($ch),
+            modifiers: Modifiers::SHIFT,
+        }
+    };
+}
+
 pub fn default() -> Keymaps {
     hashmap!(
         state::Mode::Normal =>
+            // as long as you cast the first item, rust is able to infer the other cases
             hashmap!(
-                vec![Key {
-                    code: KeyCode::Char('h'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_char_left as Command,
-                vec![Key {
-                    code: KeyCode::Char('j'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_line_down as Command,
-                vec![Key {
-                    code: KeyCode::Char('k'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_line_up as Command,
-                vec![Key {
-                    code: KeyCode::Char('0'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_line_start as Command,
-                vec![Key {
-                    code: KeyCode::Char('$'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_line_end as Command,
-                vec![Key {
-                    code: KeyCode::Char('l'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_char_right as Command,
-                vec![Key {
-                    code: KeyCode::Char('H'),
-                    modifiers: Modifiers::SHIFT
-                }] => commands::extend_char_left as Command,
-                vec![Key {
-                    code: KeyCode::Char('J'),
-                    modifiers: Modifiers::SHIFT
-                }] => commands::extend_line_down as Command,
-                vec![Key {
-                    code: KeyCode::Char('K'),
-                    modifiers: Modifiers::SHIFT
-                }] => commands::extend_line_up as Command,
-                vec![Key {
-                    code: KeyCode::Char('L'),
-                    modifiers: Modifiers::SHIFT
-                }] => commands::extend_char_right as Command,
-                vec![Key {
-                    code: KeyCode::Char('w'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_next_word_start as Command,
-                vec![Key {
-                    code: KeyCode::Char('b'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_prev_word_start as Command,
-                vec![Key {
-                    code: KeyCode::Char('e'),
-                    modifiers: Modifiers::NONE
-                }] => commands::move_next_word_end as Command,
-                vec![Key {
-                    code: KeyCode::Char('i'),
-                    modifiers: Modifiers::NONE
-                }] => commands::insert_mode as Command,
-                vec![Key {
-                    code: KeyCode::Char('I'),
-                    modifiers: Modifiers::SHIFT,
-                }] => commands::prepend_to_line as Command,
-                vec![Key {
-                    code: KeyCode::Char('a'),
-                    modifiers: Modifiers::NONE
-                }] => commands::append_mode as Command,
-                vec![Key {
-                    code: KeyCode::Char('A'),
-                    modifiers: Modifiers::SHIFT,
-                }] => commands::append_to_line as Command,
-                vec![Key {
-                    code: KeyCode::Char('o'),
-                    modifiers: Modifiers::NONE
-                }] => commands::open_below as Command,
-                vec![Key {
-                    code: KeyCode::Char('d'),
-                    modifiers: Modifiers::NONE
-                }] => commands::delete_selection as Command,
-                vec![Key {
-                    code: KeyCode::Char('c'),
-                    modifiers: Modifiers::NONE
-                }] => commands::change_selection as Command,
-                vec![Key {
-                    code: KeyCode::Char('s'),
-                    modifiers: Modifiers::NONE
-                }] => commands::split_selection_on_newline as Command,
+                vec![key!('h')] => commands::move_char_left as Command,
+                vec![key!('j')] => commands::move_line_down,
+                vec![key!('k')] => commands::move_line_up,
+                vec![key!('0')] => commands::move_line_start,
+                vec![key!('$')] => commands::move_line_end,
+                vec![key!('l')] => commands::move_char_right,
+                vec![shift!('H')] => commands::extend_char_left,
+                vec![shift!('J')] => commands::extend_line_down,
+                vec![shift!('K')] => commands::extend_line_up,
+                vec![shift!('L')] => commands::extend_char_right,
+                vec![key!('w')] => commands::move_next_word_start,
+                vec![key!('b')] => commands::move_prev_word_start,
+                vec![key!('e')] => commands::move_next_word_end,
+                vec![key!('i')] => commands::insert_mode,
+                vec![shift!('I')] => commands::prepend_to_line,
+                vec![key!('a')] => commands::append_mode,
+                vec![shift!('A')] => commands::append_to_line,
+                vec![key!('o')] => commands::open_below,
+                vec![key!('d')] => commands::delete_selection,
+                vec![key!('c')] => commands::change_selection,
+                vec![key!('s')] => commands::split_selection_on_newline,
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
-                }] => commands::normal_mode as Command,
+                }] => commands::normal_mode,
             ),
             state::Mode::Insert => hashmap!(
                 vec![Key {
@@ -191,15 +147,15 @@ pub fn default() -> Keymaps {
                 vec![Key {
                     code: KeyCode::Backspace,
                     modifiers: Modifiers::NONE
-                }] => commands::delete_char_backward as Command,
+                }] => commands::delete_char_backward,
                 vec![Key {
                     code: KeyCode::Delete,
                     modifiers: Modifiers::NONE
-                }] => commands::delete_char_forward as Command,
+                }] => commands::delete_char_forward,
                 vec![Key {
                     code: KeyCode::Enter,
                     modifiers: Modifiers::NONE
-                }] => commands::insert_newline as Command,
+                }] => commands::insert_newline,
             )
     )
 }
