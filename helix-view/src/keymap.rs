@@ -134,6 +134,7 @@ pub fn default() -> Keymaps {
                 vec![key!('d')] => commands::delete_selection,
                 vec![key!('c')] => commands::change_selection,
                 vec![key!('s')] => commands::split_selection_on_newline,
+                vec![key!(';')] => commands::collapse_selection,
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE

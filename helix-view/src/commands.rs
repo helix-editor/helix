@@ -168,6 +168,13 @@ pub fn change_selection(view: &mut View, count: usize) {
     insert_mode(view, count);
 }
 
+pub fn collapse_selection(view: &mut View, _count: usize) {
+    view.state.selection = view
+        .state
+        .selection
+        .transform(|range| Range::new(range.head, range.head))
+}
+
 // insert mode:
 // first we calculate the correct cursors/selections
 // then we just append at each cursor
