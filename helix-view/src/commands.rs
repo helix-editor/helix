@@ -301,6 +301,10 @@ pub fn insert_char(view: &mut View, c: char) {
     // TODO: need to store into history if successful
 }
 
+pub fn insert_tab(view: &mut View, _count: usize) {
+    insert_char(view, '\t');
+}
+
 pub fn insert_newline(view: &mut View, _count: usize) {
     insert_char(view, '\n');
 }

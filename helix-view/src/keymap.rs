@@ -157,6 +157,10 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Enter,
                     modifiers: Modifiers::NONE
                 }] => commands::insert_newline,
+                vec![Key {
+                    code: KeyCode::Tab,
+                    modifiers: Modifiers::NONE
+                }] => commands::insert_tab,
             )
     )
 }
