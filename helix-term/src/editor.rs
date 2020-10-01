@@ -127,7 +127,7 @@ impl Editor {
                     .ranges()
                     .iter()
                     // TODO: limit selection to one in viewport
-                    .filter(|range| !range.is_empty()) // && range.overlaps(&Range::new(start, end + 1))
+                    // .filter(|range| !range.is_empty()) // && range.overlaps(&Range::new(start, end + 1))
                     .copied()
                     .collect();
 
@@ -178,12 +178,22 @@ impl Editor {
                                     let grapheme = Cow::from(grapheme);
                                     let width = grapheme_width(&grapheme) as u16;
 
+                                    // TODO: this should really happen as an after pass
                                     let style = if visible_selections
                                         .iter()
                                         .any(|range| range.contains(char_index))
                                     {
                                         // cedar
                                         style.clone().bg(Color::Rgb(128, 47, 0))
+                                    } else {
+                                        style
+                                    };
+
+                                    let style = if visible_selections
+                                        .iter()
+                                        .any(|range| range.head == char_index)
+                                    {
+                                        style.clone().bg(Color::Rgb(255, 255, 255))
                                     } else {
                                         style
                                     };

@@ -20,6 +20,8 @@ pub struct State {
     pub selection: Selection,
     pub mode: Mode,
 
+    pub restore_cursor: bool,
+
     //
     pub syntax: Option<Syntax>,
 }
@@ -46,6 +48,7 @@ impl State {
             selection: Selection::single(0, 0),
             mode: Mode::Normal,
             syntax: None,
+            restore_cursor: false,
         }
     }
 

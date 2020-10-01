@@ -186,6 +186,7 @@ pub fn insert_mode(view: &mut View, _count: usize) {
 // inserts at the end of each selection
 pub fn append_mode(view: &mut View, _count: usize) {
     view.state.mode = Mode::Insert;
+    view.state.restore_cursor = true;
 
     // TODO: as transaction
     let text = &view.state.doc.slice(..);
@@ -268,8 +269,20 @@ pub fn open_below(view: &mut View, _count: usize) {
 // O inserts a new line before each line with a selection
 
 pub fn normal_mode(view: &mut View, _count: usize) {
-    // TODO: if leaving append mode, move cursor back by 1
     view.state.mode = Mode::Normal;
+
+    // if leaving append mode, move cursor back by 1
+    if view.state.restore_cursor {
+        let text = &view.state.doc.slice(..);
+        view.state.selection = view.state.selection.transform(|range| {
+            Range::new(
+                range.from(),
+                graphemes::prev_grapheme_boundary(text, range.to()),
+            )
+        });
+
+        view.state.restore_cursor = false;
+    }
 }
 
 // TODO: insert means add text just before cursor, on exit we should be on the last letter.
