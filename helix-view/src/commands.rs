@@ -303,8 +303,8 @@ pub fn delete_char_forward(view: &mut View, count: usize) {
     let text = &view.state.doc.slice(..);
     let transaction = Transaction::change_by_selection(&view.state, |range| {
         (
-            graphemes::nth_next_grapheme_boundary(text, range.head, count),
             range.head,
+            graphemes::nth_next_grapheme_boundary(text, range.head, count),
             None,
         )
     });
