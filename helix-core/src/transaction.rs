@@ -1,4 +1,5 @@
 use crate::{Range, Rope, Selection, State, Tendril};
+use std::borrow::Cow;
 use std::convert::TryFrom;
 
 /// (from, to, replacement)
@@ -21,7 +22,7 @@ pub enum Assoc {
 }
 
 // ChangeSpec = Change | ChangeSet | Vec<Change>
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChangeSet {
     pub(crate) changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
@@ -185,8 +186,38 @@ impl ChangeSet {
     }
 
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
-    pub fn invert(self) -> Self {
-        unimplemented!()
+    /// The document parameter expects the original document before this change was applied.
+    pub fn invert(&self, original_doc: &Rope) -> Self {
+        if original_doc.len_chars() != self.len {
+            panic!("Document length mismatch");
+            // return false;
+        }
+
+        let mut changes = Vec::with_capacity(self.changes.len());
+        let mut pos = 0;
+        let mut len = 0;
+
+        for change in &self.changes {
+            use Operation::*;
+            match change {
+                Retain(n) => {
+                    changes.push(Retain(*n));
+                    pos += n;
+                    len += n;
+                }
+                Delete(n) => {
+                    let text = Cow::from(original_doc.slice(pos..pos + *n));
+                    changes.push(Insert(Tendril::from_slice(&text)));
+                    pos += n;
+                }
+                Insert(s) => {
+                    changes.push(Delete(s.len()));
+                    len += s.len();
+                }
+            }
+        }
+
+        Self { changes, len }
     }
 
     /// Returns true if applied successfully.
@@ -306,6 +337,7 @@ impl ChangeSet {
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
 /// a single transaction.
+#[derive(Clone)]
 pub struct Transaction {
     /// Changes made to the buffer.
     pub(crate) changes: ChangeSet,
@@ -350,6 +382,18 @@ impl Transaction {
             .unwrap_or_else(|| state.selection.clone().map(&self.changes));
 
         true
+    }
+
+    /// Generate a transaction that reverts this one.
+    pub fn invert(&self, original: &State) -> Self {
+        let changes = self.changes.invert(original.doc());
+        // Store the current cursor position
+        let selection = original.selection.clone();
+
+        Self {
+            changes,
+            selection: Some(selection),
+        }
     }
 
     pub fn with_selection(mut self, selection: Selection) -> Self {
@@ -442,6 +486,33 @@ mod test {
 
         // unimplemented!("{:?}", text);
         // TODO: assert
+    }
+
+    #[test]
+    fn invert() {
+        use Operation::*;
+
+        let changes = ChangeSet {
+            changes: vec![Retain(4), Delete(5), Insert("test".into()), Retain(3)],
+            len: 12,
+        };
+
+        let doc = Rope::from("123 hello xz");
+        let revert = changes.invert(&doc);
+
+        let mut doc2 = doc.clone();
+        changes.apply(&mut doc2);
+
+        // a revert is different
+        assert_ne!(changes, revert);
+        assert_ne!(doc, doc2);
+
+        // but inverting a revert will give us the original
+        assert_eq!(changes, revert.invert(&doc2));
+
+        // applying a revert gives us back the original
+        revert.apply(&mut doc2);
+        assert_eq!(doc, doc2);
     }
 
     #[test]
