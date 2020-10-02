@@ -1,6 +1,7 @@
 [package]
 name = "helix-term"
 version = "0.1.0"
+description = "A post-modern text editor."
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"
 
@@ -21,4 +22,4 @@ num_cpus = "1.13"
 # tui = { version = "0.12", default-features = false, features = ["crossterm"] }
 tui = { git = "https://github.com/fdehau/tui-rs", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.18", features = ["event-stream"] }
-clap = { version = "3.0.0-beta.2 ", default-features = false, features = ["std"] }
+clap = { version = "3.0.0-beta.2 ", default-features = false, features = ["std", "cargo"] }

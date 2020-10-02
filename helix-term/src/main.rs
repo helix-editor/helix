@@ -12,9 +12,7 @@ use anyhow::Error;
 static EX: smol::Executor = smol::Executor::new();
 
 fn main() -> Result<(), Error> {
-    let args = App::new("helix")
-        .version("0.1")
-        .about("A post-modern text editor.")
+    let args = clap::app_from_crate!()
         .arg(
             Arg::new("files")
                 .about("Sets the input file to use")
