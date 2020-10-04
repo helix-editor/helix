@@ -53,7 +53,7 @@ impl View {
     #[inline]
     pub fn last_line(&self, viewport: Rect) -> usize {
         std::cmp::min(
-            (self.first_line + viewport.height - 1) as usize,
+            (self.first_line + viewport.height) as usize,
             self.state.doc().len_lines() - 1,
         )
     }
