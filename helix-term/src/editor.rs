@@ -289,10 +289,7 @@ impl Editor {
 
                 execute!(
                     stdout,
-                    cursor::MoveTo(
-                        pos.col as u16 + viewport.x,
-                        pos.row as u16 - view.first_line + viewport.y,
-                    )
+                    cursor::MoveTo(pos.col as u16 + viewport.x, pos.row as u16 + viewport.y,)
                 );
             }
             None => (),
