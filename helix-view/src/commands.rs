@@ -117,6 +117,24 @@ pub fn move_next_word_end(view: &mut View, count: usize) {
     view.state.selection = Selection::single(pos, pos);
 }
 
+pub fn move_file_start(view: &mut View, count: usize) {
+    // TODO: use a transaction
+    view.state.selection = view
+        .state
+        .move_selection(Direction::Backward, Granularity::Line, count);
+
+    view.state.mode = Mode::Normal;
+}
+
+pub fn move_file_end(view: &mut View, count: usize) {
+    // TODO: use a transaction
+    view.state.selection = view
+        .state
+        .move_selection(Direction::Forward, Granularity::Line, count);
+
+    view.state.mode = Mode::Normal;
+}
+
 // avoid select by default by having a visual mode switch that makes movements into selects
 
 pub fn extend_char_left(view: &mut View, count: usize) {
@@ -290,6 +308,10 @@ pub fn normal_mode(view: &mut View, _count: usize) {
 
         view.state.restore_cursor = false;
     }
+}
+
+pub fn goto_mode(view: &mut View, _count: usize) {
+    view.state.mode = Mode::Goto;
 }
 
 // TODO: insert means add text just before cursor, on exit we should be on the last letter.

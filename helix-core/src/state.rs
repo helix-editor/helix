@@ -9,6 +9,7 @@ use std::path::PathBuf;
 pub enum Mode {
     Normal,
     Insert,
+    Goto,
 }
 
 /// A state represents the current editor state of a single buffer.
