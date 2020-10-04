@@ -211,8 +211,9 @@ impl ChangeSet {
                     pos += n;
                 }
                 Insert(s) => {
-                    changes.push(Delete(s.len()));
-                    len += s.len();
+                    let chars = s.chars().count();
+                    changes.push(Delete(chars));
+                    len += chars;
                 }
             }
         }
@@ -240,7 +241,7 @@ impl ChangeSet {
                 }
                 Insert(s) => {
                     text.insert(pos, s);
-                    pos += s.len();
+                    pos += s.chars().count();
                 }
             }
         }
@@ -497,7 +498,7 @@ mod test {
             len: 12,
         };
 
-        let doc = Rope::from("123 hello xz");
+        let doc = Rope::from("世界3 hello xz");
         let revert = changes.invert(&doc);
 
         let mut doc2 = doc.clone();
