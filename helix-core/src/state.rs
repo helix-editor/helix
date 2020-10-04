@@ -48,8 +48,8 @@ impl State {
             doc,
             selection: Selection::single(0, 0),
             mode: Mode::Normal,
-            syntax: None,
             restore_cursor: false,
+            syntax: None,
         }
     }
 

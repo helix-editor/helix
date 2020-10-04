@@ -5,12 +5,13 @@ use std::{borrow::Cow, path::PathBuf};
 use crate::theme::Theme;
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
-    Position, RopeSlice, State,
+    History, Position, RopeSlice, State,
 };
 use tui::layout::Rect;
 
 pub struct View {
     pub state: State,
+    pub history: History,
     pub first_line: usize,
     pub size: (u16, u16),
     pub theme: Theme, // TODO: share one instance
@@ -26,6 +27,7 @@ impl View {
             first_line: 0,
             size, // TODO: pass in from term
             theme,
+            history: History::default(),
         };
 
         Ok(view)

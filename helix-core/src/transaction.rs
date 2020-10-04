@@ -338,7 +338,7 @@ impl ChangeSet {
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
 /// a single transaction.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Transaction {
     /// Changes made to the buffer.
     pub(crate) changes: ChangeSet,

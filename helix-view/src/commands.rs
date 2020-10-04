@@ -417,3 +417,15 @@ pub fn delete_char_forward(view: &mut View, count: usize) {
     transaction.apply(&mut view.state);
     // TODO: need to store into history if successful
 }
+
+// Undo / Redo
+
+pub fn undo(view: &mut View, _count: usize) {
+    view.history.undo(&mut view.state);
+
+    // TODO: each command should simply return a Option<transaction>, then the higher level handles storing it?
+}
+
+pub fn redo(view: &mut View, _count: usize) {
+    view.history.redo(&mut view.state);
+}

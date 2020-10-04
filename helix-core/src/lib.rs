@@ -1,5 +1,6 @@
 #![allow(unused)]
 pub mod graphemes;
+mod history;
 pub mod macros;
 mod position;
 pub mod selection;
@@ -19,6 +20,7 @@ pub use selection::Range;
 pub use selection::Selection;
 pub use syntax::Syntax;
 
+pub use history::History;
 pub use state::State;
 
 pub use transaction::{Assoc, Change, ChangeSet, Transaction};
