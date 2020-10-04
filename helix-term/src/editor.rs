@@ -1,5 +1,5 @@
 use clap::ArgMatches as Args;
-use helix_core::{state::coords_at_pos, state::Mode, syntax::HighlightEvent, Range, State};
+use helix_core::{state::Mode, syntax::HighlightEvent, Range, State};
 use helix_view::{commands, keymap, View};
 
 use std::{
@@ -23,6 +23,8 @@ use crossterm::{
 };
 
 use tui::{backend::CrosstermBackend, buffer::Buffer as Surface, layout::Rect, style::Style};
+
+const TAB_WIDTH: usize = 4;
 
 type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
@@ -85,10 +87,7 @@ impl Editor {
                 // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
                 let source_code = view.state.doc().to_string();
 
-                let last_line = std::cmp::min(
-                    (view.first_line + viewport.height - 1) as usize,
-                    view.state.doc().len_lines() - 1,
-                );
+                let last_line = view.last_line(viewport);
 
                 let range = {
                     // calculate viewport byte ranges
@@ -172,6 +171,8 @@ impl Editor {
                                     if line >= viewport.height {
                                         break 'outer;
                                     }
+                                } else if grapheme == "\t" {
+                                    visual_x += (TAB_WIDTH as u16);
                                 } else {
                                     // Cow will prevent allocations if span contained in a single slice
                                     // which should really be the majority case
@@ -281,12 +282,16 @@ impl Editor {
 
                 // render the cursor
                 let pos = view.state.selection().cursor();
-                let coords = coords_at_pos(&view.state.doc().slice(..), pos);
+
+                let pos = view
+                    .screen_coords_at_pos(&view.state.doc().slice(..), pos, area)
+                    .expect("Cursor is out of bounds.");
+
                 execute!(
                     stdout,
                     cursor::MoveTo(
-                        coords.col as u16 + viewport.x,
-                        coords.row as u16 - view.first_line + viewport.y,
+                        pos.col as u16 + viewport.x,
+                        pos.row as u16 - view.first_line + viewport.y,
                     )
                 );
             }

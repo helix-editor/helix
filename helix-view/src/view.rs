@@ -1,9 +1,13 @@
 use anyhow::Error;
 
-use std::path::PathBuf;
+use std::{borrow::Cow, path::PathBuf};
 
 use crate::theme::Theme;
-use helix_core::State;
+use helix_core::{
+    graphemes::{grapheme_width, RopeGraphemes},
+    Position, RopeSlice, State,
+};
+use tui::layout::Rect;
 
 pub struct View {
     pub state: State,
@@ -43,5 +47,49 @@ impl View {
             // scroll up
             self.first_line = line.saturating_sub(padding);
         }
+    }
+
+    /// Calculates the last visible line on screen
+    #[inline]
+    pub fn last_line(&self, viewport: Rect) -> usize {
+        std::cmp::min(
+            (self.first_line + viewport.height - 1) as usize,
+            self.state.doc().len_lines() - 1,
+        )
+    }
+
+    /// Translates a document position to an absolute position in the terminal.
+    /// Returns a (line, col) position if the position is visible on screen.
+    // TODO: Could return width as well for the character width at cursor.
+    pub fn screen_coords_at_pos(
+        &self,
+        text: &RopeSlice,
+        pos: usize,
+        viewport: Rect,
+    ) -> Option<Position> {
+        let line = text.char_to_line(pos);
+
+        if line < self.first_line as usize || line > self.last_line(viewport) {
+            // Line is not visible on screen
+            return None;
+        }
+
+        let line_start = text.line_to_char(line);
+        let line_slice = text.slice(line_start..pos);
+        let mut col = 0;
+
+        for grapheme in RopeGraphemes::new(&line_slice) {
+            if grapheme == "\t" {
+                // TODO: this should be const TAB_WIDTH
+                col += 4;
+            } else {
+                let grapheme = Cow::from(grapheme);
+                col += grapheme_width(&grapheme);
+            }
+        }
+
+        let row = line - self.first_line as usize;
+
+        Some(Position::new(row, col))
     }
 }
