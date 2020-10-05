@@ -127,7 +127,7 @@ pub fn move_file_start(view: &mut View, _count: usize) {
 pub fn move_file_end(view: &mut View, _count: usize) {
     // TODO: use a transaction
     let text = &view.state.doc;
-    let last_line = text.char_to_line(text.len_lines().checked_sub(1).unwrap());
+    let last_line = text.line_to_char(text.len_lines().checked_sub(1).unwrap());
     view.state.selection = Selection::single(last_line, last_line);
 
     view.state.mode = Mode::Normal;
