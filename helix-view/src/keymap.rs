@@ -108,6 +108,15 @@ macro_rules! shift {
     };
 }
 
+macro_rules! ctrl {
+    ($ch:expr) => {
+        Key {
+            code: KeyCode::Char($ch),
+            modifiers: Modifiers::CONTROL,
+        }
+    };
+}
+
 pub fn default() -> Keymaps {
     hashmap!(
         state::Mode::Normal =>
@@ -148,8 +157,8 @@ pub fn default() -> Keymaps {
                     code: KeyCode::PageDown,
                     modifiers: Modifiers::NONE
                 }] => commands::page_down,
-                vec![shift!('u')] => commands::half_page_up,
-                vec![shift!('d')] => commands::half_page_down,
+                vec![ctrl!('u')] => commands::half_page_up,
+                vec![ctrl!('d')] => commands::half_page_down,
             ),
             state::Mode::Insert => hashmap!(
                 vec![Key {
