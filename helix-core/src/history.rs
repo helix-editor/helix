@@ -1,16 +1,16 @@
 use crate::{ChangeSet, Rope, State, Transaction};
+use smallvec::{smallvec, SmallVec};
 
 /// Undo-tree style history store.
 pub struct History {
     revisions: Vec<Revision>,
     cursor: usize,
-    //
 }
 
 #[derive(Debug)]
 struct Revision {
-    // prev: usize,
     parent: usize,
+    children: SmallVec<[(usize, Transaction); 1]>,
     /// The transaction to revert to previous state.
     revert: Transaction,
     // selection before, selection after?
@@ -22,6 +22,7 @@ impl Default for History {
         Self {
             revisions: vec![Revision {
                 parent: 0,
+                children: SmallVec::new(),
                 revert: Transaction::from(ChangeSet::new(&Rope::new())),
             }],
             cursor: 0,
@@ -31,18 +32,24 @@ impl Default for History {
 
 impl History {
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
-        // TODO: store both directions
-        // TODO: could store a single set if deletes also stored the text they delete
+        // TODO: could store a single transaction, if deletes also stored the text they delete
         let revert = transaction.invert(original);
 
         let new_cursor = self.revisions.len();
         self.revisions.push(Revision {
             parent: self.cursor,
+            children: SmallVec::new(),
             revert,
         });
-        self.cursor = new_cursor;
 
-        // TODO: child tracking too?
+        // add a reference to the parent
+        self.revisions
+            .get_mut(self.cursor)
+            .unwrap() // TODO: get_unchecked_mut
+            .children
+            .push((new_cursor, transaction.clone()));
+
+        self.cursor = new_cursor;
     }
 
     #[inline]
@@ -57,9 +64,8 @@ impl History {
         }
 
         let current_revision = &self.revisions[self.cursor];
-        // unimplemented!("{:?}", revision);
-        // unimplemented!("{:?}", state.doc().len_chars());
-        // TODO: pass the return value through?
+
+        // TODO: pass the return value through? It should always succeed
         let success = current_revision.revert.apply(state);
 
         if !success {
@@ -72,13 +78,16 @@ impl History {
     pub fn redo(&mut self, state: &mut State) {
         let current_revision = &self.revisions[self.cursor];
 
-        // TODO: pick the latest child
+        // for now, simply pick the latest child (linear undo / redo)
+        if let Some((index, transaction)) = current_revision.children.last() {
+            let success = transaction.apply(state);
 
-        // if !success {
-        //     panic!("Failed to apply undo!");
-        // }
+            if !success {
+                panic!("Failed to apply redo!");
+            }
 
-        unimplemented!()
+            self.cursor = *index;
+        }
     }
 }
 
