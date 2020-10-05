@@ -117,20 +117,18 @@ pub fn move_next_word_end(view: &mut View, count: usize) {
     view.state.selection = Selection::single(pos, pos);
 }
 
-pub fn move_file_start(view: &mut View, count: usize) {
+pub fn move_file_start(view: &mut View, _count: usize) {
     // TODO: use a transaction
-    view.state.selection = view
-        .state
-        .move_selection(Direction::Backward, Granularity::Line, count);
+    view.state.selection = Selection::single(0, 0);
 
     view.state.mode = Mode::Normal;
 }
 
-pub fn move_file_end(view: &mut View, count: usize) {
+pub fn move_file_end(view: &mut View, _count: usize) {
     // TODO: use a transaction
-    view.state.selection = view
-        .state
-        .move_selection(Direction::Forward, Granularity::Line, count);
+    let text = &view.state.doc;
+    let last_line = text.char_to_line(text.len_lines().checked_sub(1).unwrap());
+    view.state.selection = Selection::single(last_line, last_line);
 
     view.state.mode = Mode::Normal;
 }
