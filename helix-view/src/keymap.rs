@@ -140,6 +140,16 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
                 }] => commands::normal_mode,
+                vec![Key {
+                    code: KeyCode::PageUp,
+                    modifiers: Modifiers::NONE
+                }] => commands::page_up,
+                vec![Key {
+                    code: KeyCode::PageDown,
+                    modifiers: Modifiers::NONE
+                }] => commands::page_down,
+                vec![shift!('u')] => commands::half_page_up,
+                vec![shift!('d')] => commands::half_page_down,
             ),
             state::Mode::Insert => hashmap!(
                 vec![Key {

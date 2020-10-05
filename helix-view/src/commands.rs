@@ -127,12 +127,29 @@ pub fn move_file_start(view: &mut View, _count: usize) {
 pub fn move_file_end(view: &mut View, _count: usize) {
     // TODO: use a transaction
     let text = &view.state.doc;
-    let last_line = text.line_to_char(text.len_lines().checked_sub(1).unwrap());
+    let last_line = text.line_to_char(text.len_lines().checked_sub(2).unwrap());
     view.state.selection = Selection::single(last_line, last_line);
 
     view.state.mode = Mode::Normal;
 }
 
+pub fn page_up(view: &mut View, _count: usize) {
+    view.first_line = view.first_line.saturating_sub(view.size.1);
+    view.state.selection = Selection::single(view.first_line as usize, view.first_line as usize);
+}
+
+pub fn page_down(view: &mut View, _count: usize) {
+    view.first_line += view.size.1;
+    view.state.selection = Selection::single(view.first_line as usize, view.first_line as usize);
+}
+
+pub fn half_page_up(view: &mut View, _count: usize) {
+    view.first_line = view.first_line.saturating_sub(view.size.1 / 2);
+}
+
+pub fn half_page_down(view: &mut View, _count: usize) {
+    view.first_line += view.size.1 / 2;
+}
 // avoid select by default by having a visual mode switch that makes movements into selects
 
 pub fn extend_char_left(view: &mut View, count: usize) {
