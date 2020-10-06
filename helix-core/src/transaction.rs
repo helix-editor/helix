@@ -45,10 +45,12 @@ impl ChangeSet {
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
     pub fn compose(self, other: ChangeSet) -> Result<Self, ()> {
-        if self.len != other.len {
-            // length mismatch
-            return Err(());
-        }
+        // TODO: len before should match len after
+
+        // if self.len != other.len {
+        //     // length mismatch
+        //     return Err(());
+        // }
 
         let len = self.changes.len();
 
@@ -477,23 +479,23 @@ mod test {
                 Insert("!".into()),
                 Retain(1),
                 Delete(2),
-                Insert("ab".into()),
+                Insert("abc".into()),
             ],
-            len: 7,
+            len: 8,
         };
 
         let b = ChangeSet {
-            changes: vec![Delete(5), Insert("world".into()), Retain(4)],
-            len: 7,
+            changes: vec![Delete(5), Insert("world".into()), Retain(5)],
+            len: 9,
         };
 
         let mut text = Rope::from("hello xz");
 
         // should probably return cloned text
-        a.compose(b).unwrap().apply(&mut text);
-
-        // unimplemented!("{:?}", text);
-        // TODO: assert
+        let composed = a.compose(b).unwrap();
+        assert_eq!(composed.len, 8);
+        assert!(composed.apply(&mut text));
+        assert_eq!(text, "world! abc");
     }
 
     #[test]
