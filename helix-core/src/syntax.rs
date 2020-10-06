@@ -312,7 +312,7 @@ pub struct LanguageLayer {
     tree: Option<Tree>,
 }
 
-use crate::state::{coords_at_pos, Coords};
+use crate::state::coords_at_pos;
 use crate::transaction::{ChangeSet, Operation};
 use crate::Tendril;
 

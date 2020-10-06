@@ -288,9 +288,6 @@ impl State {
     }
 }
 
-/// Coordinates are a 0-indexed line and column pair.
-pub type Coords = (usize, usize); // line, col
-
 /// Convert a character index to (line, column) coordinates.
 pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Position {
     let line = text.char_to_line(pos);
