@@ -147,6 +147,8 @@ pub fn default() -> Keymaps {
                 vec![key!(';')] => commands::collapse_selection,
                 vec![key!('u')] => commands::undo,
                 vec![shift!('U')] => commands::redo,
+                vec![key!('y')] => commands::yank,
+                vec![key!('p')] => commands::paste,
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE

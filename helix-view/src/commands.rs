@@ -1,7 +1,7 @@
 use helix_core::{
     graphemes,
     regex::Regex,
-    selection,
+    register, selection,
     state::{Direction, Granularity, Mode, State},
     ChangeSet, Range, Selection, Tendril, Transaction,
 };
@@ -442,4 +442,37 @@ pub fn undo(view: &mut View, _count: usize) {
 
 pub fn redo(view: &mut View, _count: usize) {
     view.history.redo(&mut view.state);
+}
+
+// Yank / Paste
+
+pub fn yank(view: &mut View, _count: usize) {
+    // TODO: should selections be made end inclusive?
+    let values = view
+        .state
+        .selection()
+        .fragments(&view.state.doc().slice(..))
+        .map(|cow| cow.into_owned())
+        .collect();
+
+    register::set('"', values);
+}
+
+pub fn paste(view: &mut View, _count: usize) {
+    if let Some(values) = register::get('"') {
+        let repeat = std::iter::repeat(
+            values
+                .last()
+                .map(|value| Tendril::from_slice(value))
+                .unwrap(),
+        );
+
+        let mut values = values.into_iter().map(Tendril::from).chain(repeat);
+
+        let transaction = Transaction::change_by_selection(&view.state, |range| {
+            (range.head + 1, range.head + 1, Some(values.next().unwrap()))
+        });
+
+        transaction.apply(&mut view.state);
+    }
 }

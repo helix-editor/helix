@@ -3,6 +3,7 @@ pub mod graphemes;
 mod history;
 pub mod macros;
 mod position;
+pub mod register;
 pub mod selection;
 pub mod state;
 pub mod syntax;

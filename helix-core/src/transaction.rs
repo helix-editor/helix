@@ -445,7 +445,7 @@ impl Transaction {
     /// Generate a transaction with a change per selection range.
     pub fn change_by_selection<F>(state: &State, f: F) -> Self
     where
-        F: Fn(&Range) -> Change,
+        F: FnMut(&Range) -> Change,
     {
         Self::change(state, state.selection.ranges().iter().map(f))
     }
