@@ -87,7 +87,7 @@ impl Editor {
                 // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
                 let source_code = view.state.doc().to_string();
 
-                let last_line = view.last_line(viewport);
+                let last_line = view.last_line();
 
                 let range = {
                     // calculate viewport byte ranges
@@ -286,7 +286,7 @@ impl Editor {
                 let pos = view.state.selection().cursor();
 
                 let pos = view
-                    .screen_coords_at_pos(&view.state.doc().slice(..), pos, area)
+                    .screen_coords_at_pos(&view.state.doc().slice(..), pos)
                     .expect("Cursor is out of bounds.");
 
                 execute!(
