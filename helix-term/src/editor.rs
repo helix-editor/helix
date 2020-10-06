@@ -52,7 +52,6 @@ impl Editor {
             size,
             surface: Surface::empty(area),
             cache: Surface::empty(area),
-            // TODO; move to state
         };
 
         if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
@@ -225,15 +224,7 @@ impl Editor {
                     // lavender
                 }
 
-                // let lines = state
-                //     .doc
-                //     .lines_at(self.first_line as usize)
-                //     .take(self.size.1 as usize)
-                //     .map(|x| x.as_str().unwrap());
-
                 // // iterate over selections and render them
-                // let select = Style::default().bg(tui::style::Color::LightBlue);
-                // let text = state.doc.slice(..);
                 // for range in state.selection.ranges() {
                 //     // get terminal coords for x,y for each range pos
                 //     // TODO: this won't work with multiline
@@ -246,8 +237,6 @@ impl Editor {
                 //         (y2 - y1 + 1) as u16,
                 //     );
                 //     self.surface.set_style(area, select);
-
-                //     // TODO: don't highlight next char in append mode
                 // }
 
                 // statusline
@@ -330,13 +319,13 @@ impl Editor {
                 }
 
                 Some(Ok(Event::Key(event))) => {
+                    // TODO: sequences (`gg`)
+                    // TODO: handle count other than 1
                     if let Some(view) = &mut self.view {
                         match view.state.mode() {
                             Mode::Insert => {
-                                // TODO: handle modes and sequences (`gg`)
                                 let keys = vec![event];
                                 if let Some(command) = keymap[&Mode::Insert].get(&keys) {
-                                    // TODO: handle count other than 1
                                     command(view, 1);
                                 } else if let KeyEvent {
                                     code: KeyCode::Char(c),
@@ -350,10 +339,8 @@ impl Editor {
                                 self.render();
                             }
                             Mode::Normal => {
-                                // TODO: handle modes and sequences (`gg`)
                                 let keys = vec![event];
                                 if let Some(command) = keymap[&Mode::Normal].get(&keys) {
-                                    // TODO: handle count other than 1
                                     command(view, 1);
 
                                     // TODO: simplistic ensure cursor in view for now

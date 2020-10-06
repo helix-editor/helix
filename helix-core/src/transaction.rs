@@ -45,12 +45,7 @@ impl ChangeSet {
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
     pub fn compose(self, other: ChangeSet) -> Result<Self, ()> {
-        // TODO: len before should match len after
-
-        // if self.len != other.len {
-        //     // length mismatch
-        //     return Err(());
-        // }
+        // TODO: len before b should match len after a
 
         let len = self.changes.len();
 
@@ -334,9 +329,6 @@ impl ChangeSet {
         new_pos
     }
 }
-
-// trait Transaction
-// trait StrictTransaction
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
 /// a single transaction.

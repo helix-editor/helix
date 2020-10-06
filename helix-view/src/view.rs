@@ -25,7 +25,7 @@ impl View {
         let view = Self {
             state,
             first_line: 0,
-            size, // TODO: pass in from term
+            size,
             theme,
             history: History::default(),
         };

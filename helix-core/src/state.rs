@@ -261,20 +261,11 @@ impl State {
         granularity: Granularity,
         count: usize,
     ) -> Selection {
-        // TODO: move all selections according to normal cursor move semantics by collapsing it
+        // move all selections according to normal cursor move semantics by collapsing it
         // into cursors and moving them vertically
 
         self.selection.transform(|range| {
-            // let pos = if !range.is_empty() {
-            //     // if selection already exists, bump it to the start or end of current select first
-            //     if dir == Direction::Backward {
-            //         range.from()
-            //     } else {
-            //         range.to()
-            //     }
-            // } else {
             let pos = self.move_pos(range.head, dir, granularity, count);
-            // };
             Range::new(pos, pos)
         })
     }
