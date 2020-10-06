@@ -3,7 +3,7 @@ use helix_core::{
     regex::Regex,
     selection,
     state::{Direction, Granularity, Mode, State},
-    Range, Selection, Tendril, Transaction,
+    ChangeSet, Range, Selection, Tendril, Transaction,
 };
 use once_cell::sync::Lazy;
 
@@ -253,14 +253,16 @@ pub fn collapse_selection(view: &mut View, _count: usize) {
         .transform(|range| Range::new(range.head, range.head))
 }
 
-// insert mode:
-// first we calculate the correct cursors/selections
-// then we just append at each cursor
-// lastly, if it was append mode we shift cursor by 1?
+fn enter_insert_mode(view: &mut View) {
+    view.state.mode = Mode::Insert;
 
+    // HAXX
+    view.state.changes = Some(ChangeSet::new(view.state.doc()));
+    view.state.old_state = Some((view.state.doc().clone(), view.state.selection.clone()));
+}
 // inserts at the start of each selection
 pub fn insert_mode(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Insert;
+    enter_insert_mode(view);
 
     view.state.selection = view
         .state
@@ -270,7 +272,7 @@ pub fn insert_mode(view: &mut View, _count: usize) {
 
 // inserts at the end of each selection
 pub fn append_mode(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Insert;
+    enter_insert_mode(view);
     view.state.restore_cursor = true;
 
     // TODO: as transaction
@@ -303,21 +305,21 @@ fn selection_lines(state: &State) -> Vec<usize> {
 
 // I inserts at the start of each line with a selection
 pub fn prepend_to_line(view: &mut View, count: usize) {
-    view.state.mode = Mode::Insert;
+    enter_insert_mode(view);
 
     move_line_start(view, count);
 }
 
 // A inserts at the end of each line with a selection
 pub fn append_to_line(view: &mut View, count: usize) {
-    view.state.mode = Mode::Insert;
+    enter_insert_mode(view);
 
     move_line_end(view, count);
 }
 
 // o inserts a new line after each line with a selection
 pub fn open_below(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Insert;
+    enter_insert_mode(view);
 
     let lines = selection_lines(&view.state);
 
@@ -355,6 +357,18 @@ pub fn open_below(view: &mut View, _count: usize) {
 
 pub fn normal_mode(view: &mut View, _count: usize) {
     view.state.mode = Mode::Normal;
+
+    if let Some(changes) = view.state.changes.take() {
+        // Instead of doing this messy merge we could always commit, and based on transaction
+        // annotations either add a new layer or compose into the previous one.
+        let transaction = Transaction::from(changes).with_selection(view.state.selection().clone());
+        let (doc, selection) = view.state.old_state.take().unwrap();
+        let mut old_state = State::new(doc);
+        old_state.selection = selection;
+
+        // TODO: take transaction by value?
+        view.history.commit_revision(&transaction, &old_state);
+    }
 
     // if leaving append mode, move cursor back by 1
     if view.state.restore_cursor {

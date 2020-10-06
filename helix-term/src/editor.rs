@@ -426,31 +426,3 @@ impl Editor {
 // TODO: scope matching: biggest union match? [string] & [html, string], [string, html] & [ string, html]
 // can do this by sorting our theme matches based on array len (longest first) then stopping at the
 // first rule that matches (rule.all(|scope| scopes.contains(scope)))
-//
-// let visual_x = 0;
-// let line = ?;
-// for span in spans {
-// start(scope) => scopes.push(scope)
-//  span =>
-//      let text = rope.slice(span.start..span.end);
-//      let style = calculate_style(scopes);
-//      for each grapheme in text.graphemes() {
-//          // if newline += lines, continue
-//
-//          if state.selection.ranges().any(|range| range.contains(char_index)) {
-//              if exactly on cursor {
-//              }
-//              if on primary cursor? {
-//              }
-//              modify style temporarily
-//          }
-//
-//          // if in bounds
-//
-//          // if tab, draw tab width
-//          // draw(visual_x, line, grapheme, style)
-//          // increment visual_x by grapheme_width(grapheme)
-//          // increment char_index by grapheme.len_chars()
-//      }
-//  end => scopes.pop()
-// }

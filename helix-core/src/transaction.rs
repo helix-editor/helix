@@ -369,6 +369,13 @@ impl Transaction {
                 return false;
             }
 
+            // Compose this transaction with the previous one
+            let old_changes = state.changes.take();
+            state.changes = Some(old_changes.map_or_else(
+                || self.changes.clone(),
+                |changes| changes.compose(self.changes.clone()).unwrap(),
+            ));
+
             if let Some(syntax) = &mut state.syntax {
                 // TODO: no unwrap
                 syntax.update(&old_doc, &state.doc, &self.changes).unwrap();

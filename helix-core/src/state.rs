@@ -1,6 +1,6 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
 use crate::syntax::LOADER;
-use crate::{Position, Range, Rope, RopeSlice, Selection, Syntax};
+use crate::{ChangeSet, Position, Range, Rope, RopeSlice, Selection, Syntax};
 use anyhow::Error;
 
 use std::path::PathBuf;
@@ -25,6 +25,8 @@ pub struct State {
 
     //
     pub syntax: Option<Syntax>,
+    pub changes: Option<ChangeSet>,
+    pub old_state: Option<(Rope, Selection)>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -50,6 +52,8 @@ impl State {
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
+            changes: None,
+            old_state: None,
         }
     }
 
