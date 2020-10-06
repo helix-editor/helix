@@ -11,7 +11,7 @@ use tui::layout::Rect;
 
 pub struct View {
     pub state: State,
-    pub first_line: u16,
+    pub first_line: usize,
     pub size: (u16, u16),
     pub theme: Theme, // TODO: share one instance
 }
@@ -33,10 +33,10 @@ impl View {
 
     pub fn ensure_cursor_in_view(&mut self) {
         let cursor = self.state.selection().cursor();
-        let line = self.state.doc().char_to_line(cursor) as u16;
-        let document_end = self.first_line + self.size.1.saturating_sub(1);
+        let line = self.state.doc().char_to_line(cursor);
+        let document_end = self.first_line + (self.size.1 as usize).saturating_sub(1);
 
-        let padding = 5u16;
+        let padding = 5usize;
 
         // TODO: side scroll
 
@@ -54,7 +54,7 @@ impl View {
     pub fn last_line(&self) -> usize {
         let viewport = Rect::new(6, 0, self.size.0, self.size.1 - 1); // - 1 for statusline
         std::cmp::min(
-            (self.first_line + viewport.height) as usize,
+            self.first_line + (viewport.height as usize),
             self.state.doc().len_lines() - 1,
         )
     }
