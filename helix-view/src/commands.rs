@@ -13,7 +13,7 @@ use crate::view::View;
 /// state (usually by creating and applying a transaction).
 pub type Command = fn(view: &mut View, count: usize);
 
-const PADDING: u16 = 10;
+const PADDING: u16 = 5;
 
 pub fn move_char_left(view: &mut View, count: usize) {
     // TODO: use a transaction
@@ -138,10 +138,9 @@ pub fn move_file_end(view: &mut View, _count: usize) {
 pub fn check_cursor_in_view(view: &mut View) -> bool {
     let cursor = view.state.selection().cursor();
     let line = view.state.doc().char_to_line(cursor) as u16;
-    let document_end = view.first_line + view.size.1.saturating_sub(2);
-    let padding = 5u16;
+    let document_end = view.first_line + view.size.1.saturating_sub(1);
 
-    if (line > document_end.saturating_sub(padding)) | (line < view.first_line + padding) {
+    if (line > document_end.saturating_sub(PADDING)) | (line < view.first_line + PADDING) {
         return false;
     }
     true
@@ -150,9 +149,13 @@ pub fn check_cursor_in_view(view: &mut View) -> bool {
 pub fn page_up(view: &mut View, _count: usize) {
     let text = &view.state.doc;
     view.first_line = view.first_line.saturating_sub(view.size.1);
-    let pos = text.line_to_char(view.first_line as usize);
+    let pos = text.line_to_char(view.last_line() as usize);
 
-    view.state.selection = Selection::single(pos, pos);
+    if !check_cursor_in_view(view) {
+        let text = &view.state.doc;
+        let pos = text.line_to_char(view.last_line().saturating_sub(PADDING as usize));
+        view.state.selection = Selection::single(pos, pos);
+    }
 }
 
 pub fn page_down(view: &mut View, _count: usize) {
@@ -168,13 +171,14 @@ pub fn half_page_up(view: &mut View, _count: usize) {
     view.first_line = view.first_line.saturating_sub(view.size.1 / 2);
     if !check_cursor_in_view(view) {
         let text = &view.state.doc;
-        let pos = text.line_to_char(view.first_line as usize);
+        let pos = text.line_to_char(view.last_line() - PADDING as usize);
         view.state.selection = Selection::single(pos, pos);
     }
 }
 
 pub fn half_page_down(view: &mut View, _count: usize) {
-    if view.first_line < view.state.doc().len_lines() as u16 - view.size.1 {
+    let lines = view.state.doc().len_lines();
+    if view.first_line < lines.saturating_sub(view.size.1 as usize) as u16 {
         view.first_line += view.size.1 / 2;
     }
     if !check_cursor_in_view(view) {

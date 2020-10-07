@@ -34,7 +34,7 @@ impl View {
     pub fn ensure_cursor_in_view(&mut self) {
         let cursor = self.state.selection().cursor();
         let line = self.state.doc().char_to_line(cursor) as u16;
-        let document_end = self.first_line + self.size.1.saturating_sub(2);
+        let document_end = self.first_line + self.size.1.saturating_sub(1);
 
         let padding = 5u16;
 
