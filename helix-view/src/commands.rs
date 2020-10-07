@@ -251,6 +251,8 @@ pub fn delete_selection(view: &mut View, _count: usize) {
     let transaction =
         Transaction::change_by_selection(&view.state, |range| (range.from(), range.to(), None));
     transaction.apply(&mut view.state);
+
+    append_changes_to_history(view);
 }
 
 pub fn change_selection(view: &mut View, count: usize) {
@@ -268,9 +270,7 @@ pub fn collapse_selection(view: &mut View, _count: usize) {
 fn enter_insert_mode(view: &mut View) {
     view.state.mode = Mode::Insert;
 
-    // HAXX
-    view.state.changes = Some(ChangeSet::new(view.state.doc()));
-    view.state.old_state = Some((view.state.doc().clone(), view.state.selection.clone()));
+    append_changes_to_history(view);
 }
 // inserts at the start of each selection
 pub fn insert_mode(view: &mut View, _count: usize) {
@@ -367,9 +367,7 @@ pub fn open_below(view: &mut View, _count: usize) {
 
 // O inserts a new line before each line with a selection
 
-pub fn normal_mode(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Normal;
-
+fn append_changes_to_history(view: &mut View) {
     if let Some(changes) = view.state.changes.take() {
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
@@ -381,6 +379,18 @@ pub fn normal_mode(view: &mut View, _count: usize) {
         // TODO: take transaction by value?
         view.history.commit_revision(&transaction, &old_state);
     }
+
+    // TODO: need to start the state with these vals
+
+    // HAXX
+    view.state.changes = Some(ChangeSet::new(view.state.doc()));
+    view.state.old_state = Some((view.state.doc().clone(), view.state.selection.clone()));
+}
+
+pub fn normal_mode(view: &mut View, _count: usize) {
+    view.state.mode = Mode::Normal;
+
+    append_changes_to_history(view);
 
     // if leaving append mode, move cursor back by 1
     if view.state.restore_cursor {
@@ -486,5 +496,6 @@ pub fn paste(view: &mut View, _count: usize) {
         });
 
         transaction.apply(&mut view.state);
+        append_changes_to_history(view);
     }
 }
