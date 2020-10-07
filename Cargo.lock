@@ -225,6 +225,7 @@ checksum = "4bd1061998a501ee7d4b6d449020df3266ca3124b941ec56cf2005c3779ca142"
 dependencies = [
  "bitflags",
  "indexmap",
+ "lazy_static",
  "os_str_bytes",
  "textwrap",
  "unicode-width",

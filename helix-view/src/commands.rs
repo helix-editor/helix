@@ -13,6 +13,8 @@ use crate::view::View;
 /// state (usually by creating and applying a transaction).
 pub type Command = fn(view: &mut View, count: usize);
 
+const PADDING: usize = 5;
+
 pub fn move_char_left(view: &mut View, count: usize) {
     // TODO: use a transaction
     let selection = view
@@ -117,6 +119,74 @@ pub fn move_next_word_end(view: &mut View, count: usize) {
     view.state.selection = Selection::single(pos, pos);
 }
 
+pub fn move_file_start(view: &mut View, _count: usize) {
+    // TODO: use a transaction
+    view.state.selection = Selection::single(0, 0);
+
+    view.state.mode = Mode::Normal;
+}
+
+pub fn move_file_end(view: &mut View, _count: usize) {
+    // TODO: use a transaction
+    let text = &view.state.doc;
+    let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
+    view.state.selection = Selection::single(last_line, last_line);
+
+    view.state.mode = Mode::Normal;
+}
+
+pub fn check_cursor_in_view(view: &mut View) -> bool {
+    let cursor = view.state.selection().cursor();
+    let line = view.state.doc().char_to_line(cursor);
+    let document_end = view.first_line + view.size.1.saturating_sub(1) as usize;
+
+    if (line > document_end.saturating_sub(PADDING)) | (line < view.first_line + PADDING) {
+        return false;
+    }
+    true
+}
+
+pub fn page_up(view: &mut View, _count: usize) {
+    view.first_line = view.first_line.saturating_sub(view.size.1 as usize);
+
+    if !check_cursor_in_view(view) {
+        let text = view.state.doc();
+        let pos = text.line_to_char(view.last_line().saturating_sub(PADDING as usize));
+        view.state.selection = Selection::single(pos, pos);
+    }
+}
+
+pub fn page_down(view: &mut View, _count: usize) {
+    view.first_line += view.size.1 as usize + PADDING;
+
+    if view.first_line < view.state.doc().len_lines() {
+        let text = view.state.doc();
+        let pos = text.line_to_char(view.first_line as usize);
+        view.state.selection = Selection::single(pos, pos);
+    }
+}
+
+pub fn half_page_up(view: &mut View, _count: usize) {
+    view.first_line = view.first_line.saturating_sub(view.size.1 as usize / 2);
+
+    if !check_cursor_in_view(view) {
+        let text = &view.state.doc;
+        let pos = text.line_to_char(view.last_line() - PADDING as usize);
+        view.state.selection = Selection::single(pos, pos);
+    }
+}
+
+pub fn half_page_down(view: &mut View, _count: usize) {
+    let lines = view.state.doc().len_lines();
+    if view.first_line < lines.saturating_sub(view.size.1 as usize) {
+        view.first_line += view.size.1 as usize / 2;
+    }
+    if !check_cursor_in_view(view) {
+        let text = view.state.doc();
+        let pos = text.line_to_char(view.first_line as usize);
+        view.state.selection = Selection::single(pos, pos);
+    }
+}
 // avoid select by default by having a visual mode switch that makes movements into selects
 
 pub fn extend_char_left(view: &mut View, count: usize) {
@@ -290,6 +360,10 @@ pub fn normal_mode(view: &mut View, _count: usize) {
 
         view.state.restore_cursor = false;
     }
+}
+
+pub fn goto_mode(view: &mut View, _count: usize) {
+    view.state.mode = Mode::Goto;
 }
 
 // TODO: insert means add text just before cursor, on exit we should be on the last letter.

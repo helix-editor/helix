@@ -9,6 +9,7 @@ use std::path::PathBuf;
 pub enum Mode {
     Normal,
     Insert,
+    Goto,
 }
 
 /// A state represents the current editor state of a single buffer.
@@ -286,9 +287,6 @@ impl State {
         })
     }
 }
-
-/// Coordinates are a 0-indexed line and column pair.
-pub type Coords = (usize, usize); // line, col
 
 /// Convert a character index to (line, column) coordinates.
 pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Position {

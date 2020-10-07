@@ -108,6 +108,15 @@ macro_rules! shift {
     };
 }
 
+macro_rules! ctrl {
+    ($ch:expr) => {
+        Key {
+            code: KeyCode::Char($ch),
+            modifiers: Modifiers::CONTROL,
+        }
+    };
+}
+
 pub fn default() -> Keymaps {
     hashmap!(
         state::Mode::Normal =>
@@ -126,6 +135,7 @@ pub fn default() -> Keymaps {
                 vec![key!('w')] => commands::move_next_word_start,
                 vec![key!('b')] => commands::move_prev_word_start,
                 vec![key!('e')] => commands::move_next_word_end,
+                vec![key!('g')] => commands::goto_mode,
                 vec![key!('i')] => commands::insert_mode,
                 vec![shift!('I')] => commands::prepend_to_line,
                 vec![key!('a')] => commands::append_mode,
@@ -139,6 +149,16 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
                 }] => commands::normal_mode,
+                vec![Key {
+                    code: KeyCode::PageUp,
+                    modifiers: Modifiers::NONE
+                }] => commands::page_up,
+                vec![Key {
+                    code: KeyCode::PageDown,
+                    modifiers: Modifiers::NONE
+                }] => commands::page_down,
+                vec![ctrl!('u')] => commands::half_page_up,
+                vec![ctrl!('d')] => commands::half_page_down,
             ),
             state::Mode::Insert => hashmap!(
                 vec![Key {
@@ -161,6 +181,14 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Tab,
                     modifiers: Modifiers::NONE
                 }] => commands::insert_tab,
+            ),
+            state::Mode::Goto => hashmap!(
+                vec![Key {
+                    code: KeyCode::Esc,
+                    modifiers: Modifiers::NONE
+                }] => commands::normal_mode as Command,
+                vec![key!('g')] => commands::move_file_start as Command,
+                vec![key!('e')] => commands::move_file_end as Command,
             )
     )
 }
