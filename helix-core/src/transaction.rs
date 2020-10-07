@@ -342,6 +342,22 @@ pub struct Transaction {
     // scroll_into_view
 }
 
+/// Like std::mem::replace() except it allows the replacement value to be mapped from the
+/// original value.
+pub fn take_with<T, F>(mut_ref: &mut T, closure: F)
+where
+    F: FnOnce(T) -> T,
+{
+    use std::{panic, ptr};
+
+    unsafe {
+        let old_t = ptr::read(mut_ref);
+        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
+            .unwrap_or_else(|_| ::std::process::abort());
+        ptr::write(mut_ref, new_t);
+    }
+}
+
 impl Transaction {
     /// Create a new, empty transaction.
     pub fn new(state: &mut State) -> Self {
@@ -364,11 +380,9 @@ impl Transaction {
             }
 
             // Compose this transaction with the previous one
-            let old_changes = state.changes.take();
-            state.changes = Some(old_changes.map_or_else(
-                || self.changes.clone(),
-                |changes| changes.compose(self.changes.clone()).unwrap(),
-            ));
+            take_with(&mut state.changes, |changes| {
+                changes.compose(self.changes.clone()).unwrap()
+            });
 
             if let Some(syntax) = &mut state.syntax {
                 // TODO: no unwrap

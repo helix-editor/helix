@@ -368,22 +368,26 @@ pub fn open_below(view: &mut View, _count: usize) {
 // O inserts a new line before each line with a selection
 
 fn append_changes_to_history(view: &mut View) {
-    if let Some(changes) = view.state.changes.take() {
-        // Instead of doing this messy merge we could always commit, and based on transaction
-        // annotations either add a new layer or compose into the previous one.
-        let transaction = Transaction::from(changes).with_selection(view.state.selection().clone());
-        let (doc, selection) = view.state.old_state.take().unwrap();
-        let mut old_state = State::new(doc);
-        old_state.selection = selection;
-
-        // TODO: take transaction by value?
-        view.history.commit_revision(&transaction, &old_state);
+    if view.state.changes.is_empty() {
+        return;
     }
 
-    // TODO: need to start the state with these vals
+    let new_changeset = ChangeSet::new(view.state.doc());
+    let changes = std::mem::replace(&mut view.state.changes, new_changeset);
+    // Instead of doing this messy merge we could always commit, and based on transaction
+    // annotations either add a new layer or compose into the previous one.
+    let transaction = Transaction::from(changes).with_selection(view.state.selection().clone());
 
+    // HAXX: we need to reconstruct the state as it was before the changes..
+    let (doc, selection) = view.state.old_state.take().unwrap();
+    let mut old_state = State::new(doc);
+    old_state.selection = selection;
+
+    // TODO: take transaction by value?
+    view.history.commit_revision(&transaction, &old_state);
+
+    // TODO: need to start the state with these vals
     // HAXX
-    view.state.changes = Some(ChangeSet::new(view.state.doc()));
     view.state.old_state = Some((view.state.doc().clone(), view.state.selection.clone()));
 }
 

@@ -25,7 +25,8 @@ pub struct State {
 
     //
     pub syntax: Option<Syntax>,
-    pub changes: Option<ChangeSet>,
+    /// Pending changes since last history commit.
+    pub changes: ChangeSet,
     pub old_state: Option<(Rope, Selection)>,
 }
 
@@ -45,6 +46,8 @@ pub enum Granularity {
 impl State {
     #[must_use]
     pub fn new(doc: Rope) -> Self {
+        let changes = ChangeSet::new(&doc);
+
         Self {
             path: None,
             doc,
@@ -52,7 +55,7 @@ impl State {
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
-            changes: None,
+            changes,
             old_state: None,
         }
     }
