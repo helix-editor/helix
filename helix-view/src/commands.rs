@@ -147,11 +147,15 @@ pub fn check_cursor_in_view(view: &mut View) -> bool {
 }
 
 pub fn page_up(view: &mut View, _count: usize) {
+    if view.first_line < PADDING {
+        return;
+    }
+
     view.first_line = view.first_line.saturating_sub(view.size.1 as usize);
 
     if !check_cursor_in_view(view) {
         let text = view.state.doc();
-        let pos = text.line_to_char(view.last_line().saturating_sub(PADDING as usize));
+        let pos = text.line_to_char(view.last_line().saturating_sub(PADDING));
         view.state.selection = Selection::single(pos, pos);
     }
 }
@@ -167,11 +171,15 @@ pub fn page_down(view: &mut View, _count: usize) {
 }
 
 pub fn half_page_up(view: &mut View, _count: usize) {
+    if view.first_line < PADDING {
+        return;
+    }
+
     view.first_line = view.first_line.saturating_sub(view.size.1 as usize / 2);
 
     if !check_cursor_in_view(view) {
         let text = &view.state.doc;
-        let pos = text.line_to_char(view.last_line() - PADDING as usize);
+        let pos = text.line_to_char(view.last_line() - PADDING);
         view.state.selection = Selection::single(pos, pos);
     }
 }
