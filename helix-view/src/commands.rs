@@ -235,6 +235,18 @@ pub fn split_selection_on_newline(view: &mut View, _count: usize) {
     view.state.selection = selection::split_on_matches(text, view.state.selection(), &REGEX)
 }
 
+pub fn select_line(view: &mut View, _count: usize) {
+    // TODO: count
+    let pos = view.state.selection().primary();
+    let text = view.state.doc();
+    let line = text.char_to_line(pos.head);
+    let start = text.line_to_char(line);
+    let end = text.line_to_char(line + 1);
+
+    // TODO: use a transaction
+    view.state.selection = Selection::single(start, end);
+}
+
 pub fn delete_selection(view: &mut View, _count: usize) {
     let transaction =
         Transaction::change_by_selection(&view.state, |range| (range.from(), range.to(), None));
