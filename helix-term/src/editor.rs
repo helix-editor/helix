@@ -91,7 +91,7 @@ impl Editor {
 
                 let range = {
                     // calculate viewport byte ranges
-                    let start = view.state.doc().line_to_byte(view.first_line.into());
+                    let start = view.state.doc().line_to_byte(view.first_line);
                     let end = view.state.doc().line_to_byte(last_line)
                         + view.state.doc().line(last_line).len_bytes();
 
