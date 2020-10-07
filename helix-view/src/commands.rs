@@ -304,6 +304,10 @@ pub fn append_mode(view: &mut View, _count: usize) {
     })
 }
 
+pub fn command_mode(view: &mut View, _count: usize) {
+    view.state.mode = Mode::Command;
+}
+
 // TODO: I, A, o and O can share a lot of the primitives.
 
 // calculate line numbers for each selection range

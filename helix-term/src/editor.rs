@@ -1,5 +1,5 @@
 use clap::ArgMatches as Args;
-use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Range, State};
+use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Position, Range, State};
 use helix_view::{commands, keymap, View};
 
 use std::{
@@ -242,6 +242,7 @@ impl Editor {
                     Mode::Insert => "INS",
                     Mode::Normal => "NOR",
                     Mode::Goto => "GOTO",
+                    Mode::Command => ":",
                 };
                 self.surface.set_style(
                     Rect::new(0, self.size.1 - 1, self.size.0, 1),
@@ -251,9 +252,36 @@ impl Editor {
                 let text_color = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
                 self.surface
                     .set_string(1, self.size.1 - 1, mode, text_color);
-                if let Some(path) = view.state.path() {
-                    self.surface
-                        .set_string(6, self.size.1 - 1, path.to_string_lossy(), text_color);
+
+                // set cursor shape
+                match view.state.mode() {
+                    Mode::Insert => write!(stdout, "\x1B[6 q"),
+                    Mode::Normal => write!(stdout, "\x1B[2 q"),
+                    Mode::Goto => write!(stdout, "\x1B[2 q"),
+                    Mode::Command => write!(stdout, "\x1B[2 q"),
+                };
+
+                // render the cursor
+                let mut pos: Position;
+                if view.state.mode() == Mode::Command {
+                    pos = Position::new(self.size.0 as usize, 2);
+                } else {
+                    if let Some(path) = view.state.path() {
+                        self.surface.set_string(
+                            6,
+                            self.size.1 - 1,
+                            path.to_string_lossy(),
+                            text_color,
+                        );
+                    }
+
+                    let cursor = view.state.selection().cursor();
+
+                    pos = view
+                        .screen_coords_at_pos(&view.state.doc().slice(..), cursor)
+                        .expect("Cursor is out of bounds.");
+                    pos.col += viewport.x as usize;
+                    pos.row += viewport.y as usize;
                 }
 
                 self.terminal
@@ -262,24 +290,7 @@ impl Editor {
                 // swap the buffer
                 std::mem::swap(&mut self.surface, &mut self.cache);
 
-                // set cursor shape
-                match view.state.mode() {
-                    Mode::Insert => write!(stdout, "\x1B[6 q"),
-                    Mode::Normal => write!(stdout, "\x1B[2 q"),
-                    Mode::Goto => write!(stdout, "\x1B[2 q"),
-                };
-
-                // render the cursor
-                let pos = view.state.selection().cursor();
-
-                let pos = view
-                    .screen_coords_at_pos(&view.state.doc().slice(..), pos)
-                    .expect("Cursor is out of bounds.");
-
-                execute!(
-                    stdout,
-                    cursor::MoveTo(pos.col as u16 + viewport.x, pos.row as u16 + viewport.y,)
-                );
+                execute!(stdout, cursor::MoveTo(pos.col as u16, pos.row as u16));
             }
             None => (),
         }
@@ -356,6 +367,16 @@ impl Editor {
 
                                     // TODO: simplistic ensure cursor in view for now
                                     view.ensure_cursor_in_view();
+
+                                    self.render();
+                                }
+                            }
+                            Mode::Command => {
+                                // TODO: handle modes and sequences (`gg`)
+                                let keys = vec![event];
+                                if let Some(command) = keymap[&Mode::Goto].get(&keys) {
+                                    // TODO: handle count other than 1
+                                    command(view, 1);
 
                                     self.render();
                                 }
