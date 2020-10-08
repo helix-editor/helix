@@ -439,7 +439,9 @@ impl Transaction {
                     }
                     acc.push(Operation::Insert(text));
                 }
-                None => acc.push(Operation::Delete(span)),
+                None if span > 0 => acc.push(Operation::Delete(span)),
+                // empty delete is useless
+                None => (),
             }
             last = to;
         }
@@ -577,7 +579,8 @@ mod test {
         let mut state = State::new("hello world!\ntest 123".into());
         let transaction = Transaction::change(
             &state,
-            vec![(6, 11, Some("void".into())), (12, 17, None)].into_iter(),
+            // (1, 1, None) is a useless 0-width delete
+            vec![(6, 11, Some("void".into())), (12, 17, None), (1, 1, None)].into_iter(),
         );
         transaction.apply(&mut state);
         assert_eq!(state.doc, Rope::from_str("hello void! 123"));
