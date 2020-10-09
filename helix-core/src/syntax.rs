@@ -146,7 +146,7 @@ pub struct Syntax {
 
     config: Arc<HighlightConfiguration>,
 
-    root_layer: LanguageLayer,
+    pub(crate) root_layer: LanguageLayer,
 }
 
 impl Syntax {
@@ -309,7 +309,7 @@ pub struct LanguageLayer {
     // mode
     // grammar
     // depth
-    tree: Option<Tree>,
+    pub(crate) tree: Option<Tree>,
 }
 
 use crate::state::coords_at_pos;

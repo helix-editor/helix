@@ -241,7 +241,7 @@ pub fn select_line(view: &mut View, _count: usize) {
     let text = view.state.doc();
     let line = text.char_to_line(pos.head);
     let start = text.line_to_char(line);
-    let end = text.line_to_char(line + 1);
+    let end = text.line_to_char(line + 1).saturating_sub(1);
 
     // TODO: use a transaction
     view.state.selection = Selection::single(start, end);
@@ -249,7 +249,7 @@ pub fn select_line(view: &mut View, _count: usize) {
 
 pub fn delete_selection(view: &mut View, _count: usize) {
     let transaction =
-        Transaction::change_by_selection(&view.state, |range| (range.from(), range.to(), None));
+        Transaction::change_by_selection(&view.state, |range| (range.from(), range.to() + 1, None));
     transaction.apply(&mut view.state);
 
     append_changes_to_history(view);
@@ -265,6 +265,13 @@ pub fn collapse_selection(view: &mut View, _count: usize) {
         .state
         .selection
         .transform(|range| Range::new(range.head, range.head))
+}
+
+pub fn flip_selections(view: &mut View, _count: usize) {
+    view.state.selection = view
+        .state
+        .selection
+        .transform(|range| Range::new(range.head, range.anchor))
 }
 
 fn enter_insert_mode(view: &mut View) {
@@ -463,7 +470,7 @@ pub fn delete_char_forward(view: &mut View, count: usize) {
 pub fn undo(view: &mut View, _count: usize) {
     view.history.undo(&mut view.state);
 
-    // TODO: each command should simply return a Option<transaction>, then the higher level handles storing it?
+    // TODO: each command could simply return a Option<transaction>, then the higher level handles storing it?
 }
 
 pub fn redo(view: &mut View, _count: usize) {
@@ -481,11 +488,15 @@ pub fn yank(view: &mut View, _count: usize) {
         .map(|cow| cow.into_owned())
         .collect();
 
-    register::set('"', values);
+    // TODO: allow specifying reg
+    let reg = '"';
+    register::set(reg, values);
 }
 
 pub fn paste(view: &mut View, _count: usize) {
-    if let Some(values) = register::get('"') {
+    // TODO: allow specifying reg
+    let reg = '"';
+    if let Some(values) = register::get(reg) {
         let repeat = std::iter::repeat(
             values
                 .last()
@@ -493,13 +504,74 @@ pub fn paste(view: &mut View, _count: usize) {
                 .unwrap(),
         );
 
+        // TODO: if any of values ends \n it's linewise paste
+        //
+        // p => paste after
+        // P => paste before
+        // alt-p => paste every yanked selection after selected text
+        // alt-P => paste every yanked selection before selected text
+        // R => replace selected text with yanked text
+        // alt-R => replace selected text with every yanked text
+        //
+        // append => insert at next line
+        // insert => insert at start of line
+        // replace => replace
+        // default insert
+
+        let linewise = values.iter().any(|value| value.ends_with('\n'));
+
         let mut values = values.into_iter().map(Tendril::from).chain(repeat);
 
-        let transaction = Transaction::change_by_selection(&view.state, |range| {
-            (range.head + 1, range.head + 1, Some(values.next().unwrap()))
-        });
+        let transaction = if linewise {
+            // paste on the next line
+            // TODO: can simply take a range + modifier and compute the right pos without ifs
+            let text = view.state.doc();
+            Transaction::change_by_selection(&view.state, |range| {
+                let line_end = text.line_to_char(text.char_to_line(range.head) + 1);
+                (line_end, line_end, Some(values.next().unwrap()))
+            })
+        } else {
+            Transaction::change_by_selection(&view.state, |range| {
+                (range.head + 1, range.head + 1, Some(values.next().unwrap()))
+            })
+        };
 
         transaction.apply(&mut view.state);
         append_changes_to_history(view);
     }
+}
+
+const TAB_WIDTH: usize = 4;
+
+pub fn indent(view: &mut View, _count: usize) {
+    let mut lines = Vec::new();
+
+    // Get all line numbers
+    for range in view.state.selection.ranges() {
+        let start = view.state.doc.char_to_line(range.from());
+        let end = view.state.doc.char_to_line(range.to());
+
+        for line in start..=end {
+            lines.push(line)
+        }
+    }
+    lines.sort_unstable(); // sorting by usize so _unstable is preferred
+    lines.dedup();
+
+    // Indent by one level
+    let indent = Tendril::from(" ".repeat(TAB_WIDTH));
+
+    let transaction = Transaction::change(
+        &view.state,
+        lines.into_iter().map(|line| {
+            let pos = view.state.doc.line_to_char(line);
+            (pos, pos, Some(indent.clone()))
+        }),
+    );
+    transaction.apply(&mut view.state);
+    append_changes_to_history(view);
+}
+
+pub fn unindent(view: &mut View, _count: usize) {
+    unimplemented!()
 }

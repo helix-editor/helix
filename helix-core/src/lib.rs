@@ -1,6 +1,7 @@
 #![allow(unused)]
 pub mod graphemes;
 mod history;
+mod indent;
 pub mod macros;
 mod position;
 pub mod register;

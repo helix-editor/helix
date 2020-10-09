@@ -117,6 +117,15 @@ macro_rules! ctrl {
     };
 }
 
+macro_rules! alt {
+    ($ch:expr) => {
+        Key {
+            code: KeyCode::Char($ch),
+            modifiers: Modifiers::ALT,
+        }
+    };
+}
+
 pub fn default() -> Keymaps {
     hashmap!(
         state::Mode::Normal =>
@@ -145,11 +154,15 @@ pub fn default() -> Keymaps {
                 vec![key!('c')] => commands::change_selection,
                 vec![key!('s')] => commands::split_selection_on_newline,
                 vec![key!(';')] => commands::collapse_selection,
+                // TODO should be alt(;)
+                vec![key!('%')] => commands::flip_selections,
                 vec![key!('x')] => commands::select_line,
                 vec![key!('u')] => commands::undo,
                 vec![shift!('U')] => commands::redo,
                 vec![key!('y')] => commands::yank,
                 vec![key!('p')] => commands::paste,
+                vec![key!('>')] => commands::indent,
+                vec![key!('<')] => commands::unindent,
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE

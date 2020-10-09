@@ -47,6 +47,7 @@ impl State {
     #[must_use]
     pub fn new(doc: Rope) -> Self {
         let changes = ChangeSet::new(&doc);
+        let old_state = Some((doc.clone(), Selection::single(0, 0)));
 
         Self {
             path: None,
@@ -56,7 +57,7 @@ impl State {
             restore_cursor: false,
             syntax: None,
             changes,
-            old_state: None,
+            old_state,
         }
     }
 
