@@ -1,6 +1,6 @@
 use clap::ArgMatches as Args;
 use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Position, Range, State};
-use helix_view::{commands, keymap, View};
+use helix_view::{commands, keymap, prompt::Prompt, View};
 
 use std::{
     borrow::Cow,
@@ -36,6 +36,7 @@ pub struct Editor {
     size: (u16, u16),
     surface: Surface,
     cache: Surface,
+    prompt: Prompt,
 }
 
 impl Editor {
@@ -45,6 +46,7 @@ impl Editor {
         let mut terminal = Terminal::new(backend)?;
         let size = terminal::size().unwrap();
         let area = Rect::new(0, 0, size.0, size.1);
+        let prompt = Prompt::new();
 
         let mut editor = Editor {
             terminal,
@@ -52,6 +54,8 @@ impl Editor {
             size,
             surface: Surface::empty(area),
             cache: Surface::empty(area),
+            // TODO; move to state
+            prompt,
         };
 
         if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
@@ -264,8 +268,14 @@ impl Editor {
             Rect::new(0, self.size.1 - 1, self.size.0, 1),
             view.theme.get("ui.statusline"),
         );
+        // render buffer text
+        let buffer_string = &self.prompt.buffer;
+        self.surface
+            .set_string(2, self.size.1 - 1, buffer_string, text_color);
+
         self.surface
             .set_string(1, self.size.1 - 1, mode, text_color);
+
         self.terminal
             .backend_mut()
             .draw(self.cache.diff(&self.surface).into_iter());
@@ -282,7 +292,7 @@ impl Editor {
             mode => write!(stdout, "\x1B[2 q"),
         };
         if view.state.mode() == Mode::Command {
-            pos = Position::new(self.size.0 as usize, 2);
+            pos = Position::new(self.size.0 as usize, 2 + self.prompt.buffer.len());
         } else {
             if let Some(path) = view.state.path() {
                 self.surface
@@ -349,12 +359,16 @@ impl Editor {
                                     commands::insert::insert_char(view, c);
                                 }
                                 view.ensure_cursor_in_view();
-                                self.render();
                             }
                             Mode::Command => {
                                 if let Some(command) = keymap[&Mode::Command].get(&keys) {
                                     command(view, 1);
-                                    self.render();
+                                } else if let KeyEvent {
+                                    code: KeyCode::Char(c),
+                                    ..
+                                } = event
+                                {
+                                    commands::insert_char_prompt(&mut self.prompt, c)
                                 }
                             }
                             mode => {
@@ -363,7 +377,6 @@ impl Editor {
 
                                     // TODO: simplistic ensure cursor in view for now
                                     view.ensure_cursor_in_view();
-                                    self.render();
                                 }
                             }
                         }

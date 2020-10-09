@@ -8,7 +8,10 @@ use helix_core::{
 };
 use once_cell::sync::Lazy;
 
-use crate::view::{View, PADDING};
+use crate::{
+    prompt::Prompt,
+    view::{View, PADDING},
+};
 
 /// A command is a function that takes the current state and a count, and does a side-effect on the
 /// state (usually by creating and applying a transaction).
@@ -476,6 +479,10 @@ pub mod insert {
         });
         transaction.apply(&mut view.state);
     }
+}
+
+pub fn insert_char_prompt(prompt: &mut Prompt, c: char) {
+    prompt.insert_char(c);
 }
 
 // Undo / Redo
