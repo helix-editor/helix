@@ -71,20 +71,24 @@ impl Editor {
     }
 
     fn render(&mut self) {
-        use tui::backend::Backend;
         use tui::style::Color;
         // TODO: ideally not mut but highlights require it because of cursor cache
-        let viewport = Rect::new(OFFSET, 0, self.size.0, self.size.1 - 1); // - 1 for statusline
+        let viewport = Rect::new(OFFSET, 0, self.size.0, self.size.1 - 2); // - 2 for statusline and prompt
         let text_color: Style = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
 
-        self.render_view(viewport);
+        self.render_view(viewport, text_color);
 
         self.render_prompt(text_color);
 
         self.render_cursor(viewport, text_color);
     }
 
-    pub fn render_view(&mut self, viewport: Rect) {
+    pub fn render_view(&mut self, viewport: Rect, text_color: Style) {
+        self.render_buffer(viewport);
+        self.render_statusline(text_color);
+    }
+
+    pub fn render_buffer(&mut self, viewport: Rect) {
         use tui::style::Color;
         let area = Rect::new(0, 0, self.size.0, self.size.1);
         let mut view: &mut View = self.view.as_mut().unwrap();
@@ -219,63 +223,40 @@ impl Editor {
                 }
             }
         }
-    }
-
-    pub fn render_prompt(&mut self, text_color: Style) {
-        use tui::backend::Backend;
-        let view = self.view.as_ref().unwrap();
         let style: Style = view.theme.get("ui.linenr");
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
             self.surface
                 .set_stringn(0, i as u16, format!("{:>5}", line + 1), 5, style);
-            // lavender
         }
+    }
 
-        // let lines = state
-        //     .doc
-        //     .lines_at(self.first_line as usize)
-        //     .take(self.size.1 as usize)
-        //     .map(|x| x.as_str().unwrap());
-
-        // // iterate over selections and render them
-        // let select = Style::default().bg(tui::style::Color::LightBlue);
-        // let text = state.doc.slice(..);
-        // for range in state.selection.ranges() {
-        //     // get terminal coords for x,y for each range pos
-        //     // TODO: this won't work with multiline
-        //     let (y1, x1) = coords_at_pos(&text, range.from());
-        //     let (y2, x2) = coords_at_pos(&text, range.to());
-        //     let area = Rect::new(
-        //         (x1 + 2) as u16,
-        //         y1 as u16,
-        //         (x2 - x1 + 1) as u16,
-        //         (y2 - y1 + 1) as u16,
-        //     );
-        //     self.surface.set_style(area, select);
-
-        //     // TODO: don't highlight next char in append mode
-        // }
-
-        // statusline
+    pub fn render_statusline(&mut self, text_color: Style) {
+        let view = self.view.as_ref().unwrap();
         let mode = match view.state.mode() {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
-            Mode::Command => ":",
+            Mode::Command => "COM", // command mode i guess
         };
+        // statusline
         self.surface.set_style(
-            Rect::new(0, self.size.1 - 1, self.size.0, 1),
+            Rect::new(0, self.size.1 - 2, self.size.0, 1),
             view.theme.get("ui.statusline"),
         );
+        self.surface
+            .set_string(1, self.size.1 - 2, mode, text_color);
+    }
+
+    pub fn render_prompt(&mut self, text_color: Style) {
+        use tui::backend::Backend;
+        let view = self.view.as_ref().unwrap();
         // render buffer text
         let buffer_string = &self.prompt.buffer;
         self.surface
             .set_string(2, self.size.1 - 1, buffer_string, text_color);
 
-        self.surface
-            .set_string(1, self.size.1 - 1, mode, text_color);
-
+        // TODO: theres probably a better place for this
         self.terminal
             .backend_mut()
             .draw(self.cache.diff(&self.surface).into_iter());

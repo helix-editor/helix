@@ -39,7 +39,7 @@ impl View {
     pub fn ensure_cursor_in_view(&mut self) {
         let cursor = self.state.selection().cursor();
         let line = self.state.doc().char_to_line(cursor);
-        let document_end = self.first_line + (self.size.1 as usize).saturating_sub(1);
+        let document_end = self.first_line + (self.size.1 as usize).saturating_sub(2);
 
         // TODO: side scroll
 
@@ -55,7 +55,7 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self) -> usize {
-        let viewport = Rect::new(6, 0, self.size.0, self.size.1 - 1); // - 1 for statusline
+        let viewport = Rect::new(6, 0, self.size.0, self.size.1 - 2); // - 2 for statusline and prompt
         std::cmp::min(
             self.first_line + (viewport.height as usize),
             self.state.doc().len_lines() - 1,
