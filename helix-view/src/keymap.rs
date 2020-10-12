@@ -163,7 +163,7 @@ pub fn default() -> Keymaps {
                 vec![key!('p')] => commands::paste,
                 vec![key!('>')] => commands::indent,
                 vec![key!('<')] => commands::unindent,
-                vec![key!(':')] => commands::command_mode,
+                vec![key!(':')] => commands::prompt_mode,
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
@@ -209,7 +209,7 @@ pub fn default() -> Keymaps {
                 vec![key!('g')] => commands::move_file_start as Command,
                 vec![key!('e')] => commands::move_file_end as Command,
             ),
-            state::Mode::Command => hashmap!(
+            state::Mode::Prompt => hashmap!(
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE

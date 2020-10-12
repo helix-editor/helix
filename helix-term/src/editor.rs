@@ -237,7 +237,7 @@ impl Editor {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
-            Mode::Command => "COM", // command mode i guess
+            Mode::Prompt => "PRO", // prompt?
         };
         // statusline
         self.surface.set_style(
@@ -252,9 +252,14 @@ impl Editor {
         use tui::backend::Backend;
         let view = self.view.as_ref().unwrap();
         // render buffer text
-        let buffer_string = &self.prompt.buffer;
-        self.surface
-            .set_string(2, self.size.1 - 1, buffer_string, text_color);
+        let buffer_string;
+        if view.state.mode == Mode::Prompt {
+            buffer_string = &self.prompt.buffer;
+            self.surface
+                .set_string(1, self.size.1 - 1, buffer_string, text_color);
+        } else {
+            buffer_string = &String::from("");
+        }
 
         // TODO: theres probably a better place for this
         self.terminal
@@ -272,8 +277,8 @@ impl Editor {
             Mode::Insert => write!(stdout, "\x1B[6 q"),
             mode => write!(stdout, "\x1B[2 q"),
         };
-        if view.state.mode() == Mode::Command {
-            pos = Position::new(self.size.0 as usize, 2 + self.prompt.buffer.len());
+        if view.state.mode() == Mode::Prompt {
+            pos = Position::new(self.size.0 as usize, 1 + self.prompt.buffer.len());
         } else {
             if let Some(path) = view.state.path() {
                 self.surface
@@ -341,16 +346,8 @@ impl Editor {
                                 }
                                 view.ensure_cursor_in_view();
                             }
-                            Mode::Command => {
-                                if let Some(command) = keymap[&Mode::Command].get(&keys) {
-                                    command(view, 1);
-                                } else if let KeyEvent {
-                                    code: KeyCode::Char(c),
-                                    ..
-                                } = event
-                                {
-                                    commands::insert_char_prompt(&mut self.prompt, c)
-                                }
+                            Mode::Prompt => {
+                                self.prompt.handle_keyevent(event, view);
                             }
                             mode => {
                                 if let Some(command) = keymap[&mode].get(&keys) {
