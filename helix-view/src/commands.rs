@@ -543,7 +543,7 @@ pub fn paste(view: &mut View, _count: usize) {
 
 const TAB_WIDTH: usize = 4;
 
-pub fn indent(view: &mut View, _count: usize) {
+fn get_lines(view: &View) -> Vec<usize> {
     let mut lines = Vec::new();
 
     // Get all line numbers
@@ -557,6 +557,11 @@ pub fn indent(view: &mut View, _count: usize) {
     }
     lines.sort_unstable(); // sorting by usize so _unstable is preferred
     lines.dedup();
+    lines
+}
+
+pub fn indent(view: &mut View, _count: usize) {
+    let lines = get_lines(view);
 
     // Indent by one level
     let indent = Tendril::from(" ".repeat(TAB_WIDTH));
@@ -573,5 +578,33 @@ pub fn indent(view: &mut View, _count: usize) {
 }
 
 pub fn unindent(view: &mut View, _count: usize) {
-    unimplemented!()
+    let lines = get_lines(view);
+    let mut changes = Vec::with_capacity(lines.len());
+
+    for line_idx in lines {
+        let line = view.state.doc.line(line_idx);
+        let mut width = 0;
+
+        for ch in line.chars() {
+            match ch {
+                ' ' => width += 1,
+                '\t' => width = (width / TAB_WIDTH + 1) * TAB_WIDTH,
+                _ => break,
+            }
+
+            if width >= TAB_WIDTH {
+                break;
+            }
+        }
+
+        if width > 0 {
+            let start = view.state.doc.line_to_char(line_idx);
+            changes.push((start, start + width, None))
+        }
+    }
+
+    let transaction = Transaction::change(&view.state, changes.into_iter());
+
+    transaction.apply(&mut view.state);
+    append_changes_to_history(view);
 }
