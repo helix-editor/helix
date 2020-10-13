@@ -10,7 +10,7 @@ pub enum Mode {
     Normal,
     Insert,
     Goto,
-    Prompt,
+    Command,
 }
 
 /// A state represents the current editor state of a single buffer.

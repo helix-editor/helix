@@ -237,7 +237,7 @@ impl Editor {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
-            Mode::Prompt => "PRO", // prompt?
+            Mode::Command => "COM", // command?
         };
         // statusline
         self.surface.set_style(
@@ -249,14 +249,17 @@ impl Editor {
     }
 
     pub fn render_prompt(&mut self, text_color: Style) {
+        // TODO: maybe name this render_commandline
         use tui::backend::Backend;
         let view = self.view.as_ref().unwrap();
         // render buffer text
         let buffer_string;
-        if view.state.mode == Mode::Prompt {
+        if view.state.mode == Mode::Command {
             buffer_string = &self.prompt.buffer;
             self.surface
-                .set_string(1, self.size.1 - 1, buffer_string, text_color);
+                .set_string(1, self.size.1 - 1, String::from(":"), text_color);
+            self.surface
+                .set_string(2, self.size.1 - 1, buffer_string, text_color);
         } else {
             buffer_string = &String::from("");
         }
@@ -277,8 +280,8 @@ impl Editor {
             Mode::Insert => write!(stdout, "\x1B[6 q"),
             mode => write!(stdout, "\x1B[2 q"),
         };
-        if view.state.mode() == Mode::Prompt {
-            pos = Position::new(self.size.0 as usize, 1 + self.prompt.buffer.len());
+        if view.state.mode() == Mode::Command {
+            pos = Position::new(self.size.0 as usize, 2 + self.prompt.cursor_loc);
         } else {
             if let Some(path) = view.state.path() {
                 self.surface
@@ -346,8 +349,8 @@ impl Editor {
                                 }
                                 view.ensure_cursor_in_view();
                             }
-                            Mode::Prompt => {
-                                self.prompt.handle_keyevent(event, view);
+                            Mode::Command => {
+                                self.prompt.handle_input(event, view);
                             }
                             mode => {
                                 if let Some(command) = keymap[&mode].get(&keys) {

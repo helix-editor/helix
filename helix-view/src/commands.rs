@@ -307,20 +307,8 @@ pub fn append_mode(view: &mut View, _count: usize) {
     })
 }
 
-pub fn prompt_mode(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Prompt;
-}
-
-pub fn move_char_left_prompt(prompt: &mut Prompt, _char: char) {
-    if prompt.cursor_loc > 1 {
-        prompt.cursor_loc -= 1;
-    }
-}
-
-pub fn move_char_right_prompt(prompt: &mut Prompt, _char: char) {
-    if prompt.cursor_loc < prompt.buffer.len() {
-        prompt.cursor_loc += 1;
-    }
+pub fn command_mode(view: &mut View, _count: usize) {
+    view.state.mode = Mode::Command;
 }
 
 // TODO: I, A, o and O can share a lot of the primitives.
