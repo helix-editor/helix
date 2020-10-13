@@ -117,14 +117,14 @@ macro_rules! ctrl {
     };
 }
 
-macro_rules! alt {
-    ($ch:expr) => {
-        Key {
-            code: KeyCode::Char($ch),
-            modifiers: Modifiers::ALT,
-        }
-    };
-}
+// macro_rules! alt {
+//     ($ch:expr) => {
+//         Key {
+//             code: KeyCode::Char($ch),
+//             modifiers: Modifiers::ALT,
+//         }
+//     };
+// }
 
 pub fn default() -> Keymaps {
     hashmap!(
