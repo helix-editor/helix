@@ -186,19 +186,19 @@ pub fn default() -> Keymaps {
                 vec![Key {
                     code: KeyCode::Backspace,
                     modifiers: Modifiers::NONE
-                }] => commands::delete_char_backward,
+                }] => commands::insert::delete_char_backward,
                 vec![Key {
                     code: KeyCode::Delete,
                     modifiers: Modifiers::NONE
-                }] => commands::delete_char_forward,
+                }] => commands::insert::delete_char_forward,
                 vec![Key {
                     code: KeyCode::Enter,
                     modifiers: Modifiers::NONE
-                }] => commands::insert_newline,
+                }] => commands::insert::insert_newline,
                 vec![Key {
                     code: KeyCode::Tab,
                     modifiers: Modifiers::NONE
-                }] => commands::insert_tab,
+                }] => commands::insert::insert_tab,
             ),
             state::Mode::Goto => hashmap!(
                 vec![Key {

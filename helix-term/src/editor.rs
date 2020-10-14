@@ -330,7 +330,7 @@ impl Editor {
                                     ..
                                 } = event
                                 {
-                                    commands::insert_char(view, c);
+                                    commands::insert::insert_char(view, c);
                                 }
                                 view.ensure_cursor_in_view();
 

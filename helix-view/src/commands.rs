@@ -368,7 +368,6 @@ pub fn open_below(view: &mut View, _count: usize) {
     let transaction = Transaction::change(&view.state, changes).with_selection(selection);
 
     transaction.apply(&mut view.state);
-    // TODO: need to store into history if successful
 }
 
 // O inserts a new line before each line with a selection
@@ -420,48 +419,49 @@ pub fn goto_mode(view: &mut View, _count: usize) {
     view.state.mode = Mode::Goto;
 }
 
-// TODO: insert means add text just before cursor, on exit we should be on the last letter.
-pub fn insert_char(view: &mut View, c: char) {
-    let c = Tendril::from_char(c);
-    let transaction = Transaction::insert(&view.state, c);
+// NOTE: Transactions in this module get appended to history when we switch back to normal mode.
+pub mod insert {
+    use super::*;
+    // TODO: insert means add text just before cursor, on exit we should be on the last letter.
+    pub fn insert_char(view: &mut View, c: char) {
+        let c = Tendril::from_char(c);
+        let transaction = Transaction::insert(&view.state, c);
 
-    transaction.apply(&mut view.state);
-    // TODO: need to store into history if successful
-}
+        transaction.apply(&mut view.state);
+    }
 
-pub fn insert_tab(view: &mut View, _count: usize) {
-    insert_char(view, '\t');
-}
+    pub fn insert_tab(view: &mut View, _count: usize) {
+        insert_char(view, '\t');
+    }
 
-pub fn insert_newline(view: &mut View, _count: usize) {
-    insert_char(view, '\n');
-}
+    pub fn insert_newline(view: &mut View, _count: usize) {
+        insert_char(view, '\n');
+    }
 
-// TODO: handle indent-aware delete
-pub fn delete_char_backward(view: &mut View, count: usize) {
-    let text = &view.state.doc.slice(..);
-    let transaction = Transaction::change_by_selection(&view.state, |range| {
-        (
-            graphemes::nth_prev_grapheme_boundary(text, range.head, count),
-            range.head,
-            None,
-        )
-    });
-    transaction.apply(&mut view.state);
-    // TODO: need to store into history if successful
-}
+    // TODO: handle indent-aware delete
+    pub fn delete_char_backward(view: &mut View, count: usize) {
+        let text = &view.state.doc.slice(..);
+        let transaction = Transaction::change_by_selection(&view.state, |range| {
+            (
+                graphemes::nth_prev_grapheme_boundary(text, range.head, count),
+                range.head,
+                None,
+            )
+        });
+        transaction.apply(&mut view.state);
+    }
 
-pub fn delete_char_forward(view: &mut View, count: usize) {
-    let text = &view.state.doc.slice(..);
-    let transaction = Transaction::change_by_selection(&view.state, |range| {
-        (
-            range.head,
-            graphemes::nth_next_grapheme_boundary(text, range.head, count),
-            None,
-        )
-    });
-    transaction.apply(&mut view.state);
-    // TODO: need to store into history if successful
+    pub fn delete_char_forward(view: &mut View, count: usize) {
+        let text = &view.state.doc.slice(..);
+        let transaction = Transaction::change_by_selection(&view.state, |range| {
+            (
+                range.head,
+                graphemes::nth_next_grapheme_boundary(text, range.head, count),
+                None,
+            )
+        });
+        transaction.apply(&mut view.state);
+    }
 }
 
 // Undo / Redo
