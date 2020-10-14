@@ -8,13 +8,11 @@ use helix_core::{
 };
 use once_cell::sync::Lazy;
 
-use crate::view::View;
+use crate::view::{View, PADDING};
 
 /// A command is a function that takes the current state and a count, and does a side-effect on the
 /// state (usually by creating and applying a transaction).
 pub type Command = fn(view: &mut View, count: usize);
-
-const PADDING: usize = 5;
 
 pub fn move_char_left(view: &mut View, count: usize) {
     // TODO: use a transaction

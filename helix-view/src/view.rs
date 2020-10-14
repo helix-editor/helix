@@ -10,6 +10,8 @@ use helix_core::{
 };
 use tui::layout::Rect;
 
+pub const PADDING: usize = 5;
+
 pub struct View {
     pub state: State,
     pub history: History,
@@ -39,16 +41,14 @@ impl View {
         let line = self.state.doc().char_to_line(cursor);
         let document_end = self.first_line + (self.size.1 as usize).saturating_sub(1);
 
-        let padding = 5usize;
-
         // TODO: side scroll
 
-        if line > document_end.saturating_sub(padding) {
+        if line > document_end.saturating_sub(PADDING) {
             // scroll down
-            self.first_line += line - (document_end.saturating_sub(padding));
-        } else if line < self.first_line + padding {
+            self.first_line += line - (document_end.saturating_sub(PADDING));
+        } else if line < self.first_line + PADDING {
             // scroll up
-            self.first_line = line.saturating_sub(padding);
+            self.first_line = line.saturating_sub(PADDING);
         }
     }
 
