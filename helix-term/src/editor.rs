@@ -1,5 +1,5 @@
 use clap::ArgMatches as Args;
-use helix_core::{state::Mode, syntax::HighlightEvent, Range, State};
+use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Range, State};
 use helix_view::{commands, keymap, View};
 
 use std::{
@@ -23,8 +23,6 @@ use crossterm::{
 };
 
 use tui::{backend::CrosstermBackend, buffer::Buffer as Surface, layout::Rect, style::Style};
-
-const TAB_WIDTH: usize = 4;
 
 type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 

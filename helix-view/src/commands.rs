@@ -1,5 +1,6 @@
 use helix_core::{
     graphemes,
+    indent::TAB_WIDTH,
     regex::Regex,
     register, selection,
     state::{Direction, Granularity, Mode, State},
@@ -540,8 +541,6 @@ pub fn paste(view: &mut View, _count: usize) {
         append_changes_to_history(view);
     }
 }
-
-const TAB_WIDTH: usize = 4;
 
 fn get_lines(view: &View) -> Vec<usize> {
     let mut lines = Vec::new();

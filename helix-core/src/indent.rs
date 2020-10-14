@@ -4,7 +4,7 @@ use crate::{
     Rope, RopeSlice, State,
 };
 
-const TAB_WIDTH: usize = 4;
+pub const TAB_WIDTH: usize = 4;
 
 fn indent_level_for_line(line: RopeSlice) -> usize {
     let mut len = 0;

@@ -5,6 +5,7 @@ use std::{borrow::Cow, path::PathBuf};
 use crate::theme::Theme;
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
+    indent::TAB_WIDTH,
     History, Position, RopeSlice, State,
 };
 use tui::layout::Rect;
@@ -78,8 +79,7 @@ impl View {
 
         for grapheme in RopeGraphemes::new(&line_slice) {
             if grapheme == "\t" {
-                // TODO: this should be const TAB_WIDTH
-                col += 4;
+                col += TAB_WIDTH;
             } else {
                 let grapheme = Cow::from(grapheme);
                 col += grapheme_width(&grapheme);
