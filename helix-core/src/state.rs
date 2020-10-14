@@ -86,6 +86,17 @@ impl State {
         Ok(state)
     }
 
+    pub fn set_language(&mut self, scope: &str, scopes: &[String]) {
+        if let Some(language_config) = LOADER.language_config_for_scope(scope) {
+            let highlight_config = language_config.highlight_config(scopes).unwrap().unwrap();
+            // TODO: config.configure(scopes) is now delayed, is that ok?
+
+            let syntax = Syntax::new(&self.doc, highlight_config.clone());
+
+            self.syntax = Some(syntax);
+        };
+    }
+
     // TODO: doc/selection accessors
 
     // TODO: be able to take either Rope or RopeSlice

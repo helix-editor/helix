@@ -435,7 +435,16 @@ pub mod insert {
     }
 
     pub fn insert_newline(view: &mut View, _count: usize) {
-        insert_char(view, '\n');
+        let transaction = Transaction::change_by_selection(&view.state, |range| {
+            let indent_level =
+                helix_core::indent::suggested_indent_for_pos(&view.state, range.head);
+            let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
+            let mut text = String::with_capacity(1 + indent.len());
+            text.push('\n');
+            text.push_str(&indent);
+            (range.head, range.head, Some(text.into()))
+        });
+        transaction.apply(&mut view.state);
     }
 
     // TODO: handle indent-aware delete
@@ -604,4 +613,9 @@ pub fn unindent(view: &mut View, _count: usize) {
 
     transaction.apply(&mut view.state);
     append_changes_to_history(view);
+}
+
+pub fn indent_selection(view: &mut View, _count: usize) {
+    // loop over each line and recompute proper indentation
+    unimplemented!()
 }

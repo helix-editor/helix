@@ -135,6 +135,13 @@ impl Loader {
 
         // TODO: content_regex handling conflict resolution
     }
+
+    pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
+        self.language_configs
+            .iter()
+            .find(|config| config.scope == scope)
+            .cloned()
+    }
 }
 
 //
