@@ -133,10 +133,9 @@ impl ChangeSet {
                         Ordering::Greater => {
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(j).unwrap();
-                            // calculate the difference
-                            let to_drop = s.len() - pos;
-                            s.pop_back(u32::try_from(to_drop).unwrap());
-                            head_a = Some(Insert(s));
+                            let pos = pos as u32;
+                            changes.push(Insert(s.subtendril(0, pos)));
+                            head_a = Some(Insert(s.subtendril(pos, s.len() as u32 - pos)));
                             head_b = changes_b.next();
                         }
                     }
@@ -425,7 +424,7 @@ impl Transaction {
         let len = state.doc.len_chars();
         let mut acc = Vec::with_capacity(2 * changes.len() + 1);
 
-        // TODO: verify ranges are ordered and not overlapping.
+        // TODO: verify ranges are ordered and not overlapping or change will panic.
 
         let mut last = 0;
         for (from, to, tendril) in changes {
@@ -445,7 +444,11 @@ impl Transaction {
             }
             last = to;
         }
-        acc.push(Operation::Retain(len - last));
+
+        let span = len - last;
+        if span > 0 {
+            acc.push(Operation::Retain(span));
+        }
 
         Self::from(ChangeSet { changes: acc, len })
     }
@@ -580,7 +583,7 @@ mod test {
         let transaction = Transaction::change(
             &state,
             // (1, 1, None) is a useless 0-width delete
-            vec![(6, 11, Some("void".into())), (12, 17, None), (1, 1, None)].into_iter(),
+            vec![(1, 1, None), (6, 11, Some("void".into())), (12, 17, None)].into_iter(),
         );
         transaction.apply(&mut state);
         assert_eq!(state.doc, Rope::from_str("hello void! 123"));

@@ -371,17 +371,17 @@ mod test {
         assert_eq!(
             result.ranges(),
             &[
-                Range::new(0, 4),
-                Range::new(5, 8),
-                Range::new(10, 12),
-                Range::new(15, 18),
+                Range::new(0, 3),
+                Range::new(5, 7),
+                Range::new(10, 11),
+                Range::new(15, 17),
                 Range::new(19, 19),
             ]
         );
 
         assert_eq!(
             result.fragments(&text.slice(..)).collect::<Vec<_>>(),
-            &["abcd", "efg", "rs", "xyz", ""]
+            &["abcd", "efg", "rs", "xyz", "1"]
         );
     }
 }
