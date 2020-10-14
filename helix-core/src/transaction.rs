@@ -41,11 +41,26 @@ impl ChangeSet {
 
     // TODO: from iter
 
+    #[must_use]
+    fn len_after(&self) -> usize {
+        use Operation::*;
+
+        let mut len = 0;
+        for change in &self.changes {
+            match change {
+                Retain(i) => len += i,
+                Insert(s) => len += s.chars().count(),
+                Delete(_) => (),
+            }
+        }
+        len
+    }
+
     /// Combine two changesets together.
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
     pub fn compose(self, other: ChangeSet) -> Result<Self, ()> {
-        // TODO: len before b should match len after a
+        debug_assert!(self.len_after() == other.len);
 
         let len = self.changes.len();
 
@@ -182,10 +197,7 @@ impl ChangeSet {
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
     /// The document parameter expects the original document before this change was applied.
     pub fn invert(&self, original_doc: &Rope) -> Self {
-        if original_doc.len_chars() != self.len {
-            panic!("Document length mismatch");
-            // return false;
-        }
+        assert!(original_doc.len_chars() == self.len);
 
         let mut changes = Vec::with_capacity(self.changes.len());
         let mut pos = 0;
