@@ -109,9 +109,7 @@ impl ChangeSet {
                         Ordering::Greater => {
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(len - j).unwrap();
-                            // calculate the difference
-                            let to_drop = s.len() - pos;
-                            s.pop_back(u32::try_from(to_drop).unwrap());
+                            s.pop_front(s.len() as u32 - pos as u32);
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }
@@ -487,7 +485,7 @@ mod test {
         let a = ChangeSet {
             changes: vec![
                 Retain(5),
-                Insert("!".into()),
+                Insert(" test!".into()),
                 Retain(1),
                 Delete(2),
                 Insert("abc".into()),
@@ -496,8 +494,8 @@ mod test {
         };
 
         let b = ChangeSet {
-            changes: vec![Delete(5), Insert("world".into()), Retain(5)],
-            len: 9,
+            changes: vec![Delete(10), Insert("world".into()), Retain(5)],
+            len: 15,
         };
 
         let mut text = Rope::from("hello xz");
