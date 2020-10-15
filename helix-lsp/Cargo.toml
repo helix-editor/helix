@@ -1,0 +1,15 @@
+[package]
+name = "helix-lsp"
+version = "0.1.0"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lsp-types = { version = "0.82", features = ["proposed"] }
+smol = "1.2"
+url = "2.1.1"
+pathdiff = "0.2.0"
+shellexpand = "2.0.0"
+glob = "0.3.0"

@@ -4,6 +4,7 @@ members = [
   "helix-view",
   "helix-term",
   "helix-syntax",
+  "helix-lsp",
 ]
 
 # Build helix-syntax in release mode to make the code path faster in development.
