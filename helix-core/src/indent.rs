@@ -96,10 +96,8 @@ fn walk(node: Option<Node>) -> usize {
     walk(Some(parent)) + increment
 }
 
-fn suggested_indent_for_line(state: &State, line_num: usize) -> usize {
+fn find_first_non_whitespace_char(state: &State, line_num: usize) -> usize {
     let line = state.doc.line(line_num);
-    let current = indent_level_for_line(line);
-
     let mut start = state.doc.line_to_char(line_num);
 
     // find first non-whitespace char
@@ -110,6 +108,14 @@ fn suggested_indent_for_line(state: &State, line_num: usize) -> usize {
         }
         start += 1;
     }
+    start
+}
+
+fn suggested_indent_for_line(state: &State, line_num: usize) -> usize {
+    let line = state.doc.line(line_num);
+    let current = indent_level_for_line(line);
+
+    let start = find_first_non_whitespace_char(state, line_num);
 
     suggested_indent_for_pos(state, start)
 }
@@ -126,7 +132,7 @@ pub fn suggested_indent_for_pos(state: &State, pos: usize) -> usize {
 
         indentation
     } else {
-        // TODO: case for non-tree sitter grammars
+        // TODO: heuristics for non-tree sitter grammars
         0
     }
 }

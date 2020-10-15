@@ -349,6 +349,7 @@ pub fn open_below(view: &mut View, _count: usize) {
         })
         .collect();
 
+    // TODO: use same logic as insert_newline for indentation
     let changes = positions.iter().copied().map(|index|
         // generate changes
         (index, index, Some(Tendril::from_char('\n'))));
