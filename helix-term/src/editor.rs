@@ -36,7 +36,8 @@ pub struct Editor {
     size: (u16, u16),
     surface: Surface,
     cache: Surface,
-    prompt: Prompt,
+    prompt: Option<Prompt>,
+    should_close: bool,
 }
 
 impl Editor {
@@ -46,7 +47,6 @@ impl Editor {
         let mut terminal = Terminal::new(backend)?;
         let size = terminal::size().unwrap();
         let area = Rect::new(0, 0, size.0, size.1);
-        let prompt = Prompt::new();
 
         let mut editor = Editor {
             terminal,
@@ -55,7 +55,8 @@ impl Editor {
             surface: Surface::empty(area),
             cache: Surface::empty(area),
             // TODO; move to state
-            prompt,
+            prompt: None,
+            should_close: false,
         };
 
         if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
@@ -63,6 +64,15 @@ impl Editor {
         }
 
         Ok(editor)
+    }
+
+    pub fn set_commands(self) {
+        let commands = |input: &str| match input {
+            "q" => self.should_close = true,
+            _ => (),
+        };
+        let prompt = Prompt::new(|input| None, commands);
+        self.prompt = Some(prompt);
     }
 
     pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
@@ -304,10 +314,14 @@ impl Editor {
         let mut reader = EventStream::new();
         let keymap = keymap::default();
 
+        self.set_commands();
         self.render();
 
         loop {
             // Handle key events
+            if self.should_close {
+                break;
+            }
             let mut event = reader.next().await;
             match event {
                 Some(Ok(Event::Resize(width, height))) => {
@@ -324,13 +338,6 @@ impl Editor {
 
                     self.render();
                 }
-                Some(Ok(Event::Key(KeyEvent {
-                    code: KeyCode::Char('q'),
-                    ..
-                }))) => {
-                    break;
-                }
-
                 Some(Ok(Event::Key(event))) => {
                     // TODO: sequences (`gg`)
                     // TODO: handle count other than 1

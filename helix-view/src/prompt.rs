@@ -6,15 +6,21 @@ use std::string::String;
 pub struct Prompt {
     pub buffer: String,
     pub cursor_loc: usize,
+    completion_fn: Box<dyn FnMut(&str) -> Option<Vec<&str>>>,
+    callback_fn: Box<dyn Fn(&str)>,
 }
 
 impl Prompt {
-    pub fn new() -> Prompt {
-        let prompt = Prompt {
+    pub fn new(
+        completion_fn: impl FnMut(&str) -> Option<Vec<&str>> + 'static,
+        callback_fn: impl Fn(&str) + 'static,
+    ) -> Prompt {
+        Prompt {
             buffer: String::from(""),
             cursor_loc: 0,
-        };
-        prompt
+            completion_fn: Box::new(completion_fn),
+            callback_fn: Box::new(callback_fn),
+        }
     }
 
     pub fn insert_char(&mut self, c: char) {
@@ -49,10 +55,6 @@ impl Prompt {
         }
     }
 
-    pub fn success_fn() {
-        // TODO:
-    }
-
     pub fn handle_input(&mut self, key_event: KeyEvent, view: &mut View) {
         match key_event {
             KeyEvent {
@@ -82,6 +84,10 @@ impl Prompt {
                 code: KeyCode::Backspace,
                 ..
             } => self.delete_char_backwards(),
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => (self.callback_fn)(&self.buffer),
             _ => (),
         }
     }
