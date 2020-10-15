@@ -7,13 +7,13 @@ pub struct Prompt {
     pub buffer: String,
     pub cursor_loc: usize,
     completion_fn: Box<dyn FnMut(&str) -> Option<Vec<&str>>>,
-    callback_fn: Box<dyn Fn(&str)>,
+    callback_fn: Box<dyn FnMut(&str)>,
 }
 
 impl Prompt {
     pub fn new(
         completion_fn: impl FnMut(&str) -> Option<Vec<&str>> + 'static,
-        callback_fn: impl Fn(&str) + 'static,
+        callback_fn: impl FnMut(&str) + 'static,
     ) -> Prompt {
         Prompt {
             buffer: String::from(""),

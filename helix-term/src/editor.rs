@@ -66,7 +66,7 @@ impl Editor {
         Ok(editor)
     }
 
-    pub fn set_commands(self) {
+    pub fn set_prompt(self) {
         let commands = |input: &str| match input {
             "q" => self.should_close = true,
             _ => (),
@@ -265,7 +265,7 @@ impl Editor {
         // render buffer text
         let buffer_string;
         if view.state.mode == Mode::Command {
-            buffer_string = &self.prompt.buffer;
+            buffer_string = &self.prompt.unwrap().buffer;
             self.surface
                 .set_string(1, self.size.1 - 1, String::from(":"), text_color);
             self.surface
@@ -291,7 +291,7 @@ impl Editor {
             mode => write!(stdout, "\x1B[2 q"),
         };
         if view.state.mode() == Mode::Command {
-            pos = Position::new(self.size.0 as usize, 2 + self.prompt.cursor_loc);
+            pos = Position::new(self.size.0 as usize, 2 + self.prompt.unwrap().cursor_loc);
         } else {
             if let Some(path) = view.state.path() {
                 self.surface
@@ -314,7 +314,7 @@ impl Editor {
         let mut reader = EventStream::new();
         let keymap = keymap::default();
 
-        self.set_commands();
+        self.set_prompt();
         self.render();
 
         loop {
@@ -357,7 +357,7 @@ impl Editor {
                                 view.ensure_cursor_in_view();
                             }
                             Mode::Command => {
-                                self.prompt.handle_input(event, view);
+                                self.prompt.unwrap().handle_input(event, view);
                             }
                             mode => {
                                 if let Some(command) = keymap[&mode].get(&keys) {
