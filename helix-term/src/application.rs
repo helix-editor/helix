@@ -37,7 +37,6 @@ static EX: smol::Executor = smol::Executor::new();
 pub struct Application {
     editor: Editor,
     prompt: Option<Prompt>,
-    should_close: bool,
     terminal: Renderer,
 }
 
@@ -299,19 +298,18 @@ impl Application {
             terminal,
             // TODO; move to state
             prompt: None,
-            should_close: false,
         };
 
         Ok(app)
     }
 
     pub fn set_prompt(&mut self) {
-        // let commands = |input| match input {
-        //     "q" => self.should_close = true,
-        //     _ => (),
-        // };
-        // let prompt = Prompt::new(|input| None, commands);
-        // self.prompt = Some(prompt);
+        let commands = |editor: &mut Editor, input: &str| match input {
+            "q" => editor.should_close = true,
+            _ => (),
+        };
+        let prompt = Prompt::new(|input| None, commands);
+        self.prompt = Some(prompt);
     }
 
     fn render(&mut self) {
@@ -341,12 +339,12 @@ impl Application {
         self.render();
 
         loop {
-            // Handle key events
-            if self.should_close {
+            if self.editor.should_close {
                 break;
             }
-            let mut event = reader.next().await;
-            match event {
+
+            // Handle key events
+            match reader.next().await {
                 Some(Ok(Event::Resize(width, height))) => {
                     self.terminal.resize(width, height);
 
@@ -359,10 +357,16 @@ impl Application {
                     self.render();
                 }
                 Some(Ok(Event::Key(event))) => {
-                    // TODO: sequences (`gg`)
-                    // TODO: handle count other than 1
-                    if let Some(view) = &mut self.editor.view {
+                    // if there's a prompt, it takes priority
+                    if let Some(prompt) = &mut self.prompt {
+                        self.prompt
+                            .as_mut()
+                            .unwrap()
+                            .handle_input(event, &mut self.editor);
+                    } else if let Some(view) = &mut self.editor.view {
                         let keys = vec![event];
+                        // TODO: sequences (`gg`)
+                        // TODO: handle count other than 1
                         match view.state.mode() {
                             Mode::Insert => {
                                 if let Some(command) = keymap[&Mode::Insert].get(&keys) {
@@ -376,9 +380,7 @@ impl Application {
                                 }
                                 view.ensure_cursor_in_view();
                             }
-                            Mode::Command => {
-                                self.prompt.as_mut().unwrap().handle_input(event, view);
-                            }
+                            Mode::Command => unreachable!(),
                             mode => {
                                 if let Some(command) = keymap[&mode].get(&keys) {
                                     command(view, 1);
@@ -391,9 +393,7 @@ impl Application {
                         self.render();
                     }
                 }
-                Some(Ok(_)) => {
-                    // unhandled event
-                }
+                Some(Ok(Event::Mouse(_))) => (), // unhandled
                 Some(Err(x)) => panic!(x),
                 None => break,
             }

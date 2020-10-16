@@ -1,5 +1,5 @@
 use crate::commands;
-use crate::View;
+use crate::{Editor, View};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::string::String;
 
@@ -7,13 +7,13 @@ pub struct Prompt {
     pub buffer: String,
     pub cursor_loc: usize,
     completion_fn: Box<dyn FnMut(&str) -> Option<Vec<&str>>>,
-    callback_fn: Box<dyn FnMut(&str)>,
+    callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
 }
 
 impl Prompt {
     pub fn new(
         completion_fn: impl FnMut(&str) -> Option<Vec<&str>> + 'static,
-        callback_fn: impl FnMut(&str) + 'static,
+        callback_fn: impl FnMut(&mut Editor, &str) + 'static,
     ) -> Prompt {
         Prompt {
             buffer: String::from(""),
@@ -55,7 +55,7 @@ impl Prompt {
         }
     }
 
-    pub fn handle_input(&mut self, key_event: KeyEvent, view: &mut View) {
+    pub fn handle_input(&mut self, key_event: KeyEvent, editor: &mut Editor) {
         match key_event {
             KeyEvent {
                 code: KeyCode::Char(c),
@@ -63,7 +63,7 @@ impl Prompt {
             } => self.insert_char(c),
             KeyEvent {
                 code: KeyCode::Esc, ..
-            } => commands::normal_mode(view, 1),
+            } => unimplemented!("Exit prompt!"),
             KeyEvent {
                 code: KeyCode::Right,
                 ..
@@ -87,7 +87,7 @@ impl Prompt {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => (self.callback_fn)(&self.buffer),
+            } => (self.callback_fn)(editor, &self.buffer),
             _ => (),
         }
     }

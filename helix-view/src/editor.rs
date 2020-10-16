@@ -6,11 +6,15 @@ use anyhow::Error;
 
 pub struct Editor {
     pub view: Option<View>,
+    pub should_close: bool,
 }
 
 impl Editor {
     pub fn new() -> Self {
-        Self { view: None }
+        Self {
+            view: None,
+            should_close: false,
+        }
     }
 
     pub fn open(&mut self, path: PathBuf, size: (u16, u16)) -> Result<(), Error> {
