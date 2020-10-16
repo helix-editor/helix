@@ -307,8 +307,19 @@ pub fn append_mode(view: &mut View, _count: usize) {
     })
 }
 
-pub fn command_mode(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Command;
+pub fn command_mode(_view: &mut View, _count: usize) {
+    use crate::Editor;
+
+    let prompt = Prompt::new(
+        ":".to_owned(),
+        |_input: &str| None, // completion
+        |editor: &mut Editor, input: &str| match input {
+            "q" => editor.should_close = true,
+            _ => (),
+        },
+    );
+
+    // set_prompt(prompt)
 }
 
 // TODO: I, A, o and O can share a lot of the primitives.
@@ -627,7 +638,7 @@ pub fn unindent(view: &mut View, _count: usize) {
     append_changes_to_history(view);
 }
 
-pub fn indent_selection(view: &mut View, _count: usize) {
+pub fn indent_selection(_view: &mut View, _count: usize) {
     // loop over each line and recompute proper indentation
     unimplemented!()
 }

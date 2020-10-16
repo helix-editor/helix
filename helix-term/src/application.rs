@@ -225,7 +225,6 @@ impl Renderer {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
-            Mode::Command => "COM", // command?
         };
         // statusline
         self.surface.set_style(
@@ -237,13 +236,15 @@ impl Renderer {
     }
 
     pub fn render_prompt(&mut self, prompt: &Prompt) {
-        use tui::backend::Backend;
         // render buffer text
         self.surface
-            .set_string(1, self.size.1 - 1, String::from(":"), self.text_color);
+            .set_string(1, self.size.1 - 1, &prompt.prompt, self.text_color);
         self.surface
-            .set_string(2, self.size.1 - 1, &prompt.buffer, self.text_color);
+            .set_string(2, self.size.1 - 1, &prompt.line, self.text_color);
+    }
 
+    pub fn draw(&mut self) {
+        use tui::backend::Backend;
         // TODO: theres probably a better place for this
         self.terminal
             .backend_mut()
@@ -259,7 +260,7 @@ impl Renderer {
             mode => write!(stdout, "\x1B[2 q"),
         };
         let pos = if let Some(prompt) = prompt {
-            Position::new(self.size.0 as usize, 2 + prompt.cursor_loc)
+            Position::new(self.size.0 as usize, 2 + prompt.cursor)
         } else {
             if let Some(path) = view.state.path() {
                 self.surface.set_string(
@@ -303,15 +304,6 @@ impl Application {
         Ok(app)
     }
 
-    pub fn set_prompt(&mut self) {
-        let commands = |editor: &mut Editor, input: &str| match input {
-            "q" => editor.should_close = true,
-            _ => (),
-        };
-        let prompt = Prompt::new(|input| None, commands);
-        self.prompt = Some(prompt);
-    }
-
     fn render(&mut self) {
         let viewport = Rect::new(OFFSET, 0, self.terminal.size.0, self.terminal.size.1 - 2); // - 2 for statusline and prompt
 
@@ -322,6 +314,8 @@ impl Application {
         if let Some(prompt) = &self.prompt {
             self.terminal.render_prompt(prompt);
         }
+
+        self.terminal.draw();
 
         // TODO: drop unwrap
         self.terminal.render_cursor(
@@ -335,7 +329,6 @@ impl Application {
         let mut reader = EventStream::new();
         let keymap = keymap::default();
 
-        self.set_prompt();
         self.render();
 
         loop {
@@ -363,6 +356,8 @@ impl Application {
                             .as_mut()
                             .unwrap()
                             .handle_input(event, &mut self.editor);
+
+                        self.render();
                     } else if let Some(view) = &mut self.editor.view {
                         let keys = vec![event];
                         // TODO: sequences (`gg`)
@@ -380,7 +375,31 @@ impl Application {
                                 }
                                 view.ensure_cursor_in_view();
                             }
-                            Mode::Command => unreachable!(),
+                            Mode::Normal => {
+                                if let &[KeyEvent {
+                                    code: KeyCode::Char(':'),
+                                    ..
+                                }] = keys.as_slice()
+                                {
+                                    let prompt = Prompt::new(
+                                        ":".to_owned(),
+                                        |_input: &str| None, // completion
+                                        |editor: &mut Editor, input: &str| match input {
+                                            "q" => editor.should_close = true,
+                                            _ => (),
+                                        },
+                                    );
+
+                                    self.prompt = Some(prompt);
+
+                                // HAXX: special casing for command mode
+                                } else if let Some(command) = keymap[&Mode::Normal].get(&keys) {
+                                    command(view, 1);
+
+                                    // TODO: simplistic ensure cursor in view for now
+                                    view.ensure_cursor_in_view();
+                                }
+                            }
                             mode => {
                                 if let Some(command) = keymap[&mode].get(&keys) {
                                     command(view, 1);

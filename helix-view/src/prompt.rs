@@ -4,54 +4,57 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::string::String;
 
 pub struct Prompt {
-    pub buffer: String,
-    pub cursor_loc: usize,
+    pub prompt: String,
+    pub line: String,
+    pub cursor: usize,
     completion_fn: Box<dyn FnMut(&str) -> Option<Vec<&str>>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
 }
 
 impl Prompt {
     pub fn new(
+        prompt: String,
         completion_fn: impl FnMut(&str) -> Option<Vec<&str>> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str) + 'static,
     ) -> Prompt {
         Prompt {
-            buffer: String::from(""),
-            cursor_loc: 0,
+            prompt,
+            line: String::new(),
+            cursor: 0,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
         }
     }
 
     pub fn insert_char(&mut self, c: char) {
-        self.buffer.insert(self.cursor_loc, c);
-        self.cursor_loc += 1;
+        self.line.insert(self.cursor, c);
+        self.cursor += 1;
     }
 
     pub fn move_char_left(&mut self) {
-        if self.cursor_loc > 1 {
-            self.cursor_loc -= 1;
+        if self.cursor > 1 {
+            self.cursor -= 1;
         }
     }
 
     pub fn move_char_right(&mut self) {
-        if self.cursor_loc < self.buffer.len() {
-            self.cursor_loc += 1;
+        if self.cursor < self.line.len() {
+            self.cursor += 1;
         }
     }
 
     pub fn move_start(&mut self) {
-        self.cursor_loc = 0;
+        self.cursor = 0;
     }
 
     pub fn move_end(&mut self) {
-        self.cursor_loc = self.buffer.len();
+        self.cursor = self.line.len();
     }
 
     pub fn delete_char_backwards(&mut self) {
-        if self.cursor_loc > 0 {
-            self.buffer.remove(self.cursor_loc - 1);
-            self.cursor_loc -= 1;
+        if self.cursor > 0 {
+            self.line.remove(self.cursor - 1);
+            self.cursor -= 1;
         }
     }
 
@@ -87,7 +90,7 @@ impl Prompt {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => (self.callback_fn)(editor, &self.buffer),
+            } => (self.callback_fn)(editor, &self.line),
             _ => (),
         }
     }
