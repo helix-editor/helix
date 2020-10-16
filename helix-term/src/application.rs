@@ -1,6 +1,6 @@
 use clap::ArgMatches as Args;
 use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Position, Range, State};
-use helix_view::{commands, keymap, prompt::Prompt, View};
+use helix_view::{commands, keymap, prompt::Prompt, Editor, View};
 
 use std::{
     borrow::Cow,
@@ -18,11 +18,15 @@ use crossterm::{
     cursor::position,
     event::{self, read, Event, EventStream, KeyCode, KeyEvent},
     execute, queue,
-    style::{Color, Print, SetForegroundColor},
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 
-use tui::{backend::CrosstermBackend, buffer::Buffer as Surface, layout::Rect, style::Style};
+use tui::{
+    backend::CrosstermBackend,
+    buffer::Buffer as Surface,
+    layout::Rect,
+    style::{Color, Style},
+};
 
 const OFFSET: u16 = 6; // 5 linenr + 1 gutter
 
@@ -30,78 +34,54 @@ type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 static EX: smol::Executor = smol::Executor::new();
 
-pub struct Editor {
-    terminal: Terminal,
-    view: Option<View>,
-    size: (u16, u16),
-    surface: Surface,
-    cache: Surface,
+pub struct Application {
+    editor: Editor,
     prompt: Option<Prompt>,
     should_close: bool,
+    terminal: Renderer,
 }
 
-impl Editor {
-    pub fn new(mut args: Args) -> Result<Self, Error> {
-        let backend = CrosstermBackend::new(stdout());
+struct Renderer {
+    size: (u16, u16),
+    terminal: Terminal,
+    surface: Surface,
+    cache: Surface,
+    text_color: Style,
+}
 
+impl Renderer {
+    pub fn new() -> Result<Self, Error> {
+        let backend = CrosstermBackend::new(stdout());
         let mut terminal = Terminal::new(backend)?;
         let size = terminal::size().unwrap();
-        let area = Rect::new(0, 0, size.0, size.1);
-
-        let mut editor = Editor {
-            terminal,
-            view: None,
-            size,
-            surface: Surface::empty(area),
-            cache: Surface::empty(area),
-            // TODO; move to state
-            prompt: None,
-            should_close: false,
-        };
-
-        if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
-            editor.open(file)?;
-        }
-
-        Ok(editor)
-    }
-
-    pub fn set_prompt(self) {
-        let commands = |input: &str| match input {
-            "q" => self.should_close = true,
-            _ => (),
-        };
-        let prompt = Prompt::new(|input| None, commands);
-        self.prompt = Some(prompt);
-    }
-
-    pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
-        self.view = Some(View::open(path, self.size)?);
-        Ok(())
-    }
-
-    fn render(&mut self) {
-        use tui::style::Color;
-        // TODO: ideally not mut but highlights require it because of cursor cache
-        let viewport = Rect::new(OFFSET, 0, self.size.0, self.size.1 - 2); // - 2 for statusline and prompt
         let text_color: Style = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
 
-        self.render_view(viewport, text_color);
+        let area = Rect::new(0, 0, size.0, size.1);
 
-        self.render_prompt(text_color);
-
-        self.render_cursor(viewport, text_color);
+        Ok(Self {
+            size,
+            terminal,
+            surface: Surface::empty(area),
+            cache: Surface::empty(area),
+            text_color,
+        })
     }
 
-    pub fn render_view(&mut self, viewport: Rect, text_color: Style) {
-        self.render_buffer(viewport);
-        self.render_statusline(text_color);
+    pub fn resize(&mut self, width: u16, height: u16) {
+        self.size = (width, height);
+        let area = Rect::new(0, 0, width, height);
+        self.surface = Surface::empty(area);
+        self.cache = Surface::empty(area);
     }
 
-    pub fn render_buffer(&mut self, viewport: Rect) {
-        use tui::style::Color;
+    pub fn render_view(&mut self, view: &mut View, viewport: Rect) {
+        self.render_buffer(view, viewport);
+        self.render_statusline(view);
+    }
+
+    // TODO: ideally not &mut View but highlights require it because of cursor cache
+    pub fn render_buffer(&mut self, view: &mut View, viewport: Rect) {
         let area = Rect::new(0, 0, self.size.0, self.size.1);
-        let mut view: &mut View = self.view.as_mut().unwrap();
         self.surface.reset(); // reset is faster than allocating new empty surface
 
         //  clear with background color
@@ -241,8 +221,7 @@ impl Editor {
         }
     }
 
-    pub fn render_statusline(&mut self, text_color: Style) {
-        let view = self.view.as_ref().unwrap();
+    pub fn render_statusline(&mut self, view: &View) {
         let mode = match view.state.mode() {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
@@ -255,24 +234,16 @@ impl Editor {
             view.theme.get("ui.statusline"),
         );
         self.surface
-            .set_string(1, self.size.1 - 2, mode, text_color);
+            .set_string(1, self.size.1 - 2, mode, self.text_color);
     }
 
-    pub fn render_prompt(&mut self, text_color: Style) {
-        // TODO: maybe name this render_commandline
+    pub fn render_prompt(&mut self, prompt: &Prompt) {
         use tui::backend::Backend;
-        let view = self.view.as_ref().unwrap();
         // render buffer text
-        let buffer_string;
-        if view.state.mode == Mode::Command {
-            buffer_string = &self.prompt.unwrap().buffer;
-            self.surface
-                .set_string(1, self.size.1 - 1, String::from(":"), text_color);
-            self.surface
-                .set_string(2, self.size.1 - 1, buffer_string, text_color);
-        } else {
-            buffer_string = &String::from("");
-        }
+        self.surface
+            .set_string(1, self.size.1 - 1, String::from(":"), self.text_color);
+        self.surface
+            .set_string(2, self.size.1 - 1, &prompt.buffer, self.text_color);
 
         // TODO: theres probably a better place for this
         self.terminal
@@ -282,32 +253,84 @@ impl Editor {
         std::mem::swap(&mut self.surface, &mut self.cache);
     }
 
-    pub fn render_cursor(&mut self, viewport: Rect, text_color: Style) {
-        let mut pos: Position;
-        let view = self.view.as_ref().unwrap();
+    pub fn render_cursor(&mut self, view: &View, prompt: Option<&Prompt>, viewport: Rect) {
         let mut stdout = stdout();
         match view.state.mode() {
             Mode::Insert => write!(stdout, "\x1B[6 q"),
             mode => write!(stdout, "\x1B[2 q"),
         };
-        if view.state.mode() == Mode::Command {
-            pos = Position::new(self.size.0 as usize, 2 + self.prompt.unwrap().cursor_loc);
+        let pos = if let Some(prompt) = prompt {
+            Position::new(self.size.0 as usize, 2 + prompt.cursor_loc)
         } else {
             if let Some(path) = view.state.path() {
-                self.surface
-                    .set_string(6, self.size.1 - 1, path.to_string_lossy(), text_color);
+                self.surface.set_string(
+                    6,
+                    self.size.1 - 1,
+                    path.to_string_lossy(),
+                    self.text_color,
+                );
             }
 
             let cursor = view.state.selection().cursor();
 
-            pos = view
+            let mut pos = view
                 .screen_coords_at_pos(&view.state.doc().slice(..), cursor)
                 .expect("Cursor is out of bounds.");
             pos.col += viewport.x as usize;
             pos.row += viewport.y as usize;
-        }
+            pos
+        };
 
         execute!(stdout, cursor::MoveTo(pos.col as u16, pos.row as u16));
+    }
+}
+
+impl Application {
+    pub fn new(mut args: Args) -> Result<Self, Error> {
+        let terminal = Renderer::new()?;
+        let mut editor = Editor::new();
+
+        if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
+            editor.open(file, terminal.size)?;
+        }
+
+        let mut app = Self {
+            editor,
+            terminal,
+            // TODO; move to state
+            prompt: None,
+            should_close: false,
+        };
+
+        Ok(app)
+    }
+
+    pub fn set_prompt(&mut self) {
+        // let commands = |input| match input {
+        //     "q" => self.should_close = true,
+        //     _ => (),
+        // };
+        // let prompt = Prompt::new(|input| None, commands);
+        // self.prompt = Some(prompt);
+    }
+
+    fn render(&mut self) {
+        let viewport = Rect::new(OFFSET, 0, self.terminal.size.0, self.terminal.size.1 - 2); // - 2 for statusline and prompt
+
+        if let Some(view) = &mut self.editor.view {
+            self.terminal.render_view(view, viewport);
+        }
+
+        if let Some(prompt) = &self.prompt {
+            self.terminal.render_prompt(prompt);
+        }
+
+        // TODO: drop unwrap
+        self.terminal.render_cursor(
+            self.editor.view.as_ref().unwrap(),
+            self.prompt.as_ref(),
+            viewport,
+        );
     }
 
     pub async fn event_loop(&mut self) {
@@ -325,14 +348,11 @@ impl Editor {
             let mut event = reader.next().await;
             match event {
                 Some(Ok(Event::Resize(width, height))) => {
-                    self.size = (width, height);
-                    let area = Rect::new(0, 0, width, height);
-                    self.surface = Surface::empty(area);
-                    self.cache = Surface::empty(area);
+                    self.terminal.resize(width, height);
 
                     // TODO: simplistic ensure cursor in view for now
-                    if let Some(view) = &mut self.view {
-                        view.size = self.size;
+                    if let Some(view) = &mut self.editor.view {
+                        view.size = self.terminal.size;
                         view.ensure_cursor_in_view()
                     };
 
@@ -341,7 +361,7 @@ impl Editor {
                 Some(Ok(Event::Key(event))) => {
                     // TODO: sequences (`gg`)
                     // TODO: handle count other than 1
-                    if let Some(view) = &mut self.view {
+                    if let Some(view) = &mut self.editor.view {
                         let keys = vec![event];
                         match view.state.mode() {
                             Mode::Insert => {
@@ -357,7 +377,7 @@ impl Editor {
                                 view.ensure_cursor_in_view();
                             }
                             Mode::Command => {
-                                self.prompt.unwrap().handle_input(event, view);
+                                self.prompt.as_mut().unwrap().handle_input(event, view);
                             }
                             mode => {
                                 if let Some(command) = keymap[&mode].get(&keys) {

@@ -1,8 +1,8 @@
 #![allow(unused)]
 
-mod editor;
+mod application;
 
-use editor::Editor;
+use application::Application;
 
 use clap::{App, Arg};
 use std::path::PathBuf;
@@ -27,7 +27,7 @@ fn main() -> Result<(), Error> {
     }
 
     smol::block_on(EX.run(async {
-        editor::Editor::new(args).unwrap().run().await;
+        Application::new(args).unwrap().run().await;
     }));
 
     Ok(())
