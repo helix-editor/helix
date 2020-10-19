@@ -6,4 +6,5 @@ pub mod theme;
 pub mod view;
 
 pub use editor::Editor;
+pub use theme::Theme;
 pub use view::View;

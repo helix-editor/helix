@@ -23,7 +23,7 @@ pub struct State {
 
     pub restore_cursor: bool,
 
-    //
+    // TODO: move these to a Document wrapper?
     pub syntax: Option<Syntax>,
     /// Pending changes since last history commit.
     pub changes: ChangeSet,

@@ -1,6 +1,6 @@
 use clap::ArgMatches as Args;
 use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Position, Range, State};
-use helix_view::{commands, keymap, prompt::Prompt, Editor, View};
+use helix_view::{commands, keymap, prompt::Prompt, Editor, Theme, View};
 
 use std::{
     borrow::Cow,
@@ -15,8 +15,7 @@ use anyhow::Error;
 
 use crossterm::{
     cursor,
-    cursor::position,
-    event::{self, read, Event, EventStream, KeyCode, KeyEvent},
+    event::{read, Event, EventStream, KeyCode, KeyEvent},
     execute, queue,
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
@@ -75,19 +74,18 @@ impl Renderer {
         self.cache = Surface::empty(area);
     }
 
-    pub fn render_view(&mut self, view: &mut View, viewport: Rect) {
-        self.render_buffer(view, viewport);
-        self.render_statusline(view);
+    pub fn render_view(&mut self, view: &mut View, viewport: Rect, theme: &Theme) {
+        self.render_buffer(view, viewport, theme);
+        self.render_statusline(view, theme);
     }
 
     // TODO: ideally not &mut View but highlights require it because of cursor cache
-    pub fn render_buffer(&mut self, view: &mut View, viewport: Rect) {
+    pub fn render_buffer(&mut self, view: &mut View, viewport: Rect, theme: &Theme) {
         let area = Rect::new(0, 0, self.size.0, self.size.1);
         self.surface.reset(); // reset is faster than allocating new empty surface
 
         //  clear with background color
-        self.surface
-            .set_style(area, view.theme.get("ui.background"));
+        self.surface.set_style(area, theme.get("ui.background"));
 
         // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
         let source_code = view.state.doc().to_string();
@@ -150,7 +148,7 @@ impl Renderer {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     let style = match spans.first() {
-                        Some(span) => view.theme.get(view.theme.scopes()[span.0].as_str()),
+                        Some(span) => theme.get(theme.scopes()[span.0].as_str()),
                         None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
                     };
 
@@ -214,7 +212,7 @@ impl Renderer {
                 }
             }
         }
-        let style: Style = view.theme.get("ui.linenr");
+        let style: Style = theme.get("ui.linenr");
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
             self.surface
@@ -222,7 +220,7 @@ impl Renderer {
         }
     }
 
-    pub fn render_statusline(&mut self, view: &View) {
+    pub fn render_statusline(&mut self, view: &View, theme: &Theme) {
         let mode = match view.state.mode() {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
@@ -231,7 +229,7 @@ impl Renderer {
         // statusline
         self.surface.set_style(
             Rect::new(0, self.size.1 - 2, self.size.0, 1),
-            view.theme.get("ui.statusline"),
+            theme.get("ui.statusline"),
         );
         self.surface
             .set_string(1, self.size.1 - 2, mode, self.text_color);
@@ -354,8 +352,11 @@ impl Application {
     fn render(&mut self) {
         let viewport = Rect::new(OFFSET, 0, self.terminal.size.0, self.terminal.size.1 - 2); // - 2 for statusline and prompt
 
+        // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
+        // theme. Theme is immutable mutating view won't disrupt theme_ref.
+        let theme_ref = unsafe { &*(&self.editor.theme as *const Theme) };
         if let Some(view) = self.editor.view_mut() {
-            self.terminal.render_view(view, viewport);
+            self.terminal.render_view(view, viewport, theme_ref);
             if let Some(prompt) = &self.prompt {
                 if prompt.should_close {
                     self.prompt = None;
@@ -389,6 +390,7 @@ impl Application {
                     self.terminal.resize(width, height);
 
                     // TODO: simplistic ensure cursor in view for now
+                    // TODO: loop over views
                     if let Some(view) = self.editor.view_mut() {
                         view.size = self.terminal.size;
                         view.ensure_cursor_in_view()

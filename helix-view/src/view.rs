@@ -1,8 +1,7 @@
 use anyhow::Error;
 
-use std::{borrow::Cow, path::PathBuf};
+use std::borrow::Cow;
 
-use crate::theme::Theme;
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
     indent::TAB_WIDTH,
@@ -12,24 +11,23 @@ use tui::layout::Rect;
 
 pub const PADDING: usize = 5;
 
+// TODO: view should be View { doc: Document(state, history,..) }
+// since we can have multiple views into the same file
 pub struct View {
     pub state: State,
-    pub history: History,
     pub first_line: usize,
     pub size: (u16, u16),
-    pub theme: Theme, // TODO: share one instance
+
+    // TODO: Doc<> fields
+    pub history: History,
 }
 
 impl View {
-    pub fn open(path: PathBuf, size: (u16, u16)) -> Result<Self, Error> {
-        let theme = Theme::default();
-        let state = State::load(path, theme.scopes())?;
-
+    pub fn new(state: State, size: (u16, u16)) -> Result<Self, Error> {
         let view = Self {
             state,
             first_line: 0,
             size,
-            theme,
             history: History::default(),
         };
 
