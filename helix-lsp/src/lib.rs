@@ -1,18 +1,22 @@
+mod transport;
+
+use transport::{Payload, Transport};
+
 use std::collections::HashMap;
 
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
-
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use smol::channel::{Receiver, Sender};
-use smol::io::{BufReader, BufWriter};
-use smol::prelude::*;
-use smol::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
-use smol::Executor;
+use serde::{Deserialize, Serialize};
 
-use futures_util::{select, FutureExt};
+use smol::prelude::*;
+use smol::{
+    channel::{Receiver, Sender},
+    io::{BufReader, BufWriter},
+    process::{Child, ChildStderr, Command, Stdio},
+    Executor,
+};
 
 /// A type representing all possible values sent from the server to the client.
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -27,14 +31,40 @@ enum Message {
     Call(jsonrpc::Call),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+enum Notification {}
+
+impl Notification {
+    pub fn parse(method: &str, params: jsonrpc::Params) {
+        use lsp::notification::Notification as _;
+
+        match method {
+            lsp::notification::PublishDiagnostics::METHOD => {
+                let params: lsp::PublishDiagnosticsParams = params
+                    .parse()
+                    .expect("Failed to parse PublishDiagnostics params");
+
+                println!("{:?}", params);
+
+                // TODO: need to loop over diagnostics and distinguish them by URI
+            }
+            _ => println!("unhandled notification: {}", method),
+        }
+    }
+}
+
 pub struct Client {
     process: Child,
     stderr: BufReader<ChildStderr>,
+
     outgoing: Sender<Payload>,
+    incoming: Receiver<Message>,
 
     pub request_counter: u64,
 
     capabilities: Option<lsp::ServerCapabilities>,
+    // TODO: handle PublishDiagnostics Version
+    diagnostics: HashMap<lsp::Url, Vec<lsp::Diagnostic>>,
 }
 
 impl Client {
@@ -58,11 +88,14 @@ impl Client {
         Client {
             process,
             stderr,
+
             outgoing,
+            incoming,
 
             request_counter: 0,
 
             capabilities: None,
+            diagnostics: HashMap::new(),
         }
     }
 
@@ -187,19 +220,39 @@ impl Client {
     // Text document
     // -------------------------------------------------------------------------------------------
 
-    pub async fn text_document_did_open(&mut self) -> anyhow::Result<()> {
+    pub async fn text_document_did_open(
+        &mut self,
+        state: &helix_core::State,
+    ) -> anyhow::Result<()> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
-                uri: lsp::Url::parse(".")?,
-                language_id: "rust".to_string(),
+                uri: lsp::Url::from_file_path(
+                    std::fs::canonicalize(state.path.as_ref().unwrap()).unwrap(),
+                )
+                .unwrap(),
+                language_id: "rust".to_string(), // TODO: hardcoded for now
                 version: 0,
-                text: "".to_string(),
+                text: String::from(&state.doc),
             },
         })
         .await
     }
 
-    pub async fn text_document_did_change(&mut self) -> anyhow::Result<()> {
+    // TODO: trigger any time history.commit_revision happens
+    pub async fn text_document_did_change(
+        &mut self,
+        state: &helix_core::State,
+    ) -> anyhow::Result<()> {
+        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
+            text_document: lsp::TextDocumentIdentifier::new(
+                lsp::Url::from_file_path(state.path.as_ref().unwrap()).unwrap(),
+            ),
+            text: None, // TODO?
+        })
+        .await
+    }
+
+    pub async fn text_document_did_close(&mut self) -> anyhow::Result<()> {
         unimplemented!()
     }
 
@@ -207,171 +260,5 @@ impl Client {
 
     pub async fn text_document_did_save(&mut self) -> anyhow::Result<()> {
         unimplemented!()
-    }
-
-    pub async fn text_document_did_close(&mut self) -> anyhow::Result<()> {
-        unimplemented!()
-    }
-}
-
-enum Payload {
-    Request {
-        chan: Sender<anyhow::Result<Value>>,
-        value: jsonrpc::MethodCall,
-    },
-    Notification(jsonrpc::Notification),
-}
-
-struct Transport {
-    incoming: Sender<Message>,
-    outgoing: Receiver<Payload>,
-
-    pending_requests: HashMap<jsonrpc::Id, Sender<anyhow::Result<Value>>>,
-    headers: HashMap<String, String>,
-
-    writer: BufWriter<ChildStdin>,
-    reader: BufReader<ChildStdout>,
-}
-
-impl Transport {
-    pub fn start(
-        ex: &Executor,
-        reader: BufReader<ChildStdout>,
-        writer: BufWriter<ChildStdin>,
-    ) -> (Receiver<Message>, Sender<Payload>) {
-        let (incoming, rx) = smol::channel::unbounded();
-        let (tx, outgoing) = smol::channel::unbounded();
-
-        let transport = Self {
-            reader,
-            writer,
-            incoming,
-            outgoing,
-            pending_requests: Default::default(),
-            headers: Default::default(),
-        };
-
-        ex.spawn(transport.duplex()).detach();
-
-        (rx, tx)
-    }
-
-    async fn recv(
-        reader: &mut (impl AsyncBufRead + Unpin),
-        headers: &mut HashMap<String, String>,
-    ) -> Result<Message, std::io::Error> {
-        // read headers
-        loop {
-            let mut header = String::new();
-            // detect pipe closed if 0
-            reader.read_line(&mut header).await?;
-            let header = header.trim();
-
-            if header.is_empty() {
-                break;
-            }
-
-            let parts: Vec<&str> = header.split(": ").collect();
-            if parts.len() != 2 {
-                // return Err(Error::new(ErrorKind::Other, "Failed to parse header"));
-                panic!()
-            }
-            headers.insert(parts[0].to_string(), parts[1].to_string());
-        }
-
-        // find content-length
-        let content_length = headers.get("Content-Length").unwrap().parse().unwrap();
-
-        let mut content = vec![0; content_length];
-        reader.read_exact(&mut content).await?;
-        let msg = String::from_utf8(content).unwrap();
-
-        // read data
-
-        // try parsing as output (server response) or call (server request)
-        let output: serde_json::Result<Message> = serde_json::from_str(&msg);
-
-        Ok(output?)
-    }
-
-    pub async fn send_payload(&mut self, payload: Payload) -> anyhow::Result<()> {
-        match payload {
-            Payload::Request { chan, value } => {
-                self.pending_requests.insert(value.id.clone(), chan);
-
-                let json = serde_json::to_string(&value)?;
-                self.send(json).await
-            }
-            Payload::Notification(value) => {
-                let json = serde_json::to_string(&value)?;
-                self.send(json).await
-            }
-        }
-    }
-
-    pub async fn send(&mut self, request: String) -> anyhow::Result<()> {
-        println!("-> {}", request);
-
-        // send the headers
-        self.writer
-            .write_all(format!("Content-Length: {}\r\n\r\n", request.len()).as_bytes())
-            .await?;
-
-        // send the body
-        self.writer.write_all(request.as_bytes()).await?;
-
-        self.writer.flush().await?;
-
-        Ok(())
-    }
-
-    pub async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
-        match output {
-            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                println!("<- {}", result);
-
-                let tx = self
-                    .pending_requests
-                    .remove(&id)
-                    .expect("pending_request with id not found!");
-                tx.send(Ok(result)).await?;
-            }
-            jsonrpc::Output::Failure(_) => panic!("recv fail"),
-            msg => unimplemented!("{:?}", msg),
-        }
-        Ok(())
-    }
-
-    pub async fn duplex(mut self) {
-        loop {
-            select! {
-                // client -> server
-                msg = self.outgoing.next().fuse() => {
-                    if msg.is_none() {
-                        break;
-                    }
-                    let msg = msg.unwrap();
-
-                    self.send_payload(msg).await.unwrap();
-                }
-                // server <- client
-                msg = Self::recv(&mut self.reader, &mut self.headers).fuse() => {
-                    if msg.is_err() {
-                        break;
-                    }
-                    let msg = msg.unwrap();
-
-                    match msg {
-                        Message::Output(output) => self.recv_response(output).await.unwrap(),
-                        Message::Notification(_) => {
-                            // dispatch
-                        }
-                        Message::Call(_) => {
-                            // dispatch
-                        }
-                    };
-                }
-            }
-        }
     }
 }

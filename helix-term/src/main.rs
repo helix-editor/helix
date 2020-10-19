@@ -30,9 +30,11 @@ fn main() -> Result<(), Error> {
 
     smol::block_on(async {
         let res = lsp.initialize().await;
-        // Application::new(args).unwrap().run().await;
-
+        let state = helix_core::State::load("test.rs".into(), &[]).unwrap();
+        let res = lsp.text_document_did_open(&state).await;
         loop {}
+
+        // Application::new(args).unwrap().run().await;
     });
 
     Ok(())
