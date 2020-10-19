@@ -235,7 +235,14 @@ impl Renderer {
             .set_string(1, self.size.1 - 2, mode, self.text_color);
     }
 
-    pub fn render_prompt(&mut self, prompt: &Prompt) {
+    pub fn render_prompt(&mut self, view: &View, prompt: &Prompt) {
+        // completion
+        if prompt.completion.is_some() {
+            self.surface.set_style(
+                Rect::new(0, self.size.1 - 6, self.size.0, 4),
+                view.theme.get("ui.statusline"),
+            );
+        }
         // render buffer text
         self.surface
             .set_string(1, self.size.1 - 1, &prompt.prompt, self.text_color);
@@ -309,10 +316,13 @@ impl Application {
 
         if let Some(view) = &mut self.editor.view {
             self.terminal.render_view(view, viewport);
-        }
-
-        if let Some(prompt) = &self.prompt {
-            self.terminal.render_prompt(prompt);
+            if let Some(prompt) = &self.prompt {
+                if prompt.should_close {
+                    self.prompt = None;
+                } else {
+                    self.terminal.render_prompt(view, prompt);
+                }
+            }
         }
 
         self.terminal.draw();
@@ -383,7 +393,23 @@ impl Application {
                                 {
                                     let prompt = Prompt::new(
                                         ":".to_owned(),
-                                        |_input: &str| None, // completion
+                                        |_input: &str| {
+                                            let placeholder_list = vec![
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                            ];
+                                            let mut matches = vec![];
+                                            for command in placeholder_list {
+                                                if command.contains(_input) {
+                                                    matches.push(command);
+                                                }
+                                            }
+                                            if matches.len() != 0 {
+                                                return Some(matches);
+                                            }
+                                            None
+                                        }, // completion
                                         |editor: &mut Editor, input: &str| match input {
                                             "q" => editor.should_close = true,
                                             _ => (),

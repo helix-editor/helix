@@ -6,20 +6,24 @@ pub struct Prompt {
     pub prompt: String,
     pub line: String,
     pub cursor: usize,
-    completion_fn: Box<dyn FnMut(&str) -> Option<Vec<&str>>>,
+    pub completion: Option<Vec<String>>,
+    pub should_close: bool,
+    completion_fn: Box<dyn FnMut(&str) -> Option<Vec<String>>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
 }
 
 impl Prompt {
     pub fn new(
         prompt: String,
-        completion_fn: impl FnMut(&str) -> Option<Vec<&str>> + 'static,
+        completion_fn: impl FnMut(&str) -> Option<Vec<String>> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str) + 'static,
     ) -> Prompt {
         Prompt {
             prompt,
             line: String::new(),
             cursor: 0,
+            completion: None,
+            should_close: false,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
         }
@@ -65,7 +69,7 @@ impl Prompt {
             } => self.insert_char(c),
             KeyEvent {
                 code: KeyCode::Esc, ..
-            } => unimplemented!("Exit prompt!"),
+            } => self.should_close = true,
             KeyEvent {
                 code: KeyCode::Right,
                 ..
@@ -93,9 +97,8 @@ impl Prompt {
             KeyEvent {
                 code: KeyCode::Tab, ..
             } => {
-                let _completion = (self.completion_fn)(&self.line);
+                self.completion = (self.completion_fn)(&self.line);
             }
-
             _ => (),
         }
     }
