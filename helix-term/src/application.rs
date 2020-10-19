@@ -354,7 +354,7 @@ impl Application {
     fn render(&mut self) {
         let viewport = Rect::new(OFFSET, 0, self.terminal.size.0, self.terminal.size.1 - 2); // - 2 for statusline and prompt
 
-        if let Some(view) = &mut self.editor.view {
+        if let Some(view) = self.editor.view_mut() {
             self.terminal.render_view(view, viewport);
             if let Some(prompt) = &self.prompt {
                 if prompt.should_close {
@@ -368,11 +368,8 @@ impl Application {
         self.terminal.draw();
 
         // TODO: drop unwrap
-        self.terminal.render_cursor(
-            self.editor.view.as_ref().unwrap(),
-            self.prompt.as_ref(),
-            viewport,
-        );
+        self.terminal
+            .render_cursor(self.editor.view().unwrap(), self.prompt.as_ref(), viewport);
     }
 
     pub async fn event_loop(&mut self) {
@@ -392,7 +389,7 @@ impl Application {
                     self.terminal.resize(width, height);
 
                     // TODO: simplistic ensure cursor in view for now
-                    if let Some(view) = &mut self.editor.view {
+                    if let Some(view) = self.editor.view_mut() {
                         view.size = self.terminal.size;
                         view.ensure_cursor_in_view()
                     };
@@ -408,7 +405,7 @@ impl Application {
                             .handle_input(event, &mut self.editor);
 
                         self.render();
-                    } else if let Some(view) = &mut self.editor.view {
+                    } else if let Some(view) = self.editor.view_mut() {
                         let keys = vec![event];
                         // TODO: sequences (`gg`)
                         // TODO: handle count other than 1
