@@ -238,10 +238,28 @@ impl Renderer {
     pub fn render_prompt(&mut self, view: &View, prompt: &Prompt) {
         // completion
         if prompt.completion.is_some() {
+            let completion = prompt.completion.clone().unwrap();
+            // TODO: find out better way of clearing individual lines of the screen
+            for i in (3..7) {
+                self.surface.set_string(
+                    0,
+                    self.size.1 - i,
+                    " ".repeat(self.size.0 as usize),
+                    self.text_color,
+                );
+            }
             self.surface.set_style(
                 Rect::new(0, self.size.1 - 6, self.size.0, 4),
                 view.theme.get("ui.statusline"),
             );
+            for i in (0..completion.len()) {
+                self.surface.set_string(
+                    1,
+                    self.size.1 - 6 + i as u16,
+                    &completion[i],
+                    self.text_color,
+                )
+            }
         }
         // render buffer text
         self.surface
@@ -395,6 +413,7 @@ impl Application {
                                         ":".to_owned(),
                                         |_input: &str| {
                                             let placeholder_list = vec![
+                                                String::from("q"),
                                                 String::from("aaa"),
                                                 String::from("bbb"),
                                                 String::from("ccc"),
