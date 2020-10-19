@@ -307,21 +307,6 @@ pub fn append_mode(view: &mut View, _count: usize) {
     })
 }
 
-pub fn command_mode(_view: &mut View, _count: usize) {
-    use crate::Editor;
-
-    let prompt = Prompt::new(
-        ":".to_owned(),
-        |_input: &str| None, // completion
-        |editor: &mut Editor, input: &str| match input {
-            "q" => editor.should_close = true,
-            _ => (),
-        },
-    );
-
-    // set_prompt(prompt)
-}
-
 // TODO: I, A, o and O can share a lot of the primitives.
 
 // calculate line numbers for each selection range

@@ -1,5 +1,4 @@
-use crate::commands;
-use crate::{Editor, View};
+use crate::Editor;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::string::String;
 
@@ -91,6 +90,12 @@ impl Prompt {
                 code: KeyCode::Enter,
                 ..
             } => (self.callback_fn)(editor, &self.line),
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => {
+                let _completion = (self.completion_fn)(&self.line);
+            }
+
             _ => (),
         }
     }
