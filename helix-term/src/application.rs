@@ -243,7 +243,7 @@ impl Renderer {
             for i in (3..7) {
                 self.surface.set_string(
                     0,
-                    self.size.1 - i,
+                    self.size.1 - i as u16,
                     " ".repeat(self.size.0 as usize),
                     self.text_color,
                 );
@@ -253,12 +253,23 @@ impl Renderer {
                 view.theme.get("ui.statusline"),
             );
             for i in (0..completion.len()) {
-                self.surface.set_string(
-                    1,
-                    self.size.1 - 6 + i as u16,
-                    &completion[i],
-                    self.text_color,
-                )
+                if prompt.completion_selection_index.is_some()
+                    && i == prompt.completion_selection_index.unwrap()
+                {
+                    self.surface.set_string(
+                        1,
+                        self.size.1 - 6 + i as u16,
+                        &completion[i],
+                        Style::default().bg(Color::Rgb(104, 060, 232)),
+                    );
+                } else {
+                    self.surface.set_string(
+                        1,
+                        self.size.1 - 6 + i as u16,
+                        &completion[i],
+                        self.text_color,
+                    );
+                }
             }
         }
         // render buffer text
@@ -409,16 +420,24 @@ impl Application {
                                     ..
                                 }] = keys.as_slice()
                                 {
+                                    let command_list = vec![
+                                        String::from("q"),
+                                        String::from("aaa"),
+                                        String::from("bbb"),
+                                        String::from("ccc"),
+                                    ];
+
                                     let prompt = Prompt::new(
                                         ":".to_owned(),
                                         |_input: &str| {
+                                            let mut matches = vec![];
+                                            // TODO: i need this duplicate list right now to avoid borrow checker issues
                                             let placeholder_list = vec![
                                                 String::from("q"),
                                                 String::from("aaa"),
                                                 String::from("bbb"),
                                                 String::from("ccc"),
                                             ];
-                                            let mut matches = vec![];
                                             for command in placeholder_list {
                                                 if command.contains(_input) {
                                                     matches.push(command);
@@ -433,6 +452,7 @@ impl Application {
                                             "q" => editor.should_close = true,
                                             _ => (),
                                         },
+                                        command_list,
                                     );
 
                                     self.prompt = Some(prompt);

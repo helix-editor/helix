@@ -8,6 +8,7 @@ pub struct Prompt {
     pub cursor: usize,
     pub completion: Option<Vec<String>>,
     pub should_close: bool,
+    pub completion_selection_index: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Option<Vec<String>>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
 }
@@ -17,13 +18,15 @@ impl Prompt {
         prompt: String,
         completion_fn: impl FnMut(&str) -> Option<Vec<String>> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str) + 'static,
+        command_list: Vec<String>,
     ) -> Prompt {
         Prompt {
             prompt,
             line: String::new(),
             cursor: 0,
-            completion: None,
+            completion: Some(command_list),
             should_close: false,
+            completion_selection_index: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
         }
@@ -32,6 +35,7 @@ impl Prompt {
     pub fn insert_char(&mut self, c: char) {
         self.line.insert(self.cursor, c);
         self.cursor += 1;
+        self.completion = (self.completion_fn)(&self.line);
     }
 
     pub fn move_char_left(&mut self) {
@@ -58,6 +62,15 @@ impl Prompt {
         if self.cursor > 0 {
             self.line.remove(self.cursor - 1);
             self.cursor -= 1;
+            self.completion = (self.completion_fn)(&self.line);
+        }
+    }
+
+    pub fn change_completion_selection(&mut self) {
+        if self.completion_selection_index.is_none() {
+            self.completion_selection_index = Some(0)
+        } else {
+            self.completion_selection_index = Some(self.completion_selection_index.unwrap() + 1)
         }
     }
 
@@ -96,9 +109,7 @@ impl Prompt {
             } => (self.callback_fn)(editor, &self.line),
             KeyEvent {
                 code: KeyCode::Tab, ..
-            } => {
-                self.completion = (self.completion_fn)(&self.line);
-            }
+            } => self.change_completion_selection(),
             _ => (),
         }
     }
