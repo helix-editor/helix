@@ -157,6 +157,8 @@ impl Default for Theme {
             "ui.background" => Style::default().bg(Color::Rgb(59, 34, 76)), // midnight
             "ui.linenr" => Style::default().fg(Color::Rgb(90, 89, 119)), // comet
             "ui.statusline" => Style::default().bg(Color::Rgb(40, 23, 51)), // revolver
+
+            "warning" => Style::default().fg(Color::Rgb(255, 205, 28)),
         };
 
         let scopes = mapping.keys().map(ToString::to_string).collect();

@@ -29,10 +29,10 @@ use tui::{
     backend::CrosstermBackend,
     buffer::Buffer as Surface,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
 };
 
-const OFFSET: u16 = 6; // 5 linenr + 1 gutter
+const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
@@ -205,6 +205,16 @@ impl Renderer {
                                 style
                             };
 
+                            // ugh, improve with a traverse method
+                            // or interleave highlight spans with selection and diagnostic spans
+                            let style = if view.state.diagnostics.iter().any(|diagnostic| {
+                                diagnostic.range.0 <= char_index && diagnostic.range.1 > char_index
+                            }) {
+                                style.clone().add_modifier(Modifier::UNDERLINED)
+                            } else {
+                                style
+                            };
+
                             // TODO: paint cursor heads except primary
 
                             self.surface
@@ -212,18 +222,23 @@ impl Renderer {
 
                             visual_x += width;
                         }
-                        // if grapheme == "\t"
 
                         char_index += 1;
                     }
                 }
             }
         }
+
         let style: Style = theme.get("ui.linenr");
+        let warning: Style = theme.get("warning");
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
+            if view.state.diagnostics.iter().any(|d| d.line == line) {
+                self.surface.set_stringn(0, i as u16, "●", 1, warning);
+            }
+
             self.surface
-                .set_stringn(0, i as u16, format!("{:>5}", line + 1), 5, style);
+                .set_stringn(1, i as u16, format!("{:>5}", line + 1), 5, style);
         }
     }
 
@@ -240,6 +255,13 @@ impl Renderer {
         );
         self.surface
             .set_string(1, self.size.1 - 2, mode, self.text_color);
+
+        self.surface.set_string(
+            self.size.0 - 10,
+            self.size.1 - 2,
+            format!("{}", view.state.diagnostics.len()),
+            self.text_color,
+        );
     }
 
     pub fn render_prompt(&mut self, view: &View, prompt: &Prompt, theme: &Theme) {
@@ -545,7 +567,59 @@ impl<'a> Application<'a> {
     pub async fn handle_lsp_notification(&mut self, notification: Option<helix_lsp::Notification>) {
         use helix_lsp::Notification;
         match notification {
-            Some(Notification::PublishDiagnostics(params)) => unimplemented!("{:?}", params),
+            Some(Notification::PublishDiagnostics(params)) => {
+                let view = self.editor.views.iter_mut().find(|view| {
+                    let path = view
+                        .state
+                        .path
+                        .as_ref()
+                        .map(|path| helix_lsp::Url::from_file_path(path).unwrap());
+
+                    eprintln!("{:?} {} {}", path, params.uri, params.diagnostics.len());
+                    // HAXX
+                    path == Some(params.uri.clone())
+                });
+
+                fn lsp_pos_to_pos(doc: &helix_core::RopeSlice, pos: helix_lsp::Position) -> usize {
+                    let line = doc.line_to_char(pos.line as usize);
+                    let line_start = doc.char_to_utf16_cu(line);
+                    doc.utf16_cu_to_char(pos.character as usize + line_start)
+                }
+
+                if let Some(view) = view {
+                    let doc = view.state.doc().slice(..);
+                    let diagnostics = params
+                        .diagnostics
+                        .into_iter()
+                        .map(|diagnostic| {
+                            let start = lsp_pos_to_pos(&doc, diagnostic.range.start);
+                            let end = lsp_pos_to_pos(&doc, diagnostic.range.end);
+
+                            // eprintln!(
+                            //     "{:?}-{:?} {}-{} {}",
+                            //     diagnostic.range.start,
+                            //     diagnostic.range.end,
+                            //     start,
+                            //     end,
+                            //     diagnostic.message
+                            // );
+
+                            helix_core::Diagnostic {
+                                range: (start, end),
+                                line: diagnostic.range.start.line as usize,
+                                message: diagnostic.message,
+                                // severity
+                                // code
+                                // source
+                            }
+                        })
+                        .collect();
+
+                    view.state.diagnostics = diagnostics;
+
+                    self.render();
+                }
+            }
             _ => unreachable!(),
         }
     }

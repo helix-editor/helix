@@ -10,6 +10,9 @@ use serde_json::Value;
 
 use serde::{Deserialize, Serialize};
 
+pub use lsp::Position;
+pub use lsp::Url;
+
 use smol::prelude::*;
 use smol::{
     channel::{Receiver, Sender},
