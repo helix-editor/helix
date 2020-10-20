@@ -24,3 +24,5 @@ num_cpus = "1.13"
 tui = { git = "https://github.com/fdehau/tui-rs", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.18", features = ["event-stream"] }
 clap = { version = "3.0.0-beta.2 ", default-features = false, features = ["std", "cargo"] }
+
+futures-util = "0.3"

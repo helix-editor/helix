@@ -1,4 +1,5 @@
 #![allow(unused)]
+mod diagnostic;
 pub mod graphemes;
 mod history;
 pub mod indent;
@@ -22,6 +23,7 @@ pub use selection::Range;
 pub use selection::Selection;
 pub use syntax::Syntax;
 
+pub use diagnostic::Diagnostic;
 pub use history::History;
 pub use state::State;
 

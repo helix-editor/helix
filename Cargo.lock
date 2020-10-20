@@ -472,6 +472,7 @@ dependencies = [
  "anyhow",
  "clap",
  "crossterm",
+ "futures-util",
  "helix-core",
  "helix-lsp",
  "helix-view",

@@ -1,6 +1,6 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
 use crate::syntax::LOADER;
-use crate::{ChangeSet, Position, Range, Rope, RopeSlice, Selection, Syntax};
+use crate::{ChangeSet, Diagnostic, Position, Range, Rope, RopeSlice, Selection, Syntax};
 use anyhow::Error;
 
 use std::path::PathBuf;
@@ -28,6 +28,8 @@ pub struct State {
     /// Pending changes since last history commit.
     pub changes: ChangeSet,
     pub old_state: Option<(Rope, Selection)>,
+
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -58,12 +60,13 @@ impl State {
             syntax: None,
             changes,
             old_state,
+            diagnostics: Vec::new(),
         }
     }
 
     // TODO: passing scopes here is awkward
     pub fn load(path: PathBuf, scopes: &[String]) -> Result<Self, Error> {
-        use std::{env, fs::File, io::BufReader, path::PathBuf};
+        use std::{env, fs::File, io::BufReader};
         let _current_dir = env::current_dir()?;
 
         let doc = Rope::from_reader(BufReader::new(File::open(path.clone())?))?;
@@ -81,7 +84,8 @@ impl State {
             state.syntax = Some(syntax);
         };
 
-        state.path = Some(path);
+        // canonicalize path to absolute value
+        state.path = Some(std::fs::canonicalize(path)?);
 
         Ok(state)
     }

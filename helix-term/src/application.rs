@@ -1,6 +1,11 @@
 use clap::ArgMatches as Args;
 use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Position, Range, State};
-use helix_view::{commands, keymap, prompt::Prompt, Editor, Theme, View};
+use helix_view::{
+    commands,
+    keymap::{self, Keymaps},
+    prompt::Prompt,
+    Editor, Theme, View,
+};
 
 use std::{
     borrow::Cow,
@@ -31,14 +36,16 @@ const OFFSET: u16 = 6; // 5 linenr + 1 gutter
 
 type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
-static EX: smol::Executor = smol::Executor::new();
-
 const BASE_WIDTH: u16 = 30;
 
-pub struct Application {
+pub struct Application<'a> {
     editor: Editor,
     prompt: Option<Prompt>,
     terminal: Renderer,
+
+    keymap: Keymaps,
+    executor: &'a smol::Executor<'a>,
+    lsp: helix_lsp::Client,
 }
 
 struct Renderer {
@@ -235,7 +242,7 @@ impl Renderer {
             .set_string(1, self.size.1 - 2, mode, self.text_color);
     }
 
-    pub fn render_prompt(&mut self, view: &View, prompt: &Prompt) {
+    pub fn render_prompt(&mut self, view: &View, prompt: &Prompt, theme: &Theme) {
         // completion
         if !prompt.completion.is_empty() {
             // TODO: find out better way of clearing individual lines of the screen
@@ -254,7 +261,7 @@ impl Renderer {
             }
             self.surface.set_style(
                 Rect::new(0, self.size.1 - col_height - 2, self.size.0, col_height),
-                view.theme.get("ui.statusline"),
+                theme.get("ui.statusline"),
             );
             for (i, command) in prompt.completion.iter().enumerate() {
                 let color = if prompt.completion_selection_index.is_some()
@@ -330,8 +337,8 @@ impl Renderer {
     }
 }
 
-impl Application {
-    pub fn new(mut args: Args) -> Result<Self, Error> {
+impl<'a> Application<'a> {
+    pub fn new(mut args: Args, executor: &'a smol::Executor<'a>) -> Result<Self, Error> {
         let terminal = Renderer::new()?;
         let mut editor = Editor::new();
 
@@ -339,11 +346,18 @@ impl Application {
             editor.open(file, terminal.size)?;
         }
 
+        let lsp = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
+
         let mut app = Self {
             editor,
             terminal,
             // TODO; move to state
             prompt: None,
+
+            //
+            keymap: keymap::default(),
+            executor,
+            lsp,
         };
 
         Ok(app)
@@ -361,7 +375,7 @@ impl Application {
                 if prompt.should_close {
                     self.prompt = None;
                 } else {
-                    self.terminal.render_prompt(view, prompt);
+                    self.terminal.render_prompt(view, prompt, theme_ref);
                 }
             }
         }
@@ -375,7 +389,13 @@ impl Application {
 
     pub async fn event_loop(&mut self) {
         let mut reader = EventStream::new();
-        let keymap = keymap::default();
+
+        // initialize lsp
+        let res = self.lsp.initialize().await;
+        let res = self
+            .lsp
+            .text_document_did_open(&self.editor.view().unwrap().state)
+            .await;
 
         self.render();
 
@@ -384,126 +404,149 @@ impl Application {
                 break;
             }
 
-            // Handle key events
-            match reader.next().await {
-                Some(Ok(Event::Resize(width, height))) => {
-                    self.terminal.resize(width, height);
+            use futures_util::{select, FutureExt};
+            select! {
+                event = reader.next().fuse() => {
+                    self.handle_terminal_events(event).await
+                }
+                notification = self.lsp.incoming.next().fuse() => {
+                    self.handle_lsp_notification(notification).await
+                }
+            }
+        }
+    }
 
-                    // TODO: simplistic ensure cursor in view for now
-                    // TODO: loop over views
-                    if let Some(view) = self.editor.view_mut() {
-                        view.size = self.terminal.size;
-                        view.ensure_cursor_in_view()
-                    };
+    pub async fn handle_terminal_events(
+        &mut self,
+        event: Option<Result<Event, crossterm::ErrorKind>>,
+    ) {
+        // Handle key events
+        match event {
+            Some(Ok(Event::Resize(width, height))) => {
+                self.terminal.resize(width, height);
+
+                // TODO: simplistic ensure cursor in view for now
+                // TODO: loop over views
+                if let Some(view) = self.editor.view_mut() {
+                    view.size = self.terminal.size;
+                    view.ensure_cursor_in_view()
+                };
+
+                self.render();
+            }
+            Some(Ok(Event::Key(event))) => {
+                // if there's a prompt, it takes priority
+                if let Some(prompt) = &mut self.prompt {
+                    self.prompt
+                        .as_mut()
+                        .unwrap()
+                        .handle_input(event, &mut self.editor);
 
                     self.render();
-                }
-                Some(Ok(Event::Key(event))) => {
-                    // if there's a prompt, it takes priority
-                    if let Some(prompt) = &mut self.prompt {
-                        self.prompt
-                            .as_mut()
-                            .unwrap()
-                            .handle_input(event, &mut self.editor);
+                } else if let Some(view) = self.editor.view_mut() {
+                    let keys = vec![event];
+                    // TODO: sequences (`gg`)
+                    // TODO: handle count other than 1
+                    match view.state.mode() {
+                        Mode::Insert => {
+                            if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
+                                command(view, 1);
+                            } else if let KeyEvent {
+                                code: KeyCode::Char(c),
+                                ..
+                            } = event
+                            {
+                                commands::insert::insert_char(view, c);
+                            }
+                            view.ensure_cursor_in_view();
+                        }
+                        Mode::Normal => {
+                            if let &[KeyEvent {
+                                code: KeyCode::Char(':'),
+                                ..
+                            }] = keys.as_slice()
+                            {
+                                let prompt = Prompt::new(
+                                    ":".to_owned(),
+                                    |_input: &str| {
+                                        // TODO: i need this duplicate list right now to avoid borrow checker issues
+                                        let command_list = vec![
+                                            String::from("q"),
+                                            String::from("aaa"),
+                                            String::from("bbb"),
+                                            String::from("ccc"),
+                                            String::from("ddd"),
+                                            String::from("eee"),
+                                            String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
+                                            String::from("q"),
+                                            String::from("aaa"),
+                                            String::from("bbb"),
+                                            String::from("ccc"),
+                                            String::from("ddd"),
+                                            String::from("eee"),
+                                            String::from("q"),
+                                            String::from("aaa"),
+                                            String::from("bbb"),
+                                            String::from("ccc"),
+                                            String::from("ddd"),
+                                            String::from("eee"),
+                                            String::from("q"),
+                                            String::from("aaa"),
+                                            String::from("bbb"),
+                                            String::from("ccc"),
+                                            String::from("ddd"),
+                                            String::from("eee"),
+                                            String::from("q"),
+                                            String::from("aaa"),
+                                            String::from("bbb"),
+                                            String::from("ccc"),
+                                            String::from("ddd"),
+                                            String::from("eee"),
+                                        ];
+                                        command_list
+                                            .into_iter()
+                                            .filter(|command| command.contains(_input))
+                                            .collect()
+                                    }, // completion
+                                    |editor: &mut Editor, input: &str| match input {
+                                        "q" => editor.should_close = true,
+                                        _ => (),
+                                    },
+                                );
 
-                        self.render();
-                    } else if let Some(view) = self.editor.view_mut() {
-                        let keys = vec![event];
-                        // TODO: sequences (`gg`)
-                        // TODO: handle count other than 1
-                        match view.state.mode() {
-                            Mode::Insert => {
-                                if let Some(command) = keymap[&Mode::Insert].get(&keys) {
-                                    command(view, 1);
-                                } else if let KeyEvent {
-                                    code: KeyCode::Char(c),
-                                    ..
-                                } = event
-                                {
-                                    commands::insert::insert_char(view, c);
-                                }
+                                self.prompt = Some(prompt);
+
+                            // HAXX: special casing for command mode
+                            } else if let Some(command) = self.keymap[&Mode::Normal].get(&keys) {
+                                command(view, 1);
+
+                                // TODO: simplistic ensure cursor in view for now
                                 view.ensure_cursor_in_view();
                             }
-                            Mode::Normal => {
-                                if let &[KeyEvent {
-                                    code: KeyCode::Char(':'),
-                                    ..
-                                }] = keys.as_slice()
-                                {
-                                    let prompt = Prompt::new(
-                                        ":".to_owned(),
-                                        |_input: &str| {
-                                            // TODO: i need this duplicate list right now to avoid borrow checker issues
-                                            let command_list = vec![
-                                                String::from("q"),
-                                                String::from("aaa"),
-                                                String::from("bbb"),
-                                                String::from("ccc"),
-                                                String::from("ddd"),
-                                                String::from("eee"),
-                                                String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
-                                                String::from("q"),
-                                                String::from("aaa"),
-                                                String::from("bbb"),
-                                                String::from("ccc"),
-                                                String::from("ddd"),
-                                                String::from("eee"),
-                                                String::from("q"),
-                                                String::from("aaa"),
-                                                String::from("bbb"),
-                                                String::from("ccc"),
-                                                String::from("ddd"),
-                                                String::from("eee"),
-                                                String::from("q"),
-                                                String::from("aaa"),
-                                                String::from("bbb"),
-                                                String::from("ccc"),
-                                                String::from("ddd"),
-                                                String::from("eee"),
-                                                String::from("q"),
-                                                String::from("aaa"),
-                                                String::from("bbb"),
-                                                String::from("ccc"),
-                                                String::from("ddd"),
-                                                String::from("eee"),
-                                            ];
-                                            command_list
-                                                .into_iter()
-                                                .filter(|command| command.contains(_input))
-                                                .collect()
-                                        }, // completion
-                                        |editor: &mut Editor, input: &str| match input {
-                                            "q" => editor.should_close = true,
-                                            _ => (),
-                                        },
-                                    );
+                        }
+                        mode => {
+                            if let Some(command) = self.keymap[&mode].get(&keys) {
+                                command(view, 1);
 
-                                    self.prompt = Some(prompt);
-
-                                // HAXX: special casing for command mode
-                                } else if let Some(command) = keymap[&Mode::Normal].get(&keys) {
-                                    command(view, 1);
-
-                                    // TODO: simplistic ensure cursor in view for now
-                                    view.ensure_cursor_in_view();
-                                }
-                            }
-                            mode => {
-                                if let Some(command) = keymap[&mode].get(&keys) {
-                                    command(view, 1);
-
-                                    // TODO: simplistic ensure cursor in view for now
-                                    view.ensure_cursor_in_view();
-                                }
+                                // TODO: simplistic ensure cursor in view for now
+                                view.ensure_cursor_in_view();
                             }
                         }
-                        self.render();
                     }
+                    self.render();
                 }
-                Some(Ok(Event::Mouse(_))) => (), // unhandled
-                Some(Err(x)) => panic!(x),
-                None => break,
             }
+            Some(Ok(Event::Mouse(_))) => (), // unhandled
+            Some(Err(x)) => panic!(x),
+            None => panic!(),
+        };
+    }
+
+    pub async fn handle_lsp_notification(&mut self, notification: Option<helix_lsp::Notification>) {
+        use helix_lsp::Notification;
+        match notification {
+            Some(Notification::PublishDiagnostics(params)) => unimplemented!("{:?}", params),
+            _ => unreachable!(),
         }
     }
 

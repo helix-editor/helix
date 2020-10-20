@@ -26,15 +26,15 @@ fn main() -> Result<(), Error> {
         std::thread::spawn(move || smol::block_on(EX.run(smol::future::pending::<()>())));
     }
 
-    let mut lsp = helix_lsp::Client::start(&EX, "rust-analyzer", &[]);
+    // let mut lsp = helix_lsp::Client::start(&EX, "rust-analyzer", &[]);
 
     smol::block_on(async {
-        let res = lsp.initialize().await;
-        let state = helix_core::State::load("test.rs".into(), &[]).unwrap();
-        let res = lsp.text_document_did_open(&state).await;
-        loop {}
+        // let res = lsp.initialize().await;
+        // let state = helix_core::State::load("test.rs".into(), &[]).unwrap();
+        // let res = lsp.text_document_did_open(&state).await;
+        // loop {}
 
-        // Application::new(args).unwrap().run().await;
+        Application::new(args, &EX).unwrap().run().await;
     });
 
     Ok(())

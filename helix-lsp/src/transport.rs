@@ -24,7 +24,7 @@ pub(crate) enum Payload {
 }
 
 pub(crate) struct Transport {
-    incoming: Sender<Message>,
+    incoming: Sender<Notification>, // TODO Notification | Call
     outgoing: Receiver<Payload>,
 
     pending_requests: HashMap<jsonrpc::Id, Sender<anyhow::Result<Value>>>,
@@ -39,7 +39,7 @@ impl Transport {
         ex: &Executor,
         reader: BufReader<ChildStdout>,
         writer: BufWriter<ChildStdin>,
-    ) -> (Receiver<Message>, Sender<Payload>) {
+    ) -> (Receiver<Notification>, Sender<Payload>) {
         let (incoming, rx) = smol::channel::unbounded();
         let (tx, outgoing) = smol::channel::unbounded();
 
@@ -111,7 +111,7 @@ impl Transport {
     }
 
     pub async fn send(&mut self, request: String) -> anyhow::Result<()> {
-        println!("-> {}", request);
+        // println!("-> {}", request);
 
         // send the headers
         self.writer
@@ -132,11 +132,11 @@ impl Transport {
             Message::Notification(jsonrpc::Notification { method, params, .. }) => {
                 let notification = Notification::parse(&method, params);
 
-                println!("<- {} {:?}", method, notification);
-                // dispatch
+                // println!("<- {} {:?}", method, notification);
+                self.incoming.send(notification).await?;
             }
             Message::Call(call) => {
-                println!("<- {:?}", call);
+                // println!("<- {:?}", call);
                 // dispatch
             }
             _ => unreachable!(),
@@ -147,7 +147,7 @@ impl Transport {
     pub async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
         match output {
             jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                println!("<- {}", result);
+                // println!("<- {}", result);
 
                 let tx = self
                     .pending_requests

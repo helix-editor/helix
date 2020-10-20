@@ -18,7 +18,7 @@ pub struct View {
     pub first_line: usize,
     pub size: (u16, u16),
 
-    // TODO: Doc<> fields
+    // TODO: Doc fields
     pub history: History,
 }
 

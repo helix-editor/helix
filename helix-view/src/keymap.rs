@@ -87,8 +87,8 @@ use std::collections::HashMap;
 pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 
 // TODO: could be trie based
-type Keymap = HashMap<Vec<Key>, Command>;
-type Keymaps = HashMap<state::Mode, Keymap>;
+pub type Keymap = HashMap<Vec<Key>, Command>;
+pub type Keymaps = HashMap<state::Mode, Keymap>;
 
 macro_rules! key {
     ($ch:expr) => {

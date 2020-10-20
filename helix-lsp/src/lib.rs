@@ -2,7 +2,7 @@ mod transport;
 
 use transport::{Payload, Transport};
 
-use std::collections::HashMap;
+// use std::collections::HashMap;
 
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
@@ -32,10 +32,12 @@ enum Message {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum Notification {}
+pub enum Notification {
+    PublishDiagnostics(lsp::PublishDiagnosticsParams),
+}
 
 impl Notification {
-    pub fn parse(method: &str, params: jsonrpc::Params) {
+    pub fn parse(method: &str, params: jsonrpc::Params) -> Notification {
         use lsp::notification::Notification as _;
 
         match method {
@@ -44,11 +46,10 @@ impl Notification {
                     .parse()
                     .expect("Failed to parse PublishDiagnostics params");
 
-                println!("{:?}", params);
-
                 // TODO: need to loop over diagnostics and distinguish them by URI
+                Notification::PublishDiagnostics(params)
             }
-            _ => println!("unhandled notification: {}", method),
+            _ => unimplemented!("unhandled notification: {}", method),
         }
     }
 }
@@ -58,13 +59,13 @@ pub struct Client {
     stderr: BufReader<ChildStderr>,
 
     outgoing: Sender<Payload>,
-    incoming: Receiver<Message>,
+    pub incoming: Receiver<Notification>,
 
     pub request_counter: u64,
 
     capabilities: Option<lsp::ServerCapabilities>,
     // TODO: handle PublishDiagnostics Version
-    diagnostics: HashMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    // diagnostics: HashMap<lsp::Url, Vec<lsp::Diagnostic>>,
 }
 
 impl Client {
@@ -95,7 +96,7 @@ impl Client {
             request_counter: 0,
 
             capabilities: None,
-            diagnostics: HashMap::new(),
+            // diagnostics: HashMap::new(),
         }
     }
 
@@ -226,10 +227,7 @@ impl Client {
     ) -> anyhow::Result<()> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
-                uri: lsp::Url::from_file_path(
-                    std::fs::canonicalize(state.path.as_ref().unwrap()).unwrap(),
-                )
-                .unwrap(),
+                uri: lsp::Url::from_file_path(state.path().unwrap()).unwrap(),
                 language_id: "rust".to_string(), // TODO: hardcoded for now
                 version: 0,
                 text: String::from(&state.doc),
@@ -243,11 +241,12 @@ impl Client {
         &mut self,
         state: &helix_core::State,
     ) -> anyhow::Result<()> {
-        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
-            text_document: lsp::TextDocumentIdentifier::new(
-                lsp::Url::from_file_path(state.path.as_ref().unwrap()).unwrap(),
+        self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
+            text_document: lsp::VersionedTextDocumentIdentifier::new(
+                lsp::Url::from_file_path(state.path().unwrap()).unwrap(),
+                0, // TODO: version
             ),
-            text: None, // TODO?
+            content_changes: vec![], // TODO:
         })
         .await
     }
