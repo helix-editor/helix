@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use crate::{Message, Notification};
+use crate::{Error, Message, Notification};
+
+type Result<T> = core::result::Result<T, Error>;
 
 use jsonrpc_core as jsonrpc;
-use lsp_types as lsp;
 use serde_json::Value;
 
 use smol::prelude::*;
@@ -17,7 +18,7 @@ use smol::{
 
 pub(crate) enum Payload {
     Request {
-        chan: Sender<anyhow::Result<Value>>,
+        chan: Sender<Result<Value>>,
         value: jsonrpc::MethodCall,
     },
     Notification(jsonrpc::Notification),
@@ -27,7 +28,7 @@ pub(crate) struct Transport {
     incoming: Sender<Notification>, // TODO Notification | Call
     outgoing: Receiver<Payload>,
 
-    pending_requests: HashMap<jsonrpc::Id, Sender<anyhow::Result<Value>>>,
+    pending_requests: HashMap<jsonrpc::Id, Sender<Result<Value>>>,
     headers: HashMap<String, String>,
 
     writer: BufWriter<ChildStdin>,
@@ -60,7 +61,7 @@ impl Transport {
     async fn recv(
         reader: &mut (impl AsyncBufRead + Unpin),
         headers: &mut HashMap<String, String>,
-    ) -> Result<Message, std::io::Error> {
+    ) -> core::result::Result<Message, std::io::Error> {
         // read headers
         loop {
             let mut header = String::new();
@@ -74,8 +75,10 @@ impl Transport {
 
             let parts: Vec<&str> = header.split(": ").collect();
             if parts.len() != 2 {
-                // return Err(Error::new(ErrorKind::Other, "Failed to parse header"));
-                panic!()
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Failed to parse header",
+                ));
             }
             headers.insert(parts[0].to_string(), parts[1].to_string());
         }
@@ -155,7 +158,13 @@ impl Transport {
                     .expect("pending_request with id not found!");
                 tx.send(Ok(result)).await?;
             }
-            jsonrpc::Output::Failure(_) => panic!("recv fail"),
+            jsonrpc::Output::Failure(jsonrpc::Failure { id, error, .. }) => {
+                let tx = self
+                    .pending_requests
+                    .remove(&id)
+                    .expect("pending_request with id not found!");
+                tx.send(Err(error.into())).await?;
+            }
             msg => unimplemented!("{:?}", msg),
         }
         Ok(())
