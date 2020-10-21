@@ -2,6 +2,8 @@ mod transport;
 
 use transport::{Payload, Transport};
 
+use helix_core::{State, Transaction};
+
 // use std::collections::HashMap;
 
 use jsonrpc_core as jsonrpc;
@@ -13,13 +15,23 @@ use serde::{Deserialize, Serialize};
 pub use lsp::Position;
 pub use lsp::Url;
 
-use smol::prelude::*;
 use smol::{
     channel::{Receiver, Sender},
     io::{BufReader, BufWriter},
+    // prelude::*,
     process::{Child, ChildStderr, Command, Stdio},
     Executor,
 };
+
+pub mod util {
+    use super::*;
+
+    pub fn lsp_pos_to_pos(doc: &helix_core::RopeSlice, pos: lsp::Position) -> usize {
+        let line = doc.line_to_char(pos.line as usize);
+        let line_start = doc.char_to_utf16_cu(line);
+        doc.utf16_cu_to_char(pos.character as usize + line_start)
+    }
+}
 
 /// A type representing all possible values sent from the server to the client.
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -58,7 +70,7 @@ impl Notification {
 }
 
 pub struct Client {
-    process: Child,
+    _process: Child,
     stderr: BufReader<ChildStderr>,
 
     outgoing: Sender<Payload>,
@@ -90,7 +102,7 @@ impl Client {
         let (incoming, outgoing) = Transport::start(ex, reader, writer);
 
         Client {
-            process,
+            _process: process,
             stderr,
 
             outgoing,
@@ -224,15 +236,12 @@ impl Client {
     // Text document
     // -------------------------------------------------------------------------------------------
 
-    pub async fn text_document_did_open(
-        &mut self,
-        state: &helix_core::State,
-    ) -> anyhow::Result<()> {
+    pub async fn text_document_did_open(&mut self, state: &State) -> anyhow::Result<()> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri: lsp::Url::from_file_path(state.path().unwrap()).unwrap(),
                 language_id: "rust".to_string(), // TODO: hardcoded for now
-                version: 0,
+                version: state.version,
                 text: String::from(&state.doc),
             },
         })
@@ -242,14 +251,15 @@ impl Client {
     // TODO: trigger any time history.commit_revision happens
     pub async fn text_document_did_change(
         &mut self,
-        state: &helix_core::State,
+        state: &State,
+        transaction: &Transaction,
     ) -> anyhow::Result<()> {
         self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
             text_document: lsp::VersionedTextDocumentIdentifier::new(
                 lsp::Url::from_file_path(state.path().unwrap()).unwrap(),
-                0, // TODO: version
+                state.version,
             ),
-            content_changes: vec![], // TODO:
+            content_changes: vec![], // TODO: probably need old_state here too?
         })
         .await
     }

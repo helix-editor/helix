@@ -29,6 +29,7 @@ pub struct State {
     pub changes: ChangeSet,
     pub old_state: Option<(Rope, Selection)>,
 
+    pub version: i64,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -61,6 +62,7 @@ impl State {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            version: 0,
         }
     }
 

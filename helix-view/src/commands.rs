@@ -391,6 +391,12 @@ fn append_changes_to_history(view: &mut View) {
     // annotations either add a new layer or compose into the previous one.
     let transaction = Transaction::from(changes).with_selection(view.state.selection().clone());
 
+    // increment document version
+    // TODO: needs to happen on undo/redo too
+    view.state.version += 1;
+
+    // TODO: trigger lsp/documentDidChange with changes
+
     // HAXX: we need to reconstruct the state as it was before the changes..
     let (doc, selection) = view.state.old_state.take().unwrap();
     let mut old_state = State::new(doc);
@@ -399,7 +405,6 @@ fn append_changes_to_history(view: &mut View) {
     // TODO: take transaction by value?
     view.history.commit_revision(&transaction, &old_state);
 
-    // TODO: need to start the state with these vals
     // HAXX
     view.state.old_state = Some((view.state.doc().clone(), view.state.selection.clone()));
 }

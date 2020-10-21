@@ -568,23 +568,12 @@ impl<'a> Application<'a> {
         use helix_lsp::Notification;
         match notification {
             Some(Notification::PublishDiagnostics(params)) => {
-                let view = self.editor.views.iter_mut().find(|view| {
-                    let path = view
-                        .state
-                        .path
-                        .as_ref()
-                        .map(|path| helix_lsp::Url::from_file_path(path).unwrap());
-
-                    eprintln!("{:?} {} {}", path, params.uri, params.diagnostics.len());
-                    // HAXX
-                    path == Some(params.uri.clone())
-                });
-
-                fn lsp_pos_to_pos(doc: &helix_core::RopeSlice, pos: helix_lsp::Position) -> usize {
-                    let line = doc.line_to_char(pos.line as usize);
-                    let line_start = doc.char_to_utf16_cu(line);
-                    doc.utf16_cu_to_char(pos.character as usize + line_start)
-                }
+                let path = Some(params.uri.to_file_path().unwrap());
+                let view = self
+                    .editor
+                    .views
+                    .iter_mut()
+                    .find(|view| view.state.path == path);
 
                 if let Some(view) = view {
                     let doc = view.state.doc().slice(..);
@@ -592,17 +581,9 @@ impl<'a> Application<'a> {
                         .diagnostics
                         .into_iter()
                         .map(|diagnostic| {
+                            use helix_lsp::util::lsp_pos_to_pos;
                             let start = lsp_pos_to_pos(&doc, diagnostic.range.start);
                             let end = lsp_pos_to_pos(&doc, diagnostic.range.end);
-
-                            // eprintln!(
-                            //     "{:?}-{:?} {}-{} {}",
-                            //     diagnostic.range.start,
-                            //     diagnostic.range.end,
-                            //     start,
-                            //     end,
-                            //     diagnostic.message
-                            // );
 
                             helix_core::Diagnostic {
                                 range: (start, end),
