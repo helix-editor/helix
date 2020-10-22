@@ -1,10 +1,11 @@
 use clap::ArgMatches as Args;
-use helix_core::{indent::TAB_WIDTH, state::Mode, syntax::HighlightEvent, Position, Range, State};
+use helix_core::{indent::TAB_WIDTH, syntax::HighlightEvent, Position, Range, State};
 use helix_view::{
     commands,
+    document::Mode,
     keymap::{self, Keymaps},
     prompt::Prompt,
-    Editor, Theme, View,
+    Document, Editor, Theme, View,
 };
 
 use std::{
@@ -95,15 +96,15 @@ impl Renderer {
         self.surface.set_style(area, theme.get("ui.background"));
 
         // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
-        let source_code = view.state.doc().to_string();
+        let source_code = view.doc.text().to_string();
 
         let last_line = view.last_line();
 
         let range = {
             // calculate viewport byte ranges
-            let start = view.state.doc().line_to_byte(view.first_line);
-            let end = view.state.doc().line_to_byte(last_line)
-                + view.state.doc().line(last_line).len_bytes();
+            let start = view.doc.text().line_to_byte(view.first_line);
+            let end = view.doc.text().line_to_byte(last_line)
+                + view.doc.text().line(last_line).len_bytes();
 
             start..end
         };
@@ -111,7 +112,7 @@ impl Renderer {
         // TODO: range doesn't actually restrict source, just highlight range
         // TODO: cache highlight results
         // TODO: only recalculate when state.doc is actually modified
-        let highlights: Vec<_> = match view.state.syntax.as_mut() {
+        let highlights: Vec<_> = match view.doc.syntax.as_mut() {
             Some(syntax) => {
                 syntax
                     .highlight_iter(source_code.as_bytes(), Some(range), None, |_| None)
@@ -127,6 +128,7 @@ impl Renderer {
         let mut visual_x = 0;
         let mut line = 0u16;
         let visible_selections: Vec<Range> = view
+            .doc
             .state
             .selection()
             .ranges()
@@ -147,10 +149,10 @@ impl Renderer {
                 HighlightEvent::Source { start, end } => {
                     // TODO: filter out spans out of viewport for now..
 
-                    let start = view.state.doc().byte_to_char(start);
-                    let end = view.state.doc().byte_to_char(end); // <-- index 744, len 743
+                    let start = view.doc.text().byte_to_char(start);
+                    let end = view.doc.text().byte_to_char(end); // <-- index 744, len 743
 
-                    let text = view.state.doc().slice(start..end);
+                    let text = view.doc.text().slice(start..end);
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
@@ -207,7 +209,7 @@ impl Renderer {
 
                             // ugh, improve with a traverse method
                             // or interleave highlight spans with selection and diagnostic spans
-                            let style = if view.state.diagnostics.iter().any(|diagnostic| {
+                            let style = if view.doc.diagnostics.iter().any(|diagnostic| {
                                 diagnostic.range.0 <= char_index && diagnostic.range.1 > char_index
                             }) {
                                 style.clone().add_modifier(Modifier::UNDERLINED)
@@ -233,7 +235,7 @@ impl Renderer {
         let warning: Style = theme.get("warning");
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
-            if view.state.diagnostics.iter().any(|d| d.line == line) {
+            if view.doc.diagnostics.iter().any(|d| d.line == line) {
                 self.surface.set_stringn(0, i as u16, "●", 1, warning);
             }
 
@@ -243,7 +245,7 @@ impl Renderer {
     }
 
     pub fn render_statusline(&mut self, view: &View, theme: &Theme) {
-        let mode = match view.state.mode() {
+        let mode = match view.doc.mode() {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
@@ -259,7 +261,7 @@ impl Renderer {
         self.surface.set_string(
             self.size.0 - 10,
             self.size.1 - 2,
-            format!("{}", view.state.diagnostics.len()),
+            format!("{}", view.doc.diagnostics.len()),
             self.text_color,
         );
     }
@@ -329,14 +331,14 @@ impl Renderer {
 
     pub fn render_cursor(&mut self, view: &View, prompt: Option<&Prompt>, viewport: Rect) {
         let mut stdout = stdout();
-        match view.state.mode() {
+        match view.doc.mode() {
             Mode::Insert => write!(stdout, "\x1B[6 q"),
             mode => write!(stdout, "\x1B[2 q"),
         };
         let pos = if let Some(prompt) = prompt {
             Position::new(self.size.0 as usize, 2 + prompt.cursor)
         } else {
-            if let Some(path) = view.state.path() {
+            if let Some(path) = view.doc.path() {
                 self.surface.set_string(
                     6,
                     self.size.1 - 1,
@@ -345,10 +347,10 @@ impl Renderer {
                 );
             }
 
-            let cursor = view.state.selection().cursor();
+            let cursor = view.doc.state.selection().cursor();
 
             let mut pos = view
-                .screen_coords_at_pos(&view.state.doc().slice(..), cursor)
+                .screen_coords_at_pos(&view.doc.text().slice(..), cursor)
                 .expect("Cursor is out of bounds.");
             pos.col += viewport.x as usize;
             pos.row += viewport.y as usize;
@@ -416,7 +418,7 @@ impl<'a> Application<'a> {
         let res = self.lsp.initialize().await;
         let res = self
             .lsp
-            .text_document_did_open(&self.editor.view().unwrap().state)
+            .text_document_did_open(&self.editor.view().unwrap().doc)
             .await;
 
         self.render();
@@ -469,7 +471,7 @@ impl<'a> Application<'a> {
                     let keys = vec![event];
                     // TODO: sequences (`gg`)
                     // TODO: handle count other than 1
-                    match view.state.mode() {
+                    match view.doc.mode() {
                         Mode::Insert => {
                             if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
                                 command(view, 1);
@@ -573,10 +575,10 @@ impl<'a> Application<'a> {
                     .editor
                     .views
                     .iter_mut()
-                    .find(|view| view.state.path == path);
+                    .find(|view| view.doc.path == path);
 
                 if let Some(view) = view {
-                    let doc = view.state.doc().slice(..);
+                    let doc = view.doc.text().slice(..);
                     let diagnostics = params
                         .diagnostics
                         .into_iter()
@@ -596,7 +598,7 @@ impl<'a> Application<'a> {
                         })
                         .collect();
 
-                    view.state.diagnostics = diagnostics;
+                    view.doc.diagnostics = diagnostics;
 
                     self.render();
                 }

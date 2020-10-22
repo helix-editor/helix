@@ -1,6 +1,5 @@
 use crate::theme::Theme;
-use crate::View;
-use helix_core::State;
+use crate::{Document, View};
 
 use std::path::PathBuf;
 
@@ -27,8 +26,8 @@ impl Editor {
 
     pub fn open(&mut self, path: PathBuf, size: (u16, u16)) -> Result<(), Error> {
         let pos = self.views.len();
-        let state = State::load(path, self.theme.scopes())?;
-        self.views.push(View::new(state, size)?);
+        let doc = Document::load(path, self.theme.scopes())?;
+        self.views.push(View::new(doc, size)?);
         self.focus = pos;
         Ok(())
     }

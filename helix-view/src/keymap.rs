@@ -1,4 +1,5 @@
 use crate::commands::{self, Command};
+use crate::document::Mode;
 use helix_core::{hashmap, state};
 use std::collections::HashMap;
 
@@ -88,7 +89,7 @@ pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 
 // TODO: could be trie based
 pub type Keymap = HashMap<Vec<Key>, Command>;
-pub type Keymaps = HashMap<state::Mode, Keymap>;
+pub type Keymaps = HashMap<Mode, Keymap>;
 
 macro_rules! key {
     ($ch:expr) => {
@@ -128,7 +129,7 @@ macro_rules! ctrl {
 
 pub fn default() -> Keymaps {
     hashmap!(
-        state::Mode::Normal =>
+        Mode::Normal =>
             // as long as you cast the first item, rust is able to infer the other cases
             hashmap!(
                 vec![key!('h')] => commands::move_char_left as Command,
@@ -179,7 +180,7 @@ pub fn default() -> Keymaps {
                 vec![ctrl!('u')] => commands::half_page_up,
                 vec![ctrl!('d')] => commands::half_page_down,
             ),
-            state::Mode::Insert => hashmap!(
+            Mode::Insert => hashmap!(
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
@@ -201,7 +202,7 @@ pub fn default() -> Keymaps {
                     modifiers: Modifiers::NONE
                 }] => commands::insert::insert_tab,
             ),
-            state::Mode::Goto => hashmap!(
+            Mode::Goto => hashmap!(
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE

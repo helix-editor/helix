@@ -6,6 +6,7 @@ use crate::{
 type Result<T> = core::result::Result<T, Error>;
 
 use helix_core::{State, Transaction};
+use helix_view::Document;
 
 // use std::collections::HashMap;
 
@@ -190,13 +191,13 @@ impl Client {
     // Text document
     // -------------------------------------------------------------------------------------------
 
-    pub async fn text_document_did_open(&mut self, state: &State) -> Result<()> {
+    pub async fn text_document_did_open(&mut self, doc: &Document) -> Result<()> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
-                uri: lsp::Url::from_file_path(state.path().unwrap()).unwrap(),
+                uri: lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
                 language_id: "rust".to_string(), // TODO: hardcoded for now
-                version: state.version,
-                text: String::from(&state.doc),
+                version: doc.version,
+                text: String::from(doc.text()),
             },
         })
         .await
@@ -205,13 +206,13 @@ impl Client {
     // TODO: trigger any time history.commit_revision happens
     pub async fn text_document_did_change(
         &mut self,
-        state: &State,
+        doc: &Document,
         transaction: &Transaction,
     ) -> Result<()> {
         self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
             text_document: lsp::VersionedTextDocumentIdentifier::new(
-                lsp::Url::from_file_path(state.path().unwrap()).unwrap(),
-                state.version,
+                lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
+                doc.version,
             ),
             content_changes: vec![lsp::TextDocumentContentChangeEvent {
                 // range = None -> whole document
@@ -223,12 +224,12 @@ impl Client {
         .await
     }
 
-    // TODO: impl into() TextDocumentIdentifier / VersionedTextDocumentIdentifier for State.
+    // TODO: impl into() TextDocumentIdentifier / VersionedTextDocumentIdentifier for Document.
 
-    pub async fn text_document_did_close(&mut self, state: &State) -> Result<()> {
+    pub async fn text_document_did_close(&mut self, doc: &Document) -> Result<()> {
         self.notify::<lsp::notification::DidCloseTextDocument>(lsp::DidCloseTextDocumentParams {
             text_document: lsp::TextDocumentIdentifier::new(
-                lsp::Url::from_file_path(state.path().unwrap()).unwrap(),
+                lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
             ),
         })
         .await

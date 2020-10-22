@@ -3,34 +3,11 @@ use crate::syntax::LOADER;
 use crate::{ChangeSet, Diagnostic, Position, Range, Rope, RopeSlice, Selection, Syntax};
 use anyhow::Error;
 
-use std::path::PathBuf;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Mode {
-    Normal,
-    Insert,
-    Goto,
-}
-
 /// A state represents the current editor state of a single buffer.
 pub struct State {
     // TODO: fields should be private but we need to refactor commands.rs first
-    /// Path to file on disk.
-    pub path: Option<PathBuf>,
     pub doc: Rope,
     pub selection: Selection,
-    pub mode: Mode,
-
-    pub restore_cursor: bool,
-
-    // TODO: move these to a Document wrapper?
-    pub syntax: Option<Syntax>,
-    /// Pending changes since last history commit.
-    pub changes: ChangeSet,
-    pub old_state: Option<(Rope, Selection)>,
-
-    pub version: i64,
-    pub diagnostics: Vec<Diagnostic>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -49,58 +26,10 @@ pub enum Granularity {
 impl State {
     #[must_use]
     pub fn new(doc: Rope) -> Self {
-        let changes = ChangeSet::new(&doc);
-        let old_state = Some((doc.clone(), Selection::single(0, 0)));
-
         Self {
-            path: None,
             doc,
             selection: Selection::single(0, 0),
-            mode: Mode::Normal,
-            restore_cursor: false,
-            syntax: None,
-            changes,
-            old_state,
-            diagnostics: Vec::new(),
-            version: 0,
         }
-    }
-
-    // TODO: passing scopes here is awkward
-    pub fn load(path: PathBuf, scopes: &[String]) -> Result<Self, Error> {
-        use std::{env, fs::File, io::BufReader};
-        let _current_dir = env::current_dir()?;
-
-        let doc = Rope::from_reader(BufReader::new(File::open(path.clone())?))?;
-
-        // TODO: create if not found
-
-        let mut state = Self::new(doc);
-
-        if let Some(language_config) = LOADER.language_config_for_file_name(path.as_path()) {
-            let highlight_config = language_config.highlight_config(scopes).unwrap().unwrap();
-            // TODO: config.configure(scopes) is now delayed, is that ok?
-
-            let syntax = Syntax::new(&state.doc, highlight_config.clone());
-
-            state.syntax = Some(syntax);
-        };
-
-        // canonicalize path to absolute value
-        state.path = Some(std::fs::canonicalize(path)?);
-
-        Ok(state)
-    }
-
-    pub fn set_language(&mut self, scope: &str, scopes: &[String]) {
-        if let Some(language_config) = LOADER.language_config_for_scope(scope) {
-            let highlight_config = language_config.highlight_config(scopes).unwrap().unwrap();
-            // TODO: config.configure(scopes) is now delayed, is that ok?
-
-            let syntax = Syntax::new(&self.doc, highlight_config.clone());
-
-            self.syntax = Some(syntax);
-        };
     }
 
     // TODO: doc/selection accessors
@@ -114,16 +43,6 @@ impl State {
     #[inline]
     pub fn selection(&self) -> &Selection {
         &self.selection
-    }
-
-    #[inline]
-    pub fn mode(&self) -> Mode {
-        self.mode
-    }
-
-    #[inline]
-    pub fn path(&self) -> Option<&PathBuf> {
-        self.path.as_ref()
     }
 
     // pub fn doc<R>(&self, range: R) -> RopeSlice

@@ -66,7 +66,7 @@ impl LanguageConfiguration {
 
 use once_cell::sync::Lazy;
 
-pub(crate) static LOADER: Lazy<Loader> = Lazy::new(Loader::init);
+pub static LOADER: Lazy<Loader> = Lazy::new(Loader::init);
 
 pub struct Loader {
     // highlight_names ?

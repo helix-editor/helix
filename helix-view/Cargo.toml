@@ -19,3 +19,4 @@ helix-core = { path = "../helix-core" }
 tui = { git = "https://github.com/fdehau/tui-rs", default-features = false, features = ["crossterm"], optional = true}
 crossterm = { version = "0.18", features = ["event-stream"], optional = true}
 once_cell = "1.4"
+url = "2"

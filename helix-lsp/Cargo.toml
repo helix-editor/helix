@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 helix-core = { path = "../helix-core" }
+helix-view = { path = "../helix-view" }
 
 lsp-types = { version = "0.82", features = ["proposed"] }
 smol = "1.2"

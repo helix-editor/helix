@@ -447,6 +447,7 @@ dependencies = [
  "futures-util",
  "glob",
  "helix-core",
+ "helix-view",
  "jsonrpc-core",
  "lsp-types",
  "pathdiff",
@@ -491,6 +492,7 @@ dependencies = [
  "helix-core",
  "once_cell",
  "tui",
+ "url",
 ]
 
 [[package]]

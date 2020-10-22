@@ -351,22 +351,6 @@ pub struct Transaction {
     // scroll_into_view
 }
 
-/// Like std::mem::replace() except it allows the replacement value to be mapped from the
-/// original value.
-pub fn take_with<T, F>(mut_ref: &mut T, closure: F)
-where
-    F: FnOnce(T) -> T,
-{
-    use std::{panic, ptr};
-
-    unsafe {
-        let old_t = ptr::read(mut_ref);
-        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
-            .unwrap_or_else(|_| ::std::process::abort());
-        ptr::write(mut_ref, new_t);
-    }
-}
-
 impl Transaction {
     /// Create a new, empty transaction.
     pub fn new(state: &mut State) -> Self {
@@ -376,28 +360,20 @@ impl Transaction {
         }
     }
 
+    pub fn changes(&self) -> &ChangeSet {
+        &self.changes
+    }
+
     /// Returns true if applied successfully.
     pub fn apply(&self, state: &mut State) -> bool {
         if !self.changes.is_empty() {
-            // TODO: also avoid mapping the selection if not necessary
-
-            let old_doc = state.doc().clone();
-
             // apply changes to the document
             if !self.changes.apply(&mut state.doc) {
                 return false;
             }
-
-            // Compose this transaction with the previous one
-            take_with(&mut state.changes, |changes| {
-                changes.compose(self.changes.clone()).unwrap()
-            });
-
-            if let Some(syntax) = &mut state.syntax {
-                // TODO: no unwrap
-                syntax.update(&old_doc, &state.doc, &self.changes).unwrap();
-            }
         }
+
+        // TODO: also avoid mapping the selection if not necessary
 
         // update the selection: either take the selection specified in the transaction, or map the
         // current selection through changes.
