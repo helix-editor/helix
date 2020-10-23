@@ -27,9 +27,9 @@ pub struct Document {
 
     /// Pending changes since last history commit.
     pub changes: ChangeSet,
+    pub old_state: State,
     pub history: History,
     pub version: i64, // should be usize?
-    pub old_state: Option<(Rope, Selection)>,
 
     pub diagnostics: Vec<Diagnostic>,
 }
@@ -55,7 +55,7 @@ use url::Url;
 impl Document {
     fn new(state: State) -> Self {
         let changes = ChangeSet::new(&state.doc);
-        let old_state = Some((state.doc.clone(), Selection::single(0, 0)));
+        let old_state = state.clone();
 
         Self {
             path: None,

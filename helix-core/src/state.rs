@@ -4,6 +4,7 @@ use crate::{ChangeSet, Diagnostic, Position, Range, Rope, RopeSlice, Selection, 
 use anyhow::Error;
 
 /// A state represents the current editor state of a single buffer.
+#[derive(Clone)]
 pub struct State {
     // TODO: fields should be private but we need to refactor commands.rs first
     pub doc: Rope,

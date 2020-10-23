@@ -411,15 +411,9 @@ fn append_changes_to_history(view: &mut View) {
     // TODO: trigger lsp/documentDidChange with changes
 
     // HAXX: we need to reconstruct the state as it was before the changes..
-    let (doc, selection) = view.doc.old_state.take().unwrap();
-    let mut old_state = State::new(doc);
-    old_state.selection = selection;
-
+    let old_state = std::mem::replace(&mut view.doc.old_state, view.doc.state.clone());
     // TODO: take transaction by value?
     view.doc.history.commit_revision(&transaction, &old_state);
-
-    // HAXX
-    view.doc.old_state = Some((view.doc.text().clone(), view.doc.state.selection.clone()));
 }
 
 pub fn normal_mode(view: &mut View, _count: usize) {
