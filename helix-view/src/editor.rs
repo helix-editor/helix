@@ -12,6 +12,12 @@ pub struct Editor {
     pub theme: Theme, // TODO: share one instance
 }
 
+impl Default for Editor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Editor {
     pub fn new() -> Self {
         let theme = Theme::default();

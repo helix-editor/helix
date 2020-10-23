@@ -86,24 +86,24 @@ impl View {
         Some(Position::new(row, col))
     }
 
-    pub fn traverse<F>(&self, text: &RopeSlice, start: usize, end: usize, fun: F)
-    where
-        F: Fn(usize, usize),
-    {
-        let start = self.screen_coords_at_pos(text, start);
-        let end = self.screen_coords_at_pos(text, end);
+    // pub fn traverse<F>(&self, text: &RopeSlice, start: usize, end: usize, fun: F)
+    // where
+    //     F: Fn(usize, usize),
+    // {
+    //     let start = self.screen_coords_at_pos(text, start);
+    //     let end = self.screen_coords_at_pos(text, end);
 
-        match (start, end) {
-            // fully on screen
-            (Some(start), Some(end)) => {
-                // we want to calculate ends of lines for each char..
-            }
-            // from start to end of screen
-            (Some(start), None) => {}
-            // from start of screen to end
-            (None, Some(end)) => {}
-            // not on screen
-            (None, None) => return,
-        }
-    }
+    //     match (start, end) {
+    //         // fully on screen
+    //         (Some(start), Some(end)) => {
+    //             // we want to calculate ends of lines for each char..
+    //         }
+    //         // from start to end of screen
+    //         (Some(start), None) => {}
+    //         // from start of screen to end
+    //         (None, Some(end)) => {}
+    //         // not on screen
+    //         (None, None) => return,
+    //     }
+    // }
 }

@@ -138,11 +138,10 @@ impl Transport {
                 // println!("<- {} {:?}", method, notification);
                 self.incoming.send(notification).await?;
             }
-            Message::Call(call) => {
+            Message::Call(_call) => {
                 // println!("<- {:?}", call);
                 // dispatch
             }
-            _ => unreachable!(),
         };
         Ok(())
     }

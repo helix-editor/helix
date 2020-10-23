@@ -164,4 +164,6 @@ impl Document {
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {
     //     self.state.doc.slice
     // }
+
+    // TODO: transact(Fn) ?
 }

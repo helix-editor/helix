@@ -1,6 +1,6 @@
 use crate::commands::{self, Command};
 use crate::document::Mode;
-use helix_core::{hashmap, state};
+use helix_core::hashmap;
 use std::collections::HashMap;
 
 // Kakoune-inspired:
