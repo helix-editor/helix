@@ -5,8 +5,9 @@ use std::convert::TryFrom;
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
 
+// TODO: pub(crate)
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Operation {
+pub enum Operation {
     /// Move cursor by n characters.
     Retain(usize),
     /// Delete n characters.
@@ -40,6 +41,12 @@ impl ChangeSet {
     }
 
     // TODO: from iter
+    //
+
+    #[doc(hidden)] // used by lsp to convert to LSP changes
+    pub fn changes(&self) -> &[Operation] {
+        &self.changes
+    }
 
     #[must_use]
     fn len_after(&self) -> usize {

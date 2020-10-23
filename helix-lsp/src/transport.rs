@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use log::debug;
 
-use crate::{Error, Message, Notification};
+use crate::{Error, Notification};
 
 type Result<T> = core::result::Result<T, Error>;
 
@@ -24,10 +24,23 @@ pub(crate) enum Payload {
         value: jsonrpc::MethodCall,
     },
     Notification(jsonrpc::Notification),
+    Response(jsonrpc::Output),
+}
+
+use serde::{Deserialize, Serialize};
+/// A type representing all possible values sent from the server to the client.
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(untagged)]
+enum Message {
+    /// A regular JSON-RPC request output (single response).
+    Output(jsonrpc::Output),
+    /// A JSON-RPC request or notification.
+    Call(jsonrpc::Call),
 }
 
 pub(crate) struct Transport {
-    incoming: Sender<Notification>, // TODO Notification | Call
+    incoming: Sender<jsonrpc::Call>,
     outgoing: Receiver<Payload>,
 
     pending_requests: HashMap<jsonrpc::Id, Sender<Result<Value>>>,
@@ -42,7 +55,7 @@ impl Transport {
         ex: &Executor,
         reader: BufReader<ChildStdout>,
         writer: BufWriter<ChildStdin>,
-    ) -> (Receiver<Notification>, Sender<Payload>) {
+    ) -> (Receiver<jsonrpc::Call>, Sender<Payload>) {
         let (incoming, rx) = smol::channel::unbounded();
         let (tx, outgoing) = smol::channel::unbounded();
 
@@ -112,6 +125,10 @@ impl Transport {
                 let json = serde_json::to_string(&value)?;
                 self.send(json).await
             }
+            Payload::Response(error) => {
+                let json = serde_json::to_string(&error)?;
+                self.send(json).await
+            }
         }
     }
 
@@ -131,24 +148,18 @@ impl Transport {
         Ok(())
     }
 
-    pub async fn recv_msg(&mut self, msg: Message) -> anyhow::Result<()> {
+    async fn recv_msg(&mut self, msg: Message) -> anyhow::Result<()> {
         match msg {
             Message::Output(output) => self.recv_response(output).await?,
-            Message::Notification(jsonrpc::Notification { method, params, .. }) => {
-                let notification = Notification::parse(&method, params);
-
-                debug!("<- {} {:?}", method, notification);
-                self.incoming.send(notification).await?;
-            }
             Message::Call(call) => {
-                debug!("<- {:?}", call);
-                // dispatch
+                self.incoming.send(call).await?;
+                // let notification = Notification::parse(&method, params);
             }
         };
         Ok(())
     }
 
-    pub async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
+    async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
         match output {
             jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
                 debug!("<- {}", result);
@@ -190,6 +201,8 @@ impl Transport {
                         break;
                     }
                     let msg = msg.unwrap();
+
+                    debug!("<- {:?}", msg);
 
                     self.recv_msg(msg).await.unwrap();
                 }

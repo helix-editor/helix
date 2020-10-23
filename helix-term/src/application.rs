@@ -433,8 +433,8 @@ impl<'a> Application<'a> {
                 event = reader.next().fuse() => {
                     self.handle_terminal_events(event).await
                 }
-                notification = self.lsp.incoming.next().fuse() => {
-                    self.handle_lsp_notification(notification).await
+                call = self.lsp.incoming.next().fuse() => {
+                    self.handle_lsp_message(call).await
                 }
             }
         }
@@ -566,42 +566,55 @@ impl<'a> Application<'a> {
         };
     }
 
-    pub async fn handle_lsp_notification(&mut self, notification: Option<helix_lsp::Notification>) {
-        use helix_lsp::Notification;
-        match notification {
-            Some(Notification::PublishDiagnostics(params)) => {
-                let path = Some(params.uri.to_file_path().unwrap());
-                let view = self
-                    .editor
-                    .views
-                    .iter_mut()
-                    .find(|view| view.doc.path == path);
+    pub async fn handle_lsp_message(&mut self, call: Option<helix_lsp::Call>) {
+        use helix_lsp::{Call, Notification};
+        match call {
+            Some(Call::Notification(helix_lsp::jsonrpc::Notification {
+                method, params, ..
+            })) => {
+                let notification = Notification::parse(&method, params);
+                match notification {
+                    Notification::PublishDiagnostics(params) => {
+                        let path = Some(params.uri.to_file_path().unwrap());
+                        let view = self
+                            .editor
+                            .views
+                            .iter_mut()
+                            .find(|view| view.doc.path == path);
 
-                if let Some(view) = view {
-                    let doc = view.doc.text().slice(..);
-                    let diagnostics = params
-                        .diagnostics
-                        .into_iter()
-                        .map(|diagnostic| {
-                            use helix_lsp::util::lsp_pos_to_pos;
-                            let start = lsp_pos_to_pos(&doc, diagnostic.range.start);
-                            let end = lsp_pos_to_pos(&doc, diagnostic.range.end);
+                        if let Some(view) = view {
+                            let doc = view.doc.text().slice(..);
+                            let diagnostics = params
+                                .diagnostics
+                                .into_iter()
+                                .map(|diagnostic| {
+                                    use helix_lsp::util::lsp_pos_to_pos;
+                                    let start = lsp_pos_to_pos(&doc, diagnostic.range.start);
+                                    let end = lsp_pos_to_pos(&doc, diagnostic.range.end);
 
-                            helix_core::Diagnostic {
-                                range: (start, end),
-                                line: diagnostic.range.start.line as usize,
-                                message: diagnostic.message,
-                                // severity
-                                // code
-                                // source
-                            }
-                        })
-                        .collect();
+                                    helix_core::Diagnostic {
+                                        range: (start, end),
+                                        line: diagnostic.range.start.line as usize,
+                                        message: diagnostic.message,
+                                        // severity
+                                        // code
+                                        // source
+                                    }
+                                })
+                                .collect();
 
-                    view.doc.diagnostics = diagnostics;
+                            view.doc.diagnostics = diagnostics;
 
-                    self.render();
+                            self.render();
+                        }
+                    }
+                    _ => unreachable!(),
                 }
+            }
+            Some(Call::MethodCall(call)) => {
+                // TODO: need to make Result<Value, Error>
+
+                unimplemented!("{:?}", call)
             }
             _ => unreachable!(),
         }

@@ -1,13 +1,12 @@
 mod client;
 mod transport;
 
-use jsonrpc_core as jsonrpc;
-use lsp_types as lsp;
+pub use jsonrpc_core as jsonrpc;
+pub use lsp_types as lsp;
 
 pub use client::Client;
 pub use lsp::{Position, Url};
 
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -30,19 +29,13 @@ pub mod util {
         let line_start = doc.char_to_utf16_cu(line);
         doc.utf16_cu_to_char(pos.character as usize + line_start)
     }
-}
+    pub fn pos_to_lsp_pos(doc: &helix_core::RopeSlice, pos: usize) -> lsp::Position {
+        let line = doc.char_to_line(pos);
+        let line_start = doc.char_to_utf16_cu(line);
+        let col = doc.char_to_utf16_cu(pos) - line_start;
 
-/// A type representing all possible values sent from the server to the client.
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-#[serde(untagged)]
-enum Message {
-    /// A regular JSON-RPC request output (single response).
-    Output(jsonrpc::Output),
-    /// A notification.
-    Notification(jsonrpc::Notification),
-    /// A JSON-RPC request
-    Call(jsonrpc::Call),
+        lsp::Position::new(line as u64, col as u64)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -67,3 +60,5 @@ impl Notification {
         }
     }
 }
+
+pub use jsonrpc::Call;

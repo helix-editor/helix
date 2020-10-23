@@ -82,6 +82,9 @@ use std::collections::HashMap;
 //          = = align?
 //          + =
 //      }
+//
+//      gd = goto definition
+//      gr = goto reference
 // }
 
 #[cfg(feature = "term")]

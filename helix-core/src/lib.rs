@@ -27,4 +27,4 @@ pub use diagnostic::Diagnostic;
 pub use history::History;
 pub use state::State;
 
-pub use transaction::{Assoc, Change, ChangeSet, Transaction};
+pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};

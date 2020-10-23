@@ -1,11 +1,11 @@
 use crate::{
     transport::{Payload, Transport},
-    Error, Notification,
+    Call, Error,
 };
 
 type Result<T> = core::result::Result<T, Error>;
 
-use helix_core::{State, Transaction};
+use helix_core::{ChangeSet, Transaction};
 use helix_view::Document;
 
 // use std::collections::HashMap;
@@ -27,7 +27,7 @@ pub struct Client {
     stderr: BufReader<ChildStderr>,
 
     outgoing: Sender<Payload>,
-    pub incoming: Receiver<Notification>,
+    pub incoming: Receiver<Call>,
 
     pub request_counter: u64,
 
@@ -87,6 +87,7 @@ impl Client {
         Ok(params)
     }
 
+    /// Execute a RPC request on the language server.
     pub async fn request<R: lsp::request::Request>(
         &mut self,
         params: R::Params,
@@ -126,6 +127,7 @@ impl Client {
         Ok(response)
     }
 
+    /// Send a RPC notification to the language server.
     pub async fn notify<R: lsp::notification::Notification>(
         &mut self,
         params: R::Params,
@@ -149,6 +151,35 @@ impl Client {
         Ok(())
     }
 
+    /// Reply to a language server RPC call.
+    pub async fn reply(
+        &mut self,
+        id: jsonrpc::Id,
+        result: core::result::Result<Value, jsonrpc::Error>,
+    ) -> Result<()> {
+        use jsonrpc::{Failure, Output, Success, Version};
+
+        let output = match result {
+            Ok(result) => Output::Success(Success {
+                jsonrpc: Some(Version::V2),
+                id,
+                result,
+            }),
+            Err(error) => Output::Failure(Failure {
+                jsonrpc: Some(Version::V2),
+                id,
+                error,
+            }),
+        };
+
+        self.outgoing
+            .send(Payload::Response(output))
+            .await
+            .map_err(|e| Error::Other(e.into()))?;
+
+        Ok(())
+    }
+
     // -------------------------------------------------------------------------------------------
     // General messages
     // -------------------------------------------------------------------------------------------
@@ -163,7 +194,9 @@ impl Client {
             // root_uri: Some(lsp_types::Url::parse("file://localhost/")?),
             root_uri: None, // set to project root in the future
             initialization_options: None,
-            capabilities: lsp::ClientCapabilities::default(),
+            capabilities: lsp::ClientCapabilities {
+                ..Default::default()
+            },
             trace: None,
             workspace_folders: None,
             client_info: None,
@@ -203,23 +236,107 @@ impl Client {
         .await
     }
 
+    fn to_changes(changeset: &ChangeSet) -> Vec<lsp::TextDocumentContentChangeEvent> {
+        let mut iter = changeset.changes().iter().peekable();
+        let mut old_pos = 0;
+
+        let mut changes = Vec::new();
+
+        use crate::util::pos_to_lsp_pos;
+        use helix_core::Operation::*;
+
+        // TEMP
+        let rope = helix_core::Rope::from("");
+        let old_text = rope.slice(..);
+
+        while let Some(change) = iter.next() {
+            let len = match change {
+                Delete(i) | Retain(i) => *i,
+                Insert(_) => 0,
+            };
+            let old_end = old_pos + len;
+
+            match change {
+                Retain(_) => {}
+                Delete(_) => {
+                    let start = pos_to_lsp_pos(&old_text, old_pos);
+                    let end = pos_to_lsp_pos(&old_text, old_end);
+
+                    // a subsequent ins means a replace, consume it
+                    if let Some(Insert(s)) = iter.peek() {
+                        iter.next();
+
+                        // replacement
+                        changes.push(lsp::TextDocumentContentChangeEvent {
+                            range: Some(lsp::Range::new(start, end)),
+                            text: s.into(),
+                            range_length: None,
+                        });
+                    } else {
+                        // deletion
+                        changes.push(lsp::TextDocumentContentChangeEvent {
+                            range: Some(lsp::Range::new(start, end)),
+                            text: "".to_string(),
+                            range_length: None,
+                        });
+                    };
+                }
+                Insert(s) => {
+                    let start = pos_to_lsp_pos(&old_text, old_pos);
+
+                    // insert
+                    changes.push(lsp::TextDocumentContentChangeEvent {
+                        range: Some(lsp::Range::new(start, start)),
+                        text: s.into(),
+                        range_length: None,
+                    });
+                }
+            }
+            old_pos = old_end;
+        }
+
+        changes
+    }
+
     // TODO: trigger any time history.commit_revision happens
     pub async fn text_document_did_change(
         &mut self,
         doc: &Document,
         transaction: &Transaction,
     ) -> Result<()> {
+        // figure out what kind of sync the server supports
+
+        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+
+        let sync_capabilities = match capabilities.text_document_sync {
+            Some(lsp::TextDocumentSyncCapability::Kind(kind)) => kind,
+            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                change: Some(kind),
+                ..
+            })) => kind,
+            // None | SyncOptions { changes: None }
+            _ => return Ok(()),
+        };
+
+        let changes = match sync_capabilities {
+            lsp::TextDocumentSyncKind::Full => {
+                vec![lsp::TextDocumentContentChangeEvent {
+                    // range = None -> whole document
+                    range: None,        //Some(Range)
+                    range_length: None, // u64 apparently deprecated
+                    text: "".to_string(),
+                }] // TODO: probably need old_state here too?
+            }
+            lsp::TextDocumentSyncKind::Incremental => Self::to_changes(transaction.changes()),
+            lsp::TextDocumentSyncKind::None => return Ok(()),
+        };
+
         self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
             text_document: lsp::VersionedTextDocumentIdentifier::new(
                 lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
                 doc.version,
             ),
-            content_changes: vec![lsp::TextDocumentContentChangeEvent {
-                // range = None -> whole document
-                range: None,        //Some(Range)
-                range_length: None, // u64 apparently deprecated
-                text: "".to_string(),
-            }], // TODO: probably need old_state here too?
+            content_changes: changes,
         })
         .await
     }
