@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use log::debug;
+
 use crate::{Error, Message, Notification};
 
 type Result<T> = core::result::Result<T, Error>;
@@ -114,7 +116,7 @@ impl Transport {
     }
 
     pub async fn send(&mut self, request: String) -> anyhow::Result<()> {
-        // println!("-> {}", request);
+        debug!("-> {}", request);
 
         // send the headers
         self.writer
@@ -135,11 +137,11 @@ impl Transport {
             Message::Notification(jsonrpc::Notification { method, params, .. }) => {
                 let notification = Notification::parse(&method, params);
 
-                // println!("<- {} {:?}", method, notification);
+                debug!("<- {} {:?}", method, notification);
                 self.incoming.send(notification).await?;
             }
-            Message::Call(_call) => {
-                // println!("<- {:?}", call);
+            Message::Call(call) => {
+                debug!("<- {:?}", call);
                 // dispatch
             }
         };
@@ -149,7 +151,7 @@ impl Transport {
     pub async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
         match output {
             jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                // println!("<- {}", result);
+                debug!("<- {}", result);
 
                 let tx = self
                     .pending_requests

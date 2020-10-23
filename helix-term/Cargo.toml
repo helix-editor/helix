@@ -19,10 +19,15 @@ helix-lsp = { path = "../helix-lsp"}
 anyhow = "1"
 
 smol = "1"
-num_cpus = "1.13"
+num_cpus = "1"
 # tui = { version = "0.12", default-features = false, features = ["crossterm"] }
 tui = { git = "https://github.com/fdehau/tui-rs", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.18", features = ["event-stream"] }
 clap = { version = "3.0.0-beta.2 ", default-features = false, features = ["std", "cargo"] }
 
 futures-util = "0.3"
+
+# Logging
+fern = "0.6"
+chrono = "0.4"
+log = "0.4"
