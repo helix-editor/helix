@@ -504,6 +504,7 @@ pub fn insert_char_prompt(prompt: &mut Prompt, c: char) {
 
 pub fn undo(view: &mut View, _count: usize) {
     if let Some(revert) = view.doc.history.undo() {
+        view.doc.version += 1;
         view.doc.apply(&revert);
     }
 
@@ -512,6 +513,7 @@ pub fn undo(view: &mut View, _count: usize) {
 
 pub fn redo(view: &mut View, _count: usize) {
     if let Some(transaction) = view.doc.history.redo() {
+        view.doc.version += 1;
         view.doc.apply(&transaction);
     }
 }
