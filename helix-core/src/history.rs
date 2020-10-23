@@ -57,37 +57,31 @@ impl History {
         self.cursor == 0
     }
 
-    pub fn undo(&mut self, state: &mut State) {
+    // TODO: I'd like to pass Transaction by reference but it fights with the borrowck
+
+    pub fn undo(&mut self) -> Option<Transaction> {
         if self.at_root() {
             // We're at the root of undo, nothing to do.
-            return;
+            return None;
         }
 
         let current_revision = &self.revisions[self.cursor];
 
-        // TODO: pass the return value through? It should always succeed
-        let success = current_revision.revert.apply(state);
-
-        if !success {
-            panic!("Failed to apply undo!");
-        }
-
         self.cursor = current_revision.parent;
+
+        Some(current_revision.revert.clone())
     }
 
-    pub fn redo(&mut self, state: &mut State) {
+    pub fn redo(&mut self) -> Option<Transaction> {
         let current_revision = &self.revisions[self.cursor];
 
         // for now, simply pick the latest child (linear undo / redo)
         if let Some((index, transaction)) = current_revision.children.last() {
-            let success = transaction.apply(state);
-
-            if !success {
-                panic!("Failed to apply redo!");
-            }
-
             self.cursor = *index;
+
+            return Some(transaction.clone());
         }
+        None
     }
 }
 
@@ -120,17 +114,27 @@ mod test {
         assert_eq!("hello 世界!", state.doc());
 
         // ---
+        fn undo(history: &mut History, state: &mut State) {
+            if let Some(transaction) = history.undo() {
+                transaction.apply(state);
+            }
+        }
+        fn redo(history: &mut History, state: &mut State) {
+            if let Some(transaction) = history.redo() {
+                transaction.apply(state);
+            }
+        }
 
-        history.undo(&mut state);
+        undo(&mut history, &mut state);
         assert_eq!("hello world!", state.doc());
-        history.redo(&mut state);
+        redo(&mut history, &mut state);
         assert_eq!("hello 世界!", state.doc());
-        history.undo(&mut state);
-        history.undo(&mut state);
+        undo(&mut history, &mut state);
+        undo(&mut history, &mut state);
         assert_eq!("hello", state.doc());
 
         // undo at root is a no-op
-        history.undo(&mut state);
+        undo(&mut history, &mut state);
         assert_eq!("hello", state.doc());
     }
 }

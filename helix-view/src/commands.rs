@@ -509,13 +509,17 @@ pub fn insert_char_prompt(prompt: &mut Prompt, c: char) {
 // Undo / Redo
 
 pub fn undo(view: &mut View, _count: usize) {
-    view.doc.history.undo(&mut view.doc.state);
+    if let Some(revert) = view.doc.history.undo() {
+        view.doc.apply(&revert);
+    }
 
     // TODO: each command could simply return a Option<transaction>, then the higher level handles storing it?
 }
 
 pub fn redo(view: &mut View, _count: usize) {
-    view.doc.history.redo(&mut view.doc.state);
+    if let Some(transaction) = view.doc.history.redo() {
+        view.doc.apply(&transaction);
+    }
 }
 
 // Yank / Paste

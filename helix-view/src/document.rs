@@ -108,7 +108,6 @@ impl Document {
         };
     }
 
-    // TODO: needs to run on undo/redo
     pub fn apply(&mut self, transaction: &Transaction) -> bool {
         let old_doc = self.text().clone();
 
