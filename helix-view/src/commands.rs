@@ -93,7 +93,7 @@ pub fn move_next_word_start(view: &mut View, count: usize) {
         count,
     );
 
-    view.doc.set_selection(Selection::single(pos, pos));
+    view.doc.set_selection(Selection::point(pos));
 }
 
 pub fn move_prev_word_start(view: &mut View, count: usize) {
@@ -104,7 +104,7 @@ pub fn move_prev_word_start(view: &mut View, count: usize) {
         count,
     );
 
-    view.doc.set_selection(Selection::single(pos, pos));
+    view.doc.set_selection(Selection::point(pos));
 }
 
 pub fn move_next_word_end(view: &mut View, count: usize) {
@@ -114,11 +114,11 @@ pub fn move_next_word_end(view: &mut View, count: usize) {
         count,
     );
 
-    view.doc.set_selection(Selection::single(pos, pos));
+    view.doc.set_selection(Selection::point(pos));
 }
 
 pub fn move_file_start(view: &mut View, _count: usize) {
-    view.doc.set_selection(Selection::single(0, 0));
+    view.doc.set_selection(Selection::point(0));
 
     view.doc.mode = Mode::Normal;
 }
@@ -126,8 +126,7 @@ pub fn move_file_start(view: &mut View, _count: usize) {
 pub fn move_file_end(view: &mut View, _count: usize) {
     let text = &view.doc.text();
     let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
-    view.doc
-        .set_selection(Selection::single(last_line, last_line));
+    view.doc.set_selection(Selection::point(last_line));
 
     view.doc.mode = Mode::Normal;
 }
@@ -153,7 +152,7 @@ pub fn page_up(view: &mut View, _count: usize) {
     if !check_cursor_in_view(view) {
         let text = view.doc.text();
         let pos = text.line_to_char(view.last_line().saturating_sub(PADDING));
-        view.doc.set_selection(Selection::single(pos, pos));
+        view.doc.set_selection(Selection::point(pos));
     }
 }
 
@@ -163,7 +162,7 @@ pub fn page_down(view: &mut View, _count: usize) {
     if view.first_line < view.doc.text().len_lines() {
         let text = view.doc.text();
         let pos = text.line_to_char(view.first_line as usize);
-        view.doc.set_selection(Selection::single(pos, pos));
+        view.doc.set_selection(Selection::point(pos));
     }
 }
 
@@ -177,7 +176,7 @@ pub fn half_page_up(view: &mut View, _count: usize) {
     if !check_cursor_in_view(view) {
         let text = &view.doc.text();
         let pos = text.line_to_char(view.last_line() - PADDING);
-        view.doc.set_selection(Selection::single(pos, pos));
+        view.doc.set_selection(Selection::point(pos));
     }
 }
 
@@ -189,7 +188,7 @@ pub fn half_page_down(view: &mut View, _count: usize) {
     if !check_cursor_in_view(view) {
         let text = view.doc.text();
         let pos = text.line_to_char(view.first_line as usize);
-        view.doc.set_selection(Selection::single(pos, pos));
+        view.doc.set_selection(Selection::point(pos));
     }
 }
 // avoid select by default by having a visual mode switch that makes movements into selects

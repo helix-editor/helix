@@ -179,6 +179,11 @@ impl Selection {
         }
     }
 
+    /// Constructs a selection holding a single cursor.
+    pub fn point(pos: usize) -> Self {
+        Self::single(pos, pos)
+    }
+
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
         fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Selection {
