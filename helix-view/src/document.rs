@@ -108,6 +108,11 @@ impl Document {
         };
     }
 
+    pub fn set_selection(&mut self, selection: Selection) {
+        // TODO: use a transaction?
+        self.state.selection = selection;
+    }
+
     pub fn apply(&mut self, transaction: &Transaction) -> bool {
         let old_doc = self.text().clone();
 
@@ -118,6 +123,8 @@ impl Document {
             take_with(&mut self.changes, |changes| {
                 changes.compose(transaction.changes().clone()).unwrap()
             });
+
+            // TODO: when composing, replace transaction.selection too
 
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
@@ -148,6 +155,10 @@ impl Document {
 
     pub fn text(&self) -> &Rope {
         &self.state.doc
+    }
+
+    pub fn selection(&self) -> &Selection {
+        &self.state.selection
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

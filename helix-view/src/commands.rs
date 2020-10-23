@@ -19,40 +19,38 @@ use crate::{
 pub type Command = fn(view: &mut View, count: usize);
 
 pub fn move_char_left(view: &mut View, count: usize) {
-    // TODO: use a transaction
     let selection =
         view.doc
             .state
             .move_selection(Direction::Backward, Granularity::Character, count);
-    view.doc.state.selection = selection;
+    view.doc.set_selection(selection);
 }
 
 pub fn move_char_right(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.doc.state.selection =
+    let selection =
         view.doc
             .state
             .move_selection(Direction::Forward, Granularity::Character, count);
+    view.doc.set_selection(selection);
 }
 
 pub fn move_line_up(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.doc.state.selection =
-        view.doc
-            .state
-            .move_selection(Direction::Backward, Granularity::Line, count);
+    let selection = view
+        .doc
+        .state
+        .move_selection(Direction::Backward, Granularity::Line, count);
+    view.doc.set_selection(selection);
 }
 
 pub fn move_line_down(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.doc.state.selection =
-        view.doc
-            .state
-            .move_selection(Direction::Forward, Granularity::Line, count);
+    let selection = view
+        .doc
+        .state
+        .move_selection(Direction::Forward, Granularity::Line, count);
+    view.doc.set_selection(selection);
 }
 
 pub fn move_line_end(view: &mut View, _count: usize) {
-    // TODO: use a transaction
     let lines = selection_lines(&view.doc.state);
 
     let positions = lines
@@ -68,9 +66,7 @@ pub fn move_line_end(view: &mut View, _count: usize) {
 
     let selection = Selection::new(positions.collect(), 0);
 
-    let transaction = Transaction::new(&mut view.doc.state).with_selection(selection);
-
-    view.doc.apply(&transaction);
+    view.doc.set_selection(selection);
 }
 
 pub fn move_line_start(view: &mut View, _count: usize) {
@@ -86,64 +82,58 @@ pub fn move_line_start(view: &mut View, _count: usize) {
 
     let selection = Selection::new(positions.collect(), 0);
 
-    let transaction = Transaction::new(&mut view.doc.state).with_selection(selection);
-
-    view.doc.apply(&transaction);
+    view.doc.set_selection(selection);
 }
 
 pub fn move_next_word_start(view: &mut View, count: usize) {
     let pos = view.doc.state.move_pos(
-        view.doc.state.selection.cursor(),
+        view.doc.selection().cursor(),
         Direction::Forward,
         Granularity::Word,
         count,
     );
 
-    // TODO: use a transaction
-    view.doc.state.selection = Selection::single(pos, pos);
+    view.doc.set_selection(Selection::single(pos, pos));
 }
 
 pub fn move_prev_word_start(view: &mut View, count: usize) {
     let pos = view.doc.state.move_pos(
-        view.doc.state.selection.cursor(),
+        view.doc.selection().cursor(),
         Direction::Backward,
         Granularity::Word,
         count,
     );
 
-    // TODO: use a transaction
-    view.doc.state.selection = Selection::single(pos, pos);
+    view.doc.set_selection(Selection::single(pos, pos));
 }
 
 pub fn move_next_word_end(view: &mut View, count: usize) {
     let pos = State::move_next_word_end(
         &view.doc.text().slice(..),
-        view.doc.state.selection.cursor(),
+        view.doc.selection().cursor(),
         count,
     );
 
-    // TODO: use a transaction
-    view.doc.state.selection = Selection::single(pos, pos);
+    view.doc.set_selection(Selection::single(pos, pos));
 }
 
 pub fn move_file_start(view: &mut View, _count: usize) {
-    // TODO: use a transaction
-    view.doc.state.selection = Selection::single(0, 0);
+    view.doc.set_selection(Selection::single(0, 0));
 
     view.doc.mode = Mode::Normal;
 }
 
 pub fn move_file_end(view: &mut View, _count: usize) {
-    // TODO: use a transaction
     let text = &view.doc.text();
     let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
-    view.doc.state.selection = Selection::single(last_line, last_line);
+    view.doc
+        .set_selection(Selection::single(last_line, last_line));
 
     view.doc.mode = Mode::Normal;
 }
 
 pub fn check_cursor_in_view(view: &mut View) -> bool {
-    let cursor = view.doc.state.selection().cursor();
+    let cursor = view.doc.selection().cursor();
     let line = view.doc.text().char_to_line(cursor);
     let document_end = view.first_line + view.size.1.saturating_sub(1) as usize;
 
@@ -163,7 +153,7 @@ pub fn page_up(view: &mut View, _count: usize) {
     if !check_cursor_in_view(view) {
         let text = view.doc.text();
         let pos = text.line_to_char(view.last_line().saturating_sub(PADDING));
-        view.doc.state.selection = Selection::single(pos, pos);
+        view.doc.set_selection(Selection::single(pos, pos));
     }
 }
 
@@ -173,7 +163,7 @@ pub fn page_down(view: &mut View, _count: usize) {
     if view.first_line < view.doc.text().len_lines() {
         let text = view.doc.text();
         let pos = text.line_to_char(view.first_line as usize);
-        view.doc.state.selection = Selection::single(pos, pos);
+        view.doc.set_selection(Selection::single(pos, pos));
     }
 }
 
@@ -187,7 +177,7 @@ pub fn half_page_up(view: &mut View, _count: usize) {
     if !check_cursor_in_view(view) {
         let text = &view.doc.text();
         let pos = text.line_to_char(view.last_line() - PADDING);
-        view.doc.state.selection = Selection::single(pos, pos);
+        view.doc.set_selection(Selection::single(pos, pos));
     }
 }
 
@@ -199,42 +189,41 @@ pub fn half_page_down(view: &mut View, _count: usize) {
     if !check_cursor_in_view(view) {
         let text = view.doc.text();
         let pos = text.line_to_char(view.first_line as usize);
-        view.doc.state.selection = Selection::single(pos, pos);
+        view.doc.set_selection(Selection::single(pos, pos));
     }
 }
 // avoid select by default by having a visual mode switch that makes movements into selects
 
 pub fn extend_char_left(view: &mut View, count: usize) {
-    // TODO: use a transaction
     let selection =
         view.doc
             .state
             .extend_selection(Direction::Backward, Granularity::Character, count);
-    view.doc.state.selection = selection;
+    view.doc.set_selection(selection);
 }
 
 pub fn extend_char_right(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.doc.state.selection =
+    let selection =
         view.doc
             .state
             .extend_selection(Direction::Forward, Granularity::Character, count);
+    view.doc.set_selection(selection);
 }
 
 pub fn extend_line_up(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.doc.state.selection =
-        view.doc
-            .state
-            .extend_selection(Direction::Backward, Granularity::Line, count);
+    let selection = view
+        .doc
+        .state
+        .extend_selection(Direction::Backward, Granularity::Line, count);
+    view.doc.set_selection(selection);
 }
 
 pub fn extend_line_down(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.doc.state.selection =
-        view.doc
-            .state
-            .extend_selection(Direction::Forward, Granularity::Line, count);
+    let selection = view
+        .doc
+        .state
+        .extend_selection(Direction::Forward, Granularity::Line, count);
+    view.doc.set_selection(selection);
 }
 
 pub fn split_selection_on_newline(view: &mut View, _count: usize) {
@@ -242,20 +231,19 @@ pub fn split_selection_on_newline(view: &mut View, _count: usize) {
     // only compile the regex once
     #[allow(clippy::trivial_regex)]
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\n").unwrap());
-    // TODO: use a transaction
-    view.doc.state.selection = selection::split_on_matches(text, view.doc.state.selection(), &REGEX)
+    let selection = selection::split_on_matches(text, view.doc.selection(), &REGEX);
+    view.doc.set_selection(selection);
 }
 
 pub fn select_line(view: &mut View, _count: usize) {
     // TODO: count
-    let pos = view.doc.state.selection().primary();
+    let pos = view.doc.selection().primary();
     let text = view.doc.text();
     let line = text.char_to_line(pos.head);
     let start = text.line_to_char(line);
     let end = text.line_to_char(line + 1).saturating_sub(1);
 
-    // TODO: use a transaction
-    view.doc.state.selection = Selection::single(start, end);
+    view.doc.set_selection(Selection::single(start, end));
 }
 
 pub fn delete_selection(view: &mut View, _count: usize) {
@@ -273,19 +261,21 @@ pub fn change_selection(view: &mut View, count: usize) {
 }
 
 pub fn collapse_selection(view: &mut View, _count: usize) {
-    view.doc.state.selection = view
+    let selection = view
         .doc
-        .state
-        .selection
-        .transform(|range| Range::new(range.head, range.head))
+        .selection()
+        .transform(|range| Range::new(range.head, range.head));
+
+    view.doc.set_selection(selection);
 }
 
 pub fn flip_selections(view: &mut View, _count: usize) {
-    view.doc.state.selection = view
+    let selection = view
         .doc
-        .state
-        .selection
-        .transform(|range| Range::new(range.head, range.anchor))
+        .selection()
+        .transform(|range| Range::new(range.head, range.anchor));
+
+    view.doc.set_selection(selection);
 }
 
 fn enter_insert_mode(view: &mut View) {
@@ -297,11 +287,11 @@ fn enter_insert_mode(view: &mut View) {
 pub fn insert_mode(view: &mut View, _count: usize) {
     enter_insert_mode(view);
 
-    view.doc.state.selection = view
+    let selection = view
         .doc
-        .state
-        .selection
-        .transform(|range| Range::new(range.to(), range.from()))
+        .selection()
+        .transform(|range| Range::new(range.to(), range.from()));
+    view.doc.set_selection(selection);
 }
 
 // inserts at the end of each selection
@@ -311,13 +301,14 @@ pub fn append_mode(view: &mut View, _count: usize) {
 
     // TODO: as transaction
     let text = &view.doc.text().slice(..);
-    view.doc.state.selection = view.doc.state.selection.transform(|range| {
+    let selection = view.doc.selection().transform(|range| {
         // TODO: to() + next char
         Range::new(
             range.from(),
             graphemes::next_grapheme_boundary(text, range.to()),
         )
-    })
+    });
+    view.doc.set_selection(selection);
 }
 
 // TODO: I, A, o and O can share a lot of the primitives.
@@ -402,7 +393,7 @@ fn append_changes_to_history(view: &mut View) {
     let changes = std::mem::replace(&mut view.doc.changes, new_changeset);
     // Instead of doing this messy merge we could always commit, and based on transaction
     // annotations either add a new layer or compose into the previous one.
-    let transaction = Transaction::from(changes).with_selection(view.doc.state.selection().clone());
+    let transaction = Transaction::from(changes).with_selection(view.doc.selection().clone());
 
     // increment document version
     // TODO: needs to happen on undo/redo too
@@ -424,12 +415,13 @@ pub fn normal_mode(view: &mut View, _count: usize) {
     // if leaving append mode, move cursor back by 1
     if view.doc.restore_cursor {
         let text = &view.doc.text().slice(..);
-        view.doc.state.selection = view.doc.state.selection.transform(|range| {
+        let selection = view.doc.selection().transform(|range| {
             Range::new(
                 range.from(),
                 graphemes::prev_grapheme_boundary(text, range.to()),
             )
         });
+        view.doc.set_selection(selection);
 
         view.doc.restore_cursor = false;
     }
@@ -587,7 +579,7 @@ fn get_lines(view: &View) -> Vec<usize> {
     let mut lines = Vec::new();
 
     // Get all line numbers
-    for range in view.doc.state.selection.ranges() {
+    for range in view.doc.selection().ranges() {
         let start = view.doc.text().char_to_line(range.from());
         let end = view.doc.text().char_to_line(range.to());
 
