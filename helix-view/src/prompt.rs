@@ -35,6 +35,7 @@ impl Prompt {
         self.line.insert(self.cursor, c);
         self.cursor += 1;
         self.completion = (self.completion_fn)(&self.line);
+        self.exit_selection();
     }
 
     pub fn move_char_left(&mut self) {
@@ -63,6 +64,7 @@ impl Prompt {
             self.cursor -= 1;
             self.completion = (self.completion_fn)(&self.line);
         }
+        self.exit_selection();
     }
 
     pub fn change_completion_selection(&mut self) {
@@ -75,7 +77,18 @@ impl Prompt {
                     i + 1
                 }
             })
-            .or(Some(0))
+            .or(Some(0));
+        self.line = String::from(
+            self.completion
+                .as_ref()
+                .unwrap()
+                .get(self.completion_selection_index.unwrap())
+                .unwrap(),
+        );
+    }
+
+    pub fn exit_selection(&mut self) {
+        self.completion_selection_index = None;
     }
 
     pub fn handle_input(&mut self, key_event: KeyEvent, editor: &mut Editor) {
@@ -105,7 +118,7 @@ impl Prompt {
             } => self.move_start(),
             KeyEvent {
                 code: KeyCode::Backspace,
-                ..
+                modifiers: KeyModifiers::NONE,
             } => self.delete_char_backwards(),
             KeyEvent {
                 code: KeyCode::Enter,
@@ -114,6 +127,10 @@ impl Prompt {
             KeyEvent {
                 code: KeyCode::Tab, ..
             } => self.change_completion_selection(),
+            KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.exit_selection(),
             _ => (),
         }
     }
