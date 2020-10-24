@@ -237,8 +237,7 @@ impl Renderer {
 
     pub fn render_prompt(&mut self, view: &View, prompt: &Prompt) {
         // completion
-        if prompt.completion.is_some() {
-            let completion = prompt.completion.clone().unwrap();
+        if let Some(completion) = &prompt.completion {
             // TODO: find out better way of clearing individual lines of the screen
             for i in (3..7) {
                 self.surface.set_string(
@@ -253,23 +252,16 @@ impl Renderer {
                 view.theme.get("ui.statusline"),
             );
             for i in (0..completion.len()) {
+                let color;
                 if prompt.completion_selection_index.is_some()
                     && i == prompt.completion_selection_index.unwrap()
                 {
-                    self.surface.set_string(
-                        1,
-                        self.size.1 - 6 + i as u16,
-                        &completion[i],
-                        Style::default().bg(Color::Rgb(104, 060, 232)),
-                    );
+                    color = Style::default().bg(Color::Rgb(104, 060, 232));
                 } else {
-                    self.surface.set_string(
-                        1,
-                        self.size.1 - 6 + i as u16,
-                        &completion[i],
-                        self.text_color,
-                    );
+                    color = self.text_color;
                 }
+                self.surface
+                    .set_string(1, self.size.1 - 6 + i as u16, &completion[i], color);
             }
         }
         // render buffer text
@@ -420,25 +412,18 @@ impl Application {
                                     ..
                                 }] = keys.as_slice()
                                 {
-                                    let command_list = vec![
-                                        String::from("q"),
-                                        String::from("aaa"),
-                                        String::from("bbb"),
-                                        String::from("ccc"),
-                                    ];
-
                                     let prompt = Prompt::new(
                                         ":".to_owned(),
                                         |_input: &str| {
                                             let mut matches = vec![];
                                             // TODO: i need this duplicate list right now to avoid borrow checker issues
-                                            let placeholder_list = vec![
+                                            let command_list = vec![
                                                 String::from("q"),
                                                 String::from("aaa"),
                                                 String::from("bbb"),
                                                 String::from("ccc"),
                                             ];
-                                            for command in placeholder_list {
+                                            for command in command_list {
                                                 if command.contains(_input) {
                                                     matches.push(command);
                                                 }
@@ -452,7 +437,6 @@ impl Application {
                                             "q" => editor.should_close = true,
                                             _ => (),
                                         },
-                                        command_list,
                                     );
 
                                     self.prompt = Some(prompt);

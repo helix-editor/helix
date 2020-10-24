@@ -16,15 +16,14 @@ pub struct Prompt {
 impl Prompt {
     pub fn new(
         prompt: String,
-        completion_fn: impl FnMut(&str) -> Option<Vec<String>> + 'static,
+        mut completion_fn: impl FnMut(&str) -> Option<Vec<String>> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str) + 'static,
-        command_list: Vec<String>,
     ) -> Prompt {
         Prompt {
             prompt,
             line: String::new(),
             cursor: 0,
-            completion: Some(command_list),
+            completion: completion_fn(""),
             should_close: false,
             completion_selection_index: None,
             completion_fn: Box::new(completion_fn),
@@ -67,11 +66,16 @@ impl Prompt {
     }
 
     pub fn change_completion_selection(&mut self) {
-        if self.completion_selection_index.is_none() {
-            self.completion_selection_index = Some(0)
-        } else {
-            self.completion_selection_index = Some(self.completion_selection_index.unwrap() + 1)
-        }
+        self.completion_selection_index = self
+            .completion_selection_index
+            .map(|i| {
+                if i == self.completion.as_ref().unwrap().len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            })
+            .or(Some(0))
     }
 
     pub fn handle_input(&mut self, key_event: KeyEvent, editor: &mut Editor) {
