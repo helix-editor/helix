@@ -10,7 +10,7 @@ edition = "2018"
 helix-core = { path = "../helix-core" }
 helix-view = { path = "../helix-view" }
 
-lsp-types = { version = "0.82", features = ["proposed"] }
+lsp-types = { version = "0.83", features = ["proposed"] }
 smol = "1.2"
 url = "2"
 pathdiff = "0.2"

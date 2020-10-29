@@ -404,6 +404,8 @@ fn append_changes_to_history(view: &mut View) {
     let old_state = std::mem::replace(&mut view.doc.old_state, view.doc.state.clone());
     // TODO: take transaction by value?
     view.doc.history.commit_revision(&transaction, &old_state);
+
+    // TODO: notify LSP of changes
 }
 
 pub fn normal_mode(view: &mut View, _count: usize) {

@@ -9,6 +9,7 @@ use helix_core::{ChangeSet, Transaction};
 use helix_view::Document;
 
 // use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
@@ -29,7 +30,7 @@ pub struct Client {
     outgoing: Sender<Payload>,
     pub incoming: Receiver<Call>,
 
-    pub request_counter: u64,
+    pub request_counter: AtomicU64,
 
     capabilities: Option<lsp::ServerCapabilities>,
     // TODO: handle PublishDiagnostics Version
@@ -61,17 +62,16 @@ impl Client {
             outgoing,
             incoming,
 
-            request_counter: 0,
+            request_counter: AtomicU64::new(0),
 
             capabilities: None,
             // diagnostics: HashMap::new(),
         }
     }
 
-    fn next_request_id(&mut self) -> jsonrpc::Id {
-        let id = jsonrpc::Id::Num(self.request_counter);
-        self.request_counter += 1;
-        id
+    fn next_request_id(&self) -> jsonrpc::Id {
+        let id = self.request_counter.fetch_add(1, Ordering::Relaxed);
+        jsonrpc::Id::Num(id)
     }
 
     fn to_params(value: Value) -> Result<jsonrpc::Params> {
@@ -88,10 +88,7 @@ impl Client {
     }
 
     /// Execute a RPC request on the language server.
-    pub async fn request<R: lsp::request::Request>(
-        &mut self,
-        params: R::Params,
-    ) -> Result<R::Result>
+    pub async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
     where
         R::Params: serde::Serialize,
         R::Result: core::fmt::Debug, // TODO: temporary
@@ -128,10 +125,7 @@ impl Client {
     }
 
     /// Send a RPC notification to the language server.
-    pub async fn notify<R: lsp::notification::Notification>(
-        &mut self,
-        params: R::Params,
-    ) -> Result<()>
+    pub async fn notify<R: lsp::notification::Notification>(&self, params: R::Params) -> Result<()>
     where
         R::Params: serde::Serialize,
     {
@@ -153,7 +147,7 @@ impl Client {
 
     /// Reply to a language server RPC call.
     pub async fn reply(
-        &mut self,
+        &self,
         id: jsonrpc::Id,
         result: core::result::Result<Value, jsonrpc::Error>,
     ) -> Result<()> {
@@ -212,11 +206,11 @@ impl Client {
         Ok(())
     }
 
-    pub async fn shutdown(&mut self) -> Result<()> {
+    pub async fn shutdown(&self) -> Result<()> {
         self.request::<lsp::request::Shutdown>(()).await
     }
 
-    pub async fn exit(&mut self) -> Result<()> {
+    pub async fn exit(&self) -> Result<()> {
         self.notify::<lsp::notification::Exit>(()).await
     }
 

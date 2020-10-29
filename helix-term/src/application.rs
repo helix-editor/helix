@@ -8,6 +8,8 @@ use helix_view::{
     Document, Editor, Theme, View,
 };
 
+use log::{debug, info};
+
 use std::{
     borrow::Cow,
     io::{self, stdout, Stdout, Write},
@@ -46,7 +48,7 @@ pub struct Application<'a> {
 
     keymap: Keymaps,
     executor: &'a smol::Executor<'a>,
-    lsp: helix_lsp::Client,
+    language_server: helix_lsp::Client,
 }
 
 struct Renderer {
@@ -370,7 +372,7 @@ impl<'a> Application<'a> {
             editor.open(file, terminal.size)?;
         }
 
-        let lsp = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
+        let language_server = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
 
         let mut app = Self {
             editor,
@@ -381,7 +383,7 @@ impl<'a> Application<'a> {
             //
             keymap: keymap::default(),
             executor,
-            lsp,
+            language_server,
         };
 
         Ok(app)
@@ -415,11 +417,11 @@ impl<'a> Application<'a> {
         let mut reader = EventStream::new();
 
         // initialize lsp
-        let res = self.lsp.initialize().await;
-        let res = self
-            .lsp
+        self.language_server.initialize().await.unwrap();
+        self.language_server
             .text_document_did_open(&self.editor.view().unwrap().doc)
-            .await;
+            .await
+            .unwrap();
 
         self.render();
 
@@ -433,8 +435,8 @@ impl<'a> Application<'a> {
                 event = reader.next().fuse() => {
                     self.handle_terminal_events(event).await
                 }
-                call = self.lsp.incoming.next().fuse() => {
-                    self.handle_lsp_message(call).await
+                call = self.language_server.incoming.next().fuse() => {
+                    self.handle_language_server_message(call).await
                 }
             }
         }
@@ -566,7 +568,7 @@ impl<'a> Application<'a> {
         };
     }
 
-    pub async fn handle_lsp_message(&mut self, call: Option<helix_lsp::Call>) {
+    pub async fn handle_language_server_message(&mut self, call: Option<helix_lsp::Call>) {
         use helix_lsp::{Call, Notification};
         match call {
             Some(Call::Notification(helix_lsp::jsonrpc::Notification {
@@ -605,6 +607,7 @@ impl<'a> Application<'a> {
 
                             view.doc.diagnostics = diagnostics;
 
+                            // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                             self.render();
                         }
                     }
