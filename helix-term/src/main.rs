@@ -70,16 +70,10 @@ fn main() -> Result<(), Error> {
         std::thread::spawn(move || smol::block_on(EX.run(smol::future::pending::<()>())));
     }
 
-    // let mut lsp = helix_lsp::Client::start(&EX, "rust-analyzer", &[]);
+    let mut app = Application::new(args, &EX).unwrap();
 
-    smol::block_on(async {
-        // let res = lsp.initialize().await;
-        // let state = helix_core::State::load("test.rs".into(), &[]).unwrap();
-        // let res = lsp.text_document_did_open(&state).await;
-        // loop {}
-
-        Application::new(args, &EX).unwrap().run().await;
-    });
+    // we use the thread local executor to spawn the application task separately from the work pool
+    smol::block_on(app.run());
 
     Ok(())
 }

@@ -331,8 +331,7 @@ pub fn append_mode(cx: &mut Context) {
 }
 
 // TODO: I, A, o and O can share a lot of the primitives.
-
-pub fn command_mode(_view: &mut View, _count: usize) {
+pub fn command_mode(_cx: &mut Context) {
     unimplemented!()
 }
 
@@ -669,4 +668,13 @@ pub fn unindent(cx: &mut Context) {
 pub fn indent_selection(_cx: &mut Context) {
     // loop over each line and recompute proper indentation
     unimplemented!()
+}
+
+//
+
+pub fn save(cx: &mut Context) {
+    // Spawns an async task to actually do the saving. This way we prevent blocking.
+
+    // TODO: handle save errors somehow?
+    cx.executor.spawn(cx.view.doc.save()).detach();
 }

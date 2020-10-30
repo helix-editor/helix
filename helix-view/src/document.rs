@@ -1,4 +1,5 @@
 use anyhow::Error;
+use std::future::Future;
 use std::path::PathBuf;
 
 use helix_core::{
@@ -95,6 +96,30 @@ impl Document {
         doc.path = Some(std::fs::canonicalize(path)?);
 
         Ok(doc)
+    }
+
+    pub fn save(&self) -> impl Future<Output = Result<(), anyhow::Error>> {
+        // we clone and move text + path into the future so that we asynchronously save the current
+        // state without blocking any further edits.
+
+        let text = self.text().clone();
+        let path = self.path.clone().expect("Can't save with no path set!"); // TODO: handle no path
+
+        // TODO: mark changes up to now as saved
+        // TODO: mark dirty false
+
+        async move {
+            use smol::{fs::File, prelude::*};
+            let mut file = File::create(path).await?;
+
+            // write all the rope chunks to file
+            for chunk in text.chunks() {
+                file.write_all(chunk.as_bytes()).await?;
+            }
+            // TODO: flush?
+
+            Ok(())
+        } // and_then(// lsp.send_text_saved_notification())
     }
 
     pub fn set_language(&mut self, scope: &str, scopes: &[String]) {

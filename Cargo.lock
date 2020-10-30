@@ -523,6 +523,7 @@ dependencies = [
  "crossterm",
  "helix-core",
  "once_cell",
+ "smol",
  "tui",
  "url",
 ]
