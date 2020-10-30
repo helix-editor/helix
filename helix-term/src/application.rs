@@ -251,17 +251,29 @@ impl Renderer {
                 Rect::new(0, self.size.1 - 6, self.size.0, 4),
                 view.theme.get("ui.statusline"),
             );
+            let mut row = 0;
+            let mut col = 0;
+            // TODO: this will crash if there are too many cols added
+            // TODO: set char limit
             for i in (0..completion.len()) {
-                let color;
-                if prompt.completion_selection_index.is_some()
+                let color = if prompt.completion_selection_index.is_some()
                     && i == prompt.completion_selection_index.unwrap()
                 {
-                    color = Style::default().bg(Color::Rgb(104, 060, 232));
+                    Style::default().bg(Color::Rgb(104, 060, 232))
                 } else {
-                    color = self.text_color;
+                    self.text_color
+                };
+                self.surface.set_string(
+                    1 + col * 10,
+                    self.size.1 - 6 + row as u16,
+                    &completion[i],
+                    color,
+                );
+                row += 1;
+                if row > 3 {
+                    row = 0;
+                    col += 1;
                 }
-                self.surface
-                    .set_string(1, self.size.1 - 6 + i as u16, &completion[i], color);
             }
         }
         // render buffer text
@@ -422,6 +434,8 @@ impl Application {
                                                 String::from("aaa"),
                                                 String::from("bbb"),
                                                 String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
                                             ];
                                             for command in command_list {
                                                 if command.contains(_input) {
