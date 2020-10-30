@@ -476,13 +476,24 @@ impl<'a> Application<'a> {
                     match view.doc.mode() {
                         Mode::Insert => {
                             if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
-                                command(view, 1);
+                                let mut cx = helix_view::commands::Context {
+                                    view,
+                                    executor: self.executor,
+                                    count: 1,
+                                };
+
+                                command(&mut cx);
                             } else if let KeyEvent {
                                 code: KeyCode::Char(c),
                                 ..
                             } = event
                             {
-                                commands::insert::insert_char(view, c);
+                                let mut cx = helix_view::commands::Context {
+                                    view,
+                                    executor: self.executor,
+                                    count: 1,
+                                };
+                                commands::insert::insert_char(&mut cx, c);
                             }
                             view.ensure_cursor_in_view();
                         }
@@ -544,7 +555,12 @@ impl<'a> Application<'a> {
 
                             // HAXX: special casing for command mode
                             } else if let Some(command) = self.keymap[&Mode::Normal].get(&keys) {
-                                command(view, 1);
+                                let mut cx = helix_view::commands::Context {
+                                    view,
+                                    executor: self.executor,
+                                    count: 1,
+                                };
+                                command(&mut cx);
 
                                 // TODO: simplistic ensure cursor in view for now
                                 view.ensure_cursor_in_view();
@@ -552,7 +568,12 @@ impl<'a> Application<'a> {
                         }
                         mode => {
                             if let Some(command) = self.keymap[&mode].get(&keys) {
-                                command(view, 1);
+                                let mut cx = helix_view::commands::Context {
+                                    view,
+                                    executor: self.executor,
+                                    count: 1,
+                                };
+                                command(&mut cx);
 
                                 // TODO: simplistic ensure cursor in view for now
                                 view.ensure_cursor_in_view();
