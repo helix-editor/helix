@@ -34,6 +34,8 @@ type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 static EX: smol::Executor = smol::Executor::new();
 
+const BASE_WIDTH: u16 = 30;
+
 pub struct Application {
     editor: Editor,
     prompt: Option<Prompt>,
@@ -253,9 +255,10 @@ impl Renderer {
             );
             let mut row = 0;
             let mut col = 0;
+            let max_row: u16 = self.size.0 / BASE_WIDTH;
             // TODO: this will crash if there are too many cols added
             // TODO: set char limit
-            for i in (0..completion.len()) {
+            for (i, command) in completion.iter().enumerate() {
                 let color = if prompt.completion_selection_index.is_some()
                     && i == prompt.completion_selection_index.unwrap()
                 {
@@ -263,16 +266,20 @@ impl Renderer {
                 } else {
                     self.text_color
                 };
-                self.surface.set_string(
-                    1 + col * 10,
-                    self.size.1 - 6 + row as u16,
-                    &completion[i],
+                self.surface.set_stringn(
+                    1 + row * BASE_WIDTH,
+                    self.size.1 - 6 + col as u16,
+                    &command,
+                    BASE_WIDTH as usize - 1,
                     color,
                 );
-                row += 1;
-                if row > 3 {
-                    row = 0;
-                    col += 1;
+                col += 1;
+                if col > 3 {
+                    col = 0;
+                    row += 1;
+                }
+                if row > max_row {
+                    break;
                 }
             }
         }
@@ -430,6 +437,31 @@ impl Application {
                                             let mut matches = vec![];
                                             // TODO: i need this duplicate list right now to avoid borrow checker issues
                                             let command_list = vec![
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                                String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
                                                 String::from("q"),
                                                 String::from("aaa"),
                                                 String::from("bbb"),

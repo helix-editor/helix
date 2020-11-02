@@ -39,7 +39,7 @@ impl Prompt {
     }
 
     pub fn move_char_left(&mut self) {
-        if self.cursor > 1 {
+        if self.cursor > 0 {
             self.cursor -= 1;
         }
     }
@@ -68,23 +68,25 @@ impl Prompt {
     }
 
     pub fn change_completion_selection(&mut self) {
-        self.completion_selection_index = self
-            .completion_selection_index
-            .map(|i| {
-                if i == self.completion.as_ref().unwrap().len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            })
-            .or(Some(0));
-        self.line = String::from(
-            self.completion
-                .as_ref()
-                .unwrap()
-                .get(self.completion_selection_index.unwrap())
-                .unwrap(),
-        );
+        if self.completion.is_some() {
+            self.completion_selection_index = self
+                .completion_selection_index
+                .map(|i| {
+                    if i == self.completion.as_ref().unwrap().len() - 1 {
+                        0
+                    } else {
+                        i + 1
+                    }
+                })
+                .or(Some(0));
+            self.line = String::from(
+                self.completion
+                    .as_ref()
+                    .unwrap()
+                    .get(self.completion_selection_index.unwrap())
+                    .unwrap(),
+            );
+        }
     }
 
     pub fn exit_selection(&mut self) {
