@@ -6,17 +6,17 @@ pub struct Prompt {
     pub prompt: String,
     pub line: String,
     pub cursor: usize,
-    pub completion: Option<Vec<String>>,
+    pub completion: Vec<String>,
     pub should_close: bool,
     pub completion_selection_index: Option<usize>,
-    completion_fn: Box<dyn FnMut(&str) -> Option<Vec<String>>>,
+    completion_fn: Box<dyn FnMut(&str) -> Vec<String>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
 }
 
 impl Prompt {
     pub fn new(
         prompt: String,
-        mut completion_fn: impl FnMut(&str) -> Option<Vec<String>> + 'static,
+        mut completion_fn: impl FnMut(&str) -> Vec<String> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str) + 'static,
     ) -> Prompt {
         Prompt {
@@ -68,11 +68,11 @@ impl Prompt {
     }
 
     pub fn change_completion_selection(&mut self) {
-        if self.completion.is_some() {
+        if !self.completion.is_empty() {
             self.completion_selection_index = self
                 .completion_selection_index
                 .map(|i| {
-                    if i == self.completion.as_ref().unwrap().len() - 1 {
+                    if i == self.completion.len() - 1 {
                         0
                     } else {
                         i + 1
@@ -81,8 +81,6 @@ impl Prompt {
                 .or(Some(0));
             self.line = String::from(
                 self.completion
-                    .as_ref()
-                    .unwrap()
                     .get(self.completion_selection_index.unwrap())
                     .unwrap(),
             );

@@ -239,7 +239,7 @@ impl Renderer {
 
     pub fn render_prompt(&mut self, view: &View, prompt: &Prompt) {
         // completion
-        if let Some(completion) = &prompt.completion {
+        if !prompt.completion.is_empty() {
             // TODO: find out better way of clearing individual lines of the screen
             for i in (3..7) {
                 self.surface.set_string(
@@ -255,10 +255,10 @@ impl Renderer {
             );
             let mut row = 0;
             let mut col = 0;
-            let max_row: u16 = self.size.0 / BASE_WIDTH;
+            let max_col: u16 = self.size.0 / BASE_WIDTH;
             // TODO: this will crash if there are too many cols added
             // TODO: set char limit
-            for (i, command) in completion.iter().enumerate() {
+            for (i, command) in prompt.completion.iter().enumerate() {
                 let color = if prompt.completion_selection_index.is_some()
                     && i == prompt.completion_selection_index.unwrap()
                 {
@@ -267,18 +267,18 @@ impl Renderer {
                     self.text_color
                 };
                 self.surface.set_stringn(
-                    1 + row * BASE_WIDTH,
-                    self.size.1 - 6 + col as u16,
+                    1 + col * BASE_WIDTH,
+                    self.size.1 - 6 + row as u16,
                     &command,
                     BASE_WIDTH as usize - 1,
                     color,
                 );
-                col += 1;
-                if col > 3 {
-                    col = 0;
-                    row += 1;
+                row += 1;
+                if row > 3 {
+                    row = 0;
+                    col += 1;
                 }
-                if row > max_row {
+                if col > max_col {
                     break;
                 }
             }
@@ -434,7 +434,6 @@ impl Application {
                                     let prompt = Prompt::new(
                                         ":".to_owned(),
                                         |_input: &str| {
-                                            let mut matches = vec![];
                                             // TODO: i need this duplicate list right now to avoid borrow checker issues
                                             let command_list = vec![
                                                 String::from("q"),
@@ -469,15 +468,10 @@ impl Application {
                                                 String::from("ddd"),
                                                 String::from("eee"),
                                             ];
-                                            for command in command_list {
-                                                if command.contains(_input) {
-                                                    matches.push(command);
-                                                }
-                                            }
-                                            if matches.len() != 0 {
-                                                return Some(matches);
-                                            }
-                                            None
+                                            command_list
+                                                .into_iter()
+                                                .filter(|command| command.contains(_input))
+                                                .collect()
                                         }, // completion
                                         |editor: &mut Editor, input: &str| match input {
                                             "q" => editor.should_close = true,

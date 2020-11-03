@@ -309,6 +309,10 @@ pub fn append_mode(view: &mut View, _count: usize) {
 
 // TODO: I, A, o and O can share a lot of the primitives.
 
+pub fn command_mode(_view: &mut View, _count: usize) {
+    unimplemented!()
+}
+
 // calculate line numbers for each selection range
 fn selection_lines(state: &State) -> Vec<usize> {
     let mut lines = state
