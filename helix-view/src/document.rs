@@ -25,6 +25,8 @@ pub struct Document {
 
     /// Tree-sitter AST tree
     pub syntax: Option<Syntax>,
+    /// Corresponding language scope name. Usually `source.<lang>`.
+    pub language: Option<String>,
 
     /// Pending changes since last history commit.
     pub changes: ChangeSet,
@@ -64,6 +66,7 @@ impl Document {
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
+            language: None,
             changes,
             old_state,
             diagnostics: Vec::new(),
@@ -73,6 +76,7 @@ impl Document {
     }
 
     // TODO: passing scopes here is awkward
+    // TODO: async fn?
     pub fn load(path: PathBuf, scopes: &[String]) -> Result<Self, Error> {
         use std::{env, fs::File, io::BufReader};
         let _current_dir = env::current_dir()?;
@@ -90,6 +94,15 @@ impl Document {
             let syntax = Syntax::new(&doc.state.doc, highlight_config.clone());
 
             doc.syntax = Some(syntax);
+            // TODO: maybe just keep an Arc<> pointer to the language_config?
+            doc.language = Some(language_config.scope().to_string());
+
+            // TODO: this ties lsp support to tree-sitter enabled languages for now. Language
+            // config should use Option<HighlightConfig> to let us have non-tree-sitter configs.
+
+            // TODO: circular dep: view <-> lsp
+            // helix_lsp::REGISTRY;
+            // view should probably depend on lsp
         };
 
         // canonicalize path to absolute value
@@ -98,6 +111,8 @@ impl Document {
         Ok(doc)
     }
 
+    // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
+    // or is that handled by the OS/async layer
     pub fn save(&self) -> impl Future<Output = Result<(), anyhow::Error>> {
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.

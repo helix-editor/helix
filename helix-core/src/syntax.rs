@@ -62,6 +62,10 @@ impl LanguageConfiguration {
             })
             .map(Option::as_ref)
     }
+
+    pub fn scope(&self) -> &str {
+        &self.scope
+    }
 }
 
 use once_cell::sync::Lazy;

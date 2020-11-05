@@ -636,9 +636,17 @@ impl<'a> Application<'a> {
                 }
             }
             Some(Call::MethodCall(call)) => {
-                // TODO: need to make Result<Value, Error>
+                debug!("Method not found {}", call.method);
 
-                unimplemented!("{:?}", call)
+                self.language_server.reply(
+                    call.id,
+                    // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
+                    Err(helix_lsp::jsonrpc::Error {
+                        code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
+                        message: "Method not found".to_string(),
+                        data: None,
+                    }),
+                );
             }
             _ => unreachable!(),
         }
