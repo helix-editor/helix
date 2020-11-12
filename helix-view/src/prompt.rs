@@ -68,25 +68,14 @@ impl Prompt {
     }
 
     pub fn change_completion_selection(&mut self) {
-        if !self.completion.is_empty() {
-            self.completion_selection_index = self
-                .completion_selection_index
-                .map(|i| {
-                    if i == self.completion.len() - 1 {
-                        0
-                    } else {
-                        i + 1
-                    }
-                })
-                .or(Some(0));
-            self.line = String::from(
-                self.completion
-                    .get(self.completion_selection_index.unwrap())
-                    .unwrap(),
-            );
+        if self.completion.is_empty() {
+            return;
         }
+        let index =
+            self.completion_selection_index.map(|i| i + 1).unwrap_or(0) % self.completion.len();
+        self.completion_selection_index = Some(index);
+        self.line = self.completion[index].clone();
     }
-
     pub fn exit_selection(&mut self) {
         self.completion_selection_index = None;
     }

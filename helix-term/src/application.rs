@@ -241,7 +241,12 @@ impl Renderer {
         // completion
         if !prompt.completion.is_empty() {
             // TODO: find out better way of clearing individual lines of the screen
-            for i in (3..7) {
+            let mut row = 0;
+            let mut col = 0;
+            let max_col = self.size.0 / BASE_WIDTH;
+            let col_height = ((prompt.completion.len() as u16 + max_col - 1) / max_col);
+
+            for i in (3..col_height + 3) {
                 self.surface.set_string(
                     0,
                     self.size.1 - i as u16,
@@ -250,14 +255,9 @@ impl Renderer {
                 );
             }
             self.surface.set_style(
-                Rect::new(0, self.size.1 - 6, self.size.0, 4),
+                Rect::new(0, self.size.1 - col_height - 2, self.size.0, col_height),
                 view.theme.get("ui.statusline"),
             );
-            let mut row = 0;
-            let mut col = 0;
-            let max_col: u16 = self.size.0 / BASE_WIDTH;
-            // TODO: this will crash if there are too many cols added
-            // TODO: set char limit
             for (i, command) in prompt.completion.iter().enumerate() {
                 let color = if prompt.completion_selection_index.is_some()
                     && i == prompt.completion_selection_index.unwrap()
@@ -268,13 +268,13 @@ impl Renderer {
                 };
                 self.surface.set_stringn(
                     1 + col * BASE_WIDTH,
-                    self.size.1 - 6 + row as u16,
+                    self.size.1 - col_height - 2 + row,
                     &command,
                     BASE_WIDTH as usize - 1,
                     color,
                 );
                 row += 1;
-                if row > 3 {
+                if row > col_height - 1 {
                     row = 0;
                     col += 1;
                 }
