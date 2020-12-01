@@ -32,7 +32,7 @@ pub struct Document {
     pub changes: ChangeSet,
     pub old_state: State,
     pub history: History,
-    pub version: i64, // should be usize?
+    pub version: i32, // should be usize?
 
     pub diagnostics: Vec<Diagnostic>,
 }

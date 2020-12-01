@@ -38,7 +38,7 @@ pub mod util {
         let line_start = doc.char_to_utf16_cu(line);
         let col = doc.char_to_utf16_cu(pos) - line_start;
 
-        lsp::Position::new(line as u64, col as u64)
+        lsp::Position::new(line as u32, col as u32)
     }
 }
 

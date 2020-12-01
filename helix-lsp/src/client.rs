@@ -183,7 +183,7 @@ impl Client {
 
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
-            process_id: Some(u64::from(std::process::id())),
+            process_id: Some(std::process::id()),
             root_path: None,
             // root_uri: Some(lsp_types::Url::parse("file://localhost/")?),
             root_uri: None, // set to project root in the future
@@ -194,6 +194,7 @@ impl Client {
             trace: None,
             workspace_folders: None,
             client_info: None,
+            locale: None, // TODO
         };
 
         let response = self.request::<lsp::request::Initialize>(params).await?;
