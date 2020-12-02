@@ -1,5 +1,4 @@
-use crate::commands;
-use crate::{Editor, View};
+use crate::Editor;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::string::String;
 
@@ -7,20 +6,26 @@ pub struct Prompt {
     pub prompt: String,
     pub line: String,
     pub cursor: usize,
-    completion_fn: Box<dyn FnMut(&str) -> Option<Vec<&str>>>,
+    pub completion: Vec<String>,
+    pub should_close: bool,
+    pub completion_selection_index: Option<usize>,
+    completion_fn: Box<dyn FnMut(&str) -> Vec<String>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
 }
 
 impl Prompt {
     pub fn new(
         prompt: String,
-        completion_fn: impl FnMut(&str) -> Option<Vec<&str>> + 'static,
+        mut completion_fn: impl FnMut(&str) -> Vec<String> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str) + 'static,
     ) -> Prompt {
         Prompt {
             prompt,
             line: String::new(),
             cursor: 0,
+            completion: completion_fn(""),
+            should_close: false,
+            completion_selection_index: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
         }
@@ -29,10 +34,12 @@ impl Prompt {
     pub fn insert_char(&mut self, c: char) {
         self.line.insert(self.cursor, c);
         self.cursor += 1;
+        self.completion = (self.completion_fn)(&self.line);
+        self.exit_selection();
     }
 
     pub fn move_char_left(&mut self) {
-        if self.cursor > 1 {
+        if self.cursor > 0 {
             self.cursor -= 1;
         }
     }
@@ -55,7 +62,22 @@ impl Prompt {
         if self.cursor > 0 {
             self.line.remove(self.cursor - 1);
             self.cursor -= 1;
+            self.completion = (self.completion_fn)(&self.line);
         }
+        self.exit_selection();
+    }
+
+    pub fn change_completion_selection(&mut self) {
+        if self.completion.is_empty() {
+            return;
+        }
+        let index =
+            self.completion_selection_index.map(|i| i + 1).unwrap_or(0) % self.completion.len();
+        self.completion_selection_index = Some(index);
+        self.line = self.completion[index].clone();
+    }
+    pub fn exit_selection(&mut self) {
+        self.completion_selection_index = None;
     }
 
     pub fn handle_input(&mut self, key_event: KeyEvent, editor: &mut Editor) {
@@ -66,7 +88,7 @@ impl Prompt {
             } => self.insert_char(c),
             KeyEvent {
                 code: KeyCode::Esc, ..
-            } => unimplemented!("Exit prompt!"),
+            } => self.should_close = true,
             KeyEvent {
                 code: KeyCode::Right,
                 ..
@@ -85,12 +107,19 @@ impl Prompt {
             } => self.move_start(),
             KeyEvent {
                 code: KeyCode::Backspace,
-                ..
+                modifiers: KeyModifiers::NONE,
             } => self.delete_char_backwards(),
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
             } => (self.callback_fn)(editor, &self.line),
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => self.change_completion_selection(),
+            KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.exit_selection(),
             _ => (),
         }
     }

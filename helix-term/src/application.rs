@@ -34,6 +34,8 @@ type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 static EX: smol::Executor = smol::Executor::new();
 
+const BASE_WIDTH: u16 = 30;
+
 pub struct Application {
     editor: Editor,
     prompt: Option<Prompt>,
@@ -235,7 +237,52 @@ impl Renderer {
             .set_string(1, self.size.1 - 2, mode, self.text_color);
     }
 
-    pub fn render_prompt(&mut self, prompt: &Prompt) {
+    pub fn render_prompt(&mut self, view: &View, prompt: &Prompt) {
+        // completion
+        if !prompt.completion.is_empty() {
+            // TODO: find out better way of clearing individual lines of the screen
+            let mut row = 0;
+            let mut col = 0;
+            let max_col = self.size.0 / BASE_WIDTH;
+            let col_height = ((prompt.completion.len() as u16 + max_col - 1) / max_col);
+
+            for i in (3..col_height + 3) {
+                self.surface.set_string(
+                    0,
+                    self.size.1 - i as u16,
+                    " ".repeat(self.size.0 as usize),
+                    self.text_color,
+                );
+            }
+            self.surface.set_style(
+                Rect::new(0, self.size.1 - col_height - 2, self.size.0, col_height),
+                view.theme.get("ui.statusline"),
+            );
+            for (i, command) in prompt.completion.iter().enumerate() {
+                let color = if prompt.completion_selection_index.is_some()
+                    && i == prompt.completion_selection_index.unwrap()
+                {
+                    Style::default().bg(Color::Rgb(104, 060, 232))
+                } else {
+                    self.text_color
+                };
+                self.surface.set_stringn(
+                    1 + col * BASE_WIDTH,
+                    self.size.1 - col_height - 2 + row,
+                    &command,
+                    BASE_WIDTH as usize - 1,
+                    color,
+                );
+                row += 1;
+                if row > col_height - 1 {
+                    row = 0;
+                    col += 1;
+                }
+                if col > max_col {
+                    break;
+                }
+            }
+        }
         // render buffer text
         self.surface
             .set_string(1, self.size.1 - 1, &prompt.prompt, self.text_color);
@@ -309,10 +356,13 @@ impl Application {
 
         if let Some(view) = &mut self.editor.view {
             self.terminal.render_view(view, viewport);
-        }
-
-        if let Some(prompt) = &self.prompt {
-            self.terminal.render_prompt(prompt);
+            if let Some(prompt) = &self.prompt {
+                if prompt.should_close {
+                    self.prompt = None;
+                } else {
+                    self.terminal.render_prompt(view, prompt);
+                }
+            }
         }
 
         self.terminal.draw();
@@ -383,7 +433,46 @@ impl Application {
                                 {
                                     let prompt = Prompt::new(
                                         ":".to_owned(),
-                                        |_input: &str| None, // completion
+                                        |_input: &str| {
+                                            // TODO: i need this duplicate list right now to avoid borrow checker issues
+                                            let command_list = vec![
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                                String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                                String::from("q"),
+                                                String::from("aaa"),
+                                                String::from("bbb"),
+                                                String::from("ccc"),
+                                                String::from("ddd"),
+                                                String::from("eee"),
+                                            ];
+                                            command_list
+                                                .into_iter()
+                                                .filter(|command| command.contains(_input))
+                                                .collect()
+                                        }, // completion
                                         |editor: &mut Editor, input: &str| match input {
                                             "q" => editor.should_close = true,
                                             _ => (),
