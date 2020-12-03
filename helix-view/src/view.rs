@@ -1,44 +1,39 @@
 use anyhow::Error;
 
-use std::{borrow::Cow, path::PathBuf};
+use std::borrow::Cow;
 
-use crate::theme::Theme;
+use crate::Document;
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
     indent::TAB_WIDTH,
-    History, Position, RopeSlice, State,
+    Position, RopeSlice,
 };
 use tui::layout::Rect;
 
 pub const PADDING: usize = 5;
 
+// TODO: view should be View { doc: Document(state, history,..) }
+// since we can have multiple views into the same file
 pub struct View {
-    pub state: State,
-    pub history: History,
+    pub doc: Document,
     pub first_line: usize,
     pub size: (u16, u16),
-    pub theme: Theme, // TODO: share one instance
 }
 
 impl View {
-    pub fn open(path: PathBuf, size: (u16, u16)) -> Result<Self, Error> {
-        let theme = Theme::default();
-        let state = State::load(path, theme.scopes())?;
-
+    pub fn new(doc: Document, size: (u16, u16)) -> Result<Self, Error> {
         let view = Self {
-            state,
+            doc,
             first_line: 0,
             size,
-            theme,
-            history: History::default(),
         };
 
         Ok(view)
     }
 
     pub fn ensure_cursor_in_view(&mut self) {
-        let cursor = self.state.selection().cursor();
-        let line = self.state.doc().char_to_line(cursor);
+        let cursor = self.doc.state.selection().cursor();
+        let line = self.doc.text().char_to_line(cursor);
         let document_end = self.first_line + (self.size.1 as usize).saturating_sub(2);
 
         // TODO: side scroll
@@ -58,7 +53,7 @@ impl View {
         let viewport = Rect::new(6, 0, self.size.0, self.size.1 - 2); // - 2 for statusline and prompt
         std::cmp::min(
             self.first_line + (viewport.height as usize),
-            self.state.doc().len_lines() - 1,
+            self.doc.text().len_lines() - 1,
         )
     }
 
@@ -90,4 +85,25 @@ impl View {
 
         Some(Position::new(row, col))
     }
+
+    // pub fn traverse<F>(&self, text: &RopeSlice, start: usize, end: usize, fun: F)
+    // where
+    //     F: Fn(usize, usize),
+    // {
+    //     let start = self.screen_coords_at_pos(text, start);
+    //     let end = self.screen_coords_at_pos(text, end);
+
+    //     match (start, end) {
+    //         // fully on screen
+    //         (Some(start), Some(end)) => {
+    //             // we want to calculate ends of lines for each char..
+    //         }
+    //         // from start to end of screen
+    //         (Some(start), None) => {}
+    //         // from start of screen to end
+    //         (None, Some(end)) => {}
+    //         // not on screen
+    //         (None, None) => return,
+    //     }
+    // }
 }

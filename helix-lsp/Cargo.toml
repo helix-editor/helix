@@ -1,0 +1,26 @@
+[package]
+name = "helix-lsp"
+version = "0.1.0"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+helix-core = { path = "../helix-core" }
+helix-view = { path = "../helix-view" }
+once_cell = "1.4"
+
+lsp-types = { version = "0.84", features = ["proposed"] }
+smol = "1.2"
+url = "2"
+pathdiff = "0.2"
+shellexpand = "2.0"
+glob = "0.3"
+anyhow = "1"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+jsonrpc-core = "15.1"
+futures-util = "0.3"
+thiserror = "1"
+log = "0.4"

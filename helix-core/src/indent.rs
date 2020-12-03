@@ -111,17 +111,17 @@ fn find_first_non_whitespace_char(state: &State, line_num: usize) -> usize {
     start
 }
 
-fn suggested_indent_for_line(state: &State, line_num: usize) -> usize {
+fn suggested_indent_for_line(syntax: Option<&Syntax>, state: &State, line_num: usize) -> usize {
     let line = state.doc.line(line_num);
     let current = indent_level_for_line(line);
 
     let start = find_first_non_whitespace_char(state, line_num);
 
-    suggested_indent_for_pos(state, start)
+    suggested_indent_for_pos(syntax, state, start)
 }
 
-pub fn suggested_indent_for_pos(state: &State, pos: usize) -> usize {
-    if let Some(syntax) = &state.syntax {
+pub fn suggested_indent_for_pos(syntax: Option<&Syntax>, state: &State, pos: usize) -> usize {
+    if let Some(syntax) = syntax {
         let byte_start = state.doc.char_to_byte(pos);
         let node = get_highest_syntax_node_at_bytepos(syntax, byte_start);
 
@@ -163,13 +163,18 @@ mod test {
 ",
         );
 
-        let mut state = State::new(doc);
-        state.set_language("source.rust", &[]);
+        let state = State::new(doc);
+        // TODO: set_language
+        let language_config = crate::syntax::LOADER
+            .language_config_for_scope("source.rust")
+            .unwrap();
+        let highlight_config = language_config.highlight_config(&[]).unwrap().unwrap();
+        let syntax = Syntax::new(&state.doc, highlight_config.clone());
 
-        assert_eq!(suggested_indent_for_line(&state, 0), 0); // mod
-        assert_eq!(suggested_indent_for_line(&state, 1), 1); // fn
-        assert_eq!(suggested_indent_for_line(&state, 2), 2); // 1 + 1
-        assert_eq!(suggested_indent_for_line(&state, 4), 1); // }
-        assert_eq!(suggested_indent_for_line(&state, 5), 0); // }
+        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 0), 0); // mod
+        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 1), 1); // fn
+        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 2), 2); // 1 + 1
+        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 4), 1); // }
+        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 5), 0); // }
     }
 }

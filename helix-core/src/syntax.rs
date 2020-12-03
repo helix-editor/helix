@@ -62,11 +62,15 @@ impl LanguageConfiguration {
             })
             .map(Option::as_ref)
     }
+
+    pub fn scope(&self) -> &str {
+        &self.scope
+    }
 }
 
 use once_cell::sync::Lazy;
 
-pub(crate) static LOADER: Lazy<Loader> = Lazy::new(Loader::init);
+pub static LOADER: Lazy<Loader> = Lazy::new(Loader::init);
 
 pub struct Loader {
     // highlight_names ?

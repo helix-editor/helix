@@ -3,52 +3,65 @@ use helix_core::{
     indent::TAB_WIDTH,
     regex::Regex,
     register, selection,
-    state::{Direction, Granularity, Mode, State},
+    state::{Direction, Granularity, State},
     ChangeSet, Range, Selection, Tendril, Transaction,
 };
 use once_cell::sync::Lazy;
 
 use crate::{
+    document::Mode,
     prompt::Prompt,
     view::{View, PADDING},
 };
 
+pub struct Context<'a, 'b> {
+    pub count: usize,
+    pub view: &'a mut View,
+    pub executor: &'a smol::Executor<'b>,
+}
+
 /// A command is a function that takes the current state and a count, and does a side-effect on the
 /// state (usually by creating and applying a transaction).
-pub type Command = fn(view: &mut View, count: usize);
+pub type Command = fn(cx: &mut Context);
 
-pub fn move_char_left(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    let selection = view
-        .state
-        .move_selection(Direction::Backward, Granularity::Character, count);
-    view.state.selection = selection;
+pub fn move_char_left(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .move_selection(Direction::Backward, Granularity::Character, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn move_char_right(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.state.selection =
-        view.state
-            .move_selection(Direction::Forward, Granularity::Character, count);
+pub fn move_char_right(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .move_selection(Direction::Forward, Granularity::Character, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn move_line_up(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.state.selection = view
-        .state
-        .move_selection(Direction::Backward, Granularity::Line, count);
+pub fn move_line_up(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .move_selection(Direction::Backward, Granularity::Line, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn move_line_down(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.state.selection = view
-        .state
-        .move_selection(Direction::Forward, Granularity::Line, count);
+pub fn move_line_down(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .move_selection(Direction::Forward, Granularity::Line, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn move_line_end(view: &mut View, _count: usize) {
-    // TODO: use a transaction
-    let lines = selection_lines(&view.state);
+pub fn move_line_end(cx: &mut Context) {
+    let lines = selection_lines(&cx.view.doc.state);
 
     let positions = lines
         .into_iter()
@@ -57,89 +70,80 @@ pub fn move_line_end(view: &mut View, _count: usize) {
 
             // Line end is pos at the start of next line - 1
             // subtract another 1 because the line ends with \n
-            view.state.doc.line_to_char(index + 1).saturating_sub(2)
+            cx.view.doc.text().line_to_char(index + 1).saturating_sub(2)
         })
         .map(|pos| Range::new(pos, pos));
 
     let selection = Selection::new(positions.collect(), 0);
 
-    let transaction = Transaction::new(&mut view.state).with_selection(selection);
-
-    transaction.apply(&mut view.state);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn move_line_start(view: &mut View, _count: usize) {
-    let lines = selection_lines(&view.state);
+pub fn move_line_start(cx: &mut Context) {
+    let lines = selection_lines(&cx.view.doc.state);
 
     let positions = lines
         .into_iter()
         .map(|index| {
             // adjust all positions to the start of the line.
-            view.state.doc.line_to_char(index)
+            cx.view.doc.text().line_to_char(index)
         })
         .map(|pos| Range::new(pos, pos));
 
     let selection = Selection::new(positions.collect(), 0);
 
-    let transaction = Transaction::new(&mut view.state).with_selection(selection);
-
-    transaction.apply(&mut view.state);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn move_next_word_start(view: &mut View, count: usize) {
-    let pos = view.state.move_pos(
-        view.state.selection.cursor(),
+pub fn move_next_word_start(cx: &mut Context) {
+    let pos = cx.view.doc.state.move_pos(
+        cx.view.doc.selection().cursor(),
         Direction::Forward,
         Granularity::Word,
-        count,
+        cx.count,
     );
 
-    // TODO: use a transaction
-    view.state.selection = Selection::single(pos, pos);
+    cx.view.doc.set_selection(Selection::point(pos));
 }
 
-pub fn move_prev_word_start(view: &mut View, count: usize) {
-    let pos = view.state.move_pos(
-        view.state.selection.cursor(),
+pub fn move_prev_word_start(cx: &mut Context) {
+    let pos = cx.view.doc.state.move_pos(
+        cx.view.doc.selection().cursor(),
         Direction::Backward,
         Granularity::Word,
-        count,
+        cx.count,
     );
 
-    // TODO: use a transaction
-    view.state.selection = Selection::single(pos, pos);
+    cx.view.doc.set_selection(Selection::point(pos));
 }
 
-pub fn move_next_word_end(view: &mut View, count: usize) {
+pub fn move_next_word_end(cx: &mut Context) {
     let pos = State::move_next_word_end(
-        &view.state.doc().slice(..),
-        view.state.selection.cursor(),
-        count,
+        &cx.view.doc.text().slice(..),
+        cx.view.doc.selection().cursor(),
+        cx.count,
     );
 
-    // TODO: use a transaction
-    view.state.selection = Selection::single(pos, pos);
+    cx.view.doc.set_selection(Selection::point(pos));
 }
 
-pub fn move_file_start(view: &mut View, _count: usize) {
-    // TODO: use a transaction
-    view.state.selection = Selection::single(0, 0);
+pub fn move_file_start(cx: &mut Context) {
+    cx.view.doc.set_selection(Selection::point(0));
 
-    view.state.mode = Mode::Normal;
+    cx.view.doc.mode = Mode::Normal;
 }
 
-pub fn move_file_end(view: &mut View, _count: usize) {
-    // TODO: use a transaction
-    let text = &view.state.doc;
+pub fn move_file_end(cx: &mut Context) {
+    let text = &cx.view.doc.text();
     let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
-    view.state.selection = Selection::single(last_line, last_line);
+    cx.view.doc.set_selection(Selection::point(last_line));
 
-    view.state.mode = Mode::Normal;
+    cx.view.doc.mode = Mode::Normal;
 }
 
-pub fn check_cursor_in_view(view: &mut View) -> bool {
-    let cursor = view.state.selection().cursor();
-    let line = view.state.doc().char_to_line(cursor);
+pub fn check_cursor_in_view(view: &View) -> bool {
+    let cursor = view.doc.selection().cursor();
+    let line = view.doc.text().char_to_line(cursor);
     let document_end = view.first_line + view.size.1.saturating_sub(1) as usize;
 
     if (line > document_end.saturating_sub(PADDING)) | (line < view.first_line + PADDING) {
@@ -148,168 +152,186 @@ pub fn check_cursor_in_view(view: &mut View) -> bool {
     true
 }
 
-pub fn page_up(view: &mut View, _count: usize) {
-    if view.first_line < PADDING {
+pub fn page_up(cx: &mut Context) {
+    if cx.view.first_line < PADDING {
         return;
     }
 
-    view.first_line = view.first_line.saturating_sub(view.size.1 as usize);
+    cx.view.first_line = cx.view.first_line.saturating_sub(cx.view.size.1 as usize);
 
-    if !check_cursor_in_view(view) {
-        let text = view.state.doc();
-        let pos = text.line_to_char(view.last_line().saturating_sub(PADDING));
-        view.state.selection = Selection::single(pos, pos);
+    if !check_cursor_in_view(cx.view) {
+        let text = cx.view.doc.text();
+        let pos = text.line_to_char(cx.view.last_line().saturating_sub(PADDING));
+        cx.view.doc.set_selection(Selection::point(pos));
     }
 }
 
-pub fn page_down(view: &mut View, _count: usize) {
-    view.first_line += view.size.1 as usize + PADDING;
+pub fn page_down(cx: &mut Context) {
+    cx.view.first_line += cx.view.size.1 as usize + PADDING;
 
-    if view.first_line < view.state.doc().len_lines() {
-        let text = view.state.doc();
-        let pos = text.line_to_char(view.first_line as usize);
-        view.state.selection = Selection::single(pos, pos);
+    if cx.view.first_line < cx.view.doc.text().len_lines() {
+        let text = cx.view.doc.text();
+        let pos = text.line_to_char(cx.view.first_line as usize);
+        cx.view.doc.set_selection(Selection::point(pos));
     }
 }
 
-pub fn half_page_up(view: &mut View, _count: usize) {
-    if view.first_line < PADDING {
+pub fn half_page_up(cx: &mut Context) {
+    if cx.view.first_line < PADDING {
         return;
     }
 
-    view.first_line = view.first_line.saturating_sub(view.size.1 as usize / 2);
+    cx.view.first_line = cx
+        .view
+        .first_line
+        .saturating_sub(cx.view.size.1 as usize / 2);
 
-    if !check_cursor_in_view(view) {
-        let text = &view.state.doc;
-        let pos = text.line_to_char(view.last_line() - PADDING);
-        view.state.selection = Selection::single(pos, pos);
+    if !check_cursor_in_view(cx.view) {
+        let text = &cx.view.doc.text();
+        let pos = text.line_to_char(cx.view.last_line() - PADDING);
+        cx.view.doc.set_selection(Selection::point(pos));
     }
 }
 
-pub fn half_page_down(view: &mut View, _count: usize) {
-    let lines = view.state.doc().len_lines();
-    if view.first_line < lines.saturating_sub(view.size.1 as usize) {
-        view.first_line += view.size.1 as usize / 2;
+pub fn half_page_down(cx: &mut Context) {
+    let lines = cx.view.doc.text().len_lines();
+    if cx.view.first_line < lines.saturating_sub(cx.view.size.1 as usize) {
+        cx.view.first_line += cx.view.size.1 as usize / 2;
     }
-    if !check_cursor_in_view(view) {
-        let text = view.state.doc();
-        let pos = text.line_to_char(view.first_line as usize);
-        view.state.selection = Selection::single(pos, pos);
+    if !check_cursor_in_view(cx.view) {
+        let text = cx.view.doc.text();
+        let pos = text.line_to_char(cx.view.first_line as usize);
+        cx.view.doc.set_selection(Selection::point(pos));
     }
 }
 // avoid select by default by having a visual mode switch that makes movements into selects
 
-pub fn extend_char_left(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    let selection = view
-        .state
-        .extend_selection(Direction::Backward, Granularity::Character, count);
-    view.state.selection = selection;
+pub fn extend_char_left(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .extend_selection(Direction::Backward, Granularity::Character, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn extend_char_right(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.state.selection =
-        view.state
-            .extend_selection(Direction::Forward, Granularity::Character, count);
+pub fn extend_char_right(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .extend_selection(Direction::Forward, Granularity::Character, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn extend_line_up(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.state.selection =
-        view.state
-            .extend_selection(Direction::Backward, Granularity::Line, count);
+pub fn extend_line_up(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .extend_selection(Direction::Backward, Granularity::Line, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn extend_line_down(view: &mut View, count: usize) {
-    // TODO: use a transaction
-    view.state.selection =
-        view.state
-            .extend_selection(Direction::Forward, Granularity::Line, count);
+pub fn extend_line_down(cx: &mut Context) {
+    let selection =
+        cx.view
+            .doc
+            .state
+            .extend_selection(Direction::Forward, Granularity::Line, cx.count);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn split_selection_on_newline(view: &mut View, _count: usize) {
-    let text = &view.state.doc.slice(..);
+pub fn split_selection_on_newline(cx: &mut Context) {
+    let text = &cx.view.doc.text().slice(..);
     // only compile the regex once
     #[allow(clippy::trivial_regex)]
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\n").unwrap());
-    // TODO: use a transaction
-    view.state.selection = selection::split_on_matches(text, view.state.selection(), &REGEX)
+    let selection = selection::split_on_matches(text, cx.view.doc.selection(), &REGEX);
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn select_line(view: &mut View, _count: usize) {
+pub fn select_line(cx: &mut Context) {
     // TODO: count
-    let pos = view.state.selection().primary();
-    let text = view.state.doc();
+    let pos = cx.view.doc.selection().primary();
+    let text = cx.view.doc.text();
     let line = text.char_to_line(pos.head);
     let start = text.line_to_char(line);
     let end = text.line_to_char(line + 1).saturating_sub(1);
 
-    // TODO: use a transaction
-    view.state.selection = Selection::single(start, end);
+    cx.view.doc.set_selection(Selection::single(start, end));
 }
 
-pub fn delete_selection(view: &mut View, _count: usize) {
-    let transaction =
-        Transaction::change_by_selection(&view.state, |range| (range.from(), range.to() + 1, None));
-    transaction.apply(&mut view.state);
+pub fn delete_selection(cx: &mut Context) {
+    let transaction = Transaction::change_by_selection(&cx.view.doc.state, |range| {
+        (range.from(), range.to() + 1, None)
+    });
+    cx.view.doc.apply(&transaction);
 
-    append_changes_to_history(view);
+    append_changes_to_history(cx);
 }
 
-pub fn change_selection(view: &mut View, count: usize) {
-    delete_selection(view, count);
-    insert_mode(view, count);
+pub fn change_selection(cx: &mut Context) {
+    delete_selection(cx);
+    insert_mode(cx);
 }
 
-pub fn collapse_selection(view: &mut View, _count: usize) {
-    view.state.selection = view
-        .state
-        .selection
-        .transform(|range| Range::new(range.head, range.head))
+pub fn collapse_selection(cx: &mut Context) {
+    let selection = cx
+        .view
+        .doc
+        .selection()
+        .transform(|range| Range::new(range.head, range.head));
+
+    cx.view.doc.set_selection(selection);
 }
 
-pub fn flip_selections(view: &mut View, _count: usize) {
-    view.state.selection = view
-        .state
-        .selection
-        .transform(|range| Range::new(range.head, range.anchor))
+pub fn flip_selections(cx: &mut Context) {
+    let selection = cx
+        .view
+        .doc
+        .selection()
+        .transform(|range| Range::new(range.head, range.anchor));
+
+    cx.view.doc.set_selection(selection);
 }
 
-fn enter_insert_mode(view: &mut View) {
-    view.state.mode = Mode::Insert;
+fn enter_insert_mode(cx: &mut Context) {
+    cx.view.doc.mode = Mode::Insert;
 
-    append_changes_to_history(view);
+    append_changes_to_history(cx);
 }
 // inserts at the start of each selection
-pub fn insert_mode(view: &mut View, _count: usize) {
-    enter_insert_mode(view);
+pub fn insert_mode(cx: &mut Context) {
+    enter_insert_mode(cx);
 
-    view.state.selection = view
-        .state
-        .selection
-        .transform(|range| Range::new(range.to(), range.from()))
+    let selection = cx
+        .view
+        .doc
+        .selection()
+        .transform(|range| Range::new(range.to(), range.from()));
+    cx.view.doc.set_selection(selection);
 }
 
 // inserts at the end of each selection
-pub fn append_mode(view: &mut View, _count: usize) {
-    enter_insert_mode(view);
-    view.state.restore_cursor = true;
+pub fn append_mode(cx: &mut Context) {
+    enter_insert_mode(cx);
+    cx.view.doc.restore_cursor = true;
 
     // TODO: as transaction
-    let text = &view.state.doc.slice(..);
-    view.state.selection = view.state.selection.transform(|range| {
+    let text = &cx.view.doc.text().slice(..);
+    let selection = cx.view.doc.selection().transform(|range| {
         // TODO: to() + next char
         Range::new(
             range.from(),
             graphemes::next_grapheme_boundary(text, range.to()),
         )
-    })
+    });
+    cx.view.doc.set_selection(selection);
 }
 
 // TODO: I, A, o and O can share a lot of the primitives.
-
-pub fn command_mode(_view: &mut View, _count: usize) {
+pub fn command_mode(_cx: &mut Context) {
     unimplemented!()
 }
 
@@ -329,30 +351,30 @@ fn selection_lines(state: &State) -> Vec<usize> {
 }
 
 // I inserts at the start of each line with a selection
-pub fn prepend_to_line(view: &mut View, count: usize) {
-    enter_insert_mode(view);
+pub fn prepend_to_line(cx: &mut Context) {
+    enter_insert_mode(cx);
 
-    move_line_start(view, count);
+    move_line_start(cx);
 }
 
 // A inserts at the end of each line with a selection
-pub fn append_to_line(view: &mut View, count: usize) {
-    enter_insert_mode(view);
+pub fn append_to_line(cx: &mut Context) {
+    enter_insert_mode(cx);
 
-    move_line_end(view, count);
+    move_line_end(cx);
 }
 
 // o inserts a new line after each line with a selection
-pub fn open_below(view: &mut View, _count: usize) {
-    enter_insert_mode(view);
+pub fn open_below(cx: &mut Context) {
+    enter_insert_mode(cx);
 
-    let lines = selection_lines(&view.state);
+    let lines = selection_lines(&cx.view.doc.state);
 
     let positions: Vec<_> = lines
         .into_iter()
         .map(|index| {
             // adjust all positions to the end of the line/start of the next one.
-            view.state.doc.line_to_char(index + 1)
+            cx.view.doc.text().line_to_char(index + 1)
         })
         .collect();
 
@@ -373,111 +395,119 @@ pub fn open_below(view: &mut View, _count: usize) {
         0,
     );
 
-    let transaction = Transaction::change(&view.state, changes).with_selection(selection);
+    let transaction = Transaction::change(&cx.view.doc.state, changes).with_selection(selection);
 
-    transaction.apply(&mut view.state);
+    cx.view.doc.apply(&transaction);
 }
 
 // O inserts a new line before each line with a selection
 
-fn append_changes_to_history(view: &mut View) {
-    if view.state.changes.is_empty() {
+fn append_changes_to_history(cx: &mut Context) {
+    if cx.view.doc.changes.is_empty() {
         return;
     }
 
-    let new_changeset = ChangeSet::new(view.state.doc());
-    let changes = std::mem::replace(&mut view.state.changes, new_changeset);
+    let new_changeset = ChangeSet::new(cx.view.doc.text());
+    let changes = std::mem::replace(&mut cx.view.doc.changes, new_changeset);
     // Instead of doing this messy merge we could always commit, and based on transaction
     // annotations either add a new layer or compose into the previous one.
-    let transaction = Transaction::from(changes).with_selection(view.state.selection().clone());
+    let transaction = Transaction::from(changes).with_selection(cx.view.doc.selection().clone());
+
+    // increment document version
+    // TODO: needs to happen on undo/redo too
+    cx.view.doc.version += 1;
+
+    // TODO: trigger lsp/documentDidChange with changes
 
     // HAXX: we need to reconstruct the state as it was before the changes..
-    let (doc, selection) = view.state.old_state.take().unwrap();
-    let mut old_state = State::new(doc);
-    old_state.selection = selection;
-
+    let old_state = std::mem::replace(&mut cx.view.doc.old_state, cx.view.doc.state.clone());
     // TODO: take transaction by value?
-    view.history.commit_revision(&transaction, &old_state);
+    cx.view
+        .doc
+        .history
+        .commit_revision(&transaction, &old_state);
 
-    // TODO: need to start the state with these vals
-    // HAXX
-    view.state.old_state = Some((view.state.doc().clone(), view.state.selection.clone()));
+    // TODO: notify LSP of changes
 }
 
-pub fn normal_mode(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Normal;
+pub fn normal_mode(cx: &mut Context) {
+    cx.view.doc.mode = Mode::Normal;
 
-    append_changes_to_history(view);
+    append_changes_to_history(cx);
 
     // if leaving append mode, move cursor back by 1
-    if view.state.restore_cursor {
-        let text = &view.state.doc.slice(..);
-        view.state.selection = view.state.selection.transform(|range| {
+    if cx.view.doc.restore_cursor {
+        let text = &cx.view.doc.text().slice(..);
+        let selection = cx.view.doc.selection().transform(|range| {
             Range::new(
                 range.from(),
                 graphemes::prev_grapheme_boundary(text, range.to()),
             )
         });
+        cx.view.doc.set_selection(selection);
 
-        view.state.restore_cursor = false;
+        cx.view.doc.restore_cursor = false;
     }
 }
 
-pub fn goto_mode(view: &mut View, _count: usize) {
-    view.state.mode = Mode::Goto;
+pub fn goto_mode(cx: &mut Context) {
+    cx.view.doc.mode = Mode::Goto;
 }
 
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
 pub mod insert {
     use super::*;
     // TODO: insert means add text just before cursor, on exit we should be on the last letter.
-    pub fn insert_char(view: &mut View, c: char) {
+    pub fn insert_char(cx: &mut Context, c: char) {
         let c = Tendril::from_char(c);
-        let transaction = Transaction::insert(&view.state, c);
+        let transaction = Transaction::insert(&cx.view.doc.state, c);
 
-        transaction.apply(&mut view.state);
+        cx.view.doc.apply(&transaction);
     }
 
-    pub fn insert_tab(view: &mut View, _count: usize) {
-        insert_char(view, '\t');
+    pub fn insert_tab(cx: &mut Context) {
+        insert_char(cx, '\t');
     }
 
-    pub fn insert_newline(view: &mut View, _count: usize) {
-        let transaction = Transaction::change_by_selection(&view.state, |range| {
-            let indent_level =
-                helix_core::indent::suggested_indent_for_pos(&view.state, range.head);
+    pub fn insert_newline(cx: &mut Context) {
+        let transaction = Transaction::change_by_selection(&cx.view.doc.state, |range| {
+            let indent_level = helix_core::indent::suggested_indent_for_pos(
+                cx.view.doc.syntax.as_ref(),
+                &cx.view.doc.state,
+                range.head,
+            );
             let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
             text.push_str(&indent);
             (range.head, range.head, Some(text.into()))
         });
-        transaction.apply(&mut view.state);
+        cx.view.doc.apply(&transaction);
     }
 
     // TODO: handle indent-aware delete
-    pub fn delete_char_backward(view: &mut View, count: usize) {
-        let text = &view.state.doc.slice(..);
-        let transaction = Transaction::change_by_selection(&view.state, |range| {
+    pub fn delete_char_backward(cx: &mut Context) {
+        let text = &cx.view.doc.text().slice(..);
+        let transaction = Transaction::change_by_selection(&cx.view.doc.state, |range| {
             (
-                graphemes::nth_prev_grapheme_boundary(text, range.head, count),
+                graphemes::nth_prev_grapheme_boundary(text, range.head, cx.count),
                 range.head,
                 None,
             )
         });
-        transaction.apply(&mut view.state);
+        cx.view.doc.apply(&transaction);
     }
 
-    pub fn delete_char_forward(view: &mut View, count: usize) {
-        let text = &view.state.doc.slice(..);
-        let transaction = Transaction::change_by_selection(&view.state, |range| {
+    pub fn delete_char_forward(cx: &mut Context) {
+        let text = &cx.view.doc.text().slice(..);
+        let transaction = Transaction::change_by_selection(&cx.view.doc.state, |range| {
             (
                 range.head,
-                graphemes::nth_next_grapheme_boundary(text, range.head, count),
+                graphemes::nth_next_grapheme_boundary(text, range.head, cx.count),
                 None,
             )
         });
-        transaction.apply(&mut view.state);
+        cx.view.doc.apply(&transaction);
     }
 }
 
@@ -487,24 +517,32 @@ pub fn insert_char_prompt(prompt: &mut Prompt, c: char) {
 
 // Undo / Redo
 
-pub fn undo(view: &mut View, _count: usize) {
-    view.history.undo(&mut view.state);
+pub fn undo(cx: &mut Context) {
+    if let Some(revert) = cx.view.doc.history.undo() {
+        cx.view.doc.version += 1;
+        cx.view.doc.apply(&revert);
+    }
 
     // TODO: each command could simply return a Option<transaction>, then the higher level handles storing it?
 }
 
-pub fn redo(view: &mut View, _count: usize) {
-    view.history.redo(&mut view.state);
+pub fn redo(cx: &mut Context) {
+    if let Some(transaction) = cx.view.doc.history.redo() {
+        cx.view.doc.version += 1;
+        cx.view.doc.apply(&transaction);
+    }
 }
 
 // Yank / Paste
 
-pub fn yank(view: &mut View, _count: usize) {
+pub fn yank(cx: &mut Context) {
     // TODO: should selections be made end inclusive?
-    let values = view
+    let values = cx
+        .view
+        .doc
         .state
         .selection()
-        .fragments(&view.state.doc().slice(..))
+        .fragments(&cx.view.doc.text().slice(..))
         .map(|cow| cow.into_owned())
         .collect();
 
@@ -513,7 +551,7 @@ pub fn yank(view: &mut View, _count: usize) {
     register::set(reg, values);
 }
 
-pub fn paste(view: &mut View, _count: usize) {
+pub fn paste(cx: &mut Context) {
     // TODO: allow specifying reg
     let reg = '"';
     if let Some(values) = register::get(reg) {
@@ -545,19 +583,19 @@ pub fn paste(view: &mut View, _count: usize) {
         let transaction = if linewise {
             // paste on the next line
             // TODO: can simply take a range + modifier and compute the right pos without ifs
-            let text = view.state.doc();
-            Transaction::change_by_selection(&view.state, |range| {
+            let text = cx.view.doc.text();
+            Transaction::change_by_selection(&cx.view.doc.state, |range| {
                 let line_end = text.line_to_char(text.char_to_line(range.head) + 1);
                 (line_end, line_end, Some(values.next().unwrap()))
             })
         } else {
-            Transaction::change_by_selection(&view.state, |range| {
+            Transaction::change_by_selection(&cx.view.doc.state, |range| {
                 (range.head + 1, range.head + 1, Some(values.next().unwrap()))
             })
         };
 
-        transaction.apply(&mut view.state);
-        append_changes_to_history(view);
+        cx.view.doc.apply(&transaction);
+        append_changes_to_history(cx);
     }
 }
 
@@ -565,9 +603,9 @@ fn get_lines(view: &View) -> Vec<usize> {
     let mut lines = Vec::new();
 
     // Get all line numbers
-    for range in view.state.selection.ranges() {
-        let start = view.state.doc.char_to_line(range.from());
-        let end = view.state.doc.char_to_line(range.to());
+    for range in view.doc.selection().ranges() {
+        let start = view.doc.text().char_to_line(range.from());
+        let end = view.doc.text().char_to_line(range.to());
 
         for line in start..=end {
             lines.push(line)
@@ -578,29 +616,29 @@ fn get_lines(view: &View) -> Vec<usize> {
     lines
 }
 
-pub fn indent(view: &mut View, _count: usize) {
-    let lines = get_lines(view);
+pub fn indent(cx: &mut Context) {
+    let lines = get_lines(cx.view);
 
     // Indent by one level
     let indent = Tendril::from(" ".repeat(TAB_WIDTH));
 
     let transaction = Transaction::change(
-        &view.state,
+        &cx.view.doc.state,
         lines.into_iter().map(|line| {
-            let pos = view.state.doc.line_to_char(line);
+            let pos = cx.view.doc.text().line_to_char(line);
             (pos, pos, Some(indent.clone()))
         }),
     );
-    transaction.apply(&mut view.state);
-    append_changes_to_history(view);
+    cx.view.doc.apply(&transaction);
+    append_changes_to_history(cx);
 }
 
-pub fn unindent(view: &mut View, _count: usize) {
-    let lines = get_lines(view);
+pub fn unindent(cx: &mut Context) {
+    let lines = get_lines(cx.view);
     let mut changes = Vec::with_capacity(lines.len());
 
     for line_idx in lines {
-        let line = view.state.doc.line(line_idx);
+        let line = cx.view.doc.text().line(line_idx);
         let mut width = 0;
 
         for ch in line.chars() {
@@ -616,18 +654,27 @@ pub fn unindent(view: &mut View, _count: usize) {
         }
 
         if width > 0 {
-            let start = view.state.doc.line_to_char(line_idx);
+            let start = cx.view.doc.text().line_to_char(line_idx);
             changes.push((start, start + width, None))
         }
     }
 
-    let transaction = Transaction::change(&view.state, changes.into_iter());
+    let transaction = Transaction::change(&cx.view.doc.state, changes.into_iter());
 
-    transaction.apply(&mut view.state);
-    append_changes_to_history(view);
+    cx.view.doc.apply(&transaction);
+    append_changes_to_history(cx);
 }
 
-pub fn indent_selection(_view: &mut View, _count: usize) {
+pub fn indent_selection(_cx: &mut Context) {
     // loop over each line and recompute proper indentation
     unimplemented!()
+}
+
+//
+
+pub fn save(cx: &mut Context) {
+    // Spawns an async task to actually do the saving. This way we prevent blocking.
+
+    // TODO: handle save errors somehow?
+    cx.executor.spawn(cx.view.doc.save()).detach();
 }
