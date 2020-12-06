@@ -8,6 +8,8 @@ use helix_view::{
     Document, Editor, Theme, View,
 };
 
+use crate::compositor::{Component, Compositor};
+
 use log::{debug, info};
 
 use std::{
@@ -35,23 +37,21 @@ use tui::{
     style::{Color, Modifier, Style},
 };
 
-const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-
 type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 const BASE_WIDTH: u16 = 30;
 
 pub struct Application<'a> {
-    editor: Editor,
     prompt: Option<Prompt>,
-    terminal: Renderer,
 
-    keymap: Keymaps,
+    compositor: Compositor,
+    renderer: Renderer,
+
     executor: &'a smol::Executor<'a>,
     language_server: helix_lsp::Client,
 }
 
-struct Renderer {
+pub(crate) struct Renderer {
     size: (u16, u16),
     terminal: Terminal,
     surface: Surface,
@@ -92,7 +92,6 @@ impl Renderer {
     // TODO: ideally not &mut View but highlights require it because of cursor cache
     pub fn render_buffer(&mut self, view: &mut View, viewport: Rect, theme: &Theme) {
         let area = Rect::new(0, 0, self.size.0, self.size.1);
-        self.surface.reset(); // reset is faster than allocating new empty surface
 
         //  clear with background color
         self.surface.set_style(area, theme.get("ui.background"));
@@ -221,8 +220,12 @@ impl Renderer {
 
                             // TODO: paint cursor heads except primary
 
-                            self.surface
-                                .set_string(OFFSET + visual_x, line, grapheme, style);
+                            self.surface.set_string(
+                                viewport.x + visual_x,
+                                viewport.y + line,
+                                grapheme,
+                                style,
+                            );
 
                             visual_x += width;
                         }
@@ -321,7 +324,7 @@ impl Renderer {
             .set_string(2, self.size.1 - 1, &prompt.line, self.text_color);
     }
 
-    pub fn draw(&mut self) {
+    pub fn draw_and_swap(&mut self) {
         use tui::backend::Backend;
         // TODO: theres probably a better place for this
         self.terminal
@@ -363,112 +366,40 @@ impl Renderer {
     }
 }
 
-impl<'a> Application<'a> {
-    pub fn new(mut args: Args, executor: &'a smol::Executor<'a>) -> Result<Self, Error> {
-        let terminal = Renderer::new()?;
-        let mut editor = Editor::new();
+struct EditorView {
+    editor: Editor,
+    prompt: Option<Prompt>, // TODO: this is None for now, make a layer
+    keymap: Keymaps,
+}
 
-        if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
-            editor.open(file, terminal.size)?;
-        }
-
-        let language_server = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
-
-        let mut app = Self {
+impl EditorView {
+    fn new(editor: Editor) -> Self {
+        Self {
             editor,
-            terminal,
-            // TODO; move to state
             prompt: None,
-
-            //
             keymap: keymap::default(),
-            executor,
-            language_server,
-        };
-
-        Ok(app)
-    }
-
-    fn render(&mut self) {
-        let viewport = Rect::new(OFFSET, 0, self.terminal.size.0, self.terminal.size.1 - 2); // - 2 for statusline and prompt
-
-        // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
-        // theme. Theme is immutable mutating view won't disrupt theme_ref.
-        let theme_ref = unsafe { &*(&self.editor.theme as *const Theme) };
-        if let Some(view) = self.editor.view_mut() {
-            self.terminal.render_view(view, viewport, theme_ref);
-            if let Some(prompt) = &self.prompt {
-                if prompt.should_close {
-                    self.prompt = None;
-                } else {
-                    self.terminal.render_prompt(view, prompt, theme_ref);
-                }
-            }
-        }
-
-        self.terminal.draw();
-
-        // TODO: drop unwrap
-        self.terminal
-            .render_cursor(self.editor.view().unwrap(), self.prompt.as_ref(), viewport);
-    }
-
-    pub async fn event_loop(&mut self) {
-        let mut reader = EventStream::new();
-
-        // initialize lsp
-        self.language_server.initialize().await.unwrap();
-        self.language_server
-            .text_document_did_open(&self.editor.view().unwrap().doc)
-            .await
-            .unwrap();
-
-        self.render();
-
-        loop {
-            if self.editor.should_close {
-                break;
-            }
-
-            use futures_util::{select, FutureExt};
-            select! {
-                event = reader.next().fuse() => {
-                    self.handle_terminal_events(event).await
-                }
-                call = self.language_server.incoming.next().fuse() => {
-                    self.handle_language_server_message(call).await
-                }
-            }
         }
     }
+}
 
-    pub async fn handle_terminal_events(
-        &mut self,
-        event: Option<Result<Event, crossterm::ErrorKind>>,
-    ) {
-        // Handle key events
+impl Component for EditorView {
+    fn handle_event(&mut self, event: Event, executor: &smol::Executor) -> bool {
         match event {
-            Some(Ok(Event::Resize(width, height))) => {
-                self.terminal.resize(width, height);
-
+            Event::Resize(width, height) => {
                 // TODO: simplistic ensure cursor in view for now
                 // TODO: loop over views
                 if let Some(view) = self.editor.view_mut() {
-                    view.size = self.terminal.size;
+                    view.size = (width, height);
                     view.ensure_cursor_in_view()
                 };
-
-                self.render();
             }
-            Some(Ok(Event::Key(event))) => {
+            Event::Key(event) => {
                 // if there's a prompt, it takes priority
                 if let Some(prompt) = &mut self.prompt {
                     self.prompt
                         .as_mut()
                         .unwrap()
                         .handle_input(event, &mut self.editor);
-
-                    self.render();
                 } else if let Some(view) = self.editor.view_mut() {
                     let keys = vec![event];
                     // TODO: sequences (`gg`)
@@ -478,7 +409,7 @@ impl<'a> Application<'a> {
                             if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
                                 let mut cx = helix_view::commands::Context {
                                     view,
-                                    executor: self.executor,
+                                    executor: executor,
                                     count: 1,
                                 };
 
@@ -490,7 +421,7 @@ impl<'a> Application<'a> {
                             {
                                 let mut cx = helix_view::commands::Context {
                                     view,
-                                    executor: self.executor,
+                                    executor: executor,
                                     count: 1,
                                 };
                                 commands::insert::insert_char(&mut cx, c);
@@ -557,7 +488,7 @@ impl<'a> Application<'a> {
                             } else if let Some(command) = self.keymap[&Mode::Normal].get(&keys) {
                                 let mut cx = helix_view::commands::Context {
                                     view,
-                                    executor: self.executor,
+                                    executor: executor,
                                     count: 1,
                                 };
                                 command(&mut cx);
@@ -570,7 +501,7 @@ impl<'a> Application<'a> {
                             if let Some(command) = self.keymap[&mode].get(&keys) {
                                 let mut cx = helix_view::commands::Context {
                                     view,
-                                    executor: self.executor,
+                                    executor: executor,
                                     count: 1,
                                 };
                                 command(&mut cx);
@@ -580,10 +511,119 @@ impl<'a> Application<'a> {
                             }
                         }
                     }
-                    self.render();
                 }
             }
-            Some(Ok(Event::Mouse(_))) => (), // unhandled
+            Event::Mouse(_) => (),
+        }
+
+        true
+    }
+    fn render(&mut self, renderer: &mut Renderer) {
+        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+        let viewport = Rect::new(OFFSET, 0, renderer.size.0, renderer.size.1 - 2); // - 2 for statusline and prompt
+
+        // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
+        // theme. Theme is immutable mutating view won't disrupt theme_ref.
+        let theme_ref = unsafe { &*(&self.editor.theme as *const Theme) };
+        if let Some(view) = self.editor.view_mut() {
+            renderer.render_view(view, viewport, theme_ref);
+            if let Some(prompt) = &self.prompt {
+                if prompt.should_close {
+                    self.prompt = None;
+                } else {
+                    renderer.render_prompt(view, prompt, theme_ref);
+                }
+            }
+        }
+
+        // TODO: drop unwrap
+        renderer.render_cursor(self.editor.view().unwrap(), self.prompt.as_ref(), viewport);
+    }
+}
+
+impl<'a> Application<'a> {
+    pub fn new(mut args: Args, executor: &'a smol::Executor<'a>) -> Result<Self, Error> {
+        let renderer = Renderer::new()?;
+        let mut editor = Editor::new();
+
+        if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
+            editor.open(file, renderer.size)?;
+        }
+
+        let mut compositor = Compositor::new();
+        compositor.push(Box::new(EditorView::new(editor)));
+
+        let language_server = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
+
+        let mut app = Self {
+            renderer,
+            // TODO; move to state
+            compositor,
+            prompt: None,
+
+            executor,
+            language_server,
+        };
+
+        Ok(app)
+    }
+
+    fn render(&mut self) {
+        // v2:
+        self.renderer.surface.reset(); // reset is faster than allocating new empty surface
+        self.compositor.render(&mut self.renderer); // viewport,
+        self.renderer.draw_and_swap();
+    }
+
+    pub async fn event_loop(&mut self) {
+        let mut reader = EventStream::new();
+
+        // initialize lsp
+        self.language_server.initialize().await.unwrap();
+        // TODO: temp
+        // self.language_server
+        //     .text_document_did_open(&self.editor.view().unwrap().doc)
+        //     .await
+        //     .unwrap();
+
+        self.render();
+
+        loop {
+            // TODO:
+            // if self.editor.should_close {
+            //     break;
+            // }
+
+            use futures_util::{select, FutureExt};
+            select! {
+                event = reader.next().fuse() => {
+                    self.handle_terminal_events(event)
+                }
+                call = self.language_server.incoming.next().fuse() => {
+                    self.handle_language_server_message(call).await
+                }
+            }
+        }
+    }
+
+    pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
+        // Handle key events
+        match event {
+            Some(Ok(Event::Resize(width, height))) => {
+                self.renderer.resize(width, height);
+
+                // TODO: use the response
+                self.compositor
+                    .handle_event(Event::Resize(width, height), self.executor);
+
+                self.render();
+            }
+            Some(Ok(event)) => {
+                // TODO: use the response
+                self.compositor.handle_event(event, self.executor);
+
+                self.render();
+            }
             Some(Err(x)) => panic!(x),
             None => panic!(),
         };
@@ -599,11 +639,13 @@ impl<'a> Application<'a> {
                 match notification {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
-                        let view = self
-                            .editor
-                            .views
-                            .iter_mut()
-                            .find(|view| view.doc.path == path);
+                        let view: Option<&mut helix_view::View> = None;
+                        // TODO:
+                        // let view = self
+                        //     .editor
+                        //     .views
+                        //     .iter_mut()
+                        //     .find(|view| view.doc.path == path);
 
                         if let Some(view) = view {
                             let doc = view.doc.text().slice(..);

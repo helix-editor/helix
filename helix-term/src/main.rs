@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 mod application;
+mod compositor;
 
 use application::Application;
 
