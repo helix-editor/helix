@@ -8,7 +8,7 @@ use helix_view::{
     Document, Editor, Theme, View,
 };
 
-use crate::compositor::{Component, Compositor};
+use crate::compositor::{Component, Compositor, EventResult};
 
 use log::{debug, info};
 
@@ -383,7 +383,7 @@ impl EditorView {
 }
 
 impl Component for EditorView {
-    fn handle_event(&mut self, event: Event, executor: &smol::Executor) -> bool {
+    fn handle_event(&mut self, event: Event, executor: &smol::Executor) -> EventResult {
         match event {
             Event::Resize(width, height) => {
                 // TODO: simplistic ensure cursor in view for now
@@ -392,6 +392,7 @@ impl Component for EditorView {
                     view.size = (width, height);
                     view.ensure_cursor_in_view()
                 };
+                EventResult::Consumed(None)
             }
             Event::Key(event) => {
                 // if there's a prompt, it takes priority
@@ -400,6 +401,7 @@ impl Component for EditorView {
                         .as_mut()
                         .unwrap()
                         .handle_input(event, &mut self.editor);
+                    EventResult::Consumed(None)
                 } else if let Some(view) = self.editor.view_mut() {
                     let keys = vec![event];
                     // TODO: sequences (`gg`)
@@ -511,12 +513,13 @@ impl Component for EditorView {
                             }
                         }
                     }
+                    EventResult::Consumed(None)
+                } else {
+                    EventResult::Ignored
                 }
             }
-            Event::Mouse(_) => (),
+            Event::Mouse(_) => EventResult::Ignored,
         }
-
-        true
     }
     fn render(&mut self, renderer: &mut Renderer) {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -569,7 +572,6 @@ impl<'a> Application<'a> {
     }
 
     fn render(&mut self) {
-        // v2:
         self.renderer.surface.reset(); // reset is faster than allocating new empty surface
         self.compositor.render(&mut self.renderer); // viewport,
         self.renderer.draw_and_swap();

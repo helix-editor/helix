@@ -18,9 +18,17 @@ use crossterm::event::Event;
 use smol::Executor;
 use tui::buffer::Buffer as Surface;
 
+pub(crate) type Callback = Box<dyn Fn(&mut Compositor)>;
+
+// Cursive-inspired
+pub(crate) enum EventResult {
+    Ignored,
+    Consumed(Option<Callback>),
+}
+
 pub(crate) trait Component {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, event: Event, executor: &Executor) -> bool;
+    fn handle_event(&mut self, event: Event, executor: &Executor) -> EventResult;
     // , args: ()
 
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
