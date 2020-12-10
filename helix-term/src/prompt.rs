@@ -80,7 +80,7 @@ impl Prompt {
         self.completion_selection_index = None;
     }
 
-    pub fn handle_input(&mut self, key_event: KeyEvent, editor: &mut Editor) {
+    pub fn handle_event(&mut self, key_event: KeyEvent, editor: &mut Editor) {
         match key_event {
             KeyEvent {
                 code: KeyCode::Char(c),

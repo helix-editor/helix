@@ -522,6 +522,7 @@ dependencies = [
  "helix-view",
  "log",
  "num_cpus",
+ "once_cell",
  "smol",
  "tui",
 ]

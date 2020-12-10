@@ -1,14 +1,14 @@
+use crate::{
+    commands,
+    keymap::{self, Keymaps},
+};
 use clap::ArgMatches as Args;
 use helix_core::{indent::TAB_WIDTH, syntax::HighlightEvent, Position, Range, State};
-use helix_view::{
-    commands,
-    document::Mode,
-    keymap::{self, Keymaps},
-    prompt::Prompt,
-    Document, Editor, Theme, View,
-};
+
+use helix_view::{document::Mode, Document, Editor, Theme, View};
 
 use crate::compositor::{Component, Compositor, EventResult};
+use crate::prompt::Prompt;
 
 use log::{debug, info};
 
@@ -395,23 +395,16 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
-                // if there's a prompt, it takes priority
-                if let Some(prompt) = &mut self.prompt {
-                    self.prompt
-                        .as_mut()
-                        .unwrap()
-                        .handle_input(event, &mut self.editor);
-                    EventResult::Consumed(None)
-                } else if let Some(view) = self.editor.view_mut() {
+                if let Some(view) = self.editor.view_mut() {
                     let keys = vec![event];
                     // TODO: sequences (`gg`)
                     // TODO: handle count other than 1
                     match view.doc.mode() {
                         Mode::Insert => {
                             if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
-                                let mut cx = helix_view::commands::Context {
+                                let mut cx = commands::Context {
                                     view,
-                                    executor: executor,
+                                    executor,
                                     count: 1,
                                 };
 
@@ -421,9 +414,9 @@ impl Component for EditorView {
                                 ..
                             } = event
                             {
-                                let mut cx = helix_view::commands::Context {
+                                let mut cx = commands::Context {
                                     view,
-                                    executor: executor,
+                                    executor,
                                     count: 1,
                                 };
                                 commands::insert::insert_char(&mut cx, c);
@@ -488,9 +481,9 @@ impl Component for EditorView {
 
                             // HAXX: special casing for command mode
                             } else if let Some(command) = self.keymap[&Mode::Normal].get(&keys) {
-                                let mut cx = helix_view::commands::Context {
+                                let mut cx = commands::Context {
                                     view,
-                                    executor: executor,
+                                    executor,
                                     count: 1,
                                 };
                                 command(&mut cx);
@@ -501,9 +494,9 @@ impl Component for EditorView {
                         }
                         mode => {
                             if let Some(command) = self.keymap[&mode].get(&keys) {
-                                let mut cx = helix_view::commands::Context {
+                                let mut cx = commands::Context {
                                     view,
-                                    executor: executor,
+                                    executor,
                                     count: 1,
                                 };
                                 command(&mut cx);
@@ -530,13 +523,6 @@ impl Component for EditorView {
         let theme_ref = unsafe { &*(&self.editor.theme as *const Theme) };
         if let Some(view) = self.editor.view_mut() {
             renderer.render_view(view, viewport, theme_ref);
-            if let Some(prompt) = &self.prompt {
-                if prompt.should_close {
-                    self.prompt = None;
-                } else {
-                    renderer.render_prompt(view, prompt, theme_ref);
-                }
-            }
         }
 
         // TODO: drop unwrap
@@ -562,7 +548,6 @@ impl<'a> Application<'a> {
             renderer,
             // TODO; move to state
             compositor,
-            prompt: None,
 
             executor,
             language_server,

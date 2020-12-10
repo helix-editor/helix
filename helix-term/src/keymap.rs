@@ -1,6 +1,6 @@
 use crate::commands::{self, Command};
-use crate::document::Mode;
 use helix_core::hashmap;
+use helix_view::document::Mode;
 use std::collections::HashMap;
 
 // Kakoune-inspired:
@@ -87,7 +87,7 @@ use std::collections::HashMap;
 //      gr = goto reference
 // }
 
-#[cfg(feature = "term")]
+// #[cfg(feature = "term")]
 pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 
 // TODO: could be trie based

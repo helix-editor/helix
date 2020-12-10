@@ -6,11 +6,13 @@ use helix_core::{
     state::{Direction, Granularity, State},
     ChangeSet, Range, Selection, Tendril, Transaction,
 };
+
 use once_cell::sync::Lazy;
 
-use crate::{
+use crate::prompt::Prompt;
+
+use helix_view::{
     document::Mode,
-    prompt::Prompt,
     view::{View, PADDING},
 };
 

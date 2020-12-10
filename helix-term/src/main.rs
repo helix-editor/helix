@@ -1,7 +1,10 @@
 #![allow(unused)]
 
 mod application;
+mod commands;
 mod compositor;
+mod keymap;
+mod prompt;
 
 use application::Application;
 
