@@ -42,16 +42,15 @@ type Terminal = tui::Terminal<CrosstermBackend<std::io::Stdout>>;
 const BASE_WIDTH: u16 = 30;
 
 pub struct Application<'a> {
-    prompt: Option<Prompt>,
-
     compositor: Compositor,
+    editor: Editor,
     renderer: Renderer,
 
     executor: &'a smol::Executor<'a>,
     language_server: helix_lsp::Client,
 }
 
-pub(crate) struct Renderer {
+pub struct Renderer {
     size: (u16, u16),
     terminal: Terminal,
     surface: Surface,
@@ -263,6 +262,11 @@ impl Renderer {
         self.surface
             .set_string(1, self.size.1 - 2, mode, self.text_color);
 
+        if let Some(path) = view.doc.path() {
+            self.surface
+                .set_string(6, self.size.1 - 2, path.to_string_lossy(), self.text_color);
+        }
+
         self.surface.set_string(
             self.size.0 - 10,
             self.size.1 - 2,
@@ -271,7 +275,7 @@ impl Renderer {
         );
     }
 
-    pub fn render_prompt(&mut self, view: &View, prompt: &Prompt, theme: &Theme) {
+    pub fn render_prompt(&mut self, prompt: &Prompt, theme: &Theme) {
         // completion
         if !prompt.completion.is_empty() {
             // TODO: find out better way of clearing individual lines of the screen
@@ -343,15 +347,6 @@ impl Renderer {
         let pos = if let Some(prompt) = prompt {
             Position::new(self.size.0 as usize, 2 + prompt.cursor)
         } else {
-            if let Some(path) = view.doc.path() {
-                self.surface.set_string(
-                    6,
-                    self.size.1 - 1,
-                    path.to_string_lossy(),
-                    self.text_color,
-                );
-            }
-
             let cursor = view.doc.state.selection().cursor();
 
             let mut pos = view
@@ -367,146 +362,77 @@ impl Renderer {
 }
 
 struct EditorView {
-    editor: Editor,
-    prompt: Option<Prompt>, // TODO: this is None for now, make a layer
     keymap: Keymaps,
 }
 
 impl EditorView {
-    fn new(editor: Editor) -> Self {
+    fn new() -> Self {
         Self {
-            editor,
-            prompt: None,
             keymap: keymap::default(),
         }
     }
 }
 
+use crate::compositor::Context;
+
 impl Component for EditorView {
-    fn handle_event(&mut self, event: Event, executor: &smol::Executor) -> EventResult {
+    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         match event {
             Event::Resize(width, height) => {
                 // TODO: simplistic ensure cursor in view for now
                 // TODO: loop over views
-                if let Some(view) = self.editor.view_mut() {
+                if let Some(view) = cx.editor.view_mut() {
                     view.size = (width, height);
                     view.ensure_cursor_in_view()
                 };
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
-                if let Some(view) = self.editor.view_mut() {
+                if let Some(view) = cx.editor.view_mut() {
                     let keys = vec![event];
                     // TODO: sequences (`gg`)
+                    let mode = view.doc.mode();
                     // TODO: handle count other than 1
-                    match view.doc.mode() {
+                    let mut cx = commands::Context {
+                        view,
+                        executor: cx.executor,
+                        count: 1,
+                        callback: None,
+                    };
+
+                    match mode {
                         Mode::Insert => {
                             if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
-                                let mut cx = commands::Context {
-                                    view,
-                                    executor,
-                                    count: 1,
-                                };
-
                                 command(&mut cx);
                             } else if let KeyEvent {
                                 code: KeyCode::Char(c),
                                 ..
                             } = event
                             {
-                                let mut cx = commands::Context {
-                                    view,
-                                    executor,
-                                    count: 1,
-                                };
                                 commands::insert::insert_char(&mut cx, c);
                             }
-                            view.ensure_cursor_in_view();
                         }
                         Mode::Normal => {
-                            if let &[KeyEvent {
-                                code: KeyCode::Char(':'),
-                                ..
-                            }] = keys.as_slice()
-                            {
-                                let prompt = Prompt::new(
-                                    ":".to_owned(),
-                                    |_input: &str| {
-                                        // TODO: i need this duplicate list right now to avoid borrow checker issues
-                                        let command_list = vec![
-                                            String::from("q"),
-                                            String::from("aaa"),
-                                            String::from("bbb"),
-                                            String::from("ccc"),
-                                            String::from("ddd"),
-                                            String::from("eee"),
-                                            String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
-                                            String::from("q"),
-                                            String::from("aaa"),
-                                            String::from("bbb"),
-                                            String::from("ccc"),
-                                            String::from("ddd"),
-                                            String::from("eee"),
-                                            String::from("q"),
-                                            String::from("aaa"),
-                                            String::from("bbb"),
-                                            String::from("ccc"),
-                                            String::from("ddd"),
-                                            String::from("eee"),
-                                            String::from("q"),
-                                            String::from("aaa"),
-                                            String::from("bbb"),
-                                            String::from("ccc"),
-                                            String::from("ddd"),
-                                            String::from("eee"),
-                                            String::from("q"),
-                                            String::from("aaa"),
-                                            String::from("bbb"),
-                                            String::from("ccc"),
-                                            String::from("ddd"),
-                                            String::from("eee"),
-                                        ];
-                                        command_list
-                                            .into_iter()
-                                            .filter(|command| command.contains(_input))
-                                            .collect()
-                                    }, // completion
-                                    |editor: &mut Editor, input: &str| match input {
-                                        "q" => editor.should_close = true,
-                                        _ => (),
-                                    },
-                                );
-
-                                self.prompt = Some(prompt);
-
-                            // HAXX: special casing for command mode
-                            } else if let Some(command) = self.keymap[&Mode::Normal].get(&keys) {
-                                let mut cx = commands::Context {
-                                    view,
-                                    executor,
-                                    count: 1,
-                                };
+                            if let Some(command) = self.keymap[&Mode::Normal].get(&keys) {
                                 command(&mut cx);
 
                                 // TODO: simplistic ensure cursor in view for now
-                                view.ensure_cursor_in_view();
                             }
                         }
                         mode => {
                             if let Some(command) = self.keymap[&mode].get(&keys) {
-                                let mut cx = commands::Context {
-                                    view,
-                                    executor,
-                                    count: 1,
-                                };
                                 command(&mut cx);
 
                                 // TODO: simplistic ensure cursor in view for now
-                                view.ensure_cursor_in_view();
                             }
                         }
                     }
-                    EventResult::Consumed(None)
+                    // appease borrowck
+                    let callback = cx.callback.take();
+
+                    view.ensure_cursor_in_view();
+
+                    EventResult::Consumed(callback)
                 } else {
                     EventResult::Ignored
                 }
@@ -514,19 +440,19 @@ impl Component for EditorView {
             Event::Mouse(_) => EventResult::Ignored,
         }
     }
-    fn render(&mut self, renderer: &mut Renderer) {
+    fn render(&mut self, renderer: &mut Renderer, cx: &mut Context) {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let viewport = Rect::new(OFFSET, 0, renderer.size.0, renderer.size.1 - 2); // - 2 for statusline and prompt
 
         // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
         // theme. Theme is immutable mutating view won't disrupt theme_ref.
-        let theme_ref = unsafe { &*(&self.editor.theme as *const Theme) };
-        if let Some(view) = self.editor.view_mut() {
+        let theme_ref = unsafe { &*(&cx.editor.theme as *const Theme) };
+        if let Some(view) = cx.editor.view_mut() {
             renderer.render_view(view, viewport, theme_ref);
         }
 
         // TODO: drop unwrap
-        renderer.render_cursor(self.editor.view().unwrap(), self.prompt.as_ref(), viewport);
+        renderer.render_cursor(cx.editor.view().unwrap(), None, viewport);
     }
 }
 
@@ -540,11 +466,12 @@ impl<'a> Application<'a> {
         }
 
         let mut compositor = Compositor::new();
-        compositor.push(Box::new(EditorView::new(editor)));
+        compositor.push(Box::new(EditorView::new()));
 
         let language_server = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
 
         let mut app = Self {
+            editor,
             renderer,
             // TODO; move to state
             compositor,
@@ -558,7 +485,11 @@ impl<'a> Application<'a> {
 
     fn render(&mut self) {
         self.renderer.surface.reset(); // reset is faster than allocating new empty surface
-        self.compositor.render(&mut self.renderer); // viewport,
+        let mut cx = crate::compositor::Context {
+            editor: &mut self.editor,
+            executor: &self.executor,
+        };
+        self.compositor.render(&mut self.renderer, &mut cx); // viewport,
         self.renderer.draw_and_swap();
     }
 
@@ -569,17 +500,16 @@ impl<'a> Application<'a> {
         self.language_server.initialize().await.unwrap();
         // TODO: temp
         // self.language_server
-        //     .text_document_did_open(&self.editor.view().unwrap().doc)
+        //     .text_document_did_open(&cx.editor.view().unwrap().doc)
         //     .await
         //     .unwrap();
 
         self.render();
 
         loop {
-            // TODO:
-            // if self.editor.should_close {
-            //     break;
-            // }
+            if self.editor.should_close {
+                break;
+            }
 
             use futures_util::{select, FutureExt};
             select! {
@@ -594,26 +524,26 @@ impl<'a> Application<'a> {
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
+        let mut cx = crate::compositor::Context {
+            editor: &mut self.editor,
+            executor: &self.executor,
+        };
         // Handle key events
-        match event {
+        let should_redraw = match event {
             Some(Ok(Event::Resize(width, height))) => {
                 self.renderer.resize(width, height);
 
-                // TODO: use the response
                 self.compositor
-                    .handle_event(Event::Resize(width, height), self.executor);
-
-                self.render();
+                    .handle_event(Event::Resize(width, height), &mut cx)
             }
-            Some(Ok(event)) => {
-                // TODO: use the response
-                self.compositor.handle_event(event, self.executor);
-
-                self.render();
-            }
+            Some(Ok(event)) => self.compositor.handle_event(event, &mut cx),
             Some(Err(x)) => panic!(x),
             None => panic!(),
         };
+
+        if should_redraw {
+            self.render();
+        }
     }
 
     pub async fn handle_language_server_message(&mut self, call: Option<helix_lsp::Call>) {

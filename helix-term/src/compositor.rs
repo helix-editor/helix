@@ -18,7 +18,7 @@ use crossterm::event::Event;
 use smol::Executor;
 use tui::buffer::Buffer as Surface;
 
-pub(crate) type Callback = Box<dyn Fn(&mut Compositor)>;
+pub type Callback = Box<dyn Fn(&mut Compositor)>;
 
 // --> EventResult should have a callback that takes a context with methods like .popup(),
 // .prompt() etc. That way we can abstract it from the renderer.
@@ -29,14 +29,21 @@ pub(crate) type Callback = Box<dyn Fn(&mut Compositor)>;
 // If Compositor was specified in the callback that's then problematic because of
 
 // Cursive-inspired
-pub(crate) enum EventResult {
+pub enum EventResult {
     Ignored,
     Consumed(Option<Callback>),
 }
 
-pub(crate) trait Component {
+use helix_view::{Editor, View};
+// shared with commands.rs
+pub struct Context<'a, 'b> {
+    pub editor: &'a mut Editor,
+    pub executor: &'a smol::Executor<'b>,
+}
+
+pub trait Component {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, event: Event, executor: &Executor) -> EventResult;
+    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult;
     // , args: ()
 
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
@@ -44,7 +51,7 @@ pub(crate) trait Component {
         true
     }
 
-    fn render(&mut self, renderer: &mut Renderer);
+    fn render(&mut self, renderer: &mut Renderer, ctx: &mut Context);
 }
 
 // struct Editor { };
@@ -94,7 +101,7 @@ pub(crate) trait Component {
 //    // 2) Alternatively,
 //}
 
-pub(crate) struct Compositor {
+pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
 }
 
@@ -111,17 +118,24 @@ impl Compositor {
         self.layers.pop();
     }
 
-    pub fn handle_event(&mut self, event: Event, executor: &Executor) -> () {
+    pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
         // TODO: custom focus
         if let Some(layer) = self.layers.last_mut() {
-            layer.handle_event(event, executor);
-            // return should_update
+            return match layer.handle_event(event, cx) {
+                EventResult::Consumed(Some(callback)) => {
+                    callback(self);
+                    true
+                }
+                EventResult::Consumed(None) => true,
+                EventResult::Ignored => false,
+            };
         }
+        false
     }
 
-    pub fn render(&mut self, renderer: &mut Renderer) {
+    pub fn render(&mut self, renderer: &mut Renderer, cx: &mut Context) {
         for layer in &mut self.layers {
-            layer.render(renderer)
+            layer.render(renderer, cx)
         }
     }
 }

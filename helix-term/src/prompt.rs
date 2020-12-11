@@ -1,5 +1,9 @@
-use crate::Editor;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crate::{
+    application::Renderer,
+    compositor::{Component, Context, EventResult},
+};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use helix_view::Editor;
 use std::string::String;
 
 pub struct Prompt {
@@ -79,9 +83,16 @@ impl Prompt {
     pub fn exit_selection(&mut self) {
         self.completion_selection_index = None;
     }
+}
 
-    pub fn handle_event(&mut self, key_event: KeyEvent, editor: &mut Editor) {
-        match key_event {
+impl Component for Prompt {
+    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+        let event = match event {
+            Event::Key(event) => event,
+            _ => return EventResult::Ignored,
+        };
+
+        match event {
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
@@ -112,7 +123,7 @@ impl Prompt {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => (self.callback_fn)(editor, &self.line),
+            } => (self.callback_fn)(cx.editor, &self.line),
             KeyEvent {
                 code: KeyCode::Tab, ..
             } => self.change_completion_selection(),
@@ -121,6 +132,12 @@ impl Prompt {
                 modifiers: KeyModifiers::CONTROL,
             } => self.exit_selection(),
             _ => (),
-        }
+        };
+
+        EventResult::Consumed(None)
+    }
+
+    fn render(&mut self, renderer: &mut Renderer, cx: &mut Context) {
+        renderer.render_prompt(self, &cx.editor.theme)
     }
 }

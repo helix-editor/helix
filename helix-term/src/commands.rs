@@ -9,17 +9,21 @@ use helix_core::{
 
 use once_cell::sync::Lazy;
 
+use crate::compositor::Compositor;
 use crate::prompt::Prompt;
 
 use helix_view::{
     document::Mode,
     view::{View, PADDING},
+    Editor,
 };
 
 pub struct Context<'a, 'b> {
     pub count: usize,
     pub view: &'a mut View,
     pub executor: &'a smol::Executor<'b>,
+
+    pub callback: Option<crate::compositor::Callback>,
 }
 
 /// A command is a function that takes the current state and a count, and does a side-effect on the
@@ -333,8 +337,57 @@ pub fn append_mode(cx: &mut Context) {
 }
 
 // TODO: I, A, o and O can share a lot of the primitives.
-pub fn command_mode(_cx: &mut Context) {
-    unimplemented!()
+pub fn command_mode(cx: &mut Context) {
+    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+        let prompt = Prompt::new(
+            ":".to_owned(),
+            |_input: &str| {
+                // TODO: i need this duplicate list right now to avoid borrow checker issues
+                let command_list = vec![
+                    String::from("q"),
+                    String::from("aaa"),
+                    String::from("bbb"),
+                    String::from("ccc"),
+                    String::from("ddd"),
+                    String::from("eee"),
+                    String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
+                    String::from("q"),
+                    String::from("aaa"),
+                    String::from("bbb"),
+                    String::from("ccc"),
+                    String::from("ddd"),
+                    String::from("eee"),
+                    String::from("q"),
+                    String::from("aaa"),
+                    String::from("bbb"),
+                    String::from("ccc"),
+                    String::from("ddd"),
+                    String::from("eee"),
+                    String::from("q"),
+                    String::from("aaa"),
+                    String::from("bbb"),
+                    String::from("ccc"),
+                    String::from("ddd"),
+                    String::from("eee"),
+                    String::from("q"),
+                    String::from("aaa"),
+                    String::from("bbb"),
+                    String::from("ccc"),
+                    String::from("ddd"),
+                    String::from("eee"),
+                    ];
+                command_list
+                    .into_iter()
+                    .filter(|command| command.contains(_input))
+                    .collect()
+            }, // completion
+            |editor: &mut Editor, input: &str| match input {
+                "q" => editor.should_close = true,
+                _ => (),
+            },
+        );
+        compositor.push(Box::new(prompt));
+    }));
 }
 
 // calculate line numbers for each selection range
