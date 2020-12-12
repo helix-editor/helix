@@ -336,6 +336,7 @@ impl Renderer {
             .draw(self.cache.diff(&self.surface).into_iter());
         // swap the buffer
         std::mem::swap(&mut self.surface, &mut self.cache);
+        self.surface.reset(); // reset is faster than allocating new empty surface
     }
 
     pub fn render_cursor(&mut self, view: &View, prompt: Option<&Prompt>, viewport: Rect) {
@@ -412,13 +413,6 @@ impl Component for EditorView {
                                 commands::insert::insert_char(&mut cx, c);
                             }
                         }
-                        Mode::Normal => {
-                            if let Some(command) = self.keymap[&Mode::Normal].get(&keys) {
-                                command(&mut cx);
-
-                                // TODO: simplistic ensure cursor in view for now
-                            }
-                        }
                         mode => {
                             if let Some(command) = self.keymap[&mode].get(&keys) {
                                 command(&mut cx);
@@ -484,7 +478,6 @@ impl<'a> Application<'a> {
     }
 
     fn render(&mut self) {
-        self.renderer.surface.reset(); // reset is faster than allocating new empty surface
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             executor: &self.executor,
@@ -543,6 +536,7 @@ impl<'a> Application<'a> {
 
         if should_redraw {
             self.render();
+            // calling render twice here fixes it for some reason
         }
     }
 
