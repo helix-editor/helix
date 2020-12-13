@@ -21,6 +21,8 @@ pub struct EditorView {
     keymap: Keymaps,
 }
 
+const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+
 impl EditorView {
     pub fn new() -> Self {
         Self {
@@ -34,11 +36,10 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let area = Rect::new(OFFSET, 0, viewport.width - OFFSET, viewport.height - 2); // - 2 for statusline and prompt
         self.render_buffer(view, area, surface, theme);
         let area = Rect::new(0, viewport.height - 2, viewport.width, 1);
-        self.render_statusline(view, viewport, surface, theme);
+        self.render_statusline(view, area, surface, theme);
     }
 
     // TODO: ideally not &mut View but highlights require it because of cursor cache
@@ -218,7 +219,7 @@ impl EditorView {
         };
         // statusline
         surface.set_style(
-            Rect::new(0, viewport.y, viewport.height, 1),
+            Rect::new(0, viewport.y, viewport.width, 1),
             theme.get("ui.statusline"),
         );
         surface.set_string(1, viewport.y, mode, text_color());
@@ -306,6 +307,21 @@ impl Component for EditorView {
         }
 
         // TODO: drop unwrap
-        // TODO: !!! self.render_cursor(cx.editor.view().unwrap(), None, viewport);
+    }
+
+    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
+        // match view.doc.mode() {
+        //     Mode::Insert => write!(stdout, "\x1B[6 q"),
+        //     mode => write!(stdout, "\x1B[2 q"),
+        // };
+        let view = ctx.editor.view().unwrap();
+        let cursor = view.doc.state.selection().cursor();
+
+        let mut pos = view
+            .screen_coords_at_pos(&view.doc.text().slice(..), cursor)
+            .expect("Cursor is out of bounds.");
+        pos.col += area.x as usize + OFFSET as usize;
+        pos.row += area.y as usize;
+        Some(pos)
     }
 }

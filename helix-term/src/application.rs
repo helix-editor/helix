@@ -9,7 +9,6 @@ use crate::prompt::Prompt;
 use log::{debug, info};
 
 use std::{
-    borrow::Cow,
     io::{self, stdout, Stdout, Write},
     path::PathBuf,
     time::Duration,
@@ -47,30 +46,8 @@ pub struct Application {
 // TODO: temp
 #[inline(always)]
 pub fn text_color() -> Style {
-    return Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
+    Style::default().fg(Color::Rgb(219, 191, 239)) // lilac
 }
-
-// pub fn render_cursor(&mut self, view: &View, prompt: Option<&Prompt>, viewport: Rect) {
-//     let mut stdout = stdout();
-//     match view.doc.mode() {
-//         Mode::Insert => write!(stdout, "\x1B[6 q"),
-//         mode => write!(stdout, "\x1B[2 q"),
-//     };
-//     let pos = if let Some(prompt) = prompt {
-//         Position::new(self.size.0 as usize, 2 + prompt.cursor)
-//     } else {
-//         let cursor = view.doc.state.selection().cursor();
-
-//         let mut pos = view
-//             .screen_coords_at_pos(&view.doc.text().slice(..), cursor)
-//             .expect("Cursor is out of bounds.");
-//         pos.col += viewport.x as usize;
-//         pos.row += viewport.y as usize;
-//         pos
-//     };
-
-//     execute!(stdout, cursor::MoveTo(pos.col as u16, pos.row as u16));
-// }
 
 impl Application {
     pub fn new(mut args: Args, executor: &'static smol::Executor<'static>) -> Result<Self, Error> {
@@ -106,13 +83,14 @@ impl Application {
         let editor = &mut self.editor;
         let compositor = &self.compositor;
 
-        // TODO: should be unnecessary
-        // self.terminal.autoresize();
         let mut cx = crate::compositor::Context { editor, executor };
         let area = self.terminal.size().unwrap();
+
         compositor.render(area, self.terminal.current_buffer_mut(), &mut cx);
+        let pos = compositor.cursor_position(area, &mut cx);
 
         self.terminal.draw();
+        self.terminal.set_cursor(pos.col as u16, pos.row as u16);
     }
 
     pub async fn event_loop(&mut self) {

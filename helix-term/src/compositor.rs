@@ -14,6 +14,7 @@
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 
 use crossterm::event::Event;
+use helix_core::Position;
 use smol::Executor;
 use tui::buffer::Buffer as Surface;
 use tui::layout::Rect;
@@ -52,6 +53,10 @@ pub trait Component {
     }
 
     fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
+
+    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
+        None
+    }
 }
 
 // struct Editor { };
@@ -137,5 +142,14 @@ impl Compositor {
         for layer in &self.layers {
             layer.render(area, surface, cx)
         }
+    }
+
+    pub fn cursor_position(&self, area: Rect, cx: &mut Context) -> Position {
+        for layer in self.layers.iter().rev() {
+            if let Some(pos) = layer.cursor_position(area, cx) {
+                return pos;
+            }
+        }
+        panic!("No layer returned a position!");
     }
 }

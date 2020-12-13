@@ -1,5 +1,6 @@
 use crate::compositor::{Component, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use helix_core::Position;
 use helix_view::Editor;
 use helix_view::Theme;
 use std::string::String;
@@ -199,5 +200,12 @@ impl Component for Prompt {
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.render_prompt(area, surface, &cx.editor.theme)
+    }
+
+    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
+        Some(Position::new(
+            area.height as usize - 1,
+            area.x as usize + 2 + self.cursor,
+        ))
     }
 }
