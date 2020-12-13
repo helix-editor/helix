@@ -1,6 +1,11 @@
 #![allow(unused)]
 
 mod application;
+mod commands;
+mod compositor;
+mod keymap;
+mod terminal;
+mod ui;
 
 use application::Application;
 

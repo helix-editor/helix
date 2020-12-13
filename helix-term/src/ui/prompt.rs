@@ -1,5 +1,8 @@
-use crate::Editor;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crate::compositor::{Component, Compositor, Context, EventResult};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use helix_core::Position;
+use helix_view::Editor;
+use helix_view::Theme;
 use std::string::String;
 
 pub struct Prompt {
@@ -79,16 +82,91 @@ impl Prompt {
     pub fn exit_selection(&mut self) {
         self.completion_selection_index = None;
     }
+}
 
-    pub fn handle_input(&mut self, key_event: KeyEvent, editor: &mut Editor) {
-        match key_event {
+use tui::{
+    buffer::Buffer as Surface,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+};
+
+const BASE_WIDTH: u16 = 30;
+use crate::ui::text_color;
+
+impl Prompt {
+    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, theme: &Theme) {
+        let text_color = text_color();
+        // completion
+        if !self.completion.is_empty() {
+            // TODO: find out better way of clearing individual lines of the screen
+            let mut row = 0;
+            let mut col = 0;
+            let max_col = area.width / BASE_WIDTH;
+            let col_height = ((self.completion.len() as u16 + max_col - 1) / max_col);
+
+            for i in (3..col_height + 3) {
+                surface.set_string(
+                    0,
+                    area.height - i as u16,
+                    " ".repeat(area.width as usize),
+                    text_color,
+                );
+            }
+            surface.set_style(
+                Rect::new(0, area.height - col_height - 2, area.width, col_height),
+                theme.get("ui.statusline"),
+            );
+            for (i, command) in self.completion.iter().enumerate() {
+                let color = if self.completion_selection_index.is_some()
+                    && i == self.completion_selection_index.unwrap()
+                {
+                    Style::default().bg(Color::Rgb(104, 060, 232))
+                } else {
+                    text_color
+                };
+                surface.set_stringn(
+                    1 + col * BASE_WIDTH,
+                    area.height - col_height - 2 + row,
+                    &command,
+                    BASE_WIDTH as usize - 1,
+                    color,
+                );
+                row += 1;
+                if row > col_height - 1 {
+                    row = 0;
+                    col += 1;
+                }
+                if col > max_col {
+                    break;
+                }
+            }
+        }
+        // render buffer text
+        surface.set_string(1, area.height - 1, &self.prompt, text_color);
+        surface.set_string(2, area.height - 1, &self.line, text_color);
+    }
+}
+
+impl Component for Prompt {
+    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+        let event = match event {
+            Event::Key(event) => event,
+            _ => return EventResult::Ignored,
+        };
+
+        match event {
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
             } => self.insert_char(c),
             KeyEvent {
                 code: KeyCode::Esc, ..
-            } => self.should_close = true,
+            } => {
+                return EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+                    // remove the layer
+                    compositor.pop();
+                })));
+            }
             KeyEvent {
                 code: KeyCode::Right,
                 ..
@@ -112,7 +190,7 @@ impl Prompt {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => (self.callback_fn)(editor, &self.line),
+            } => (self.callback_fn)(cx.editor, &self.line),
             KeyEvent {
                 code: KeyCode::Tab, ..
             } => self.change_completion_selection(),
@@ -121,6 +199,19 @@ impl Prompt {
                 modifiers: KeyModifiers::CONTROL,
             } => self.exit_selection(),
             _ => (),
-        }
+        };
+
+        EventResult::Consumed(None)
+    }
+
+    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        self.render_prompt(area, surface, &cx.editor.theme)
+    }
+
+    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
+        Some(Position::new(
+            area.height as usize - 1,
+            area.x as usize + 2 + self.cursor,
+        ))
     }
 }

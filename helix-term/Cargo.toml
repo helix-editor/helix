@@ -17,6 +17,7 @@ helix-view = { path = "../helix-view", features = ["term"]}
 helix-lsp = { path = "../helix-lsp"}
 
 anyhow = "1"
+once_cell = "1.4"
 
 smol = "1"
 num_cpus = "1"

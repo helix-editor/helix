@@ -177,7 +177,6 @@ impl Transport {
                     .expect("pending_request with id not found!");
                 tx.send(Err(error.into())).await?;
             }
-            msg => unimplemented!("{:?}", msg),
         }
         Ok(())
     }
