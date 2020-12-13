@@ -1,0 +1,5 @@
+[[language]]
+name = "rust"
+scope = "source.rust"
+injection-regex = "rust"
+file-types = ["rs"]

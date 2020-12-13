@@ -13,10 +13,10 @@
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 
-use crate::application::Renderer;
 use crossterm::event::Event;
 use smol::Executor;
 use tui::buffer::Buffer as Surface;
+use tui::layout::Rect;
 
 pub type Callback = Box<dyn Fn(&mut Compositor)>;
 
@@ -36,9 +36,9 @@ pub enum EventResult {
 
 use helix_view::{Editor, View};
 // shared with commands.rs
-pub struct Context<'a, 'b> {
+pub struct Context<'a> {
     pub editor: &'a mut Editor,
-    pub executor: &'a smol::Executor<'b>,
+    pub executor: &'static smol::Executor<'static>,
 }
 
 pub trait Component {
@@ -51,7 +51,7 @@ pub trait Component {
         true
     }
 
-    fn render(&mut self, renderer: &mut Renderer, ctx: &mut Context);
+    fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 }
 
 // struct Editor { };
@@ -133,9 +133,9 @@ impl Compositor {
         false
     }
 
-    pub fn render(&mut self, renderer: &mut Renderer, cx: &mut Context) {
-        for layer in &mut self.layers {
-            layer.render(renderer, cx)
+    pub fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        for layer in &self.layers {
+            layer.render(area, surface, cx)
         }
     }
 }

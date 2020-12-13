@@ -3,8 +3,10 @@
 mod application;
 mod commands;
 mod compositor;
+mod editor_view;
 mod keymap;
 mod prompt;
+mod terminal;
 
 use application::Application;
 
