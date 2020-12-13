@@ -10,7 +10,7 @@ use helix_core::{
 use once_cell::sync::Lazy;
 
 use crate::compositor::Compositor;
-use crate::prompt::Prompt;
+use crate::ui::Prompt;
 
 use helix_view::{
     document::Mode,

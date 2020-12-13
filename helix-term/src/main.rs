@@ -3,10 +3,9 @@
 mod application;
 mod commands;
 mod compositor;
-mod editor_view;
 mod keymap;
-mod prompt;
 mod terminal;
+mod ui;
 
 use application::Application;
 

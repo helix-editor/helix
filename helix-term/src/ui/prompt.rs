@@ -91,10 +91,11 @@ use tui::{
 };
 
 const BASE_WIDTH: u16 = 30;
-use crate::application::text_color;
+use crate::ui::text_color;
 
 impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, theme: &Theme) {
+        let text_color = text_color();
         // completion
         if !self.completion.is_empty() {
             // TODO: find out better way of clearing individual lines of the screen
@@ -108,7 +109,7 @@ impl Prompt {
                     0,
                     area.height - i as u16,
                     " ".repeat(area.width as usize),
-                    text_color(),
+                    text_color,
                 );
             }
             surface.set_style(
@@ -121,7 +122,7 @@ impl Prompt {
                 {
                     Style::default().bg(Color::Rgb(104, 060, 232))
                 } else {
-                    text_color()
+                    text_color
                 };
                 surface.set_stringn(
                     1 + col * BASE_WIDTH,
@@ -141,8 +142,8 @@ impl Prompt {
             }
         }
         // render buffer text
-        surface.set_string(1, area.height - 1, &self.prompt, text_color());
-        surface.set_string(2, area.height - 1, &self.line, text_color());
+        surface.set_string(1, area.height - 1, &self.prompt, text_color);
+        surface.set_string(2, area.height - 1, &self.line, text_color);
     }
 }
 

@@ -1,21 +1,22 @@
-use crate::application::text_color;
 use crate::commands;
-use crate::compositor::{Component, Compositor, EventResult};
+use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::keymap::{self, Keymaps};
+use crate::ui::text_color;
+
+use helix_core::{indent::TAB_WIDTH, syntax::HighlightEvent, Position, Range, State};
+use helix_view::{document::Mode, Document, Editor, Theme, View};
+use std::borrow::Cow;
+
 use crossterm::{
     cursor,
     event::{read, Event, EventStream, KeyCode, KeyEvent},
 };
-use helix_view::{document::Mode, Document, Editor, Theme, View};
-use std::borrow::Cow;
 use tui::{
     backend::CrosstermBackend,
     buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Modifier, Style},
 };
-
-use helix_core::{indent::TAB_WIDTH, syntax::HighlightEvent, Position, Range, State};
 
 pub struct EditorView {
     keymap: Keymaps,
@@ -212,6 +213,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
+        let text_color = text_color();
         let mode = match view.doc.mode() {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
@@ -222,22 +224,20 @@ impl EditorView {
             Rect::new(0, viewport.y, viewport.width, 1),
             theme.get("ui.statusline"),
         );
-        surface.set_string(1, viewport.y, mode, text_color());
+        surface.set_string(1, viewport.y, mode, text_color);
 
         if let Some(path) = view.doc.path() {
-            surface.set_string(6, viewport.y, path.to_string_lossy(), text_color());
+            surface.set_string(6, viewport.y, path.to_string_lossy(), text_color);
         }
 
         surface.set_string(
             viewport.width - 10,
             viewport.y,
             format!("{}", view.doc.diagnostics.len()),
-            text_color(),
+            text_color,
         );
     }
 }
-
-use crate::compositor::Context;
 
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {

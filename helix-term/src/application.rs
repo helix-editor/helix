@@ -2,9 +2,8 @@ use clap::ArgMatches as Args;
 
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::compositor::{Component, Compositor, EventResult};
-use crate::editor_view::EditorView;
-use crate::prompt::Prompt;
+use crate::compositor::Compositor;
+use crate::ui;
 
 use log::{debug, info};
 
@@ -19,18 +18,11 @@ use smol::prelude::*;
 use anyhow::Error;
 
 use crossterm::{
-    cursor,
-    event::{read, Event, EventStream, KeyCode, KeyEvent},
-    execute, queue,
-    terminal::{self, disable_raw_mode, enable_raw_mode},
+    event::{Event, EventStream},
+    execute, terminal,
 };
 
-use tui::{
-    backend::CrosstermBackend,
-    buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Modifier, Style},
-};
+use tui::{backend::CrosstermBackend, layout::Rect};
 
 type Terminal = crate::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
 
@@ -41,12 +33,6 @@ pub struct Application {
 
     executor: &'static smol::Executor<'static>,
     language_server: helix_lsp::Client,
-}
-
-// TODO: temp
-#[inline(always)]
-pub fn text_color() -> Style {
-    Style::default().fg(Color::Rgb(219, 191, 239)) // lilac
 }
 
 impl Application {
@@ -61,14 +47,13 @@ impl Application {
         }
 
         let mut compositor = Compositor::new();
-        compositor.push(Box::new(EditorView::new()));
+        compositor.push(Box::new(ui::EditorView::new()));
 
         let language_server = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
 
         let mut app = Self {
             editor,
             terminal,
-            // TODO; move to state
             compositor,
 
             executor,
@@ -213,7 +198,7 @@ impl Application {
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
-        enable_raw_mode()?;
+        terminal::enable_raw_mode()?;
 
         let mut stdout = stdout();
 
@@ -223,7 +208,7 @@ impl Application {
         let hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
             execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
-            disable_raw_mode();
+            terminal::disable_raw_mode();
             hook(info);
         }));
 
@@ -234,7 +219,7 @@ impl Application {
 
         execute!(stdout, terminal::LeaveAlternateScreen)?;
 
-        disable_raw_mode()?;
+        terminal::disable_raw_mode()?;
 
         Ok(())
     }
