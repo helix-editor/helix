@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Context, EventResult};
+use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use helix_core::Position;
 use helix_view::Editor;
@@ -161,7 +161,12 @@ impl Component for Prompt {
             } => self.insert_char(c),
             KeyEvent {
                 code: KeyCode::Esc, ..
-            } => self.should_close = true,
+            } => {
+                return EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+                    // remove the layer
+                    compositor.pop();
+                })));
+            }
             KeyEvent {
                 code: KeyCode::Right,
                 ..
