@@ -10,7 +10,6 @@ pub struct Prompt {
     pub line: String,
     pub cursor: usize,
     pub completion: Vec<String>,
-    pub should_close: bool,
     pub completion_selection_index: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<String>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
@@ -27,7 +26,6 @@ impl Prompt {
             line: String::new(),
             cursor: 0,
             completion: completion_fn(""),
-            should_close: false,
             completion_selection_index: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
@@ -42,9 +40,7 @@ impl Prompt {
     }
 
     pub fn move_char_left(&mut self) {
-        if self.cursor > 0 {
-            self.cursor -= 1;
-        }
+        self.cursor = self.cursor.saturating_sub(1)
     }
 
     pub fn move_char_right(&mut self) {

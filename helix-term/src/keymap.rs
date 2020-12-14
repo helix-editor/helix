@@ -156,6 +156,7 @@ pub fn default() -> Keymaps {
                 vec![key!('o')] => commands::open_below,
                 vec![key!('d')] => commands::delete_selection,
                 vec![key!('c')] => commands::change_selection,
+                vec![shift!('S')] => commands::split_selection,
                 vec![key!('s')] => commands::split_selection_on_newline,
                 vec![key!(';')] => commands::collapse_selection,
                 // TODO should be alt(;)

@@ -248,6 +248,39 @@ pub fn extend_line_down(cx: &mut Context) {
     cx.view.doc.set_selection(selection);
 }
 
+pub fn split_selection(cx: &mut Context) {
+    // TODO: this needs to store initial selection state, revert on esc, confirm on enter
+    // needs to also call the callback function per input change, not just final time.
+    // could cheat and put it into completion_fn
+    //
+    // kakoune does it like this:
+    // # save state to register
+    // {
+    //  # restore state from register
+    //  # if event == abort, return early
+    //  # add to history if enabled
+    //  # update state
+    // }
+
+    let prompt = Prompt::new(
+        "split:".to_string(),
+        |input: &str| Vec::new(), // TODO: use Option here?
+        |editor: &mut Editor, input: &str| {
+            match Regex::new(input) {
+                Ok(regex) => {
+                    let view = editor.view_mut().unwrap();
+                    let text = &view.doc.text().slice(..);
+                    let selection = selection::split_on_matches(text, view.doc.selection(), &regex);
+                    view.doc.set_selection(selection);
+                }
+                Err(_) => (), // TODO: mark command line as error
+            }
+        },
+    );
+
+    unimplemented!()
+}
+
 pub fn split_selection_on_newline(cx: &mut Context) {
     let text = &cx.view.doc.text().slice(..);
     // only compile the regex once
