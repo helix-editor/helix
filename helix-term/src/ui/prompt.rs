@@ -137,9 +137,10 @@ impl Prompt {
                 }
             }
         }
+        let line = area.height - 1;
         // render buffer text
-        surface.set_string(1, area.height - 1, &self.prompt, text_color);
-        surface.set_string(2, area.height - 1, &self.line, text_color);
+        surface.set_string(0, line, &self.prompt, text_color);
+        surface.set_string(self.prompt.len() as u16, line, &self.line, text_color);
     }
 }
 
@@ -206,8 +207,8 @@ impl Component for Prompt {
 
     fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
         Some(Position::new(
-            area.height as usize - 1,
-            area.x as usize + 2 + self.cursor,
+            area.height as usize,
+            area.x as usize + self.prompt.len() + self.cursor,
         ))
     }
 }
