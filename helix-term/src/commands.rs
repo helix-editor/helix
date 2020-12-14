@@ -262,23 +262,26 @@ pub fn split_selection(cx: &mut Context) {
     //  # update state
     // }
 
-    let prompt = Prompt::new(
-        "split:".to_string(),
-        |input: &str| Vec::new(), // TODO: use Option here?
-        |editor: &mut Editor, input: &str| {
-            match Regex::new(input) {
-                Ok(regex) => {
-                    let view = editor.view_mut().unwrap();
-                    let text = &view.doc.text().slice(..);
-                    let selection = selection::split_on_matches(text, view.doc.selection(), &regex);
-                    view.doc.set_selection(selection);
+    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+        let prompt = Prompt::new(
+            "split:".to_string(),
+            |input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
+            |editor: &mut Editor, input: &str| {
+                match Regex::new(input) {
+                    Ok(regex) => {
+                        let view = editor.view_mut().unwrap();
+                        let text = &view.doc.text().slice(..);
+                        let selection =
+                            selection::split_on_matches(text, view.doc.selection(), &regex);
+                        view.doc.set_selection(selection);
+                    }
+                    Err(_) => (), // TODO: mark command line as error
                 }
-                Err(_) => (), // TODO: mark command line as error
-            }
-        },
-    );
+            },
+        );
 
-    unimplemented!()
+        compositor.push(Box::new(prompt));
+    }));
 }
 
 pub fn split_selection_on_newline(cx: &mut Context) {
