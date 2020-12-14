@@ -151,6 +151,11 @@ impl Component for Prompt {
             _ => return EventResult::Ignored,
         };
 
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+            // remove the layer
+            compositor.pop();
+        })));
+
         match event {
             KeyEvent {
                 code: KeyCode::Char(c),
@@ -159,10 +164,7 @@ impl Component for Prompt {
             KeyEvent {
                 code: KeyCode::Esc, ..
             } => {
-                return EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
-                    // remove the layer
-                    compositor.pop();
-                })));
+                return close_fn;
             }
             KeyEvent {
                 code: KeyCode::Right,
@@ -187,7 +189,10 @@ impl Component for Prompt {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => (self.callback_fn)(cx.editor, &self.line),
+            } => {
+                (self.callback_fn)(cx.editor, &self.line);
+                return close_fn;
+            }
             KeyEvent {
                 code: KeyCode::Tab, ..
             } => self.change_completion_selection(),
