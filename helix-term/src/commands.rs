@@ -10,7 +10,7 @@ use helix_core::{
 use once_cell::sync::Lazy;
 
 use crate::compositor::Compositor;
-use crate::ui::Prompt;
+use crate::ui::{Prompt, PromptEvent};
 
 use helix_view::{
     document::Mode,
@@ -262,18 +262,37 @@ pub fn split_selection(cx: &mut Context) {
     //  # update state
     // }
 
+    let snapshot = cx.view.doc.state.clone();
+
     let prompt = Prompt::new(
         "split:".to_string(),
         |input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
-        |editor: &mut Editor, input: &str| {
-            match Regex::new(input) {
-                Ok(regex) => {
+        move |editor: &mut Editor, input: &str, event: PromptEvent| {
+            match event {
+                PromptEvent::Abort => {
+                    // revert state
                     let view = editor.view_mut().unwrap();
-                    let text = &view.doc.text().slice(..);
-                    let selection = selection::split_on_matches(text, view.doc.selection(), &regex);
-                    view.doc.set_selection(selection);
+                    view.doc.state = snapshot.clone();
                 }
-                Err(_) => (), // TODO: mark command line as error
+                PromptEvent::Validate => {
+                    //
+                }
+                PromptEvent::Update => {
+                    match Regex::new(input) {
+                        Ok(regex) => {
+                            let view = editor.view_mut().unwrap();
+
+                            // revert state to what it was before the last update
+                            view.doc.state = snapshot.clone();
+
+                            let text = &view.doc.text().slice(..);
+                            let selection =
+                                selection::split_on_matches(text, view.doc.selection(), &regex);
+                            view.doc.set_selection(selection);
+                        }
+                        Err(_) => (), // TODO: mark command line as error
+                    }
+                }
             }
         },
     );
@@ -416,9 +435,15 @@ pub fn command_mode(cx: &mut Context) {
                     .filter(|command| command.contains(_input))
                     .collect()
             }, // completion
-            |editor: &mut Editor, input: &str| match input {
-                "q" => editor.should_close = true,
-                _ => (),
+            |editor: &mut Editor, input: &str, event: PromptEvent| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                match input {
+                    "q" => editor.should_close = true,
+                    _ => (),
+                }
             },
         );
         compositor.push(Box::new(prompt));

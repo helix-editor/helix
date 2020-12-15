@@ -12,14 +12,24 @@ pub struct Prompt {
     pub completion: Vec<String>,
     pub completion_selection_index: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<String>>,
-    callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
+    callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
+}
+
+#[derive(PartialEq)]
+pub enum PromptEvent {
+    /// The prompt input has been updated.
+    Update,
+    /// Validate and finalize the change.
+    Validate,
+    /// Abort the change, reverting to the initial state.
+    Abort,
 }
 
 impl Prompt {
     pub fn new(
         prompt: String,
         mut completion_fn: impl FnMut(&str) -> Vec<String> + 'static,
-        callback_fn: impl FnMut(&mut Editor, &str) + 'static,
+        callback_fn: impl FnMut(&mut Editor, &str, PromptEvent) + 'static,
     ) -> Prompt {
         Prompt {
             prompt,
@@ -160,10 +170,14 @@ impl Component for Prompt {
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
-            } => self.insert_char(c),
+            } => {
+                self.insert_char(c);
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
+            }
             KeyEvent {
                 code: KeyCode::Esc, ..
             } => {
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
             KeyEvent {
@@ -185,12 +199,15 @@ impl Component for Prompt {
             KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
-            } => self.delete_char_backwards(),
+            } => {
+                self.delete_char_backwards();
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
+            }
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
             } => {
-                (self.callback_fn)(cx.editor, &self.line);
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
                 return close_fn;
             }
             KeyEvent {

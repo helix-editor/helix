@@ -2,7 +2,7 @@ mod editor;
 mod prompt;
 
 pub use editor::EditorView;
-pub use prompt::Prompt;
+pub use prompt::{Prompt, PromptEvent};
 
 pub use tui::layout::Rect;
 pub use tui::style::{Color, Modifier, Style};
