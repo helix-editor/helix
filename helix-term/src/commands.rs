@@ -440,8 +440,15 @@ pub fn command_mode(cx: &mut Context) {
                     return;
                 }
 
-                match input {
-                    "q" => editor.should_close = true,
+                let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
+
+                match parts.as_slice() {
+                    &["q"] => editor.should_close = true,
+                    &["o", path] => {
+                        // TODO: make view()/view_mut() always contain a view.
+                        let size = editor.view().unwrap().size;
+                        editor.open(path.into(), size);
+                    }
                     _ => (),
                 }
             },
