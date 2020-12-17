@@ -10,7 +10,7 @@ use helix_core::{
 use once_cell::sync::Lazy;
 
 use crate::compositor::Compositor;
-use crate::ui::{Prompt, PromptEvent};
+use crate::ui::{self, Prompt, PromptEvent};
 
 use helix_view::{
     document::Mode,
@@ -454,6 +454,12 @@ pub fn command_mode(cx: &mut Context) {
             },
         );
         compositor.push(Box::new(prompt));
+    }));
+}
+pub fn file_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+        let picker = ui::Picker::new();
+        compositor.push(Box::new(picker));
     }));
 }
 

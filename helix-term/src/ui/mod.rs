@@ -1,7 +1,9 @@
 mod editor;
+mod picker;
 mod prompt;
 
 pub use editor::EditorView;
+pub use picker::Picker;
 pub use prompt::{Prompt, PromptEvent};
 
 pub use tui::layout::Rect;

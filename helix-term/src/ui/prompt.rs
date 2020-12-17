@@ -149,8 +149,13 @@ impl Prompt {
         }
         let line = area.height - 1;
         // render buffer text
-        surface.set_string(0, line, &self.prompt, text_color);
-        surface.set_string(self.prompt.len() as u16, line, &self.line, text_color);
+        surface.set_string(area.x, area.y + line, &self.prompt, text_color);
+        surface.set_string(
+            area.x + self.prompt.len() as u16,
+            area.y + line,
+            &self.line,
+            text_color,
+        );
     }
 }
 
@@ -158,6 +163,7 @@ impl Component for Prompt {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
+            Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored,
         };
 

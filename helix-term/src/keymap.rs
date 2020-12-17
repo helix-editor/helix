@@ -183,6 +183,8 @@ pub fn default() -> Keymaps {
                 }] => commands::page_down,
                 vec![ctrl!('u')] => commands::half_page_up,
                 vec![ctrl!('d')] => commands::half_page_down,
+
+                vec![ctrl!('p')] => commands::file_picker,
             ),
             Mode::Insert => hashmap!(
                 vec![Key {

@@ -32,3 +32,7 @@ futures-util = "0.3"
 fern = "0.6"
 chrono = "0.4"
 log = "0.4"
+
+# File picker
+fuzzy-matcher = "0.3"
+ignore = "0.4"
