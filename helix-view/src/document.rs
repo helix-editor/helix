@@ -1,6 +1,6 @@
 use anyhow::Error;
 use std::future::Future;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use helix_core::{
     syntax::LOADER, ChangeSet, Diagnostic, History, Position, Range, Rope, RopeSlice, Selection,
@@ -199,6 +199,13 @@ impl Document {
 
     pub fn selection(&self) -> &Selection {
         &self.state.selection
+    }
+
+    pub fn relative_path(&self) -> Option<&Path> {
+        self.path.as_ref().map(|path| {
+            path.strip_prefix(std::env::current_dir().unwrap())
+                .unwrap_or(path)
+        })
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

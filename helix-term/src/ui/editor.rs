@@ -226,7 +226,7 @@ impl EditorView {
         );
         surface.set_string(1, viewport.y, mode, text_color);
 
-        if let Some(path) = view.doc.path() {
+        if let Some(path) = view.doc.relative_path() {
             surface.set_string(6, viewport.y, path.to_string_lossy(), text_color);
         }
 
