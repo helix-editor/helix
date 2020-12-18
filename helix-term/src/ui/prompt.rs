@@ -10,24 +10,32 @@ pub struct Prompt {
     pub line: String,
     pub cursor: usize,
     pub completion: Vec<String>,
-    pub should_close: bool,
     pub completion_selection_index: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<String>>,
-    callback_fn: Box<dyn FnMut(&mut Editor, &str)>,
+    callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
+}
+
+#[derive(PartialEq)]
+pub enum PromptEvent {
+    /// The prompt input has been updated.
+    Update,
+    /// Validate and finalize the change.
+    Validate,
+    /// Abort the change, reverting to the initial state.
+    Abort,
 }
 
 impl Prompt {
     pub fn new(
         prompt: String,
         mut completion_fn: impl FnMut(&str) -> Vec<String> + 'static,
-        callback_fn: impl FnMut(&mut Editor, &str) + 'static,
+        callback_fn: impl FnMut(&mut Editor, &str, PromptEvent) + 'static,
     ) -> Prompt {
         Prompt {
             prompt,
             line: String::new(),
             cursor: 0,
             completion: completion_fn(""),
-            should_close: false,
             completion_selection_index: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
@@ -42,9 +50,7 @@ impl Prompt {
     }
 
     pub fn move_char_left(&mut self) {
-        if self.cursor > 0 {
-            self.cursor -= 1;
-        }
+        self.cursor = self.cursor.saturating_sub(1)
     }
 
     pub fn move_char_right(&mut self) {
@@ -141,9 +147,15 @@ impl Prompt {
                 }
             }
         }
+        let line = area.height - 1;
         // render buffer text
-        surface.set_string(1, area.height - 1, &self.prompt, text_color);
-        surface.set_string(2, area.height - 1, &self.line, text_color);
+        surface.set_string(area.x, area.y + line, &self.prompt, text_color);
+        surface.set_string(
+            area.x + self.prompt.len() as u16,
+            area.y + line,
+            &self.line,
+            text_color,
+        );
     }
 }
 
@@ -151,21 +163,28 @@ impl Component for Prompt {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
+            Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored,
         };
+
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+            // remove the layer
+            compositor.pop();
+        })));
 
         match event {
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
-            } => self.insert_char(c),
+            } => {
+                self.insert_char(c);
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
+            }
             KeyEvent {
                 code: KeyCode::Esc, ..
             } => {
-                return EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
-                    // remove the layer
-                    compositor.pop();
-                })));
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Abort);
+                return close_fn;
             }
             KeyEvent {
                 code: KeyCode::Right,
@@ -186,11 +205,17 @@ impl Component for Prompt {
             KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
-            } => self.delete_char_backwards(),
+            } => {
+                self.delete_char_backwards();
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
+            }
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => (self.callback_fn)(cx.editor, &self.line),
+            } => {
+                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
+                return close_fn;
+            }
             KeyEvent {
                 code: KeyCode::Tab, ..
             } => self.change_completion_selection(),
@@ -210,8 +235,8 @@ impl Component for Prompt {
 
     fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
         Some(Position::new(
-            area.height as usize - 1,
-            area.x as usize + 2 + self.cursor,
+            area.height as usize,
+            area.x as usize + self.prompt.len() + self.cursor,
         ))
     }
 }

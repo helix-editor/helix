@@ -10,7 +10,7 @@ use helix_core::{
 use once_cell::sync::Lazy;
 
 use crate::compositor::Compositor;
-use crate::ui::Prompt;
+use crate::ui::{self, Prompt, PromptEvent};
 
 use helix_view::{
     document::Mode,
@@ -248,6 +248,60 @@ pub fn extend_line_down(cx: &mut Context) {
     cx.view.doc.set_selection(selection);
 }
 
+pub fn split_selection(cx: &mut Context) {
+    // TODO: this needs to store initial selection state, revert on esc, confirm on enter
+    // needs to also call the callback function per input change, not just final time.
+    // could cheat and put it into completion_fn
+    //
+    // kakoune does it like this:
+    // # save state to register
+    // {
+    //  # restore state from register
+    //  # if event == abort, return early
+    //  # add to history if enabled
+    //  # update state
+    // }
+
+    let snapshot = cx.view.doc.state.clone();
+
+    let prompt = Prompt::new(
+        "split:".to_string(),
+        |input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
+        move |editor: &mut Editor, input: &str, event: PromptEvent| {
+            match event {
+                PromptEvent::Abort => {
+                    // revert state
+                    let view = editor.view_mut().unwrap();
+                    view.doc.state = snapshot.clone();
+                }
+                PromptEvent::Validate => {
+                    //
+                }
+                PromptEvent::Update => {
+                    match Regex::new(input) {
+                        Ok(regex) => {
+                            let view = editor.view_mut().unwrap();
+
+                            // revert state to what it was before the last update
+                            view.doc.state = snapshot.clone();
+
+                            let text = &view.doc.text().slice(..);
+                            let selection =
+                                selection::split_on_matches(text, view.doc.selection(), &regex);
+                            view.doc.set_selection(selection);
+                        }
+                        Err(_) => (), // TODO: mark command line as error
+                    }
+                }
+            }
+        },
+    );
+
+    cx.callback = Some(Box::new(move |compositor: &mut Compositor| {
+        compositor.push(Box::new(prompt));
+    }));
+}
+
 pub fn split_selection_on_newline(cx: &mut Context) {
     let text = &cx.view.doc.text().slice(..);
     // only compile the regex once
@@ -381,12 +435,31 @@ pub fn command_mode(cx: &mut Context) {
                     .filter(|command| command.contains(_input))
                     .collect()
             }, // completion
-            |editor: &mut Editor, input: &str| match input {
-                "q" => editor.should_close = true,
-                _ => (),
+            |editor: &mut Editor, input: &str, event: PromptEvent| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
+
+                match parts.as_slice() {
+                    &["q"] => editor.should_close = true,
+                    &["o", path] => {
+                        // TODO: make view()/view_mut() always contain a view.
+                        let size = editor.view().unwrap().size;
+                        editor.open(path.into(), size);
+                    }
+                    _ => (),
+                }
             },
         );
         compositor.push(Box::new(prompt));
+    }));
+}
+pub fn file_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+        let picker = ui::file_picker("./");
+        compositor.push(Box::new(picker));
     }));
 }
 

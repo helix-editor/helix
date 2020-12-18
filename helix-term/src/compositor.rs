@@ -19,7 +19,7 @@ use smol::Executor;
 use tui::buffer::Buffer as Surface;
 use tui::layout::Rect;
 
-pub type Callback = Box<dyn Fn(&mut Compositor)>;
+pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
 
 // --> EventResult should have a callback that takes a context with methods like .popup(),
 // .prompt() etc. That way we can abstract it from the renderer.
