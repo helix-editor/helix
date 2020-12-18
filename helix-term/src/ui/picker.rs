@@ -159,6 +159,16 @@ impl Component for Picker {
             } => {
                 return close_fn;
             }
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
+                let size = cx.editor.view().unwrap().size;
+                if let Some(path) = self.selection() {
+                    cx.editor.open(path.into(), size);
+                }
+                return close_fn;
+            }
             _ => {
                 match self.prompt.handle_event(event, cx) {
                     EventResult::Consumed(_) => {
