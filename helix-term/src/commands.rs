@@ -458,7 +458,7 @@ pub fn command_mode(cx: &mut Context) {
 }
 pub fn file_picker(cx: &mut Context) {
     cx.callback = Some(Box::new(|compositor: &mut Compositor| {
-        let picker = ui::Picker::new();
+        let picker = ui::file_picker("./");
         compositor.push(Box::new(picker));
     }));
 }

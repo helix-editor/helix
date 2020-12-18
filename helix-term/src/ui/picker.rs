@@ -9,16 +9,13 @@ use tui::{
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
-use ignore::Walk;
-
-use std::path::PathBuf;
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::Editor;
 
-pub struct Picker {
-    files: Vec<PathBuf>,
+pub struct Picker<T> {
+    options: Vec<T>,
     // filter: String,
     matcher: Box<Matcher>,
     /// (index, score)
@@ -27,22 +24,17 @@ pub struct Picker {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
+
+    format_fn: Box<dyn Fn(&T) -> &str>,
+    callback_fn: Box<dyn Fn(&mut Editor, &T)>,
 }
 
-impl Picker {
-    pub fn new() -> Self {
-        let files = Walk::new("./").filter_map(|entry| match entry {
-            Ok(entry) => {
-                // filter dirs, but we might need special handling for symlinks!
-                if !entry.file_type().unwrap().is_dir() {
-                    Some(entry.into_path())
-                } else {
-                    None
-                }
-            }
-            Err(_err) => None,
-        });
-
+impl<T> Picker<T> {
+    pub fn new(
+        options: Vec<T>,
+        format_fn: impl Fn(&T) -> &str + 'static,
+        callback_fn: impl Fn(&mut Editor, &T) + 'static,
+    ) -> Self {
         let prompt = Prompt::new(
             "".to_string(),
             |pattern: &str| Vec::new(),
@@ -51,14 +43,14 @@ impl Picker {
             },
         );
 
-        const MAX: usize = 1024;
-
         let mut picker = Self {
-            files: files.take(MAX).collect(),
+            options,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             cursor: 0,
             prompt,
+            format_fn: Box::new(format_fn),
+            callback_fn: Box::new(callback_fn),
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -70,9 +62,10 @@ impl Picker {
     pub fn score(&mut self) {
         // need to borrow via pattern match otherwise it complains about simultaneous borrow
         let Self {
-            ref mut files,
+            ref mut options,
             ref mut matcher,
             ref mut matches,
+            ref format_fn,
             ..
         } = *self;
 
@@ -80,15 +73,19 @@ impl Picker {
 
         // reuse the matches allocation
         matches.clear();
-        matches.extend(self.files.iter().enumerate().filter_map(|(index, path)| {
-            match path.to_str() {
-                // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                Some(path) => matcher
-                    .fuzzy_match(path, pattern)
-                    .map(|score| (index, score)),
-                None => None,
-            }
-        }));
+        matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    // TODO: maybe using format_fn isn't the best idea here
+                    let text = (format_fn)(option);
+                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    matcher
+                        .fuzzy_match(text, pattern)
+                        .map(|score| (index, score))
+                }),
+        );
         matches.sort_unstable_by_key(|(_, score)| -score);
 
         // reset cursor position
@@ -101,15 +98,15 @@ impl Picker {
 
     pub fn move_down(&mut self) {
         // TODO: len - 1
-        if self.cursor < self.files.len() {
+        if self.cursor < self.options.len() {
             self.cursor += 1;
         }
     }
 
-    pub fn selection(&self) -> Option<&PathBuf> {
+    pub fn selection(&self) -> Option<&T> {
         self.matches
             .get(self.cursor)
-            .map(|(index, _score)| &self.files[*index])
+            .map(|(index, _score)| &self.options[*index])
     }
 }
 
@@ -118,7 +115,7 @@ impl Picker {
 // - on input change:
 //  - score all the names in relation to input
 
-impl Component for Picker {
+impl<T> Component for Picker<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
@@ -163,9 +160,8 @@ impl Component for Picker {
                 code: KeyCode::Enter,
                 ..
             } => {
-                let size = cx.editor.view().unwrap().size;
-                if let Some(path) = self.selection() {
-                    cx.editor.open(path.into(), size);
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(&mut cx.editor, option);
                 }
                 return close_fn;
             }
@@ -238,10 +234,10 @@ impl Component for Picker {
         let rows = inner.height - 2; // -1 for search bar
 
         let files = self.matches.iter().map(|(index, _score)| {
-            (index, self.files.get(*index).unwrap()) // get_unchecked
+            (index, self.options.get(*index).unwrap()) // get_unchecked
         });
 
-        for (i, (_index, file)) in files.take(rows as usize).enumerate() {
+        for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             if i == self.cursor {
                 surface.set_string(inner.x + 1, inner.y + 2 + i as u16, ">", selected);
             }
@@ -249,7 +245,7 @@ impl Component for Picker {
             surface.set_stringn(
                 inner.x + 3,
                 inner.y + 2 + i as u16,
-                file.strip_prefix("./").unwrap().to_str().unwrap(), // TODO: render paths without ./
+                (self.format_fn)(option),
                 inner.width as usize - 1,
                 if i == self.cursor { selected } else { style },
             );
