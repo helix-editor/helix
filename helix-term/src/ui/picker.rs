@@ -21,6 +21,8 @@ pub struct Picker {
     files: Vec<PathBuf>,
     // filter: String,
     matcher: Box<Matcher>,
+    /// (index, score)
+    matches: Vec<(usize, i64)>,
 
     cursor: usize,
     // pattern: String,
@@ -51,20 +53,46 @@ impl Picker {
 
         const MAX: usize = 1024;
 
-        Self {
+        let mut picker = Self {
             files: files.take(MAX).collect(),
             matcher: Box::new(Matcher::default()),
+            matches: Vec::new(),
             cursor: 0,
             prompt,
-        }
+        };
+
+        // TODO: scoring on empty input should just use a fastpath
+        picker.score();
+
+        picker
     }
 
-    pub fn score(&mut self, pattern: &str) {
-        self.files.iter().filter_map(|path| match path.to_str() {
-            // TODO: using fuzzy_indices could give us the char idx for match highlighting
-            Some(path) => (self.matcher.fuzzy_match(path, pattern)),
-            None => None,
-        });
+    pub fn score(&mut self) {
+        // need to borrow via pattern match otherwise it complains about simultaneous borrow
+        let Self {
+            ref mut files,
+            ref mut matcher,
+            ref mut matches,
+            ..
+        } = *self;
+
+        let pattern = &self.prompt.line;
+
+        // reuse the matches allocation
+        matches.clear();
+        matches.extend(self.files.iter().enumerate().filter_map(|(index, path)| {
+            match path.to_str() {
+                // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                Some(path) => matcher
+                    .fuzzy_match(path, pattern)
+                    .map(|score| (index, score)),
+                None => None,
+            }
+        }));
+        matches.sort_unstable_by_key(|(_, score)| -score);
+
+        // reset cursor position
+        self.cursor = 0;
     }
 
     pub fn move_up(&mut self) {
@@ -76,6 +104,12 @@ impl Picker {
         if self.cursor < self.files.len() {
             self.cursor += 1;
         }
+    }
+
+    pub fn selection(&self) -> Option<&PathBuf> {
+        self.matches
+            .get(self.cursor)
+            .map(|(index, _score)| &self.files[*index])
     }
 }
 
@@ -125,7 +159,15 @@ impl Component for Picker {
             } => {
                 return close_fn;
             }
-            _ => return self.prompt.handle_event(event, cx),
+            _ => {
+                match self.prompt.handle_event(event, cx) {
+                    EventResult::Consumed(_) => {
+                        // TODO: recalculate only if pattern changed
+                        self.score();
+                    }
+                    _ => (),
+                }
+            }
         }
 
         EventResult::Consumed(None)
@@ -184,7 +226,12 @@ impl Component for Picker {
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
         let rows = inner.height - 2; // -1 for search bar
-        for (i, file) in self.files.iter().take(rows as usize).enumerate() {
+
+        let files = self.matches.iter().map(|(index, _score)| {
+            (index, self.files.get(*index).unwrap()) // get_unchecked
+        });
+
+        for (i, (_index, file)) in files.take(rows as usize).enumerate() {
             if i == self.cursor {
                 surface.set_string(inner.x + 1, inner.y + 2 + i as u16, ">", selected);
             }
