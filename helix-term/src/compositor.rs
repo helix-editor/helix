@@ -19,7 +19,7 @@ use smol::Executor;
 use tui::buffer::Buffer as Surface;
 use tui::layout::Rect;
 
-pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
+pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Editor)>;
 
 // --> EventResult should have a callback that takes a context with methods like .popup(),
 // .prompt() etc. That way we can abstract it from the renderer.
@@ -128,7 +128,7 @@ impl Compositor {
         if let Some(layer) = self.layers.last_mut() {
             return match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
-                    callback(self);
+                    callback(self, cx.editor);
                     true
                 }
                 EventResult::Consumed(None) => true,

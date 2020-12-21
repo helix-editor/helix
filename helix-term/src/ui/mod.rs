@@ -15,7 +15,7 @@ pub fn text_color() -> Style {
     Style::default().fg(Color::Rgb(219, 191, 239)) // lilac
 }
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 pub fn file_picker(root: &str) -> Picker<PathBuf> {
     use ignore::Walk;
     // TODO: determine root based on git root
@@ -38,11 +38,35 @@ pub fn file_picker(root: &str) -> Picker<PathBuf> {
         files.take(MAX).collect(),
         |path: &PathBuf| {
             // format_fn
-            path.strip_prefix("./").unwrap().to_str().unwrap() // TODO: render paths without ./
+            path.strip_prefix("./").unwrap().to_str().unwrap()
         },
         |editor: &mut Editor, path: &PathBuf| {
             let size = editor.view().unwrap().size;
             editor.open(path.into(), size);
+        },
+    )
+}
+
+use helix_view::View;
+pub fn buffer_picker(views: &[View], current: usize) -> Picker<(Option<PathBuf>, usize)> {
+    use helix_view::Editor;
+    Picker::new(
+        views
+            .iter()
+            .enumerate()
+            .map(|(i, view)| (view.doc.relative_path().map(Path::to_path_buf), i))
+            .collect(),
+        |(path, index): &(Option<PathBuf>, usize)| {
+            // format_fn
+            match path {
+                Some(path) => path.to_str().unwrap(),
+                None => "[NEW]",
+            }
+        },
+        |editor: &mut Editor, &(_, index): &(Option<PathBuf>, usize)| {
+            if index < editor.views.len() {
+                editor.focus = index;
+            }
         },
     )
 }

@@ -185,6 +185,7 @@ pub fn default() -> Keymaps {
                 vec![ctrl!('d')] => commands::half_page_down,
 
                 vec![ctrl!('p')] => commands::file_picker,
+                vec![ctrl!('b')] => commands::buffer_picker,
             ),
             Mode::Insert => hashmap!(
                 vec![Key {

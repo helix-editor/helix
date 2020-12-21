@@ -297,9 +297,11 @@ pub fn split_selection(cx: &mut Context) {
         },
     );
 
-    cx.callback = Some(Box::new(move |compositor: &mut Compositor| {
-        compositor.push(Box::new(prompt));
-    }));
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, editor: &mut Editor| {
+            compositor.push(Box::new(prompt));
+        },
+    ));
 }
 
 pub fn split_selection_on_newline(cx: &mut Context) {
@@ -399,12 +401,13 @@ pub fn append_mode(cx: &mut Context) {
 
 // TODO: I, A, o and O can share a lot of the primitives.
 pub fn command_mode(cx: &mut Context) {
-    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
-        let prompt = Prompt::new(
-            ":".to_owned(),
-            |_input: &str| {
-                // TODO: i need this duplicate list right now to avoid borrow checker issues
-                let command_list = vec![
+    cx.callback = Some(Box::new(
+        |compositor: &mut Compositor, editor: &mut Editor| {
+            let prompt = Prompt::new(
+                ":".to_owned(),
+                |_input: &str| {
+                    // TODO: i need this duplicate list right now to avoid borrow checker issues
+                    let command_list = vec![
                     String::from("q"),
                     String::from("aaa"),
                     String::from("bbb"),
@@ -437,37 +440,49 @@ pub fn command_mode(cx: &mut Context) {
                     String::from("ddd"),
                     String::from("eee"),
                     ];
-                command_list
-                    .into_iter()
-                    .filter(|command| command.contains(_input))
-                    .collect()
-            }, // completion
-            |editor: &mut Editor, input: &str, event: PromptEvent| {
-                if event != PromptEvent::Validate {
-                    return;
-                }
-
-                let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
-
-                match parts.as_slice() {
-                    &["q"] => editor.should_close = true,
-                    &["o", path] => {
-                        // TODO: make view()/view_mut() always contain a view.
-                        let size = editor.view().unwrap().size;
-                        editor.open(path.into(), size);
+                    command_list
+                        .into_iter()
+                        .filter(|command| command.contains(_input))
+                        .collect()
+                }, // completion
+                |editor: &mut Editor, input: &str, event: PromptEvent| {
+                    if event != PromptEvent::Validate {
+                        return;
                     }
-                    _ => (),
-                }
-            },
-        );
-        compositor.push(Box::new(prompt));
-    }));
+
+                    let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
+
+                    match parts.as_slice() {
+                        &["q"] => editor.should_close = true,
+                        &["o", path] => {
+                            // TODO: make view()/view_mut() always contain a view.
+                            let size = editor.view().unwrap().size;
+                            editor.open(path.into(), size);
+                        }
+                        _ => (),
+                    }
+                },
+            );
+            compositor.push(Box::new(prompt));
+        },
+    ));
 }
 pub fn file_picker(cx: &mut Context) {
-    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
-        let picker = ui::file_picker("./");
-        compositor.push(Box::new(picker));
-    }));
+    cx.callback = Some(Box::new(
+        |compositor: &mut Compositor, editor: &mut Editor| {
+            let picker = ui::file_picker("./");
+            compositor.push(Box::new(picker));
+        },
+    ));
+}
+
+pub fn buffer_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        |compositor: &mut Compositor, editor: &mut Editor| {
+            let picker = ui::buffer_picker(&editor.views, editor.focus);
+            compositor.push(Box::new(picker));
+        },
+    ));
 }
 
 // calculate line numbers for each selection range
