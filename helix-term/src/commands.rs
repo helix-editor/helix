@@ -322,17 +322,23 @@ pub fn select_line(cx: &mut Context) {
     cx.view.doc.set_selection(Selection::single(start, end));
 }
 
-pub fn delete_selection(cx: &mut Context) {
+// heuristic: append changes to history after each command, unless we're in insert mode
+
+fn _delete_selection(cx: &mut Context) {
     let transaction = Transaction::change_by_selection(&cx.view.doc.state, |range| {
         (range.from(), range.to() + 1, None)
     });
     cx.view.doc.apply(&transaction);
+}
+
+pub fn delete_selection(cx: &mut Context) {
+    _delete_selection(cx);
 
     append_changes_to_history(cx);
 }
 
 pub fn change_selection(cx: &mut Context) {
-    delete_selection(cx);
+    _delete_selection(cx);
     insert_mode(cx);
 }
 
@@ -359,8 +365,9 @@ pub fn flip_selections(cx: &mut Context) {
 fn enter_insert_mode(cx: &mut Context) {
     cx.view.doc.mode = Mode::Insert;
 
-    append_changes_to_history(cx);
+    // TODO: store selection for undo
 }
+
 // inserts at the start of each selection
 pub fn insert_mode(cx: &mut Context) {
     enter_insert_mode(cx);
@@ -535,6 +542,8 @@ fn append_changes_to_history(cx: &mut Context) {
         return;
     }
 
+    // TODO: change -> change -> undo -> change -> change fails, probably old_state needs reset
+
     let new_changeset = ChangeSet::new(cx.view.doc.text());
     let changes = std::mem::replace(&mut cx.view.doc.changes, new_changeset);
     // Instead of doing this messy merge we could always commit, and based on transaction
@@ -548,7 +557,13 @@ fn append_changes_to_history(cx: &mut Context) {
     // TODO: trigger lsp/documentDidChange with changes
 
     // HAXX: we need to reconstruct the state as it was before the changes..
-    let old_state = std::mem::replace(&mut cx.view.doc.old_state, cx.view.doc.state.clone());
+    let old_state = cx
+        .view
+        .doc
+        .old_state
+        .take()
+        .expect("no old_state available");
+
     // TODO: take transaction by value?
     cx.view
         .doc
@@ -649,6 +664,7 @@ pub fn undo(cx: &mut Context) {
     if let Some(revert) = cx.view.doc.history.undo() {
         cx.view.doc.version += 1;
         cx.view.doc.apply(&revert);
+        // TODO: undo/redo needs to avoid storing in self.changes/self.old_state
     }
 
     // TODO: each command could simply return a Option<transaction>, then the higher level handles storing it?

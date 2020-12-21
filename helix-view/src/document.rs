@@ -30,7 +30,7 @@ pub struct Document {
 
     /// Pending changes since last history commit.
     pub changes: ChangeSet,
-    pub old_state: State,
+    pub old_state: Option<State>,
     pub history: History,
     pub version: i32, // should be usize?
 
@@ -58,7 +58,7 @@ use url::Url;
 impl Document {
     fn new(state: State) -> Self {
         let changes = ChangeSet::new(&state.doc);
-        let old_state = state.clone();
+        let old_state = None;
 
         Self {
             path: None,
@@ -155,6 +155,12 @@ impl Document {
 
     pub fn apply(&mut self, transaction: &Transaction) -> bool {
         let old_doc = self.text().clone();
+
+        // store the state just before any changes are made. This allows us to undo to the
+        // state just before a transaction was applied.
+        if self.changes.is_empty() && !transaction.changes().is_empty() {
+            self.old_state = Some(self.state.clone());
+        }
 
         let success = transaction.apply(&mut self.state);
 
