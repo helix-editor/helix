@@ -660,21 +660,15 @@ pub fn insert_char_prompt(prompt: &mut Prompt, c: char) {
 
 // Undo / Redo
 
-pub fn undo(cx: &mut Context) {
-    if let Some(revert) = cx.view.doc.history.undo() {
-        cx.view.doc.version += 1;
-        cx.view.doc.apply(&revert);
-        // TODO: undo/redo needs to avoid storing in self.changes/self.old_state
-    }
+// TODO: each command could simply return a Option<transaction>, then the higher level handles
+// storing it?
 
-    // TODO: each command could simply return a Option<transaction>, then the higher level handles storing it?
+pub fn undo(cx: &mut Context) {
+    cx.view.doc.undo();
 }
 
 pub fn redo(cx: &mut Context) {
-    if let Some(transaction) = cx.view.doc.history.redo() {
-        cx.view.doc.version += 1;
-        cx.view.doc.apply(&transaction);
-    }
+    cx.view.doc.redo();
 }
 
 // Yank / Paste

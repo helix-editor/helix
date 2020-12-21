@@ -185,6 +185,50 @@ impl Document {
         success
     }
 
+    pub fn undo(&mut self) -> bool {
+        if let Some(transaction) = self.history.undo() {
+            let old_doc = self.text().clone();
+            self.version += 1;
+            let success = transaction.apply(&mut self.state);
+
+            // update tree-sitter syntax tree
+            if let Some(syntax) = &mut self.syntax {
+                // TODO: no unwrap
+                syntax
+                    .update(&old_doc, &self.state.doc, transaction.changes())
+                    .unwrap();
+            }
+
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+
+            return success;
+        }
+        false
+    }
+
+    pub fn redo(&mut self) -> bool {
+        if let Some(transaction) = self.history.redo() {
+            let old_doc = self.text().clone();
+            self.version += 1;
+            let success = transaction.apply(&mut self.state);
+
+            // update tree-sitter syntax tree
+            if let Some(syntax) = &mut self.syntax {
+                // TODO: no unwrap
+                syntax
+                    .update(&old_doc, &self.state.doc, transaction.changes())
+                    .unwrap();
+            }
+
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+
+            return success;
+        }
+        false
+    }
+
     #[inline]
     pub fn mode(&self) -> Mode {
         self.mode
