@@ -38,7 +38,7 @@ pub fn file_picker(root: &str) -> Picker<PathBuf> {
         files.take(MAX).collect(),
         |path: &PathBuf| {
             // format_fn
-            path.strip_prefix("./").unwrap().to_str().unwrap()
+            path.strip_prefix("./").unwrap().to_str().unwrap().into()
         },
         |editor: &mut Editor, path: &PathBuf| {
             let size = editor.view().unwrap().size;
@@ -56,11 +56,17 @@ pub fn buffer_picker(views: &[View], current: usize) -> Picker<(Option<PathBuf>,
             .enumerate()
             .map(|(i, view)| (view.doc.relative_path().map(Path::to_path_buf), i))
             .collect(),
-        |(path, index): &(Option<PathBuf>, usize)| {
+        move |(path, index): &(Option<PathBuf>, usize)| {
             // format_fn
             match path {
-                Some(path) => path.to_str().unwrap(),
-                None => "[NEW]",
+                Some(path) => {
+                    if *index == current {
+                        format!("{} (*)", path.to_str().unwrap()).into()
+                    } else {
+                        path.to_str().unwrap().into()
+                    }
+                }
+                None => "[NEW]".into(),
             }
         },
         |editor: &mut Editor, &(_, index): &(Option<PathBuf>, usize)| {

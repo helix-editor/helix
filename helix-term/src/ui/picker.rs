@@ -10,6 +10,8 @@ use tui::{
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
+use std::borrow::Cow;
+
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::Editor;
@@ -25,14 +27,14 @@ pub struct Picker<T> {
     // pattern: String,
     prompt: Prompt,
 
-    format_fn: Box<dyn Fn(&T) -> &str>,
+    format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T)>,
 }
 
 impl<T> Picker<T> {
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> &str + 'static,
+        format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
@@ -82,7 +84,7 @@ impl<T> Picker<T> {
                     let text = (format_fn)(option);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     matcher
-                        .fuzzy_match(text, pattern)
+                        .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
                 }),
         );
