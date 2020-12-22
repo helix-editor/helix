@@ -83,11 +83,11 @@ impl Application {
 
         // initialize lsp
         self.language_server.initialize().await.unwrap();
-        // TODO: temp
-        // self.language_server
-        //     .text_document_did_open(&cx.editor.view().unwrap().doc)
-        //     .await
-        //     .unwrap();
+
+        self.language_server
+            .text_document_did_open(&self.editor.view().unwrap().doc)
+            .await
+            .unwrap();
 
         self.render();
 
@@ -142,13 +142,12 @@ impl Application {
                 match notification {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
-                        let view: Option<&mut helix_view::View> = None;
-                        // TODO:
-                        // let view = self
-                        //     .editor
-                        //     .views
-                        //     .iter_mut()
-                        //     .find(|view| view.doc.path == path);
+
+                        let view = self
+                            .editor
+                            .views
+                            .iter_mut()
+                            .find(|view| view.doc.path == path);
 
                         if let Some(view) = view {
                             let doc = view.doc.text().slice(..);
