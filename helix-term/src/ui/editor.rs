@@ -39,6 +39,10 @@ impl EditorView {
     ) {
         let area = Rect::new(OFFSET, 0, viewport.width - OFFSET, viewport.height - 2); // - 2 for statusline and prompt
         self.render_buffer(view, area, surface, theme);
+
+        // clear with background color
+        surface.set_style(viewport, theme.get("ui.background"));
+
         let area = Rect::new(0, viewport.height - 2, viewport.width, 1);
         self.render_statusline(view, area, surface, theme);
     }
@@ -51,9 +55,6 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
-        //  clear with background color
-        surface.set_style(viewport, theme.get("ui.background"));
-
         // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
         let source_code = view.doc.text().to_string();
 
