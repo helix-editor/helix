@@ -107,6 +107,8 @@ impl Transport {
 
         // read data
 
+        debug!("<- {}", msg);
+
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<Message> = serde_json::from_str(&msg);
 
@@ -200,8 +202,6 @@ impl Transport {
                         break;
                     }
                     let msg = msg.unwrap();
-
-                    debug!("<- {:?}", msg);
 
                     self.recv_msg(msg).await.unwrap();
                 }

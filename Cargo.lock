@@ -594,6 +594,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "smol",
+ "smol-timeout",
  "tui",
 ]
 
@@ -1140,6 +1141,16 @@ dependencies = [
  "blocking",
  "futures-lite",
  "once_cell",
+]
+
+[[package]]
+name = "smol-timeout"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "847d777e2c6c166bad26264479e80a9820f3d364fcb4a0e23cd57bbfa8e94961"
+dependencies = [
+ "async-io",
+ "pin-project-lite",
 ]
 
 [[package]]

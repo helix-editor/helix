@@ -837,17 +837,32 @@ pub fn completion(cx: &mut Context) {
     let language_server = cx.language_servers.get("rust", &cx.executor).unwrap();
     use log::info;
 
+    use smol_timeout::TimeoutExt;
+    use std::time::Duration;
+
     // TODO: blocking here is not ideal
-    let res = smol::block_on(language_server.completion(&cx.view.doc)).expect("completion failed!");
+    let res = smol::block_on(
+        language_server
+            .completion(&cx.view.doc)
+            .timeout(Duration::from_secs(2)),
+    )
+    .expect("completion failed!")
+    .expect("completion failed!");
 
     let picker = ui::Picker::new(
         res,
         |item| {
             // format_fn
             item.label.as_str().into()
+
+            // TODO: use item.filter_text for filtering
         },
         |editor: &mut Editor, item| {
+            // if item.text_edit is Some we use that, else
+            // let insert_text = &item.insert_text.unwrap_or(item.label);
+            // and we insert at position.
             //
+            // merge this with additional_text_edits
         },
     );
 
