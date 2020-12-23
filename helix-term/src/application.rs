@@ -69,10 +69,15 @@ impl Application {
 
     fn render(&mut self) {
         let executor = &self.executor;
+        let language_servers = &self.language_servers;
         let editor = &mut self.editor;
         let compositor = &self.compositor;
 
-        let mut cx = crate::compositor::Context { editor, executor };
+        let mut cx = crate::compositor::Context {
+            editor,
+            executor,
+            language_servers,
+        };
         let area = self.terminal.size().unwrap();
 
         compositor.render(area, self.terminal.current_buffer_mut(), &mut cx);
@@ -113,6 +118,7 @@ impl Application {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             executor: &self.executor,
+            language_servers: &self.language_servers,
         };
         // Handle key events
         let should_redraw = match event {

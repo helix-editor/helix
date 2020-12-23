@@ -263,6 +263,7 @@ impl Component for EditorView {
                     let mut cx = commands::Context {
                         view,
                         executor: cx.executor,
+                        language_servers: cx.language_servers,
                         count: 1,
                         callback: None,
                     };

@@ -22,6 +22,7 @@ pub struct Context<'a, 'b> {
     pub count: usize,
     pub view: &'a mut View,
     pub executor: &'a smol::Executor<'b>,
+    pub language_servers: &'a helix_lsp::Registry,
 
     pub callback: Option<crate::compositor::Callback>,
 }
@@ -830,4 +831,32 @@ pub fn save(cx: &mut Context) {
 
     // TODO: handle save errors somehow?
     cx.executor.spawn(cx.view.doc.save()).detach();
+}
+
+pub fn completion(cx: &mut Context) {
+    let language_server = cx.language_servers.get("rust", &cx.executor).unwrap();
+    use log::info;
+
+    // TODO: blocking here is not ideal
+    let res = smol::block_on(language_server.completion(&cx.view.doc)).expect("completion failed!");
+
+    let picker = ui::Picker::new(
+        res,
+        |item| {
+            // format_fn
+            item.label.as_str().into()
+        },
+        |editor: &mut Editor, item| {
+            //
+        },
+    );
+
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, editor: &mut Editor| {
+            compositor.push(Box::new(picker));
+        },
+    ));
+
+    // TODO: when iterating over items, show the docs in popup
+    // language server client needs to be accessible via a registry of some sort
 }

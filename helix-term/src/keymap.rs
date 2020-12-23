@@ -208,6 +208,8 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Tab,
                     modifiers: Modifiers::NONE
                 }] => commands::insert::insert_tab,
+
+                vec![ctrl!('x')] => commands::completion,
             ),
             Mode::Goto => hashmap!(
                 vec![Key {

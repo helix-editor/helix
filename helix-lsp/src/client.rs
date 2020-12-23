@@ -196,6 +196,12 @@ impl Client {
             root_uri: None, // set to project root in the future
             initialization_options: None,
             capabilities: lsp::ClientCapabilities {
+                // text_document:
+                // { completion: {
+                //      dynamic_registration: bool
+                //      completion_item: { snippet, documentation_format, ... }
+                //      completion_item_kind: {  }
+                // } }
                 ..Default::default()
             },
             trace: None,
@@ -357,5 +363,42 @@ impl Client {
 
     pub async fn text_document_did_save(&self) -> anyhow::Result<()> {
         unimplemented!()
+    }
+
+    pub async fn completion(&self, doc: &Document) -> anyhow::Result<Vec<lsp::CompletionItem>> {
+        // TODO: figure out what should happen when you complete with multiple cursors
+
+        let params = lsp::CompletionParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document: text_document_identifier(doc),
+                position: crate::util::pos_to_lsp_pos(
+                    &doc.text().slice(..),
+                    doc.selection().cursor(),
+                ),
+            },
+            // TODO: support these tokens by async receiving and updating the choice list
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+            context: None,
+            // lsp::CompletionContext { trigger_kind: , trigger_character: Some(), }
+        };
+
+        let response = self.request::<lsp::request::Completion>(params).await?;
+
+        let items = match response {
+            Some(lsp::CompletionResponse::Array(items)) => items,
+            // TODO: do something with is_incomplete
+            Some(lsp::CompletionResponse::List(lsp::CompletionList {
+                is_incomplete: _is_incomplete,
+                items,
+            })) => items,
+            None => Vec::new(),
+        };
+
+        Ok(items)
     }
 }

@@ -196,12 +196,13 @@ impl<T> Component for Picker<T> {
 
         // -- Render the frame:
 
-        // clear  area
+        // clear area
         let background = cx.editor.theme.get("ui.background");
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
                 let cell = surface.get_mut(x, y);
-                cell.symbol.clear();
+                cell.reset();
+                // cell.symbol.clear();
                 cell.set_style(background);
             }
         }
