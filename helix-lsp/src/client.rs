@@ -23,13 +23,16 @@ use smol::{
     Executor,
 };
 
+fn text_document_identifier(doc: &Document) -> lsp::TextDocumentIdentifier {
+    lsp::TextDocumentIdentifier::new(lsp::Url::from_file_path(doc.path().unwrap()).unwrap())
+}
+
 pub struct Client {
     _process: Child,
     stderr: BufReader<ChildStderr>,
 
     outgoing: Sender<Payload>,
-    pub incoming: Receiver<Call>,
-
+    // pub incoming: Receiver<Call>,
     pub request_counter: AtomicU64,
 
     capabilities: Option<lsp::ServerCapabilities>,
@@ -38,7 +41,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn start(ex: &Executor, cmd: &str, args: &[String]) -> Self {
+    pub fn start(ex: &Executor, cmd: &str, args: &[String]) -> (Self, Receiver<Call>) {
         let mut process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -55,18 +58,22 @@ impl Client {
 
         let (incoming, outgoing) = Transport::start(ex, reader, writer);
 
-        Client {
+        let client = Client {
             _process: process,
             stderr,
 
             outgoing,
-            incoming,
-
+            // incoming,
             request_counter: AtomicU64::new(0),
 
             capabilities: None,
             // diagnostics: HashMap::new(),
-        }
+        };
+
+        // TODO: async client.initialize()
+        // maybe use an arc<atomic> flag
+
+        (client, incoming)
     }
 
     fn next_request_id(&self) -> jsonrpc::Id {
@@ -219,7 +226,7 @@ impl Client {
     // Text document
     // -------------------------------------------------------------------------------------------
 
-    pub async fn text_document_did_open(&mut self, doc: &Document) -> Result<()> {
+    pub async fn text_document_did_open(&self, doc: &Document) -> Result<()> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri: lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
@@ -295,7 +302,7 @@ impl Client {
 
     // TODO: trigger any time history.commit_revision happens
     pub async fn text_document_did_change(
-        &mut self,
+        &self,
         doc: &Document,
         transaction: &Transaction,
     ) -> Result<()> {
@@ -328,6 +335,7 @@ impl Client {
 
         self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
             text_document: lsp::VersionedTextDocumentIdentifier::new(
+                // TODO: doc.into() Url
                 lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
                 doc.version,
             ),
@@ -338,18 +346,16 @@ impl Client {
 
     // TODO: impl into() TextDocumentIdentifier / VersionedTextDocumentIdentifier for Document.
 
-    pub async fn text_document_did_close(&mut self, doc: &Document) -> Result<()> {
+    pub async fn text_document_did_close(&self, doc: &Document) -> Result<()> {
         self.notify::<lsp::notification::DidCloseTextDocument>(lsp::DidCloseTextDocumentParams {
-            text_document: lsp::TextDocumentIdentifier::new(
-                lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
-            ),
+            text_document: text_document_identifier(doc),
         })
         .await
     }
 
     // will_save / will_save_wait_until
 
-    pub async fn text_document_did_save(&mut self) -> anyhow::Result<()> {
+    pub async fn text_document_did_save(&self) -> anyhow::Result<()> {
         unimplemented!()
     }
 }

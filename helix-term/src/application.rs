@@ -10,6 +10,7 @@ use log::{debug, info};
 use std::{
     io::{self, stdout, Stdout, Write},
     path::PathBuf,
+    sync::Arc,
     time::Duration,
 };
 
@@ -32,7 +33,8 @@ pub struct Application {
     terminal: Terminal,
 
     executor: &'static smol::Executor<'static>,
-    language_server: helix_lsp::Client,
+    language_server: Arc<helix_lsp::Client>,
+    language_servers: helix_lsp::Registry,
 }
 
 impl Application {
@@ -49,7 +51,8 @@ impl Application {
         let mut compositor = Compositor::new();
         compositor.push(Box::new(ui::EditorView::new()));
 
-        let language_server = helix_lsp::Client::start(&executor, "rust-analyzer", &[]);
+        let language_servers = helix_lsp::Registry::new();
+        let language_server = language_servers.get("rust", &executor).unwrap();
 
         let mut app = Self {
             editor,
@@ -58,6 +61,7 @@ impl Application {
 
             executor,
             language_server,
+            language_servers,
         };
 
         Ok(app)
@@ -81,9 +85,6 @@ impl Application {
     pub async fn event_loop(&mut self) {
         let mut reader = EventStream::new();
 
-        // initialize lsp
-        self.language_server.initialize().await.unwrap();
-
         self.language_server
             .text_document_did_open(&self.editor.view().unwrap().doc)
             .await
@@ -101,7 +102,7 @@ impl Application {
                 event = reader.next().fuse() => {
                     self.handle_terminal_events(event)
                 }
-                call = self.language_server.incoming.next().fuse() => {
+                call = self.language_servers.incoming.next().fuse() => {
                     self.handle_language_server_message(call).await
                 }
             }

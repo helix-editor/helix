@@ -1,4 +1,5 @@
 mod client;
+mod select_all;
 mod transport;
 
 pub use jsonrpc_core as jsonrpc;
@@ -69,16 +70,24 @@ pub use jsonrpc::Call;
 
 type LanguageId = String;
 
-pub static REGISTRY: Lazy<Registry> = Lazy::new(Registry::init);
+use crate::select_all::SelectAll;
+use smol::channel::Receiver;
 
 pub struct Registry {
     inner: HashMap<LanguageId, OnceCell<Arc<Client>>>,
+
+    pub incoming: SelectAll<Receiver<Call>>,
 }
 
 impl Registry {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
+        let mut inner = HashMap::new();
+
+        inner.insert("rust".to_string(), OnceCell::new());
+
         Self {
-            inner: HashMap::new(),
+            inner,
+            incoming: SelectAll::new(),
         }
     }
 
@@ -91,8 +100,12 @@ impl Registry {
                     // TODO: lookup defaults for id (name, args)
 
                     // initialize a new client
-                    let client = Client::start(&ex, "rust-analyzer", &[]);
-                    // TODO: also call initialize().await()
+                    let (mut client, incoming) = Client::start(&ex, "rust-analyzer", &[]);
+                    // TODO: run this async without blocking
+                    smol::block_on(client.initialize()).unwrap();
+
+                    self.incoming.push(incoming);
+
                     Arc::new(client)
                 })
             })
@@ -115,3 +128,13 @@ impl Registry {
 // -> PROBLEM: how do you trigger an update on the editor side when data updates?
 //
 // -> The data updates should pull all events until we run out so we don't frequently re-render
+//
+//
+// v2:
+//
+// there should be a registry of lsp clients, one per language type (or workspace).
+// the clients should lazy init on first access
+// the client.initialize() should be called async and we buffer any requests until that completes
+// there needs to be a way to process incoming lsp messages from all clients.
+//  -> notifications need to be dispatched to wherever
+//  -> requests need to generate a reply and travel back to the same lsp!
