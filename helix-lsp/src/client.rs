@@ -5,7 +5,7 @@ use crate::{
 
 type Result<T> = core::result::Result<T, Error>;
 
-use helix_core::{ChangeSet, Rope, Transaction};
+use helix_core::{ChangeSet, Rope, RopeSlice, Transaction};
 
 // use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -244,7 +244,10 @@ impl Client {
         .await
     }
 
-    fn to_changes(changeset: &ChangeSet) -> Vec<lsp::TextDocumentContentChangeEvent> {
+    fn to_changes(
+        old_text: &Rope,
+        changeset: &ChangeSet,
+    ) -> Vec<lsp::TextDocumentContentChangeEvent> {
         let mut iter = changeset.changes().iter().peekable();
         let mut old_pos = 0;
 
@@ -253,9 +256,9 @@ impl Client {
         use crate::util::pos_to_lsp_pos;
         use helix_core::Operation::*;
 
-        // TEMP
-        let rope = helix_core::Rope::from("");
-        let old_text = rope.slice(..);
+        let old_text = old_text.slice(..);
+
+        // TODO: verify this function, specifically line num counting
 
         while let Some(change) = iter.next() {
             let len = match change {
@@ -290,21 +293,6 @@ impl Client {
                     };
                 }
                 Insert(s) => {
-                    // TODO:
-                    // thread 'main' panicked at 'Attempt to index past end of slice: char index 1211, slice char length 0', /home/speed/.cargo/registry/src/github.com-1ecc6299db9ec823/ropey-1.2.0/src/slice.rs:301:9
-                    // stack backtrace:
-                    //    0: rust_begin_unwind
-                    //              at /rustc/b32e6e6ac8921035177256ab6806e6ab0d4b9b94/library/std/src/panicking.rs:493:5
-                    //    1: std::panicking::begin_panic_fmt
-                    //              at /rustc/b32e6e6ac8921035177256ab6806e6ab0d4b9b94/library/std/src/panicking.rs:435:5
-                    //    2: ropey::slice::RopeSlice::char_to_line
-                    //              at /home/speed/.cargo/registry/src/github.com-1ecc6299db9ec823/ropey-1.2.0/src/slice.rs:301:9
-                    //    3: helix_lsp::util::pos_to_lsp_pos
-                    //              at /home/speed/src/helix/helix-lsp/src/lib.rs:39:20
-                    //    4: helix_lsp::client::Client::to_changes
-                    //              at /home/speed/src/helix/helix-lsp/src/client.rs:293:33
-                    //    5: helix_lsp::client::Client::text_document_did_change::{{closure}}
-                    //              at /home/speed/src/helix/helix-lsp/src/client.rs:338:55
                     let start = pos_to_lsp_pos(&old_text, old_pos);
 
                     // insert
@@ -325,6 +313,7 @@ impl Client {
     pub async fn text_document_did_change(
         &self,
         text_document: lsp::VersionedTextDocumentIdentifier,
+        old_text: &Rope,
         changes: &ChangeSet,
     ) -> Result<()> {
         // figure out what kind of sync the server supports
@@ -350,7 +339,7 @@ impl Client {
                     text: "".to_string(),
                 }] // TODO: probably need old_state here too?
             }
-            lsp::TextDocumentSyncKind::Incremental => Self::to_changes(changes),
+            lsp::TextDocumentSyncKind::Incremental => Self::to_changes(old_text, changes),
             lsp::TextDocumentSyncKind::None => return Ok(()),
         };
 

@@ -207,7 +207,7 @@ impl Application {
                     }),
                 );
             }
-            _ => unreachable!(),
+            e => unreachable!("{:?}", e),
         }
     }
 

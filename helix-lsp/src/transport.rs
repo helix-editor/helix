@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::debug;
+use log::{debug, error};
 
 use crate::{Error, Notification};
 
@@ -199,6 +199,7 @@ impl Transport {
                 // server <- client
                 msg = Self::recv(&mut self.reader, &mut self.headers).fuse() => {
                     if msg.is_err() {
+                        error!("err: <- {:?}", msg);
                         break;
                     }
                     let msg = msg.unwrap();
