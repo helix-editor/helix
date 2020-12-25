@@ -13,6 +13,7 @@ default = ["term"]
 [dependencies]
 anyhow = "1"
 helix-core = { path = "../helix-core" }
+helix-lsp = { path = "../helix-lsp"}
 
 # Conversion traits
 # tui = { version = "0.12", default-features = false, features = ["crossterm"], optional = true}
@@ -22,3 +23,4 @@ once_cell = "1.4"
 url = "2"
 
 smol = "1"
+futures-util = "0.3"

@@ -553,7 +553,6 @@ dependencies = [
  "futures-util",
  "glob",
  "helix-core",
- "helix-view",
  "jsonrpc-core",
  "log",
  "lsp-types",
@@ -604,7 +603,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossterm",
+ "futures-util",
  "helix-core",
+ "helix-lsp",
  "once_cell",
  "smol",
  "tui",

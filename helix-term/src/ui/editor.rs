@@ -41,7 +41,8 @@ impl EditorView {
         self.render_buffer(view, area, surface, theme);
 
         // clear with background color
-        surface.set_style(viewport, theme.get("ui.background"));
+        // TODO: this seems to prevent setting style later
+        // surface.set_style(viewport, theme.get("ui.background"));
 
         let area = Rect::new(0, viewport.height - 2, viewport.width, 1);
         self.render_statusline(view, area, surface, theme);

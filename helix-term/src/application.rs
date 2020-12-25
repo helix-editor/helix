@@ -44,15 +44,22 @@ impl Application {
         let mut editor = Editor::new();
         let size = terminal.size()?;
 
+        let language_servers = helix_lsp::Registry::new();
+        let language_server = language_servers.get("rust", &executor).unwrap();
+
         if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
             editor.open(file, (size.width, size.height))?;
+
+            // TODO: do this everywhere
+            editor
+                .view_mut()
+                .unwrap()
+                .doc
+                .set_language_server(Some(language_server.clone()));
         }
 
         let mut compositor = Compositor::new();
         compositor.push(Box::new(ui::EditorView::new()));
-
-        let language_servers = helix_lsp::Registry::new();
-        let language_server = language_servers.get("rust", &executor).unwrap();
 
         let mut app = Self {
             editor,
@@ -90,8 +97,9 @@ impl Application {
     pub async fn event_loop(&mut self) {
         let mut reader = EventStream::new();
 
+        let doc = &self.editor.view().unwrap().doc;
         self.language_server
-            .text_document_did_open(&self.editor.view().unwrap().doc)
+            .text_document_did_open(doc.url().unwrap(), doc.version, doc.text())
             .await
             .unwrap();
 

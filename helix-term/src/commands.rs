@@ -841,9 +841,13 @@ pub fn completion(cx: &mut Context) {
     use std::time::Duration;
 
     // TODO: blocking here is not ideal
+    let pos = helix_lsp::util::pos_to_lsp_pos(
+        &cx.view.doc.text().slice(..),
+        cx.view.doc.selection().cursor(),
+    );
     let res = smol::block_on(
         language_server
-            .completion(&cx.view.doc)
+            .completion(cx.view.doc.identifier(), pos)
             .timeout(Duration::from_secs(2)),
     )
     .expect("completion failed!")

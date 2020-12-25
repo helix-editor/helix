@@ -8,7 +8,6 @@ edition = "2018"
 
 [dependencies]
 helix-core = { path = "../helix-core" }
-helix-view = { path = "../helix-view" }
 
 once_cell = "1.4"
 

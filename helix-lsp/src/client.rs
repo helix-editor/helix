@@ -5,8 +5,7 @@ use crate::{
 
 type Result<T> = core::result::Result<T, Error>;
 
-use helix_core::{ChangeSet, Transaction};
-use helix_view::Document;
+use helix_core::{ChangeSet, Rope, Transaction};
 
 // use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -22,10 +21,6 @@ use smol::{
     process::{Child, ChildStderr, Command, Stdio},
     Executor,
 };
-
-fn text_document_identifier(doc: &Document) -> lsp::TextDocumentIdentifier {
-    lsp::TextDocumentIdentifier::new(lsp::Url::from_file_path(doc.path().unwrap()).unwrap())
-}
 
 pub struct Client {
     _process: Child,
@@ -232,13 +227,18 @@ impl Client {
     // Text document
     // -------------------------------------------------------------------------------------------
 
-    pub async fn text_document_did_open(&self, doc: &Document) -> Result<()> {
+    pub async fn text_document_did_open(
+        &self,
+        uri: lsp::Url,
+        version: i32,
+        doc: &Rope,
+    ) -> Result<()> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
-                uri: lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
+                uri,
                 language_id: "rust".to_string(), // TODO: hardcoded for now
-                version: doc.version,
-                text: String::from(doc.text()),
+                version,
+                text: String::from(doc),
             },
         })
         .await
@@ -290,6 +290,21 @@ impl Client {
                     };
                 }
                 Insert(s) => {
+                    // TODO:
+                    // thread 'main' panicked at 'Attempt to index past end of slice: char index 1211, slice char length 0', /home/speed/.cargo/registry/src/github.com-1ecc6299db9ec823/ropey-1.2.0/src/slice.rs:301:9
+                    // stack backtrace:
+                    //    0: rust_begin_unwind
+                    //              at /rustc/b32e6e6ac8921035177256ab6806e6ab0d4b9b94/library/std/src/panicking.rs:493:5
+                    //    1: std::panicking::begin_panic_fmt
+                    //              at /rustc/b32e6e6ac8921035177256ab6806e6ab0d4b9b94/library/std/src/panicking.rs:435:5
+                    //    2: ropey::slice::RopeSlice::char_to_line
+                    //              at /home/speed/.cargo/registry/src/github.com-1ecc6299db9ec823/ropey-1.2.0/src/slice.rs:301:9
+                    //    3: helix_lsp::util::pos_to_lsp_pos
+                    //              at /home/speed/src/helix/helix-lsp/src/lib.rs:39:20
+                    //    4: helix_lsp::client::Client::to_changes
+                    //              at /home/speed/src/helix/helix-lsp/src/client.rs:293:33
+                    //    5: helix_lsp::client::Client::text_document_did_change::{{closure}}
+                    //              at /home/speed/src/helix/helix-lsp/src/client.rs:338:55
                     let start = pos_to_lsp_pos(&old_text, old_pos);
 
                     // insert
@@ -309,8 +324,8 @@ impl Client {
     // TODO: trigger any time history.commit_revision happens
     pub async fn text_document_did_change(
         &self,
-        doc: &Document,
-        transaction: &Transaction,
+        text_document: lsp::VersionedTextDocumentIdentifier,
+        changes: &ChangeSet,
     ) -> Result<()> {
         // figure out what kind of sync the server supports
 
@@ -335,16 +350,12 @@ impl Client {
                     text: "".to_string(),
                 }] // TODO: probably need old_state here too?
             }
-            lsp::TextDocumentSyncKind::Incremental => Self::to_changes(transaction.changes()),
+            lsp::TextDocumentSyncKind::Incremental => Self::to_changes(changes),
             lsp::TextDocumentSyncKind::None => return Ok(()),
         };
 
         self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
-            text_document: lsp::VersionedTextDocumentIdentifier::new(
-                // TODO: doc.into() Url
-                lsp::Url::from_file_path(doc.path().unwrap()).unwrap(),
-                doc.version,
-            ),
+            text_document,
             content_changes: changes,
         })
         .await
@@ -352,9 +363,12 @@ impl Client {
 
     // TODO: impl into() TextDocumentIdentifier / VersionedTextDocumentIdentifier for Document.
 
-    pub async fn text_document_did_close(&self, doc: &Document) -> Result<()> {
+    pub async fn text_document_did_close(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Result<()> {
         self.notify::<lsp::notification::DidCloseTextDocument>(lsp::DidCloseTextDocumentParams {
-            text_document: text_document_identifier(doc),
+            text_document,
         })
         .await
     }
@@ -365,16 +379,17 @@ impl Client {
         unimplemented!()
     }
 
-    pub async fn completion(&self, doc: &Document) -> anyhow::Result<Vec<lsp::CompletionItem>> {
+    pub async fn completion(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::CompletionItem>> {
         // TODO: figure out what should happen when you complete with multiple cursors
 
         let params = lsp::CompletionParams {
             text_document_position: lsp::TextDocumentPositionParams {
-                text_document: text_document_identifier(doc),
-                position: crate::util::pos_to_lsp_pos(
-                    &doc.text().slice(..),
-                    doc.selection().cursor(),
-                ),
+                text_document,
+                position,
             },
             // TODO: support these tokens by async receiving and updating the choice list
             work_done_progress_params: lsp::WorkDoneProgressParams {

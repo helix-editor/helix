@@ -1,6 +1,7 @@
 use anyhow::Error;
 use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use helix_core::{
     syntax::LOADER, ChangeSet, Diagnostic, History, Position, Range, Rope, RopeSlice, Selection,
@@ -35,6 +36,7 @@ pub struct Document {
     pub version: i32, // should be usize?
 
     pub diagnostics: Vec<Diagnostic>,
+    pub language_server: Option<Arc<helix_lsp::Client>>,
 }
 
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
@@ -53,6 +55,8 @@ where
     }
 }
 
+use futures_util::TryFutureExt;
+use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
@@ -72,6 +76,7 @@ impl Document {
             diagnostics: Vec::new(),
             version: 0,
             history: History::default(),
+            language_server: None,
         }
     }
 
@@ -134,7 +139,7 @@ impl Document {
             // TODO: flush?
 
             Ok(())
-        } // and_then(// lsp.send_text_saved_notification())
+        } // and_then notify save
     }
 
     pub fn set_language(&mut self, scope: &str, scopes: &[String]) {
@@ -146,6 +151,10 @@ impl Document {
 
             self.syntax = Some(syntax);
         };
+    }
+
+    pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
+        self.language_server = language_server;
     }
 
     pub fn set_selection(&mut self, selection: Selection) {
@@ -181,6 +190,14 @@ impl Document {
             }
 
             // TODO: map state.diagnostics over changes::map_pos too
+
+            // emit lsp notification
+            if let Some(language_server) = &self.language_server {
+                let notify = language_server
+                    .text_document_did_change(self.versioned_identifier(), transaction.changes());
+
+                smol::block_on(notify).expect("failed to emit textDocument/didChange");
+            }
         }
         success
     }
@@ -263,4 +280,14 @@ impl Document {
     // }
 
     // TODO: transact(Fn) ?
+
+    // -- LSP methods
+
+    pub fn identifier(&self) -> lsp::TextDocumentIdentifier {
+        lsp::TextDocumentIdentifier::new(self.url().unwrap())
+    }
+
+    pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
+        lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
+    }
 }
