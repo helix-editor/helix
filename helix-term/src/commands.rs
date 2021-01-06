@@ -851,31 +851,35 @@ pub fn completion(cx: &mut Context) {
             .timeout(Duration::from_secs(2)),
     )
     .expect("completion failed!")
-    .expect("completion failed!");
+    .unwrap_or_default(); // if timeout, just return
 
-    let picker = ui::Picker::new(
-        res,
-        |item| {
-            // format_fn
-            item.label.as_str().into()
+    // TODO: if no completion, show some message or something
+    if !res.is_empty() {
+        let picker = ui::Picker::new(
+            res,
+            |item| {
+                // format_fn
+                item.label.as_str().into()
 
-            // TODO: use item.filter_text for filtering
-        },
-        |editor: &mut Editor, item| {
-            // if item.text_edit is Some we use that, else
-            // let insert_text = &item.insert_text.unwrap_or(item.label);
-            // and we insert at position.
-            //
-            // merge this with additional_text_edits
-        },
-    );
+                // TODO: use item.filter_text for filtering
+            },
+            |editor: &mut Editor, item| {
+                // if item.text_edit is Some we use that, else
+                // let insert_text = &item.insert_text.unwrap_or(item.label);
+                // and we insert at position.
+                //
+                // merge this with additional_text_edits
+            },
+        );
 
-    cx.callback = Some(Box::new(
-        move |compositor: &mut Compositor, editor: &mut Editor| {
-            compositor.push(Box::new(picker));
-        },
-    ));
+        cx.callback = Some(Box::new(
+            move |compositor: &mut Compositor, editor: &mut Editor| {
+                compositor.push(Box::new(picker));
+            },
+        ));
 
-    // TODO: when iterating over items, show the docs in popup
-    // language server client needs to be accessible via a registry of some sort
+        // TODO!: when iterating over items, show the docs in popup
+
+        // language server client needs to be accessible via a registry of some sort
+    }
 }
