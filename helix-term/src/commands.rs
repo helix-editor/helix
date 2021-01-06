@@ -864,11 +864,34 @@ pub fn completion(cx: &mut Context) {
                 // TODO: use item.filter_text for filtering
             },
             |editor: &mut Editor, item| {
-                // if item.text_edit is Some we use that, else
-                // let insert_text = &item.insert_text.unwrap_or(item.label);
-                // and we insert at position.
-                //
-                // merge this with additional_text_edits
+                use helix_lsp::{lsp, util};
+                // determine what to insert: text_edit | insert_text | label
+                let edit = if let Some(edit) = &item.text_edit {
+                    match edit {
+                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                            unimplemented!("completion: insert_and_replace {:?}", item)
+                        }
+                    }
+                } else {
+                    item.insert_text.as_ref().unwrap_or(&item.label);
+                    unimplemented!();
+                    // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
+                    // and we insert at position.
+                };
+
+                // TODO: merge edit with additional_text_edits
+                if let Some(additional_edits) = &item.additional_text_edits {
+                    if !additional_edits.is_empty() {
+                        unimplemented!("completion: additional_text_edits: {:?}", additional_edits);
+                    }
+                }
+
+                let view = editor.view_mut().unwrap();
+                let transaction =
+                    util::generate_transaction_from_edits(&view.doc.state, vec![edit]);
+                view.doc.apply(&transaction);
+                // TODO: append_changes_to_history(cx); if not in insert mode?
             },
         );
 
