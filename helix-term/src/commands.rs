@@ -529,19 +529,39 @@ pub fn open_below(cx: &mut Context) {
         })
         .collect();
 
-    // TODO: use same logic as insert_newline for indentation
-    let changes = positions.iter().copied().map(|index|
+    let changes = positions.iter().copied().map(|index| {
+        // TODO: share logic with insert_newline for indentation
+        let indent_level = helix_core::indent::suggested_indent_for_pos(
+            cx.view.doc.syntax.as_ref(),
+            &cx.view.doc.state,
+            index,
+        );
+        let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
+        let mut text = String::with_capacity(1 + indent.len());
+        text.push_str(&indent);
+        text.push('\n');
+
+        // TODO: ideally we want to run a hook over the transactions to figure out and reindent all
+        // \n's as a post-processing step?
+        // behaviors:
+        // - on insert mode enter: we add newline + indent and position cursor at the end
+        // - on 3o/3O: we insert 3 newlines + indents each and position cursors at ends
+
         // generate changes
-        (index, index, Some(Tendril::from_char('\n'))));
+        (index, index, Some(text.into()))
+    });
 
     // TODO: count actually inserts "n" new lines and starts editing on all of them.
     // TODO: append "count" newlines and modify cursors to those lines
 
     let selection = Selection::new(
-        positions
-            .iter()
-            .copied()
-            .map(|pos| Range::new(pos, pos))
+        changes
+            .clone()
+            .map(|(start, end, text): (usize, usize, Option<Tendril>)| {
+                let len = text.map(|text| text.len()).unwrap() - 1; // minus newline
+                let pos = start + len;
+                Range::new(pos, pos)
+            })
             .collect(),
         0,
     );
