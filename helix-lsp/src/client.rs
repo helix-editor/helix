@@ -114,7 +114,14 @@ impl Client {
             .await
             .map_err(|e| Error::Other(e.into()))?;
 
-        let response = rx.recv().await.map_err(|e| Error::Other(e.into()))??;
+        use smol_timeout::TimeoutExt;
+        use std::time::Duration;
+
+        let response = match rx.recv().timeout(Duration::from_secs(2)).await {
+            Some(response) => response,
+            None => return Err(Error::Timeout),
+        }
+        .map_err(|e| Error::Other(e.into()))??;
 
         let response = serde_json::from_value(response)?;
 

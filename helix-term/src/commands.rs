@@ -857,21 +857,15 @@ pub fn completion(cx: &mut Context) {
     let language_server = cx.language_servers.get("rust", &cx.executor).unwrap();
     use log::info;
 
-    use smol_timeout::TimeoutExt;
-    use std::time::Duration;
-
     // TODO: blocking here is not ideal
     let pos = helix_lsp::util::pos_to_lsp_pos(
         &cx.view.doc.text().slice(..),
         cx.view.doc.selection().cursor(),
     );
-    let res = smol::block_on(
-        language_server
-            .completion(cx.view.doc.identifier(), pos)
-            .timeout(Duration::from_secs(2)),
-    )
-    .expect("completion failed!")
-    .unwrap_or_default(); // if timeout, just return
+
+    // TODO: handle fails
+    let res = smol::block_on(language_server.completion(cx.view.doc.identifier(), pos))
+        .unwrap_or_default();
 
     // TODO: if no completion, show some message or something
     if !res.is_empty() {

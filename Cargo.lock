@@ -527,6 +527,7 @@ dependencies = [
  "serde_json",
  "shellexpand",
  "smol",
+ "smol-timeout",
  "thiserror",
  "url",
 ]
