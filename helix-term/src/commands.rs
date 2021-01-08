@@ -535,6 +535,7 @@ pub fn open_below(cx: &mut Context) {
             cx.view.doc.syntax.as_ref(),
             &cx.view.doc.state,
             index,
+            true,
         );
         let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
         let mut text = String::with_capacity(1 + indent.len());
@@ -654,6 +655,7 @@ pub mod insert {
                 cx.view.doc.syntax.as_ref(),
                 &cx.view.doc.state,
                 range.head,
+                true,
             );
             let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
