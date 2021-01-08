@@ -126,7 +126,7 @@ impl Prompt {
                 let color = if self.completion_selection_index.is_some()
                     && i == self.completion_selection_index.unwrap()
                 {
-                    Style::default().bg(Color::Rgb(104, 060, 232))
+                    Style::default().bg(Color::Rgb(104, 60, 232))
                 } else {
                     text_color
                 };

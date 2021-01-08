@@ -66,7 +66,7 @@ impl ChangeSet {
     /// Combine two changesets together.
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
-    pub fn compose(self, other: ChangeSet) -> Result<Self, ()> {
+    pub fn compose(self, other: ChangeSet) -> Self {
         debug_assert!(self.len_after() == other.len);
 
         let len = self.changes.len();
@@ -99,7 +99,7 @@ impl ChangeSet {
                     head_a = a;
                     head_b = changes_b.next();
                 }
-                (None, _) | (_, None) => return Err(()),
+                (None, _) | (_, None) => return unreachable!(),
                 (Some(Retain(i)), Some(Retain(j))) => match i.cmp(&j) {
                     Ordering::Less => {
                         changes.push(Retain(i));
@@ -180,10 +180,10 @@ impl ChangeSet {
             };
         }
 
-        Ok(Self {
+        Self {
             len: self.len,
             changes,
-        })
+        }
     }
 
     /// Given another change set starting in the same document, maps this
@@ -496,7 +496,7 @@ mod test {
         let mut text = Rope::from("hello xz");
 
         // should probably return cloned text
-        let composed = a.compose(b).unwrap();
+        let composed = a.compose(b);
         assert_eq!(composed.len, 8);
         assert!(composed.apply(&mut text));
         assert_eq!(text, "world! abc");

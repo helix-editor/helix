@@ -49,7 +49,7 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-fn main() -> Result<(), Error> {
+fn main() {
     let args = clap::app_from_crate!()
         .arg(
             Arg::new("files")
@@ -79,6 +79,4 @@ fn main() -> Result<(), Error> {
 
     // we use the thread local executor to spawn the application task separately from the work pool
     smol::block_on(app.run());
-
-    Ok(())
 }

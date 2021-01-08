@@ -170,9 +170,11 @@ impl EditorView {
 
                             // ugh, improve with a traverse method
                             // or interleave highlight spans with selection and diagnostic spans
-                            let style = if view.doc.diagnostics.iter().any(|diagnostic| {
+                            let is_diagnostic = view.doc.diagnostics.iter().any(|diagnostic| {
                                 diagnostic.range.0 <= char_index && diagnostic.range.1 > char_index
-                            }) {
+                            });
+
+                            let style = if is_diagnostic {
                                 style.clone().add_modifier(Modifier::UNDERLINED)
                             } else {
                                 style

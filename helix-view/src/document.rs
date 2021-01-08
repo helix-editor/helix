@@ -4,8 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
-    syntax::LOADER, ChangeSet, Diagnostic, History, Position, Range, Rope, RopeSlice, Selection,
-    State, Syntax, Transaction,
+    syntax::LOADER, ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -55,7 +54,6 @@ where
     }
 }
 
-use futures_util::TryFutureExt;
 use helix_lsp::lsp;
 use url::Url;
 
@@ -176,7 +174,7 @@ impl Document {
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
             take_with(&mut self.changes, |changes| {
-                changes.compose(transaction.changes().clone()).unwrap()
+                changes.compose(transaction.changes().clone())
             });
 
             // TODO: when composing, replace transaction.selection too
@@ -218,6 +216,8 @@ impl Document {
                     .update(&old_doc, &self.state.doc, transaction.changes())
                     .unwrap();
             }
+
+            // TODO: undo / redo need to emit changes to lsp
 
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());

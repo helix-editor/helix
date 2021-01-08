@@ -104,6 +104,12 @@ pub struct Registry {
     pub incoming: SelectAll<Receiver<Call>>,
 }
 
+impl Default for Registry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Registry {
     pub fn new() -> Self {
         let mut inner = HashMap::new();

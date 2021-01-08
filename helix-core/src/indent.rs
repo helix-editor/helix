@@ -44,7 +44,7 @@ fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Nod
     Some(node)
 }
 
-fn walk(node: Option<Node>, newline: bool) -> usize {
+fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
     let mut increment = 0;
 
     // Hardcoded for rust for now
@@ -183,13 +183,9 @@ pub fn suggested_indent_for_pos(
         let byte_start = state.doc.char_to_byte(pos);
         let node = get_highest_syntax_node_at_bytepos(syntax, byte_start);
 
-        let indentation = walk(node, new_line);
-        // special case for comments
-
-        // println!("------------");
-        // if preserve_leading_whitespace
-
-        indentation
+        // TODO: special case for comments
+        // TODO: if preserve_leading_whitespace
+        calculate_indentation(node, new_line)
     } else {
         // TODO: heuristics for non-tree sitter grammars
         0

@@ -119,7 +119,7 @@ where
     I: IntoIterator,
     I::Item: Stream + Unpin,
 {
-    let mut set = SelectAll::new();
+    let set = SelectAll::new();
 
     for stream in streams {
         set.push(stream);

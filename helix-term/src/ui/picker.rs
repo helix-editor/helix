@@ -170,12 +170,9 @@ impl<T> Component for Picker<T> {
                 return close_fn;
             }
             _ => {
-                match self.prompt.handle_event(event, cx) {
-                    EventResult::Consumed(_) => {
-                        // TODO: recalculate only if pattern changed
-                        self.score();
-                    }
-                    _ => (),
+                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+                    // TODO: recalculate only if pattern changed
+                    self.score();
                 }
             }
         }

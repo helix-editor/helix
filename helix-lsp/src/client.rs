@@ -5,7 +5,7 @@ use crate::{
 
 type Result<T> = core::result::Result<T, Error>;
 
-use helix_core::{ChangeSet, Rope, RopeSlice, Transaction};
+use helix_core::{ChangeSet, Rope};
 
 // use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -18,13 +18,12 @@ use smol::{
     channel::{Receiver, Sender},
     io::{BufReader, BufWriter},
     // prelude::*,
-    process::{Child, ChildStderr, Command, Stdio},
+    process::{Child, Command, Stdio},
     Executor,
 };
 
 pub struct Client {
     _process: Child,
-    stderr: BufReader<ChildStderr>,
 
     outgoing: Sender<Payload>,
     // pub incoming: Receiver<Call>,
@@ -51,11 +50,10 @@ impl Client {
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (incoming, outgoing) = Transport::start(ex, reader, writer);
+        let (incoming, outgoing) = Transport::start(ex, reader, writer, stderr);
 
         let client = Client {
             _process: process,
-            stderr,
 
             outgoing,
             // incoming,
@@ -76,17 +74,15 @@ impl Client {
         jsonrpc::Id::Num(id)
     }
 
-    fn to_params(value: Value) -> Result<jsonrpc::Params> {
+    fn value_into_params(value: Value) -> jsonrpc::Params {
         use jsonrpc::Params;
 
-        let params = match value {
+        match value {
             Value::Null => Params::None,
             Value::Bool(_) | Value::Number(_) | Value::String(_) => Params::Array(vec![value]),
             Value::Array(vec) => Params::Array(vec),
             Value::Object(map) => Params::Map(map),
-        };
-
-        Ok(params)
+        }
     }
 
     /// Execute a RPC request on the language server.
@@ -101,7 +97,7 @@ impl Client {
             jsonrpc: Some(jsonrpc::Version::V2),
             id: self.next_request_id(),
             method: R::METHOD.to_string(),
-            params: Self::to_params(params)?,
+            params: Self::value_into_params(params),
         };
 
         let (tx, rx) = smol::channel::bounded::<Result<Value>>(1);
@@ -143,7 +139,7 @@ impl Client {
         let notification = jsonrpc::Notification {
             jsonrpc: Some(jsonrpc::Version::V2),
             method: R::METHOD.to_string(),
-            params: Self::to_params(params)?,
+            params: Self::value_into_params(params),
         };
 
         self.outgoing
@@ -251,7 +247,7 @@ impl Client {
         .await
     }
 
-    fn to_changes(
+    fn changeset_to_changes(
         old_text: &Rope,
         changeset: &ChangeSet,
     ) -> Vec<lsp::TextDocumentContentChangeEvent> {
@@ -346,7 +342,7 @@ impl Client {
                     text: "".to_string(),
                 }] // TODO: probably need old_state here too?
             }
-            lsp::TextDocumentSyncKind::Incremental => Self::to_changes(old_text, changes),
+            lsp::TextDocumentSyncKind::Incremental => Self::changeset_to_changes(old_text, changes),
             lsp::TextDocumentSyncKind::None => return Ok(()),
         };
 

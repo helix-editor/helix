@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use log::{debug, error};
 
-use crate::{Error, Notification};
+use crate::Error;
 
 type Result<T> = core::result::Result<T, Error>;
 
@@ -48,6 +48,8 @@ pub(crate) struct Transport {
 
     writer: BufWriter<ChildStdin>,
     reader: BufReader<ChildStdout>,
+    #[allow(dead_code)] // TODO: handle stderr logs
+    stderr: BufReader<ChildStderr>,
 }
 
 impl Transport {
@@ -55,6 +57,7 @@ impl Transport {
         ex: &Executor,
         reader: BufReader<ChildStdout>,
         writer: BufWriter<ChildStdin>,
+        stderr: BufReader<ChildStderr>,
     ) -> (Receiver<jsonrpc::Call>, Sender<Payload>) {
         let (incoming, rx) = smol::channel::unbounded();
         let (tx, outgoing) = smol::channel::unbounded();
@@ -62,6 +65,7 @@ impl Transport {
         let transport = Self {
             reader,
             writer,
+            stderr,
             incoming,
             outgoing,
             pending_requests: Default::default(),

@@ -291,7 +291,7 @@ pub fn split_selection(cx: &mut Context) {
                                 selection::split_on_matches(text, view.doc.selection(), &regex);
                             view.doc.set_selection(selection);
                         }
-                        Err(_) => (), // TODO: mark command line as error
+                        Err(_err) => (), // TODO: mark command line as error
                     }
                 }
             }
@@ -453,9 +453,9 @@ pub fn command_mode(cx: &mut Context) {
 
                     let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
 
-                    match parts.as_slice() {
-                        &["q"] => editor.should_close = true,
-                        &["o", path] => {
+                    match *parts.as_slice() {
+                        ["q"] => editor.should_close = true,
+                        ["o", path] => {
                             // TODO: make view()/view_mut() always contain a view.
                             let size = editor.view().unwrap().size;
                             editor.open(path.into(), size);
