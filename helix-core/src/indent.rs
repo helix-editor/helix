@@ -9,7 +9,7 @@ use crate::{
 
 pub const TAB_WIDTH: usize = 4;
 
-fn indent_level_for_line(line: RopeSlice) -> usize {
+fn indent_level_for_line(line: &RopeSlice) -> usize {
     let mut len = 0;
     for ch in line.chars() {
         match ch {
@@ -45,7 +45,7 @@ fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Nod
 }
 
 fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
-    let mut increment = 0;
+    let mut increment: i32 = 0;
 
     // Hardcoded for rust for now
     let indent_scopes = &[
@@ -55,8 +55,8 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         "loop_expression",
         "if_expression",
         "if_let_expression",
-        "match_expression",
-        "match_arm",
+        // "match_expression",
+        // "match_arm",
     ];
 
     // this is for multiline things, such as:
@@ -66,25 +66,27 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
     //  where the first line isn't indented
     let indent_except_first_scopes = &[
         "block",
+        "match_block",
         "arguments",
         "declaration_list",
         "field_declaration_list",
         "enum_variant_list",
         // "function_item",
-        // "call_expression",
         // "closure_expression",
         "binary_expression",
         "field_expression",
         //
-        "where_predicate", // where_clause instead?
+        "where_clause",
     ];
 
-    let outdent = &["}", "]", ")"];
+    let outdent = &["where", "}", "]", ")"];
 
     let mut node = match node {
         Some(node) => node,
         None => return 0,
     };
+
+    let mut prev_start = node.start_position().row;
 
     // if we're calculating indentation for a brand new line then the current node will become the
     // parent node. We need to take it's indentation level into account too.
@@ -101,45 +103,60 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         let not_first_or_last_sibling = not_first_sibling && not_last_sibling;
 
         let parent_kind = parent.kind();
+        let start = parent.start_position().row;
 
         // println!(
-        //     "name: {}\tparent: {}\trange:\t{} {}\tfirst={:?}\tlast={:?}",
+        //     "name: {}\tparent: {}\trange:\t{} {}\tfirst={:?}\tlast={:?} start={} prev={}",
         //     node.kind(),
         //     parent.kind(),
         //     node.range().start_point,
         //     node.range().end_point,
         //     node.prev_sibling().is_none(),
         //     node.next_sibling().is_none(),
+        //     node.start_position(),
+        //     prev_start,
         // );
+
+        // detect deeply nested indents in the same line
+        let starts_same_line = start == prev_start;
 
         if outdent.contains(&node.kind()) {
             // we outdent by skipping the rules for the current level and jumping up
-            node = parent;
-            continue;
+            // println!("skipping..");
+            // node = parent;
+            increment -= 1;
+            // continue;
         }
 
-        let is_scope = indent_scopes.contains(&parent_kind);
+        // TODO: problem seems to be, ({ is two scopes that merge into one.
+        // so when seeing } we're supposed to jump all the way out of both scopes, but we only do
+        // so for one.
+        // .map(|a| {
+        //     let len = 1;
+        // })
 
-        // && not_first_or_last_sibling
-        if is_scope && not_first_or_last_sibling {
+        if ((indent_scopes.contains(&parent_kind) && true) // not_first_or_last_sibling
+            || (indent_except_first_scopes.contains(&parent_kind) && true))
+            && !starts_same_line
+        {
             // println!("is_scope {}", parent_kind);
+            prev_start = start;
             increment += 1
         }
 
-        let is_scope = indent_except_first_scopes.contains(&parent_kind);
-
-        // && not_first_sibling
-        if is_scope && not_first_sibling {
-            // println!("is_scope_except_first {}", parent_kind);
-            increment += 1
-        }
+        // TODO: detect deeply nested indents in same line:
+        // std::panic::set_hook(Box::new(move |info| {
+        //     hook(info); <-- indent here is 1
+        // }));
 
         // if last_scope && increment > 0 && ...{ ignore }
 
         node = parent;
     }
 
-    increment
+    assert!(increment >= 0);
+
+    increment as usize
 }
 
 fn find_first_non_whitespace_char(state: &State, line_num: usize) -> Option<usize> {
@@ -160,7 +177,7 @@ fn find_first_non_whitespace_char(state: &State, line_num: usize) -> Option<usiz
 
 fn suggested_indent_for_line(syntax: Option<&Syntax>, state: &State, line_num: usize) -> usize {
     let line = state.doc.line(line_num);
-    let current = indent_level_for_line(line);
+    let current = indent_level_for_line(&line);
 
     if let Some(start) = find_first_non_whitespace_char(state, line_num) {
         return suggested_indent_for_pos(syntax, state, start, false);
@@ -199,12 +216,12 @@ mod test {
     #[test]
     fn test_indent_level() {
         let line = Rope::from("        fn new"); // 8 spaces
-        assert_eq!(indent_level_for_line(line.slice(..)), 2);
+        assert_eq!(indent_level_for_line(&line.slice(..)), 2);
         let line = Rope::from("\t\t\tfn new"); // 3 tabs
-        assert_eq!(indent_level_for_line(line.slice(..)), 3);
+        assert_eq!(indent_level_for_line(&line.slice(..)), 3);
         // mixed indentation
         let line = Rope::from("\t    \tfn new"); // 1 tab, 4 spaces, tab
-        assert_eq!(indent_level_for_line(line.slice(..)), 3);
+        assert_eq!(indent_level_for_line(&line.slice(..)), 3);
     }
 
     #[test]
@@ -255,7 +272,26 @@ where
 }
 #[test]
 //
+match test {
+    Some(a) => 1,
+    None => {
+        unimplemented!()
+    }
+}
+std::panic::set_hook(Box::new(move |info| {
+    hook(info);
+}));
 
+{ { {
+    1
+}}}
+
+pub fn change<I>(state: &State, changes: I) -> Self
+where
+    I: IntoIterator<Item = Change> + ExactSizeIterator,
+{
+    true
+}
 ",
         );
 
@@ -266,50 +302,18 @@ where
             .unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap().unwrap();
         let syntax = Syntax::new(&state.doc, highlight_config.clone());
+        let text = state.doc.slice(..);
 
-        // {
-        //   {
-        //     1 + 1
-        //   }
-        // }
-        // assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 1), 0); // {
-        // assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 2), 1); // {
-        // assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 3), 2); //
-        // assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 4), 1); // }
-        // assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 5), 0); // }
-
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 1), 0); // mod
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 2), 1); // fn
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 3), 2); // 1 + 1
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 4), 0); //
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 5), 2); // does_indentation_work
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 7), 2); // let test_function
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 8), 3); // that_param
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 9), 2); // );
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 10), 0); //
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 11), 2); // let test_function
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 12), 3); // this_param
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 13), 3); // that_param
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 14), 2); // );
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 15), 0); //
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 16), 2); // let test_function
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 17), 3); // param2
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 18), 2); // );
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 20), 2); // let selection
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 21), 3); // changes
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 22), 4); // clone()
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 23), 4); // map()
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 24), 5); // let len
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 25), 5); // let pos
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 26), 5); // Range
-
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 27), 4); // })
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 28), 4); // .collect(),
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 29), 3); // 0,
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 30), 2); // })
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 31), 0); //
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 32), 2); // return;
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 33), 1); // }
-        assert_eq!(suggested_indent_for_line(Some(&syntax), &state, 34), 0); // }
+        for i in 0..state.doc.len_lines() {
+            let line = text.line(i);
+            let indent = indent_level_for_line(&line);
+            assert_eq!(
+                suggested_indent_for_line(Some(&syntax), &state, i),
+                indent,
+                "line {}: {}",
+                i,
+                line
+            );
+        }
     }
 }
