@@ -6,7 +6,7 @@ pkgs.mkShell {
     lld_10
     # pkgconfig
   ];
-  RUSTFLAGS = "-C link-arg=-fuse-ld=lld";
+  RUSTFLAGS = "-C link-arg=-fuse-ld=lld -C target-cpu=native";
   RUST_BACKTRACE = "1";
 }
 
