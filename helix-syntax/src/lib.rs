@@ -71,7 +71,7 @@ mk_langs!(
     // (Cpp, tree_sitter_cpp),
     (Css, tree_sitter_css),
     (Go, tree_sitter_go),
-    (Haskell, tree_sitter_haskell),
+    // (Haskell, tree_sitter_haskell),
     (Html, tree_sitter_html),
     (Java, tree_sitter_java),
     (Javascript, tree_sitter_javascript),
