@@ -11,3 +11,4 @@ tree-sitter = "0.17"
 
 [build-dependencies]
 cc = { version = "1",  features = ["parallel"] }
+rayon = { version = "1.5" }

@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -114,10 +115,10 @@ fn main() {
         "tree-sitter-cpp".to_string(),
     ];
     let dirs = collect_tree_sitter_dirs(ignore);
-    for dir in dirs {
+    dirs.par_iter().for_each(|dir| {
         let language = &dir[12..]; // skip tree-sitter- prefix
         build_dir(&dir, &language);
-    }
+    });
     build_dir("tree-sitter-typescript/tsx", "tsx");
     build_dir("tree-sitter-typescript/typescript", "typescript");
 }
