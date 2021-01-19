@@ -135,8 +135,8 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         //     let len = 1;
         // })
 
-        if ((indent_scopes.contains(&parent_kind) && true) // not_first_or_last_sibling
-            || (indent_except_first_scopes.contains(&parent_kind) && true))
+        if (indent_scopes.contains(&parent_kind) // && not_first_or_last_sibling
+            || indent_except_first_scopes.contains(&parent_kind))
             && !starts_same_line
         {
             // println!("is_scope {}", parent_kind);

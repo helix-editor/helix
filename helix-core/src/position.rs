@@ -39,9 +39,9 @@ impl From<(usize, usize)> for Position {
     }
 }
 
-impl Into<tree_sitter::Point> for Position {
-    fn into(self) -> tree_sitter::Point {
-        tree_sitter::Point::new(self.row, self.col)
+impl From<Position> for tree_sitter::Point {
+    fn from(pos: Position) -> Self {
+        Self::new(pos.row, pos.col)
     }
 }
 

@@ -2,7 +2,7 @@
 
 pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
-    rust-bin.nightly.latest.rust
+    (rust-bin.nightly.latest.rust.override { extensions = ["rust-src"]; })
     lld_10
     # pkgconfig
   ];
