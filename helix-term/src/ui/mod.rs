@@ -16,7 +16,7 @@ pub fn text_color() -> Style {
 }
 
 use std::path::{Path, PathBuf};
-pub fn file_picker(root: &str) -> Picker<PathBuf> {
+pub fn file_picker(root: &str, ex: &'static smol::Executor) -> Picker<PathBuf> {
     use ignore::Walk;
     // TODO: determine root based on git root
     let files = Walk::new(root).filter_map(|entry| match entry {
@@ -40,9 +40,9 @@ pub fn file_picker(root: &str) -> Picker<PathBuf> {
             // format_fn
             path.strip_prefix("./").unwrap().to_str().unwrap().into()
         },
-        |editor: &mut Editor, path: &PathBuf| {
-            let size = editor.view().unwrap().size;
-            editor.open(path.into(), size);
+        move |editor: &mut Editor, path: &PathBuf| {
+            let size = editor.view().size;
+            editor.open(path.into(), size, ex);
         },
     )
 }

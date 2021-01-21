@@ -114,7 +114,7 @@ impl Registry {
     pub fn new() -> Self {
         let mut inner = HashMap::new();
 
-        inner.insert("rust".to_string(), OnceCell::new());
+        inner.insert("source.rust".to_string(), OnceCell::new());
 
         Self {
             inner,

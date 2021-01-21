@@ -33,8 +33,6 @@ pub struct Application {
     terminal: Terminal,
 
     executor: &'static smol::Executor<'static>,
-    language_server: Arc<helix_lsp::Client>,
-    language_servers: helix_lsp::Registry,
 }
 
 impl Application {
@@ -44,18 +42,8 @@ impl Application {
         let mut editor = Editor::new();
         let size = terminal.size()?;
 
-        let language_servers = helix_lsp::Registry::new();
-        let language_server = language_servers.get("rust", &executor).unwrap();
-
         if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
-            editor.open(file, (size.width, size.height))?;
-
-            // TODO: do this everywhere
-            editor
-                .view_mut()
-                .unwrap()
-                .doc
-                .set_language_server(Some(language_server.clone()));
+            editor.open(file, (size.width, size.height), executor)?;
         }
 
         let mut compositor = Compositor::new();
@@ -67,8 +55,6 @@ impl Application {
             compositor,
 
             executor,
-            language_server,
-            language_servers,
         };
 
         Ok(app)
@@ -76,15 +62,10 @@ impl Application {
 
     fn render(&mut self) {
         let executor = &self.executor;
-        let language_servers = &self.language_servers;
         let editor = &mut self.editor;
         let compositor = &self.compositor;
 
-        let mut cx = crate::compositor::Context {
-            editor,
-            executor,
-            language_servers,
-        };
+        let mut cx = crate::compositor::Context { editor, executor };
         let area = self.terminal.size().unwrap();
 
         compositor.render(area, self.terminal.current_buffer_mut(), &mut cx);
@@ -96,12 +77,6 @@ impl Application {
 
     pub async fn event_loop(&mut self) {
         let mut reader = EventStream::new();
-
-        let doc = &self.editor.view().unwrap().doc;
-        self.language_server
-            .text_document_did_open(doc.url().unwrap(), doc.version, doc.text())
-            .await
-            .unwrap();
 
         self.render();
 
@@ -115,7 +90,7 @@ impl Application {
                 event = reader.next().fuse() => {
                     self.handle_terminal_events(event)
                 }
-                call = self.language_servers.incoming.next().fuse() => {
+                call = self.editor.language_servers.incoming.next().fuse() => {
                     self.handle_language_server_message(call).await
                 }
             }
@@ -126,7 +101,6 @@ impl Application {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             executor: &self.executor,
-            language_servers: &self.language_servers,
         };
         // Handle key events
         let should_redraw = match event {
@@ -197,16 +171,17 @@ impl Application {
             Some(Call::MethodCall(call)) => {
                 debug!("Method not found {}", call.method);
 
-                self.language_server.reply(
-                    call.id,
-                    // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
-                    Err(helix_lsp::jsonrpc::Error {
-                        code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
-                        message: "Method not found".to_string(),
-                        data: None,
-                    }),
-                );
+                // self.language_server.reply(
+                //     call.id,
+                //     // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
+                //     Err(helix_lsp::jsonrpc::Error {
+                //         code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
+                //         message: "Method not found".to_string(),
+                //         data: None,
+                //     }),
+                // );
             }
+            None => (),
             e => unreachable!("{:?}", e),
         }
     }

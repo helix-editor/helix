@@ -251,55 +251,52 @@ impl Component for EditorView {
             Event::Resize(width, height) => {
                 // TODO: simplistic ensure cursor in view for now
                 // TODO: loop over views
-                if let Some(view) = cx.editor.view_mut() {
-                    view.size = (width, height);
-                    view.ensure_cursor_in_view()
-                };
+                let view = cx.editor.view_mut();
+                view.size = (width, height);
+                view.ensure_cursor_in_view();
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
-                if let Some(view) = cx.editor.view_mut() {
-                    let keys = vec![event];
-                    // TODO: sequences (`gg`)
-                    let mode = view.doc.mode();
-                    // TODO: handle count other than 1
-                    let mut cx = commands::Context {
-                        view,
-                        executor: cx.executor,
-                        language_servers: cx.language_servers,
-                        count: 1,
-                        callback: None,
-                    };
+                let view = cx.editor.view_mut();
 
-                    match mode {
-                        Mode::Insert => {
-                            if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
-                                command(&mut cx);
-                            } else if let KeyEvent {
-                                code: KeyCode::Char(c),
-                                ..
-                            } = event
-                            {
-                                commands::insert::insert_char(&mut cx, c);
-                            }
-                        }
-                        mode => {
-                            if let Some(command) = self.keymap[&mode].get(&keys) {
-                                command(&mut cx);
+                let keys = vec![event];
+                // TODO: sequences (`gg`)
+                let mode = view.doc.mode();
+                // TODO: handle count other than 1
+                let mut cxt = commands::Context {
+                    executor: cx.executor,
+                    editor: &mut cx.editor,
+                    count: 1,
+                    callback: None,
+                };
 
-                                // TODO: simplistic ensure cursor in view for now
-                            }
+                match mode {
+                    Mode::Insert => {
+                        if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
+                            command(&mut cxt);
+                        } else if let KeyEvent {
+                            code: KeyCode::Char(c),
+                            ..
+                        } = event
+                        {
+                            commands::insert::insert_char(&mut cxt, c);
                         }
                     }
-                    // appease borrowck
-                    let callback = cx.callback.take();
+                    mode => {
+                        if let Some(command) = self.keymap[&mode].get(&keys) {
+                            command(&mut cxt);
 
-                    view.ensure_cursor_in_view();
-
-                    EventResult::Consumed(callback)
-                } else {
-                    EventResult::Ignored
+                            // TODO: simplistic ensure cursor in view for now
+                        }
+                    }
                 }
+
+                // appease borrowck
+                let callback = cxt.callback.take();
+                drop(cxt);
+                cx.editor.view_mut().ensure_cursor_in_view();
+
+                EventResult::Consumed(callback)
             }
             Event::Mouse(_) => EventResult::Ignored,
         }
@@ -309,9 +306,8 @@ impl Component for EditorView {
         // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
         // theme. Theme is immutable mutating view won't disrupt theme_ref.
         let theme_ref = unsafe { &*(&cx.editor.theme as *const Theme) };
-        if let Some(view) = cx.editor.view_mut() {
-            self.render_view(view, area, surface, theme_ref);
-        }
+        let view = cx.editor.view_mut();
+        self.render_view(view, area, surface, theme_ref);
 
         // TODO: drop unwrap
     }
@@ -321,7 +317,7 @@ impl Component for EditorView {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
-        let view = ctx.editor.view().unwrap();
+        let view = ctx.editor.view();
         let cursor = view.doc.state.selection().cursor();
 
         let mut pos = view

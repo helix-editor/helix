@@ -39,7 +39,6 @@ use helix_view::{Editor, View};
 // shared with commands.rs
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
-    pub language_servers: &'a helix_lsp::Registry,
     pub executor: &'static smol::Executor<'static>,
 }
 
