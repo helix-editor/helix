@@ -161,6 +161,24 @@ pub fn move_file_end(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
+pub fn extend_next_word_start(cx: &mut Context) {
+    let count = cx.count;
+    let selection = cx
+        .doc()
+        .state
+        .extend_selection(Direction::Forward, Granularity::Word, count);
+    cx.doc().set_selection(selection);
+}
+
+pub fn extend_prev_word_start(cx: &mut Context) {
+    let count = cx.count;
+    let selection = cx
+        .doc()
+        .state
+        .extend_selection(Direction::Backward, Granularity::Word, count);
+    cx.doc().set_selection(selection);
+}
+
 pub fn check_cursor_in_view(view: &View) -> bool {
     let doc = &view.doc;
     let cursor = doc.selection().cursor();

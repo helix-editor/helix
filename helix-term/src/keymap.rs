@@ -146,8 +146,11 @@ pub fn default() -> Keymaps {
                 vec![shift!('K')] => commands::extend_line_up,
                 vec![shift!('L')] => commands::extend_char_right,
                 vec![key!('w')] => commands::move_next_word_start,
+                vec![shift!('W')] => commands::extend_next_word_start,
                 vec![key!('b')] => commands::move_prev_word_start,
+                vec![shift!('B')] => commands::extend_prev_word_start,
                 vec![key!('e')] => commands::move_next_word_end,
+                // TODO: E
                 vec![key!('g')] => commands::goto_mode,
                 vec![key!('i')] => commands::insert_mode,
                 vec![shift!('I')] => commands::prepend_to_line,
