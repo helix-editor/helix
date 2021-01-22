@@ -282,6 +282,19 @@ pub fn extend_line_down(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
+pub fn select_regex(cx: &mut Context) {
+    let prompt = ui::regex_prompt(cx, "select:".to_string(), |doc, regex| {
+        let text = &doc.text().slice(..);
+        let selection = selection::select_on_matches(text, doc.selection(), &regex);
+        doc.set_selection(selection);
+    });
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, editor: &mut Editor| {
+            compositor.push(Box::new(prompt));
+        },
+    ));
+}
+
 pub fn split_selection(cx: &mut Context) {
     // TODO: this needs to store initial selection state, revert on esc, confirm on enter
     // needs to also call the callback function per input change, not just final time.
@@ -298,38 +311,11 @@ pub fn split_selection(cx: &mut Context) {
 
     let snapshot = cx.doc().state.clone();
 
-    let prompt = Prompt::new(
-        "split:".to_string(),
-        |input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
-        move |editor: &mut Editor, input: &str, event: PromptEvent| {
-            match event {
-                PromptEvent::Abort => {
-                    // revert state
-                    let doc = &mut editor.view_mut().doc;
-                    doc.state = snapshot.clone();
-                }
-                PromptEvent::Validate => {
-                    //
-                }
-                PromptEvent::Update => {
-                    match Regex::new(input) {
-                        Ok(regex) => {
-                            let doc = &mut editor.view_mut().doc;
-
-                            // revert state to what it was before the last update
-                            doc.state = snapshot.clone();
-
-                            let text = &doc.text().slice(..);
-                            let selection =
-                                selection::split_on_matches(text, doc.selection(), &regex);
-                            doc.set_selection(selection);
-                        }
-                        Err(_err) => (), // TODO: mark command line as error
-                    }
-                }
-            }
-        },
-    );
+    let prompt = ui::regex_prompt(cx, "split:".to_string(), |doc, regex| {
+        let text = &doc.text().slice(..);
+        let selection = selection::split_on_matches(text, doc.selection(), &regex);
+        doc.set_selection(selection);
+    });
 
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, editor: &mut Editor| {

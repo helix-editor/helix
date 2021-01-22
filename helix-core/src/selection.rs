@@ -258,6 +258,35 @@ impl Selection {
 
 // TODO: checkSelection -> check if valid for doc length
 
+pub fn select_on_matches(
+    text: &RopeSlice,
+    selections: &Selection,
+    regex: &crate::regex::Regex,
+) -> Selection {
+    let mut result = SmallVec::with_capacity(selections.ranges().len());
+
+    for sel in selections.ranges() {
+        // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
+        let fragment = sel.fragment(&text);
+
+        let mut sel_start = sel.from();
+        let sel_end = sel.to();
+
+        let mut start_byte = text.char_to_byte(sel_start);
+
+        for mat in regex.find_iter(&fragment) {
+            // TODO: retain range direction
+
+            let start = text.byte_to_char(start_byte + mat.start());
+            let end = text.byte_to_char(start_byte + mat.end());
+            result.push(Range::new(start, end - 1));
+        }
+    }
+
+    // TODO: figure out a new primary index
+    Selection::new(result, 0)
+}
+
 // TODO: support to split on capture #N instead of whole match
 pub fn split_on_matches(
     text: &RopeSlice,

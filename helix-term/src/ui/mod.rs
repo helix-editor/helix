@@ -9,10 +9,51 @@ pub use prompt::{Prompt, PromptEvent};
 pub use tui::layout::Rect;
 pub use tui::style::{Color, Modifier, Style};
 
+use helix_core::regex::Regex;
+use helix_view::{Document, Editor};
+
 // TODO: temp
 #[inline(always)]
 pub fn text_color() -> Style {
     Style::default().fg(Color::Rgb(219, 191, 239)) // lilac
+}
+
+pub fn regex_prompt(
+    cx: &mut crate::commands::Context,
+    prompt: String,
+    fun: impl Fn(&mut Document, Regex) + 'static,
+) -> Prompt {
+    let snapshot = cx.doc().state.clone();
+
+    Prompt::new(
+        prompt,
+        |input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
+        move |editor: &mut Editor, input: &str, event: PromptEvent| {
+            match event {
+                PromptEvent::Abort => {
+                    // revert state
+                    let doc = &mut editor.view_mut().doc;
+                    doc.state = snapshot.clone();
+                }
+                PromptEvent::Validate => {
+                    //
+                }
+                PromptEvent::Update => {
+                    match Regex::new(input) {
+                        Ok(regex) => {
+                            let doc = &mut editor.view_mut().doc;
+
+                            // revert state to what it was before the last update
+                            doc.state = snapshot.clone();
+
+                            fun(doc, regex);
+                        }
+                        Err(_err) => (), // TODO: mark command line as error
+                    }
+                }
+            }
+        },
+    )
 }
 
 use std::path::{Path, PathBuf};
