@@ -39,11 +39,12 @@ impl Application {
     pub fn new(mut args: Args, executor: &'static smol::Executor<'static>) -> Result<Self, Error> {
         let backend = CrosstermBackend::new(stdout());
         let mut terminal = Terminal::new(backend)?;
-        let mut editor = Editor::new();
         let size = terminal.size()?;
+        let mut editor = Editor::new(size);
 
-        if let Some(file) = args.values_of_t::<PathBuf>("files").unwrap().pop() {
-            editor.open(file, (size.width, size.height), executor)?;
+        let files = args.values_of_t::<PathBuf>("files").unwrap();
+        for file in files {
+            editor.open(file, executor)?;
         }
 
         let mut compositor = Compositor::new();
@@ -132,11 +133,13 @@ impl Application {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
 
-                        let view = self
-                            .editor
-                            .views
-                            .iter_mut()
-                            .find(|view| view.doc.path == path);
+                        let view: Option<&mut View> = None;
+                        // TODO
+                        // let view = self
+                        //     .editor
+                        //     .views
+                        //     .iter_mut()
+                        //     .find(|view| view.doc.path == path);
 
                         if let Some(view) = view {
                             let doc = view.doc.text().slice(..);

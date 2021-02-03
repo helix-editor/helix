@@ -183,7 +183,7 @@ pub fn check_cursor_in_view(view: &View) -> bool {
     let doc = &view.doc;
     let cursor = doc.selection().cursor();
     let line = doc.text().char_to_line(cursor);
-    let document_end = view.first_line + view.size.1.saturating_sub(1) as usize;
+    let document_end = view.first_line + view.area.height.saturating_sub(1) as usize;
 
     if (line > document_end.saturating_sub(PADDING)) | (line < view.first_line + PADDING) {
         return false;
@@ -197,7 +197,7 @@ pub fn page_up(cx: &mut Context) {
         return;
     }
 
-    view.first_line = view.first_line.saturating_sub(view.size.1 as usize);
+    view.first_line = view.first_line.saturating_sub(view.area.height as usize);
 
     if !check_cursor_in_view(view) {
         let text = view.doc.text();
@@ -208,7 +208,7 @@ pub fn page_up(cx: &mut Context) {
 
 pub fn page_down(cx: &mut Context) {
     let view = cx.view();
-    view.first_line += view.size.1 as usize + PADDING;
+    view.first_line += view.area.height as usize + PADDING;
 
     if view.first_line < view.doc.text().len_lines() {
         let text = view.doc.text();
@@ -223,7 +223,9 @@ pub fn half_page_up(cx: &mut Context) {
         return;
     }
 
-    view.first_line = view.first_line.saturating_sub(view.size.1 as usize / 2);
+    view.first_line = view
+        .first_line
+        .saturating_sub(view.area.height as usize / 2);
 
     if !check_cursor_in_view(view) {
         let text = &view.doc.text();
@@ -235,8 +237,8 @@ pub fn half_page_up(cx: &mut Context) {
 pub fn half_page_down(cx: &mut Context) {
     let view = cx.view();
     let lines = view.doc.text().len_lines();
-    if view.first_line < lines.saturating_sub(view.size.1 as usize) {
-        view.first_line += view.size.1 as usize / 2;
+    if view.first_line < lines.saturating_sub(view.area.height as usize) {
+        view.first_line += view.area.height as usize / 2;
     }
     if !check_cursor_in_view(view) {
         let text = view.doc.text();
@@ -367,8 +369,7 @@ pub fn change_selection(cx: &mut Context) {
 
 pub fn collapse_selection(cx: &mut Context) {
     let selection = cx
-        .view()
-        .doc
+        .doc()
         .selection()
         .transform(|range| Range::new(range.head, range.head));
 
@@ -377,8 +378,7 @@ pub fn collapse_selection(cx: &mut Context) {
 
 pub fn flip_selections(cx: &mut Context) {
     let selection = cx
-        .view()
-        .doc
+        .doc()
         .selection()
         .transform(|range| Range::new(range.head, range.anchor));
 
@@ -396,8 +396,7 @@ pub fn insert_mode(cx: &mut Context) {
     enter_insert_mode(cx);
 
     let selection = cx
-        .view()
-        .doc
+        .doc()
         .selection()
         .transform(|range| Range::new(range.to(), range.from()));
     cx.doc().set_selection(selection);
@@ -431,37 +430,40 @@ pub fn command_mode(cx: &mut Context) {
                 |_input: &str| {
                     // TODO: i need this duplicate list right now to avoid borrow checker issues
                     let command_list = vec![
-                    String::from("q"),
-                    String::from("aaa"),
-                    String::from("bbb"),
-                    String::from("ccc"),
-                    String::from("ddd"),
-                    String::from("eee"),
-                    String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
-                    String::from("q"),
-                    String::from("aaa"),
-                    String::from("bbb"),
-                    String::from("ccc"),
-                    String::from("ddd"),
-                    String::from("eee"),
-                    String::from("q"),
-                    String::from("aaa"),
-                    String::from("bbb"),
-                    String::from("ccc"),
-                    String::from("ddd"),
-                    String::from("eee"),
-                    String::from("q"),
-                    String::from("aaa"),
-                    String::from("bbb"),
-                    String::from("ccc"),
-                    String::from("ddd"),
-                    String::from("eee"),
-                    String::from("q"),
-                    String::from("aaa"),
-                    String::from("bbb"),
-                    String::from("ccc"),
-                    String::from("ddd"),
-                    String::from("eee"),
+                        "q".to_string(),
+                        "o".to_string(),
+                        "w".to_string(),
+                        // String::from("q"),
+                        // String::from("aaa"),
+                        // String::from("bbb"),
+                        // String::from("ccc"),
+                        // String::from("ddd"),
+                        // String::from("eee"),
+                        // String::from("averylongcommandaverylongcommandaverylongcommandaverylongcommandaverylongcommand"),
+                        // String::from("q"),
+                        // String::from("aaa"),
+                        // String::from("bbb"),
+                        // String::from("ccc"),
+                        // String::from("ddd"),
+                        // String::from("eee"),
+                        // String::from("q"),
+                        // String::from("aaa"),
+                        // String::from("bbb"),
+                        // String::from("ccc"),
+                        // String::from("ddd"),
+                        // String::from("eee"),
+                        // String::from("q"),
+                        // String::from("aaa"),
+                        // String::from("bbb"),
+                        // String::from("ccc"),
+                        // String::from("ddd"),
+                        // String::from("eee"),
+                        // String::from("q"),
+                        // String::from("aaa"),
+                        // String::from("bbb"),
+                        // String::from("ccc"),
+                        // String::from("ddd"),
+                        // String::from("eee"),
                     ];
                     command_list
                         .into_iter()
@@ -478,8 +480,7 @@ pub fn command_mode(cx: &mut Context) {
                     match *parts.as_slice() {
                         ["q"] => editor.should_close = true,
                         ["o", path] => {
-                            let size = editor.view().size;
-                            editor.open(path.into(), size, executor);
+                            editor.open(path.into(), executor);
                         }
                         _ => (),
                     }
@@ -499,12 +500,13 @@ pub fn file_picker(cx: &mut Context) {
 }
 
 pub fn buffer_picker(cx: &mut Context) {
-    cx.callback = Some(Box::new(
-        |compositor: &mut Compositor, editor: &mut Editor| {
-            let picker = ui::buffer_picker(&editor.views, editor.focus);
-            compositor.push(Box::new(picker));
-        },
-    ));
+    unimplemented!()
+    // cx.callback = Some(Box::new(
+    //     |compositor: &mut Compositor, editor: &mut Editor| {
+    //         let picker = ui::buffer_picker(&editor.views, editor.focus);
+    //         compositor.push(Box::new(picker));
+    //     },
+    // ));
 }
 
 // calculate line numbers for each selection range
@@ -617,12 +619,7 @@ fn append_changes_to_history(cx: &mut Context) {
     // TODO: trigger lsp/documentDidChange with changes
 
     // HAXX: we need to reconstruct the state as it was before the changes..
-    let old_state = cx
-        .view()
-        .doc
-        .old_state
-        .take()
-        .expect("no old_state available");
+    let old_state = cx.doc().old_state.take().expect("no old_state available");
 
     // TODO: take transaction by value?
     cx.doc().history.commit_revision(&transaction, &old_state);

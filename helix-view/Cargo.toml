@@ -24,3 +24,5 @@ url = "2"
 
 smol = "1"
 futures-util = "0.3"
+
+slotmap = "1"

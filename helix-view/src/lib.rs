@@ -1,6 +1,7 @@
 pub mod document;
 pub mod editor;
 pub mod theme;
+pub mod tree;
 pub mod view;
 
 pub use document::Document;

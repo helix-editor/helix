@@ -37,15 +37,20 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
-        let area = Rect::new(OFFSET, 0, viewport.width - OFFSET, viewport.height - 2); // - 2 for statusline and prompt
+        let area = Rect::new(
+            viewport.x + OFFSET,
+            viewport.y,
+            viewport.width - OFFSET,
+            viewport.height - 2,
+        ); // - 2 for statusline and prompt
         self.render_buffer(view, area, surface, theme);
 
         // clear with background color
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
-        let area = Rect::new(0, viewport.height - 2, viewport.width, 1);
-        self.render_statusline(view, area, surface, theme);
+        let area = Rect::new(viewport.x, viewport.height - 2, viewport.width, 1);
+        self.render_statusline(&view.doc, area, surface, theme);
     }
 
     // TODO: ideally not &mut View but highlights require it because of cursor cache
@@ -203,34 +208,46 @@ impl EditorView {
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
             if view.doc.diagnostics.iter().any(|d| d.line == line) {
-                surface.set_stringn(0, i as u16, "●", 1, warning);
+                surface.set_stringn(
+                    viewport.x + 0 - OFFSET,
+                    viewport.y + i as u16,
+                    "●",
+                    1,
+                    warning,
+                );
             }
 
-            surface.set_stringn(1, i as u16, format!("{:>5}", line + 1), 5, style);
+            surface.set_stringn(
+                viewport.x + 1 - OFFSET,
+                viewport.y + i as u16,
+                format!("{:>5}", line + 1),
+                5,
+                style,
+            );
         }
     }
 
     pub fn render_statusline(
         &self,
-        view: &View,
+        doc: &Document,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
     ) {
         let text_color = text_color();
-        let mode = match view.doc.mode() {
+        let mode = match doc.mode() {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
         };
         // statusline
         surface.set_style(
-            Rect::new(0, viewport.y, viewport.width, 1),
+            Rect::new(viewport.x, viewport.y, viewport.width, 1),
             theme.get("ui.statusline"),
         );
-        surface.set_string(1, viewport.y, mode, text_color);
+        surface.set_string(viewport.x + 1, viewport.y, mode, text_color);
 
-        if let Some(path) = view.doc.relative_path() {
+        if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
             surface.set_string(6, viewport.y, path, text_color);
             // TODO: append [+] if modified
@@ -239,7 +256,7 @@ impl EditorView {
         surface.set_string(
             viewport.width - 10,
             viewport.y,
-            format!("{}", view.doc.diagnostics.len()),
+            format!("{}", doc.diagnostics.len()),
             text_color,
         );
     }
@@ -251,9 +268,8 @@ impl Component for EditorView {
             Event::Resize(width, height) => {
                 // TODO: simplistic ensure cursor in view for now
                 // TODO: loop over views
-                let view = cx.editor.view_mut();
-                view.size = (width, height);
-                view.ensure_cursor_in_view();
+                cx.editor.tree.resize(Rect::new(0, 0, width, height));
+                // TODO: restore view.ensure_cursor_in_view();
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
@@ -306,8 +322,10 @@ impl Component for EditorView {
         // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
         // theme. Theme is immutable mutating view won't disrupt theme_ref.
         let theme_ref = unsafe { &*(&cx.editor.theme as *const Theme) };
-        let view = cx.editor.view_mut();
-        self.render_view(view, area, surface, theme_ref);
+        for view in cx.editor.tree.views() {
+            // TODO: use parent area
+            self.render_view(view, view.area, surface, theme_ref);
+        }
 
         // TODO: drop unwrap
     }

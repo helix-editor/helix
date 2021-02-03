@@ -17,15 +17,15 @@ pub const PADDING: usize = 5;
 pub struct View {
     pub doc: Document,
     pub first_line: usize,
-    pub size: (u16, u16),
+    pub area: Rect,
 }
 
 impl View {
-    pub fn new(doc: Document, size: (u16, u16)) -> Result<Self, Error> {
+    pub fn new(doc: Document) -> Result<Self, Error> {
         let view = Self {
             doc,
             first_line: 0,
-            size,
+            area: Rect::default(), // will get calculated upon inserting into tree
         };
 
         Ok(view)
@@ -34,7 +34,7 @@ impl View {
     pub fn ensure_cursor_in_view(&mut self) {
         let cursor = self.doc.state.selection().cursor();
         let line = self.doc.text().char_to_line(cursor);
-        let document_end = self.first_line + (self.size.1 as usize).saturating_sub(2);
+        let document_end = self.first_line + (self.area.height as usize).saturating_sub(2);
 
         // TODO: side scroll
 
@@ -50,7 +50,7 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self) -> usize {
-        let viewport = Rect::new(6, 0, self.size.0, self.size.1 - 2); // - 2 for statusline and prompt
+        let viewport = Rect::new(6, 0, self.area.width, self.area.height - 2); // - 2 for statusline and prompt
         std::cmp::min(
             self.first_line + (viewport.height as usize),
             self.doc.text().len_lines() - 1,

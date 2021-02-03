@@ -82,38 +82,38 @@ pub fn file_picker(root: &str, ex: &'static smol::Executor) -> Picker<PathBuf> {
             path.strip_prefix("./").unwrap().to_str().unwrap().into()
         },
         move |editor: &mut Editor, path: &PathBuf| {
-            let size = editor.view().size;
-            editor.open(path.into(), size, ex);
+            editor.open(path.into(), ex);
         },
     )
 }
 
 use helix_view::View;
 pub fn buffer_picker(views: &[View], current: usize) -> Picker<(Option<PathBuf>, usize)> {
-    use helix_view::Editor;
-    Picker::new(
-        views
-            .iter()
-            .enumerate()
-            .map(|(i, view)| (view.doc.relative_path().map(Path::to_path_buf), i))
-            .collect(),
-        move |(path, index): &(Option<PathBuf>, usize)| {
-            // format_fn
-            match path {
-                Some(path) => {
-                    if *index == current {
-                        format!("{} (*)", path.to_str().unwrap()).into()
-                    } else {
-                        path.to_str().unwrap().into()
-                    }
-                }
-                None => "[NEW]".into(),
-            }
-        },
-        |editor: &mut Editor, &(_, index): &(Option<PathBuf>, usize)| {
-            if index < editor.views.len() {
-                editor.focus = index;
-            }
-        },
-    )
+    unimplemented!();
+    // use helix_view::Editor;
+    // Picker::new(
+    //     views
+    //         .iter()
+    //         .enumerate()
+    //         .map(|(i, view)| (view.doc.relative_path().map(Path::to_path_buf), i))
+    //         .collect(),
+    //     move |(path, index): &(Option<PathBuf>, usize)| {
+    //         // format_fn
+    //         match path {
+    //             Some(path) => {
+    //                 if *index == current {
+    //                     format!("{} (*)", path.to_str().unwrap()).into()
+    //                 } else {
+    //                     path.to_str().unwrap().into()
+    //                 }
+    //             }
+    //             None => "[NEW]".into(),
+    //         }
+    //     },
+    //     |editor: &mut Editor, &(_, index): &(Option<PathBuf>, usize)| {
+    //         if index < editor.views.len() {
+    //             editor.focus = index;
+    //         }
+    //     },
+    // )
 }

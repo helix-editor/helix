@@ -1,45 +1,36 @@
 use crate::theme::Theme;
+use crate::tree::Tree;
 use crate::{Document, View};
+use slotmap::DefaultKey as Key;
 
 use std::path::PathBuf;
 
 use anyhow::Error;
 
 pub struct Editor {
-    pub views: Vec<View>,
-    pub focus: usize,
+    pub tree: Tree,
+    // pub documents: Vec<Document>,
+    pub focus: Key,
     pub should_close: bool,
     pub theme: Theme, // TODO: share one instance
     pub language_servers: helix_lsp::Registry,
 }
 
-impl Default for Editor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Editor {
-    pub fn new() -> Self {
+    pub fn new(area: tui::layout::Rect) -> Self {
         let theme = Theme::default();
         let language_servers = helix_lsp::Registry::new();
 
         Self {
-            views: Vec::new(),
-            focus: 0,
+            tree: Tree::new(area),
+            focus: Key::default(),
             should_close: false,
             theme,
             language_servers,
         }
     }
 
-    pub fn open(
-        &mut self,
-        path: PathBuf,
-        size: (u16, u16),
-        executor: &smol::Executor,
-    ) -> Result<(), Error> {
-        let pos = self.views.len();
+    pub fn open(&mut self, path: PathBuf, executor: &smol::Executor) -> Result<(), Error> {
         let mut doc = Document::load(path, self.theme.scopes())?;
 
         // try to find a language server based on the language name
@@ -60,16 +51,17 @@ impl Editor {
             .unwrap();
         }
 
-        self.views.push(View::new(doc, size)?);
+        let view = View::new(doc)?;
+        let pos = self.tree.insert(view);
         self.focus = pos;
         Ok(())
     }
 
     pub fn view(&self) -> &View {
-        self.views.get(self.focus).unwrap()
+        self.tree.get(self.focus)
     }
 
     pub fn view_mut(&mut self) -> &mut View {
-        self.views.get_mut(self.focus).unwrap()
+        self.tree.get_mut(self.focus)
     }
 }
