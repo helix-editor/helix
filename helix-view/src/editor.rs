@@ -10,7 +10,6 @@ use anyhow::Error;
 pub struct Editor {
     pub tree: Tree,
     // pub documents: Vec<Document>,
-    pub focus: Key,
     pub should_close: bool,
     pub theme: Theme, // TODO: share one instance
     pub language_servers: helix_lsp::Registry,
@@ -23,7 +22,6 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            focus: Key::default(),
             should_close: false,
             theme,
             language_servers,
@@ -52,16 +50,15 @@ impl Editor {
         }
 
         let view = View::new(doc)?;
-        let pos = self.tree.insert(view);
-        self.focus = pos;
+        self.tree.insert(view);
         Ok(())
     }
 
     pub fn view(&self) -> &View {
-        self.tree.get(self.focus)
+        self.tree.get(self.tree.focus)
     }
 
     pub fn view_mut(&mut self) -> &mut View {
-        self.tree.get_mut(self.focus)
+        self.tree.get_mut(self.tree.focus)
     }
 }

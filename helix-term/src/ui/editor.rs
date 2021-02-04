@@ -36,6 +36,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        is_focused: bool,
     ) {
         let area = Rect::new(
             viewport.x + OFFSET,
@@ -43,14 +44,14 @@ impl EditorView {
             viewport.width - OFFSET,
             viewport.height - 2,
         ); // - 2 for statusline and prompt
-        self.render_buffer(view, area, surface, theme);
+        self.render_buffer(view, area, surface, theme, is_focused);
 
         // clear with background color
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
         let area = Rect::new(viewport.x, viewport.height - 2, viewport.width, 1);
-        self.render_statusline(&view.doc, area, surface, theme);
+        self.render_statusline(&view.doc, area, surface, theme, is_focused);
     }
 
     // TODO: ideally not &mut View but highlights require it because of cursor cache
@@ -60,6 +61,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        is_focused: bool,
     ) {
         // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
         let source_code = view.doc.text().to_string();
@@ -93,16 +95,20 @@ impl EditorView {
         let mut spans = Vec::new();
         let mut visual_x = 0;
         let mut line = 0u16;
-        let visible_selections: Vec<Range> = view
-            .doc
-            .state
-            .selection()
-            .ranges()
-            .iter()
-            // TODO: limit selection to one in viewport
-            // .filter(|range| !range.is_empty()) // && range.overlaps(&Range::new(start, end + 1))
-            .copied()
-            .collect();
+        let visible_selections: Vec<Range> = if is_focused {
+            view.doc
+                .state
+                .selection()
+                .ranges()
+                .iter()
+                // TODO: limit selection to one in viewport
+                // .filter(|range| !range.is_empty()) // && range.overlaps(&Range::new(start, end + 1))
+                .copied()
+                .collect()
+        } else {
+            // don't render selections on unfocused windows
+            Vec::new()
+        };
 
         'outer: for event in highlights {
             match event.unwrap() {
@@ -233,6 +239,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        is_focused: bool,
     ) {
         let text_color = text_color();
         let mode = match doc.mode() {
@@ -322,9 +329,9 @@ impl Component for EditorView {
         // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
         // theme. Theme is immutable mutating view won't disrupt theme_ref.
         let theme_ref = unsafe { &*(&cx.editor.theme as *const Theme) };
-        for view in cx.editor.tree.views() {
+        for (view, is_focused) in cx.editor.tree.views() {
             // TODO: use parent area
-            self.render_view(view, view.area, surface, theme_ref);
+            self.render_view(view, view.area, surface, theme_ref, is_focused);
         }
 
         // TODO: drop unwrap
