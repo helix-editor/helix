@@ -348,8 +348,8 @@ impl Component for EditorView {
         let mut pos = view
             .screen_coords_at_pos(&view.doc.text().slice(..), cursor)
             .expect("Cursor is out of bounds.");
-        pos.col += area.x as usize + OFFSET as usize;
-        pos.row += area.y as usize;
+        pos.col += view.area.x as usize + area.x as usize + OFFSET as usize;
+        pos.row += view.area.y as usize + area.y as usize;
         Some(pos)
     }
 }
