@@ -95,7 +95,7 @@ impl Tree {
         self.focus = node;
 
         // recalculate all the sizes
-        self.traverse();
+        self.recalculate();
 
         node
     }
@@ -126,10 +126,10 @@ impl Tree {
 
     pub fn resize(&mut self, area: Rect) {
         self.area = area;
-        self.traverse();
+        self.recalculate();
     }
 
-    pub fn traverse(&mut self) {
+    pub fn recalculate(&mut self) {
         self.stack.push((self.root, self.area));
 
         // take the area
@@ -166,6 +166,66 @@ impl Tree {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    pub fn traverse(&self) -> Traverse {
+        Traverse::new(self)
+    }
+
+    pub fn focus_next(&mut self) {
+        // This function is very dumb, but that's because we don't store any parent links.
+        // (we'd be able to go parent.next_sibling() recursively until we find something)
+        // For now that's okay though, since it's unlikely you'll be able to open a large enough
+        // number of splits to notice.
+
+        let iter = self.traverse();
+
+        let mut iter = iter.skip_while(|&(key, _view)| key != self.focus);
+        iter.next(); // take the focused value
+
+        match iter.next() {
+            Some((key, _)) => {
+                self.focus = key;
+            }
+            None => {
+                // extremely crude, take the first item again
+                let (key, _) = self.traverse().next().unwrap();
+                self.focus = key;
+            }
+        }
+    }
+}
+
+pub struct Traverse<'a> {
+    tree: &'a Tree,
+    stack: Vec<Key>, // TODO: reuse the one we use on update
+}
+
+impl<'a> Traverse<'a> {
+    fn new(tree: &'a Tree) -> Self {
+        Self {
+            tree,
+            stack: vec![tree.root],
+        }
+    }
+}
+
+impl<'a> Iterator for Traverse<'a> {
+    type Item = (Key, &'a View);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let key = self.stack.pop()?;
+
+            let node = &self.tree.nodes[key];
+
+            match node {
+                Node::View(view) => return Some((key, view)),
+                Node::Container(container) => {
+                    self.stack.extend(container.children.iter().rev());
                 }
             }
         }

@@ -951,3 +951,8 @@ pub fn completion(cx: &mut Context) {
         // language server client needs to be accessible via a registry of some sort
     }
 }
+
+// view movements
+pub fn next_view(cx: &mut Context) {
+    cx.editor.tree.focus_next()
+}

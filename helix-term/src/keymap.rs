@@ -190,6 +190,10 @@ pub fn default() -> Keymaps {
 
                 vec![ctrl!('p')] => commands::file_picker,
                 vec![ctrl!('b')] => commands::buffer_picker,
+                vec![Key {
+                    code: KeyCode::Tab,
+                    modifiers: Modifiers::NONE
+                }] => commands::next_view,
             ),
             Mode::Insert => hashmap!(
                 vec![Key {
