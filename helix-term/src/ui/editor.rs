@@ -50,7 +50,12 @@ impl EditorView {
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
-        let area = Rect::new(viewport.x, viewport.height - 2, viewport.width, 1);
+        let area = Rect::new(
+            viewport.x,
+            viewport.y + viewport.height - 2,
+            viewport.width,
+            1,
+        );
         self.render_statusline(&view.doc, area, surface, theme, is_focused);
     }
 
@@ -241,27 +246,34 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
     ) {
-        let text_color = text_color();
         let mode = match doc.mode() {
             Mode::Insert => "INS",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
+        };
+        // TODO: share text_color styles inside theme
+        let text_color = if is_focused {
+            Style::default().fg(Color::Rgb(219, 191, 239)) // lilac
+        } else {
+            Style::default().fg(Color::Rgb(164, 160, 232)) // lavender
         };
         // statusline
         surface.set_style(
             Rect::new(viewport.x, viewport.y, viewport.width, 1),
             theme.get("ui.statusline"),
         );
-        surface.set_string(viewport.x + 1, viewport.y, mode, text_color);
+        if is_focused {
+            surface.set_string(viewport.x + 1, viewport.y, mode, text_color);
+        }
 
         if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
-            surface.set_string(6, viewport.y, path, text_color);
+            surface.set_string(viewport.x + 6, viewport.y, path, text_color);
             // TODO: append [+] if modified
         }
 
         surface.set_string(
-            viewport.width - 10,
+            viewport.x + viewport.width - 10,
             viewport.y,
             format!("{}", doc.diagnostics.len()),
             text_color,
