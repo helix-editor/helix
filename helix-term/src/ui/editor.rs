@@ -69,15 +69,15 @@ impl EditorView {
         is_focused: bool,
     ) {
         // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
-        let source_code = view.doc.text().to_string();
+        let text = view.doc.text();
+        let source_code = text.to_string();
 
         let last_line = view.last_line();
 
         let range = {
             // calculate viewport byte ranges
-            let start = view.doc.text().line_to_byte(view.first_line);
-            let end = view.doc.text().line_to_byte(last_line)
-                + view.doc.text().line(last_line).len_bytes();
+            let start = text.line_to_byte(view.first_line);
+            let end = text.line_to_byte(last_line) + text.line(last_line).len_bytes();
 
             start..end
         };
@@ -126,10 +126,12 @@ impl EditorView {
                 HighlightEvent::Source { start, end } => {
                     // TODO: filter out spans out of viewport for now..
 
-                    let start = view.doc.text().byte_to_char(start);
-                    let end = view.doc.text().byte_to_char(end); // <-- index 744, len 743
+                    // TODO: do these before iterating
+                    let text = view.doc.text();
+                    let start = text.byte_to_char(start);
+                    let end = text.byte_to_char(end);
 
-                    let text = view.doc.text().slice(start..end);
+                    let text = text.slice(start..end);
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
@@ -141,6 +143,7 @@ impl EditorView {
                     // TODO: we could render the text to a surface, then cache that, that
                     // way if only the selection/cursor changes we can copy from cache
                     // and paint the new cursor.
+                    // We could keep a single resizable surface on the View for that.
 
                     let mut char_index = start;
 
@@ -159,6 +162,13 @@ impl EditorView {
                         } else if grapheme == "\t" {
                             visual_x += (TAB_WIDTH as u16);
                         } else {
+                            if visual_x >= viewport.width {
+                                // if we're offscreen just keep going until we hit a new line
+                                // TODO: will need tweaking when we also take into account
+                                // horizontal scrolling
+                                continue;
+                            }
+
                             // Cow will prevent allocations if span contained in a single slice
                             // which should really be the majority case
                             let grapheme = Cow::from(grapheme);
@@ -198,16 +208,12 @@ impl EditorView {
 
                             // TODO: paint cursor heads except primary
 
-                            // HAXX: we don't render the char if it's offscreen. This should be
-                            // skipped in a better way much earlier
-                            if visual_x < viewport.width {
-                                surface.set_string(
-                                    viewport.x + visual_x,
-                                    viewport.y + line,
-                                    grapheme,
-                                    style,
-                                );
-                            }
+                            surface.set_string(
+                                viewport.x + visual_x,
+                                viewport.y + line,
+                                grapheme,
+                                style,
+                            );
 
                             visual_x += width;
                         }

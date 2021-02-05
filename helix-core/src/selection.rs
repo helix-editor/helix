@@ -184,6 +184,7 @@ impl Selection {
         Self::single(pos, pos)
     }
 
+    // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
         fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Selection {
