@@ -152,15 +152,26 @@ impl Tree {
                     match container.layout {
                         Layout::Vertical => unimplemented!(),
                         Layout::Horizontal => {
-                            let len = container.children.len() as u16;
+                            let len = container.children.len();
 
-                            let width = area.width / len;
+                            let width = area.width / len as u16;
 
                             let mut child_x = area.x;
 
-                            for (_i, child) in container.children.iter().enumerate() {
-                                let area = Rect::new(child_x, area.y, width, area.height);
+                            for (i, child) in container.children.iter().enumerate() {
+                                let mut area = Rect::new(
+                                    child_x,
+                                    container.area.y,
+                                    width,
+                                    container.area.height,
+                                );
                                 child_x += width;
+
+                                // last child takes the remaining width because we can get uneven
+                                // space from rounding
+                                if i == len - 1 {
+                                    area.width = container.area.x + container.area.width - area.x;
+                                }
 
                                 self.stack.push((*child, area));
                             }

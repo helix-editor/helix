@@ -198,12 +198,16 @@ impl EditorView {
 
                             // TODO: paint cursor heads except primary
 
-                            surface.set_string(
-                                viewport.x + visual_x,
-                                viewport.y + line,
-                                grapheme,
-                                style,
-                            );
+                            // HAXX: we don't render the char if it's offscreen. This should be
+                            // skipped in a better way much earlier
+                            if visual_x < viewport.width {
+                                surface.set_string(
+                                    viewport.x + visual_x,
+                                    viewport.y + line,
+                                    grapheme,
+                                    style,
+                                );
+                            }
 
                             visual_x += width;
                         }
@@ -268,12 +272,18 @@ impl EditorView {
 
         if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
-            surface.set_string(viewport.x + 6, viewport.y, path, text_color);
+            surface.set_stringn(
+                viewport.x + 6,
+                viewport.y,
+                path,
+                viewport.width.saturating_sub(6) as usize,
+                text_color,
+            );
             // TODO: append [+] if modified
         }
 
         surface.set_string(
-            viewport.x + viewport.width - 10,
+            viewport.x + viewport.width.saturating_sub(10),
             viewport.y,
             format!("{}", doc.diagnostics.len()),
             text_color,
