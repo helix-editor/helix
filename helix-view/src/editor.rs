@@ -1,7 +1,6 @@
 use crate::theme::Theme;
 use crate::tree::Tree;
 use crate::{Document, View};
-use slotmap::DefaultKey as Key;
 
 use std::path::PathBuf;
 

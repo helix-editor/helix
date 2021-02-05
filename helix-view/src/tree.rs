@@ -24,7 +24,7 @@ pub enum Node {
 }
 
 impl Node {
-    pub fn container(area: Rect) -> Self {
+    pub fn container() -> Self {
         Self::Container(Box::new(Container::new()))
     }
 
@@ -59,7 +59,7 @@ impl Container {
 
 impl Tree {
     pub fn new(area: Rect) -> Self {
-        let root = Node::container(area);
+        let root = Node::container();
         let mut nodes = HopSlotMap::new();
         let root = nodes.insert(root);
 
