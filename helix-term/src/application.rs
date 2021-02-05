@@ -133,13 +133,12 @@ impl Application {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
 
-                        let view: Option<&mut View> = None;
-                        // TODO
-                        // let view = self
-                        //     .editor
-                        //     .views
-                        //     .iter_mut()
-                        //     .find(|view| view.doc.path == path);
+                        let view = self
+                            .editor
+                            .tree
+                            .views()
+                            .map(|(view, _key)| view)
+                            .find(|view| view.doc.path == path);
 
                         if let Some(view) = view {
                             let doc = view.doc.text().slice(..);
