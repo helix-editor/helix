@@ -10,6 +10,7 @@ pub struct Editor {
     pub tree: Tree,
     // pub documents: Vec<Document>,
     pub should_close: bool,
+    pub count: Option<usize>,
     pub theme: Theme, // TODO: share one instance
     pub language_servers: helix_lsp::Registry,
 }
@@ -25,6 +26,7 @@ impl Editor {
         Self {
             tree: Tree::new(area),
             should_close: false,
+            count: None,
             theme,
             language_servers,
         }

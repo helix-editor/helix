@@ -9,7 +9,7 @@ use std::borrow::Cow;
 
 use crossterm::{
     cursor,
-    event::{read, Event, EventStream, KeyCode, KeyEvent},
+    event::{read, Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
 };
 use tui::{
     backend::CrosstermBackend,
@@ -333,10 +333,27 @@ impl Component for EditorView {
                         }
                     }
                     mode => {
-                        if let Some(command) = self.keymap[&mode].get(&keys) {
-                            command(&mut cxt);
+                        match keys.as_slice() {
+                            &[KeyEvent {
+                                code: KeyCode::Char(i @ '0'..='9'),
+                                modifiers: KeyModifiers::NONE,
+                            }] => {
+                                let i = i.to_digit(10).unwrap() as usize;
+                                cxt.editor.count = Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
+                            }
+                            _ => {
+                                // set the count
+                                cxt.count = cxt.editor.count.take().unwrap_or(1);
+                                // TODO: edge case: 0j -> reset to 1
+                                // if this fails, count was Some(0)
+                                // debug_assert!(cxt.count != 0);
 
-                            // TODO: simplistic ensure cursor in view for now
+                                if let Some(command) = self.keymap[&mode].get(&keys) {
+                                    command(&mut cxt);
+
+                                    // TODO: simplistic ensure cursor in view for now
+                                }
+                            }
                         }
                     }
                 }
