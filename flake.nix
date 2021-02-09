@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    rust-overlay.url = "github:oxalica/rust-overlay/a9b13ba83eaf2d07ae955a45b15fd96aa6994b70";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
   outputs = inputs@{ self, nixpkgs, rust-overlay, flake-utils, ... }:

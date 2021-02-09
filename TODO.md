@@ -1,18 +1,38 @@
-helper methods: iterate over selection spans in the document.
-
-- Implement marks (superset of Selection/Range)
 - Implement style configs, tab settings
-- Visual tab width
 - Refactor tree-sitter-highlight to work like the atom one, recomputing partial tree updates.
-- Only render highlights on screen
-- proper selection rendering
-- Undo tree
-- selection mode
-- key sequence shortcuts (gg etc)
 - syntax errors highlight query
 
-- UI work: command line
-- UI work: tab popup on command line
 - UI work: completion popup
-- UI work: floating pane
 
+
+------
+
+1
+- [ ] selection mode
+- [x] % for whole doc selection
+- [ ] vertical splits
+- [ ] input counts (30j)
+- [ ] retain horiz when moving vertically
+- [ ] update lsp on redo/undo
+- [ ] Implement marks (superset of Selection/Range)
+- [ ] ctrl-v/ctrl-x on file picker
+- [ ] linewise selection work
+- [ ] goto definition
+- [ ] nixos packaging
+- [ ] CI binary builds
+
+2
+- extend selection (treesitter select parent node) (replaces viw, vi(, va( etc )
+- bracket pairs
+- comment block (gcc)
+- completion signature popups/docs
+- multiple views into the same file
+
+3
+- diagnostics popups
+- diff mode with highlighting?
+- snippet support (tab to jump between marks)
+- gamelisp/wasm scripting
+
+X
+- rendering via skulpin/skia or raw wgpu
