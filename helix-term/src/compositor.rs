@@ -54,12 +54,10 @@ pub trait Component {
 
     fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
-    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
+    fn cursor_position(&self, area: Rect, ctx: &Editor) -> Option<Position> {
         None
     }
 }
-
-// struct Editor { };
 
 // For v1:
 // Child views are something each view needs to handle on it's own for now, positioning and sizing
@@ -83,29 +81,6 @@ pub trait Component {
 // - a popup panel / dialog with it's own interactions
 // - an autocomplete popup that doesn't change focus
 
-//fn main() {
-//    let root = Editor::new();
-//    let compositor = Compositor::new();
-
-//    compositor.push(root);
-
-//    // pos: clip to bottom of screen
-//    compositor.push_at(pos, Prompt::new(
-//        ":",
-//        (),
-//        |input: &str| match input {}
-//    )); // TODO: this Prompt needs to somehow call compositor.pop() on close, but it can't refer to parent
-//    // Cursive solves this by allowing to return a special result on process_event
-//    // that's either Ignore | Consumed(Opt<C>) where C: fn (Compositor) -> ()
-
-//    // TODO: solve popup focus: we want to push autocomplete popups on top of the current layer
-//    // but retain the focus where it was. The popup will also need to update as we type into the
-//    // textarea. It should also capture certain input, such as tab presses etc
-//    //
-//    // 1) This could be faked by the top layer pushing down edits into the previous layer.
-//    // 2) Alternatively,
-//}
-
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
 }
@@ -124,14 +99,15 @@ impl Compositor {
     }
 
     pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
-        // TODO: custom focus
-        if let Some(layer) = self.layers.last_mut() {
-            return match layer.handle_event(event, cx) {
+        // propagate events through the layers until we either find a layer that consumes it or we
+        // run out of layers (event bubbling)
+        for layer in self.layers.iter_mut().rev() {
+            match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
                     callback(self, cx.editor);
-                    true
+                    return true;
                 }
-                EventResult::Consumed(None) => true,
+                EventResult::Consumed(None) => return true,
                 EventResult::Ignored => false,
             };
         }
@@ -144,9 +120,9 @@ impl Compositor {
         }
     }
 
-    pub fn cursor_position(&self, area: Rect, cx: &mut Context) -> Position {
+    pub fn cursor_position(&self, area: Rect, editor: &Editor) -> Position {
         for layer in self.layers.iter().rev() {
-            if let Some(pos) = layer.cursor_position(area, cx) {
+            if let Some(pos) = layer.cursor_position(area, editor) {
                 return pos;
             }
         }

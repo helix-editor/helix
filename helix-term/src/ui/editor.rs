@@ -365,12 +365,12 @@ impl Component for EditorView {
         // TODO: drop unwrap
     }
 
-    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
+    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
         // match view.doc.mode() {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
-        let view = ctx.editor.view();
+        let view = editor.view();
         let cursor = view.doc.state.selection().cursor();
 
         let mut pos = view

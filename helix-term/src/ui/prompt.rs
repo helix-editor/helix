@@ -235,7 +235,7 @@ impl Component for Prompt {
         self.render_prompt(area, surface, &cx.editor.theme)
     }
 
-    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
+    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
         Some(Position::new(
             area.height as usize,
             area.x as usize + self.prompt.len() + self.cursor,

@@ -257,7 +257,7 @@ impl<T> Component for Picker<T> {
         }
     }
 
-    fn cursor_position(&self, area: Rect, ctx: &mut Context) -> Option<Position> {
-        self.prompt.cursor_position(area, ctx)
+    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+        self.prompt.cursor_position(area, editor)
     }
 }

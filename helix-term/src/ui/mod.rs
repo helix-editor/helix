@@ -1,8 +1,10 @@
 mod editor;
+mod menu;
 mod picker;
 mod prompt;
 
 pub use editor::EditorView;
+pub use menu::Menu;
 pub use picker::Picker;
 pub use prompt::{Prompt, PromptEvent};
 

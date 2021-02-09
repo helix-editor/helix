@@ -910,7 +910,8 @@ pub fn completion(cx: &mut Context) {
 
     // TODO: if no completion, show some message or something
     if !res.is_empty() {
-        let picker = ui::Picker::new(
+        let snapshot = cx.doc().state.clone();
+        let mut menu = ui::Menu::new(
             res,
             |item| {
                 // format_fn
@@ -918,40 +919,75 @@ pub fn completion(cx: &mut Context) {
 
                 // TODO: use item.filter_text for filtering
             },
-            |editor: &mut Editor, item| {
-                use helix_lsp::{lsp, util};
-                // determine what to insert: text_edit | insert_text | label
-                let edit = if let Some(edit) = &item.text_edit {
-                    match edit {
-                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            unimplemented!("completion: insert_and_replace {:?}", item)
+            move |editor: &mut Editor, item, event| {
+                match event {
+                    PromptEvent::Abort => {
+                        // revert state
+                        let doc = &mut editor.view_mut().doc;
+                        doc.state = snapshot.clone();
+                    }
+                    PromptEvent::Validate => {
+                        let doc = &mut editor.view_mut().doc;
+
+                        // revert state to what it was before the last update
+                        doc.state = snapshot.clone();
+
+                        // extract as fn(doc, item):
+
+                        // TODO: need to apply without composing state...
+                        // TODO: need to update lsp on accept/cancel by diffing the snapshot with
+                        // the final state?
+                        // -> on update simply update the snapshot, then on accept redo the call,
+                        // finally updating doc.changes + notifying lsp.
+                        //
+                        // or we could simply use doc.undo + apply when changing between options
+
+                        let item = item.unwrap();
+
+                        use helix_lsp::{lsp, util};
+                        // determine what to insert: text_edit | insert_text | label
+                        let edit = if let Some(edit) = &item.text_edit {
+                            match edit {
+                                lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                                lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                                    unimplemented!("completion: insert_and_replace {:?}", item)
+                                }
+                            }
+                        } else {
+                            item.insert_text.as_ref().unwrap_or(&item.label);
+                            unimplemented!();
+                            // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
+                            // and we insert at position.
+                        };
+
+                        // TODO: merge edit with additional_text_edits
+                        if let Some(additional_edits) = &item.additional_text_edits {
+                            if !additional_edits.is_empty() {
+                                unimplemented!(
+                                    "completion: additional_text_edits: {:?}",
+                                    additional_edits
+                                );
+                            }
                         }
+
+                        let transaction =
+                            util::generate_transaction_from_edits(&doc.state, vec![edit]);
+                        doc.apply(&transaction);
+                        // TODO: append_changes_to_history(cx); if not in insert mode?
                     }
-                } else {
-                    item.insert_text.as_ref().unwrap_or(&item.label);
-                    unimplemented!();
-                    // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
-                    // and we insert at position.
+                    _ => (),
                 };
-
-                // TODO: merge edit with additional_text_edits
-                if let Some(additional_edits) = &item.additional_text_edits {
-                    if !additional_edits.is_empty() {
-                        unimplemented!("completion: additional_text_edits: {:?}", additional_edits);
-                    }
-                }
-
-                let doc = &mut editor.view_mut().doc;
-                let transaction = util::generate_transaction_from_edits(&doc.state, vec![edit]);
-                doc.apply(&transaction);
-                // TODO: append_changes_to_history(cx); if not in insert mode?
             },
         );
 
         cx.callback = Some(Box::new(
             move |compositor: &mut Compositor, editor: &mut Editor| {
-                compositor.push(Box::new(picker));
+                let area = tui::layout::Rect::default(); // TODO: unused remove from cursor_position
+                let mut pos = compositor.cursor_position(area, editor);
+                pos.row += 1; // shift down by one row
+                menu.set_position(pos);
+
+                compositor.push(Box::new(menu));
             },
         ));
 

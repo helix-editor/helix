@@ -70,7 +70,7 @@ impl Application {
         let area = self.terminal.size().unwrap();
 
         compositor.render(area, self.terminal.current_buffer_mut(), &mut cx);
-        let pos = compositor.cursor_position(area, &mut cx);
+        let pos = compositor.cursor_position(area, &editor);
 
         self.terminal.draw();
         self.terminal.set_cursor(pos.col as u16, pos.row as u16);
@@ -112,7 +112,7 @@ impl Application {
                     .handle_event(Event::Resize(width, height), &mut cx)
             }
             Some(Ok(event)) => self.compositor.handle_event(event, &mut cx),
-            Some(Err(x)) => panic!(x),
+            Some(Err(x)) => panic!("{}", x),
             None => panic!(),
         };
 

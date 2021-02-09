@@ -19,6 +19,7 @@ pub struct View {
     pub first_line: usize,
     pub area: Rect,
 }
+// TODO: popups should be a thing on the view with a rect + text
 
 impl View {
     pub fn new(doc: Document) -> Result<Self, Error> {
