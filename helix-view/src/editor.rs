@@ -15,9 +15,12 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new(area: tui::layout::Rect) -> Self {
+    pub fn new(mut area: tui::layout::Rect) -> Self {
         let theme = Theme::default();
         let language_servers = helix_lsp::Registry::new();
+
+        // HAXX: offset the render area height by 1 to account for prompt/commandline
+        area.height -= 1;
 
         Self {
             tree: Tree::new(area),

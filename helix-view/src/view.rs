@@ -51,7 +51,7 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self) -> usize {
-        let viewport = Rect::new(6, 0, self.area.width, self.area.height - 2); // - 2 for statusline and prompt
+        let viewport = Rect::new(6, 0, self.area.width, self.area.height - 1); // - 1 for statusline
         std::cmp::min(
             self.first_line + (viewport.height as usize),
             self.doc.text().len_lines() - 1,

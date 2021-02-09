@@ -10,8 +10,9 @@
 1
 - [ ] selection mode
 - [x] % for whole doc selection
-- [ ] vertical splits
+- [x] vertical splits
 - [ ] input counts (30j)
+- [ ] respect view fullscreen flag
 - [ ] retain horiz when moving vertically
 - [ ] update lsp on redo/undo
 - [ ] Implement marks (superset of Selection/Range)

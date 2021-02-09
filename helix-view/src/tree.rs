@@ -156,7 +156,31 @@ impl Tree {
                     container.area = area;
 
                     match container.layout {
-                        Layout::Vertical => unimplemented!(),
+                        Layout::Vertical => {
+                            let len = container.children.len();
+
+                            let height = area.height / len as u16;
+
+                            let mut child_y = area.y;
+
+                            for (i, child) in container.children.iter().enumerate() {
+                                let mut area = Rect::new(
+                                    container.area.x,
+                                    child_y,
+                                    container.area.width,
+                                    height,
+                                );
+                                child_y += height;
+
+                                // last child takes the remaining width because we can get uneven
+                                // space from rounding
+                                if i == len - 1 {
+                                    area.height = container.area.y + container.area.height - area.y;
+                                }
+
+                                self.stack.push((*child, area));
+                            }
+                        }
                         Layout::Horizontal => {
                             let len = container.children.len();
 

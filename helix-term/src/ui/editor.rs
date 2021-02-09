@@ -42,8 +42,8 @@ impl EditorView {
             viewport.x + OFFSET,
             viewport.y,
             viewport.width - OFFSET,
-            viewport.height - 2,
-        ); // - 2 for statusline and prompt
+            viewport.height - 1,
+        ); // - 1 for statusline
         self.render_buffer(view, area, surface, theme, is_focused);
 
         // clear with background color
@@ -52,7 +52,7 @@ impl EditorView {
 
         let area = Rect::new(
             viewport.x,
-            viewport.y + viewport.height - 2,
+            viewport.y + viewport.height - 1,
             viewport.width,
             1,
         );
@@ -301,9 +301,8 @@ impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         match event {
             Event::Resize(width, height) => {
-                // TODO: simplistic ensure cursor in view for now
-                // TODO: loop over views
-                cx.editor.tree.resize(Rect::new(0, 0, width, height));
+                // HAXX: offset the render area height by 1 to account for prompt/commandline
+                cx.editor.tree.resize(Rect::new(0, 0, width, height - 1));
                 // TODO: restore view.ensure_cursor_in_view();
                 EventResult::Consumed(None)
             }
@@ -353,10 +352,11 @@ impl Component for EditorView {
         }
     }
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
         // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
         // theme. Theme is immutable mutating view won't disrupt theme_ref.
         let theme_ref = unsafe { &*(&cx.editor.theme as *const Theme) };
+
         for (view, is_focused) in cx.editor.tree.views() {
             // TODO: use parent area
             self.render_view(view, view.area, surface, theme_ref, is_focused);
