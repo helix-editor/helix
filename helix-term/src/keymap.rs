@@ -164,7 +164,8 @@ pub fn default() -> Keymaps {
                 vec![shift!('S')] => commands::split_selection,
                 vec![key!(';')] => commands::collapse_selection,
                 // TODO should be alt(;)
-                vec![key!('%')] => commands::flip_selections,
+                vec![alt!(';')] => commands::flip_selections,
+                vec![key!('%')] => commands::select_all,
                 vec![key!('x')] => commands::select_line,
                 vec![key!('u')] => commands::undo,
                 vec![shift!('U')] => commands::redo,

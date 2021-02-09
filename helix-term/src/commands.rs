@@ -284,6 +284,15 @@ pub fn extend_line_down(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
+pub fn select_all(cx: &mut Context) {
+    let doc = cx.doc();
+
+    doc.set_selection(Selection::single(
+        0,
+        doc.text().len_chars().saturating_sub(1),
+    ))
+}
+
 pub fn select_regex(cx: &mut Context) {
     let prompt = ui::regex_prompt(cx, "select:".to_string(), |doc, regex| {
         let text = &doc.text().slice(..);
