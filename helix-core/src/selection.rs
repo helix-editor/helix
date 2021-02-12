@@ -23,11 +23,16 @@ pub struct Range {
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
+    pub horiz: Option<u32>,
 } // TODO: might be cheaper to store normalized as from/to and an inverted flag
 
 impl Range {
     pub fn new(anchor: usize, head: usize) -> Self {
-        Self { anchor, head }
+        Self {
+            anchor,
+            head,
+            horiz: None,
+        }
     }
 
     /// Start of the range.
@@ -83,7 +88,11 @@ impl Range {
         if self.anchor == anchor && self.head == head {
             return self;
         }
-        Self { anchor, head }
+        Self {
+            anchor,
+            head,
+            horiz: None,
+        }
     }
 
     /// Extend the range to cover at least `from` `to`.
@@ -93,6 +102,7 @@ impl Range {
             return Range {
                 anchor: from,
                 head: to,
+                horiz: None,
             };
         }
 
@@ -103,6 +113,7 @@ impl Range {
             } else {
                 to
             },
+            horiz: None,
         }
     }
 
@@ -174,7 +185,11 @@ impl Selection {
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {
         Self {
-            ranges: smallvec![Range { anchor, head }],
+            ranges: smallvec![Range {
+                anchor,
+                head,
+                horiz: None
+            }],
             primary_index: 0,
         }
     }

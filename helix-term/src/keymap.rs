@@ -150,6 +150,7 @@ pub fn default() -> Keymaps {
                 vec![key!('b')] => commands::move_prev_word_start,
                 vec![shift!('B')] => commands::extend_prev_word_start,
                 vec![key!('e')] => commands::move_next_word_end,
+                vec![key!('E')] => commands::extend_next_word_end,
                 // TODO: E
                 vec![key!('g')] => commands::goto_mode,
                 vec![key!('i')] => commands::insert_mode,

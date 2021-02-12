@@ -116,12 +116,8 @@ pub fn move_line_start(cx: &mut Context) {
 pub fn move_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = doc.state.move_pos(
-        doc.selection().cursor(),
-        Direction::Forward,
-        Granularity::Word,
-        count,
-    );
+    // TODO: count
+    let pos = State::move_next_word_start(&doc.text().slice(..), doc.selection().cursor());
 
     doc.set_selection(Selection::point(pos));
 }
@@ -129,12 +125,7 @@ pub fn move_next_word_start(cx: &mut Context) {
 pub fn move_prev_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = doc.state.move_pos(
-        doc.selection().cursor(),
-        Direction::Backward,
-        Granularity::Word,
-        count,
-    );
+    let pos = State::move_prev_word_start(&doc.text().slice(..), doc.selection().cursor());
 
     doc.set_selection(Selection::point(pos));
 }
@@ -163,19 +154,36 @@ pub fn move_file_end(cx: &mut Context) {
 
 pub fn extend_next_word_start(cx: &mut Context) {
     let count = cx.count;
-    let selection = cx
-        .doc()
-        .state
-        .extend_selection(Direction::Forward, Granularity::Word, count);
+    let doc = cx.doc();
+    let mut selection = doc.selection().transform(|mut range| {
+        let pos = State::move_next_word_start(&doc.text().slice(..), doc.selection().cursor());
+        range.head = pos;
+        range
+    }); // TODO: count
+
     cx.doc().set_selection(selection);
 }
 
 pub fn extend_prev_word_start(cx: &mut Context) {
     let count = cx.count;
-    let selection = cx
-        .doc()
-        .state
-        .extend_selection(Direction::Backward, Granularity::Word, count);
+    let doc = cx.doc();
+    let mut selection = doc.selection().transform(|mut range| {
+        let pos = State::move_prev_word_start(&doc.text().slice(..), doc.selection().cursor());
+        range.head = pos;
+        range
+    }); // TODO: count
+    cx.doc().set_selection(selection);
+}
+
+pub fn extend_next_word_end(cx: &mut Context) {
+    let count = cx.count;
+    let doc = cx.doc();
+    let mut selection = doc.selection().transform(|mut range| {
+        let pos = State::move_next_word_end(&doc.text().slice(..), doc.selection().cursor(), count);
+        range.head = pos;
+        range
+    }); // TODO: count
+
     cx.doc().set_selection(selection);
 }
 
@@ -319,8 +327,6 @@ pub fn split_selection(cx: &mut Context) {
     //  # add to history if enabled
     //  # update state
     // }
-
-    let snapshot = cx.doc().state.clone();
 
     let prompt = ui::regex_prompt(cx, "split:".to_string(), |doc, regex| {
         let text = &doc.text().slice(..);

@@ -19,9 +19,7 @@ pub enum Direction {
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Granularity {
     Character,
-    Word,
     Line,
-    // LineBoundary
 }
 
 impl State {
@@ -87,23 +85,26 @@ impl State {
     // 2. compose onto a ongoing transaction
     // 3. on insert mode leave, that transaction gets stored into undo history
 
-    pub fn move_pos(
+    pub fn move_range(
         &self,
-        pos: usize,
+        range: Range,
         dir: Direction,
         granularity: Granularity,
         count: usize,
-    ) -> usize {
+        extend: bool,
+    ) -> Range {
         let text = &self.doc;
+        let pos = range.head;
         match (dir, granularity) {
             (Direction::Backward, Granularity::Character) => {
                 // Clamp to line
                 let line = text.char_to_line(pos);
                 let start = text.line_to_char(line);
-                std::cmp::max(
+                let pos = std::cmp::max(
                     nth_prev_grapheme_boundary(&text.slice(..), pos, count),
                     start,
-                )
+                );
+                Range::new(if extend { range.anchor } else { pos }, pos)
             }
             (Direction::Forward, Granularity::Character) => {
                 // Clamp to line
@@ -111,16 +112,11 @@ impl State {
                 // Line end is pos at the start of next line - 1
                 // subtract another 1 because the line ends with \n
                 let end = text.line_to_char(line + 1).saturating_sub(2);
-                std::cmp::min(nth_next_grapheme_boundary(&text.slice(..), pos, count), end)
+                let pos =
+                    std::cmp::min(nth_next_grapheme_boundary(&text.slice(..), pos, count), end);
+                Range::new(if extend { range.anchor } else { pos }, pos)
             }
-            (Direction::Forward, Granularity::Word) => {
-                Self::move_next_word_start(&text.slice(..), pos)
-            }
-            (Direction::Backward, Granularity::Word) => {
-                Self::move_prev_word_start(&text.slice(..), pos)
-            }
-            (_, Granularity::Line) => move_vertically(&text.slice(..), dir, pos, count),
-            _ => pos,
+            (_, Granularity::Line) => move_vertically(&text.slice(..), dir, range, count, extend),
         }
     }
 
@@ -205,10 +201,8 @@ impl State {
         // move all selections according to normal cursor move semantics by collapsing it
         // into cursors and moving them vertically
 
-        self.selection.transform(|range| {
-            let pos = self.move_pos(range.head, dir, granularity, count);
-            Range::new(pos, pos)
-        })
+        self.selection
+            .transform(|range| self.move_range(range, dir, granularity, count, false))
     }
 
     pub fn extend_selection(
@@ -217,10 +211,8 @@ impl State {
         granularity: Granularity,
         count: usize,
     ) -> Selection {
-        self.selection.transform(|range| {
-            let pos = self.move_pos(range.head, dir, granularity, count);
-            Range::new(range.anchor, pos)
-        })
+        self.selection
+            .transform(|range| self.move_range(range, dir, granularity, count, true))
     }
 }
 
@@ -239,8 +231,16 @@ pub fn pos_at_coords(text: &RopeSlice, coords: Position) -> usize {
     nth_next_grapheme_boundary(text, line_start, col)
 }
 
-fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -> usize {
-    let Position { row, col } = coords_at_pos(text, pos);
+fn move_vertically(
+    text: &RopeSlice,
+    dir: Direction,
+    range: Range,
+    count: usize,
+    extend: bool,
+) -> Range {
+    let Position { row, col } = coords_at_pos(text, range.head);
+
+    let horiz = range.horiz.unwrap_or(col as u32);
 
     let new_line = match dir {
         Direction::Backward => row.saturating_sub(count),
@@ -250,14 +250,14 @@ fn move_vertically(text: &RopeSlice, dir: Direction, pos: usize, count: usize) -
     // convert to 0-indexed, subtract another 1 because len_chars() counts \n
     let new_line_len = text.line(new_line).len_chars().saturating_sub(2);
 
-    let new_col = if new_line_len < col {
-        // TODO: preserve horiz here
-        new_line_len
-    } else {
-        col
-    };
+    let new_col = std::cmp::min(horiz as usize, new_line_len);
 
-    pos_at_coords(text, Position::new(new_line, new_col))
+    let pos = pos_at_coords(text, Position::new(new_line, new_col));
+
+    let mut range = Range::new(if extend { range.anchor } else { pos }, pos);
+    use std::convert::TryInto;
+    range.horiz = Some(horiz);
+    range
 }
 
 // used for by-word movement
@@ -346,8 +346,12 @@ mod test {
         let pos = pos_at_coords(&text.slice(..), (0, 4).into());
         let slice = text.slice(..);
 
+        let range = Range::new(pos, pos);
         assert_eq!(
-            coords_at_pos(&slice, move_vertically(&slice, Direction::Forward, pos, 1)),
+            coords_at_pos(
+                &slice,
+                move_vertically(&slice, Direction::Forward, range, 1).head
+            ),
             (1, 2).into()
         );
     }
