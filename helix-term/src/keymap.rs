@@ -168,6 +168,8 @@ pub fn default() -> Keymaps {
                 vec![alt!(';')] => commands::flip_selections,
                 vec![key!('%')] => commands::select_all,
                 vec![key!('x')] => commands::select_line,
+                vec![key!('/')] => commands::search,
+                vec![key!('n')] => commands::search_next,
                 vec![key!('u')] => commands::undo,
                 vec![shift!('U')] => commands::redo,
                 vec![key!('y')] => commands::yank,

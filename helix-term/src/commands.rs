@@ -351,6 +351,69 @@ pub fn split_selection_on_newline(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
+// search: searches for the first occurence in file, provides a prompt
+// search_next: reuses the last search regex and searches for the next match. The next match becomes the main selection.
+// -> we always search from after the cursor.head
+// TODO: be able to use selection as search query (*/alt *)
+// I'd probably collect all the matches right now and store the current index. The cache needs
+// wiping if input happens.
+
+fn _search(doc: &mut Document, contents: &str, regex: &Regex) {
+    let text = doc.text();
+    let start = doc.selection().cursor();
+
+    // TODO: use find_at to find the next match after the cursor, loop around the end
+    if let Some(mat) = regex.find_at(&contents, start) {
+        let start = text.byte_to_char(mat.start());
+        let end = text.byte_to_char(mat.end());
+        let selection = Selection::single(start, end - 1);
+        // TODO: (first_match, regex) stuff in register?
+        doc.set_selection(selection);
+    };
+}
+
+// TODO: use one function for search vs extend
+pub fn search(cx: &mut Context) {
+    let doc = cx.doc();
+
+    // TODO: could probably share with select_on_matches?
+
+    // HAXX: sadly we can't avoid allocating a single string for the whole buffer since we can't
+    // feed chunks into the regex yet
+    let contents = doc.text().slice(..).to_string();
+
+    let prompt = ui::regex_prompt(cx, "search:".to_string(), move |doc, regex| {
+        let text = doc.text();
+        let start = doc.selection().cursor();
+        _search(doc, &contents, &regex);
+
+        // TODO: only store on enter (accept), not update
+        register::set('\\', vec![regex.as_str().to_string()]);
+    });
+
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, editor: &mut Editor| {
+            compositor.push(Box::new(prompt));
+        },
+    ));
+}
+
+pub fn search_next(cx: &mut Context) {
+    if let Some(query) = register::get('\\') {
+        let query = query.first().unwrap();
+        let doc = cx.doc();
+        let contents = doc.text().slice(..).to_string();
+        let regex = Regex::new(&query).unwrap();
+        _search(doc, &contents, &regex);
+    }
+}
+
+// TODO: N -> search_prev
+// need to loop around buffer also and show a message
+// same for no matches
+
+//
+
 pub fn select_line(cx: &mut Context) {
     // TODO: count
     let pos = cx.doc().selection().primary();

@@ -43,12 +43,15 @@ pub fn regex_prompt(
                 PromptEvent::Update => {
                     match Regex::new(input) {
                         Ok(regex) => {
-                            let doc = &mut editor.view_mut().doc;
+                            let view = &mut editor.view_mut();
+                            let doc = &mut view.doc;
 
                             // revert state to what it was before the last update
                             doc.state = snapshot.clone();
 
                             fun(doc, regex);
+
+                            view.ensure_cursor_in_view();
                         }
                         Err(_err) => (), // TODO: mark command line as error
                     }
