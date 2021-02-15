@@ -94,8 +94,14 @@ impl ChangeSet {
                     head_b = b;
                 }
                 // insertion in B
-                (a, Some(change @ Insert(..))) => {
-                    changes.push(change);
+                (a, Some(Insert(current))) => {
+                    // merge onto previous insert if possible
+                    // TODO: do these as operations on a changeset
+                    if let Some(Insert(prev)) = changes.last_mut() {
+                        prev.push_tendril(&current);
+                    } else {
+                        changes.push(Insert(current));
+                    }
                     head_a = a;
                     head_b = changes_b.next();
                 }
@@ -422,7 +428,9 @@ impl Transaction {
         let mut last = 0;
         for (from, to, tendril) in changes {
             // Retain from last "to" to current "from"
-            acc.push(Operation::Retain(from - last));
+            if from - last > 0 {
+                acc.push(Operation::Retain(from - last));
+            }
             let span = to - from;
             match tendril {
                 Some(text) => {
@@ -580,5 +588,37 @@ mod test {
         );
         transaction.apply(&mut state);
         assert_eq!(state.doc, Rope::from_str("hello void! 123"));
+    }
+
+    #[test]
+    fn insert_composition() {
+        let mut state = State::new("".into());
+        let t1 = Transaction::insert(&state, Tendril::from_char('h'));
+        t1.apply(&mut state);
+        let t2 = Transaction::insert(&state, Tendril::from_char('e'));
+        t2.apply(&mut state);
+        let t3 = Transaction::insert(&state, Tendril::from_char('l'));
+        t3.apply(&mut state);
+        let t4 = Transaction::insert(&state, Tendril::from_char('l'));
+        t4.apply(&mut state);
+        let t5 = Transaction::insert(&state, Tendril::from_char('o'));
+        t5.apply(&mut state);
+
+        assert_eq!(state.doc, Rope::from_str("hello"));
+
+        // changesets as follows:
+        // h
+        // retain 1, e
+        // retain 2, l
+
+        let mut changes = t1
+            .changes
+            .compose(t2.changes)
+            .compose(t3.changes)
+            .compose(t4.changes)
+            .compose(t5.changes);
+
+        use Operation::*;
+        assert_eq!(changes.changes, &[Insert("hello".into())]);
     }
 }
