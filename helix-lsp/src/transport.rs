@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::{debug, error};
+use log::{error, info};
 
 use crate::Error;
 
@@ -48,7 +48,6 @@ pub(crate) struct Transport {
 
     writer: BufWriter<ChildStdin>,
     reader: BufReader<ChildStdout>,
-    #[allow(dead_code)] // TODO: handle stderr logs
     stderr: BufReader<ChildStderr>,
 }
 
@@ -111,12 +110,22 @@ impl Transport {
 
         // read data
 
-        debug!("<- {}", msg);
+        info!("<- {}", msg);
 
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<Message> = serde_json::from_str(&msg);
 
         Ok(output?)
+    }
+
+    async fn err(
+        err: &mut (impl AsyncBufRead + Unpin),
+    ) -> core::result::Result<(), std::io::Error> {
+        let mut line = String::new();
+        err.read_line(&mut line).await?;
+        error!("err <- {}", line);
+
+        Ok(())
     }
 
     pub async fn send_payload(&mut self, payload: Payload) -> anyhow::Result<()> {
@@ -139,7 +148,7 @@ impl Transport {
     }
 
     pub async fn send(&mut self, request: String) -> anyhow::Result<()> {
-        debug!("-> {}", request);
+        info!("-> {}", request);
 
         // send the headers
         self.writer
@@ -168,7 +177,7 @@ impl Transport {
     async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
         match output {
             jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                debug!("<- {}", result);
+                info!("<- {}", result);
 
                 let tx = self
                     .pending_requests
@@ -210,6 +219,7 @@ impl Transport {
 
                     self.recv_msg(msg).await.unwrap();
                 }
+                _msg = Self::err(&mut self.stderr).fuse() => {}
             }
         }
     }

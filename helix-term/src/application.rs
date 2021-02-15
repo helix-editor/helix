@@ -5,7 +5,7 @@ use helix_view::{document::Mode, Document, Editor, Theme, View};
 use crate::compositor::Compositor;
 use crate::ui;
 
-use log::{debug, info};
+use log::{error, info};
 
 use std::{
     io::{self, stdout, Stdout, Write},
@@ -171,7 +171,7 @@ impl Application {
                 }
             }
             Some(Call::MethodCall(call)) => {
-                debug!("Method not found {}", call.method);
+                error!("Method not found {}", call.method);
 
                 // self.language_server.reply(
                 //     call.id,
