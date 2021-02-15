@@ -160,24 +160,13 @@ impl Document {
         self.state.selection = selection;
     }
 
-    pub fn apply(&mut self, transaction: &Transaction) -> bool {
+    pub fn _apply(&mut self, transaction: &Transaction) -> bool {
         let old_doc = self.text().clone();
-
-        // store the state just before any changes are made. This allows us to undo to the
-        // state just before a transaction was applied.
-        if self.changes.is_empty() && !transaction.changes().is_empty() {
-            self.old_state = Some(self.state.clone());
-        }
 
         let success = transaction.apply(&mut self.state);
 
         if !transaction.changes().is_empty() {
-            // Compose this transaction with the previous one
-            take_with(&mut self.changes, |changes| {
-                changes.compose(transaction.changes().clone())
-            });
-
-            // TODO: when composing, replace transaction.selection too
+            // TODO: self.version += 1;?
 
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
@@ -203,21 +192,28 @@ impl Document {
         success
     }
 
+    pub fn apply(&mut self, transaction: &Transaction) -> bool {
+        // store the state just before any changes are made. This allows us to undo to the
+        // state just before a transaction was applied.
+        if self.changes.is_empty() && !transaction.changes().is_empty() {
+            self.old_state = Some(self.state.clone());
+        }
+
+        let success = self._apply(&transaction);
+
+        if !transaction.changes().is_empty() {
+            // Compose this transaction with the previous one
+            take_with(&mut self.changes, |changes| {
+                changes.compose(transaction.changes().clone())
+            });
+        }
+        success
+    }
+
     pub fn undo(&mut self) -> bool {
         if let Some(transaction) = self.history.undo() {
-            let old_doc = self.text().clone();
             self.version += 1;
-            let success = transaction.apply(&mut self.state);
-
-            // update tree-sitter syntax tree
-            if let Some(syntax) = &mut self.syntax {
-                // TODO: no unwrap
-                syntax
-                    .update(&old_doc, &self.state.doc, transaction.changes())
-                    .unwrap();
-            }
-
-            // TODO: undo / redo need to emit changes to lsp
+            let success = self._apply(&transaction);
 
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
@@ -229,17 +225,9 @@ impl Document {
 
     pub fn redo(&mut self) -> bool {
         if let Some(transaction) = self.history.redo() {
-            let old_doc = self.text().clone();
             self.version += 1;
-            let success = transaction.apply(&mut self.state);
 
-            // update tree-sitter syntax tree
-            if let Some(syntax) = &mut self.syntax {
-                // TODO: no unwrap
-                syntax
-                    .update(&old_doc, &self.state.doc, transaction.changes())
-                    .unwrap();
-            }
+            let success = self._apply(&transaction);
 
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
