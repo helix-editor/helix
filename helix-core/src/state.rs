@@ -350,7 +350,7 @@ mod test {
         assert_eq!(
             coords_at_pos(
                 &slice,
-                move_vertically(&slice, Direction::Forward, range, 1).head
+                move_vertically(&slice, Direction::Forward, range, 1, false).head
             ),
             (1, 2).into()
         );
