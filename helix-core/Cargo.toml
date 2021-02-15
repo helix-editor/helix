@@ -12,7 +12,7 @@ helix-syntax = { path = "../helix-syntax" }
 ropey = "1.2"
 anyhow = "1"
 smallvec = "1.4"
-tendril = { git = "https://github.com/servo/tendril" }
+tendril = "0.4.2"
 unicode-segmentation = "1.6"
 unicode-width = "0.1"
 # slab = "0.4.2"
