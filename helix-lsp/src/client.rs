@@ -268,7 +268,7 @@ impl Client {
                 Delete(i) | Retain(i) => *i,
                 Insert(_) => 0,
             };
-            let old_end = old_pos + len;
+            let mut old_end = old_pos + len;
 
             match change {
                 Retain(_) => {}
@@ -276,31 +276,32 @@ impl Client {
                     let start = pos_to_lsp_pos(&old_text, old_pos);
                     let end = pos_to_lsp_pos(&old_text, old_end);
 
-                    // a subsequent ins means a replace, consume it
-                    if let Some(Insert(s)) = iter.peek() {
-                        iter.next();
-
-                        // replacement
-                        changes.push(lsp::TextDocumentContentChangeEvent {
-                            range: Some(lsp::Range::new(start, end)),
-                            text: s.into(),
-                            range_length: None,
-                        });
-                    } else {
-                        // deletion
-                        changes.push(lsp::TextDocumentContentChangeEvent {
-                            range: Some(lsp::Range::new(start, end)),
-                            text: "".to_string(),
-                            range_length: None,
-                        });
-                    };
+                    // deletion
+                    changes.push(lsp::TextDocumentContentChangeEvent {
+                        range: Some(lsp::Range::new(start, end)),
+                        text: "".to_string(),
+                        range_length: None,
+                    });
                 }
                 Insert(s) => {
                     let start = pos_to_lsp_pos(&old_text, old_pos);
 
-                    // insert
+                    // a subsequent delete means a replace, consume it
+                    let end = if let Some(Delete(len)) = iter.peek() {
+                        old_end = old_pos + len;
+                        let end = pos_to_lsp_pos(&old_text, old_end);
+
+                        iter.next();
+
+                        // replacement
+                        end
+                    } else {
+                        // insert
+                        start
+                    };
+
                     changes.push(lsp::TextDocumentContentChangeEvent {
-                        range: Some(lsp::Range::new(start, start)),
+                        range: Some(lsp::Range::new(start, end)),
                         text: s.into(),
                         range_length: None,
                     });
