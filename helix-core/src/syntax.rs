@@ -451,7 +451,7 @@ impl LanguageLayer {
                 Delete(i) | Retain(i) => *i,
                 Insert(_) => 0,
             };
-            let old_end = old_pos + len;
+            let mut old_end = old_pos + len;
 
             match change {
                 Retain(_) => {
@@ -467,10 +467,27 @@ impl LanguageLayer {
                     // let line_start_byte = line_to_byte()
                     // Position::new(line, line_start_byte - byte)
 
-                    // a subsequent ins means a replace, consume it
-                    if let Some(Insert(s)) = iter.peek() {
+                    // deletion
+                    edits.push(tree_sitter::InputEdit {
+                        start_byte,                       // old_pos to byte
+                        old_end_byte,                     // old_end to byte
+                        new_end_byte: start_byte,         // old_pos to byte
+                        start_position,                   // old pos to coords
+                        old_end_position,                 // old_end to coords
+                        new_end_position: start_position, // old pos to coords
+                    });
+                }
+                Insert(s) => {
+                    let (start_byte, start_position) = point_at_pos(&old_text, old_pos);
+
+                    let ins = s.chars().count();
+
+                    // a subsequent delete means a replace, consume it
+                    if let Some(Delete(len)) = iter.peek() {
+                        old_end = old_pos + len;
+                        let (old_end_byte, old_end_position) = point_at_pos(&old_text, old_end);
+
                         iter.next();
-                        let ins = s.chars().count();
 
                         // replacement
                         edits.push(tree_sitter::InputEdit {
@@ -481,34 +498,17 @@ impl LanguageLayer {
                             old_end_position,                   // old_end to coords
                             new_end_position: traverse(start_position, s), // old pos + chars, newlines matter too (iter over)
                         });
-
-                        new_pos += ins;
                     } else {
-                        // deletion
+                        // insert
                         edits.push(tree_sitter::InputEdit {
-                            start_byte,                       // old_pos to byte
-                            old_end_byte,                     // old_end to byte
-                            new_end_byte: start_byte,         // old_pos to byte
-                            start_position,                   // old pos to coords
-                            old_end_position,                 // old_end to coords
-                            new_end_position: start_position, // old pos to coords
+                            start_byte,                                    // old_pos to byte
+                            old_end_byte: start_byte,                      // same
+                            new_end_byte: start_byte + s.len(),            // old_pos + s.len()
+                            start_position,                                // old pos to coords
+                            old_end_position: start_position,              // same
+                            new_end_position: traverse(start_position, s), // old pos + chars, newlines matter too (iter over)
                         });
-                    };
-                }
-                Insert(s) => {
-                    let (start_byte, start_position) = point_at_pos(&old_text, old_pos);
-
-                    let ins = s.chars().count();
-
-                    // insert
-                    edits.push(tree_sitter::InputEdit {
-                        start_byte,                                    // old_pos to byte
-                        old_end_byte: start_byte,                      // same
-                        new_end_byte: start_byte + s.len(),            // old_pos + s.len()
-                        start_position,                                // old pos to coords
-                        old_end_position: start_position,              // same
-                        new_end_position: traverse(start_position, s), // old pos + chars, newlines matter too (iter over)
-                    });
+                    }
 
                     new_pos += ins;
                 }

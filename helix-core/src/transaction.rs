@@ -63,6 +63,56 @@ impl ChangeSet {
         len
     }
 
+    // Changeset builder operations: delete/insert/retain
+    fn delete(&mut self, n: usize) {
+        use Operation::*;
+        if n == 0 {
+            return;
+        }
+
+        if let Some(Delete(count)) = self.changes.last_mut() {
+            *count += n;
+        } else {
+            self.changes.push(Delete(n));
+        }
+    }
+
+    fn insert(&mut self, fragment: Tendril) {
+        use Operation::*;
+
+        if fragment.is_empty() {
+            return;
+        }
+
+        let new_last = match self.changes.as_mut_slice() {
+            [.., Insert(prev)] => {
+                prev.push_tendril(&fragment);
+                return;
+            }
+            [.., Insert(prev), Delete(_)] => {
+                prev.push_tendril(&fragment);
+                return;
+            }
+            [.., last @ Delete(_)] => std::mem::replace(last, Insert(fragment)),
+            _ => Insert(fragment),
+        };
+
+        self.changes.push(new_last);
+    }
+
+    fn retain(&mut self, n: usize) {
+        use Operation::*;
+        if n == 0 {
+            return;
+        }
+
+        if let Some(Retain(count)) = self.changes.last_mut() {
+            *count += n;
+        } else {
+            self.changes.push(Retain(n));
+        }
+    }
+
     /// Combine two changesets together.
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
@@ -77,7 +127,10 @@ impl ChangeSet {
         let mut head_a = changes_a.next();
         let mut head_b = changes_b.next();
 
-        let mut changes: Vec<Operation> = Vec::with_capacity(len); // TODO: max(a, b), shrink_to_fit() afterwards
+        let mut changes = Self {
+            len: self.len,
+            changes: Vec::with_capacity(len), // TODO: max(a, b), shrink_to_fit() afterwards
+        };
 
         loop {
             use std::cmp::Ordering;
@@ -88,37 +141,31 @@ impl ChangeSet {
                     break;
                 }
                 // deletion in A
-                (Some(change @ Delete(..)), b) => {
-                    changes.push(change);
+                (Some(Delete(i)), b) => {
+                    changes.delete(i);
                     head_a = changes_a.next();
                     head_b = b;
                 }
                 // insertion in B
                 (a, Some(Insert(current))) => {
-                    // merge onto previous insert if possible
-                    // TODO: do these as operations on a changeset
-                    if let Some(Insert(prev)) = changes.last_mut() {
-                        prev.push_tendril(&current);
-                    } else {
-                        changes.push(Insert(current));
-                    }
+                    changes.insert(current);
                     head_a = a;
                     head_b = changes_b.next();
                 }
                 (None, _) | (_, None) => return unreachable!(),
                 (Some(Retain(i)), Some(Retain(j))) => match i.cmp(&j) {
                     Ordering::Less => {
-                        changes.push(Retain(i));
+                        changes.retain(i);
                         head_a = changes_a.next();
                         head_b = Some(Retain(j - i));
                     }
                     Ordering::Equal => {
-                        changes.push(Retain(i));
+                        changes.retain(i);
                         head_a = changes_a.next();
                         head_b = changes_b.next();
                     }
                     Ordering::Greater => {
-                        changes.push(Retain(j));
+                        changes.retain(j);
                         head_a = Some(Retain(i - j));
                         head_b = changes_b.next();
                     }
@@ -147,12 +194,12 @@ impl ChangeSet {
                     let len = s.chars().count();
                     match len.cmp(&j) {
                         Ordering::Less => {
-                            changes.push(Insert(s));
+                            changes.insert(s);
                             head_a = changes_a.next();
                             head_b = Some(Retain(j - len));
                         }
                         Ordering::Equal => {
-                            changes.push(Insert(s));
+                            changes.insert(s);
                             head_a = changes_a.next();
                             head_b = changes_b.next();
                         }
@@ -160,7 +207,7 @@ impl ChangeSet {
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(j).unwrap();
                             let pos = pos as u32;
-                            changes.push(Insert(s.subtendril(0, pos)));
+                            changes.insert(s.subtendril(0, pos));
                             head_a = Some(Insert(s.subtendril(pos, s.len() as u32 - pos)));
                             head_b = changes_b.next();
                         }
@@ -168,17 +215,17 @@ impl ChangeSet {
                 }
                 (Some(Retain(i)), Some(Delete(j))) => match i.cmp(&j) {
                     Ordering::Less => {
-                        changes.push(Delete(i));
+                        changes.delete(i);
                         head_a = changes_a.next();
                         head_b = Some(Delete(j - i));
                     }
                     Ordering::Equal => {
-                        changes.push(Delete(j));
+                        changes.delete(j);
                         head_a = changes_a.next();
                         head_b = changes_b.next();
                     }
                     Ordering::Greater => {
-                        changes.push(Delete(j));
+                        changes.delete(j);
                         head_a = Some(Retain(i - j));
                         head_b = changes_b.next();
                     }
@@ -186,10 +233,7 @@ impl ChangeSet {
             };
         }
 
-        Self {
-            len: self.len,
-            changes,
-        }
+        changes
     }
 
     /// Given another change set starting in the same document, maps this
@@ -421,37 +465,29 @@ impl Transaction {
         I: IntoIterator<Item = Change> + ExactSizeIterator,
     {
         let len = state.doc.len_chars();
-        let mut acc = Vec::with_capacity(2 * changes.len() + 1);
+        let acc = Vec::with_capacity(2 * changes.len() + 1);
+        let mut changeset = ChangeSet { changes: acc, len };
 
         // TODO: verify ranges are ordered and not overlapping or change will panic.
 
         let mut last = 0;
         for (from, to, tendril) in changes {
             // Retain from last "to" to current "from"
-            if from - last > 0 {
-                acc.push(Operation::Retain(from - last));
-            }
+            changeset.retain(from - last);
             let span = to - from;
             match tendril {
                 Some(text) => {
-                    if span > 0 {
-                        acc.push(Operation::Delete(span));
-                    }
-                    acc.push(Operation::Insert(text));
+                    changeset.delete(span);
+                    changeset.insert(text);
                 }
-                None if span > 0 => acc.push(Operation::Delete(span)),
-                // empty delete is useless
-                None => (),
+                None => changeset.delete(span),
             }
             last = to;
         }
 
-        let span = len - last;
-        if span > 0 {
-            acc.push(Operation::Retain(span));
-        }
+        changeset.retain(len - last);
 
-        Self::from(ChangeSet { changes: acc, len })
+        Self::from(changeset)
     }
 
     /// Generate a transaction with a change per selection range.
@@ -591,7 +627,7 @@ mod test {
     }
 
     #[test]
-    fn insert_composition() {
+    fn optimized_composition() {
         let mut state = State::new("".into());
         let t1 = Transaction::insert(&state, Tendril::from_char('h'));
         t1.apply(&mut state);
@@ -620,5 +656,6 @@ mod test {
 
         use Operation::*;
         assert_eq!(changes.changes, &[Insert("hello".into())]);
+        // instead of insert h, insert e, insert l, insert l, insert o
     }
 }
