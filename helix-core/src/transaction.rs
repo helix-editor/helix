@@ -477,8 +477,8 @@ impl Transaction {
             let span = to - from;
             match tendril {
                 Some(text) => {
-                    changeset.delete(span);
                     changeset.insert(text);
+                    changeset.delete(span);
                 }
                 None => changeset.delete(span),
             }
