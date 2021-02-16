@@ -58,7 +58,7 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    fn new(state: State) -> Self {
+    pub fn new(state: State) -> Self {
         let changes = ChangeSet::new(&state.doc);
         let old_state = None;
 
@@ -292,5 +292,85 @@ impl Document {
 
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn changeset_to_changes() {
+        use helix_core::{Rope, State, Transaction};
+        // use helix_view::Document;
+        use helix_lsp::{lsp, Client};
+        let text = Rope::from("hello");
+        let mut state = State::new(text);
+        state.selection = Selection::single(5, 5);
+        let mut doc = Document::new(state);
+
+        // insert
+
+        let transaction = Transaction::insert(&doc.state, " world".into());
+        let old_doc = doc.state.clone();
+        let changes = Client::changeset_to_changes(&old_doc.doc, transaction.changes());
+        doc.apply(&transaction);
+
+        assert_eq!(
+            changes,
+            &[lsp::TextDocumentContentChangeEvent {
+                range: Some(lsp::Range::new(
+                    lsp::Position::new(0, 5),
+                    lsp::Position::new(0, 5)
+                )),
+                text: " world".into(),
+                range_length: None,
+            }]
+        );
+
+        // delete
+
+        let transaction = transaction.invert(&old_doc);
+        let old_doc = doc.state.clone();
+        let changes = Client::changeset_to_changes(&old_doc.doc, transaction.changes());
+        doc.apply(&transaction);
+
+        // line: 0-based.
+        // col: 0-based, gaps between chars.
+        // 0 1 2 3 4 5 6 7 8 9 0 1
+        // |h|e|l|l|o| |w|o|r|l|d|
+        //           -------------
+        // (0, 5)-(0, 11)
+        assert_eq!(
+            changes,
+            &[lsp::TextDocumentContentChangeEvent {
+                range: Some(lsp::Range::new(
+                    lsp::Position::new(0, 5),
+                    lsp::Position::new(0, 11)
+                )),
+                text: "".into(),
+                range_length: None,
+            }]
+        );
+
+        // replace
+
+        doc.state.selection = Selection::single(0, 5);
+        let transaction = Transaction::change_by_selection(&doc.state, |range| {
+            (range.from(), range.to(), Some("aeiou".into()))
+        });
+        let changes = Client::changeset_to_changes(&doc.state.doc, transaction.changes());
+
+        assert_eq!(
+            changes,
+            &[lsp::TextDocumentContentChangeEvent {
+                range: Some(lsp::Range::new(
+                    lsp::Position::new(0, 0),
+                    lsp::Position::new(0, 5)
+                )),
+                text: "aeiou".into(),
+                range_length: None,
+            }]
+        );
     }
 }

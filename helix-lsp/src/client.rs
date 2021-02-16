@@ -247,7 +247,7 @@ impl Client {
         .await
     }
 
-    fn changeset_to_changes(
+    pub fn changeset_to_changes(
         old_text: &Rope,
         changeset: &ChangeSet,
     ) -> Vec<lsp::TextDocumentContentChangeEvent> {
