@@ -560,6 +560,11 @@ pub fn command_mode(cx: &mut Context) {
                         ["o", path] => {
                             editor.open(path.into(), executor);
                         }
+                        ["w"] => {
+                            // TODO: non-blocking via save() command
+                            smol::block_on(editor.view_mut().doc.save());
+                        }
+
                         _ => (),
                     }
                 },
