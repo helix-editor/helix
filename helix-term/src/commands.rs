@@ -193,7 +193,7 @@ pub fn check_cursor_in_view(view: &View) -> bool {
     let line = doc.text().char_to_line(cursor);
     let document_end = view.first_line + view.area.height.saturating_sub(1) as usize;
 
-    if (line > document_end.saturating_sub(PADDING)) | (line < view.first_line + PADDING) {
+    if (line > document_end.saturating_sub(PADDING)) || (line < view.first_line + PADDING) {
         return false;
     }
     true
@@ -304,7 +304,9 @@ pub fn select_all(cx: &mut Context) {
 pub fn select_regex(cx: &mut Context) {
     let prompt = ui::regex_prompt(cx, "select:".to_string(), |doc, regex| {
         let text = &doc.text().slice(..);
-        let selection = selection::select_on_matches(text, doc.selection(), &regex);
+        // TODO: if select on matches returns empty range, we need to abort
+        let selection =
+            selection::select_on_matches(text, doc.selection(), &regex).expect("no matches");
         doc.set_selection(selection);
     });
     cx.callback = Some(Box::new(

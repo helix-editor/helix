@@ -314,10 +314,7 @@ impl ChangeSet {
     /// `true` when the set is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        match self.changes.as_slice() {
-            [] | [Operation::Retain(_)] => true,
-            _ => false,
-        }
+        matches!(self.changes.as_slice(), [] | [Operation::Retain(_)])
     }
 
     /// Map a position through the changes.

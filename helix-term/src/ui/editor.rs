@@ -77,7 +77,7 @@ impl EditorView {
         let range = {
             // calculate viewport byte ranges
             let start = text.line_to_byte(view.first_line);
-            let end = text.line_to_byte(last_line) + text.line(last_line).len_bytes();
+            let end = text.line_to_byte(last_line + 1); // TODO: double check
 
             start..end
         };
@@ -381,8 +381,8 @@ impl Component for EditorView {
                         }
                     }
                     mode => {
-                        match keys.as_slice() {
-                            &[KeyEvent {
+                        match *keys.as_slice() {
+                            [KeyEvent {
                                 code: KeyCode::Char(i @ '0'..='9'),
                                 modifiers: KeyModifiers::NONE,
                             }] => {

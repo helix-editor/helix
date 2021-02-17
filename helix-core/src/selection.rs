@@ -278,7 +278,7 @@ pub fn select_on_matches(
     text: &RopeSlice,
     selections: &Selection,
     regex: &crate::regex::Regex,
-) -> Selection {
+) -> Option<Selection> {
     let mut result = SmallVec::with_capacity(selections.ranges().len());
 
     for sel in selections.ranges() {
@@ -300,7 +300,11 @@ pub fn select_on_matches(
     }
 
     // TODO: figure out a new primary index
-    Selection::new(result, 0)
+    if !result.is_empty() {
+        return Some(Selection::new(result, 0));
+    }
+
+    None
 }
 
 // TODO: support to split on capture #N instead of whole match
