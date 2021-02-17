@@ -183,6 +183,7 @@ impl Document {
                 let notify = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
+                    self.text(),
                     transaction.changes(),
                 );
 
@@ -301,8 +302,8 @@ mod test {
 
         let transaction = Transaction::insert(&doc.state, " world".into());
         let old_doc = doc.state.clone();
-        let changes = Client::changeset_to_changes(&old_doc.doc, transaction.changes());
         doc.apply(&transaction);
+        let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());
 
         assert_eq!(
             changes,
@@ -320,8 +321,8 @@ mod test {
 
         let transaction = transaction.invert(&old_doc);
         let old_doc = doc.state.clone();
-        let changes = Client::changeset_to_changes(&old_doc.doc, transaction.changes());
         doc.apply(&transaction);
+        let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());
 
         // line: 0-based.
         // col: 0-based, gaps between chars.
@@ -343,22 +344,48 @@ mod test {
 
         // replace
 
+        // also tests that changes are layered, positions depend on previous changes.
+
         doc.state.selection = Selection::single(0, 5);
-        let transaction = Transaction::change_by_selection(&doc.state, |range| {
-            (range.from(), range.to(), Some("aeiou".into()))
-        });
-        let changes = Client::changeset_to_changes(&doc.state.doc, transaction.changes());
+        let transaction = Transaction::change(
+            &doc.state,
+            vec![(0, 2, Some("aei".into())), (3, 5, Some("ou".into()))].into_iter(),
+        );
+        // aeilou
+        doc.apply(&transaction);
+        let changes =
+            Client::changeset_to_changes(&doc.state.doc, doc.text(), transaction.changes());
 
         assert_eq!(
             changes,
-            &[lsp::TextDocumentContentChangeEvent {
-                range: Some(lsp::Range::new(
-                    lsp::Position::new(0, 0),
-                    lsp::Position::new(0, 5)
-                )),
-                text: "aeiou".into(),
-                range_length: None,
-            }]
+            &[
+                // 0 1 2 3 4 5
+                // |h|e|l|l|o|
+                // ----
+                //
+                // aeillo
+                lsp::TextDocumentContentChangeEvent {
+                    range: Some(lsp::Range::new(
+                        lsp::Position::new(0, 0),
+                        lsp::Position::new(0, 2)
+                    )),
+                    text: "aei".into(),
+                    range_length: None,
+                },
+                // 0 1 2 3 4 5 6
+                // |a|e|i|l|l|o|
+                //         -----
+                //
+                // aeilou
+                lsp::TextDocumentContentChangeEvent {
+                    range: Some(lsp::Range::new(
+                        lsp::Position::new(0, 4),
+                        lsp::Position::new(0, 6)
+                    )),
+                    text: "ou".into(),
+                    range_length: None,
+                }
+            ]
         );
     }
 }

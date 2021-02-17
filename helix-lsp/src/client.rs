@@ -247,19 +247,47 @@ impl Client {
         .await
     }
 
+    // TODO: this is dumb. TextEdit describes changes to the initial doc (concurrent), but
+    // TextDocumentContentChangeEvent describes a series of changes (sequential).
+    // So S -> S1 -> S2, meaning positioning depends on the previous edits.
+    //
+    // Calculation is therefore a bunch trickier.
     pub fn changeset_to_changes(
         old_text: &Rope,
+        new_text: &Rope,
         changeset: &ChangeSet,
     ) -> Vec<lsp::TextDocumentContentChangeEvent> {
         let mut iter = changeset.changes().iter().peekable();
         let mut old_pos = 0;
+        let mut new_pos = 0;
 
         let mut changes = Vec::new();
 
         use crate::util::pos_to_lsp_pos;
         use helix_core::Operation::*;
 
+        // TODO: stolen from syntax.rs, share
+        use helix_core::RopeSlice;
+        fn traverse(pos: lsp::Position, text: RopeSlice) -> lsp::Position {
+            let lsp::Position {
+                mut line,
+                mut character,
+            } = pos;
+
+            // TODO: there should be a better way here
+            for ch in text.chars() {
+                if ch == '\n' {
+                    line += 1;
+                    character = 0;
+                } else {
+                    character += ch.len_utf16() as u32;
+                }
+            }
+            lsp::Position { line, character }
+        }
+
         let old_text = old_text.slice(..);
+        let new_text = new_text.slice(..);
 
         // TODO: verify this function, specifically line num counting
 
@@ -271,10 +299,12 @@ impl Client {
             let mut old_end = old_pos + len;
 
             match change {
-                Retain(_) => {}
+                Retain(i) => {
+                    new_pos += i;
+                }
                 Delete(_) => {
-                    let start = pos_to_lsp_pos(&old_text, old_pos);
-                    let end = pos_to_lsp_pos(&old_text, old_end);
+                    let start = pos_to_lsp_pos(&new_text, new_pos);
+                    let end = traverse(start, old_text.slice(old_pos..old_end));
 
                     // deletion
                     changes.push(lsp::TextDocumentContentChangeEvent {
@@ -284,12 +314,14 @@ impl Client {
                     });
                 }
                 Insert(s) => {
-                    let start = pos_to_lsp_pos(&old_text, old_pos);
+                    let start = pos_to_lsp_pos(&new_text, new_pos);
+
+                    new_pos += s.chars().count();
 
                     // a subsequent delete means a replace, consume it
                     let end = if let Some(Delete(len)) = iter.peek() {
                         old_end = old_pos + len;
-                        let end = pos_to_lsp_pos(&old_text, old_end);
+                        let end = traverse(start, old_text.slice(old_pos..old_end));
 
                         iter.next();
 
@@ -318,6 +350,7 @@ impl Client {
         &self,
         text_document: lsp::VersionedTextDocumentIdentifier,
         old_text: &Rope,
+        new_text: &Rope,
         changes: &ChangeSet,
     ) -> Result<()> {
         // figure out what kind of sync the server supports
@@ -343,7 +376,9 @@ impl Client {
                     text: "".to_string(),
                 }] // TODO: probably need old_state here too?
             }
-            lsp::TextDocumentSyncKind::Incremental => Self::changeset_to_changes(old_text, changes),
+            lsp::TextDocumentSyncKind::Incremental => {
+                Self::changeset_to_changes(old_text, new_text, changes)
+            }
             lsp::TextDocumentSyncKind::None => return Ok(()),
         };
 
