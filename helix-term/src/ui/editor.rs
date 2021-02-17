@@ -100,20 +100,6 @@ impl EditorView {
         let mut spans = Vec::new();
         let mut visual_x = 0;
         let mut line = 0u16;
-        let visible_selections: Vec<Range> = if is_focused {
-            view.doc
-                .state
-                .selection()
-                .ranges()
-                .iter()
-                // TODO: limit selection to one in viewport
-                // .filter(|range| !range.is_empty()) // && range.overlaps(&Range::new(start, end + 1))
-                .copied()
-                .collect()
-        } else {
-            // don't render selections on unfocused windows
-            Vec::new()
-        };
 
         'outer: for event in highlights {
             match event.unwrap() {
@@ -174,26 +160,6 @@ impl EditorView {
                             let grapheme = Cow::from(grapheme);
                             let width = grapheme_width(&grapheme) as u16;
 
-                            // TODO: this should really happen as an after pass
-                            let style = if visible_selections
-                                .iter()
-                                .any(|range| range.contains(char_index))
-                            {
-                                // cedar
-                                style.clone().bg(Color::Rgb(128, 47, 0))
-                            } else {
-                                style
-                            };
-
-                            let style = if visible_selections
-                                .iter()
-                                .any(|range| range.head == char_index)
-                            {
-                                style.clone().bg(Color::Rgb(255, 255, 255))
-                            } else {
-                                style
-                            };
-
                             // ugh, improve with a traverse method
                             // or interleave highlight spans with selection and diagnostic spans
                             let is_diagnostic = view.doc.diagnostics.iter().any(|diagnostic| {
@@ -205,8 +171,6 @@ impl EditorView {
                             } else {
                                 style
                             };
-
-                            // TODO: paint cursor heads except primary
 
                             surface.set_string(
                                 viewport.x + visual_x,
@@ -224,18 +188,102 @@ impl EditorView {
             }
         }
 
+        // render selections
+
+        if is_focused {
+            let text = view.doc.text().slice(..);
+            let screen = {
+                let start = text.line_to_char(view.first_line);
+                let end = text.line_to_char(last_line + 1);
+                Range::new(start, end)
+            };
+            let cursor_style = Style::default().bg(Color::Rgb(255, 255, 255));
+
+            // cedar
+            let selection_style = Style::default().bg(Color::Rgb(128, 47, 0));
+
+            for selection in view
+                .doc
+                .state
+                .selection()
+                .ranges()
+                .iter()
+                .filter(|range| range.overlaps(&screen))
+            {
+                // TODO: render also if only one of the ranges is in viewport
+                let mut start = view.screen_coords_at_pos(&text, selection.anchor);
+                let mut end = view.screen_coords_at_pos(&text, selection.head);
+
+                // cursor
+                if let Some(end) = end {
+                    surface.set_style(
+                        Rect::new(
+                            viewport.x + end.col as u16,
+                            viewport.y + end.row as u16,
+                            1,
+                            1,
+                        ),
+                        cursor_style,
+                    );
+                }
+
+                if selection.head < selection.anchor {
+                    std::mem::swap(&mut start, &mut end);
+                }
+                let start = start.unwrap_or_else(|| Position::new(0, 0));
+                let end = end.unwrap_or_else(|| {
+                    Position::new(viewport.height as usize, viewport.width as usize)
+                });
+
+                if start.row == end.row {
+                    surface.set_style(
+                        Rect::new(
+                            viewport.x + start.col as u16,
+                            viewport.y + start.row as u16,
+                            (end.col - start.col) as u16,
+                            1,
+                        ),
+                        selection_style,
+                    );
+                } else {
+                    surface.set_style(
+                        Rect::new(
+                            viewport.x + start.col as u16,
+                            viewport.y + start.row as u16,
+                            // text.line(view.first_line).len_chars() as u16 - start.col as u16,
+                            viewport.width - start.col as u16,
+                            1,
+                        ),
+                        selection_style,
+                    );
+                    for i in start.row + 1..end.row {
+                        surface.set_style(
+                            Rect::new(
+                                viewport.x,
+                                viewport.y + i as u16,
+                                // text.line(view.first_line + i).len_chars() as u16,
+                                viewport.width,
+                                1,
+                            ),
+                            selection_style,
+                        );
+                    }
+                    surface.set_style(
+                        Rect::new(viewport.x, viewport.y + end.row as u16, end.col as u16, 1),
+                        selection_style,
+                    );
+                }
+            }
+        }
+
+        // render gutters
+
         let style: Style = theme.get("ui.linenr");
         let warning: Style = theme.get("warning");
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
             if view.doc.diagnostics.iter().any(|d| d.line == line) {
-                surface.set_stringn(
-                    viewport.x + 0 - OFFSET,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    warning,
-                );
+                surface.set_stringn(viewport.x - OFFSET, viewport.y + i as u16, "●", 1, warning);
             }
 
             surface.set_stringn(
