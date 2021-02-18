@@ -61,7 +61,7 @@ impl View {
     /// Translates a document position to an absolute position in the terminal.
     /// Returns a (line, col) position if the position is visible on screen.
     // TODO: Could return width as well for the character width at cursor.
-    pub fn screen_coords_at_pos(&self, text: &RopeSlice, pos: usize) -> Option<Position> {
+    pub fn screen_coords_at_pos(&self, text: RopeSlice, pos: usize) -> Option<Position> {
         let line = text.char_to_line(pos);
 
         if line < self.first_line as usize || line > self.last_line() {
@@ -73,7 +73,7 @@ impl View {
         let line_slice = text.slice(line_start..pos);
         let mut col = 0;
 
-        for grapheme in RopeGraphemes::new(&line_slice) {
+        for grapheme in RopeGraphemes::new(line_slice) {
             if grapheme == "\t" {
                 col += TAB_WIDTH;
             } else {
@@ -87,7 +87,7 @@ impl View {
         Some(Position::new(row, col))
     }
 
-    // pub fn traverse<F>(&self, text: &RopeSlice, start: usize, end: usize, fun: F)
+    // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
     // where
     //     F: Fn(usize, usize),
     // {

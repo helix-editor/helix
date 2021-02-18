@@ -11,6 +11,36 @@ pub mod state;
 pub mod syntax;
 mod transaction;
 
+pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> {
+    let mut start = 0;
+
+    // find first non-whitespace char
+    for ch in line.chars() {
+        // TODO: could use memchr with chunks?
+        if ch != ' ' && ch != '\t' && ch != '\n' {
+            return Some(start);
+        }
+        start += 1;
+    }
+
+    None
+}
+pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -> Option<usize> {
+    let line = text.line(line_num);
+    let mut start = text.line_to_char(line_num);
+
+    // find first non-whitespace char
+    for ch in line.chars() {
+        // TODO: could use memchr with chunks?
+        if ch != ' ' && ch != '\t' && ch != '\n' {
+            return Some(start);
+        }
+        start += 1;
+    }
+
+    None
+}
+
 pub use ropey::{Rope, RopeSlice};
 
 pub use tendril::StrTendril as Tendril;

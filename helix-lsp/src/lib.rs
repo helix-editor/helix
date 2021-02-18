@@ -30,12 +30,12 @@ pub mod util {
     use super::*;
     use helix_core::{RopeSlice, State, Transaction};
 
-    pub fn lsp_pos_to_pos(doc: &RopeSlice, pos: lsp::Position) -> usize {
+    pub fn lsp_pos_to_pos(doc: RopeSlice, pos: lsp::Position) -> usize {
         let line = doc.line_to_char(pos.line as usize);
         let line_start = doc.char_to_utf16_cu(line);
         doc.utf16_cu_to_char(pos.character as usize + line_start)
     }
-    pub fn pos_to_lsp_pos(doc: &RopeSlice, pos: usize) -> lsp::Position {
+    pub fn pos_to_lsp_pos(doc: RopeSlice, pos: usize) -> lsp::Position {
         let line = doc.char_to_line(pos);
         let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
         let col = doc.char_to_utf16_cu(pos) - line_start;
@@ -58,8 +58,8 @@ pub mod util {
                     None
                 };
 
-                let start = lsp_pos_to_pos(&doc, edit.range.start);
-                let end = lsp_pos_to_pos(&doc, edit.range.end);
+                let start = lsp_pos_to_pos(doc, edit.range.start);
+                let end = lsp_pos_to_pos(doc, edit.range.end);
                 (start, end, replacement)
             }),
         )

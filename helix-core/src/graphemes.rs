@@ -26,7 +26,7 @@ pub fn grapheme_width(g: &str) -> usize {
     }
 }
 
-pub fn nth_prev_grapheme_boundary(slice: &RopeSlice, char_idx: usize, n: usize) -> usize {
+pub fn nth_prev_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -> usize {
     // TODO: implement this more efficiently.  This has to do a lot of
     // re-scanning of rope chunks.  Probably move the main implementation here,
     // and have prev_grapheme_boundary call this instead.
@@ -38,7 +38,7 @@ pub fn nth_prev_grapheme_boundary(slice: &RopeSlice, char_idx: usize, n: usize) 
 }
 
 /// Finds the previous grapheme boundary before the given char position.
-pub fn prev_grapheme_boundary(slice: &RopeSlice, char_idx: usize) -> usize {
+pub fn prev_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     // Bounds check
     debug_assert!(char_idx <= slice.len_chars());
 
@@ -74,7 +74,7 @@ pub fn prev_grapheme_boundary(slice: &RopeSlice, char_idx: usize) -> usize {
     }
 }
 
-pub fn nth_next_grapheme_boundary(slice: &RopeSlice, char_idx: usize, n: usize) -> usize {
+pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -> usize {
     // TODO: implement this more efficiently.  This has to do a lot of
     // re-scanning of rope chunks.  Probably move the main implementation here,
     // and have next_grapheme_boundary call this instead.
@@ -86,7 +86,7 @@ pub fn nth_next_grapheme_boundary(slice: &RopeSlice, char_idx: usize, n: usize) 
 }
 
 /// Finds the next grapheme boundary after the given char position.
-pub fn next_grapheme_boundary(slice: &RopeSlice, char_idx: usize) -> usize {
+pub fn next_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     // Bounds check
     debug_assert!(char_idx <= slice.len_chars());
 
@@ -123,7 +123,7 @@ pub fn next_grapheme_boundary(slice: &RopeSlice, char_idx: usize) -> usize {
 }
 
 /// Returns whether the given char position is a grapheme boundary.
-pub fn is_grapheme_boundary(slice: &RopeSlice, char_idx: usize) -> bool {
+pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
     // Bounds check
     debug_assert!(char_idx <= slice.len_chars());
 
@@ -160,11 +160,11 @@ pub struct RopeGraphemes<'a> {
 }
 
 impl<'a> RopeGraphemes<'a> {
-    pub fn new<'b>(slice: &RopeSlice<'b>) -> RopeGraphemes<'b> {
+    pub fn new<'b>(slice: RopeSlice<'b>) -> RopeGraphemes<'b> {
         let mut chunks = slice.chunks();
         let first_chunk = chunks.next().unwrap_or("");
         RopeGraphemes {
-            text: *slice,
+            text: slice,
             chunks,
             cur_chunk: first_chunk,
             cur_chunk_start: 0,

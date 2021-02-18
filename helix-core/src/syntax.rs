@@ -406,7 +406,7 @@ impl LanguageLayer {
     }
 
     pub(crate) fn generate_edits(
-        old_text: &RopeSlice,
+        old_text: RopeSlice,
         changeset: &ChangeSet,
     ) -> Vec<tree_sitter::InputEdit> {
         use Operation::*;
@@ -419,7 +419,7 @@ impl LanguageLayer {
 
         // TODO; this is a lot easier with Change instead of Operation.
 
-        fn point_at_pos(text: &RopeSlice, pos: usize) -> (usize, Point) {
+        fn point_at_pos(text: RopeSlice, pos: usize) -> (usize, Point) {
             let byte = text.char_to_byte(pos); // <- attempted to index past end
             let line = text.char_to_line(pos);
             let line_start_byte = text.line_to_byte(line);
@@ -458,8 +458,8 @@ impl LanguageLayer {
                     new_pos += len;
                 }
                 Delete(_) => {
-                    let (start_byte, start_position) = point_at_pos(&old_text, old_pos);
-                    let (old_end_byte, old_end_position) = point_at_pos(&old_text, old_end);
+                    let (start_byte, start_position) = point_at_pos(old_text, old_pos);
+                    let (old_end_byte, old_end_position) = point_at_pos(old_text, old_end);
 
                     // TODO: Position also needs to be byte based...
                     // let byte = char_to_byte(old_pos)
@@ -478,14 +478,14 @@ impl LanguageLayer {
                     });
                 }
                 Insert(s) => {
-                    let (start_byte, start_position) = point_at_pos(&old_text, old_pos);
+                    let (start_byte, start_position) = point_at_pos(old_text, old_pos);
 
                     let ins = s.chars().count();
 
                     // a subsequent delete means a replace, consume it
                     if let Some(Delete(len)) = iter.peek() {
                         old_end = old_pos + len;
-                        let (old_end_byte, old_end_position) = point_at_pos(&old_text, old_end);
+                        let (old_end_byte, old_end_position) = point_at_pos(old_text, old_end);
 
                         iter.next();
 
@@ -530,7 +530,7 @@ impl LanguageLayer {
             return Ok(());
         }
 
-        let edits = Self::generate_edits(&old_source.slice(..), changeset);
+        let edits = Self::generate_edits(old_source.slice(..), changeset);
 
         // Notify the tree about all the changes
         for edit in edits {
@@ -1528,7 +1528,7 @@ fn test_input_edits() {
         &state,
         vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
     );
-    let edits = LanguageLayer::generate_edits(&state.doc.slice(..), &transaction.changes);
+    let edits = LanguageLayer::generate_edits(state.doc.slice(..), &transaction.changes);
     // transaction.apply(&mut state);
 
     assert_eq!(
@@ -1556,7 +1556,7 @@ fn test_input_edits() {
     // Testing with the official example from tree-sitter
     let mut state = State::new("fn test() {}".into());
     let transaction = Transaction::change(&state, vec![(8, 8, Some("a: u32".into()))].into_iter());
-    let edits = LanguageLayer::generate_edits(&state.doc.slice(..), &transaction.changes);
+    let edits = LanguageLayer::generate_edits(state.doc.slice(..), &transaction.changes);
     transaction.apply(&mut state);
 
     assert_eq!(state.doc(), "fn test(a: u32) {}");

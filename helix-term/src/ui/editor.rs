@@ -134,7 +134,7 @@ impl EditorView {
                     let mut char_index = start;
 
                     // iterate over range char by char
-                    for grapheme in RopeGraphemes::new(&text) {
+                    for grapheme in RopeGraphemes::new(text) {
                         // TODO: track current char_index
 
                         if grapheme == "\n" {
@@ -211,8 +211,8 @@ impl EditorView {
                 .filter(|range| range.overlaps(&screen))
             {
                 // TODO: render also if only one of the ranges is in viewport
-                let mut start = view.screen_coords_at_pos(&text, selection.anchor);
-                let mut end = view.screen_coords_at_pos(&text, selection.head);
+                let mut start = view.screen_coords_at_pos(text, selection.anchor);
+                let mut end = view.screen_coords_at_pos(text, selection.head);
 
                 // cursor
                 if let Some(end) = end {
@@ -439,7 +439,7 @@ impl Component for EditorView {
         let cursor = view.doc.state.selection().cursor();
 
         let mut pos = view
-            .screen_coords_at_pos(&view.doc.text().slice(..), cursor)
+            .screen_coords_at_pos(view.doc.text().slice(..), cursor)
             .expect("Cursor is out of bounds.");
         pos.col += view.area.x as usize + area.x as usize + OFFSET as usize;
         pos.row += view.area.y as usize + area.y as usize;

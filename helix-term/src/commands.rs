@@ -117,7 +117,7 @@ pub fn move_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
     // TODO: count
-    let pos = State::move_next_word_start(&doc.text().slice(..), doc.selection().cursor());
+    let pos = State::move_next_word_start(doc.text().slice(..), doc.selection().cursor());
 
     doc.set_selection(Selection::point(pos));
 }
@@ -125,7 +125,7 @@ pub fn move_next_word_start(cx: &mut Context) {
 pub fn move_prev_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = State::move_prev_word_start(&doc.text().slice(..), doc.selection().cursor());
+    let pos = State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor());
 
     doc.set_selection(Selection::point(pos));
 }
@@ -133,7 +133,7 @@ pub fn move_prev_word_start(cx: &mut Context) {
 pub fn move_next_word_end(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = State::move_next_word_end(&doc.text().slice(..), doc.selection().cursor(), count);
+    let pos = State::move_next_word_end(doc.text().slice(..), doc.selection().cursor(), count);
 
     doc.set_selection(Selection::point(pos));
 }
@@ -156,7 +156,7 @@ pub fn extend_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
     let mut selection = doc.selection().transform(|mut range| {
-        let pos = State::move_next_word_start(&doc.text().slice(..), doc.selection().cursor());
+        let pos = State::move_next_word_start(doc.text().slice(..), doc.selection().cursor());
         range.head = pos;
         range
     }); // TODO: count
@@ -168,7 +168,7 @@ pub fn extend_prev_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
     let mut selection = doc.selection().transform(|mut range| {
-        let pos = State::move_prev_word_start(&doc.text().slice(..), doc.selection().cursor());
+        let pos = State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor());
         range.head = pos;
         range
     }); // TODO: count
@@ -179,7 +179,7 @@ pub fn extend_next_word_end(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
     let mut selection = doc.selection().transform(|mut range| {
-        let pos = State::move_next_word_end(&doc.text().slice(..), doc.selection().cursor(), count);
+        let pos = State::move_next_word_end(doc.text().slice(..), doc.selection().cursor(), count);
         range.head = pos;
         range
     }); // TODO: count
@@ -303,7 +303,7 @@ pub fn select_all(cx: &mut Context) {
 
 pub fn select_regex(cx: &mut Context) {
     let prompt = ui::regex_prompt(cx, "select:".to_string(), |doc, regex| {
-        let text = &doc.text().slice(..);
+        let text = doc.text().slice(..);
         // TODO: if select on matches returns empty range, we need to abort
         let selection =
             selection::select_on_matches(text, doc.selection(), &regex).expect("no matches");
@@ -331,7 +331,7 @@ pub fn split_selection(cx: &mut Context) {
     // }
 
     let prompt = ui::regex_prompt(cx, "split:".to_string(), |doc, regex| {
-        let text = &doc.text().slice(..);
+        let text = doc.text().slice(..);
         let selection = selection::split_on_matches(text, doc.selection(), &regex);
         doc.set_selection(selection);
     });
@@ -345,7 +345,7 @@ pub fn split_selection(cx: &mut Context) {
 
 pub fn split_selection_on_newline(cx: &mut Context) {
     let doc = cx.doc();
-    let text = &doc.text().slice(..);
+    let text = doc.text().slice(..);
     // only compile the regex once
     #[allow(clippy::trivial_regex)]
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\n").unwrap());
@@ -489,7 +489,7 @@ pub fn append_mode(cx: &mut Context) {
     doc.restore_cursor = true;
 
     // TODO: as transaction
-    let text = &doc.text().slice(..);
+    let text = doc.text().slice(..);
     let selection = doc.selection().transform(|range| {
         // TODO: to() + next char
         Range::new(
@@ -721,7 +721,7 @@ pub fn normal_mode(cx: &mut Context) {
 
     // if leaving append mode, move cursor back by 1
     if doc.restore_cursor {
-        let text = &doc.text().slice(..);
+        let text = doc.text().slice(..);
         let selection = doc.selection().transform(|range| {
             Range::new(
                 range.from(),
@@ -775,7 +775,7 @@ pub mod insert {
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count;
         let doc = cx.doc();
-        let text = &doc.text().slice(..);
+        let text = doc.text().slice(..);
         let transaction = Transaction::change_by_selection(&doc.state, |range| {
             (
                 graphemes::nth_prev_grapheme_boundary(text, range.head, count),
@@ -789,7 +789,7 @@ pub mod insert {
     pub fn delete_char_forward(cx: &mut Context) {
         let count = cx.count;
         let doc = cx.doc();
-        let text = &doc.text().slice(..);
+        let text = doc.text().slice(..);
         let transaction = Transaction::change_by_selection(&doc.state, |range| {
             (
                 range.head,
@@ -826,7 +826,7 @@ pub fn yank(cx: &mut Context) {
     let values = doc
         .state
         .selection()
-        .fragments(&doc.text().slice(..))
+        .fragments(doc.text().slice(..))
         .map(|cow| cow.into_owned())
         .collect();
 
@@ -978,7 +978,7 @@ pub fn completion(cx: &mut Context) {
     let doc = cx.doc();
 
     // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(&doc.text().slice(..), doc.selection().cursor());
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
 
     // TODO: handle fails
     let res =

@@ -120,7 +120,7 @@ impl Range {
     // groupAt
 
     #[inline]
-    pub fn fragment<'a>(&'a self, text: &'a RopeSlice) -> Cow<'a, str> {
+    pub fn fragment<'a>(&'a self, text: RopeSlice<'a>) -> Cow<'a, str> {
         Cow::from(text.slice(self.from()..self.to() + 1))
     }
 }
@@ -267,7 +267,7 @@ impl Selection {
         )
     }
 
-    pub fn fragments<'a>(&'a self, text: &'a RopeSlice) -> impl Iterator<Item = Cow<str>> + 'a {
+    pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
         self.ranges.iter().map(move |range| range.fragment(text))
     }
 }
@@ -275,7 +275,7 @@ impl Selection {
 // TODO: checkSelection -> check if valid for doc length
 
 pub fn select_on_matches(
-    text: &RopeSlice,
+    text: RopeSlice,
     selections: &Selection,
     regex: &crate::regex::Regex,
 ) -> Option<Selection> {
@@ -283,7 +283,7 @@ pub fn select_on_matches(
 
     for sel in selections.ranges() {
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
-        let fragment = sel.fragment(&text);
+        let fragment = sel.fragment(text);
 
         let mut sel_start = sel.from();
         let sel_end = sel.to();
@@ -309,7 +309,7 @@ pub fn select_on_matches(
 
 // TODO: support to split on capture #N instead of whole match
 pub fn split_on_matches(
-    text: &RopeSlice,
+    text: RopeSlice,
     selections: &Selection,
     regex: &crate::regex::Regex,
 ) -> Selection {
@@ -317,7 +317,7 @@ pub fn split_on_matches(
 
     for sel in selections.ranges() {
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
-        let fragment = sel.fragment(&text);
+        let fragment = sel.fragment(text);
 
         let mut sel_start = sel.from();
         let sel_end = sel.to();
@@ -420,7 +420,7 @@ mod test {
 
         let selections = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 19),], 0);
 
-        let result = split_on_matches(&text.slice(..), &selections, &Regex::new(r"\s+").unwrap());
+        let result = split_on_matches(text.slice(..), &selections, &Regex::new(r"\s+").unwrap());
 
         assert_eq!(
             result.ranges(),
@@ -434,7 +434,7 @@ mod test {
         );
 
         assert_eq!(
-            result.fragments(&text.slice(..)).collect::<Vec<_>>(),
+            result.fragments(text.slice(..)).collect::<Vec<_>>(),
             &["abcd", "efg", "rs", "xyz", "1"]
         );
     }

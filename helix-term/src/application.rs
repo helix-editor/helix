@@ -147,8 +147,8 @@ impl Application {
                                 .into_iter()
                                 .map(|diagnostic| {
                                     use helix_lsp::util::lsp_pos_to_pos;
-                                    let start = lsp_pos_to_pos(&doc, diagnostic.range.start);
-                                    let end = lsp_pos_to_pos(&doc, diagnostic.range.end);
+                                    let start = lsp_pos_to_pos(doc, diagnostic.range.start);
+                                    let end = lsp_pos_to_pos(doc, diagnostic.range.end);
 
                                     helix_core::Diagnostic {
                                         range: (start, end),

@@ -303,7 +303,7 @@ impl Client {
                     new_pos += i;
                 }
                 Delete(_) => {
-                    let start = pos_to_lsp_pos(&new_text, new_pos);
+                    let start = pos_to_lsp_pos(new_text, new_pos);
                     let end = traverse(start, old_text.slice(old_pos..old_end));
 
                     // deletion
@@ -314,7 +314,7 @@ impl Client {
                     });
                 }
                 Insert(s) => {
-                    let start = pos_to_lsp_pos(&new_text, new_pos);
+                    let start = pos_to_lsp_pos(new_text, new_pos);
 
                     new_pos += s.chars().count();
 

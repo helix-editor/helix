@@ -1,4 +1,5 @@
 use crate::{
+    find_first_non_whitespace_char,
     syntax::Syntax,
     tree_sitter::{Node, Tree},
     Rope, RopeSlice, State,
@@ -9,7 +10,7 @@ use crate::{
 
 pub const TAB_WIDTH: usize = 4;
 
-fn indent_level_for_line(line: &RopeSlice) -> usize {
+fn indent_level_for_line(line: RopeSlice) -> usize {
     let mut len = 0;
     for ch in line.chars() {
         match ch {
@@ -159,27 +160,11 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
     increment as usize
 }
 
-fn find_first_non_whitespace_char(state: &State, line_num: usize) -> Option<usize> {
-    let line = state.doc.line(line_num);
-    let mut start = state.doc.line_to_char(line_num);
-
-    // find first non-whitespace char
-    for ch in line.chars() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-        start += 1;
-    }
-
-    None
-}
-
 fn suggested_indent_for_line(syntax: Option<&Syntax>, state: &State, line_num: usize) -> usize {
     let line = state.doc.line(line_num);
-    let current = indent_level_for_line(&line);
+    let current = indent_level_for_line(line);
 
-    if let Some(start) = find_first_non_whitespace_char(state, line_num) {
+    if let Some(start) = find_first_non_whitespace_char(state.doc.slice(..), line_num) {
         return suggested_indent_for_pos(syntax, state, start, false);
     };
 
@@ -216,12 +201,12 @@ mod test {
     #[test]
     fn test_indent_level() {
         let line = Rope::from("        fn new"); // 8 spaces
-        assert_eq!(indent_level_for_line(&line.slice(..)), 2);
+        assert_eq!(indent_level_for_line(line.slice(..)), 2);
         let line = Rope::from("\t\t\tfn new"); // 3 tabs
-        assert_eq!(indent_level_for_line(&line.slice(..)), 3);
+        assert_eq!(indent_level_for_line(line.slice(..)), 3);
         // mixed indentation
         let line = Rope::from("\t    \tfn new"); // 1 tab, 4 spaces, tab
-        assert_eq!(indent_level_for_line(&line.slice(..)), 3);
+        assert_eq!(indent_level_for_line(line.slice(..)), 3);
     }
 
     #[test]
@@ -306,7 +291,7 @@ where
 
         for i in 0..state.doc.len_lines() {
             let line = text.line(i);
-            let indent = indent_level_for_line(&line);
+            let indent = indent_level_for_line(line);
             assert_eq!(
                 suggested_indent_for_line(Some(&syntax), &state, i),
                 indent,

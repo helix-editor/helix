@@ -101,7 +101,7 @@ impl State {
                 let line = text.char_to_line(pos);
                 let start = text.line_to_char(line);
                 let pos = std::cmp::max(
-                    nth_prev_grapheme_boundary(&text.slice(..), pos, count),
+                    nth_prev_grapheme_boundary(text.slice(..), pos, count),
                     start,
                 );
                 Range::new(if extend { range.anchor } else { pos }, pos)
@@ -113,14 +113,14 @@ impl State {
                 // subtract another 1 because the line ends with \n
                 let end = text.line_to_char(line + 1).saturating_sub(2);
                 let pos =
-                    std::cmp::min(nth_next_grapheme_boundary(&text.slice(..), pos, count), end);
+                    std::cmp::min(nth_next_grapheme_boundary(text.slice(..), pos, count), end);
                 Range::new(if extend { range.anchor } else { pos }, pos)
             }
-            (_, Granularity::Line) => move_vertically(&text.slice(..), dir, range, count, extend),
+            (_, Granularity::Line) => move_vertically(text.slice(..), dir, range, count, extend),
         }
     }
 
-    pub fn move_next_word_start(slice: &RopeSlice, mut pos: usize) -> usize {
+    pub fn move_next_word_start(slice: RopeSlice, mut pos: usize) -> usize {
         // TODO: confirm it's fine without using graphemes, I think it should be
         let ch = slice.char(pos);
         let next = slice.char(pos.saturating_add(1));
@@ -143,7 +143,7 @@ impl State {
         pos
     }
 
-    pub fn move_prev_word_start(slice: &RopeSlice, mut pos: usize) -> usize {
+    pub fn move_prev_word_start(slice: RopeSlice, mut pos: usize) -> usize {
         // TODO: confirm it's fine without using graphemes, I think it should be
         let ch = slice.char(pos);
         let prev = slice.char(pos.saturating_sub(1)); // TODO: just return original pos if at start
@@ -169,7 +169,7 @@ impl State {
         pos.saturating_add(1)
     }
 
-    pub fn move_next_word_end(slice: &RopeSlice, mut pos: usize, _count: usize) -> usize {
+    pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, _count: usize) -> usize {
         // TODO: confirm it's fine without using graphemes, I think it should be
         let ch = slice.char(pos);
         let next = slice.char(pos.saturating_add(1));
@@ -217,7 +217,7 @@ impl State {
 }
 
 /// Convert a character index to (line, column) coordinates.
-pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Position {
+pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
     let line = text.char_to_line(pos);
     let line_start = text.line_to_char(line);
     let col = text.slice(line_start..pos).len_chars();
@@ -225,14 +225,14 @@ pub fn coords_at_pos(text: &RopeSlice, pos: usize) -> Position {
 }
 
 /// Convert (line, column) coordinates to a character index.
-pub fn pos_at_coords(text: &RopeSlice, coords: Position) -> usize {
+pub fn pos_at_coords(text: RopeSlice, coords: Position) -> usize {
     let Position { row, col } = coords;
     let line_start = text.line_to_char(row);
     nth_next_grapheme_boundary(text, line_start, col)
 }
 
 fn move_vertically(
-    text: &RopeSlice,
+    text: RopeSlice,
     dir: Direction,
     range: Range,
     count: usize,
@@ -287,7 +287,7 @@ fn categorize(ch: char) -> Category {
     }
 }
 
-fn skip_over_next<F>(slice: &RopeSlice, pos: &mut usize, fun: F)
+fn skip_over_next<F>(slice: RopeSlice, pos: &mut usize, fun: F)
 where
     F: Fn(char) -> bool,
 {
@@ -301,7 +301,7 @@ where
     }
 }
 
-fn skip_over_prev<F>(slice: &RopeSlice, pos: &mut usize, fun: F)
+fn skip_over_prev<F>(slice: RopeSlice, pos: &mut usize, fun: F)
 where
     F: Fn(char) -> bool,
 {
@@ -323,34 +323,36 @@ mod test {
     #[test]
     fn test_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        assert_eq!(coords_at_pos(&text.slice(..), 0), (0, 0).into());
-        assert_eq!(coords_at_pos(&text.slice(..), 5), (0, 5).into()); // position on \n
-        assert_eq!(coords_at_pos(&text.slice(..), 6), (1, 0).into()); // position on w
-        assert_eq!(coords_at_pos(&text.slice(..), 7), (1, 1).into()); // position on o
-        assert_eq!(coords_at_pos(&text.slice(..), 10), (1, 4).into()); // position on d
+        let slice = text.slice(..);
+        assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
+        assert_eq!(coords_at_pos(slice, 5), (0, 5).into()); // position on \n
+        assert_eq!(coords_at_pos(slice, 6), (1, 0).into()); // position on w
+        assert_eq!(coords_at_pos(slice, 7), (1, 1).into()); // position on o
+        assert_eq!(coords_at_pos(slice, 10), (1, 4).into()); // position on d
     }
 
     #[test]
     fn test_pos_at_coords() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        assert_eq!(pos_at_coords(&text.slice(..), (0, 0).into()), 0);
-        assert_eq!(pos_at_coords(&text.slice(..), (0, 5).into()), 5); // position on \n
-        assert_eq!(pos_at_coords(&text.slice(..), (1, 0).into()), 6); // position on w
-        assert_eq!(pos_at_coords(&text.slice(..), (1, 1).into()), 7); // position on o
-        assert_eq!(pos_at_coords(&text.slice(..), (1, 4).into()), 10); // position on d
+        let slice = text.slice(..);
+        assert_eq!(pos_at_coords(slice, (0, 0).into()), 0);
+        assert_eq!(pos_at_coords(slice, (0, 5).into()), 5); // position on \n
+        assert_eq!(pos_at_coords(slice, (1, 0).into()), 6); // position on w
+        assert_eq!(pos_at_coords(slice, (1, 1).into()), 7); // position on o
+        assert_eq!(pos_at_coords(slice, (1, 4).into()), 10); // position on d
     }
 
     #[test]
     fn test_vertical_move() {
         let text = Rope::from("abcd\nefg\nwrs");
-        let pos = pos_at_coords(&text.slice(..), (0, 4).into());
         let slice = text.slice(..);
+        let pos = pos_at_coords(slice, (0, 4).into());
 
         let range = Range::new(pos, pos);
         assert_eq!(
             coords_at_pos(
-                &slice,
-                move_vertically(&slice, Direction::Forward, range, 1, false).head
+                slice,
+                move_vertically(slice, Direction::Forward, range, 1, false).head
             ),
             (1, 2).into()
         );
