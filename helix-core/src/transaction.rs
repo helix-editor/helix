@@ -335,7 +335,7 @@ impl ChangeSet {
                 Delete(i) | Retain(i) => *i,
                 Insert(_) => 0,
             };
-            let old_end = old_pos + len;
+            let mut old_end = old_pos + len;
 
             match change {
                 Retain(_) => {
@@ -345,37 +345,37 @@ impl ChangeSet {
                     new_pos += len;
                 }
                 Delete(_) => {
-                    // a subsequent ins means a replace, consume it
-                    let ins = if let Some(Insert(s)) = iter.peek() {
-                        iter.next();
-                        s.chars().count()
-                    } else {
-                        0
-                    };
-
                     // in range
                     if old_end > pos {
-                        // at point or tracking before
-                        if pos == old_pos || assoc == Assoc::Before {
-                            return new_pos;
-                        } else {
-                            // place to end of delete
-                            return new_pos + ins;
-                        }
+                        return new_pos;
                     }
-
-                    new_pos += ins;
                 }
                 Insert(s) => {
                     let ins = s.chars().count();
-                    // at insert point
-                    if old_pos == pos {
-                        // return position before inserted text
-                        if assoc == Assoc::Before {
-                            return new_pos;
-                        } else {
-                            // after text
-                            return new_pos + ins;
+
+                    // a subsequent delete means a replace, consume it
+                    if let Some(Delete(len)) = iter.peek() {
+                        old_end = old_pos + len;
+                        // in range of replaced text
+                        if old_end > pos {
+                            // at point or tracking before
+                            if pos == old_pos || assoc == Assoc::Before {
+                                return new_pos;
+                            } else {
+                                // place to end of insert
+                                return new_pos + ins;
+                            }
+                        }
+                    } else {
+                        // at insert point
+                        if old_pos == pos {
+                            // return position before inserted text
+                            if assoc == Assoc::Before {
+                                return new_pos;
+                            } else {
+                                // after text
+                                return new_pos + ins;
+                            }
                         }
                     }
 
@@ -602,10 +602,10 @@ mod test {
         // stays inbetween replacements
         let cs = ChangeSet {
             changes: vec![
-                Delete(2),
                 Insert("ab".into()),
                 Delete(2),
                 Insert("cd".into()),
+                Delete(2),
             ],
             len: 4,
         };
