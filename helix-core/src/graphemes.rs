@@ -160,7 +160,7 @@ pub struct RopeGraphemes<'a> {
 }
 
 impl<'a> RopeGraphemes<'a> {
-    pub fn new<'b>(slice: RopeSlice<'b>) -> RopeGraphemes<'b> {
+    pub fn new(slice: RopeSlice) -> RopeGraphemes {
         let mut chunks = slice.chunks();
         let first_chunk = chunks.next().unwrap_or("");
         RopeGraphemes {

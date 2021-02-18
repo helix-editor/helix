@@ -13,15 +13,12 @@ pub mod syntax;
 mod transaction;
 
 pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> {
-    let mut start = 0;
-
     // find first non-whitespace char
-    for ch in line.chars() {
+    for (start, ch) in line.chars().enumerate() {
         // TODO: could use memchr with chunks?
         if ch != ' ' && ch != '\t' && ch != '\n' {
             return Some(start);
         }
-        start += 1;
     }
 
     None
