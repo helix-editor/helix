@@ -9,7 +9,7 @@ pub struct Tree {
     // (container, index inside the container)
     current: (Key, usize),
     pub focus: Key,
-    fullscreen: bool,
+    // fullscreen: bool,
     area: Rect,
 
     nodes: HopSlotMap<Key, Node>,
@@ -73,7 +73,7 @@ impl Tree {
             root,
             current: (root, 0),
             focus: Key::default(),
-            fullscreen: false,
+            // fullscreen: false,
             area,
             nodes,
             stack: Vec::new(),
