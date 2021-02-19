@@ -953,11 +953,6 @@ pub fn unindent(cx: &mut Context) {
     append_changes_to_history(cx);
 }
 
-pub fn indent_selection(_cx: &mut Context) {
-    // loop over each line and recompute proper indentation
-    unimplemented!()
-}
-
 //
 
 pub fn save(cx: &mut Context) {
