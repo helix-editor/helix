@@ -644,7 +644,7 @@ pub fn open_below(cx: &mut Context) {
         let indent_level = helix_core::indent::suggested_indent_for_pos(
             doc.syntax.as_ref(),
             &doc.state,
-            index,
+            index - 1, // need to match the indentation to the prev line
             true,
         );
         let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);

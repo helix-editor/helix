@@ -78,6 +78,8 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         "field_expression",
         //
         "where_clause",
+        //
+        "use_list",
     ];
 
     let outdent = &["where", "}", "]", ")"];
@@ -213,6 +215,12 @@ mod test {
     fn test_suggested_indent_for_line() {
         let doc = Rope::from(
             "
+use std::{
+    io::{self, stdout, Stdout, Write},
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+}
 mod test {
     fn hello_world() {
         1 + 1;
