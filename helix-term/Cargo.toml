@@ -37,3 +37,5 @@ log = "0.4"
 # File picker
 fuzzy-matcher = "0.3"
 ignore = "0.4"
+# shellexpand = "2.1"
+dirs-next = "2.0"

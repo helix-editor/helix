@@ -31,6 +31,8 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
         _3_or_more => base_config.level(log::LevelFilter::Trace),
     };
 
+    let home = dirs_next::home_dir().expect("can't find the home directory");
+
     // Separate file config so we can include year, month and day in file logs
     let file_config = fern::Dispatch::new()
         .format(|out, message, record| {
@@ -42,7 +44,7 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
                 message
             ))
         })
-        .chain(fern::log_file("helix.log")?);
+        .chain(fern::log_file(home.join("helix.log"))?);
 
     base_config.chain(file_config).apply()?;
 
