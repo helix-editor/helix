@@ -1,4 +1,4 @@
-use crate::{find_first_non_whitespace_char2, Change, RopeSlice, State, Transaction};
+use crate::{find_first_non_whitespace_char2, Change, RopeSlice, State, Tendril, Transaction};
 use core::ops::Range;
 use std::borrow::Cow;
 
@@ -7,7 +7,6 @@ fn find_line_comment(
     text: RopeSlice,
     lines: Range<usize>,
 ) -> (bool, Vec<usize>, usize) {
-    // selection ranges map char_to_line from() .. to()
     let mut commented = true;
     let mut skipped = Vec::new();
     let mut min = usize::MAX; // minimum col for find_first_non_whitespace_char
@@ -36,11 +35,12 @@ fn find_line_comment(
     (commented, skipped, min)
 }
 
-fn toggle_line_comments(state: &State) -> Transaction {
+pub fn toggle_line_comments(state: &State) -> Transaction {
     let text = state.doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();
 
     let token = "//";
+    let comment = Tendril::from(format!("{} ", token));
 
     for selection in state.selection.ranges() {
         let start = text.char_to_line(selection.from());
@@ -59,7 +59,7 @@ fn toggle_line_comments(state: &State) -> Transaction {
 
             if !commented {
                 // comment line
-                changes.push((pos, pos, Some(format!("{} ", token).into())))
+                changes.push((pos, pos, Some(comment.clone())))
             } else {
                 // uncomment line
                 let margin = 1; // TODO: margin is hardcoded 1 but could easily be 0
@@ -101,5 +101,8 @@ mod test {
         let transaction = toggle_line_comments(&state);
         transaction.apply(&mut state);
         assert_eq!(state.doc, "  1\n\n  2\n  3");
+
+        // TODO: account for no margin after comment
+        // TODO: account for uncommenting with uneven comment indentation
     }
 }

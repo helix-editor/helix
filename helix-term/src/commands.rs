@@ -1,5 +1,5 @@
 use helix_core::{
-    graphemes,
+    comment, graphemes,
     indent::TAB_WIDTH,
     regex::Regex,
     register, selection,
@@ -1076,4 +1076,12 @@ pub fn completion(cx: &mut Context) {
 // view movements
 pub fn next_view(cx: &mut Context) {
     cx.editor.tree.focus_next()
+}
+
+// comments
+pub fn toggle_comments(cx: &mut Context) {
+    let doc = cx.doc();
+    let transaction = comment::toggle_line_comments(&doc.state);
+
+    doc.apply(&transaction);
 }

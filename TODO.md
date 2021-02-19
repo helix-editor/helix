@@ -27,21 +27,26 @@
 
 - [ ] regex search / select next
 - [ ] f / t mappings
+- [ ] = for auto indent line/selection
+- [ ] q should only close the view, if all are closed, close the editor
+- [ ] buffers should sit on editor.buffers, view simply refs them
 
 
 2
-- extend selection (treesitter select parent node) (replaces viw, vi(, va( etc )
-- bracket pairs
-- comment block (gcc)
-- completion signature popups/docs
-- multiple views into the same file
-- selection align
+- [ ] tab completion for paths on the prompt
+- [ ] extend selection (treesitter select parent node) (replaces viw, vi(, va( etc )
+- [ ] bracket pairs
+- [x] comment block (gcc)
+- [ ] completion signature popups/docs
+- [ ] multiple views into the same file
+- [ ] selection align
+- [ ] store some state: file positions, prompt history
 
 3
-- diagnostics popups
-- diff mode with highlighting?
-- snippet support (tab to jump between marks)
-- gamelisp/wasm scripting
+- [ ] diagnostics popups
+- [ ] diff mode with highlighting?
+- [ ] snippet support (tab to jump between marks)
+- [ ] gamelisp/wasm scripting
 
 X
-- rendering via skulpin/skia or raw wgpu
+- [ ] rendering via skulpin/skia or raw wgpu

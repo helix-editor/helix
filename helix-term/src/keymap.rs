@@ -198,6 +198,9 @@ pub fn default() -> Keymaps {
                     code: KeyCode::Tab,
                     modifiers: Modifiers::NONE
                 }] => commands::next_view,
+
+                // move under <space>c
+                vec![ctrl!('c')] => commands::toggle_comments,
             ),
             Mode::Insert => hashmap!(
                 vec![Key {
