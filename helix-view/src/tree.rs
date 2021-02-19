@@ -7,7 +7,6 @@ use tui::layout::Rect;
 pub struct Tree {
     root: Key,
     // (container, index inside the container)
-    current: (Key, usize),
     pub focus: Key,
     // fullscreen: bool,
     area: Rect,
@@ -18,18 +17,29 @@ pub struct Tree {
     stack: Vec<(Key, Rect)>,
 }
 
-pub enum Node {
+pub struct Node {
+    parent: Key,
+    content: Content,
+}
+
+pub enum Content {
     View(Box<View>),
     Container(Box<Container>),
 }
 
 impl Node {
     pub fn container() -> Self {
-        Self::Container(Box::new(Container::new()))
+        Node {
+            parent: Key::default(),
+            content: Content::Container(Box::new(Container::new())),
+        }
     }
 
     pub fn view(view: View) -> Self {
-        Self::View(Box::new(view))
+        Node {
+            parent: Key::default(),
+            content: Content::View(Box::new(view)),
+        }
     }
 }
 
@@ -66,13 +76,16 @@ impl Default for Container {
 impl Tree {
     pub fn new(area: Rect) -> Self {
         let root = Node::container();
+
         let mut nodes = HopSlotMap::new();
         let root = nodes.insert(root);
 
+        // root is it's own parent
+        nodes[root].parent = root;
+
         Self {
             root,
-            current: (root, 0),
-            focus: Key::default(),
+            focus: root,
             // fullscreen: false,
             area,
             nodes,
@@ -81,23 +94,34 @@ impl Tree {
     }
 
     pub fn insert(&mut self, view: View) -> Key {
-        let node = self.nodes.insert(Node::view(view));
-        let (id, pos) = self.current;
-        let container = match &mut self.nodes[id] {
-            Node::Container(container) => container,
+        let focus = self.focus;
+        let parent = self.nodes[focus].parent;
+        let mut node = Node::view(view);
+        node.parent = parent;
+        let node = self.nodes.insert(node);
+
+        let container = match &mut self.nodes[parent] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container,
             _ => unreachable!(),
         };
 
         // insert node after the current item if there is children already
         let pos = if container.children.is_empty() {
-            pos
+            0
         } else {
+            let pos = container
+                .children
+                .iter()
+                .position(|&child| child == focus)
+                .unwrap();
             pos + 1
         };
 
         container.children.insert(pos, node);
         // focus the new node
-        self.current = (id, pos);
         self.focus = node;
 
         // recalculate all the sizes
@@ -106,26 +130,78 @@ impl Tree {
         node
     }
 
+    pub fn remove(&mut self, index: Key) {
+        let mut stack = Vec::new();
+
+        if self.focus == index {
+            // focus on something else
+            self.focus_next();
+        }
+
+        stack.push(index);
+
+        while let Some(index) = stack.pop() {
+            let parent_id = self.nodes[index].parent;
+            if let Node {
+                content: Content::Container(container),
+                ..
+            } = &mut self.nodes[parent_id]
+            {
+                if let Some(pos) = container.children.iter().position(|&child| child == index) {
+                    container.children.remove(pos);
+
+                    // TODO: if container now only has one child, remove it and place child in parent
+                    if container.children.is_empty() && parent_id != self.root {
+                        // if container now empty, remove it
+                        stack.push(parent_id);
+                    }
+                }
+            }
+            self.nodes.remove(index);
+        }
+
+        self.recalculate()
+    }
+
     pub fn views(&mut self) -> impl Iterator<Item = (&mut View, bool)> {
         let focus = self.focus;
         self.nodes
             .iter_mut()
             .filter_map(move |(key, node)| match node {
-                Node::View(view) => Some((view.as_mut(), focus == key)),
-                Node::Container(..) => None,
+                Node {
+                    content: Content::View(view),
+                    ..
+                } => Some((view.as_mut(), focus == key)),
+                _ => None,
             })
     }
 
     pub fn get(&self, index: Key) -> &View {
         match &self.nodes[index] {
-            Node::View(view) => view,
+            Node {
+                content: Content::View(view),
+                ..
+            } => view,
             _ => unreachable!(),
         }
     }
 
     pub fn get_mut(&mut self, index: Key) -> &mut View {
         match &mut self.nodes[index] {
-            Node::View(view) => view,
+            Node {
+                content: Content::View(view),
+                ..
+            } => view,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match &self.nodes[self.root] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container.children.is_empty(),
             _ => unreachable!(),
         }
     }
@@ -136,6 +212,10 @@ impl Tree {
     }
 
     pub fn recalculate(&mut self) {
+        if self.is_empty() {
+            return;
+        }
+
         self.stack.push((self.root, self.area));
 
         // take the area
@@ -146,12 +226,12 @@ impl Tree {
         while let Some((key, area)) = self.stack.pop() {
             let node = &mut self.nodes[key];
 
-            match node {
-                Node::View(view) => {
+            match &mut node.content {
+                Content::View(view) => {
                     // debug!!("setting view area {:?}", area);
                     view.area = area;
                 } // TODO: call f()
-                Node::Container(container) => {
+                Content::Container(container) => {
                     // debug!!("setting container area {:?}", area);
                     container.area = area;
 
@@ -263,9 +343,9 @@ impl<'a> Iterator for Traverse<'a> {
 
             let node = &self.tree.nodes[key];
 
-            match node {
-                Node::View(view) => return Some((key, view)),
-                Node::Container(container) => {
+            match &node.content {
+                Content::View(view) => return Some((key, view)),
+                Content::Container(container) => {
                     self.stack.extend(container.children.iter().rev());
                 }
             }

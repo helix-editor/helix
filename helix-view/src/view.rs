@@ -8,6 +8,7 @@ use helix_core::{
     indent::TAB_WIDTH,
     Position, RopeSlice,
 };
+use slotmap::DefaultKey as Key;
 use tui::layout::Rect;
 
 pub const PADDING: usize = 5;
@@ -15,6 +16,7 @@ pub const PADDING: usize = 5;
 // TODO: view should be View { doc: Document(state, history,..) }
 // since we can have multiple views into the same file
 pub struct View {
+    pub id: Key,
     pub doc: Document,
     pub first_line: usize,
     pub area: Rect,
@@ -24,6 +26,7 @@ pub struct View {
 impl View {
     pub fn new(doc: Document) -> Result<Self, Error> {
         let view = Self {
+            id: Key::default(),
             doc,
             first_line: 0,
             area: Rect::default(), // will get calculated upon inserting into tree

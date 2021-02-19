@@ -558,7 +558,10 @@ pub fn command_mode(cx: &mut Context) {
                     let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
 
                     match *parts.as_slice() {
-                        ["q"] => editor.should_close = true,
+                        ["q"] => {
+                            editor.tree.remove(editor.view().id);
+                            // editor.should_close = true,
+                        }
                         ["o", path] => {
                             editor.open(path.into(), executor);
                         }

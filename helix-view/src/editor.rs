@@ -4,12 +4,13 @@ use crate::{Document, View};
 
 use std::path::PathBuf;
 
+use slotmap::DefaultKey as Key;
+
 use anyhow::Error;
 
 pub struct Editor {
     pub tree: Tree,
     // pub documents: Vec<Document>,
-    pub should_close: bool,
     pub count: Option<usize>,
     pub theme: Theme, // TODO: share one instance
     pub language_servers: helix_lsp::Registry,
@@ -25,7 +26,6 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            should_close: false,
             count: None,
             theme,
             language_servers,
@@ -54,8 +54,17 @@ impl Editor {
         }
 
         let view = View::new(doc)?;
-        self.tree.insert(view);
+        let id = self.tree.insert(view);
+        self.tree.get_mut(id).id = id;
         Ok(())
+    }
+
+    pub fn close(&mut self, id: Key) {
+        self.tree.remove(id)
+    }
+
+    pub fn should_close(&mut self) -> bool {
+        self.tree.is_empty()
     }
 
     pub fn view(&self) -> &View {

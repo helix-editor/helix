@@ -82,7 +82,7 @@ impl Application {
         self.render();
 
         loop {
-            if self.editor.should_close {
+            if self.editor.should_close() {
                 break;
             }
 
@@ -116,9 +116,8 @@ impl Application {
             None => panic!(),
         };
 
-        if should_redraw {
+        if should_redraw && !self.editor.should_close() {
             self.render();
-            // calling render twice here fixes it for some reason
         }
     }
 
