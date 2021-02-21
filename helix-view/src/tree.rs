@@ -99,6 +99,7 @@ impl Tree {
         let mut node = Node::view(view);
         node.parent = parent;
         let node = self.nodes.insert(node);
+        self.get_mut(node).id = node;
 
         let container = match &mut self.nodes[parent] {
             Node {

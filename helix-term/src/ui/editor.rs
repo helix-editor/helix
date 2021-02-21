@@ -436,7 +436,7 @@ impl Component for EditorView {
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
         let view = editor.view();
-        let cursor = view.doc.state.selection().cursor();
+        let cursor = view.doc.selection().cursor();
 
         let mut pos = view
             .screen_coords_at_pos(view.doc.text().slice(..), cursor)

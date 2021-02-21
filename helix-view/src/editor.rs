@@ -54,8 +54,7 @@ impl Editor {
         }
 
         let view = View::new(doc)?;
-        let id = self.tree.insert(view);
-        self.tree.get_mut(id).id = id;
+        self.tree.insert(view);
         Ok(())
     }
 
