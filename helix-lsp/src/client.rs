@@ -582,4 +582,43 @@ impl Client {
 
         Ok(response.unwrap_or_default())
     }
+
+    pub async fn goto_definition(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        let params = lsp::GotoDefinitionParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::GotoDefinition>(params).await?;
+
+        let items = match response {
+            Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
+            Some(lsp::GotoDefinitionResponse::Array(location_vec)) => location_vec,
+            Some(lsp::GotoDefinitionResponse::Link(location_link_vec)) => {
+                let mut location_vec: Vec<lsp::Location> = Vec::new();
+                location_link_vec.into_iter().for_each(|location_link| {
+                    let link = lsp::Location {
+                        uri: location_link.target_uri,
+                        range: location_link.target_range,
+                    };
+                    location_vec.append(&mut link);
+                });
+                location_vec
+            }
+        };
+
+        Ok(items)
+    }
 }
