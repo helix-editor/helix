@@ -603,6 +603,8 @@ impl Client {
 
         let response = self.request::<lsp::request::GotoDefinition>(params).await?;
 
+        println!("{:?}", response);
+
         let items = match response {
             Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
             Some(lsp::GotoDefinitionResponse::Array(location_vec)) => location_vec,
@@ -613,10 +615,11 @@ impl Client {
                         uri: location_link.target_uri,
                         range: location_link.target_range,
                     };
-                    location_vec.append(&mut link);
+                    location_vec.push(link)
                 });
                 location_vec
             }
+            None => Vec::new(),
         };
 
         Ok(items)

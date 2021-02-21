@@ -846,7 +846,27 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-pub fn goto_definition(cx: &mut Context) {}
+pub fn goto_definition(cx: &mut Context) {
+    let language_server = cx
+        .editor
+        .language_servers
+        .get("source.rust", &cx.executor)
+        .unwrap();
+    use log::info;
+
+    let doc = cx.doc();
+
+    // TODO: blocking here is not ideal
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+
+    // TODO: handle fails
+    let res = smol::block_on(language_server.goto_definition(cx.doc().identifier(), pos))
+        .unwrap_or_default();
+
+    println!("{:?}", res);
+
+    cx.doc().mode = Mode::Normal;
+}
 
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
 pub mod insert {
