@@ -442,7 +442,7 @@ pub fn delete_selection(cx: &mut Context) {
     let doc = cx.doc();
     _delete_selection(doc);
 
-    append_changes_to_history(doc);
+    doc.append_changes_to_history();
 }
 
 pub fn change_selection(cx: &mut Context) {
@@ -492,7 +492,6 @@ pub fn append_mode(cx: &mut Context) {
     enter_insert_mode(doc);
     doc.restore_cursor = true;
 
-    // TODO: as transaction
     let text = doc.text().slice(..);
     let selection = doc.selection().transform(|range| {
         // TODO: to() + next char
@@ -510,7 +509,6 @@ pub fn command_mode(cx: &mut Context) {
     let prompt = Prompt::new(
         ":".to_owned(),
         |_input: &str| {
-            // TODO: i need this duplicate list right now to avoid borrow checker issues
             let command_list = vec![
                 "q".to_string(),
                 "o".to_string(),
@@ -650,40 +648,12 @@ pub fn open_below(cx: &mut Context) {
 
 // O inserts a new line before each line with a selection
 
-fn append_changes_to_history(doc: &mut Document) {
-    if doc.changes.is_empty() {
-        return;
-    }
-
-    // TODO: change -> change -> undo -> change -> change fails, probably old_state needs reset
-
-    let new_changeset = ChangeSet::new(doc.text());
-    let changes = std::mem::replace(&mut doc.changes, new_changeset);
-    // Instead of doing this messy merge we could always commit, and based on transaction
-    // annotations either add a new layer or compose into the previous one.
-    let transaction = Transaction::from(changes).with_selection(doc.selection().clone());
-
-    // increment document version
-    // TODO: needs to happen on undo/redo too
-    doc.version += 1;
-
-    // TODO: trigger lsp/documentDidChange with changes
-
-    // HAXX: we need to reconstruct the state as it was before the changes..
-    let old_state = doc.old_state.take().expect("no old_state available");
-
-    // TODO: take transaction by value?
-    doc.history.commit_revision(&transaction, &old_state);
-
-    // TODO: notify LSP of changes
-}
-
 pub fn normal_mode(cx: &mut Context) {
     let doc = cx.doc();
 
     doc.mode = Mode::Normal;
 
-    append_changes_to_history(doc);
+    doc.append_changes_to_history();
 
     // if leaving append mode, move cursor back by 1
     if doc.restore_cursor {
@@ -848,7 +818,7 @@ pub fn paste(cx: &mut Context) {
         };
 
         doc.apply(&transaction);
-        append_changes_to_history(doc);
+        doc.append_changes_to_history();
     }
 }
 
@@ -884,7 +854,7 @@ pub fn indent(cx: &mut Context) {
         }),
     );
     doc.apply(&transaction);
-    append_changes_to_history(doc);
+    doc.append_changes_to_history();
 }
 
 pub fn unindent(cx: &mut Context) {
@@ -917,7 +887,7 @@ pub fn unindent(cx: &mut Context) {
     let transaction = Transaction::change(&doc.state, changes.into_iter());
 
     doc.apply(&transaction);
-    append_changes_to_history(doc);
+    doc.append_changes_to_history();
 }
 
 //
@@ -1010,7 +980,7 @@ pub fn completion(cx: &mut Context) {
                         let transaction =
                             util::generate_transaction_from_edits(&doc.state, vec![edit]);
                         doc.apply(&transaction);
-                        // TODO: append_changes_to_history(doc); if not in insert mode?
+                        // TODO: doc.append_changes_to_history(); if not in insert mode?
                     }
                     _ => (),
                 };

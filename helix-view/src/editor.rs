@@ -37,9 +37,8 @@ impl Editor {
 
         // try to find a language server based on the language name
         let language_server = doc
-            .language
-            .as_ref()
-            .and_then(|language| self.language_servers.get(&language, &executor));
+            .language()
+            .and_then(|language| self.language_servers.get(language, &executor));
 
         if let Some(language_server) = language_server {
             // TODO: do this everywhere
@@ -47,7 +46,7 @@ impl Editor {
 
             smol::block_on(language_server.text_document_did_open(
                 doc.url().unwrap(),
-                doc.version,
+                doc.version(),
                 doc.text(),
             ))
             .unwrap();

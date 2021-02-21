@@ -198,9 +198,6 @@ impl State {
         granularity: Granularity,
         count: usize,
     ) -> Selection {
-        // move all selections according to normal cursor move semantics by collapsing it
-        // into cursors and moving them vertically
-
         self.selection
             .transform(|range| self.move_range(range, dir, granularity, count, false))
     }
@@ -255,7 +252,6 @@ fn move_vertically(
     let pos = pos_at_coords(text, Position::new(new_line, new_col));
 
     let mut range = Range::new(if extend { range.anchor } else { pos }, pos);
-    use std::convert::TryInto;
     range.horiz = Some(horiz);
     range
 }

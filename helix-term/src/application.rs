@@ -137,7 +137,7 @@ impl Application {
                             .tree
                             .views()
                             .map(|(view, _key)| view)
-                            .find(|view| view.doc.path == path);
+                            .find(|view| view.doc.path() == path.as_ref());
 
                         if let Some(view) = view {
                             let doc = view.doc.text().slice(..);

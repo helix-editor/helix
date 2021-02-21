@@ -17,7 +17,7 @@ pub enum Mode {
 pub struct Document {
     pub state: State, // rope + selection
     /// File path on disk.
-    pub path: Option<PathBuf>,
+    path: Option<PathBuf>,
 
     /// Current editing mode.
     pub mode: Mode,
@@ -26,13 +26,16 @@ pub struct Document {
     /// Tree-sitter AST tree
     pub syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
-    pub language: Option<String>,
+    language: Option<String>,
 
     /// Pending changes since last history commit.
-    pub changes: ChangeSet,
-    pub old_state: Option<State>,
-    pub history: History,
-    pub version: i32, // should be usize?
+    changes: ChangeSet,
+    /// State at last commit. Used for calculating reverts.
+    old_state: Option<State>,
+    /// Undo tree.
+    history: History,
+    /// Current document version, incremented at each change.
+    version: i32, // should be usize?
 
     pub diagnostics: Vec<Diagnostic>,
     pub language_server: Option<Arc<helix_lsp::Client>>,
@@ -90,23 +93,8 @@ impl Document {
 
         let mut doc = Self::new(State::new(doc));
 
-        if let Some(language_config) = LOADER.language_config_for_file_name(path.as_path()) {
-            let highlight_config = language_config.highlight_config(scopes).unwrap().unwrap();
-            // TODO: config.configure(scopes) is now delayed, is that ok?
-
-            let syntax = Syntax::new(&doc.state.doc, highlight_config.clone());
-
-            doc.syntax = Some(syntax);
-            // TODO: maybe just keep an Arc<> pointer to the language_config?
-            doc.language = Some(language_config.scope().to_string());
-
-            // TODO: this ties lsp support to tree-sitter enabled languages for now. Language
-            // config should use Option<HighlightConfig> to let us have non-tree-sitter configs.
-
-            // TODO: circular dep: view <-> lsp
-            // helix_lsp::REGISTRY;
-            // view should probably depend on lsp
-        };
+        let language_config = LOADER.language_config_for_file_name(path.as_path());
+        doc.set_language(language_config, scopes);
 
         // canonicalize path to absolute value
         doc.path = Some(std::fs::canonicalize(path)?);
@@ -140,15 +128,33 @@ impl Document {
         } // and_then notify save
     }
 
-    pub fn set_language(&mut self, scope: &str, scopes: &[String]) {
-        if let Some(language_config) = LOADER.language_config_for_scope(scope) {
+    pub fn set_language(
+        &mut self,
+        language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
+        scopes: &[String],
+    ) {
+        if let Some(language_config) = language_config {
+            // TODO: maybe just keep an Arc<> pointer to the language_config?
+            self.language = Some(language_config.scope().to_string());
+
+            // TODO: this ties lsp support to tree-sitter enabled languages for now. Language
+            // config should use Option<HighlightConfig> to let us have non-tree-sitter configs.
+
             let highlight_config = language_config.highlight_config(scopes).unwrap().unwrap();
             // TODO: config.configure(scopes) is now delayed, is that ok?
 
             let syntax = Syntax::new(&self.state.doc, highlight_config.clone());
 
             self.syntax = Some(syntax);
+        } else {
+            self.syntax = None;
+            self.language = None;
         };
+    }
+
+    pub fn set_language2(&mut self, scope: &str, scopes: &[String]) {
+        let language_config = LOADER.language_config_for_scope(scope);
+        self.set_language(language_config, scopes);
     }
 
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
@@ -238,9 +244,42 @@ impl Document {
         false
     }
 
+    pub fn append_changes_to_history(&mut self) {
+        if self.changes.is_empty() {
+            return;
+        }
+
+        // TODO: change -> change -> undo -> change -> change fails, probably old_state needs reset
+
+        let new_changeset = ChangeSet::new(self.text());
+        let changes = std::mem::replace(&mut self.changes, new_changeset);
+        // Instead of doing this messy merge we could always commit, and based on transaction
+        // annotations either add a new layer or compose into the previous one.
+        let transaction = Transaction::from(changes).with_selection(self.selection().clone());
+
+        // increment document version
+        self.version += 1;
+
+        // HAXX: we need to reconstruct the state as it was before the changes..
+        let old_state = self.old_state.take().expect("no old_state available");
+
+        self.history.commit_revision(&transaction, &old_state);
+    }
+
     #[inline]
     pub fn mode(&self) -> Mode {
         self.mode
+    }
+
+    #[inline]
+    /// Corresponding language scope name. Usually `source.<lang>`.
+    pub fn language(&self) -> Option<&str> {
+        self.language.as_ref().map(String::as_str)
+    }
+
+    #[inline]
+    pub fn version(&self) -> i32 {
+        self.version
     }
 
     #[inline]
