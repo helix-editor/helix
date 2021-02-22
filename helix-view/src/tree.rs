@@ -303,6 +303,27 @@ impl Tree {
         // For now that's okay though, since it's unlikely you'll be able to open a large enough
         // number of splits to notice.
 
+        // current = focus
+        // let found = loop do {
+        //   node = focus.parent;
+        //   let found = node.next_sibling_of(current)
+        //   if some {
+        //       break found;
+        //   }
+        //   // else
+        //   if node == root {
+        //       return first child of root;
+        //   };
+        //   current = parent;
+        //  }
+        // }
+        //
+        // use found next sibling
+        // loop do {
+        //   if found = view -> focus = found, return
+        //   if found = container -> found = first child
+        // }
+
         let iter = self.traverse();
 
         let mut iter = iter.skip_while(|&(key, _view)| key != self.focus);

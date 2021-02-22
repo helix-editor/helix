@@ -300,10 +300,11 @@ impl Document {
     }
 
     pub fn relative_path(&self) -> Option<&Path> {
-        self.path.as_ref().map(|path| {
-            path.strip_prefix(std::env::current_dir().unwrap())
-                .unwrap_or(path)
-        })
+        let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+
+        self.path
+            .as_ref()
+            .map(|path| path.strip_prefix(cwdir).unwrap_or(path))
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

@@ -27,8 +27,9 @@
 
 - [ ] regex search / select next
 - [ ] f / t mappings
+- [ ] open_above (O) command
 - [ ] = for auto indent line/selection
-- [ ] q should only close the view, if all are closed, close the editor
+- [x] q should only close the view, if all are closed, close the editor
 - [ ] buffers should sit on editor.buffers, view simply refs them
 
 
