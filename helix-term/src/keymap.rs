@@ -170,6 +170,7 @@ pub fn default() -> Keymaps {
                 vec![key!('x')] => commands::select_line,
                 vec![key!('/')] => commands::search,
                 vec![key!('n')] => commands::search_next,
+                vec![key!('*')] => commands::search_selection,
                 vec![key!('u')] => commands::undo,
                 vec![shift!('U')] => commands::redo,
                 vec![key!('y')] => commands::yank,

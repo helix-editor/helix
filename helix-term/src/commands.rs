@@ -1,7 +1,7 @@
 use helix_core::{
     comment, graphemes,
     indent::TAB_WIDTH,
-    regex::Regex,
+    regex::{self, Regex},
     register, selection,
     state::{Direction, Granularity, State},
     ChangeSet, Range, Selection, Tendril, Transaction,
@@ -410,6 +410,15 @@ pub fn search_next(cx: &mut Context) {
         let regex = Regex::new(&query).unwrap();
         _search(doc, &contents, &regex);
     }
+}
+
+pub fn search_selection(cx: &mut Context) {
+    let doc = cx.doc();
+    let contents = doc.text().slice(..);
+    let query = doc.selection().primary().fragment(contents);
+    let regex = regex::escape(&query);
+    register::set('\\', vec![regex]);
+    search_next(cx);
 }
 
 // TODO: N -> search_prev

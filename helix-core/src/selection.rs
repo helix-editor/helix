@@ -120,7 +120,7 @@ impl Range {
     // groupAt
 
     #[inline]
-    pub fn fragment<'a>(&'a self, text: RopeSlice<'a>) -> Cow<'a, str> {
+    pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
         Cow::from(text.slice(self.from()..self.to() + 1))
     }
 }
