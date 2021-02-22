@@ -605,15 +605,12 @@ pub fn open_below(cx: &mut Context) {
 
     let lines = selection_lines(&doc.state);
 
-    let positions: Vec<_> = lines
-        .into_iter()
-        .map(|index| {
-            // adjust all positions to the end of the line/start of the next one.
-            doc.text().line_to_char(index + 1)
-        })
-        .collect();
+    let positions = lines.into_iter().map(|index| {
+        // adjust all positions to the end of the line/start of the next one.
+        doc.text().line_to_char(index + 1)
+    });
 
-    let changes = positions.iter().copied().map(|index| {
+    let changes = positions.map(|index| {
         // TODO: share logic with insert_newline for indentation
         let indent_level = helix_core::indent::suggested_indent_for_pos(
             doc.syntax.as_ref(),
