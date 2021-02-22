@@ -175,24 +175,30 @@ impl Transport {
     }
 
     async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
-        match output {
+        let (id, result) = match output {
             jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
                 info!("<- {}", result);
-
-                let tx = self
-                    .pending_requests
-                    .remove(&id)
-                    .expect("pending_request with id not found!");
-                tx.send(Ok(result)).await?;
+                (id, Ok(result))
             }
             jsonrpc::Output::Failure(jsonrpc::Failure { id, error, .. }) => {
-                let tx = self
-                    .pending_requests
-                    .remove(&id)
-                    .expect("pending_request with id not found!");
-                tx.send(Err(error.into())).await?;
+                error!("<- {}", error);
+                (id, Err(error.into()))
             }
-        }
+        };
+
+        let tx = self
+            .pending_requests
+            .remove(&id)
+            .expect("pending_request with id not found!");
+
+        match tx.send(result).await {
+            Ok(_) => (),
+            Err(_) => error!(
+                "Tried sending response into a closed channel (id={:?}), original request likely timed out",
+                id
+            ),
+        };
+
         Ok(())
     }
 

@@ -121,11 +121,6 @@ impl Client {
 
         let response = serde_json::from_value(response)?;
 
-        // TODO: we should pass request to a sender thread via a channel
-        // so it can't be interleaved
-
-        // TODO: responses can be out of order, we need to register a single shot response channel
-
         Ok(response)
     }
 
