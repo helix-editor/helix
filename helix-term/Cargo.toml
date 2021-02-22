@@ -31,7 +31,7 @@ futures-util = "0.3"
 
 # Logging
 fern = "0.6"
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 
 # File picker

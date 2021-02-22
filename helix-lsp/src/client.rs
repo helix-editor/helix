@@ -189,12 +189,25 @@ impl Client {
             root_uri: None, // set to project root in the future
             initialization_options: None,
             capabilities: lsp::ClientCapabilities {
-                // text_document:
-                // { completion: {
-                //      dynamic_registration: bool
-                //      completion_item: { snippet, documentation_format, ... }
-                //      completion_item_kind: {  }
-                // } }
+                text_document: Some(lsp::TextDocumentClientCapabilities {
+                    completion: Some(lsp::CompletionClientCapabilities {
+                        completion_item: Some(lsp::CompletionItemCapability {
+                            snippet_support: Some(false), // TODO
+                            ..Default::default()
+                        }),
+                        completion_item_kind: Some(lsp::CompletionItemKindCapability {
+                            ..Default::default()
+                        }),
+                        context_support: None, // additional context information Some(true)
+                        ..Default::default()
+                    }),
+                    // { completion: {
+                    //      dynamic_registration: bool
+                    //      completion_item: { snippet, documentation_format, ... }
+                    //      completion_item_kind: {  }
+                    // } }
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             trace: None,
