@@ -900,14 +900,12 @@ pub fn save(cx: &mut Context) {
 }
 
 pub fn completion(cx: &mut Context) {
-    let language_server = cx
-        .editor
-        .language_servers
-        .get("source.rust", &cx.executor)
-        .unwrap();
-    use log::info;
-
     let doc = cx.doc();
+
+    let language_server = match doc.language_server.as_ref() {
+        Some(language_server) => language_server,
+        None => return,
+    };
 
     // TODO: blocking here is not ideal
     let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
