@@ -1,6 +1,7 @@
 use helix_core::{
     comment, graphemes,
     indent::TAB_WIDTH,
+    object,
     regex::{self, Regex},
     register, selection,
     state::{Direction, Granularity, State},
@@ -1022,4 +1023,16 @@ pub fn toggle_comments(cx: &mut Context) {
     let transaction = comment::toggle_line_comments(&doc.state);
 
     doc.apply(&transaction);
+}
+
+// tree sitter node selection
+
+pub fn expand_selection(cx: &mut Context) {
+    let doc = cx.doc();
+
+    if let Some(syntax) = &doc.syntax {
+        let text = doc.text().slice(..);
+        let selection = object::expand_selection(syntax, text, doc.selection());
+        doc.set_selection(selection);
+    }
 }

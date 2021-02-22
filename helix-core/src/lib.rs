@@ -5,6 +5,7 @@ pub mod graphemes;
 mod history;
 pub mod indent;
 pub mod macros;
+pub mod object;
 mod position;
 pub mod register;
 pub mod selection;

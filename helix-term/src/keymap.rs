@@ -164,10 +164,11 @@ pub fn default() -> Keymaps {
                 vec![alt!('s')] => commands::split_selection_on_newline,
                 vec![shift!('S')] => commands::split_selection,
                 vec![key!(';')] => commands::collapse_selection,
-                // TODO should be alt(;)
                 vec![alt!(';')] => commands::flip_selections,
                 vec![key!('%')] => commands::select_all,
                 vec![key!('x')] => commands::select_line,
+                // TODO: figure out what key to use
+                vec![key!('[')] => commands::expand_selection,
                 vec![key!('/')] => commands::search,
                 vec![key!('n')] => commands::search_next,
                 vec![key!('*')] => commands::search_selection,
