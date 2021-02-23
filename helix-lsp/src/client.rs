@@ -603,8 +603,6 @@ impl Client {
 
         let response = self.request::<lsp::request::GotoDefinition>(params).await?;
 
-        println!("{:?}", response);
-
         let items = match response {
             Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
             Some(lsp::GotoDefinitionResponse::Array(location_vec)) => location_vec,

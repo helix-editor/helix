@@ -861,6 +861,14 @@ pub fn goto_definition(cx: &mut Context) {
     let res =
         smol::block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
 
+    if res.len() == 1 {
+        let definition_pos = res.get(0).unwrap().range.start;
+        let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+        doc.set_selection(Selection::point(new_pos));
+    } else {
+        // show menu picker i guess
+    }
+
     doc.mode = Mode::Normal;
 }
 
