@@ -1,6 +1,7 @@
-use rayon::prelude::*;
 use std::path::PathBuf;
 use std::{env, fs};
+
+use std::sync::mpsc::channel;
 
 fn get_opt_level() -> u32 {
     env::var("OPT_LEVEL").unwrap().parse::<u32>().unwrap()
@@ -115,10 +116,25 @@ fn main() {
         "tree-sitter-cpp".to_string(),
     ];
     let dirs = collect_tree_sitter_dirs(ignore);
-    dirs.par_iter().for_each(|dir| {
-        let language = &dir[12..]; // skip tree-sitter- prefix
-        build_dir(&dir, &language);
-    });
+
+    let mut n_jobs = 0;
+    let pool = threadpool::Builder::new().build(); // by going through the builder, it'll use num_cpus
+    let (tx, rx) = channel();
+
+    for dir in dirs {
+        let tx = tx.clone();
+        n_jobs += 1;
+
+        pool.execute(move || {
+            let language = &dir[12..]; // skip tree-sitter- prefix
+            build_dir(&dir, &language);
+
+            // report progress
+            tx.send(1).unwrap();
+        });
+    }
+    assert_eq!(rx.iter().take(n_jobs).fold(0, |a, b| a + b), n_jobs);
+
     build_dir("tree-sitter-typescript/tsx", "tsx");
     build_dir("tree-sitter-typescript/typescript", "typescript");
 }
