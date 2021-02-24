@@ -120,76 +120,84 @@ impl State {
         }
     }
 
-    pub fn move_next_word_start(slice: RopeSlice, mut pos: usize) -> usize {
+    pub fn move_next_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
         // TODO: confirm it's fine without using graphemes, I think it should be
-        let ch = slice.char(pos);
-        let next = slice.char(pos.saturating_add(1));
-        if categorize(ch) != categorize(next) {
-            pos += 1;
+        for _ in 0..count {
+            let ch = slice.char(pos);
+            let next = slice.char(pos.saturating_add(1));
+            if categorize(ch) != categorize(next) {
+                pos += 1;
+            }
+
+            // refetch
+            let ch = slice.char(pos);
+
+            if is_word(ch) {
+                skip_over_next(slice, &mut pos, is_word);
+            } else if ch.is_ascii_punctuation() {
+                skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+            }
+
+            // TODO: don't include newline?
+            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
         }
-
-        // refetch
-        let ch = slice.char(pos);
-
-        if is_word(ch) {
-            skip_over_next(slice, &mut pos, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
-        }
-
-        // TODO: don't include newline?
-        skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
 
         pos
     }
 
-    pub fn move_prev_word_start(slice: RopeSlice, mut pos: usize) -> usize {
+    pub fn move_prev_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
         // TODO: confirm it's fine without using graphemes, I think it should be
-        let ch = slice.char(pos);
-        let prev = slice.char(pos.saturating_sub(1)); // TODO: just return original pos if at start
+        for _ in 0..count {
+            let ch = slice.char(pos);
+            let prev = slice.char(pos.saturating_sub(1)); // TODO: just return original pos if at start
 
-        if categorize(ch) != categorize(prev) {
-            pos -= 1;
+            if categorize(ch) != categorize(prev) {
+                pos -= 1;
+            }
+
+            // TODO: skip while eol
+
+            // TODO: don't include newline?
+            skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+
+            // refetch
+            let ch = slice.char(pos);
+
+            if is_word(ch) {
+                skip_over_prev(slice, &mut pos, is_word);
+            } else if ch.is_ascii_punctuation() {
+                skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+            }
+            pos = pos.saturating_add(1)
         }
 
-        // TODO: skip while eol
-
-        // TODO: don't include newline?
-        skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_whitespace());
-
-        // refetch
-        let ch = slice.char(pos);
-
-        if is_word(ch) {
-            skip_over_prev(slice, &mut pos, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_punctuation());
-        }
-
-        pos.saturating_add(1)
+        pos
     }
 
-    pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, _count: usize) -> usize {
-        // TODO: confirm it's fine without using graphemes, I think it should be
-        let ch = slice.char(pos);
-        let next = slice.char(pos.saturating_add(1));
-        if categorize(ch) != categorize(next) {
-            pos += 1;
+    pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
+        for _ in 0..count {
+            // TODO: confirm it's fine without using graphemes, I think it should be
+            let ch = slice.char(pos);
+            let next = slice.char(pos.saturating_add(1));
+            if categorize(ch) != categorize(next) {
+                pos += 1;
+            }
+
+            // TODO: don't include newline?
+            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+
+            // refetch
+            let ch = slice.char(pos);
+
+            if is_word(ch) {
+                skip_over_next(slice, &mut pos, is_word);
+            } else if ch.is_ascii_punctuation() {
+                skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+            }
+            pos = pos.saturating_sub(1)
         }
 
-        // TODO: don't include newline?
-        skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
-
-        // refetch
-        let ch = slice.char(pos);
-
-        if is_word(ch) {
-            skip_over_next(slice, &mut pos, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
-        }
-
-        pos.saturating_sub(1)
+        pos
     }
 
     pub fn move_selection(

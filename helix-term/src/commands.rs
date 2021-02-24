@@ -128,8 +128,7 @@ pub fn move_line_start(cx: &mut Context) {
 pub fn move_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    // TODO: count
-    let pos = State::move_next_word_start(doc.text().slice(..), doc.selection().cursor());
+    let pos = State::move_next_word_start(doc.text().slice(..), doc.selection().cursor(), count);
 
     doc.set_selection(Selection::point(pos));
 }
@@ -137,7 +136,7 @@ pub fn move_next_word_start(cx: &mut Context) {
 pub fn move_prev_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor());
+    let pos = State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor(), count);
 
     doc.set_selection(Selection::point(pos));
 }
@@ -169,11 +168,12 @@ pub fn move_file_end(cx: &mut Context) {
 pub fn extend_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let mut selection = doc.selection().transform(|mut range| {
-        let pos = State::move_next_word_start(doc.text().slice(..), doc.selection().cursor());
+    let selection = doc.selection().transform(|mut range| {
+        let pos =
+            State::move_next_word_start(doc.text().slice(..), doc.selection().cursor(), count);
         range.head = pos;
         range
-    }); // TODO: count
+    });
 
     doc.set_selection(selection);
 }
@@ -181,22 +181,23 @@ pub fn extend_next_word_start(cx: &mut Context) {
 pub fn extend_prev_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let mut selection = doc.selection().transform(|mut range| {
-        let pos = State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor());
+    let selection = doc.selection().transform(|mut range| {
+        let pos =
+            State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor(), count);
         range.head = pos;
         range
-    }); // TODO: count
+    });
     doc.set_selection(selection);
 }
 
 pub fn extend_next_word_end(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let mut selection = doc.selection().transform(|mut range| {
+    let selection = doc.selection().transform(|mut range| {
         let pos = State::move_next_word_end(doc.text().slice(..), doc.selection().cursor(), count);
         range.head = pos;
         range
-    }); // TODO: count
+    });
 
     doc.set_selection(selection);
 }
@@ -417,13 +418,13 @@ pub fn search_selection(cx: &mut Context) {
 //
 
 pub fn select_line(cx: &mut Context) {
-    // TODO: count
+    let count = cx.count;
     let doc = cx.doc();
     let pos = doc.selection().primary();
     let text = doc.text();
     let line = text.char_to_line(pos.head);
     let start = text.line_to_char(line);
-    let end = text.line_to_char(line + 1).saturating_sub(1);
+    let end = text.line_to_char(line + count).saturating_sub(1);
 
     doc.set_selection(Selection::single(start, end));
 }

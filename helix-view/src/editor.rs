@@ -12,7 +12,7 @@ pub struct Editor {
     pub tree: Tree,
     // pub documents: Vec<Document>,
     pub count: Option<usize>,
-    pub theme: Theme, // TODO: share one instance
+    pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 }
 
