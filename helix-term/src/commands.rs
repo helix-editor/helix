@@ -201,18 +201,6 @@ pub fn extend_next_word_end(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
-pub fn check_cursor_in_view(view: &View) -> bool {
-    let doc = &view.doc;
-    let cursor = doc.selection().cursor();
-    let line = doc.text().char_to_line(cursor);
-    let document_end = view.first_line + view.area.height.saturating_sub(1) as usize;
-
-    if (line > document_end.saturating_sub(PADDING)) || (line < view.first_line + PADDING) {
-        return false;
-    }
-    true
-}
-
 pub fn page_up(cx: &mut Context) {
     let view = cx.view();
     if view.first_line < PADDING {
@@ -221,7 +209,7 @@ pub fn page_up(cx: &mut Context) {
 
     view.first_line = view.first_line.saturating_sub(view.area.height as usize);
 
-    if !check_cursor_in_view(view) {
+    if !view.check_cursor_in_view() {
         let text = view.doc.text();
         let pos = text.line_to_char(view.last_line().saturating_sub(PADDING));
         view.doc.set_selection(Selection::point(pos));
@@ -249,7 +237,7 @@ pub fn half_page_up(cx: &mut Context) {
         .first_line
         .saturating_sub(view.area.height as usize / 2);
 
-    if !check_cursor_in_view(view) {
+    if !view.check_cursor_in_view() {
         let text = &view.doc.text();
         let pos = text.line_to_char(view.last_line() - PADDING);
         view.doc.set_selection(Selection::point(pos));
@@ -262,7 +250,7 @@ pub fn half_page_down(cx: &mut Context) {
     if view.first_line < lines.saturating_sub(view.area.height as usize) {
         view.first_line += view.area.height as usize / 2;
     }
-    if !check_cursor_in_view(view) {
+    if !view.check_cursor_in_view() {
         let text = view.doc.text();
         let pos = text.line_to_char(view.first_line as usize);
         view.doc.set_selection(Selection::point(pos));

@@ -27,12 +27,9 @@ pub struct LanguageConfiguration {
 }
 
 impl LanguageConfiguration {
-    pub fn highlight_config(
-        &self,
-        scopes: &[String],
-    ) -> Result<Option<&Arc<HighlightConfiguration>>, anyhow::Error> {
+    pub fn highlight_config(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
         self.highlight_config
-            .get_or_try_init(|| {
+            .get_or_init(|| {
                 // let name = get_language_name(&self.language_id);
 
                 let highlights_query =
@@ -46,7 +43,7 @@ impl LanguageConfiguration {
                 let locals_query = "";
 
                 if highlights_query.is_empty() {
-                    Ok(None)
+                    None
                 } else {
                     let language = get_language(self.language_id);
                     let mut config = HighlightConfiguration::new(
@@ -57,10 +54,10 @@ impl LanguageConfiguration {
                     )
                     .unwrap(); // TODO: no unwrap
                     config.configure(&scopes);
-                    Ok(Some(Arc::new(config)))
+                    Some(Arc::new(config))
                 }
             })
-            .map(Option::as_ref)
+            .clone()
     }
 
     pub fn scope(&self) -> &str {

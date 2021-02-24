@@ -140,10 +140,12 @@ impl Document {
             // TODO: this ties lsp support to tree-sitter enabled languages for now. Language
             // config should use Option<HighlightConfig> to let us have non-tree-sitter configs.
 
-            let highlight_config = language_config.highlight_config(scopes).unwrap().unwrap();
+            let highlight_config = language_config
+                .highlight_config(scopes)
+                .expect("No highlight_config found!");
             // TODO: config.configure(scopes) is now delayed, is that ok?
 
-            let syntax = Syntax::new(&self.state.doc, highlight_config.clone());
+            let syntax = Syntax::new(&self.state.doc, highlight_config);
 
             self.syntax = Some(syntax);
         } else {

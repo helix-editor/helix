@@ -35,6 +35,17 @@ impl View {
         Ok(view)
     }
 
+    pub fn check_cursor_in_view(&self) -> bool {
+        let cursor = self.doc.selection().cursor();
+        let line = self.doc.text().char_to_line(cursor);
+        let document_end = self.first_line + self.area.height.saturating_sub(1) as usize;
+
+        if (line > document_end.saturating_sub(PADDING)) || (line < self.first_line + PADDING) {
+            return false;
+        }
+        true
+    }
+
     pub fn ensure_cursor_in_view(&mut self) {
         let cursor = self.doc.state.selection().cursor();
         let line = self.doc.text().char_to_line(cursor);

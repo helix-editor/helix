@@ -293,7 +293,7 @@ where
         let language_config = crate::syntax::LOADER
             .language_config_for_scope("source.rust")
             .unwrap();
-        let highlight_config = language_config.highlight_config(&[]).unwrap().unwrap();
+        let highlight_config = language_config.highlight_config(&[]).unwrap();
         let syntax = Syntax::new(&state.doc, highlight_config.clone());
         let text = state.doc.slice(..);
 

@@ -255,11 +255,6 @@ impl Client {
         .await
     }
 
-    // TODO: this is dumb. TextEdit describes changes to the initial doc (concurrent), but
-    // TextDocumentContentChangeEvent describes a series of changes (sequential).
-    // So S -> S1 -> S2, meaning positioning depends on the previous edits.
-    //
-    // Calculation is therefore a bunch trickier.
     pub fn changeset_to_changes(
         old_text: &Rope,
         new_text: &Rope,
@@ -273,6 +268,12 @@ impl Client {
 
         use crate::util::pos_to_lsp_pos;
         use helix_core::Operation::*;
+
+        // this is dumb. TextEdit describes changes to the initial doc (concurrent), but
+        // TextDocumentContentChangeEvent describes a series of changes (sequential).
+        // So S -> S1 -> S2, meaning positioning depends on the previous edits.
+        //
+        // Calculation is therefore a bunch trickier.
 
         // TODO: stolen from syntax.rs, share
         use helix_core::RopeSlice;
@@ -397,8 +398,6 @@ impl Client {
         .await
     }
 
-    // TODO: impl into() TextDocumentIdentifier / VersionedTextDocumentIdentifier for Document.
-
     pub async fn text_document_did_close(
         &self,
         text_document: lsp::TextDocumentIdentifier,
@@ -411,15 +410,22 @@ impl Client {
 
     // will_save / will_save_wait_until
 
-    pub async fn text_document_did_save(&self) -> anyhow::Result<()> {
-        unimplemented!()
+    pub async fn text_document_did_save(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Result<()> {
+        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
+            text_document,
+            text: None, // TODO:
+        })
+        .await
     }
 
     pub async fn completion(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Vec<lsp::CompletionItem>> {
+    ) -> Result<Vec<lsp::CompletionItem>> {
         // TODO: figure out what should happen when you complete with multiple cursors
 
         let params = lsp::CompletionParams {

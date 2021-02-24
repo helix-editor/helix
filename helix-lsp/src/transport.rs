@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io;
 
 use log::{error, info};
 
@@ -128,7 +129,7 @@ impl Transport {
         Ok(())
     }
 
-    pub async fn send_payload(&mut self, payload: Payload) -> anyhow::Result<()> {
+    pub async fn send_payload(&mut self, payload: Payload) -> io::Result<()> {
         match payload {
             Payload::Request { chan, value } => {
                 self.pending_requests.insert(value.id.clone(), chan);
@@ -147,7 +148,7 @@ impl Transport {
         }
     }
 
-    pub async fn send(&mut self, request: String) -> anyhow::Result<()> {
+    pub async fn send(&mut self, request: String) -> io::Result<()> {
         info!("-> {}", request);
 
         // send the headers
@@ -174,7 +175,7 @@ impl Transport {
         Ok(())
     }
 
-    async fn recv_response(&mut self, output: jsonrpc::Output) -> anyhow::Result<()> {
+    async fn recv_response(&mut self, output: jsonrpc::Output) -> io::Result<()> {
         let (id, result) = match output {
             jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
                 info!("<- {}", result);
