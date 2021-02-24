@@ -217,7 +217,7 @@ impl State {
 pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
     let line = text.char_to_line(pos);
     let line_start = text.line_to_char(line);
-    let col = text.slice(line_start..pos).len_chars();
+    let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
     Position::new(line, col)
 }
 
@@ -225,6 +225,7 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 pub fn pos_at_coords(text: RopeSlice, coords: Position) -> usize {
     let Position { row, col } = coords;
     let line_start = text.line_to_char(row);
+    // line_start + col
     nth_next_grapheme_boundary(text, line_start, col)
 }
 
@@ -320,11 +321,26 @@ mod test {
     fn test_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         let slice = text.slice(..);
+        // assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
+        // assert_eq!(coords_at_pos(slice, 5), (0, 5).into()); // position on \n
+        // assert_eq!(coords_at_pos(slice, 6), (1, 0).into()); // position on w
+        // assert_eq!(coords_at_pos(slice, 7), (1, 1).into()); // position on o
+        // assert_eq!(coords_at_pos(slice, 10), (1, 4).into()); // position on d
+
+        // test with grapheme clusters
+        let text = Rope::from("a̐éö̲\r\n");
+        let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 5), (0, 5).into()); // position on \n
-        assert_eq!(coords_at_pos(slice, 6), (1, 0).into()); // position on w
-        assert_eq!(coords_at_pos(slice, 7), (1, 1).into()); // position on o
-        assert_eq!(coords_at_pos(slice, 10), (1, 4).into()); // position on d
+        assert_eq!(coords_at_pos(slice, 2), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 4), (0, 2).into());
+        assert_eq!(coords_at_pos(slice, 7), (0, 3).into());
+
+        let text = Rope::from("किमपि");
+        let slice = text.slice(..);
+        assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
+        assert_eq!(coords_at_pos(slice, 2), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 3), (0, 2).into());
+        assert_eq!(coords_at_pos(slice, 5), (0, 3).into());
     }
 
     #[test]
@@ -336,6 +352,23 @@ mod test {
         assert_eq!(pos_at_coords(slice, (1, 0).into()), 6); // position on w
         assert_eq!(pos_at_coords(slice, (1, 1).into()), 7); // position on o
         assert_eq!(pos_at_coords(slice, (1, 4).into()), 10); // position on d
+
+        // test with grapheme clusters
+        let text = Rope::from("a̐éö̲\r\n");
+        let slice = text.slice(..);
+        assert_eq!(pos_at_coords(slice, (0, 0).into()), 0);
+        assert_eq!(pos_at_coords(slice, (0, 1).into()), 2);
+        assert_eq!(pos_at_coords(slice, (0, 2).into()), 4);
+        assert_eq!(pos_at_coords(slice, (0, 3).into()), 7); // \r\n is one char here
+        assert_eq!(pos_at_coords(slice, (0, 4).into()), 9);
+        let text = Rope::from("किमपि");
+        // 2 - 1 - 2 codepoints
+        // TODO: delete handling as per https://news.ycombinator.com/item?id=20058454
+        let slice = text.slice(..);
+        assert_eq!(pos_at_coords(slice, (0, 0).into()), 0);
+        assert_eq!(pos_at_coords(slice, (0, 1).into()), 2);
+        assert_eq!(pos_at_coords(slice, (0, 2).into()), 3);
+        assert_eq!(pos_at_coords(slice, (0, 3).into()), 5); // eol
     }
 
     #[test]
