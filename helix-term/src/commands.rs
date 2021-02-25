@@ -470,8 +470,6 @@ pub fn flip_selections(cx: &mut Context) {
 
 fn enter_insert_mode(doc: &mut Document) {
     doc.mode = Mode::Insert;
-
-    // TODO: store selection for undo
 }
 
 // inserts at the start of each selection
@@ -493,10 +491,9 @@ pub fn append_mode(cx: &mut Context) {
 
     let text = doc.text().slice(..);
     let selection = doc.selection().transform(|range| {
-        // TODO: to() + next char
         Range::new(
             range.from(),
-            graphemes::next_grapheme_boundary(text, range.to()),
+            graphemes::next_grapheme_boundary(text, range.to()), // to() + next char
         )
     });
     doc.set_selection(selection);

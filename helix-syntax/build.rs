@@ -133,7 +133,7 @@ fn main() {
             tx.send(1).unwrap();
         });
     }
-    assert_eq!(rx.iter().take(n_jobs).fold(0, |a, b| a + b), n_jobs);
+    assert_eq!(rx.iter().take(n_jobs).sum::<usize>(), n_jobs);
 
     build_dir("tree-sitter-typescript/tsx", "tsx");
     build_dir("tree-sitter-typescript/typescript", "typescript");

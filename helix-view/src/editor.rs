@@ -33,6 +33,8 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, executor: &smol::Executor) -> Result<(), Error> {
+        // TODO: try to find an open view/buffer first
+
         let mut doc = Document::load(path, self.theme.scopes())?;
 
         // try to find a language server based on the language name
