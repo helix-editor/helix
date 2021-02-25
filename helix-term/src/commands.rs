@@ -5,7 +5,7 @@ use helix_core::{
     regex::{self, Regex},
     register, selection,
     state::{Direction, Granularity, State},
-    ChangeSet, Range, Selection, Tendril, Transaction,
+    Change, ChangeSet, Range, Selection, Tendril, Transaction,
 };
 
 use once_cell::sync::Lazy;
@@ -588,47 +588,51 @@ pub fn append_to_line(cx: &mut Context) {
 
 // o inserts a new line after each line with a selection
 pub fn open_below(cx: &mut Context) {
+    let count = cx.count;
     let doc = cx.doc();
     enter_insert_mode(doc);
 
     let lines = selection_lines(&doc.state);
 
     let positions = lines.into_iter().map(|index| {
-        // adjust all positions to the end of the line/start of the next one.
-        doc.text().line_to_char(index + 1)
+        // adjust all positions to the end of the line (next line minus one)
+        doc.text().line_to_char(index + 1).saturating_sub(1)
     });
 
-    let changes = positions.map(|index| {
-        // TODO: share logic with insert_newline for indentation
-        let indent_level = helix_core::indent::suggested_indent_for_pos(
-            doc.syntax.as_ref(),
-            &doc.state,
-            index - 1, // need to match the indentation to the prev line
-            true,
-        );
-        let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
-        let mut text = String::with_capacity(1 + indent.len());
-        text.push_str(&indent);
-        text.push('\n');
+    let changes: Vec<Change> = positions
+        .map(|index| {
+            // TODO: share logic with insert_newline for indentation
+            let indent_level = helix_core::indent::suggested_indent_for_pos(
+                doc.syntax.as_ref(),
+                &doc.state,
+                index,
+                true,
+            );
+            let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
+            let mut text = String::with_capacity(1 + indent.len());
+            text.push('\n');
+            text.push_str(&indent);
+            let text = text.repeat(count);
 
-        // TODO: ideally we want to run a hook over the transactions to figure out and reindent all
-        // \n's as a post-processing step?
-        // behaviors:
-        // - on insert mode enter: we add newline + indent and position cursor at the end
-        // - on 3o/3O: we insert 3 newlines + indents each and position cursors at ends
+            // TODO: ideally we want to run a hook over the transactions to figure out and reindent all
+            // \n's as a post-processing step?
+            // behaviors:
+            // - on insert mode enter: we add newline + indent and position cursor at the end
+            // - on 3o/3O: we insert 3 newlines + indents each and position cursors at ends
 
-        // generate changes
-        (index, index, Some(text.into()))
-    });
+            // generate changes
+            (index, index, Some(text.into()))
+        })
+        .collect();
 
     // TODO: count actually inserts "n" new lines and starts editing on all of them.
     // TODO: append "count" newlines and modify cursors to those lines
 
     let selection = Selection::new(
         changes
-            .clone()
-            .map(|(start, end, text): (usize, usize, Option<Tendril>)| {
-                let len = text.map(|text| text.len()).unwrap() - 1; // minus newline
+            .iter()
+            .map(|(start, _end, text): &Change| {
+                let len = text.as_ref().map(|text| text.len()).unwrap(); // minus newline
                 let pos = start + len;
                 Range::new(pos, pos)
             })
@@ -636,7 +640,8 @@ pub fn open_below(cx: &mut Context) {
         0,
     );
 
-    let transaction = Transaction::change(&doc.state, changes).with_selection(selection);
+    let transaction =
+        Transaction::change(&doc.state, changes.into_iter()).with_selection(selection);
 
     doc.apply(&transaction);
 }
