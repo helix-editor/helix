@@ -100,6 +100,7 @@ impl EditorView {
         let mut spans = Vec::new();
         let mut visual_x = 0;
         let mut line = 0u16;
+        let text = view.doc.text();
 
         'outer: for event in highlights {
             match event.unwrap() {
@@ -113,7 +114,6 @@ impl EditorView {
                     // TODO: filter out spans out of viewport for now..
 
                     // TODO: do these before iterating
-                    let text = view.doc.text();
                     let start = text.byte_to_char(start);
                     let end = text.byte_to_char(end);
 
@@ -160,8 +160,7 @@ impl EditorView {
                             let grapheme = Cow::from(grapheme);
                             let width = grapheme_width(&grapheme) as u16;
 
-                            // ugh, improve with a traverse method
-                            // or interleave highlight spans with selection and diagnostic spans
+                            // ugh,interleave highlight spans with diagnostic spans
                             let is_diagnostic = view.doc.diagnostics.iter().any(|diagnostic| {
                                 diagnostic.range.0 <= char_index && diagnostic.range.1 > char_index
                             });
@@ -191,12 +190,12 @@ impl EditorView {
         // render selections
 
         if is_focused {
-            let text = view.doc.text().slice(..);
             let screen = {
                 let start = text.line_to_char(view.first_line);
                 let end = text.line_to_char(last_line + 1);
                 Range::new(start, end)
             };
+            let text = text.slice(..);
             let cursor_style = Style::default().bg(Color::Rgb(255, 255, 255));
 
             // cedar

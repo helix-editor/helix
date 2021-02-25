@@ -201,11 +201,12 @@ impl Client {
                         context_support: None, // additional context information Some(true)
                         ..Default::default()
                     }),
-                    // { completion: {
-                    //      dynamic_registration: bool
-                    //      completion_item: { snippet, documentation_format, ... }
-                    //      completion_item_kind: {  }
-                    // } }
+                    hover: Some(lsp::HoverClientCapabilities {
+                        // if not specified, rust-analyzer returns plaintext marked as markdown but
+                        // badly formatted.
+                        content_format: Some(vec![lsp::MarkupKind::Markdown]),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -457,5 +458,52 @@ impl Client {
         };
 
         Ok(items)
+    }
+
+    pub async fn text_document_signature_help(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Option<lsp::SignatureHelp>> {
+        let params = lsp::SignatureHelpParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            // TODO: support these tokens
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            context: None,
+            // lsp::SignatureHelpContext
+        };
+
+        let response = self
+            .request::<lsp::request::SignatureHelpRequest>(params)
+            .await?;
+
+        Ok(response)
+    }
+
+    pub async fn text_document_hover(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Option<lsp::Hover>> {
+        let params = lsp::HoverParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            // TODO: support these tokens
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            // lsp::SignatureHelpContext
+        };
+
+        let response = self.request::<lsp::request::HoverRequest>(params).await?;
+
+        Ok(response)
     }
 }

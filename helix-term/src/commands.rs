@@ -11,7 +11,7 @@ use helix_core::{
 use once_cell::sync::Lazy;
 
 use crate::compositor::Compositor;
-use crate::ui::{self, Prompt, PromptEvent};
+use crate::ui::{self, Popup, Prompt, PromptEvent};
 
 use helix_view::{
     document::Mode,
@@ -997,6 +997,63 @@ pub fn completion(cx: &mut Context) {
         // TODO!: when iterating over items, show the docs in popup
 
         // language server client needs to be accessible via a registry of some sort
+    }
+}
+
+pub fn hover(cx: &mut Context) {
+    use helix_lsp::lsp;
+
+    let doc = cx.doc();
+
+    let language_server = match doc.language_server.as_ref() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
+
+    // TODO: blocking here is not ideal, make commands async fn?
+    // not like we can process additional input meanwhile though
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+
+    // TODO: handle fails
+    let res = smol::block_on(language_server.text_document_hover(doc.identifier(), pos))
+        .unwrap_or_default();
+
+    if let Some(hover) = res {
+        // hover.contents / .range <- used for visualizing
+        let contents = match hover.contents {
+            lsp::HoverContents::Scalar(contents) => {
+                // markedstring(string/languagestring to be highlighted)
+                // TODO
+                unimplemented!("{:?}", contents)
+            }
+            lsp::HoverContents::Array(contents) => {
+                unimplemented!("{:?}", contents)
+            }
+            // TODO: render markdown
+            lsp::HoverContents::Markup(contents) => contents.value,
+        };
+
+        // skip if contents empty
+
+        // Popup: box frame + Box<Component> for internal content.
+        // it will use the contents.size_hint/required size to figure out sizing & positioning
+        // can also use render_buffer to render the content.
+        // render_buffer(highlights/scopes, text, surface, theme)
+        //
+        let mut popup = Popup::new(contents);
+
+        cx.callback = Some(Box::new(
+            move |compositor: &mut Compositor, editor: &mut Editor| {
+                let area = tui::layout::Rect::default(); // TODO: unused remove from cursor_position
+                let mut pos = compositor.cursor_position(area, editor);
+                pos.row += 1; // shift down by one row
+                popup.set_position(pos);
+
+                compositor.push(Box::new(popup));
+            },
+        ));
     }
 }
 

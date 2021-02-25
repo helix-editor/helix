@@ -203,6 +203,8 @@ pub fn default() -> Keymaps {
 
                 // move under <space>c
                 vec![ctrl!('c')] => commands::toggle_comments,
+                // was K, figure out a key
+                vec![ctrl!('k')] => commands::hover,
             ),
             Mode::Insert => hashmap!(
                 vec![Key {

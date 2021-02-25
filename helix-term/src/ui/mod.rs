@@ -1,11 +1,13 @@
 mod editor;
 mod menu;
 mod picker;
+mod popup;
 mod prompt;
 
 pub use editor::EditorView;
 pub use menu::Menu;
 pub use picker::Picker;
+pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 
 pub use tui::layout::Rect;
