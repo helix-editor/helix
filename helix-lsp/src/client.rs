@@ -506,4 +506,71 @@ impl Client {
 
         Ok(response)
     }
+
+    // formatting
+
+    pub async fn text_document_formatting(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        options: lsp::FormattingOptions,
+    ) -> anyhow::Result<Vec<lsp::TextEdit>> {
+        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+
+        // check if we're able to format
+        let _capabilities = match capabilities.document_formatting_provider {
+            Some(lsp::OneOf::Left(true)) => (),
+            Some(lsp::OneOf::Right(_)) => (),
+            // None | Some(false)
+            _ => return Ok(Vec::new()),
+        };
+        // TODO: return err::unavailable so we can fall back to tree sitter formatting
+
+        let params = lsp::DocumentFormattingParams {
+            text_document,
+            options,
+            // TODO: support these tokens
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::Formatting>(params).await?;
+
+        Ok(response.unwrap_or_default())
+    }
+
+    pub async fn text_document_range_formatting(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+        options: lsp::FormattingOptions,
+    ) -> anyhow::Result<Vec<lsp::TextEdit>> {
+        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+
+        log::info!("{:?}", capabilities.document_range_formatting_provider);
+        // check if we're able to format
+        let _capabilities = match capabilities.document_range_formatting_provider {
+            Some(lsp::OneOf::Left(true)) => (),
+            Some(lsp::OneOf::Right(_)) => (),
+            // None | Some(false)
+            _ => return Ok(Vec::new()),
+        };
+        // TODO: return err::unavailable so we can fall back to tree sitter formatting
+
+        let params = lsp::DocumentRangeFormattingParams {
+            text_document,
+            range,
+            options,
+            // TODO: support these tokens
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp::request::RangeFormatting>(params)
+            .await?;
+
+        Ok(response.unwrap_or_default())
+    }
 }

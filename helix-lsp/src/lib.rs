@@ -28,7 +28,7 @@ pub enum Error {
 
 pub mod util {
     use super::*;
-    use helix_core::{RopeSlice, State, Transaction};
+    use helix_core::{Range, RopeSlice, State, Transaction};
 
     pub fn lsp_pos_to_pos(doc: RopeSlice, pos: lsp::Position) -> usize {
         let line = doc.line_to_char(pos.line as usize);
@@ -41,6 +41,13 @@ pub mod util {
         let col = doc.char_to_utf16_cu(pos) - line_start;
 
         lsp::Position::new(line as u32, col as u32)
+    }
+
+    pub fn range_to_lsp_range(doc: RopeSlice, range: Range) -> lsp::Range {
+        let start = pos_to_lsp_pos(doc, range.from());
+        let end = pos_to_lsp_pos(doc, range.to());
+
+        lsp::Range::new(start, end)
     }
 
     pub fn generate_transaction_from_edits(

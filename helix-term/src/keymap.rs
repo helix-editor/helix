@@ -178,6 +178,7 @@ pub fn default() -> Keymaps {
                 vec![key!('p')] => commands::paste,
                 vec![key!('>')] => commands::indent,
                 vec![key!('<')] => commands::unindent,
+                vec![key!('=')] => commands::format_selections,
                 vec![key!(':')] => commands::command_mode,
                 vec![Key {
                     code: KeyCode::Esc,

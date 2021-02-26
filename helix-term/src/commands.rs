@@ -888,6 +888,47 @@ pub fn unindent(cx: &mut Context) {
     doc.append_changes_to_history();
 }
 
+pub fn format_selections(cx: &mut Context) {
+    use helix_lsp::lsp;
+    let doc = cx.doc();
+
+    // via lsp if available
+    // else via tree-sitter indentation calculations
+
+    // TODO: blocking here is not ideal
+
+    let ranges: Vec<lsp::Range> = doc
+        .selection()
+        .ranges()
+        .iter()
+        .map(|range| {
+            helix_lsp::util::range_to_lsp_range(doc.text().slice(..), doc.selection().primary())
+        })
+        .collect();
+
+    for range in ranges {
+        let language_server = match doc.language_server.as_ref() {
+            Some(language_server) => language_server,
+            None => return,
+        };
+
+        // TODO: handle fails
+        // TODO: concurrent map
+        let edits = smol::block_on(language_server.text_document_range_formatting(
+            doc.identifier(),
+            range,
+            lsp::FormattingOptions::default(),
+        ))
+        .unwrap_or_default();
+
+        let transaction = helix_lsp::util::generate_transaction_from_edits(&doc.state, edits);
+
+        doc.apply(&transaction);
+    }
+
+    doc.append_changes_to_history();
+}
+
 //
 
 pub fn save(cx: &mut Context) {

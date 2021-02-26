@@ -17,7 +17,6 @@
 - [x] retain horiz when moving vertically
 - [w] retain horiz when moving via ctrl-u/d
 - [x] deindent
-- [ ] ensure_cursor_in_view always before rendering? or always in app after event process?
 - [x] update lsp on redo/undo
 - [ ] Implement marks (superset of Selection/Range)
 - [ ] ctrl-v/ctrl-x on file picker
