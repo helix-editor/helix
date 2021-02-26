@@ -62,7 +62,7 @@ pub fn nth_prev_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -
             }
         }
     }
-    let tmp = byte_to_char_idx(chunk, byte_idx + chunk_byte_idx);
+    let tmp = byte_to_char_idx(chunk, byte_idx - chunk_byte_idx);
     chunk_char_idx + tmp
 }
 
