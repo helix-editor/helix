@@ -292,7 +292,8 @@ fn categorize(ch: char) -> Category {
     }
 }
 
-fn skip_over_next<F>(slice: RopeSlice, pos: &mut usize, fun: F)
+#[inline]
+pub fn skip_over_next<F>(slice: RopeSlice, pos: &mut usize, fun: F)
 where
     F: Fn(char) -> bool,
 {
@@ -306,7 +307,8 @@ where
     }
 }
 
-fn skip_over_prev<F>(slice: RopeSlice, pos: &mut usize, fun: F)
+#[inline]
+pub fn skip_over_prev<F>(slice: RopeSlice, pos: &mut usize, fun: F)
 where
     F: Fn(char) -> bool,
 {

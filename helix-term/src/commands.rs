@@ -308,6 +308,7 @@ pub fn select_regex(cx: &mut Context) {
     let prompt = ui::regex_prompt(cx, "select:".to_string(), |doc, regex| {
         let text = doc.text().slice(..);
         // TODO: if select on matches returns empty range, we need to abort
+        // if regex empty or no matches, return
         let selection =
             selection::select_on_matches(text, doc.selection(), &regex).expect("no matches");
         doc.set_selection(selection);
@@ -926,6 +927,50 @@ pub fn format_selections(cx: &mut Context) {
         doc.apply(&transaction);
     }
 
+    doc.append_changes_to_history();
+}
+
+pub fn join_selections(cx: &mut Context) {
+    use helix_core::state::skip_over_next;
+    let doc = cx.doc();
+    let text = doc.text();
+    let slice = doc.text().slice(..);
+
+    let mut changes = Vec::new();
+    let fragment = Tendril::from(" ");
+
+    for selection in doc.selection().ranges() {
+        let start = text.char_to_line(selection.from());
+        let mut end = text.char_to_line(selection.to());
+        if start == end {
+            end += 1
+        }
+        let lines = start..end;
+
+        changes.reserve(lines.len());
+
+        for line in lines {
+            let mut start = text.line_to_char(line + 1).saturating_sub(1);
+            let mut end = start + 1;
+            skip_over_next(slice, &mut end, |ch| matches!(ch, ' ' | '\t'));
+
+            // need to skip from start, not end
+            let change = (start, end, Some(fragment.clone()));
+            changes.push(change);
+        }
+    }
+
+    changes.sort_unstable_by_key(|(from, _to, _text)| *from);
+    changes.dedup();
+
+    // TODO: joining multiple empty lines should be replaced by a single space.
+    // need to merge change ranges that touch
+
+    let transaction = Transaction::change(&doc.state, changes.into_iter());
+    // TODO: select inserted spaces
+    // .with_selection(selection);
+
+    doc.apply(&transaction);
     doc.append_changes_to_history();
 }
 

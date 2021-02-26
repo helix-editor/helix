@@ -138,28 +138,35 @@ pub fn default() -> Keymaps {
                 vec![key!('h')] => commands::move_char_left as Command,
                 vec![key!('j')] => commands::move_line_down,
                 vec![key!('k')] => commands::move_line_up,
+                vec![key!('l')] => commands::move_char_right,
+
                 vec![key!('0')] => commands::move_line_start,
                 vec![key!('$')] => commands::move_line_end,
-                vec![key!('l')] => commands::move_char_right,
+
                 vec![shift!('H')] => commands::extend_char_left,
                 vec![shift!('J')] => commands::extend_line_down,
                 vec![shift!('K')] => commands::extend_line_up,
                 vec![shift!('L')] => commands::extend_char_right,
+
                 vec![key!('w')] => commands::move_next_word_start,
                 vec![shift!('W')] => commands::extend_next_word_start,
                 vec![key!('b')] => commands::move_prev_word_start,
                 vec![shift!('B')] => commands::extend_prev_word_start,
                 vec![key!('e')] => commands::move_next_word_end,
                 vec![key!('E')] => commands::extend_next_word_end,
-                // TODO: E
+
                 vec![key!('g')] => commands::goto_mode,
+                vec![key!(':')] => commands::command_mode,
+
                 vec![key!('i')] => commands::insert_mode,
                 vec![shift!('I')] => commands::prepend_to_line,
                 vec![key!('a')] => commands::append_mode,
                 vec![shift!('A')] => commands::append_to_line,
                 vec![key!('o')] => commands::open_below,
+
                 vec![key!('d')] => commands::delete_selection,
                 vec![key!('c')] => commands::change_selection,
+
                 vec![key!('s')] => commands::select_regex,
                 vec![alt!('s')] => commands::split_selection_on_newline,
                 vec![shift!('S')] => commands::split_selection,
@@ -167,19 +174,24 @@ pub fn default() -> Keymaps {
                 vec![alt!(';')] => commands::flip_selections,
                 vec![key!('%')] => commands::select_all,
                 vec![key!('x')] => commands::select_line,
+
                 // TODO: figure out what key to use
                 vec![key!('[')] => commands::expand_selection,
+
                 vec![key!('/')] => commands::search,
                 vec![key!('n')] => commands::search_next,
                 vec![key!('*')] => commands::search_selection,
+
                 vec![key!('u')] => commands::undo,
                 vec![shift!('U')] => commands::redo,
+
                 vec![key!('y')] => commands::yank,
                 vec![key!('p')] => commands::paste,
+
                 vec![key!('>')] => commands::indent,
                 vec![key!('<')] => commands::unindent,
                 vec![key!('=')] => commands::format_selections,
-                vec![key!(':')] => commands::command_mode,
+                vec![ctrl!('j')] => commands::join_selections,
                 vec![Key {
                     code: KeyCode::Esc,
                     modifiers: Modifiers::NONE
