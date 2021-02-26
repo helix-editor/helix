@@ -231,6 +231,7 @@ impl Tree {
                 Content::View(view) => {
                     // debug!!("setting view area {:?}", area);
                     view.area = area;
+                    view.ensure_cursor_in_view();
                 } // TODO: call f()
                 Content::Container(container) => {
                     // debug!!("setting container area {:?}", area);
