@@ -861,15 +861,42 @@ pub fn goto_definition(cx: &mut Context) {
     let res =
         smol::block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
 
+    /*
     if res.len() == 1 {
         let definition_pos = res.get(0).unwrap().range.start;
         let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
         doc.set_selection(Selection::point(new_pos));
     } else {
         // show menu picker i guess
-    }
+    }*/
 
     doc.mode = Mode::Normal;
+
+    match &res.as_slice() {
+        [location] => {
+            let definition_pos = location.range.start;
+            let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+            doc.set_selection(Selection::point(new_pos));
+        }
+        [] => (), // maybe show user message that no definition was found?
+        _ => {
+            let snapshot = doc.state.clone();
+            let mut picker = ui::Picker::new(
+                res,
+                |item| {
+                    let file = item.uri.as_str();
+                    let line = item.range.start.line.to_string();
+                    format!("{}:{}", file, line).into()
+                },
+                move |editor: &mut Editor, item| {
+                    let doc = &mut editor.view_mut().doc;
+
+                    // revert state to what it was before the last update
+                    doc.state = snapshot.clone();
+                },
+            );
+        }
+    }
 }
 
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
