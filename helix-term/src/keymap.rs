@@ -177,7 +177,7 @@ pub fn default() -> Keymaps {
         alt!(';') => commands::flip_selections,
         key!('%') => commands::select_all,
         key!('x') => commands::select_line,
-        // key!('X') => commands::extend_line,
+        shift!('X') => commands::extend_line,
         // or select mode X?
         // extend_to_whole_line, crop_to_whole_line
 

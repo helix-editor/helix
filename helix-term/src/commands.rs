@@ -429,6 +429,25 @@ pub fn select_line(cx: &mut Context) {
 
     doc.set_selection(Selection::single(start, end));
 }
+pub fn extend_line(cx: &mut Context) {
+    let count = cx.count;
+    let doc = cx.doc();
+
+    let pos = doc.selection().primary();
+    let text = doc.text();
+
+    let line_start = text.char_to_line(pos.anchor);
+    let mut line = text.char_to_line(pos.head);
+    let line_end = text.line_to_char(line + 1).saturating_sub(1);
+    if line_start <= pos.anchor && pos.head == line_end && line != text.len_lines() {
+        line += 1;
+    }
+
+    let start = text.line_to_char(line_start);
+    let end = text.line_to_char(line + 1).saturating_sub(1);
+
+    doc.set_selection(Selection::single(start, end));
+}
 
 // heuristic: append changes to history after each command, unless we're in insert mode
 
