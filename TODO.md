@@ -8,7 +8,7 @@
 ------
 
 1
-- [ ] selection mode
+- [x] selection mode
 - [x] % for whole doc selection
 - [x] vertical splits
 - [x] input counts (30j)

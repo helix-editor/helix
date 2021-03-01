@@ -10,6 +10,7 @@ use helix_core::{
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
+    Select,
     Insert,
     Goto,
 }

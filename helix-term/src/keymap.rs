@@ -91,7 +91,7 @@ use std::collections::HashMap;
 pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 
 // TODO: could be trie based
-pub type Keymap = HashMap<Vec<Key>, Command>;
+pub type Keymap = HashMap<Key, Command>;
 pub type Keymaps = HashMap<Mode, Keymap>;
 
 macro_rules! key {
@@ -131,125 +131,180 @@ macro_rules! alt {
 }
 
 pub fn default() -> Keymaps {
+    let normal = hashmap!(
+        key!('h') => commands::move_char_left as Command,
+        key!('j') => commands::move_line_down,
+        key!('k') => commands::move_line_up,
+        key!('l') => commands::move_char_right,
+
+        // key!('t') => commands::till_next_char,
+        // key!('f') => commands::find_next_char,
+        // key!('T') => commands::till_prev_char,
+        // key!('f') => commands::find_prev_char,
+        // and matching set for select mode (extend)
+
+        key!('0') => commands::move_line_start,
+        key!('$') => commands::move_line_end,
+
+        key!('w') => commands::move_next_word_start,
+        key!('b') => commands::move_prev_word_start,
+        key!('e') => commands::move_next_word_end,
+
+        key!('v') => commands::select_mode,
+        key!('g') => commands::goto_mode,
+        key!(':') => commands::command_mode,
+
+        key!('i') => commands::insert_mode,
+        shift!('I') => commands::prepend_to_line,
+        key!('a') => commands::append_mode,
+        shift!('A') => commands::append_to_line,
+        key!('o') => commands::open_below,
+        // key!('O') => commands::open_above,
+        // [<space>  ]<space> equivalents too (add blank new line, no edit)
+
+
+        key!('d') => commands::delete_selection,
+        // TODO: also delete without yanking
+        key!('c') => commands::change_selection,
+        // TODO: also change delete without yanking
+
+        // key!('r') => commands::replace_with_char,
+
+        key!('s') => commands::select_regex,
+        alt!('s') => commands::split_selection_on_newline,
+        shift!('S') => commands::split_selection,
+        key!(';') => commands::collapse_selection,
+        alt!(';') => commands::flip_selections,
+        key!('%') => commands::select_all,
+        key!('x') => commands::select_line,
+        // key!('X') => commands::extend_line,
+        // or select mode X?
+        // extend_to_whole_line, crop_to_whole_line
+
+        // key!('m') => commands::select_to_matching,
+        // key!('M') => commands::back_select_to_matching,
+        // select mode extend equivalents
+
+        // key!('.') => commands::repeat_insert,
+        // repeat_select
+
+        // TODO: figure out what key to use
+        key!('[') => commands::expand_selection,
+
+        key!('/') => commands::search,
+        key!('n') => commands::search_next,
+        key!('*') => commands::search_selection,
+
+        key!('u') => commands::undo,
+        shift!('U') => commands::redo,
+
+        key!('y') => commands::yank,
+        // yank_all
+        key!('p') => commands::paste,
+        // paste_all
+
+        key!('>') => commands::indent,
+        key!('<') => commands::unindent,
+        key!('=') => commands::format_selections,
+        shift!('J') => commands::join_selections,
+        shift!('K') => commands::keep_selections,
+
+        // key!('q') => commands::record_macro,
+        // key!('Q') => commands::replay_macro,
+
+        // ~ / apostrophe => change case
+        // & align selections
+        // _ trim selections
+
+        // C / altC = copy (repeat) selections on prev/next lines
+
+        Key {
+            code: KeyCode::Esc,
+            modifiers: Modifiers::NONE
+        } => commands::normal_mode,
+        Key {
+            code: KeyCode::PageUp,
+            modifiers: Modifiers::NONE
+        } => commands::page_up,
+        Key {
+            code: KeyCode::PageDown,
+            modifiers: Modifiers::NONE
+        } => commands::page_down,
+        ctrl!('u') => commands::half_page_up,
+        ctrl!('d') => commands::half_page_down,
+
+        ctrl!('p') => commands::file_picker,
+        ctrl!('b') => commands::buffer_picker,
+        Key {
+            code: KeyCode::Tab,
+            modifiers: Modifiers::NONE
+        } => commands::next_view,
+
+        // move under <space>c
+        ctrl!('c') => commands::toggle_comments,
+        ctrl!('K') => commands::hover,
+
+        // z family for save/restore/combine from/to sels from register
+    );
+    // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
+    // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
+    // because some selection operations can now be done from normal mode, some from select mode.
+    let mut select = normal.clone();
+    select.extend(
+        hashmap!(
+            key!('h') => commands::extend_char_left as Command,
+            key!('j') => commands::extend_line_down,
+            key!('k') => commands::extend_line_up,
+            key!('l') => commands::extend_char_right,
+
+            key!('w') => commands::extend_next_word_start,
+            key!('b') => commands::extend_prev_word_start,
+            key!('e') => commands::extend_next_word_end,
+
+            Key {
+                code: KeyCode::Esc,
+                modifiers: Modifiers::NONE
+            } => commands::exit_select_mode as Command,
+        )
+        .into_iter(),
+    );
+
     hashmap!(
-        Mode::Normal =>
-            // as long as you cast the first item, rust is able to infer the other cases
-            hashmap!(
-                vec![key!('h')] => commands::move_char_left as Command,
-                vec![key!('j')] => commands::move_line_down,
-                vec![key!('k')] => commands::move_line_up,
-                vec![key!('l')] => commands::move_char_right,
+        // as long as you cast the first item, rust is able to infer the other cases
+        // TODO: select could be normal mode with some bindings merged over
+        Mode::Normal => normal,
+        Mode::Select => select,
+        Mode::Insert => hashmap!(
+            Key {
+                code: KeyCode::Esc,
+                modifiers: Modifiers::NONE
+            } => commands::normal_mode as Command,
+            Key {
+                code: KeyCode::Backspace,
+                modifiers: Modifiers::NONE
+            } => commands::insert::delete_char_backward,
+            Key {
+                code: KeyCode::Delete,
+                modifiers: Modifiers::NONE
+            } => commands::insert::delete_char_forward,
+            Key {
+                code: KeyCode::Enter,
+                modifiers: Modifiers::NONE
+            } => commands::insert::insert_newline,
+            Key {
+                code: KeyCode::Tab,
+                modifiers: Modifiers::NONE
+            } => commands::insert::insert_tab,
 
-                vec![key!('0')] => commands::move_line_start,
-                vec![key!('$')] => commands::move_line_end,
-
-                vec![shift!('H')] => commands::extend_char_left,
-                vec![shift!('J')] => commands::extend_line_down,
-                vec![shift!('K')] => commands::extend_line_up,
-                vec![shift!('L')] => commands::extend_char_right,
-
-                vec![key!('w')] => commands::move_next_word_start,
-                vec![shift!('W')] => commands::extend_next_word_start,
-                vec![key!('b')] => commands::move_prev_word_start,
-                vec![shift!('B')] => commands::extend_prev_word_start,
-                vec![key!('e')] => commands::move_next_word_end,
-                vec![key!('E')] => commands::extend_next_word_end,
-
-                vec![key!('g')] => commands::goto_mode,
-                vec![key!(':')] => commands::command_mode,
-
-                vec![key!('i')] => commands::insert_mode,
-                vec![shift!('I')] => commands::prepend_to_line,
-                vec![key!('a')] => commands::append_mode,
-                vec![shift!('A')] => commands::append_to_line,
-                vec![key!('o')] => commands::open_below,
-
-                vec![key!('d')] => commands::delete_selection,
-                vec![key!('c')] => commands::change_selection,
-
-                vec![key!('s')] => commands::select_regex,
-                vec![alt!('s')] => commands::split_selection_on_newline,
-                vec![shift!('S')] => commands::split_selection,
-                vec![key!(';')] => commands::collapse_selection,
-                vec![alt!(';')] => commands::flip_selections,
-                vec![key!('%')] => commands::select_all,
-                vec![key!('x')] => commands::select_line,
-
-                // TODO: figure out what key to use
-                vec![key!('[')] => commands::expand_selection,
-
-                vec![key!('/')] => commands::search,
-                vec![key!('n')] => commands::search_next,
-                vec![key!('*')] => commands::search_selection,
-
-                vec![key!('u')] => commands::undo,
-                vec![shift!('U')] => commands::redo,
-
-                vec![key!('y')] => commands::yank,
-                vec![key!('p')] => commands::paste,
-
-                vec![key!('>')] => commands::indent,
-                vec![key!('<')] => commands::unindent,
-                vec![key!('=')] => commands::format_selections,
-                vec![ctrl!('j')] => commands::join_selections,
-                vec![Key {
-                    code: KeyCode::Esc,
-                    modifiers: Modifiers::NONE
-                }] => commands::normal_mode,
-                vec![Key {
-                    code: KeyCode::PageUp,
-                    modifiers: Modifiers::NONE
-                }] => commands::page_up,
-                vec![Key {
-                    code: KeyCode::PageDown,
-                    modifiers: Modifiers::NONE
-                }] => commands::page_down,
-                vec![ctrl!('u')] => commands::half_page_up,
-                vec![ctrl!('d')] => commands::half_page_down,
-
-                vec![ctrl!('p')] => commands::file_picker,
-                vec![ctrl!('b')] => commands::buffer_picker,
-                vec![Key {
-                    code: KeyCode::Tab,
-                    modifiers: Modifiers::NONE
-                }] => commands::next_view,
-
-                // move under <space>c
-                vec![ctrl!('c')] => commands::toggle_comments,
-                // was K, figure out a key
-                vec![ctrl!('k')] => commands::hover,
-            ),
-            Mode::Insert => hashmap!(
-                vec![Key {
-                    code: KeyCode::Esc,
-                    modifiers: Modifiers::NONE
-                }] => commands::normal_mode as Command,
-                vec![Key {
-                    code: KeyCode::Backspace,
-                    modifiers: Modifiers::NONE
-                }] => commands::insert::delete_char_backward,
-                vec![Key {
-                    code: KeyCode::Delete,
-                    modifiers: Modifiers::NONE
-                }] => commands::insert::delete_char_forward,
-                vec![Key {
-                    code: KeyCode::Enter,
-                    modifiers: Modifiers::NONE
-                }] => commands::insert::insert_newline,
-                vec![Key {
-                    code: KeyCode::Tab,
-                    modifiers: Modifiers::NONE
-                }] => commands::insert::insert_tab,
-
-                vec![ctrl!('x')] => commands::completion,
-            ),
-            Mode::Goto => hashmap!(
-                vec![Key {
-                    code: KeyCode::Esc,
-                    modifiers: Modifiers::NONE
-                }] => commands::normal_mode as Command,
-                vec![key!('g')] => commands::move_file_start as Command,
-                vec![key!('e')] => commands::move_file_end as Command,
-            ),
+            ctrl!('x') => commands::completion,
+        ),
+        Mode::Goto => hashmap!(
+            Key {
+                code: KeyCode::Esc,
+                modifiers: Modifiers::NONE
+            } => commands::normal_mode as Command,
+            key!('g') => commands::move_file_start as Command,
+            key!('e') => commands::move_file_end as Command,
+        ),
     )
 }

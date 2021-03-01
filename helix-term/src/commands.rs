@@ -673,6 +673,14 @@ pub fn goto_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Goto;
 }
 
+pub fn select_mode(cx: &mut Context) {
+    cx.doc().mode = Mode::Select;
+}
+
+pub fn exit_select_mode(cx: &mut Context) {
+    cx.doc().mode = Mode::Normal;
+}
+
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
 pub mod insert {
     use super::*;

@@ -305,6 +305,7 @@ impl EditorView {
     ) {
         let mode = match doc.mode() {
             Mode::Insert => "INS",
+            Mode::Select => "SEL",
             Mode::Normal => "NOR",
             Mode::Goto => "GOTO",
         };
@@ -355,7 +356,6 @@ impl Component for EditorView {
             Event::Key(event) => {
                 let view = cx.editor.view_mut();
 
-                let keys = vec![event];
                 // TODO: sequences (`gg`)
                 let mode = view.doc.mode();
                 // TODO: handle count other than 1
@@ -368,7 +368,7 @@ impl Component for EditorView {
 
                 match mode {
                     Mode::Insert => {
-                        if let Some(command) = self.keymap[&Mode::Insert].get(&keys) {
+                        if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
                             command(&mut cxt);
                         } else if let KeyEvent {
                             code: KeyCode::Char(c),
@@ -379,11 +379,11 @@ impl Component for EditorView {
                         }
                     }
                     mode => {
-                        match *keys.as_slice() {
-                            [KeyEvent {
+                        match event {
+                            KeyEvent {
                                 code: KeyCode::Char(i @ '0'..='9'),
                                 modifiers: KeyModifiers::NONE,
-                            }] => {
+                            } => {
                                 let i = i.to_digit(10).unwrap() as usize;
                                 cxt.editor.count = Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
                             }
@@ -394,7 +394,7 @@ impl Component for EditorView {
                                 // if this fails, count was Some(0)
                                 // debug_assert!(cxt.count != 0);
 
-                                if let Some(command) = self.keymap[&mode].get(&keys) {
+                                if let Some(command) = self.keymap[&mode].get(&event) {
                                     command(&mut cxt);
 
                                     // TODO: simplistic ensure cursor in view for now
