@@ -13,7 +13,7 @@ macro_rules! mk_extern {
 macro_rules! mk_enum {
     ( $( $camel:ident ),* ) => {
         #[derive(Clone, Copy, Debug, PartialEq)]
-        pub enum LANG {
+        pub enum Lang {
             $(
                 $camel,
             )*
@@ -25,11 +25,11 @@ macro_rules! mk_enum {
 macro_rules! mk_get_language {
     ( $( ($camel:ident, $name:ident) ),* ) => {
         #[must_use]
-        pub fn get_language(lang: LANG) -> Language {
+        pub fn get_language(lang: Lang) -> Language {
             unsafe {
                 match lang {
                     $(
-                        LANG::$camel => $name(),
+                        Lang::$camel => $name(),
                     )*
                 }
             }
@@ -41,10 +41,10 @@ macro_rules! mk_get_language {
 macro_rules! mk_get_language_name {
     ( $( $camel:ident ),* ) => {
         #[must_use]
-        pub const fn get_language_name(lang: LANG) -> &'static str {
+        pub const fn get_language_name(lang: Lang) -> &'static str {
             match lang {
                 $(
-                    LANG::$camel => stringify!($camel),
+                    Lang::$camel => stringify!($camel),
                 )*
             }
         }

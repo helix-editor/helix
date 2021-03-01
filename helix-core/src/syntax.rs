@@ -1,5 +1,5 @@
 use crate::{Change, Rope, RopeSlice, Transaction};
-pub use helix_syntax::LANG;
+pub use helix_syntax::Lang;
 pub use helix_syntax::{get_language, get_language_name};
 
 use std::collections::HashMap;
@@ -21,7 +21,7 @@ pub struct LanguageConfiguration {
     //
     // root_path
     //
-    pub(crate) language_id: LANG,
+    pub(crate) language_id: Lang,
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
 }
@@ -87,7 +87,7 @@ impl Loader {
             LanguageConfiguration {
                 scope: "source.rust".to_string(),
                 file_types: vec!["rs".to_string()],
-                language_id: LANG::Rust,
+                language_id: Lang::Rust,
                 highlight_config: OnceCell::new(),
                 //
                 path: "../helix-syntax/languages/tree-sitter-rust".into(),
@@ -95,7 +95,7 @@ impl Loader {
             LanguageConfiguration {
                 scope: "source.toml".to_string(),
                 file_types: vec!["toml".to_string()],
-                language_id: LANG::Toml,
+                language_id: Lang::Toml,
                 highlight_config: OnceCell::new(),
                 //
                 path: "../helix-syntax/languages/tree-sitter-toml".into(),
@@ -160,7 +160,7 @@ pub struct Syntax {
 impl Syntax {
     // buffer, grammar, config, grammars, sync_timeout?
     pub fn new(
-        /*language: LANG,*/ source: &Rope,
+        /*language: Lang,*/ source: &Rope,
         config: Arc<HighlightConfiguration>,
     ) -> Self {
         // fetch grammar for parser based on language string
@@ -779,10 +779,10 @@ impl HighlightConfiguration {
             non_local_variable_patterns,
             injection_content_capture_index,
             injection_language_capture_index,
+            local_scope_capture_index,
             local_def_capture_index,
             local_def_value_capture_index,
             local_ref_capture_index,
-            local_scope_capture_index,
         })
     }
 
@@ -1475,7 +1475,7 @@ fn test_parser() {
     .map(String::from)
     .collect();
 
-    let language = get_language(LANG::Rust);
+    let language = get_language(Lang::Rust);
     let mut config = HighlightConfiguration::new(
         language,
         &std::fs::read_to_string(

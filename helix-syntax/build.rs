@@ -13,13 +13,11 @@ fn get_debug() -> bool {
 
 fn collect_tree_sitter_dirs(ignore: Vec<String>) -> Vec<String> {
     let mut dirs = Vec::new();
-    for entry in fs::read_dir("languages").unwrap() {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            let dir = path.file_name().unwrap().to_str().unwrap().to_string();
-            if !ignore.contains(&dir) {
-                dirs.push(dir);
-            }
+    for entry in fs::read_dir("languages").unwrap().flatten() {
+        let path = entry.path();
+        let dir = path.file_name().unwrap().to_str().unwrap().to_string();
+        if !ignore.contains(&dir) {
+            dirs.push(dir);
         }
     }
     dirs
@@ -31,24 +29,22 @@ fn collect_src_files(dir: &str) -> (Vec<String>, Vec<String>) {
     let mut c_files = Vec::new();
     let mut cpp_files = Vec::new();
     let path = PathBuf::from("languages").join(&dir).join("src");
-    for entry in fs::read_dir(path).unwrap() {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            if path
-                .file_stem()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .starts_with("binding")
-            {
-                continue;
-            }
-            if let Some(ext) = path.extension() {
-                if ext == "c" {
-                    c_files.push(path.to_str().unwrap().to_string());
-                } else if ext == "cc" || ext == "cpp" || ext == "cxx" {
-                    cpp_files.push(path.to_str().unwrap().to_string());
-                }
+    for entry in fs::read_dir(path).unwrap().flatten() {
+        let path = entry.path();
+        if path
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("binding")
+        {
+            continue;
+        }
+        if let Some(ext) = path.extension() {
+            if ext == "c" {
+                c_files.push(path.to_str().unwrap().to_string());
+            } else if ext == "cc" || ext == "cpp" || ext == "cxx" {
+                cpp_files.push(path.to_str().unwrap().to_string());
             }
         }
     }

@@ -274,13 +274,13 @@ fn is_word(ch: char) -> bool {
 #[derive(Debug, Eq, PartialEq)]
 enum Category {
     Whitespace,
-    EOL,
+    Eol,
     Word,
     Punctuation,
 }
 fn categorize(ch: char) -> Category {
     if ch == '\n' {
-        Category::EOL
+        Category::Eol
     } else if ch.is_ascii_whitespace() {
         Category::Whitespace
     } else if ch.is_ascii_punctuation() {
