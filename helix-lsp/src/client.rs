@@ -547,7 +547,6 @@ impl Client {
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
         let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
 
-        log::info!("{:?}", capabilities.document_range_formatting_provider);
         // check if we're able to format
         let _capabilities = match capabilities.document_range_formatting_provider {
             Some(lsp::OneOf::Left(true)) => (),
