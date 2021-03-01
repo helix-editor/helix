@@ -1016,6 +1016,12 @@ pub fn join_selections(cx: &mut Context) {
     doc.append_changes_to_history();
 }
 
+pub fn keep_selections(cx: &mut Context) {
+    let doc = cx.doc();
+    // keep selections matching regex
+    // and another method for inverse
+}
+
 //
 
 pub fn save(cx: &mut Context) {
