@@ -3,15 +3,16 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use helix_core::Position;
 use helix_view::Editor;
 use helix_view::Theme;
+use std::borrow::Cow;
 use std::string::String;
 
 pub struct Prompt {
     pub prompt: String,
     pub line: String,
     pub cursor: usize,
-    pub completion: Vec<String>,
+    pub completion: Vec<Cow<'static, str>>,
     pub completion_selection_index: Option<usize>,
-    completion_fn: Box<dyn FnMut(&str) -> Vec<String>>,
+    completion_fn: Box<dyn FnMut(&str) -> Vec<Cow<'static, str>>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
 }
 
@@ -28,7 +29,7 @@ pub enum PromptEvent {
 impl Prompt {
     pub fn new(
         prompt: String,
-        mut completion_fn: impl FnMut(&str) -> Vec<String> + 'static,
+        mut completion_fn: impl FnMut(&str) -> Vec<Cow<'static, str>> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str, PromptEvent) + 'static,
     ) -> Prompt {
         Prompt {
@@ -83,7 +84,19 @@ impl Prompt {
         let index =
             self.completion_selection_index.map(|i| i + 1).unwrap_or(0) % self.completion.len();
         self.completion_selection_index = Some(index);
-        self.line = self.completion[index].clone();
+
+        let item = &self.completion[index];
+
+        // replace the last arg
+        if let Some(pos) = self.line.rfind(' ') {
+            self.line.replace_range(pos + 1.., item);
+        } else {
+            // need toowned_clone_into nightly feature to reuse allocation
+            self.line = item.to_string();
+        }
+
+        self.move_end();
+        // TODO: recalculate completion when completion item is accepted, (Enter)
     }
     pub fn exit_selection(&mut self) {
         self.completion_selection_index = None;
@@ -175,9 +188,14 @@ impl Component for Prompt {
         )));
 
         match event {
+            // char or shift char
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
+            }
+            | KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: KeyModifiers::SHIFT,
             } => {
                 self.insert_char(c);
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);

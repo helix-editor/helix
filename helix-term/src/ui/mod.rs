@@ -124,3 +124,79 @@ pub fn buffer_picker(views: &[View], current: usize) -> Picker<(Option<PathBuf>,
     //     },
     // )
 }
+
+pub mod completers {
+    use std::borrow::Cow;
+    // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
+    pub fn filename(input: &str) -> Vec<Cow<'static, str>> {
+        // Rust's filename handling is really annoying.
+
+        use ignore::WalkBuilder;
+        use std::path::{Path, PathBuf};
+
+        let path = Path::new(input);
+
+        let (dir, file_name) = if input.ends_with('/') {
+            (path.into(), None)
+        } else {
+            let file_name = path
+                .file_name()
+                .map(|file| file.to_str().unwrap().to_owned());
+
+            let path = match path.parent() {
+                Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+                // Path::new("h")'s parent is Some("")...
+                _ => std::env::current_dir().expect("couldn't determine current directory"),
+            };
+
+            (path, file_name)
+        };
+
+        let mut files: Vec<_> = WalkBuilder::new(dir.clone())
+            .max_depth(Some(1))
+            .build()
+            .filter_map(|file| {
+                file.ok().map(|entry| {
+                    let is_dir = entry
+                        .file_type()
+                        .map(|entry| entry.is_dir())
+                        .unwrap_or(false);
+
+                    let mut path = entry.path().strip_prefix(&dir).unwrap().to_path_buf();
+
+                    if is_dir {
+                        path.push("");
+                    }
+                    Cow::from(path.to_str().unwrap().to_string())
+                })
+            }) // TODO: unwrap or skip
+            .filter(|path| !path.is_empty()) // TODO
+            .collect();
+
+        // if empty, return a list of dirs and files in current dir
+        if let Some(file_name) = file_name {
+            use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
+            use fuzzy_matcher::FuzzyMatcher;
+            use std::cmp::Reverse;
+
+            let matcher = Matcher::default();
+
+            // inefficient, but we need to calculate the scores, filter out None, then sort.
+            let mut matches: Vec<_> = files
+                .into_iter()
+                .filter_map(|file| {
+                    matcher
+                        .fuzzy_match(&file, &file_name)
+                        .map(|score| (file, score))
+                })
+                .collect();
+
+            matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+            files = matches.into_iter().map(|(file, _)| file.into()).collect();
+
+            // TODO: complete to longest common match
+        }
+
+        files
+    }
+}

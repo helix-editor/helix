@@ -519,22 +519,37 @@ pub fn append_mode(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
+const COMMAND_LIST: &[&str] = &["write", "open", "quit"];
+
 // TODO: I, A, o and O can share a lot of the primitives.
 pub fn command_mode(cx: &mut Context) {
     let executor = cx.executor;
     let prompt = Prompt::new(
         ":".to_owned(),
-        |_input: &str| {
-            let command_list = vec![
-                "q".to_string(),
-                "o".to_string(),
-                "w".to_string(),
-                // String::from("q"),
-            ];
-            command_list
-                .into_iter()
-                .filter(|command| command.contains(_input))
-                .collect()
+        |input: &str| {
+            // we use .this over split_ascii_whitespace() because we care about empty segments
+            let parts = input.split(' ').collect::<Vec<&str>>();
+
+            // simple heuristic: if there's no space, complete command.
+            // if there's a space, file completion kicks in. We should specialize by command later.
+            if parts.len() <= 1 {
+                COMMAND_LIST
+                    .iter()
+                    .filter(|command| command.contains(input))
+                    .map(|command| std::borrow::Cow::Borrowed(*command))
+                    .collect()
+            } else {
+                let part = parts.last().unwrap();
+                ui::completers::filename(part)
+
+                // TODO
+                // completion needs to be more advanced: need to return starting index for replace
+                // for example, "src/" completion application.rs needs to insert after /, but "hx"
+                // completion helix-core needs to replace the text.
+                //
+                // additionally, completion items could have a info section that would get
+                // displayed in a popup above the prompt when items are tabbed over
+            }
         }, // completion
         move |editor: &mut Editor, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
@@ -544,14 +559,14 @@ pub fn command_mode(cx: &mut Context) {
             let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
 
             match *parts.as_slice() {
-                ["q"] => {
+                ["q"] | ["quit"] => {
                     editor.tree.remove(editor.view().id);
                     // editor.should_close = true,
                 }
-                ["o", path] => {
+                ["o", path] | ["open", path] => {
                     editor.open(path.into(), executor);
                 }
-                ["w"] => {
+                ["w"] | ["write"] => {
                     // TODO: non-blocking via save() command
                     smol::block_on(editor.view_mut().doc.save());
                 }
