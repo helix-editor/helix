@@ -154,7 +154,7 @@ where
 
     /// Synchronizes terminal size, calls the rendering closure, flushes the current internal state
     /// and prepares for the next draw call.
-    pub fn draw(&mut self) -> io::Result<()> {
+    pub fn draw(&mut self, cursor_position: Option<(u16, u16)>) -> io::Result<()> {
         // // Autoresize - otherwise we get glitches if shrinking or potential desync between widgets
         // // and the terminal (if growing), which may OOB.
         // self.autoresize()?;
@@ -169,13 +169,13 @@ where
         // Draw to stdout
         self.flush()?;
 
-        // match cursor_position {
-        //     None => self.hide_cursor()?,
-        //     Some((x, y)) => {
-        //         self.show_cursor()?;
-        //         self.set_cursor(x, y)?;
-        //     }
-        // }
+        match cursor_position {
+            None => self.hide_cursor()?,
+            Some((x, y)) => {
+                self.show_cursor()?;
+                self.set_cursor(x, y)?;
+            }
+        }
 
         // Swap buffers
         self.buffers[1 - self.current].reset();

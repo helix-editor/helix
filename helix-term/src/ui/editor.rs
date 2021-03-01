@@ -42,7 +42,7 @@ impl EditorView {
             viewport.x + OFFSET,
             viewport.y,
             viewport.width - OFFSET,
-            viewport.height - 1,
+            viewport.height.saturating_sub(1),
         ); // - 1 for statusline
         self.render_buffer(view, area, surface, theme, is_focused);
 
@@ -52,7 +52,7 @@ impl EditorView {
 
         let area = Rect::new(
             viewport.x,
-            viewport.y + viewport.height - 1,
+            viewport.y + viewport.height.saturating_sub(1),
             viewport.width,
             1,
         );
@@ -433,14 +433,16 @@ impl Component for EditorView {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
-        let view = editor.view();
-        let cursor = view.doc.selection().cursor();
+        // let view = editor.view();
+        // let cursor = view.doc.selection().cursor();
 
-        let mut pos = view
-            .screen_coords_at_pos(view.doc.text().slice(..), cursor)
-            .expect("Cursor is out of bounds.");
-        pos.col += view.area.x as usize + area.x as usize + OFFSET as usize;
-        pos.row += view.area.y as usize + area.y as usize;
-        Some(pos)
+        // if let Some(mut pos) = view.screen_coords_at_pos(view.doc.text().slice(..), cursor) {
+        //     pos.col += view.area.x as usize + area.x as usize + OFFSET as usize;
+        //     pos.row += view.area.y as usize + area.y as usize;
+        //     return Some(pos);
+        // }
+
+        // It's easier to just not render the cursor and use selection rendering instead.
+        None
     }
 }

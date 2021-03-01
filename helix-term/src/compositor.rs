@@ -120,12 +120,12 @@ impl Compositor {
         }
     }
 
-    pub fn cursor_position(&self, area: Rect, editor: &Editor) -> Position {
+    pub fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
         for layer in self.layers.iter().rev() {
             if let Some(pos) = layer.cursor_position(area, editor) {
-                return pos;
+                return Some(pos);
             }
         }
-        panic!("No layer returned a position!");
+        None
     }
 }

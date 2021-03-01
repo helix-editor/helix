@@ -70,10 +70,11 @@ impl Application {
         let area = self.terminal.size().unwrap();
 
         compositor.render(area, self.terminal.current_buffer_mut(), &mut cx);
-        let pos = compositor.cursor_position(area, &editor);
+        let pos = compositor
+            .cursor_position(area, &editor)
+            .map(|pos| (pos.col as u16, pos.row as u16));
 
-        self.terminal.draw();
-        self.terminal.set_cursor(pos.col as u16, pos.row as u16);
+        self.terminal.draw(pos);
     }
 
     pub async fn event_loop(&mut self) {
