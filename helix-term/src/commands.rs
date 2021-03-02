@@ -872,11 +872,19 @@ pub fn goto_definition(cx: &mut Context) {
 
     doc.mode = Mode::Normal;
 
+    log::info!("{:?}", res);
+    let filepath = doc.path.clone().unwrap();
+    log::info!("{:?}", filepath);
+
     match &res.as_slice() {
         [location] => {
-            let definition_pos = location.range.start;
-            let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
-            doc.set_selection(Selection::point(new_pos));
+            if filepath.to_str().unwrap() == location.uri.path() {
+                let definition_pos = location.range.start;
+                let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+                doc.set_selection(Selection::point(new_pos));
+            } else {
+                // open new file
+            }
         }
         [] => (), // maybe show user message that no definition was found?
         _ => {

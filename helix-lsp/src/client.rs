@@ -583,6 +583,30 @@ impl Client {
         Ok(response.unwrap_or_default())
     }
 
+    pub async fn goto_generic(
+        &self,
+        response: Option<lsp::GotoDefinitionResponse>,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        let items = match response {
+            Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
+            Some(lsp::GotoDefinitionResponse::Array(location_vec)) => location_vec,
+            Some(lsp::GotoDefinitionResponse::Link(location_link_vec)) => {
+                let mut location_vec: Vec<lsp::Location> = Vec::new();
+                location_link_vec.into_iter().for_each(|location_link| {
+                    let link = lsp::Location {
+                        uri: location_link.target_uri,
+                        range: location_link.target_range,
+                    };
+                    location_vec.push(link)
+                });
+                location_vec
+            }
+            None => Vec::new(),
+        };
+
+        Ok(items)
+    }
+
     pub async fn goto_definition(
         &self,
         text_document: lsp::TextDocumentIdentifier,
@@ -603,23 +627,83 @@ impl Client {
 
         let response = self.request::<lsp::request::GotoDefinition>(params).await?;
 
-        let items = match response {
-            Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-            Some(lsp::GotoDefinitionResponse::Array(location_vec)) => location_vec,
-            Some(lsp::GotoDefinitionResponse::Link(location_link_vec)) => {
-                let mut location_vec: Vec<lsp::Location> = Vec::new();
-                location_link_vec.into_iter().for_each(|location_link| {
-                    let link = lsp::Location {
-                        uri: location_link.target_uri,
-                        range: location_link.target_range,
-                    };
-                    location_vec.push(link)
-                });
-                location_vec
-            }
-            None => Vec::new(),
+        self.goto_generic(response).await
+    }
+
+    pub async fn goto_type_definition(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        let params = lsp::GotoDefinitionParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
         };
 
-        Ok(items)
+        let response = self
+            .request::<lsp::request::GotoTypeDefinition>(params)
+            .await?;
+
+        self.goto_generic(response).await
+    }
+
+    pub async fn goto_implementation(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        let params = lsp::GotoDefinitionParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp::request::GotoImplementation>(params)
+            .await?;
+
+        self.goto_generic(response).await
+    }
+
+    pub async fn goto_reference(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        let params = lsp::ReferenceParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            context: lsp::ReferenceContext {
+                include_declaration: true,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::References>(params).await?;
+
+        self.goto_generic(response.map(lsp::GotoDefinitionResponse::Array))
+            .await
     }
 }
