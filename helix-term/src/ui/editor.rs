@@ -433,14 +433,7 @@ impl Component for EditorView {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
-        // let view = editor.view();
-        // let cursor = view.doc.selection().cursor();
-
-        // if let Some(mut pos) = view.screen_coords_at_pos(view.doc.text().slice(..), cursor) {
-        //     pos.col += view.area.x as usize + area.x as usize + OFFSET as usize;
-        //     pos.row += view.area.y as usize + area.y as usize;
-        //     return Some(pos);
-        // }
+        // return editor.cursor_position()
 
         // It's easier to just not render the cursor and use selection rendering instead.
         None

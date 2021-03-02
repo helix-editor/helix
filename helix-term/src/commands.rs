@@ -1119,8 +1119,7 @@ pub fn completion(cx: &mut Context) {
 
         cx.callback = Some(Box::new(
             move |compositor: &mut Compositor, editor: &mut Editor| {
-                let area = tui::layout::Rect::default(); // TODO: unused remove from cursor_position
-                if let Some(mut pos) = compositor.cursor_position(area, editor) {
+                if let Some(mut pos) = editor.cursor_position() {
                     pos.row += 1; // shift down by one row
                     menu.set_position(pos);
                 };
@@ -1181,8 +1180,7 @@ pub fn hover(cx: &mut Context) {
 
         cx.callback = Some(Box::new(
             move |compositor: &mut Compositor, editor: &mut Editor| {
-                let area = tui::layout::Rect::default(); // TODO: unused remove from cursor_position
-                if let Some(mut pos) = compositor.cursor_position(area, editor) {
+                if let Some(mut pos) = editor.cursor_position() {
                     pos.row += 1; // shift down by one row
                     popup.set_position(pos);
                 };

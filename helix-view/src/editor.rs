@@ -74,4 +74,16 @@ impl Editor {
     pub fn view_mut(&mut self) -> &mut View {
         self.tree.get_mut(self.tree.focus)
     }
+
+    pub fn cursor_position(&self) -> Option<helix_core::Position> {
+        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+        let view = self.view();
+        let cursor = view.doc.selection().cursor();
+        if let Some(mut pos) = view.screen_coords_at_pos(view.doc.text().slice(..), cursor) {
+            pos.col += view.area.x as usize + OFFSET as usize;
+            pos.row += view.area.y as usize;
+            return Some(pos);
+        }
+        None
+    }
 }
