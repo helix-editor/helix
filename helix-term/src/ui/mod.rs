@@ -194,7 +194,7 @@ pub mod completers {
                 .collect();
 
             matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
-            files = matches.into_iter().map(|(file, _)| file.into()).collect();
+            files = matches.into_iter().map(|(file, _)| file).collect();
 
             // TODO: complete to longest common match
         }

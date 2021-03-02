@@ -57,9 +57,7 @@ impl Component for Popup {
             | KeyEvent {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
-            } => {
-                return close_fn;
-            }
+            } => close_fn,
             _ => self.contents.handle_event(event, cx),
         }
         // for some events, we want to process them but send ignore, specifically all input except
