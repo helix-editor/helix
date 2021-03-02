@@ -44,7 +44,9 @@ pub struct Context<'a> {
 
 pub trait Component {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult;
+    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+        EventResult::Ignored
+    }
     // , args: ()
 
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
@@ -55,6 +57,10 @@ pub trait Component {
     fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
     fn cursor_position(&self, area: Rect, ctx: &Editor) -> Option<Position> {
+        None
+    }
+
+    fn size_hint(&self, area: Rect) -> Option<(usize, usize)> {
         None
     }
 }

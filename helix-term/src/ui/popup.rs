@@ -16,28 +16,28 @@ use helix_view::Editor;
 // a width/height hint. maybe Popup(Box<Component>)
 
 pub struct Popup {
-    contents: String,
-    position: Position,
+    contents: Box<dyn Component>,
+    position: Option<Position>,
 }
 
 impl Popup {
     // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
     // rendering)
-    pub fn new(contents: String) -> Self {
+    pub fn new(contents: Box<dyn Component>) -> Self {
         Self {
             contents,
-            position: Position::default(),
+            position: None,
         }
     }
 
-    pub fn set_position(&mut self, pos: Position) {
+    pub fn set_position(&mut self, pos: Option<Position>) {
         self.position = pos;
     }
 }
 
 impl Component for Popup {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
-        let event = match event {
+        let key = match event {
             Event::Key(event) => event,
             _ => return EventResult::Ignored,
         };
@@ -49,7 +49,7 @@ impl Component for Popup {
             },
         )));
 
-        match event {
+        match key {
             // esc or ctrl-c aborts the completion and closes the menu
             KeyEvent {
                 code: KeyCode::Esc, ..
@@ -60,29 +60,37 @@ impl Component for Popup {
             } => {
                 return close_fn;
             }
-            _ => (),
+            _ => self.contents.handle_event(event, cx),
         }
         // for some events, we want to process them but send ignore, specifically all input except
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
-        // EventResult::Consumed(None)
-        EventResult::Consumed(None)
     }
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::text::Text;
         use tui::widgets::{Paragraph, Widget, Wrap};
 
-        let contents = Text::from(self.contents.clone());
+        let position = self
+            .position
+            .or_else(|| cx.editor.cursor_position())
+            .unwrap_or_default();
 
-        let width = contents.width().min(150) as u16;
-        let height = contents.height().min(13) as u16;
+        let (width, height) = self
+            .contents
+            .size_hint(viewport)
+            .expect("Component needs size_hint implemented in order to be embedded in a popup");
+
+        let width = width.min(150) as u16;
+        let height = height.min(13) as u16;
 
         // -- make sure frame doesn't stick out of bounds
-        let mut rel_x = self.position.col as u16;
-        let mut rel_y = self.position.row as u16;
+        let mut rel_x = position.col as u16;
+        let mut rel_y = position.row as u16;
         if viewport.width <= rel_x + width {
             rel_x -= ((rel_x + width) - viewport.width)
         };
 
+        // TODO: be able to specify orientation preference. We want above for most popups, below
+        // for menus/autocomplete.
         if height <= rel_y {
             rel_y -= height // position above point
         } else {
@@ -104,13 +112,6 @@ impl Component for Popup {
             }
         }
 
-        // -- Render the contents:
-
-        let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
-
-        let par = Paragraph::new(contents).wrap(Wrap { trim: false });
-        // .scroll(x, y) offsets
-
-        par.render(area, surface);
+        self.contents.render(area, surface, cx);
     }
 }

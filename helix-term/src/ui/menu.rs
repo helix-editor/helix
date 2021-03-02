@@ -20,8 +20,6 @@ pub struct Menu<T> {
 
     cursor: usize,
 
-    position: Position,
-
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
 }
@@ -37,14 +35,9 @@ impl<T> Menu<T> {
         Self {
             options,
             cursor: 0,
-            position: Position::default(),
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
         }
-    }
-
-    pub fn set_position(&mut self, pos: Position) {
-        self.position = pos;
     }
 
     pub fn move_up(&mut self) {
@@ -151,31 +144,18 @@ impl<T> Component for Menu<T> {
         // EventResult::Consumed(None)
         EventResult::Ignored
     }
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // render a box at x, y. Width equal to max width of item.
-        // initially limit to n items, add support for scrolling
-        //
+
+    fn size_hint(&self, area: Rect) -> Option<(usize, usize)> {
         const MAX: usize = 5;
-        let rows = std::cmp::min(self.options.len(), MAX) as u16;
-        let area = Rect::new(self.position.col as u16, self.position.row as u16, 30, rows);
+        let height = std::cmp::min(self.options.len(), MAX);
+        Some((30, height))
+    }
 
-        // clear area
-        let background = cx.editor.theme.get("ui.popup");
-        for y in area.top()..area.bottom() {
-            for x in area.left()..area.right() {
-                let cell = surface.get_mut(x, y);
-                cell.reset();
-                // cell.symbol.clear();
-                cell.set_style(background);
-            }
-        }
-
-        // -- Render the contents:
-
+    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
-        for (i, option) in self.options.iter().take(rows as usize).enumerate() {
+        for (i, option) in self.options.iter().take(area.height as usize).enumerate() {
             // TODO: set bg for the whole row if selected
             surface.set_stringn(
                 area.x,

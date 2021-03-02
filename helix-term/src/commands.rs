@@ -1117,16 +1117,8 @@ pub fn completion(cx: &mut Context) {
             },
         );
 
-        cx.callback = Some(Box::new(
-            move |compositor: &mut Compositor, editor: &mut Editor| {
-                if let Some(mut pos) = editor.cursor_position() {
-                    pos.row += 1; // shift down by one row
-                    menu.set_position(pos);
-                };
-
-                compositor.push(Box::new(menu));
-            },
-        ));
+        let popup = Popup::new(Box::new(menu));
+        cx.push_layer(Box::new(popup));
 
         // TODO!: when iterating over items, show the docs in popup
 
@@ -1171,22 +1163,9 @@ pub fn hover(cx: &mut Context) {
 
         // skip if contents empty
 
-        // Popup: box frame + Box<Component> for internal content.
-        // it will use the contents.size_hint/required size to figure out sizing & positioning
-        // can also use render_buffer to render the content.
-        // render_buffer(highlights/scopes, text, surface, theme)
-        //
-        let mut popup = Popup::new(contents);
-
-        cx.callback = Some(Box::new(
-            move |compositor: &mut Compositor, editor: &mut Editor| {
-                if let Some(mut pos) = editor.cursor_position() {
-                    popup.set_position(pos);
-                };
-
-                compositor.push(Box::new(popup));
-            },
-        ));
+        let contents = ui::Text::new(contents);
+        let mut popup = Popup::new(Box::new(contents));
+        cx.push_layer(Box::new(popup));
     }
 }
 
