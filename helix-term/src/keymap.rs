@@ -242,7 +242,7 @@ pub fn default() -> Keymaps {
 
         // move under <space>c
         ctrl!('c') => commands::toggle_comments,
-        ctrl!('K') => commands::hover,
+        shift!('K') => commands::hover,
 
         // z family for save/restore/combine from/to sels from register
     );
