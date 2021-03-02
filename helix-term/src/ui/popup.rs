@@ -12,6 +12,9 @@ use std::borrow::Cow;
 use helix_core::Position;
 use helix_view::Editor;
 
+// TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
+// a width/height hint. maybe Popup(Box<Component>)
+
 pub struct Popup {
     contents: String,
     position: Position,
@@ -64,11 +67,31 @@ impl Component for Popup {
         // EventResult::Consumed(None)
         EventResult::Consumed(None)
     }
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // render a box at x, y. Width equal to max width of item.
-        const MAX: usize = 15;
-        let rows = std::cmp::min(self.contents.lines().count(), MAX) as u16; // inefficient
-        let area = Rect::new(self.position.col as u16, self.position.row as u16, 80, rows);
+    fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
+        use tui::text::Text;
+        use tui::widgets::{Paragraph, Widget, Wrap};
+
+        let contents = Text::from(self.contents.clone());
+
+        let width = contents.width().min(150) as u16;
+        let height = contents.height().min(13) as u16;
+
+        // -- make sure frame doesn't stick out of bounds
+        let mut rel_x = self.position.col as u16;
+        let mut rel_y = self.position.row as u16;
+        if viewport.width <= rel_x + width {
+            rel_x -= ((rel_x + width) - viewport.width)
+        };
+
+        if height <= rel_y {
+            rel_y -= height // position above point
+        } else {
+            rel_y += 1 // position below point
+        }
+
+        let area = Rect::new(rel_x, rel_y, width, height);
+        // clip to viewport
+        let area = viewport.intersection(Rect::new(rel_x, rel_y, width, height));
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");
@@ -85,10 +108,8 @@ impl Component for Popup {
 
         let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
 
-        use tui::text::Text;
-        use tui::widgets::{Paragraph, Widget, Wrap};
-        let contents = Text::from(self.contents.clone());
         let par = Paragraph::new(contents).wrap(Wrap { trim: false });
+        // .scroll(x, y) offsets
 
         par.render(area, surface);
     }

@@ -1181,7 +1181,6 @@ pub fn hover(cx: &mut Context) {
         cx.callback = Some(Box::new(
             move |compositor: &mut Compositor, editor: &mut Editor| {
                 if let Some(mut pos) = editor.cursor_position() {
-                    pos.row += 1; // shift down by one row
                     popup.set_position(pos);
                 };
 
