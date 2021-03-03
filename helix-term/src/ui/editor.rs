@@ -416,16 +416,10 @@ impl Component for EditorView {
     }
 
     fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // SAFETY: we cheat around the view_mut() borrow because it doesn't allow us to also borrow
-        // theme. Theme is immutable mutating view won't disrupt theme_ref.
-        let theme_ref = unsafe { &*(&cx.editor.theme as *const Theme) };
-
         for (view, is_focused) in cx.editor.tree.views() {
             // TODO: use parent area
-            self.render_view(view, view.area, surface, theme_ref, is_focused);
+            self.render_view(view, view.area, surface, &cx.editor.theme, is_focused);
         }
-
-        // TODO: drop unwrap
     }
 
     fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
