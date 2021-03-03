@@ -39,6 +39,10 @@ impl Component for Popup {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key = match event {
             Event::Key(event) => event,
+            Event::Resize(width, height) => {
+                // TODO: calculate inner area, call component's handle_event with that area
+                return EventResult::Ignored;
+            }
             _ => return EventResult::Ignored,
         };
 
@@ -63,6 +67,7 @@ impl Component for Popup {
         // for some events, we want to process them but send ignore, specifically all input except
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
     }
+
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::text::Text;
         use tui::widgets::{Paragraph, Widget, Wrap};

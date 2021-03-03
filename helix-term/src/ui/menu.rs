@@ -8,6 +8,7 @@ use tui::{
 };
 
 use std::borrow::Cow;
+use std::cell::Cell;
 
 use helix_core::Position;
 use helix_view::Editor;
@@ -18,10 +19,12 @@ use helix_view::Editor;
 pub struct Menu<T> {
     options: Vec<T>,
 
-    cursor: usize,
+    cursor: Option<usize>,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
+
+    scroll: Cell<usize>,
 }
 
 impl<T> Menu<T> {
@@ -34,25 +37,26 @@ impl<T> Menu<T> {
     ) -> Self {
         Self {
             options,
-            cursor: 0,
+            cursor: None,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
+            scroll: Cell::new(0),
         }
     }
 
     pub fn move_up(&mut self) {
-        self.cursor = self.cursor.saturating_sub(1);
+        // TODO: wrap around to end
+        let pos = self.cursor.map(|i| i.saturating_sub(1)).unwrap_or(0) % self.options.len();
+        self.cursor = Some(pos);
     }
 
     pub fn move_down(&mut self) {
-        // TODO: len - 1
-        if self.cursor < self.options.len() {
-            self.cursor += 1;
-        }
+        let pos = self.cursor.map(|i| i + 1).unwrap_or(0) % self.options.len();
+        self.cursor = Some(pos);
     }
 
     pub fn selection(&self) -> Option<&T> {
-        self.options.get(self.cursor)
+        self.cursor.and_then(|cursor| self.options.get(cursor))
     }
 }
 
@@ -155,15 +159,53 @@ impl<T> Component for Menu<T> {
         let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
-        for (i, option) in self.options.iter().take(area.height as usize).enumerate() {
+        let mut scroll = self.scroll.get();
+        let len = self.options.len();
+
+        let win_height = area.height as usize;
+
+        if let Some(cursor) = self.cursor {
+            if cursor > (win_height + scroll).saturating_sub(1) {
+                // scroll down
+                scroll += cursor - (win_height + scroll).saturating_sub(1)
+            } else if cursor < scroll {
+                // scroll up
+                scroll = cursor
+            }
+            self.scroll.set(scroll);
+        }
+
+        fn div_ceil(a: usize, b: usize) -> usize {
+            (a + b - 1) / a
+        }
+
+        let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
+
+        let scroll_line = (win_height - scroll_height) * scroll
+            / std::cmp::max(1, len.saturating_sub(win_height));
+
+        for (i, option) in self.options[scroll..(scroll + win_height).min(len)]
+            .iter()
+            .enumerate()
+        {
+            let line = Some(i + scroll);
             // TODO: set bg for the whole row if selected
             surface.set_stringn(
                 area.x,
                 area.y + i as u16,
                 (self.format_fn)(option),
                 area.width as usize - 1,
-                if i == self.cursor { selected } else { style },
+                if line == self.cursor { selected } else { style },
             );
+
+            let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
+
+            if is_marked {
+                let cell = surface.get_mut(area.x + area.width - 2, area.y + i as u16);
+                cell.set_symbol("▐ ");
+                cell.set_style(selected);
+                // cell.set_style(if is_marked { selected } else { style });
+            }
         }
     }
 }
