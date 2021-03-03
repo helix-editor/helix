@@ -307,11 +307,9 @@ pub fn select_all(cx: &mut Context) {
 pub fn select_regex(cx: &mut Context) {
     let prompt = ui::regex_prompt(cx, "select:".to_string(), |doc, regex| {
         let text = doc.text().slice(..);
-        // TODO: if select on matches returns empty range, we need to abort
-        // if regex empty or no matches, return
-        let selection =
-            selection::select_on_matches(text, doc.selection(), &regex).expect("no matches");
-        doc.set_selection(selection);
+        if let Some(selection) = selection::select_on_matches(text, doc.selection(), &regex) {
+            doc.set_selection(selection);
+        }
     });
 
     cx.push_layer(Box::new(prompt));

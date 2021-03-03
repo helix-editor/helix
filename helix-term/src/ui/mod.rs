@@ -45,6 +45,11 @@ pub fn regex_prompt(
                     //
                 }
                 PromptEvent::Update => {
+                    // skip empty input, TODO: trigger default
+                    if input.is_empty() {
+                        return;
+                    }
+
                     match Regex::new(input) {
                         Ok(regex) => {
                             let view = &mut editor.view_mut();
