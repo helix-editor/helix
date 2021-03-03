@@ -196,10 +196,12 @@ impl EditorView {
                 Range::new(start, end)
             };
             let text = text.slice(..);
-            let cursor_style = Style::default().bg(Color::Rgb(255, 255, 255));
+            let cursor_style = Style::default()
+                // .bg(Color::Rgb(255, 255, 255))
+                .add_modifier(Modifier::REVERSED);
 
-            // cedar
-            let selection_style = Style::default().bg(Color::Rgb(128, 47, 0));
+            // let selection_style = Style::default().bg(Color::Rgb(94, 0, 128));
+            let selection_style = Style::default().bg(Color::Rgb(84, 0, 153));
 
             for selection in view
                 .doc
