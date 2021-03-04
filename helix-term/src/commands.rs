@@ -128,25 +128,40 @@ pub fn move_line_start(cx: &mut Context) {
 pub fn move_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = State::move_next_word_start(doc.text().slice(..), doc.selection().cursor(), count);
+    let text = doc.text().slice(..);
 
-    doc.set_selection(Selection::point(pos));
+    let selection = doc.selection().transform(|range| {
+        let pos = State::move_next_word_start(text, range.head, count);
+        Range::new(pos, pos)
+    });
+
+    doc.set_selection(selection);
 }
 
 pub fn move_prev_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor(), count);
+    let text = doc.text().slice(..);
 
-    doc.set_selection(Selection::point(pos));
+    let selection = doc.selection().transform(|range| {
+        let pos = State::move_prev_word_start(text, range.head, count);
+        Range::new(pos, pos)
+    });
+
+    doc.set_selection(selection);
 }
 
 pub fn move_next_word_end(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let pos = State::move_next_word_end(doc.text().slice(..), doc.selection().cursor(), count);
+    let text = doc.text().slice(..);
 
-    doc.set_selection(Selection::point(pos));
+    let selection = doc.selection().transform(|range| {
+        let pos = State::move_next_word_end(text, range.head, count);
+        Range::new(pos, pos)
+    });
+
+    doc.set_selection(selection);
 }
 
 pub fn move_file_start(cx: &mut Context) {
@@ -168,11 +183,11 @@ pub fn move_file_end(cx: &mut Context) {
 pub fn extend_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
+    let text = doc.text().slice(..);
+
     let selection = doc.selection().transform(|mut range| {
-        let pos =
-            State::move_next_word_start(doc.text().slice(..), doc.selection().cursor(), count);
-        range.head = pos;
-        range
+        let pos = State::move_next_word_start(text, range.head, count);
+        Range::new(range.anchor, pos)
     });
 
     doc.set_selection(selection);
@@ -181,11 +196,11 @@ pub fn extend_next_word_start(cx: &mut Context) {
 pub fn extend_prev_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
+    let text = doc.text().slice(..);
+
     let selection = doc.selection().transform(|mut range| {
-        let pos =
-            State::move_prev_word_start(doc.text().slice(..), doc.selection().cursor(), count);
-        range.head = pos;
-        range
+        let pos = State::move_prev_word_start(text, range.head, count);
+        Range::new(range.anchor, pos)
     });
     doc.set_selection(selection);
 }
@@ -193,10 +208,11 @@ pub fn extend_prev_word_start(cx: &mut Context) {
 pub fn extend_next_word_end(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
+    let text = doc.text().slice(..);
+
     let selection = doc.selection().transform(|mut range| {
-        let pos = State::move_next_word_end(doc.text().slice(..), doc.selection().cursor(), count);
-        range.head = pos;
-        range
+        let pos = State::move_next_word_end(text, range.head, count);
+        Range::new(range.anchor, pos)
     });
 
     doc.set_selection(selection);
