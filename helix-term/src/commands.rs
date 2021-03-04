@@ -4,8 +4,8 @@ use helix_core::{
     object,
     regex::{self, Regex},
     register, selection,
-    state::{Direction, Granularity, State},
-    Change, ChangeSet, Range, Selection, Tendril, Transaction,
+    state::{coords_at_pos, pos_at_coords, Direction, Granularity, State},
+    Change, ChangeSet, Position, Range, Selection, Tendril, Transaction,
 };
 
 use once_cell::sync::Lazy;
@@ -222,62 +222,60 @@ pub fn extend_next_word_end(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
-pub fn page_up(cx: &mut Context) {
-    let view = cx.view();
-    if view.first_line < PADDING {
+fn scroll(view: &mut View, offset: usize, direction: Direction) {
+    use Direction::*;
+    let text = view.doc.text().slice(..);
+
+    let last_line = view.last_line();
+    let cursor = coords_at_pos(text, view.doc.selection().cursor());
+    let doc_last_line = text.len_lines() - 1;
+
+    if direction == Backward && view.first_line == 0
+        || direction == Forward && last_line == doc_last_line
+    {
         return;
     }
 
-    view.first_line = view.first_line.saturating_sub(view.area.height as usize);
+    let scrolloff = PADDING; // min(user pref, half win width/height)
 
-    if !view.check_cursor_in_view() {
-        let text = view.doc.text();
-        let pos = text.line_to_char(view.last_line().saturating_sub(PADDING));
-        view.doc.set_selection(Selection::point(pos));
+    // cursor visual offset
+    let cursor_off = cursor.row - view.first_line;
+
+    view.first_line = match direction {
+        Forward => view.first_line + offset,
+        Backward => view.first_line.saturating_sub(offset),
     }
+    .min(doc_last_line);
+
+    // clamp into viewport
+    let line = (view.first_line + cursor_off).clamp(
+        view.first_line + scrolloff,
+        view.first_line + view.last_line().saturating_sub(scrolloff),
+    );
+
+    let pos = pos_at_coords(text, Position::new(line, cursor.col)); // this func will properly truncate to line end
+    view.doc.set_selection(Selection::point(pos));
+}
+
+pub fn page_up(cx: &mut Context) {
+    let view = cx.view();
+    scroll(view, view.area.height as usize, Direction::Backward);
 }
 
 pub fn page_down(cx: &mut Context) {
     let view = cx.view();
-    view.first_line += view.area.height as usize + PADDING;
-
-    if view.first_line < view.doc.text().len_lines() {
-        let text = view.doc.text();
-        let pos = text.line_to_char(view.first_line as usize);
-        view.doc.set_selection(Selection::point(pos));
-    }
+    scroll(view, view.area.height as usize, Direction::Forward);
 }
 
 pub fn half_page_up(cx: &mut Context) {
     let view = cx.view();
-    if view.first_line < PADDING {
-        return;
-    }
-
-    view.first_line = view
-        .first_line
-        .saturating_sub(view.area.height as usize / 2);
-
-    if !view.check_cursor_in_view() {
-        let text = &view.doc.text();
-        let pos = text.line_to_char(view.last_line() - PADDING);
-        view.doc.set_selection(Selection::point(pos));
-    }
+    scroll(view, view.area.height as usize / 2, Direction::Backward);
 }
 
 pub fn half_page_down(cx: &mut Context) {
     let view = cx.view();
-    let lines = view.doc.text().len_lines();
-    if view.first_line < lines.saturating_sub(view.area.height as usize) {
-        view.first_line += view.area.height as usize / 2;
-    }
-    if !view.check_cursor_in_view() {
-        let text = view.doc.text();
-        let pos = text.line_to_char(view.first_line as usize);
-        view.doc.set_selection(Selection::point(pos));
-    }
+    scroll(view, view.area.height as usize / 2, Direction::Forward);
 }
-// avoid select by default by having a visual mode switch that makes movements into selects
 
 pub fn extend_char_left(cx: &mut Context) {
     let count = cx.count;
@@ -439,8 +437,10 @@ pub fn search_selection(cx: &mut Context) {
 pub fn select_line(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
+
     let pos = doc.selection().primary();
     let text = doc.text();
+
     let line = text.char_to_line(pos.head);
     let start = text.line_to_char(line);
     let end = text.line_to_char(line + count).saturating_sub(1);
