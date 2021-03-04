@@ -125,6 +125,10 @@ pub fn move_line_start(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
+// TODO: move vs extend could take an extra type Extend/Move that would
+// Range::new(if Move { pos } if Extend { range.anchor }, pos)
+// since these all really do the same thing
+
 pub fn move_next_word_start(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
@@ -958,9 +962,7 @@ pub fn format_selections(cx: &mut Context) {
         .selection()
         .ranges()
         .iter()
-        .map(|range| {
-            helix_lsp::util::range_to_lsp_range(doc.text().slice(..), doc.selection().primary())
-        })
+        .map(|range| helix_lsp::util::range_to_lsp_range(doc.text().slice(..), *range))
         .collect();
 
     for range in ranges {
