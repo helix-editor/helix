@@ -797,10 +797,6 @@ pub mod insert {
     }
 }
 
-pub fn insert_char_prompt(prompt: &mut Prompt, c: char) {
-    prompt.insert_char(c);
-}
-
 // Undo / Redo
 
 // TODO: each command could simply return a Option<transaction>, then the higher level handles
