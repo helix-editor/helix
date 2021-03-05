@@ -82,8 +82,8 @@ impl Component for Popup {
             .size_hint(viewport)
             .expect("Component needs size_hint implemented in order to be embedded in a popup");
 
-        let width = width.min(150) as u16;
-        let height = height.min(13) as u16;
+        let width = width.min(120) as u16;
+        let height = height.min(26) as u16;
 
         // -- make sure frame doesn't stick out of bounds
         let mut rel_x = position.col as u16;

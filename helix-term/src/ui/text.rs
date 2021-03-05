@@ -4,7 +4,6 @@ use tui::buffer::Buffer as Surface;
 use tui::{
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Borders},
 };
 
 use std::borrow::Cow;

@@ -1,4 +1,5 @@
 mod editor;
+mod markdown;
 mod menu;
 mod picker;
 mod popup;
@@ -6,6 +7,7 @@ mod prompt;
 mod text;
 
 pub use editor::EditorView;
+pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::Picker;
 pub use popup::Popup;

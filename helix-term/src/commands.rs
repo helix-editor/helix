@@ -1179,7 +1179,7 @@ pub fn hover(cx: &mut Context) {
 
         // skip if contents empty
 
-        let contents = ui::Text::new(contents);
+        let contents = ui::Markdown::new(contents);
         let mut popup = Popup::new(Box::new(contents));
         cx.push_layer(Box::new(popup));
     }
