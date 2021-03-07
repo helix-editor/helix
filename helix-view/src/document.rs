@@ -19,7 +19,7 @@ pub enum Mode {
 pub struct Document {
     pub state: State, // rope + selection
     /// File path on disk.
-    pub path: Option<PathBuf>, // pub for testing
+    path: Option<PathBuf>,
 
     /// Current editing mode.
     pub mode: Mode,
