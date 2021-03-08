@@ -8,7 +8,6 @@ use tui::{
 };
 
 use std::borrow::Cow;
-use std::cell::Cell;
 
 use helix_core::Position;
 use helix_view::Editor;
@@ -24,7 +23,8 @@ pub struct Menu<T> {
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
 
-    scroll: Cell<usize>,
+    scroll: usize,
+    size: (u16, u16),
 }
 
 impl<T> Menu<T> {
@@ -40,7 +40,8 @@ impl<T> Menu<T> {
             cursor: None,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
-            scroll: Cell::new(0),
+            scroll: 0,
+            size: (0, 0),
         }
     }
 
@@ -48,11 +49,28 @@ impl<T> Menu<T> {
         // TODO: wrap around to end
         let pos = self.cursor.map(|i| i.saturating_sub(1)).unwrap_or(0) % self.options.len();
         self.cursor = Some(pos);
+        self.adjust_scroll();
     }
 
     pub fn move_down(&mut self) {
         let pos = self.cursor.map(|i| i + 1).unwrap_or(0) % self.options.len();
         self.cursor = Some(pos);
+        self.adjust_scroll();
+    }
+
+    fn adjust_scroll(&mut self) {
+        let win_height = self.size.1 as usize;
+        if let Some(cursor) = self.cursor {
+            let mut scroll = self.scroll;
+            if cursor > (win_height + scroll).saturating_sub(1) {
+                // scroll down
+                scroll += cursor - (win_height + scroll).saturating_sub(1)
+            } else if cursor < scroll {
+                // scroll up
+                scroll = cursor
+            }
+            self.scroll = scroll;
+        }
     }
 
     pub fn selection(&self) -> Option<&T> {
@@ -156,29 +174,22 @@ impl<T> Component for Menu<T> {
         let height = std::cmp::min(self.options.len(), MAX);
         let height = std::cmp::min(height, viewport.1 as usize);
 
-        Some((width as u16, height as u16))
+        self.size = (width as u16, height as u16);
+
+        // adjust scroll offsets if size changed
+        self.adjust_scroll();
+
+        Some(self.size)
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
-        // TODO: instead of a cell, all these numbers should be precomputed in handle_event + init
-        let mut scroll = self.scroll.get();
+        let scroll = self.scroll;
         let len = self.options.len();
 
         let win_height = area.height as usize;
-
-        if let Some(cursor) = self.cursor {
-            if cursor > (win_height + scroll).saturating_sub(1) {
-                // scroll down
-                scroll += cursor - (win_height + scroll).saturating_sub(1)
-            } else if cursor < scroll {
-                // scroll up
-                scroll = cursor
-            }
-            self.scroll.set(scroll);
-        }
 
         fn div_ceil(a: usize, b: usize) -> usize {
             (a + b - 1) / a
