@@ -29,6 +29,7 @@ use helix_view::{Editor, View};
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
     pub executor: &'static smol::Executor<'static>,
+    pub scroll: Option<usize>,
 }
 
 pub trait Component {

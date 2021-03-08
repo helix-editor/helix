@@ -112,8 +112,9 @@ impl Component for Markdown {
 
         let contents = Text::from(lines);
 
-        let par = Paragraph::new(contents).wrap(Wrap { trim: false });
-        // .scroll(x, y) offsets
+        let par = Paragraph::new(contents)
+            .wrap(Wrap { trim: false })
+            .scroll((cx.scroll.unwrap_or_default() as u16, 0));
 
         let area = Rect::new(area.x + 1, area.y + 1, area.width - 2, area.height - 2);
         par.render(area, surface);

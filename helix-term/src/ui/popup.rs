@@ -19,6 +19,7 @@ pub struct Popup {
     contents: Box<dyn Component>,
     position: Option<Position>,
     size: (u16, u16),
+    scroll: usize,
 }
 
 impl Popup {
@@ -29,11 +30,20 @@ impl Popup {
             contents,
             position: None,
             size: (0, 0),
+            scroll: 0,
         }
     }
 
     pub fn set_position(&mut self, pos: Option<Position>) {
         self.position = pos;
+    }
+
+    pub fn scroll(&mut self, offset: usize, direction: bool) {
+        if direction {
+            self.scroll += offset;
+        } else {
+            self.scroll = self.scroll.saturating_sub(offset);
+        }
     }
 }
 
@@ -64,6 +74,21 @@ impl Component for Popup {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
             } => close_fn,
+
+            KeyEvent {
+                code: KeyCode::Char('d'),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
+                self.scroll(self.size.1 as usize / 2, true);
+                return EventResult::Consumed(None);
+            }
+            KeyEvent {
+                code: KeyCode::Char('u'),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
+                self.scroll(self.size.1 as usize / 2, false);
+                return EventResult::Consumed(None);
+            }
             _ => self.contents.handle_event(event, cx),
         }
         // for some events, we want to process them but send ignore, specifically all input except
@@ -84,6 +109,8 @@ impl Component for Popup {
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::text::Text;
         use tui::widgets::{Paragraph, Widget, Wrap};
+
+        cx.scroll = Some(self.scroll);
 
         let position = self
             .position

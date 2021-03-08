@@ -60,7 +60,11 @@ impl Application {
         let editor = &mut self.editor;
         let compositor = &mut self.compositor;
 
-        let mut cx = crate::compositor::Context { editor, executor };
+        let mut cx = crate::compositor::Context {
+            editor,
+            executor,
+            scroll: None,
+        };
 
         compositor.render(&mut cx);
     }
@@ -91,6 +95,7 @@ impl Application {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             executor: &self.executor,
+            scroll: None,
         };
         // Handle key events
         let should_redraw = match event {
