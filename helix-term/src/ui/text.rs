@@ -33,8 +33,10 @@ impl Component for Text {
         par.render(area, surface);
     }
 
-    fn size_hint(&self, area: Rect) -> Option<(usize, usize)> {
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let contents = tui::text::Text::from(self.contents.clone());
-        Some((contents.width(), contents.height()))
+        let width = std::cmp::min(contents.width() as u16, viewport.0);
+        let height = std::cmp::min(contents.height() as u16, viewport.1);
+        Some((width, height))
     }
 }

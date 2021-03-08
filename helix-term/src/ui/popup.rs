@@ -18,6 +18,7 @@ use helix_view::Editor;
 pub struct Popup {
     contents: Box<dyn Component>,
     position: Option<Position>,
+    size: (u16, u16),
 }
 
 impl Popup {
@@ -27,6 +28,7 @@ impl Popup {
         Self {
             contents,
             position: None,
+            size: (0, 0),
         }
     }
 
@@ -68,6 +70,17 @@ impl Component for Popup {
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
     }
 
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+        let (width, height) = self
+            .contents
+            .required_size((120, 26)) // max width, max height
+            .expect("Component needs required_size implemented in order to be embedded in a popup");
+
+        self.size = (width, height);
+
+        Some(self.size)
+    }
+
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::text::Text;
         use tui::widgets::{Paragraph, Widget, Wrap};
@@ -77,13 +90,7 @@ impl Component for Popup {
             .or_else(|| cx.editor.cursor_position())
             .unwrap_or_default();
 
-        let (width, height) = self
-            .contents
-            .size_hint(viewport)
-            .expect("Component needs size_hint implemented in order to be embedded in a popup");
-
-        let width = width.min(120) as u16;
-        let height = height.min(26) as u16;
+        let (width, height) = self.size;
 
         // -- make sure frame doesn't stick out of bounds
         let mut rel_x = position.col as u16;

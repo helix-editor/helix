@@ -1,14 +1,3 @@
-// Features:
-// Tracks currently focused component which receives all input
-// Event loop is external as opposed to cursive-rs
-// Calls render on the component and translates screen coords to local component coords
-//
-// TODO:
-// Q: where is the Application state stored? do we store it into an external static var?
-// A: probably makes sense to initialize the editor into a `static Lazy<>` global var.
-//
-// Q: how do we composit nested structures? There should be sub-components/views
-//
 // Each component declares it's own size constraints and gets fitted based on it's parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
@@ -36,7 +25,7 @@ pub enum EventResult {
 }
 
 use helix_view::{Editor, View};
-// shared with commands.rs
+
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
     pub executor: &'static smol::Executor<'static>,
@@ -54,46 +43,53 @@ pub trait Component {
         true
     }
 
+    /// Render the component onto the provided surface.
     fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
     fn cursor_position(&self, area: Rect, ctx: &Editor) -> Option<Position> {
         None
     }
 
-    fn size_hint(&self, area: Rect) -> Option<(usize, usize)> {
+    /// May be used by the parent component to compute the child area.
+    /// viewport is the maximum allowed area, and the child should stay within those bounds.
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+        // TODO: the compositor should trigger this on push_layer too so that we can use it as an
+        // initializer there too.
+        //
+        // TODO: for scrolling, the scroll wrapper should place a size + offset on the Context
+        // that way render can use it
         None
     }
 }
 
-// For v1:
-// Child views are something each view needs to handle on it's own for now, positioning and sizing
-// options, focus tracking. In practice this is simple: we only will need special solving for
-// splits etc
-
-// impl Editor {
-//     fn render(&mut self, surface: &mut Surface, args: ()) {
-//         // compute x, y, w, h rects for sub-views!
-//         // get surface area
-//         // get constraints for textarea, statusbar
-//         // -> cassowary-rs
-
-//         // first render textarea
-//         // then render statusbar
-//     }
-// }
-
-// usecases to consider:
-// - a single view with subviews (textarea + statusbar)
-// - a popup panel / dialog with it's own interactions
-// - an autocomplete popup that doesn't change focus
+use anyhow::Error;
+use std::io::stdout;
+use tui::backend::CrosstermBackend;
+type Terminal = crate::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
+    terminal: Terminal,
 }
 
 impl Compositor {
-    pub fn new() -> Self {
-        Self { layers: Vec::new() }
+    pub fn new() -> Result<Self, Error> {
+        let backend = CrosstermBackend::new(stdout());
+        let mut terminal = Terminal::new(backend)?;
+        Ok(Self {
+            layers: Vec::new(),
+            terminal,
+        })
+    }
+
+    pub fn size(&self) -> Rect {
+        self.terminal.size().expect("couldn't get terminal size")
+    }
+
+    pub fn resize(&mut self, width: u16, height: u16) {
+        self.terminal
+            .resize(Rect::new(0, 0, width, height))
+            .expect("Unable to resize terminal")
     }
 
     pub fn push(&mut self, layer: Box<dyn Component>) {
@@ -120,10 +116,19 @@ impl Compositor {
         false
     }
 
-    pub fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render(&mut self, cx: &mut Context) {
+        let area = self.size();
+        let surface = self.terminal.current_buffer_mut();
+
         for layer in &self.layers {
             layer.render(area, surface, cx)
         }
+
+        let pos = self
+            .cursor_position(area, cx.editor)
+            .map(|pos| (pos.col as u16, pos.row as u16));
+
+        self.terminal.draw(pos);
     }
 
     pub fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {

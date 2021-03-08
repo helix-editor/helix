@@ -23,23 +23,19 @@ use crossterm::{
     execute, terminal,
 };
 
-use tui::{backend::CrosstermBackend, layout::Rect};
-
-type Terminal = crate::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+use tui::layout::Rect;
 
 pub struct Application {
     compositor: Compositor,
     editor: Editor,
-    terminal: Terminal,
 
     executor: &'static smol::Executor<'static>,
 }
 
 impl Application {
     pub fn new(mut args: Args, executor: &'static smol::Executor<'static>) -> Result<Self, Error> {
-        let backend = CrosstermBackend::new(stdout());
-        let mut terminal = Terminal::new(backend)?;
-        let size = terminal.size()?;
+        let mut compositor = Compositor::new()?;
+        let size = compositor.size();
         let mut editor = Editor::new(size);
 
         let files = args.values_of_t::<PathBuf>("files").unwrap();
@@ -47,12 +43,10 @@ impl Application {
             editor.open(file, executor)?;
         }
 
-        let mut compositor = Compositor::new();
         compositor.push(Box::new(ui::EditorView::new()));
 
         let mut app = Self {
             editor,
-            terminal,
             compositor,
 
             executor,
@@ -64,17 +58,11 @@ impl Application {
     fn render(&mut self) {
         let executor = &self.executor;
         let editor = &mut self.editor;
-        let compositor = &self.compositor;
+        let compositor = &mut self.compositor;
 
         let mut cx = crate::compositor::Context { editor, executor };
-        let area = self.terminal.size().unwrap();
 
-        compositor.render(area, self.terminal.current_buffer_mut(), &mut cx);
-        let pos = compositor
-            .cursor_position(area, &editor)
-            .map(|pos| (pos.col as u16, pos.row as u16));
-
-        self.terminal.draw(pos);
+        compositor.render(&mut cx);
     }
 
     pub async fn event_loop(&mut self) {
@@ -107,7 +95,7 @@ impl Application {
         // Handle key events
         let should_redraw = match event {
             Some(Ok(Event::Resize(width, height))) => {
-                self.terminal.resize(Rect::new(0, 0, width, height));
+                self.compositor.resize(width, height);
 
                 self.compositor
                     .handle_event(Event::Resize(width, height), &mut cx)

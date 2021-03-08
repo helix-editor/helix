@@ -149,16 +149,21 @@ impl<T> Component for Menu<T> {
         EventResult::Ignored
     }
 
-    fn size_hint(&self, area: Rect) -> Option<(usize, usize)> {
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+        let width = std::cmp::min(30, viewport.0);
+
         const MAX: usize = 5;
         let height = std::cmp::min(self.options.len(), MAX);
-        Some((30, height))
+        let height = std::cmp::min(height, viewport.1 as usize);
+
+        Some((width as u16, height as u16))
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
+        // TODO: instead of a cell, all these numbers should be precomputed in handle_event + init
         let mut scroll = self.scroll.get();
         let len = self.options.len();
 

@@ -59,15 +59,13 @@ impl Component for Markdown {
                 Event::End(tag) => {
                     tags.pop();
                     match tag {
-                        Tag::Heading(_) | Tag::Paragraph => {
-                            // whenever paragraph closes, new line
+                        Tag::Heading(_)
+                        | Tag::Paragraph
+                        | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
+                            // whenever code block or paragraph closes, new line
                             let spans = std::mem::replace(&mut spans, Vec::new());
                             lines.push(Spans::from(spans));
                             lines.push(Spans::default());
-                        }
-                        Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
-                            let spans = std::mem::replace(&mut spans, Vec::new());
-                            lines.push(Spans::from(spans));
                         }
                         _ => (),
                     }
@@ -117,14 +115,15 @@ impl Component for Markdown {
         let par = Paragraph::new(contents).wrap(Wrap { trim: false });
         // .scroll(x, y) offsets
 
-        // padding on all sides
         let area = Rect::new(area.x + 1, area.y + 1, area.width - 2, area.height - 2);
         par.render(area, surface);
     }
 
-    fn size_hint(&self, area: Rect) -> Option<(usize, usize)> {
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let contents = tui::text::Text::from(self.contents.clone());
-        Some((contents.width(), contents.height()))
+        let width = std::cmp::min(contents.width() as u16, viewport.0);
+        let height = std::cmp::min(contents.height() as u16, viewport.1);
+        Some((width, height))
     }
 }
 

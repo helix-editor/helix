@@ -39,9 +39,12 @@ impl<'a> Context<'a> {
     }
 
     /// Push a new component onto the compositor.
-    pub fn push_layer(&mut self, component: Box<dyn crate::compositor::Component>) {
+    pub fn push_layer(&mut self, mut component: Box<dyn crate::compositor::Component>) {
         self.callback = Some(Box::new(
             |compositor: &mut Compositor, editor: &mut Editor| {
+                let size = compositor.size();
+                // trigger required_size on init
+                component.required_size((size.width, size.height));
                 compositor.push(component);
             },
         ));
