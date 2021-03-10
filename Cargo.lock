@@ -550,7 +550,6 @@ dependencies = [
  "helix-view",
  "ignore",
  "log",
- "lsp-types",
  "num_cpus",
  "once_cell",
  "pulldown-cmark",
