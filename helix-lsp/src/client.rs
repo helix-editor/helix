@@ -610,18 +610,14 @@ impl Client {
 
         let items = match response {
             Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-            Some(lsp::GotoDefinitionResponse::Array(location_vec)) => location_vec,
-            Some(lsp::GotoDefinitionResponse::Link(location_link_vec)) => {
-                let mut location_vec: Vec<lsp::Location> = Vec::new();
-                location_link_vec.into_iter().for_each(|location_link| {
-                    let link = lsp::Location {
-                        uri: location_link.target_uri,
-                        range: location_link.target_range,
-                    };
-                    location_vec.push(link)
-                });
-                location_vec
-            }
+            Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+            Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
+                .into_iter()
+                .map(|location_link| lsp::Location {
+                    uri: location_link.target_uri,
+                    range: location_link.target_range,
+                })
+                .collect(),
             None => Vec::new(),
         };
 
