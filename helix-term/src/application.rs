@@ -139,15 +139,25 @@ impl Application {
                                 .diagnostics
                                 .into_iter()
                                 .map(|diagnostic| {
-                                    use helix_lsp::util::lsp_pos_to_pos;
+                                    use helix_core::diagnostic::Severity::*;
+                                    use helix_core::{diagnostic::Severity, Diagnostic};
+                                    use helix_lsp::{lsp, util::lsp_pos_to_pos};
+                                    use lsp::DiagnosticSeverity;
                                     let start = lsp_pos_to_pos(doc, diagnostic.range.start);
                                     let end = lsp_pos_to_pos(doc, diagnostic.range.end);
 
-                                    helix_core::Diagnostic {
+                                    Diagnostic {
                                         range: (start, end),
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
-                                        // severity
+                                        severity: diagnostic.severity.map(
+                                            |severity| match severity {
+                                                DiagnosticSeverity::Error => Error,
+                                                DiagnosticSeverity::Warning => Warning,
+                                                DiagnosticSeverity::Information => Info,
+                                                DiagnosticSeverity::Hint => Hint,
+                                            },
+                                        ),
                                         // code
                                         // source
                                     }

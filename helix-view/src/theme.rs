@@ -160,6 +160,9 @@ impl Default for Theme {
             "ui.popup" => Style::default().bg(Color::Rgb(40, 23, 51)), // revolver
 
             "warning" => Style::default().fg(Color::Rgb(255, 205, 28)),
+            "error" => Style::default().fg(Color::Rgb(244, 120, 104)),
+            "info" => Style::default().fg(Color::Rgb(111, 68, 240)),
+            "hint" => Style::default().fg(Color::Rgb(204, 204, 204)),
         };
 
         let scopes = mapping.keys().map(ToString::to_string).collect();

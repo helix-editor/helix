@@ -283,10 +283,26 @@ impl EditorView {
 
         let style: Style = theme.get("ui.linenr");
         let warning: Style = theme.get("warning");
+        let error: Style = theme.get("error");
+        let info: Style = theme.get("info");
+        let hint: Style = theme.get("hint");
+
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
-            if view.doc.diagnostics.iter().any(|d| d.line == line) {
-                surface.set_stringn(viewport.x - OFFSET, viewport.y + i as u16, "●", 1, warning);
+            use helix_core::diagnostic::Severity;
+            if let Some(diagnostic) = view.doc.diagnostics.iter().find(|d| d.line == line) {
+                surface.set_stringn(
+                    viewport.x - OFFSET,
+                    viewport.y + i as u16,
+                    "●",
+                    1,
+                    match diagnostic.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    },
+                );
             }
 
             surface.set_stringn(

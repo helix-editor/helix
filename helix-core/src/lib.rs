@@ -1,6 +1,6 @@
 #![allow(unused)]
 pub mod comment;
-mod diagnostic;
+pub mod diagnostic;
 pub mod graphemes;
 mod history;
 pub mod indent;
