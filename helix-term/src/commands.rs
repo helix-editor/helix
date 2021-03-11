@@ -13,7 +13,6 @@ use once_cell::sync::Lazy;
 use crate::compositor::Compositor;
 use crate::ui::{self, Popup, Prompt, PromptEvent};
 
-use lsp_types as lsp;
 use std::path::PathBuf;
 
 use smol::Executor;
@@ -25,6 +24,8 @@ use helix_view::{
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
+
+use helix_lsp::lsp;
 
 pub struct Context<'a> {
     pub count: usize,
@@ -851,16 +852,16 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-pub fn goto_generic(cx: &mut Context, res: Vec<lsp::Location>) {
+fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
     let doc = cx.doc();
 
     doc.mode = Mode::Normal;
 
-    log::info!("{:?}", res);
+    log::info!("{:?}", locations);
     let filepath = doc.path().unwrap();
     log::info!("{:?}", filepath);
 
-    match &res.as_slice() {
+    match locations.as_slice() {
         [location] => {
             if filepath.to_str().unwrap() == location.uri.path() {
                 let definition_pos = location.range.start;
@@ -874,10 +875,9 @@ pub fn goto_generic(cx: &mut Context, res: Vec<lsp::Location>) {
             }
         }
         [] => (), // maybe show user message that no definition was found?
-        _ => {
-            let snapshot = doc.state.clone();
+        _locations => {
             let mut picker = ui::Picker::new(
-                res,
+                locations,
                 |item| {
                     let file = item.uri.as_str();
                     let line = item.range.start.line.to_string();
@@ -885,9 +885,6 @@ pub fn goto_generic(cx: &mut Context, res: Vec<lsp::Location>) {
                 },
                 move |editor: &mut Editor, item| {
                     let doc = &mut editor.view_mut().doc;
-
-                    // revert state to what it was before the last update
-                    doc.state = snapshot.clone();
                 },
             );
         }
@@ -907,7 +904,7 @@ pub fn goto_definition(cx: &mut Context) {
     // TODO: handle fails
     let res =
         smol::block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
-    goto_generic(cx, res);
+    goto(cx, res);
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
@@ -923,7 +920,7 @@ pub fn goto_type_definition(cx: &mut Context) {
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_type_definition(doc.identifier(), pos))
         .unwrap_or_default();
-    goto_generic(cx, res);
+    goto(cx, res);
 }
 
 pub fn goto_implementation(cx: &mut Context) {
@@ -939,7 +936,7 @@ pub fn goto_implementation(cx: &mut Context) {
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_implementation(doc.identifier(), pos))
         .unwrap_or_default();
-    goto_generic(cx, res);
+    goto(cx, res);
 }
 
 pub fn goto_reference(cx: &mut Context) {
@@ -955,7 +952,7 @@ pub fn goto_reference(cx: &mut Context) {
     // TODO: handle fails
     let res =
         smol::block_on(language_server.goto_reference(doc.identifier(), pos)).unwrap_or_default();
-    goto_generic(cx, res);
+    goto(cx, res);
 }
 
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
