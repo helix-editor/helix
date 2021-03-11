@@ -25,7 +25,7 @@
 - [ ] CI binary builds
 
 - [ ] regex search / select next
-- [ ] f / t mappings
+- [x] f / t mappings
 - [ ] open_above (O) command
 - [ ] = for auto indent line/selection
 - [x] q should only close the view, if all are closed, close the editor

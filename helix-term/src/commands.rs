@@ -5,7 +5,7 @@ use helix_core::{
     regex::{self, Regex},
     register, search, selection,
     state::{coords_at_pos, pos_at_coords, Direction, Granularity, State},
-    Change, ChangeSet, Position, Range, Selection, Tendril, Transaction,
+    Change, ChangeSet, Position, Range, RopeSlice, Selection, Tendril, Transaction,
 };
 
 use once_cell::sync::Lazy;
@@ -236,7 +236,13 @@ pub fn extend_next_word_end(cx: &mut Context) {
     doc.set_selection(selection);
 }
 
-pub fn find_next_char(cx: &mut Context) {
+#[inline]
+fn _find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
+where
+    // TODO: make an options struct for and abstract this Fn into a searcher type
+    // use the definition for w/b/e too
+    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize>,
+{
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count;
@@ -252,9 +258,13 @@ pub fn find_next_char(cx: &mut Context) {
             let text = doc.text().slice(..);
 
             let selection = doc.selection().transform(|mut range| {
-                if let Some(pos) = search::find_nth_next(text, ch, range.head, count) {
-                    Range::new(range.head, pos)
-                    // or (range.anchor, pos) for extend
+                if let Some(pos) = search::find_nth_next(text, ch, range.head, count, inclusive) {
+                    if extend {
+                        Range::new(range.anchor, pos)
+                    } else {
+                        // select
+                        Range::new(range.head, pos)
+                    }
                     // or (pos, pos) to move to found val
                 } else {
                     range
@@ -264,6 +274,78 @@ pub fn find_next_char(cx: &mut Context) {
             doc.set_selection(selection);
         }
     })
+}
+
+pub fn find_till_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_next,
+        false, /* inclusive */
+        false, /* extend */
+    )
+}
+
+pub fn find_next_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_next,
+        true,  /* inclusive */
+        false, /* extend */
+    )
+}
+
+pub fn extend_till_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_next,
+        false, /* inclusive */
+        true,  /* extend */
+    )
+}
+
+pub fn extend_next_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_next,
+        true, /* inclusive */
+        true, /* extend */
+    )
+}
+
+pub fn till_prev_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_prev,
+        false, /* inclusive */
+        false, /* extend */
+    )
+}
+
+pub fn find_prev_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_prev,
+        true,  /* inclusive */
+        false, /* extend */
+    )
+}
+
+pub fn extend_till_prev_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_prev,
+        false, /* inclusive */
+        true,  /* extend */
+    )
+}
+
+pub fn extend_prev_char(cx: &mut Context) {
+    _find_char(
+        cx,
+        search::find_nth_prev,
+        true, /* inclusive */
+        true, /* extend */
+    )
 }
 
 fn scroll(view: &mut View, offset: usize, direction: Direction) {

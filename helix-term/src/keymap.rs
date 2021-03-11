@@ -137,10 +137,10 @@ pub fn default() -> Keymaps {
         key!('k') => commands::move_line_up,
         key!('l') => commands::move_char_right,
 
-        // key!('t') => commands::till_next_char,
+        key!('t') => commands::find_till_char,
         key!('f') => commands::find_next_char,
-        // key!('T') => commands::till_prev_char,
-        // key!('f') => commands::find_prev_char,
+        shift!('T') => commands::till_prev_char,
+        shift!('F') => commands::find_prev_char,
         // and matching set for select mode (extend)
 
         key!('0') => commands::move_line_start,
@@ -260,6 +260,11 @@ pub fn default() -> Keymaps {
             key!('w') => commands::extend_next_word_start,
             key!('b') => commands::extend_prev_word_start,
             key!('e') => commands::extend_next_word_end,
+
+            key!('t') => commands::extend_till_char,
+            key!('f') => commands::extend_next_char,
+            shift!('T') => commands::extend_till_prev_char,
+            shift!('F') => commands::extend_prev_char,
 
             Key {
                 code: KeyCode::Esc,
