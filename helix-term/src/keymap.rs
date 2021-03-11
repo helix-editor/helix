@@ -138,7 +138,7 @@ pub fn default() -> Keymaps {
         key!('l') => commands::move_char_right,
 
         // key!('t') => commands::till_next_char,
-        // key!('f') => commands::find_next_char,
+        key!('f') => commands::find_next_char,
         // key!('T') => commands::till_prev_char,
         // key!('f') => commands::find_prev_char,
         // and matching set for select mode (extend)

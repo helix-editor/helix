@@ -20,6 +20,7 @@ use tui::{
 
 pub struct EditorView {
     keymap: Keymaps,
+    on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -28,6 +29,7 @@ impl EditorView {
     pub fn new() -> Self {
         Self {
             keymap: keymap::default(),
+            on_next_key: None,
         }
     }
     pub fn render_view(
@@ -366,45 +368,54 @@ impl Component for EditorView {
                     editor: &mut cx.editor,
                     count: 1,
                     callback: None,
+                    on_next_key_callback: None,
                 };
 
-                match mode {
-                    Mode::Insert => {
-                        if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
-                            command(&mut cxt);
-                        } else if let KeyEvent {
-                            code: KeyCode::Char(c),
-                            ..
-                        } = event
-                        {
-                            commands::insert::insert_char(&mut cxt, c);
-                        }
-                    }
-                    mode => {
-                        match event {
-                            KeyEvent {
-                                code: KeyCode::Char(i @ '0'..='9'),
-                                modifiers: KeyModifiers::NONE,
-                            } => {
-                                let i = i.to_digit(10).unwrap() as usize;
-                                cxt.editor.count = Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
+                if let Some(on_next_key) = self.on_next_key.take() {
+                    // if there's a command waiting input, do that first
+                    on_next_key(&mut cxt, event);
+                } else {
+                    match mode {
+                        Mode::Insert => {
+                            if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
+                                command(&mut cxt);
+                            } else if let KeyEvent {
+                                code: KeyCode::Char(c),
+                                ..
+                            } = event
+                            {
+                                commands::insert::insert_char(&mut cxt, c);
                             }
-                            _ => {
-                                // set the count
-                                cxt.count = cxt.editor.count.take().unwrap_or(1);
-                                // TODO: edge case: 0j -> reset to 1
-                                // if this fails, count was Some(0)
-                                // debug_assert!(cxt.count != 0);
+                        }
+                        mode => {
+                            match event {
+                                KeyEvent {
+                                    code: KeyCode::Char(i @ '0'..='9'),
+                                    modifiers: KeyModifiers::NONE,
+                                } => {
+                                    let i = i.to_digit(10).unwrap() as usize;
+                                    cxt.editor.count =
+                                        Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
+                                }
+                                _ => {
+                                    // set the count
+                                    cxt.count = cxt.editor.count.take().unwrap_or(1);
+                                    // TODO: edge case: 0j -> reset to 1
+                                    // if this fails, count was Some(0)
+                                    // debug_assert!(cxt.count != 0);
 
-                                if let Some(command) = self.keymap[&mode].get(&event) {
-                                    command(&mut cxt);
+                                    if let Some(command) = self.keymap[&mode].get(&event) {
+                                        command(&mut cxt);
 
-                                    // TODO: simplistic ensure cursor in view for now
+                                        // TODO: simplistic ensure cursor in view for now
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                self.on_next_key = cxt.on_next_key_callback.take();
 
                 // appease borrowck
                 let callback = cxt.callback.take();

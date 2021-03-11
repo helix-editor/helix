@@ -123,6 +123,8 @@ impl State {
     pub fn move_next_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
         // TODO: confirm it's fine without using graphemes, I think it should be
         for _ in 0..count {
+            // TODO: if end return end
+
             let ch = slice.char(pos);
             let next = slice.char(pos.saturating_add(1));
             if categorize(ch) != categorize(next) {
@@ -148,8 +150,12 @@ impl State {
     pub fn move_prev_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
         // TODO: confirm it's fine without using graphemes, I think it should be
         for _ in 0..count {
+            if pos == 0 {
+                return pos;
+            }
+
             let ch = slice.char(pos);
-            let prev = slice.char(pos.saturating_sub(1)); // TODO: just return original pos if at start
+            let prev = slice.char(pos - 1);
 
             if categorize(ch) != categorize(prev) {
                 pos -= 1;
@@ -176,6 +182,8 @@ impl State {
 
     pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
         for _ in 0..count {
+            // TODO: if end return end
+
             // TODO: confirm it's fine without using graphemes, I think it should be
             let ch = slice.char(pos);
             let next = slice.char(pos.saturating_add(1));
@@ -303,7 +311,7 @@ where
         if !fun(ch) {
             break;
         }
-        *pos += 1;
+        *pos += 1; // TODO: can go 1 over end of doc
     }
 }
 
@@ -319,7 +327,7 @@ where
         if !fun(ch) {
             break;
         }
-        *pos -= 1;
+        *pos -= pos.saturating_sub(1);
     }
 }
 

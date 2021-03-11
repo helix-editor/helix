@@ -3,7 +3,7 @@ use helix_core::{
     indent::TAB_WIDTH,
     object,
     regex::{self, Regex},
-    register, selection,
+    register, search, selection,
     state::{coords_at_pos, pos_at_coords, Direction, Granularity, State},
     Change, ChangeSet, Position, Range, Selection, Tendril, Transaction,
 };
@@ -19,12 +19,15 @@ use helix_view::{
     Document, Editor,
 };
 
+use crossterm::event::{KeyCode, KeyEvent};
+
 pub struct Context<'a> {
     pub count: usize,
     pub editor: &'a mut Editor,
     pub executor: &'static smol::Executor<'static>,
 
     pub callback: Option<crate::compositor::Callback>,
+    pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
 }
 
 impl<'a> Context<'a> {
@@ -48,6 +51,14 @@ impl<'a> Context<'a> {
                 compositor.push(component);
             },
         ));
+    }
+
+    #[inline]
+    pub fn on_next_key(
+        &mut self,
+        on_next_key_callback: impl FnOnce(&mut Context, KeyEvent) + 'static,
+    ) {
+        self.on_next_key_callback = Some(Box::new(on_next_key_callback));
     }
 }
 
@@ -223,6 +234,36 @@ pub fn extend_next_word_end(cx: &mut Context) {
     });
 
     doc.set_selection(selection);
+}
+
+pub fn find_next_char(cx: &mut Context) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count;
+
+    // need to wait for next key
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            let doc = cx.doc();
+            let text = doc.text().slice(..);
+
+            let selection = doc.selection().transform(|mut range| {
+                if let Some(pos) = search::find_nth_next(text, ch, range.head, count) {
+                    Range::new(range.head, pos)
+                    // or (range.anchor, pos) for extend
+                    // or (pos, pos) to move to found val
+                } else {
+                    range
+                }
+            });
+
+            doc.set_selection(selection);
+        }
+    })
 }
 
 fn scroll(view: &mut View, offset: usize, direction: Direction) {

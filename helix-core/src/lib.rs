@@ -8,6 +8,7 @@ pub mod macros;
 pub mod object;
 mod position;
 pub mod register;
+pub mod search;
 pub mod selection;
 pub mod state;
 pub mod syntax;
