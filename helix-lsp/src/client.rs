@@ -583,7 +583,12 @@ impl Client {
         Ok(response.unwrap_or_default())
     }
 
-    pub async fn goto_request<T: lsp::request::Request>(
+    async fn goto_request<
+        T: lsp::request::Request<
+            Params = lsp::GotoDefinitionParams,
+            Result = Option<lsp::GotoDefinitionResponse>,
+        >,
+    >(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
@@ -628,7 +633,8 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
     ) -> anyhow::Result<Vec<lsp::Location>> {
-        self.goto_request(response).await
+        self.goto_request::<lsp::request::GotoDefinition>(text_document, position)
+            .await
     }
 
     pub async fn goto_type_definition(
@@ -636,24 +642,8 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
     ) -> anyhow::Result<Vec<lsp::Location>> {
-        let params = lsp::GotoDefinitionParams {
-            text_document_position_params: lsp::TextDocumentPositionParams {
-                text_document,
-                position,
-            },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
-            partial_result_params: lsp::PartialResultParams {
-                partial_result_token: None,
-            },
-        };
-
-        let response = self
-            .request::<lsp::request::GotoTypeDefinition>(params)
-            .await?;
-
-        self.goto_request(response).await
+        self.goto_request::<lsp::request::GotoTypeDefinition>(text_document, position)
+            .await
     }
 
     pub async fn goto_implementation(
@@ -661,24 +651,8 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
     ) -> anyhow::Result<Vec<lsp::Location>> {
-        let params = lsp::GotoDefinitionParams {
-            text_document_position_params: lsp::TextDocumentPositionParams {
-                text_document,
-                position,
-            },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
-            partial_result_params: lsp::PartialResultParams {
-                partial_result_token: None,
-            },
-        };
-
-        let response = self
-            .request::<lsp::request::GotoImplementation>(params)
-            .await?;
-
-        self.goto_request(response).await
+        self.goto_request::<lsp::request::GotoImplementation>(text_document, position)
+            .await
     }
 
     pub async fn goto_reference(
@@ -704,7 +678,6 @@ impl Client {
 
         let response = self.request::<lsp::request::References>(params).await?;
 
-        self.goto_request(response.map(lsp::GotoDefinitionResponse::Array))
-            .await
+        Ok(response.unwrap_or_default())
     }
 }
