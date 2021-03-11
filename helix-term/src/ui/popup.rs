@@ -80,14 +80,14 @@ impl Component for Popup {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.scroll(self.size.1 as usize / 2, true);
-                return EventResult::Consumed(None);
+                EventResult::Consumed(None)
             }
             KeyEvent {
                 code: KeyCode::Char('u'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.scroll(self.size.1 as usize / 2, false);
-                return EventResult::Consumed(None);
+                EventResult::Consumed(None)
             }
             _ => self.contents.handle_event(event, cx),
         }
