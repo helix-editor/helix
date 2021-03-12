@@ -111,9 +111,12 @@ impl Document {
 
         let text = self.text().clone();
         let path = self.path.clone().expect("Can't save with no path set!"); // TODO: handle no path
+        let identifier = self.identifier();
 
         // TODO: mark changes up to now as saved
         // TODO: mark dirty false
+
+        let language_server = self.language_server.clone();
 
         async move {
             use smol::{fs::File, prelude::*};
@@ -125,8 +128,14 @@ impl Document {
             }
             // TODO: flush?
 
+            if let Some(language_server) = language_server {
+                language_server
+                    .text_document_did_save(identifier, &text)
+                    .await?;
+            }
+
             Ok(())
-        } // and_then notify save
+        }
     }
 
     pub fn set_language(

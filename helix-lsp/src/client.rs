@@ -414,10 +414,29 @@ impl Client {
     pub async fn text_document_did_save(
         &self,
         text_document: lsp::TextDocumentIdentifier,
+        text: &Rope,
     ) -> Result<()> {
+        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+
+        let include_text = match &capabilities.text_document_sync {
+            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                save: Some(options),
+                ..
+            })) => match options {
+                lsp::TextDocumentSyncSaveOptions::Supported(true) => false,
+                lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp_types::SaveOptions {
+                    include_text,
+                }) => include_text.unwrap_or(false),
+                // Supported(false)
+                _ => return Ok(()),
+            },
+            // unsupported
+            _ => return Ok(()),
+        };
+
         self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
             text_document,
-            text: None, // TODO:
+            text: include_text.then(|| text.into()),
         })
         .await
     }

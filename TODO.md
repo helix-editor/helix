@@ -31,9 +31,14 @@
 - [x] q should only close the view, if all are closed, close the editor
 - [ ] buffers should sit on editor.buffers, view simply refs them
 
+- [ ] pressing b at start of file needs to not crash
+- [ ] draw separator line between views
+- [ ] command to drop all selections except primary
+
+- [ ] diagnostic severity
 
 - [ ] lsp: signature help
-- [ ] lsp: hover
+- [x] lsp: hover
 - [ ] lsp: document symbols (nested/vec)
 - [ ] lsp: code actions
 - [ ] lsp: formatting
