@@ -2,11 +2,12 @@ use crate::{Change, Rope, RopeSlice, Transaction};
 pub use helix_syntax::Lang;
 pub use helix_syntax::{get_language, get_language_name};
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 
 // largely based on tree-sitter/cli/src/loader.rs
 pub struct LanguageConfiguration {
@@ -64,8 +65,6 @@ impl LanguageConfiguration {
         &self.scope
     }
 }
-
-use once_cell::sync::Lazy;
 
 pub static LOADER: Lazy<Loader> = Lazy::new(Loader::init);
 
@@ -145,13 +144,20 @@ impl Loader {
     }
 }
 
-//
+pub struct TSParser {
+    parser: tree_sitter::Parser,
+    cursors: Vec<QueryCursor>,
+}
+
+// could also just use a pool, or a single instance?
+thread_local! {
+    pub static PARSER: RefCell<TSParser> = RefCell::new(TSParser {
+        parser: Parser::new(),
+        cursors: Vec::new(),
+    })
+}
 
 pub struct Syntax {
-    // grammar: Grammar,
-    parser: Parser,
-    cursors: Vec<QueryCursor>,
-
     config: Arc<HighlightConfiguration>,
 
     pub(crate) root_layer: LanguageLayer,
@@ -163,10 +169,6 @@ impl Syntax {
         /*language: Lang,*/ source: &Rope,
         config: Arc<HighlightConfiguration>,
     ) -> Self {
-        // fetch grammar for parser based on language string
-        // let grammar = get_language(&language);
-        let parser = Parser::new();
-
         let root_layer = LanguageLayer { tree: None };
 
         // track markers of injections
@@ -174,25 +176,25 @@ impl Syntax {
 
         let mut syntax = Self {
             // grammar,
-            parser,
-            cursors: Vec::new(),
             config,
             root_layer,
         };
 
         // update root layer
-        syntax.root_layer.parse(
-            &mut syntax.parser,
-            &syntax.config,
-            source,
-            0,
-            vec![Range {
-                start_byte: 0,
-                end_byte: usize::MAX,
-                start_point: Point::new(0, 0),
-                end_point: Point::new(usize::MAX, usize::MAX),
-            }],
-        );
+        PARSER.with(|ts_parser| {
+            syntax.root_layer.parse(
+                &mut ts_parser.borrow_mut(),
+                &syntax.config,
+                source,
+                0,
+                vec![Range {
+                    start_byte: 0,
+                    end_byte: usize::MAX,
+                    start_point: Point::new(0, 0),
+                    end_point: Point::new(usize::MAX, usize::MAX),
+                }],
+            );
+        });
         syntax
     }
 
@@ -202,13 +204,15 @@ impl Syntax {
         source: &Rope,
         changeset: &ChangeSet,
     ) -> Result<(), Error> {
-        self.root_layer.update(
-            &mut self.parser,
-            &self.config,
-            old_source,
-            source,
-            changeset,
-        )
+        PARSER.with(|ts_parser| {
+            self.root_layer.update(
+                &mut ts_parser.borrow_mut(),
+                &self.config,
+                old_source,
+                source,
+                changeset,
+            )
+        })
 
         // TODO: deal with injections and update them too
     }
@@ -229,7 +233,8 @@ impl Syntax {
 
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
-        &'a mut self,
+        &self,
+        ts_parser: &'a mut TSParser,
         source: &'a [u8],
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
@@ -283,7 +288,7 @@ impl Syntax {
             byte_offset: range.map(|r| r.start).unwrap_or(0), // TODO: simplify
             injection_callback,
             cancellation_flag,
-            highlighter: self,
+            highlighter: ts_parser,
             iter_count: 0,
             layers: vec![layer],
             next_event: None,
@@ -336,19 +341,21 @@ impl LanguageLayer {
 
     fn parse(
         &mut self,
-        parser: &mut Parser,
+        ts_parser: &mut TSParser,
         config: &HighlightConfiguration,
         source: &Rope,
         mut depth: usize,
         mut ranges: Vec<Range>,
     ) -> Result<(), Error> {
-        if parser.set_included_ranges(&ranges).is_ok() {
-            parser
+        if ts_parser.parser.set_included_ranges(&ranges).is_ok() {
+            ts_parser
+                .parser
                 .set_language(config.language)
                 .map_err(|_| Error::InvalidLanguage)?;
 
             // unsafe { syntax.parser.set_cancellation_flag(cancellation_flag) };
-            let tree = parser
+            let tree = ts_parser
+                .parser
                 .parse_with(
                     &mut |byte, _| {
                         if byte <= source.len_bytes() {
@@ -517,7 +524,7 @@ impl LanguageLayer {
 
     fn update(
         &mut self,
-        parser: &mut Parser,
+        ts_parser: &mut TSParser,
         config: &HighlightConfiguration,
         old_source: &Rope,
         source: &Rope,
@@ -535,7 +542,7 @@ impl LanguageLayer {
         }
 
         self.parse(
-            parser,
+            ts_parser,
             config,
             source,
             0,
@@ -652,7 +659,7 @@ where
 {
     source: &'a [u8],
     byte_offset: usize,
-    highlighter: &'a mut Syntax,
+    highlighter: &'a mut TSParser,
     injection_callback: F,
     cancellation_flag: Option<&'a AtomicUsize>,
     layers: Vec<HighlightIterLayer<'a>>,
@@ -839,7 +846,7 @@ impl<'a> HighlightIterLayer<'a> {
     /// added to the returned vector.
     fn new<F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a>(
         source: &'a [u8],
-        highlighter: &mut Syntax,
+        highlighter: &mut TSParser,
         cancellation_flag: Option<&'a AtomicUsize>,
         injection_callback: &mut F,
         mut config: &'a HighlightConfiguration,

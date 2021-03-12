@@ -12,9 +12,6 @@ use std::borrow::Cow;
 use helix_core::Position;
 use helix_view::Editor;
 
-// TODO: factor out a popup component that we can reuse for displaying docs on autocomplete,
-// diagnostics popups, etc.
-
 pub struct Menu<T> {
     options: Vec<T>,
 

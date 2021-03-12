@@ -3,7 +3,11 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::keymap::{self, Keymaps};
 use crate::ui::text_color;
 
-use helix_core::{indent::TAB_WIDTH, syntax::HighlightEvent, Position, Range, State};
+use helix_core::{
+    indent::TAB_WIDTH,
+    syntax::{self, HighlightEvent},
+    Position, Range, State,
+};
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 use std::borrow::Cow;
 
@@ -34,7 +38,7 @@ impl EditorView {
     }
     pub fn render_view(
         &self,
-        view: &mut View,
+        view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
@@ -61,10 +65,9 @@ impl EditorView {
         self.render_statusline(&view.doc, area, surface, theme, is_focused);
     }
 
-    // TODO: ideally not &mut View but highlights require it because of cursor cache
     pub fn render_buffer(
         &self,
-        view: &mut View,
+        view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
@@ -79,7 +82,7 @@ impl EditorView {
         let range = {
             // calculate viewport byte ranges
             let start = text.line_to_byte(view.first_line);
-            let end = text.line_to_byte(last_line + 1); // TODO: double check
+            let end = text.line_to_byte(last_line + 1);
 
             start..end
         };
@@ -87,12 +90,20 @@ impl EditorView {
         // TODO: range doesn't actually restrict source, just highlight range
         // TODO: cache highlight results
         // TODO: only recalculate when state.doc is actually modified
-        let highlights: Vec<_> = match view.doc.syntax.as_mut() {
+        let highlights: Vec<_> = match &view.doc.syntax {
             Some(syntax) => {
-                syntax
-                    .highlight_iter(source_code.as_bytes(), Some(range), None, |_| None)
-                    .unwrap()
-                    .collect() // TODO: we collect here to avoid double borrow, fix later
+                syntax::PARSER.with(|ts_parser| {
+                    syntax
+                        .highlight_iter(
+                            &mut ts_parser.borrow_mut(),
+                            source_code.as_bytes(),
+                            Some(range),
+                            None,
+                            |_| None,
+                        )
+                        .unwrap()
+                        .collect() // TODO: we collect here to avoid holding the lock, fix later
+                })
             }
             None => vec![Ok(HighlightEvent::Source {
                 start: range.start,
@@ -102,7 +113,6 @@ impl EditorView {
         let mut spans = Vec::new();
         let mut visual_x = 0;
         let mut line = 0u16;
-        let text = view.doc.text();
 
         'outer: for event in highlights {
             match event.unwrap() {
