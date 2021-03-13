@@ -234,7 +234,6 @@ impl Syntax {
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
         &self,
-        ts_parser: &'a mut TSParser,
         source: &'a [u8],
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
@@ -288,7 +287,6 @@ impl Syntax {
             byte_offset: range.map(|r| r.start).unwrap_or(0), // TODO: simplify
             injection_callback,
             cancellation_flag,
-            highlighter: ts_parser,
             iter_count: 0,
             layers: vec![layer],
             next_event: None,
@@ -659,7 +657,6 @@ where
 {
     source: &'a [u8],
     byte_offset: usize,
-    highlighter: &'a mut TSParser,
     injection_callback: F,
     cancellation_flag: Option<&'a AtomicUsize>,
     layers: Vec<HighlightIterLayer<'a>>,
@@ -846,7 +843,6 @@ impl<'a> HighlightIterLayer<'a> {
     /// added to the returned vector.
     fn new<F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a>(
         source: &'a [u8],
-        highlighter: &mut TSParser,
         cancellation_flag: Option<&'a AtomicUsize>,
         injection_callback: &mut F,
         mut config: &'a HighlightConfiguration,
@@ -858,86 +854,103 @@ impl<'a> HighlightIterLayer<'a> {
         loop {
             // --> Tree parsing part
 
-            if highlighter.parser.set_included_ranges(&ranges).is_ok() {
-                highlighter
-                    .parser
-                    .set_language(config.language)
-                    .map_err(|_| Error::InvalidLanguage)?;
+            PARSER.with(|ts_parser| {
+                let highlighter = &mut ts_parser.borrow_mut();
 
-                unsafe { highlighter.parser.set_cancellation_flag(cancellation_flag) };
-                let tree = highlighter
-                    .parser
-                    .parse(source, None)
-                    .ok_or(Error::Cancelled)?;
-                unsafe { highlighter.parser.set_cancellation_flag(None) };
-                let mut cursor = highlighter.cursors.pop().unwrap_or_else(QueryCursor::new);
+                if highlighter.parser.set_included_ranges(&ranges).is_ok() {
+                    highlighter
+                        .parser
+                        .set_language(config.language)
+                        .map_err(|_| Error::InvalidLanguage)?;
 
-                // Process combined injections.
-                if let Some(combined_injections_query) = &config.combined_injections_query {
-                    let mut injections_by_pattern_index =
-                        vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
-                    let matches =
-                        cursor.matches(combined_injections_query, tree.root_node(), |n: Node| {
-                            &source[n.byte_range()]
-                        });
-                    for mat in matches {
-                        let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (language_name, content_node, include_children) =
-                            injection_for_match(config, combined_injections_query, &mat, source);
-                        if language_name.is_some() {
-                            entry.0 = language_name;
-                        }
-                        if let Some(content_node) = content_node {
-                            entry.1.push(content_node);
-                        }
-                        entry.2 = include_children;
-                    }
-                    for (lang_name, content_nodes, includes_children) in injections_by_pattern_index
-                    {
-                        if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
-                            if let Some(next_config) = (injection_callback)(lang_name) {
-                                let ranges = Self::intersect_ranges(
-                                    &ranges,
-                                    &content_nodes,
-                                    includes_children,
+                    unsafe { highlighter.parser.set_cancellation_flag(cancellation_flag) };
+                    let tree = highlighter
+                        .parser
+                        .parse(source, None)
+                        .ok_or(Error::Cancelled)?;
+                    unsafe { highlighter.parser.set_cancellation_flag(None) };
+                    let mut cursor = highlighter.cursors.pop().unwrap_or_else(QueryCursor::new);
+
+                    // Process combined injections.
+                    if let Some(combined_injections_query) = &config.combined_injections_query {
+                        let mut injections_by_pattern_index = vec![
+                            (None, Vec::new(), false);
+                            combined_injections_query
+                                .pattern_count()
+                        ];
+                        let matches = cursor.matches(
+                            combined_injections_query,
+                            tree.root_node(),
+                            |n: Node| &source[n.byte_range()],
+                        );
+                        for mat in matches {
+                            let entry = &mut injections_by_pattern_index[mat.pattern_index];
+                            let (language_name, content_node, include_children) =
+                                injection_for_match(
+                                    config,
+                                    combined_injections_query,
+                                    &mat,
+                                    source,
                                 );
-                                if !ranges.is_empty() {
-                                    queue.push((next_config, depth + 1, ranges));
+                            if language_name.is_some() {
+                                entry.0 = language_name;
+                            }
+                            if let Some(content_node) = content_node {
+                                entry.1.push(content_node);
+                            }
+                            entry.2 = include_children;
+                        }
+                        for (lang_name, content_nodes, includes_children) in
+                            injections_by_pattern_index
+                        {
+                            if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty())
+                            {
+                                if let Some(next_config) = (injection_callback)(lang_name) {
+                                    let ranges = Self::intersect_ranges(
+                                        &ranges,
+                                        &content_nodes,
+                                        includes_children,
+                                    );
+                                    if !ranges.is_empty() {
+                                        queue.push((next_config, depth + 1, ranges));
+                                    }
                                 }
                             }
                         }
                     }
+
+                    // --> Highlighting query part
+
+                    // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
+                    // prevents them from being moved. But both of these values are really just
+                    // pointers, so it's actually ok to move them.
+                    let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(&tree) };
+                    let cursor_ref =
+                        unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
+                    let captures = cursor_ref
+                        .captures(&config.query, tree_ref.root_node(), move |n: Node| {
+                            &source[n.byte_range()]
+                        })
+                        .peekable();
+
+                    result.push(HighlightIterLayer {
+                        highlight_end_stack: Vec::new(),
+                        scope_stack: vec![LocalScope {
+                            inherits: false,
+                            range: 0..usize::MAX,
+                            local_defs: Vec::new(),
+                        }],
+                        cursor,
+                        depth,
+                        _tree: Some(tree),
+                        captures,
+                        config,
+                        ranges,
+                    });
                 }
 
-                // --> Highlighting query part
-
-                // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
-                // prevents them from being moved. But both of these values are really just
-                // pointers, so it's actually ok to move them.
-                let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(&tree) };
-                let cursor_ref =
-                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-                let captures = cursor_ref
-                    .captures(&config.query, tree_ref.root_node(), move |n: Node| {
-                        &source[n.byte_range()]
-                    })
-                    .peekable();
-
-                result.push(HighlightIterLayer {
-                    highlight_end_stack: Vec::new(),
-                    scope_stack: vec![LocalScope {
-                        inherits: false,
-                        range: 0..usize::MAX,
-                        local_defs: Vec::new(),
-                    }],
-                    cursor,
-                    depth,
-                    _tree: Some(tree),
-                    captures,
-                    config,
-                    ranges,
-                });
-            }
+                Ok(()) // so we can use the try operator
+            })?;
 
             if queue.is_empty() {
                 break;
@@ -1114,7 +1127,10 @@ where
                 break;
             } else {
                 let layer = self.layers.remove(0);
-                self.highlighter.cursors.push(layer.cursor);
+                PARSER.with(|ts_parser| {
+                    let highlighter = &mut ts_parser.borrow_mut();
+                    highlighter.cursors.push(layer.cursor);
+                });
             }
         }
     }
@@ -1228,7 +1244,6 @@ where
                         if !ranges.is_empty() {
                             match HighlightIterLayer::new(
                                 self.source,
-                                self.highlighter,
                                 self.cancellation_flag,
                                 &mut self.injection_callback,
                                 config,

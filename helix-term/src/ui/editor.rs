@@ -92,18 +92,10 @@ impl EditorView {
         // TODO: only recalculate when state.doc is actually modified
         let highlights: Vec<_> = match &view.doc.syntax {
             Some(syntax) => {
-                syntax::PARSER.with(|ts_parser| {
-                    syntax
-                        .highlight_iter(
-                            &mut ts_parser.borrow_mut(),
-                            source_code.as_bytes(),
-                            Some(range),
-                            None,
-                            |_| None,
-                        )
-                        .unwrap()
-                        .collect() // TODO: we collect here to avoid holding the lock, fix later
-                })
+                syntax
+                    .highlight_iter(source_code.as_bytes(), Some(range), None, |_| None)
+                    .unwrap()
+                    .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
             None => vec![Ok(HighlightEvent::Source {
                 start: range.start,
