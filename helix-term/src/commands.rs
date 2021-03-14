@@ -852,27 +852,21 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
+fn goto(cx: &'static mut Context<'static>, locations: Vec<lsp::Location>) {
     let doc = cx.doc();
 
     doc.mode = Mode::Normal;
 
     log::info!("{:?}", locations);
-    let filepath = doc.path().unwrap();
-    log::info!("{:?}", filepath);
 
     match locations.as_slice() {
         [location] => {
-            if filepath.to_str().unwrap() == location.uri.path() {
-                let definition_pos = location.range.start;
-                let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
-                doc.set_selection(Selection::point(new_pos));
-            } else {
-                // open new file
-                cx.editor
-                    .open(PathBuf::from(location.uri.path()), cx.executor);
-                // TODO: go to position
-            }
+            cx.editor
+                .open(PathBuf::from(location.uri.path()), cx.executor);
+            let doc = cx.doc();
+            let definition_pos = location.range.start;
+            let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+            doc.set_selection(Selection::point(new_pos));
         }
         [] => (), // maybe show user message that no definition was found?
         _locations => {
@@ -884,14 +878,20 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                     format!("{}:{}", file, line).into()
                 },
                 move |editor: &mut Editor, item| {
-                    let doc = &mut editor.view_mut().doc;
+                    cx.editor.open(PathBuf::from(item.uri.path()), cx.executor);
+                    let doc = cx.doc();
+                    let definition_pos = item.range.start;
+                    let new_pos =
+                        helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+                    doc.set_selection(Selection::point(new_pos));
                 },
             );
+            cx.push_layer(Box::new(picker));
         }
     }
 }
 
-pub fn goto_definition(cx: &mut Context) {
+pub fn goto_definition(cx: &'static mut Context<'static>) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,
@@ -907,7 +907,7 @@ pub fn goto_definition(cx: &mut Context) {
     goto(cx, res);
 }
 
-pub fn goto_type_definition(cx: &mut Context) {
+pub fn goto_type_definition(cx: &'static mut Context<'static>) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,
@@ -923,7 +923,7 @@ pub fn goto_type_definition(cx: &mut Context) {
     goto(cx, res);
 }
 
-pub fn goto_implementation(cx: &mut Context) {
+pub fn goto_implementation(cx: &'static mut Context<'static>) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,
@@ -939,7 +939,7 @@ pub fn goto_implementation(cx: &mut Context) {
     goto(cx, res);
 }
 
-pub fn goto_reference(cx: &mut Context) {
+pub fn goto_reference(cx: &'static mut Context<'static>) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,
