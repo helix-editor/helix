@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
-    syntax::LOADER, ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
+    syntax::{LanguageConfiguration, LOADER},
+    ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -26,8 +27,8 @@ pub struct Document {
 
     /// Tree-sitter AST tree
     pub syntax: Option<Syntax>,
-    /// Corresponding language scope name. Usually `source.<lang>`.
-    language: Option<String>,
+    // /// Corresponding language scope name. Usually `source.<lang>`.
+    pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -144,20 +145,13 @@ impl Document {
         scopes: &[String],
     ) {
         if let Some(language_config) = language_config {
-            // TODO: maybe just keep an Arc<> pointer to the language_config?
-            self.language = Some(language_config.scope().to_string());
+            if let Some(highlight_config) = language_config.highlight_config(scopes) {
+                let syntax = Syntax::new(&self.state.doc, highlight_config);
+                self.syntax = Some(syntax);
+                // TODO: config.configure(scopes) is now delayed, is that ok?
+            }
 
-            // TODO: this ties lsp support to tree-sitter enabled languages for now. Language
-            // config should use Option<HighlightConfig> to let us have non-tree-sitter configs.
-
-            let highlight_config = language_config
-                .highlight_config(scopes)
-                .expect("No highlight_config found!");
-            // TODO: config.configure(scopes) is now delayed, is that ok?
-
-            let syntax = Syntax::new(&self.state.doc, highlight_config);
-
-            self.syntax = Some(syntax);
+            self.language = Some(language_config);
         } else {
             self.syntax = None;
             self.language = None;
@@ -286,7 +280,9 @@ impl Document {
     #[inline]
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub fn language(&self) -> Option<&str> {
-        self.language.as_deref()
+        self.language
+            .as_ref()
+            .map(|language| language.scope.as_str())
     }
 
     #[inline]

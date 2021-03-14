@@ -11,20 +11,27 @@ use once_cell::sync::{Lazy, OnceCell};
 
 // largely based on tree-sitter/cli/src/loader.rs
 pub struct LanguageConfiguration {
-    pub(crate) scope: String,           // source.rust
-    pub(crate) file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+    pub scope: String,           // source.rust
+    pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+    pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
 
-    pub(crate) path: PathBuf,
+    pub path: PathBuf,
+    // root_path for tree-sitter (^)
 
     // content_regex
     // injection_regex
     // first_line_regex
     //
-    // root_path
     //
     pub(crate) language_id: Lang,
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
+    pub language_server_config: Option<LanguageServerConfiguration>,
+}
+
+pub struct LanguageServerConfiguration {
+    pub command: String,
+    pub args: Vec<String>,
 }
 
 impl LanguageConfiguration {
@@ -90,6 +97,11 @@ impl Loader {
                 highlight_config: OnceCell::new(),
                 //
                 path: "../helix-syntax/languages/tree-sitter-rust".into(),
+                roots: vec![],
+                language_server_config: Some(LanguageServerConfiguration {
+                    command: "rust-analyzer".to_string(),
+                    args: vec![],
+                }),
             },
             LanguageConfiguration {
                 scope: "source.toml".to_string(),
@@ -98,6 +110,8 @@ impl Loader {
                 highlight_config: OnceCell::new(),
                 //
                 path: "../helix-syntax/languages/tree-sitter-toml".into(),
+                roots: vec![],
+                language_server_config: None,
             },
         ];
 

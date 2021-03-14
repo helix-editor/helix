@@ -39,7 +39,8 @@ impl Editor {
 
         // try to find a language server based on the language name
         let language_server = doc
-            .language()
+            .language
+            .as_ref()
             .and_then(|language| self.language_servers.get(language, &executor));
 
         if let Some(language_server) = language_server {

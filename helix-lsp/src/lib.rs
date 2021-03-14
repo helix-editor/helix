@@ -10,6 +10,8 @@ pub use once_cell::sync::{Lazy, OnceCell};
 pub use client::Client;
 pub use lsp::{Position, Url};
 
+use helix_core::syntax::LanguageConfiguration;
+
 use thiserror::Error;
 
 use std::{collections::HashMap, sync::Arc};
@@ -106,7 +108,7 @@ use crate::select_all::SelectAll;
 use smol::channel::Receiver;
 
 pub struct Registry {
-    inner: HashMap<LanguageId, OnceCell<Arc<Client>>>,
+    inner: HashMap<LanguageId, Arc<Client>>,
 
     pub incoming: SelectAll<Receiver<Call>>,
 }
@@ -119,35 +121,43 @@ impl Default for Registry {
 
 impl Registry {
     pub fn new() -> Self {
-        let mut inner = HashMap::new();
-
-        inner.insert("source.rust".to_string(), OnceCell::new());
-
         Self {
-            inner,
+            inner: HashMap::new(),
             incoming: SelectAll::new(),
         }
     }
 
-    pub fn get(&self, id: &str, ex: &smol::Executor) -> Option<Arc<Client>> {
-        // TODO: use get_or_try_init and propagate the error
-        self.inner
-            .get(id)
-            .map(|cell| {
-                cell.get_or_init(|| {
+    pub fn get(
+        &mut self,
+        language_config: &LanguageConfiguration,
+        ex: &smol::Executor,
+    ) -> Option<Arc<Client>> {
+        // TODO: propagate the error
+        if let Some(config) = &language_config.language_server_config {
+            // avoid borrow issues
+            let inner = &mut self.inner;
+            let s_incoming = &self.incoming;
+
+            let language_server = inner
+                .entry(language_config.scope.clone()) // can't use entry with Borrow keys: https://github.com/rust-lang/rfcs/pull/1769
+                .or_insert_with(|| {
                     // TODO: lookup defaults for id (name, args)
 
                     // initialize a new client
-                    let (mut client, incoming) = Client::start(&ex, "rust-analyzer", &[]);
+                    let (mut client, incoming) = Client::start(&ex, &config.command, &config.args);
                     // TODO: run this async without blocking
                     smol::block_on(client.initialize()).unwrap();
 
-                    self.incoming.push(incoming);
+                    s_incoming.push(incoming);
 
                     Arc::new(client)
                 })
-            })
-            .cloned()
+                .clone();
+
+            return Some(language_server);
+        }
+
+        None
     }
 }
 
