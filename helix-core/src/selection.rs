@@ -128,7 +128,6 @@ impl Range {
 /// A selection consists of one or more selection ranges.
 #[derive(Debug, Clone)]
 pub struct Selection {
-    // TODO: decide how many ranges to inline SmallVec<[Range; 1]>
     ranges: SmallVec<[Range; 1]>,
     primary_index: usize,
 }

@@ -27,22 +27,22 @@ impl State {
     pub fn new(doc: Rope) -> Self {
         Self {
             doc,
-            selection: Selection::single(0, 0),
+            selection: Selection::point(0),
         }
     }
 
     // TODO: doc/selection accessors
 
     // TODO: be able to take either Rope or RopeSlice
-    #[inline]
-    pub fn doc(&self) -> &Rope {
-        &self.doc
-    }
+    // #[inline]
+    // pub fn doc(&self) -> &Rope {
+    //     &self.doc
+    // }
 
-    #[inline]
-    pub fn selection(&self) -> &Selection {
-        &self.selection
-    }
+    // #[inline]
+    // pub fn selection(&self) -> &Selection {
+    //     &self.selection
+    // }
 
     // pub fn doc<R>(&self, range: R) -> RopeSlice
     // where

@@ -942,7 +942,6 @@ pub fn yank(cx: &mut Context) {
     // TODO: should selections be made end inclusive?
     let doc = cx.doc();
     let values = doc
-        .state
         .selection()
         .fragments(doc.text().slice(..))
         .map(|cow| cow.into_owned())

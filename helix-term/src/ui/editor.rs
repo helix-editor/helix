@@ -209,7 +209,6 @@ impl EditorView {
 
             for selection in view
                 .doc
-                .state
                 .selection()
                 .ranges()
                 .iter()

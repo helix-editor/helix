@@ -1578,7 +1578,7 @@ fn test_input_edits() {
     let edits = LanguageLayer::generate_edits(state.doc.slice(..), &transaction.changes);
     transaction.apply(&mut state);
 
-    assert_eq!(state.doc(), "fn test(a: u32) {}");
+    assert_eq!(state.doc, "fn test(a: u32) {}");
     assert_eq!(
         edits,
         &[InputEdit {

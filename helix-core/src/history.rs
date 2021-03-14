@@ -101,7 +101,7 @@ mod test {
         // Need to commit before applying!
         history.commit_revision(&transaction1, &state);
         transaction1.apply(&mut state);
-        assert_eq!("hello world!", state.doc());
+        assert_eq!("hello world!", state.doc);
 
         // ---
 
@@ -111,7 +111,7 @@ mod test {
         // Need to commit before applying!
         history.commit_revision(&transaction2, &state);
         transaction2.apply(&mut state);
-        assert_eq!("hello 世界!", state.doc());
+        assert_eq!("hello 世界!", state.doc);
 
         // ---
         fn undo(history: &mut History, state: &mut State) {
@@ -126,15 +126,15 @@ mod test {
         }
 
         undo(&mut history, &mut state);
-        assert_eq!("hello world!", state.doc());
+        assert_eq!("hello world!", state.doc);
         redo(&mut history, &mut state);
-        assert_eq!("hello 世界!", state.doc());
+        assert_eq!("hello 世界!", state.doc);
         undo(&mut history, &mut state);
         undo(&mut history, &mut state);
-        assert_eq!("hello", state.doc());
+        assert_eq!("hello", state.doc);
 
         // undo at root is a no-op
         undo(&mut history, &mut state);
-        assert_eq!("hello", state.doc());
+        assert_eq!("hello", state.doc);
     }
 }

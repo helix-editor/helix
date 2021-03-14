@@ -443,7 +443,7 @@ impl Transaction {
 
     /// Generate a transaction that reverts this one.
     pub fn invert(&self, original: &State) -> Self {
-        let changes = self.changes.invert(original.doc());
+        let changes = self.changes.invert(&original.doc);
         // Store the current cursor position
         let selection = original.selection.clone();
 

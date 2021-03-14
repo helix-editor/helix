@@ -36,7 +36,7 @@ impl View {
     }
 
     pub fn ensure_cursor_in_view(&mut self) {
-        let cursor = self.doc.state.selection().cursor();
+        let cursor = self.doc.selection().cursor();
         let line = self.doc.text().char_to_line(cursor);
         let document_end = self.first_line + (self.area.height as usize).saturating_sub(2);
 
