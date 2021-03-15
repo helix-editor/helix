@@ -122,8 +122,9 @@ impl Component for Markdown {
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let contents = tui::text::Text::from(self.contents.clone());
-        let width = std::cmp::min(contents.width() as u16, viewport.0);
-        let height = std::cmp::min(contents.height() as u16, viewport.1);
+        let padding = 2;
+        let width = std::cmp::min(contents.width() as u16 + padding, viewport.0);
+        let height = std::cmp::min(contents.height() as u16 + padding, viewport.1);
         Some((width, height))
     }
 }
