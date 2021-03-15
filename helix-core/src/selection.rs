@@ -273,14 +273,33 @@ impl Selection {
 
 // TODO: checkSelection -> check if valid for doc length
 
-pub fn select_on_matches(
+pub fn keep_matches(
     text: RopeSlice,
-    selections: &Selection,
+    selection: &Selection,
     regex: &crate::regex::Regex,
 ) -> Option<Selection> {
-    let mut result = SmallVec::with_capacity(selections.ranges().len());
+    let result: SmallVec<_> = selection
+        .ranges()
+        .iter()
+        .filter(|range| regex.is_match(&range.fragment(text)))
+        .copied()
+        .collect();
 
-    for sel in selections.ranges() {
+    // TODO: figure out a new primary index
+    if !result.is_empty() {
+        return Some(Selection::new(result, 0));
+    }
+    None
+}
+
+pub fn select_on_matches(
+    text: RopeSlice,
+    selection: &Selection,
+    regex: &crate::regex::Regex,
+) -> Option<Selection> {
+    let mut result = SmallVec::with_capacity(selection.ranges().len());
+
+    for sel in selection.ranges() {
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
@@ -309,12 +328,12 @@ pub fn select_on_matches(
 // TODO: support to split on capture #N instead of whole match
 pub fn split_on_matches(
     text: RopeSlice,
-    selections: &Selection,
+    selection: &Selection,
     regex: &crate::regex::Regex,
 ) -> Selection {
-    let mut result = SmallVec::with_capacity(selections.ranges().len());
+    let mut result = SmallVec::with_capacity(selection.ranges().len());
 
-    for sel in selections.ranges() {
+    for sel in selection.ranges() {
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
@@ -417,9 +436,9 @@ mod test {
 
         let text = Rope::from("abcd efg wrs   xyz 123 456");
 
-        let selections = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 19),], 0);
+        let selection = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 19),], 0);
 
-        let result = split_on_matches(text.slice(..), &selections, &Regex::new(r"\s+").unwrap());
+        let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
 
         assert_eq!(
             result.ranges(),

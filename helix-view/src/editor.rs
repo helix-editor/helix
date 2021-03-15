@@ -44,7 +44,6 @@ impl Editor {
             .and_then(|language| self.language_servers.get(language, &executor));
 
         if let Some(language_server) = language_server {
-            // TODO: do this everywhere
             doc.set_language_server(Some(language_server.clone()));
 
             smol::block_on(language_server.text_document_did_open(

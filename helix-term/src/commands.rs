@@ -1156,7 +1156,15 @@ pub fn join_selections(cx: &mut Context) {
 pub fn keep_selections(cx: &mut Context) {
     let doc = cx.doc();
     // keep selections matching regex
-    // and another method for inverse
+    let prompt = ui::regex_prompt(cx, "keep:".to_string(), |doc, regex| {
+        let text = doc.text().slice(..);
+
+        if let Some(selection) = selection::keep_matches(text, doc.selection(), &regex) {
+            doc.set_selection(selection);
+        }
+    });
+
+    cx.push_layer(Box::new(prompt));
 }
 
 //

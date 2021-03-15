@@ -207,6 +207,7 @@ pub fn default() -> Keymaps {
         key!('<') => commands::unindent,
         key!('=') => commands::format_selections,
         shift!('J') => commands::join_selections,
+        // TODO: conflicts hover/doc
         shift!('K') => commands::keep_selections,
 
         // key!('q') => commands::record_macro,
