@@ -35,7 +35,7 @@ pub mod util {
     pub fn lsp_pos_to_pos(doc: RopeSlice, pos: lsp::Position) -> usize {
         let line = doc.line_to_char(pos.line as usize);
         let line_start = doc.char_to_utf16_cu(line);
-        doc.utf16_cu_to_char(pos.character as usize + line_start)
+        doc.utf16_cu_to_char(line_start + pos.character as usize)
     }
     pub fn pos_to_lsp_pos(doc: RopeSlice, pos: usize) -> lsp::Position {
         let line = doc.char_to_line(pos);

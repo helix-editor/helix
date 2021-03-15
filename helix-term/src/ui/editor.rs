@@ -56,6 +56,8 @@ impl EditorView {
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
+        self.render_diagnostics(&view.doc, area, surface, theme, is_focused);
+
         let area = Rect::new(
             viewport.x,
             viewport.y + viewport.height.saturating_sub(1),
@@ -166,7 +168,8 @@ impl EditorView {
 
                             // ugh,interleave highlight spans with diagnostic spans
                             let is_diagnostic = view.doc.diagnostics.iter().any(|diagnostic| {
-                                diagnostic.range.0 <= char_index && diagnostic.range.1 > char_index
+                                diagnostic.range.start <= char_index
+                                    && diagnostic.range.end > char_index
                             });
 
                             let style = if is_diagnostic {
@@ -314,6 +317,60 @@ impl EditorView {
                 style,
             );
         }
+    }
+
+    pub fn render_diagnostics(
+        &self,
+        doc: &Document,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+        is_focused: bool,
+    ) {
+        use helix_core::diagnostic::Severity;
+        use tui::{
+            layout::Alignment,
+            text::Text,
+            widgets::{Paragraph, Widget},
+        };
+
+        let cursor = doc.selection().cursor();
+        let line = doc.text().char_to_line(cursor);
+
+        let diagnostics = doc.diagnostics.iter().filter(|diagnostic| {
+            diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
+        });
+
+        let warning: Style = theme.get("warning");
+        let error: Style = theme.get("error");
+        let info: Style = theme.get("info");
+        let hint: Style = theme.get("hint");
+
+        // Vec::with_capacity(diagnostics.len()); // rough estimate
+        let mut lines = Vec::new();
+        for diagnostic in diagnostics {
+            let text = Text::styled(
+                &diagnostic.message,
+                match diagnostic.severity {
+                    Some(Severity::Error) => error,
+                    Some(Severity::Warning) | None => warning,
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
+                },
+            );
+            lines.extend(text.lines);
+        }
+
+        let paragraph = Paragraph::new(lines).alignment(Alignment::Right);
+        paragraph.render(
+            Rect::new(
+                viewport.x + viewport.width - 80 - 1,
+                viewport.y as u16 + 1,
+                80,
+                15,
+            ),
+            surface,
+        );
     }
 
     pub fn render_statusline(

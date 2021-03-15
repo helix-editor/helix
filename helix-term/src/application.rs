@@ -140,14 +140,17 @@ impl Application {
                                 .into_iter()
                                 .map(|diagnostic| {
                                     use helix_core::diagnostic::Severity::*;
-                                    use helix_core::{diagnostic::Severity, Diagnostic};
+                                    use helix_core::{
+                                        diagnostic::{Range, Severity},
+                                        Diagnostic,
+                                    };
                                     use helix_lsp::{lsp, util::lsp_pos_to_pos};
                                     use lsp::DiagnosticSeverity;
                                     let start = lsp_pos_to_pos(doc, diagnostic.range.start);
                                     let end = lsp_pos_to_pos(doc, diagnostic.range.end);
 
                                     Diagnostic {
-                                        range: (start, end),
+                                        range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
                                         severity: diagnostic.severity.map(

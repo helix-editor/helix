@@ -1,5 +1,3 @@
-use crate::Range;
-
 pub enum Severity {
     Error,
     Warning,
@@ -7,8 +5,12 @@ pub enum Severity {
     Hint,
 }
 
+pub struct Range {
+    pub start: usize,
+    pub end: usize,
+}
 pub struct Diagnostic {
-    pub range: (usize, usize),
+    pub range: Range,
     pub line: usize,
     pub message: String,
     pub severity: Option<Severity>,
