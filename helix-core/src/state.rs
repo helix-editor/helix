@@ -31,26 +31,6 @@ impl State {
         }
     }
 
-    // TODO: doc/selection accessors
-
-    // TODO: be able to take either Rope or RopeSlice
-    // #[inline]
-    // pub fn doc(&self) -> &Rope {
-    //     &self.doc
-    // }
-
-    // #[inline]
-    // pub fn selection(&self) -> &Selection {
-    //     &self.selection
-    // }
-
-    // pub fn doc<R>(&self, range: R) -> RopeSlice
-    // where
-    //     R: std::ops::RangeBounds<usize>,
-    // {
-    //     self.doc.slice(range)
-    // }
-
     // update/transact:
     // update(desc) => transaction ?  transaction.doc() for applied doc
     // transaction.apply(doc)
@@ -74,17 +54,6 @@ impl State {
     // foldable
     // changeFilter/transactionFilter
 
-    // TODO: move that accepts a boundary matcher fn/list, we keep incrementing until we hit
-    // a boundary
-
-    // TODO: edits, does each keypress trigger a full command? I guess it's adding to the same
-    // transaction
-    // There should be three pieces of the state: current transaction, the original doc, "preview"
-    // of the new state.
-    // 1. apply the newly generated keypress as a transaction
-    // 2. compose onto a ongoing transaction
-    // 3. on insert mode leave, that transaction gets stored into undo history
-
     pub fn move_range(
         &self,
         range: Range,
@@ -93,46 +62,41 @@ impl State {
         count: usize,
         extend: bool,
     ) -> Range {
-        let text = &self.doc;
+        let text = self.doc.slice(..);
         let pos = range.head;
-        match (dir, granularity) {
+        let line = text.char_to_line(pos);
+        // TODO: we can optimize clamping by passing in RopeSlice limited to current line. that way
+        // we stop calculating past start/end of line.
+        let pos = match (dir, granularity) {
             (Direction::Backward, Granularity::Character) => {
-                // Clamp to line
-                let line = text.char_to_line(pos);
                 let start = text.line_to_char(line);
-                let pos = std::cmp::max(
-                    nth_prev_grapheme_boundary(text.slice(..), pos, count),
-                    start,
-                );
-                Range::new(if extend { range.anchor } else { pos }, pos)
+                nth_prev_grapheme_boundary(text, pos, count).max(start)
             }
             (Direction::Forward, Granularity::Character) => {
-                // Clamp to line
-                let line = text.char_to_line(pos);
                 // Line end is pos at the start of next line - 1
                 // subtract another 1 because the line ends with \n
                 let end = text.line_to_char(line + 1).saturating_sub(2);
-                let pos =
-                    std::cmp::min(nth_next_grapheme_boundary(text.slice(..), pos, count), end);
-                Range::new(if extend { range.anchor } else { pos }, pos)
+                nth_next_grapheme_boundary(text, pos, count).min(end)
             }
-            (_, Granularity::Line) => move_vertically(text.slice(..), dir, range, count, extend),
-        }
+            (_, Granularity::Line) => return move_vertically(text, dir, range, count, extend),
+        };
+        Range::new(if extend { range.anchor } else { pos }, pos)
     }
 
     pub fn move_next_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
-        // TODO: confirm it's fine without using graphemes, I think it should be
         for _ in 0..count {
-            // TODO: if end return end
-
-            let ch = slice.char(pos);
-            let next = slice.char(pos.saturating_add(1));
-            if categorize(ch) != categorize(next) {
-                pos += 1;
+            if pos + 1 == slice.len_chars() {
+                return pos;
             }
 
-            // refetch
-            let ch = slice.char(pos);
+            let mut ch = slice.char(pos);
+            let next = slice.char(pos + 1);
+
+            // if we're at the end of a word, or on whitespce right before new one
+            if categorize(ch) != categorize(next) {
+                pos += 1;
+                ch = next;
+            }
 
             if is_word(ch) {
                 skip_over_next(slice, &mut pos, is_word);
@@ -148,7 +112,6 @@ impl State {
     }
 
     pub fn move_prev_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
-        // TODO: confirm it's fine without using graphemes, I think it should be
         for _ in 0..count {
             if pos == 0 {
                 return pos;
@@ -182,11 +145,13 @@ impl State {
 
     pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
         for _ in 0..count {
-            // TODO: if end return end
+            if pos + 1 == slice.len_chars() {
+                return pos;
+            }
 
-            // TODO: confirm it's fine without using graphemes, I think it should be
             let ch = slice.char(pos);
-            let next = slice.char(pos.saturating_add(1));
+            let next = slice.char(pos + 1);
+
             if categorize(ch) != categorize(next) {
                 pos += 1;
             }
@@ -202,7 +167,7 @@ impl State {
             } else if ch.is_ascii_punctuation() {
                 skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
             }
-            pos = pos.saturating_sub(1)
+            pos -= 1
         }
 
         pos
@@ -311,7 +276,7 @@ where
         if !fun(ch) {
             break;
         }
-        *pos += 1; // TODO: can go 1 over end of doc
+        *pos += 1;
     }
 }
 
@@ -327,7 +292,7 @@ where
         if !fun(ch) {
             break;
         }
-        *pos -= pos.saturating_sub(1);
+        *pos = pos.saturating_sub(1);
     }
 }
 
