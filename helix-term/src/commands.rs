@@ -852,7 +852,7 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-fn goto(cx: &'static mut Context<'static>, locations: Vec<lsp::Location>) {
+fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
     let doc = cx.doc();
 
     doc.mode = Mode::Normal;
@@ -878,8 +878,9 @@ fn goto(cx: &'static mut Context<'static>, locations: Vec<lsp::Location>) {
                     format!("{}:{}", file, line).into()
                 },
                 move |editor: &mut Editor, item| {
-                    cx.editor.open(PathBuf::from(item.uri.path()), cx.executor);
-                    let doc = cx.doc();
+                    let executor = smol::Executor::new();
+                    editor.open(PathBuf::from(item.uri.path()), &executor);
+                    let mut doc = &mut editor.view_mut().doc;
                     let definition_pos = item.range.start;
                     let new_pos =
                         helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
@@ -891,7 +892,7 @@ fn goto(cx: &'static mut Context<'static>, locations: Vec<lsp::Location>) {
     }
 }
 
-pub fn goto_definition(cx: &'static mut Context<'static>) {
+pub fn goto_definition(cx: &mut Context) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,
@@ -907,7 +908,7 @@ pub fn goto_definition(cx: &'static mut Context<'static>) {
     goto(cx, res);
 }
 
-pub fn goto_type_definition(cx: &'static mut Context<'static>) {
+pub fn goto_type_definition(cx: &mut Context) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,
@@ -923,7 +924,7 @@ pub fn goto_type_definition(cx: &'static mut Context<'static>) {
     goto(cx, res);
 }
 
-pub fn goto_implementation(cx: &'static mut Context<'static>) {
+pub fn goto_implementation(cx: &mut Context) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,
@@ -939,7 +940,7 @@ pub fn goto_implementation(cx: &'static mut Context<'static>) {
     goto(cx, res);
 }
 
-pub fn goto_reference(cx: &'static mut Context<'static>) {
+pub fn goto_reference(cx: &mut Context) {
     let doc = cx.doc();
     let language_server = match doc.language_server.as_ref() {
         Some(language_server) => language_server,

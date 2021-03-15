@@ -62,7 +62,15 @@ impl Editor {
         }
 
         let view = View::new(doc)?;
-        self.tree.insert(view);
+        let existing_view_option = self
+            .tree
+            .views()
+            .find(|v| view.doc.path().unwrap().to_str() == v.0.doc.path().unwrap().to_str());
+        if let Some(existing_view) = existing_view_option {
+            self.tree.focus = existing_view.0.id;
+        } else {
+            self.tree.insert(view);
+        }
         Ok(())
     }
 
