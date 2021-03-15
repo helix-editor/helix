@@ -362,12 +362,14 @@ impl EditorView {
         }
 
         let paragraph = Paragraph::new(lines).alignment(Alignment::Right);
+        let width = 80.min(viewport.width);
+        let height = 15.min(viewport.height);
         paragraph.render(
             Rect::new(
-                viewport.x + viewport.width - 80 - 1,
+                viewport.right() - width,
                 viewport.y as u16 + 1,
-                80,
-                15,
+                width,
+                height,
             ),
             surface,
         );
