@@ -1167,6 +1167,14 @@ pub fn keep_selections(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
+pub fn keep_primary_selection(cx: &mut Context) {
+    let doc = cx.doc();
+
+    let range = doc.selection().primary();
+    let selection = Selection::single(range.anchor, range.head);
+    doc.set_selection(selection);
+}
+
 //
 
 pub fn save(cx: &mut Context) {

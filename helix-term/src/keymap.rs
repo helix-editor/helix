@@ -209,6 +209,9 @@ pub fn default() -> Keymaps {
         shift!('J') => commands::join_selections,
         // TODO: conflicts hover/doc
         shift!('K') => commands::keep_selections,
+        // TODO: and another method for inverse
+
+        key!(' ') => commands::keep_primary_selection,
 
         // key!('q') => commands::record_macro,
         // key!('Q') => commands::replay_macro,
