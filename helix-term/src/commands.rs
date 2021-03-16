@@ -15,8 +15,6 @@ use crate::ui::{self, Popup, Prompt, PromptEvent};
 
 use std::path::PathBuf;
 
-use smol::Executor;
-
 use helix_view::{
     document::Mode,
     view::{View, PADDING},
@@ -853,6 +851,7 @@ pub fn exit_select_mode(cx: &mut Context) {
 }
 
 fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
+    let executor = cx.executor;
     let doc = cx.doc();
 
     doc.mode = Mode::Normal;
@@ -876,7 +875,6 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                     format!("{}:{}", file, line).into()
                 },
                 move |editor: &mut Editor, item| {
-                    let executor = smol::Executor::new();
                     editor.open(PathBuf::from(item.uri.path()), &executor);
                     let mut doc = &mut editor.view_mut().doc;
                     let definition_pos = item.range.start;

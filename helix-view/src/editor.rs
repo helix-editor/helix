@@ -33,13 +33,13 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, executor: &smol::Executor) -> Result<(), Error> {
-        // TODO: try to find an open view/buffer first
-        let existing_view_option = self
+        let existing_view = self
             .tree
             .views()
-            .find(|v| path.to_str().unwrap() == v.0.doc.path().unwrap().to_str().unwrap());
-        if let Some(existing_view) = existing_view_option {
-            self.tree.focus = existing_view.0.id;
+            .find(|(view, _)| view.doc.path() == Some(&path));
+
+        if let Some((view, _)) = existing_view {
+            self.tree.focus = view.id;
             return Ok(());
         }
 
