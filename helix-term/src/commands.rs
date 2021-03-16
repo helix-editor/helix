@@ -857,8 +857,6 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
 
     doc.mode = Mode::Normal;
 
-    log::info!("{:?}", locations);
-
     match locations.as_slice() {
         [location] => {
             cx.editor
@@ -874,7 +872,7 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                 locations,
                 |item| {
                     let file = item.uri.as_str();
-                    let line = item.range.start.line.to_string();
+                    let line = item.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
                 move |editor: &mut Editor, item| {
