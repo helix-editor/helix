@@ -14,10 +14,11 @@ pub struct Editor {
     pub count: Option<usize>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+    pub executor: &'static smol::Executor<'static>,
 }
 
 impl Editor {
-    pub fn new(mut area: tui::layout::Rect) -> Self {
+    pub fn new(executor: &'static smol::Executor<'static>, mut area: tui::layout::Rect) -> Self {
         let theme = Theme::default();
         let language_servers = helix_lsp::Registry::new();
 
@@ -29,10 +30,11 @@ impl Editor {
             count: None,
             theme,
             language_servers,
+            executor,
         }
     }
 
-    pub fn open(&mut self, path: PathBuf, executor: &smol::Executor) -> Result<(), Error> {
+    pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
         let existing_view = self
             .tree
             .views()
@@ -49,7 +51,7 @@ impl Editor {
         let language_server = doc
             .language
             .as_ref()
-            .and_then(|language| self.language_servers.get(language, &executor));
+            .and_then(|language| self.language_servers.get(language, self.executor));
 
         if let Some(language_server) = language_server {
             doc.set_language_server(Some(language_server.clone()));
@@ -74,17 +76,18 @@ impl Editor {
         Ok(())
     }
 
-    pub fn close(&mut self, id: Key, executor: &smol::Executor) {
+    pub fn close(&mut self, id: Key) {
         let view = self.tree.get(self.tree.focus);
         // get around borrowck issues
         let language_servers = &mut self.language_servers;
+        let executor = self.executor;
 
         let doc = &view.doc;
 
         let language_server = doc
             .language
             .as_ref()
-            .and_then(|language| language_servers.get(language, &executor));
+            .and_then(|language| language_servers.get(language, executor));
 
         if let Some(language_server) = language_server {
             smol::block_on(language_server.text_document_did_close(doc.identifier())).unwrap();

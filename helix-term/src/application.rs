@@ -36,11 +36,11 @@ impl Application {
     pub fn new(mut args: Args, executor: &'static smol::Executor<'static>) -> Result<Self, Error> {
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
-        let mut editor = Editor::new(size);
+        let mut editor = Editor::new(executor, size);
 
         let files = args.values_of_t::<PathBuf>("files").unwrap();
         for file in files {
-            editor.open(file, executor)?;
+            editor.open(file)?;
         }
 
         compositor.push(Box::new(ui::EditorView::new()));

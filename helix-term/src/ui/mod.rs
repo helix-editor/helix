@@ -73,7 +73,7 @@ pub fn regex_prompt(
 }
 
 use std::path::{Path, PathBuf};
-pub fn file_picker(root: &str, ex: &'static smol::Executor) -> Picker<PathBuf> {
+pub fn file_picker(root: &str) -> Picker<PathBuf> {
     use ignore::Walk;
     // TODO: determine root based on git root
     let files = Walk::new(root).filter_map(|entry| match entry {
@@ -98,7 +98,7 @@ pub fn file_picker(root: &str, ex: &'static smol::Executor) -> Picker<PathBuf> {
             path.strip_prefix("./").unwrap().to_str().unwrap().into()
         },
         move |editor: &mut Editor, path: &PathBuf| {
-            editor.open(path.into(), ex);
+            editor.open(path.into());
         },
     )
 }

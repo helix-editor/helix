@@ -28,7 +28,6 @@ use helix_lsp::lsp;
 pub struct Context<'a> {
     pub count: usize,
     pub editor: &'a mut Editor,
-    pub executor: &'static smol::Executor<'static>,
 
     pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
@@ -658,7 +657,6 @@ const COMMAND_LIST: &[&str] = &["write", "open", "quit"];
 
 // TODO: I, A, o and O can share a lot of the primitives.
 pub fn command_mode(cx: &mut Context) {
-    let executor = cx.executor;
     let prompt = Prompt::new(
         ":".to_owned(),
         |input: &str| {
@@ -695,11 +693,11 @@ pub fn command_mode(cx: &mut Context) {
 
             match *parts.as_slice() {
                 ["q"] | ["quit"] => {
-                    editor.close(editor.view().id, executor);
+                    editor.close(editor.view().id);
                     // editor.should_close = true,
                 }
                 ["o", path] | ["open", path] => {
-                    editor.open(path.into(), executor);
+                    editor.open(path.into());
                 }
                 ["w"] | ["write"] => {
                     // TODO: non-blocking via save() command
@@ -713,7 +711,7 @@ pub fn command_mode(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 pub fn file_picker(cx: &mut Context) {
-    let picker = ui::file_picker("./", cx.executor);
+    let picker = ui::file_picker("./");
     cx.push_layer(Box::new(picker));
 }
 
@@ -851,15 +849,13 @@ pub fn exit_select_mode(cx: &mut Context) {
 }
 
 fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
-    let executor = cx.executor;
     let doc = cx.doc();
 
     doc.mode = Mode::Normal;
 
     match locations.as_slice() {
         [location] => {
-            cx.editor
-                .open(PathBuf::from(location.uri.path()), cx.executor);
+            cx.editor.open(PathBuf::from(location.uri.path()));
             let doc = cx.doc();
             let definition_pos = location.range.start;
             let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
@@ -875,7 +871,7 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                     format!("{}:{}", file, line).into()
                 },
                 move |editor: &mut Editor, item| {
-                    editor.open(PathBuf::from(item.uri.path()), &executor);
+                    editor.open(PathBuf::from(item.uri.path()));
                     let mut doc = &mut editor.view_mut().doc;
                     let definition_pos = item.range.start;
                     let new_pos =
@@ -1274,7 +1270,7 @@ pub fn save(cx: &mut Context) {
     // Spawns an async task to actually do the saving. This way we prevent blocking.
 
     // TODO: handle save errors somehow?
-    cx.executor.spawn(cx.doc().save()).detach();
+    cx.editor.executor.spawn(cx.doc().save()).detach();
 }
 
 pub fn completion(cx: &mut Context) {
