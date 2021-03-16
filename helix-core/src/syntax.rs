@@ -178,7 +178,7 @@ pub struct Syntax {
     pub(crate) root_layer: LanguageLayer,
 }
 
-fn byte_range_to_str<'a>(range: std::ops::Range<usize>, source: RopeSlice<'a>) -> Cow<'a, str> {
+fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
     let start_char = source.byte_to_char(range.start);
     let end_char = source.byte_to_char(range.end);
     Cow::from(source.slice(start_char..end_char))

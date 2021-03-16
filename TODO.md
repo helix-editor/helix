@@ -8,16 +8,7 @@
 ------
 
 1
-- [x] selection mode
-- [x] % for whole doc selection
-- [x] vertical splits
-- [x] input counts (30j)
-  - [x] input counts for b, w, e
 - [ ] respect view fullscreen flag
-- [x] retain horiz when moving vertically
-- [w] retain horiz when moving via ctrl-u/d
-- [x] deindent
-- [x] update lsp on redo/undo
 - [ ] Implement marks (superset of Selection/Range)
 - [ ] ctrl-v/ctrl-x on file picker
 - [ ] linewise selection work
@@ -25,17 +16,13 @@
 - [ ] CI binary builds
 
 - [ ] regex search / select next
-- [x] f / t mappings
 - [ ] open_above (O) command
 - [ ] = for auto indent line/selection
 - [x] q should only close the view, if all are closed, close the editor
 - [ ] buffers should sit on editor.buffers, view simply refs them
+- [ ] yank on delete
 
-- [ ] pressing b at start of file needs to not crash
 - [ ] draw separator line between views
-- [ ] command to drop all selections except primary
-
-- [ ] diagnostic severity
 
 - [ ] lsp: signature help
 - [x] lsp: hover
