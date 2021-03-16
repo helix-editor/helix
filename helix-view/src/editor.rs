@@ -48,7 +48,7 @@ impl Editor {
 
             let language_id = doc
                 .language()
-                .and_then(|s| s.split(".").last()) // source.rust
+                .and_then(|s| s.split('.').last()) // source.rust
                 .map(ToOwned::to_owned)
                 .unwrap_or_default();
 
@@ -66,7 +66,21 @@ impl Editor {
         Ok(())
     }
 
-    pub fn close(&mut self, id: Key) {
+    pub fn close(&mut self, id: Key, executor: &smol::Executor) {
+        let view = self.tree.get(self.tree.focus);
+        // get around borrowck issues
+        let language_servers = &mut self.language_servers;
+
+        let doc = &view.doc;
+
+        let language_server = doc
+            .language
+            .as_ref()
+            .and_then(|language| language_servers.get(language, &executor));
+
+        if let Some(language_server) = language_server {
+            smol::block_on(language_server.text_document_did_close(doc.identifier())).unwrap();
+        }
         self.tree.remove(id)
     }
 

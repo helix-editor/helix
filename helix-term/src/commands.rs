@@ -691,7 +691,7 @@ pub fn command_mode(cx: &mut Context) {
 
             match *parts.as_slice() {
                 ["q"] | ["quit"] => {
-                    editor.tree.remove(editor.view().id);
+                    editor.close(editor.view().id, executor);
                     // editor.should_close = true,
                 }
                 ["o", path] | ["open", path] => {
