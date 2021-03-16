@@ -192,7 +192,7 @@ impl Client {
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
-                            snippet_support: Some(false), // TODO
+                            snippet_support: Some(false),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
@@ -284,7 +284,6 @@ impl Client {
                 mut character,
             } = pos;
 
-            // TODO: there should be a better way here
             for ch in text.chars() {
                 if ch == '\n' {
                     line += 1;
@@ -298,8 +297,6 @@ impl Client {
 
         let old_text = old_text.slice(..);
         let new_text = new_text.slice(..);
-
-        // TODO: verify this function, specifically line num counting
 
         while let Some(change) = iter.next() {
             let len = match change {
@@ -355,7 +352,6 @@ impl Client {
         changes
     }
 
-    // TODO: trigger any time history.commit_revision happens
     pub async fn text_document_did_change(
         &self,
         text_document: lsp::VersionedTextDocumentIdentifier,
@@ -365,7 +361,7 @@ impl Client {
     ) -> Result<()> {
         // figure out what kind of sync the server supports
 
-        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+        let capabilities = self.capabilities.as_ref().unwrap();
 
         let sync_capabilities = match capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Kind(kind)) => kind,
@@ -384,7 +380,7 @@ impl Client {
                     range: None,        //Some(Range)
                     range_length: None, // u64 apparently deprecated
                     text: "".to_string(),
-                }] // TODO: probably need old_state here too?
+                }]
             }
             lsp::TextDocumentSyncKind::Incremental => {
                 Self::changeset_to_changes(old_text, new_text, changes)
@@ -416,7 +412,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         text: &Rope,
     ) -> Result<()> {
-        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+        let capabilities = self.capabilities.as_ref().unwrap();
 
         let include_text = match &capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
@@ -446,8 +442,6 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
     ) -> Result<Vec<lsp::CompletionItem>> {
-        // TODO: figure out what should happen when you complete with multiple cursors
-
         let params = lsp::CompletionParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,
@@ -489,7 +483,6 @@ impl Client {
                 text_document,
                 position,
             },
-            // TODO: support these tokens
             work_done_progress_params: lsp::WorkDoneProgressParams {
                 work_done_token: None,
             },
@@ -514,7 +507,6 @@ impl Client {
                 text_document,
                 position,
             },
-            // TODO: support these tokens
             work_done_progress_params: lsp::WorkDoneProgressParams {
                 work_done_token: None,
             },
@@ -533,7 +525,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         options: lsp::FormattingOptions,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
-        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+        let capabilities = self.capabilities.as_ref().unwrap();
 
         // check if we're able to format
         let _capabilities = match capabilities.document_formatting_provider {
@@ -547,7 +539,6 @@ impl Client {
         let params = lsp::DocumentFormattingParams {
             text_document,
             options,
-            // TODO: support these tokens
             work_done_progress_params: lsp::WorkDoneProgressParams {
                 work_done_token: None,
             },
@@ -564,7 +555,7 @@ impl Client {
         range: lsp::Range,
         options: lsp::FormattingOptions,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
-        let capabilities = self.capabilities.as_ref().unwrap(); // TODO: needs post init
+        let capabilities = self.capabilities.as_ref().unwrap();
 
         // check if we're able to format
         let _capabilities = match capabilities.document_range_formatting_provider {
@@ -579,7 +570,6 @@ impl Client {
             text_document,
             range,
             options,
-            // TODO: support these tokens
             work_done_progress_params: lsp::WorkDoneProgressParams {
                 work_done_token: None,
             },

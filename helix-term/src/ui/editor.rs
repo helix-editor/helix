@@ -124,6 +124,9 @@ impl EditorView {
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
+                    // TODO: scope matching: biggest union match? [string] & [html, string], [string, html] & [ string, html]
+                    // can do this by sorting our theme matches based on array len (longest first) then stopping at the
+                    // first rule that matches (rule.all(|scope| scopes.contains(scope)))
                     let style = match spans.first() {
                         Some(span) => theme.get(theme.scopes()[span.0].as_str()),
                         None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
@@ -138,8 +141,6 @@ impl EditorView {
 
                     // iterate over range char by char
                     for grapheme in RopeGraphemes::new(text) {
-                        // TODO: track current char_index
-
                         if grapheme == "\n" {
                             visual_x = 0;
                             line += 1;
@@ -433,9 +434,7 @@ impl Component for EditorView {
             Event::Key(event) => {
                 let view = cx.editor.view_mut();
 
-                // TODO: sequences (`gg`)
                 let mode = view.doc.mode();
-                // TODO: handle count other than 1
                 let mut cxt = commands::Context {
                     executor: cx.executor,
                     editor: &mut cx.editor,
@@ -479,8 +478,6 @@ impl Component for EditorView {
 
                                     if let Some(command) = self.keymap[&mode].get(&event) {
                                         command(&mut cxt);
-
-                                        // TODO: simplistic ensure cursor in view for now
                                     }
                                 }
                             }
@@ -503,7 +500,6 @@ impl Component for EditorView {
 
     fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
         for (view, is_focused) in cx.editor.tree.views() {
-            // TODO: use parent area
             self.render_view(view, view.area, surface, &cx.editor.theme, is_focused);
         }
     }

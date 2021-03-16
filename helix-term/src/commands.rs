@@ -460,19 +460,6 @@ pub fn select_regex(cx: &mut Context) {
 }
 
 pub fn split_selection(cx: &mut Context) {
-    // TODO: this needs to store initial selection state, revert on esc, confirm on enter
-    // needs to also call the callback function per input change, not just final time.
-    // could cheat and put it into completion_fn
-    //
-    // kakoune does it like this:
-    // # save state to register
-    // {
-    //  # restore state from register
-    //  # if event == abort, return early
-    //  # add to history if enabled
-    //  # update state
-    // }
-
     let prompt = ui::regex_prompt(cx, "split:".to_string(), |doc, regex| {
         let text = doc.text().slice(..);
         let selection = selection::split_on_matches(text, doc.selection(), &regex);

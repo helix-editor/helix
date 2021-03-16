@@ -22,6 +22,8 @@
 - [ ] buffers should sit on editor.buffers, view simply refs them
 - [ ] yank on delete
 
+- [ ] load toml configs, themes, tabsize/identation
+
 - [ ] draw separator line between views
 
 - [ ] lsp: signature help

@@ -13,15 +13,12 @@ use tui::layout::Rect;
 
 pub const PADDING: usize = 5;
 
-// TODO: view should be View { doc: Document(state, history,..) }
-// since we can have multiple views into the same file
 pub struct View {
     pub id: Key,
     pub doc: Document,
     pub first_line: usize,
     pub area: Rect,
 }
-// TODO: popups should be a thing on the view with a rect + text
 
 impl View {
     pub fn new(doc: Document) -> Result<Self, Error> {
@@ -54,9 +51,9 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self) -> usize {
-        let viewport = Rect::new(6, 0, self.area.width, self.area.height.saturating_sub(1)); // - 1 for statusline
+        let height = self.area.height.saturating_sub(1); // - 1 for statusline
         std::cmp::min(
-            self.first_line + (viewport.height as usize),
+            self.first_line + height as usize,
             self.doc.text().len_lines() - 1,
         )
     }
@@ -67,7 +64,7 @@ impl View {
     pub fn screen_coords_at_pos(&self, text: RopeSlice, pos: usize) -> Option<Position> {
         let line = text.char_to_line(pos);
 
-        if line < self.first_line as usize || line > self.last_line() {
+        if line < self.first_line || line > self.last_line() {
             // Line is not visible on screen
             return None;
         }

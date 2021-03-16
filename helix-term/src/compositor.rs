@@ -54,9 +54,6 @@ pub trait Component {
     /// May be used by the parent component to compute the child area.
     /// viewport is the maximum allowed area, and the child should stay within those bounds.
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        // TODO: the compositor should trigger this on push_layer too so that we can use it as an
-        // initializer there too.
-        //
         // TODO: for scrolling, the scroll wrapper should place a size + offset on the Context
         // that way render can use it
         None

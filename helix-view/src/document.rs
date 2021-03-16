@@ -255,8 +255,6 @@ impl Document {
             return;
         }
 
-        // TODO: change -> change -> undo -> change -> change fails, probably old_state needs reset
-
         let new_changeset = ChangeSet::new(self.text());
         let changes = std::mem::replace(&mut self.changes, new_changeset);
         // Instead of doing this messy merge we could always commit, and based on transaction
@@ -319,7 +317,7 @@ impl Document {
     //     self.state.doc.slice
     // }
 
-    // TODO: transact(Fn) ?
+    // transact(Fn) ?
 
     // -- LSP methods
 

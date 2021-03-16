@@ -221,15 +221,3 @@ impl Application {
         Ok(())
     }
 }
-
-// TODO: language configs:
-// tabSize, fileExtension etc, mapping to tree sitter parser
-// themes:
-// map tree sitter highlights to color values
-//
-// TODO: expand highlight thing so we're able to render only viewport range
-// TODO: async: maybe pre-cache scopes as empty so we render all graphemes initially as regular
-////text until calc finishes
-// TODO: scope matching: biggest union match? [string] & [html, string], [string, html] & [ string, html]
-// can do this by sorting our theme matches based on array len (longest first) then stopping at the
-// first rule that matches (rule.all(|scope| scopes.contains(scope)))

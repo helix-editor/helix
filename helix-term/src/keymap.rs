@@ -90,7 +90,6 @@ use std::collections::HashMap;
 // #[cfg(feature = "term")]
 pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
 
-// TODO: could be trie based
 pub type Keymap = HashMap<Key, Command>;
 pub type Keymaps = HashMap<Mode, Keymap>;
 
