@@ -2,6 +2,7 @@ use crate::{Change, Rope, RopeSlice, Transaction};
 pub use helix_syntax::Lang;
 pub use helix_syntax::{get_language, get_language_name};
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -177,6 +178,22 @@ pub struct Syntax {
     pub(crate) root_layer: LanguageLayer,
 }
 
+fn byte_range_to_str<'a>(range: std::ops::Range<usize>, source: RopeSlice<'a>) -> Cow<'a, str> {
+    let start_char = source.byte_to_char(range.start);
+    let end_char = source.byte_to_char(range.end);
+    Cow::from(source.slice(start_char..end_char))
+}
+
+fn node_to_bytes<'a>(node: Node, source: RopeSlice<'a>) -> Cow<'a, [u8]> {
+    let start_char = source.byte_to_char(node.start_byte());
+    let end_char = source.byte_to_char(node.end_byte());
+    let fragment = source.slice(start_char..end_char);
+    match fragment.as_str() {
+        Some(fragment) => Cow::Borrowed(fragment.as_bytes()),
+        None => Cow::Owned(String::from(fragment).into_bytes()),
+    }
+}
+
 impl Syntax {
     // buffer, grammar, config, grammars, sync_timeout?
     pub fn new(
@@ -248,7 +265,7 @@ impl Syntax {
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
         &self,
-        source: &'a [u8],
+        source: RopeSlice<'a>,
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
         mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
@@ -271,7 +288,8 @@ impl Syntax {
 
         let captures = cursor_ref
             .captures(query_ref, tree_ref.root_node(), move |n: Node| {
-                &source[n.byte_range()]
+                // &source[n.byte_range()]
+                node_to_bytes(n, source)
             })
             .peekable();
 
@@ -390,7 +408,8 @@ impl LanguageLayer {
             //         vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
             //     let matches =
             //         cursor.matches(combined_injections_query, tree.root_node(), |n: Node| {
-            //             &source[n.byte_range()]
+            //             // &source[n.byte_range()]
+            //             node_to_bytes(n, source)
             //         });
             //     for mat in matches {
             //         let entry = &mut injections_by_pattern_index[mat.pattern_index];
@@ -653,7 +672,7 @@ pub struct HighlightConfiguration {
 
 #[derive(Debug)]
 struct LocalDef<'a> {
-    name: &'a str,
+    name: Cow<'a, str>,
     value_range: ops::Range<usize>,
     highlight: Option<Highlight>,
 }
@@ -669,7 +688,7 @@ struct HighlightIter<'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
 {
-    source: &'a [u8],
+    source: RopeSlice<'a>,
     byte_offset: usize,
     injection_callback: F,
     cancellation_flag: Option<&'a AtomicUsize>,
@@ -682,7 +701,7 @@ where
 struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: iter::Peekable<QueryCaptures<'a, &'a [u8]>>,
+    captures: iter::Peekable<QueryCaptures<'a, Cow<'a, [u8]>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
@@ -856,7 +875,7 @@ impl<'a> HighlightIterLayer<'a> {
     /// disjoint ranges are parsed as one syntax tree), these will be eagerly processed and
     /// added to the returned vector.
     fn new<F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a>(
-        source: &'a [u8],
+        source: RopeSlice<'a>,
         cancellation_flag: Option<&'a AtomicUsize>,
         injection_callback: &mut F,
         mut config: &'a HighlightConfiguration,
@@ -880,7 +899,18 @@ impl<'a> HighlightIterLayer<'a> {
                     unsafe { highlighter.parser.set_cancellation_flag(cancellation_flag) };
                     let tree = highlighter
                         .parser
-                        .parse(source, None)
+                        .parse_with(
+                            &mut |byte, _| {
+                                if byte <= source.len_bytes() {
+                                    let (chunk, start_byte, _, _) = source.chunk_at_byte(byte);
+                                    chunk[byte - start_byte..].as_bytes()
+                                } else {
+                                    // out of range
+                                    &[]
+                                }
+                            },
+                            None,
+                        )
                         .ok_or(Error::Cancelled)?;
                     unsafe { highlighter.parser.set_cancellation_flag(None) };
                     let mut cursor = highlighter.cursors.pop().unwrap_or_else(QueryCursor::new);
@@ -895,7 +925,10 @@ impl<'a> HighlightIterLayer<'a> {
                         let matches = cursor.matches(
                             combined_injections_query,
                             tree.root_node(),
-                            |n: Node| &source[n.byte_range()],
+                            |n: Node| {
+                                // &source[n.byte_range()]
+                                node_to_bytes(n, source)
+                            },
                         );
                         for mat in matches {
                             let entry = &mut injections_by_pattern_index[mat.pattern_index];
@@ -919,7 +952,7 @@ impl<'a> HighlightIterLayer<'a> {
                         {
                             if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty())
                             {
-                                if let Some(next_config) = (injection_callback)(lang_name) {
+                                if let Some(next_config) = (injection_callback)(&lang_name) {
                                     let ranges = Self::intersect_ranges(
                                         &ranges,
                                         &content_nodes,
@@ -943,7 +976,8 @@ impl<'a> HighlightIterLayer<'a> {
                         unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
                     let captures = cursor_ref
                         .captures(&config.query, tree_ref.root_node(), move |n: Node| {
-                            &source[n.byte_range()]
+                            // &source[n.byte_range()]
+                            node_to_bytes(n, source)
                         })
                         .peekable();
 
@@ -1195,12 +1229,13 @@ where
 
             // If none of the layers have any more highlight boundaries, terminate.
             if self.layers.is_empty() {
-                return if self.byte_offset < self.source.len() {
+                let len = self.source.len_bytes();
+                return if self.byte_offset < len {
                     let result = Some(Ok(HighlightEvent::Source {
                         start: self.byte_offset,
-                        end: self.source.len(),
+                        end: len,
                     }));
-                    self.byte_offset = self.source.len();
+                    self.byte_offset = len;
                     result
                 } else {
                     None
@@ -1240,7 +1275,7 @@ where
             // If this capture represents an injection, then process the injection.
             if match_.pattern_index < layer.config.locals_pattern_index {
                 let (language_name, content_node, include_children) =
-                    injection_for_match(&layer.config, &layer.config.query, &match_, &self.source);
+                    injection_for_match(&layer.config, &layer.config.query, &match_, self.source);
 
                 // Explicitly remove this match so that none of its other captures will remain
                 // in the stream of captures.
@@ -1249,7 +1284,7 @@ where
                 // If a language is found with the given name, then add a new language layer
                 // to the highlighted document.
                 if let (Some(language_name), Some(content_node)) = (language_name, content_node) {
-                    if let Some(config) = (self.injection_callback)(language_name) {
+                    if let Some(config) = (self.injection_callback)(&language_name) {
                         let ranges = HighlightIterLayer::intersect_ranges(
                             &self.layers[0].ranges,
                             &[content_node],
@@ -1320,15 +1355,13 @@ where
                         }
                     }
 
-                    if let Ok(name) = str::from_utf8(&self.source[range.clone()]) {
-                        scope.local_defs.push(LocalDef {
-                            name,
-                            value_range,
-                            highlight: None,
-                        });
-                        definition_highlight =
-                            scope.local_defs.last_mut().map(|s| &mut s.highlight);
-                    }
+                    let name = byte_range_to_str(range.clone(), self.source);
+                    scope.local_defs.push(LocalDef {
+                        name,
+                        value_range,
+                        highlight: None,
+                    });
+                    definition_highlight = scope.local_defs.last_mut().map(|s| &mut s.highlight);
                 }
                 // If the node represents a reference, then try to find the corresponding
                 // definition in the scope stack.
@@ -1336,21 +1369,20 @@ where
                     && definition_highlight.is_none()
                 {
                     definition_highlight = None;
-                    if let Ok(name) = str::from_utf8(&self.source[range.clone()]) {
-                        for scope in layer.scope_stack.iter().rev() {
-                            if let Some(highlight) = scope.local_defs.iter().rev().find_map(|def| {
-                                if def.name == name && range.start >= def.value_range.end {
-                                    Some(def.highlight)
-                                } else {
-                                    None
-                                }
-                            }) {
-                                reference_highlight = highlight;
-                                break;
+                    let name = byte_range_to_str(range.clone(), self.source);
+                    for scope in layer.scope_stack.iter().rev() {
+                        if let Some(highlight) = scope.local_defs.iter().rev().find_map(|def| {
+                            if def.name == name && range.start >= def.value_range.end {
+                                Some(def.highlight)
+                            } else {
+                                None
                             }
-                            if !scope.inherits {
-                                break;
-                            }
+                        }) {
+                            reference_highlight = highlight;
+                            break;
+                        }
+                        if !scope.inherits {
+                            break;
                         }
                     }
                 }
@@ -1436,8 +1468,8 @@ fn injection_for_match<'a>(
     config: &HighlightConfiguration,
     query: &'a Query,
     query_match: &QueryMatch<'a>,
-    source: &'a [u8],
-) -> (Option<&'a str>, Option<Node<'a>>, bool) {
+    source: RopeSlice<'a>,
+) -> (Option<Cow<'a, str>>, Option<Node<'a>>, bool) {
     let content_capture_index = config.injection_content_capture_index;
     let language_capture_index = config.injection_language_capture_index;
 
@@ -1446,7 +1478,8 @@ fn injection_for_match<'a>(
     for capture in query_match.captures {
         let index = Some(capture.index);
         if index == language_capture_index {
-            language_name = capture.node.utf8_text(source).ok();
+            let name = byte_range_to_str(capture.node.byte_range(), source);
+            language_name = Some(name);
         } else if index == content_capture_index {
             content_node = Some(capture.node);
         }
@@ -1460,7 +1493,7 @@ fn injection_for_match<'a>(
             // that sets the injection.language key.
             "injection.language" => {
                 if language_name.is_none() {
-                    language_name = prop.value.as_ref().map(|s| s.as_ref())
+                    language_name = prop.value.as_ref().map(|s| s.as_ref().into())
                 }
             }
 

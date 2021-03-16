@@ -75,9 +75,7 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
     ) {
-        // TODO: inefficient, should feed chunks.iter() to tree_sitter.parse_with(|offset, pos|)
         let text = view.doc.text();
-        let source_code = text.to_string();
 
         let last_line = view.last_line();
 
@@ -95,7 +93,7 @@ impl EditorView {
         let highlights: Vec<_> = match &view.doc.syntax {
             Some(syntax) => {
                 syntax
-                    .highlight_iter(source_code.as_bytes(), Some(range), None, |_| None)
+                    .highlight_iter(text.slice(..), Some(range), None, |_| None)
                     .unwrap()
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
