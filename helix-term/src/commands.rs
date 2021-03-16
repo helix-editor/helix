@@ -13,6 +13,8 @@ use once_cell::sync::Lazy;
 use crate::compositor::Compositor;
 use crate::ui::{self, Popup, Prompt, PromptEvent};
 
+use std::path::PathBuf;
+
 use helix_view::{
     document::Mode,
     view::{View, PADDING},
@@ -20,6 +22,8 @@ use helix_view::{
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
+
+use helix_lsp::lsp;
 
 pub struct Context<'a> {
     pub count: usize,
@@ -844,6 +848,108 @@ pub fn select_mode(cx: &mut Context) {
 
 pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
+}
+
+fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
+    let executor = cx.executor;
+    let doc = cx.doc();
+
+    doc.mode = Mode::Normal;
+
+    match locations.as_slice() {
+        [location] => {
+            cx.editor
+                .open(PathBuf::from(location.uri.path()), cx.executor);
+            let doc = cx.doc();
+            let definition_pos = location.range.start;
+            let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+            doc.set_selection(Selection::point(new_pos));
+        }
+        [] => (), // maybe show user message that no definition was found?
+        _locations => {
+            let mut picker = ui::Picker::new(
+                locations,
+                |item| {
+                    let file = item.uri.as_str();
+                    let line = item.range.start.line;
+                    format!("{}:{}", file, line).into()
+                },
+                move |editor: &mut Editor, item| {
+                    editor.open(PathBuf::from(item.uri.path()), &executor);
+                    let mut doc = &mut editor.view_mut().doc;
+                    let definition_pos = item.range.start;
+                    let new_pos =
+                        helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+                    doc.set_selection(Selection::point(new_pos));
+                },
+            );
+            cx.push_layer(Box::new(picker));
+        }
+    }
+}
+
+pub fn goto_definition(cx: &mut Context) {
+    let doc = cx.doc();
+    let language_server = match doc.language_server.as_ref() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // TODO: blocking here is not ideal
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+
+    // TODO: handle fails
+    let res =
+        smol::block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
+    goto(cx, res);
+}
+
+pub fn goto_type_definition(cx: &mut Context) {
+    let doc = cx.doc();
+    let language_server = match doc.language_server.as_ref() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // TODO: blocking here is not ideal
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+
+    // TODO: handle fails
+    let res = smol::block_on(language_server.goto_type_definition(doc.identifier(), pos))
+        .unwrap_or_default();
+    goto(cx, res);
+}
+
+pub fn goto_implementation(cx: &mut Context) {
+    let doc = cx.doc();
+    let language_server = match doc.language_server.as_ref() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // TODO: blocking here is not ideal
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+
+    // TODO: handle fails
+    let res = smol::block_on(language_server.goto_implementation(doc.identifier(), pos))
+        .unwrap_or_default();
+    goto(cx, res);
+}
+
+pub fn goto_reference(cx: &mut Context) {
+    let doc = cx.doc();
+    let language_server = match doc.language_server.as_ref() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // TODO: blocking here is not ideal
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+
+    // TODO: handle fails
+    let res =
+        smol::block_on(language_server.goto_reference(doc.identifier(), pos)).unwrap_or_default();
+    goto(cx, res);
 }
 
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.

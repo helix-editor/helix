@@ -582,4 +582,98 @@ impl Client {
 
         Ok(response.unwrap_or_default())
     }
+
+    async fn goto_request<
+        T: lsp::request::Request<
+            Params = lsp::GotoDefinitionParams,
+            Result = Option<lsp::GotoDefinitionResponse>,
+        >,
+    >(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        let params = lsp::GotoDefinitionParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self.request::<T>(params).await?;
+
+        let items = match response {
+            Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
+            Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+            Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
+                .into_iter()
+                .map(|location_link| lsp::Location {
+                    uri: location_link.target_uri,
+                    range: location_link.target_range,
+                })
+                .collect(),
+            None => Vec::new(),
+        };
+
+        Ok(items)
+    }
+
+    pub async fn goto_definition(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        self.goto_request::<lsp::request::GotoDefinition>(text_document, position)
+            .await
+    }
+
+    pub async fn goto_type_definition(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        self.goto_request::<lsp::request::GotoTypeDefinition>(text_document, position)
+            .await
+    }
+
+    pub async fn goto_implementation(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        self.goto_request::<lsp::request::GotoImplementation>(text_document, position)
+            .await
+    }
+
+    pub async fn goto_reference(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> anyhow::Result<Vec<lsp::Location>> {
+        let params = lsp::ReferenceParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            context: lsp::ReferenceContext {
+                include_declaration: true,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::References>(params).await?;
+
+        Ok(response.unwrap_or_default())
+    }
 }

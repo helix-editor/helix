@@ -311,8 +311,12 @@ pub fn default() -> Keymaps {
                 code: KeyCode::Esc,
                 modifiers: Modifiers::NONE
             } => commands::normal_mode as Command,
-            key!('g') => commands::move_file_start as Command,
-            key!('e') => commands::move_file_end as Command,
+            key!('g') => commands::move_file_start,
+            key!('e') => commands::move_file_end,
+            key!('d') => commands::goto_definition,
+            key!('t') => commands::goto_type_definition,
+            key!('r') => commands::goto_reference,
+            key!('i') => commands::goto_implementation,
         ),
     )
 }
