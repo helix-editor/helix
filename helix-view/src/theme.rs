@@ -88,34 +88,6 @@ pub struct Theme {
     mapping: HashMap<&'static str, Style>,
 }
 
-// let highlight_names: Vec<String> = [
-//     "attribute",
-//     "constant.builtin",
-//     "constant",
-//     "function.builtin",
-//     "function.macro",
-//     "function",
-//     "keyword",
-//     "operator",
-//     "property",
-//     "punctuation",
-//     "comment",
-//     "escape",
-//     "label",
-//     // "punctuation.bracket",
-//     "punctuation.delimiter",
-//     "string",
-//     "string.special",
-//     "tag",
-//     "type",
-//     "type.builtin",
-//     "constructor",
-//     "variable",
-//     "variable.builtin",
-//     "variable.parameter",
-//     "path",
-// ];
-
 impl Default for Theme {
     fn default() -> Self {
         let mapping = hashmap! {

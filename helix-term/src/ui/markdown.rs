@@ -10,18 +10,22 @@ use tui::{
 use std::borrow::Cow;
 
 use helix_core::Position;
-use helix_view::Editor;
+use helix_view::{Editor, Theme};
 
 pub struct Markdown {
     contents: String,
 }
+
+// TODO: pre-render and self reference via Pin
+// better yet, just use Tendril + subtendril for references
 
 impl Markdown {
     pub fn new(contents: String) -> Self {
         Self { contents }
     }
 }
-fn parse(contents: &str) -> tui::text::Text {
+
+fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
     use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
     use tui::text::{Span, Spans, Text};
 
@@ -68,10 +72,73 @@ fn parse(contents: &str) -> tui::text::Text {
                 }
             }
             Event::Text(text) => {
-                if let Some(Tag::CodeBlock(CodeBlockKind::Fenced(_))) = tags.last() {
-                    for line in text.lines() {
-                        let mut span = Span::styled(line.to_string(), code_style);
-                        lines.push(Spans::from(span));
+                // TODO: temp workaround
+                if let Some(Tag::CodeBlock(CodeBlockKind::Fenced(language))) = tags.last() {
+                    if let Some(theme) = theme {
+                        use helix_core::syntax::{self, HighlightEvent, Syntax};
+                        use helix_core::Rope;
+
+                        let rope = Rope::from(text.as_ref());
+                        let syntax = syntax::LOADER
+                            .language_config_for_scope(&format!("source.{}", language))
+                            .and_then(|config| config.highlight_config(theme.scopes()))
+                            .map(|config| Syntax::new(&rope, config));
+
+                        if let Some(mut syntax) = syntax {
+                            // if we have a syntax available, highlight_iter and generate spans
+                            let mut highlights = Vec::new();
+
+                            for event in syntax.highlight_iter(rope.slice(..), None, None, |_| None)
+                            {
+                                match event.unwrap() {
+                                    HighlightEvent::HighlightStart(span) => {
+                                        highlights.push(span);
+                                    }
+                                    HighlightEvent::HighlightEnd => {
+                                        highlights.pop();
+                                    }
+                                    HighlightEvent::Source { start, end } => {
+                                        let style = match highlights.first() {
+                                            Some(span) => {
+                                                theme.get(theme.scopes()[span.0].as_str())
+                                            }
+                                            None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
+                                        };
+
+                                        let mut slice = &text[start..end];
+                                        while let Some(end) = slice.find('\n') {
+                                            // emit span up to newline
+                                            let text = &slice[..end];
+                                            let span = Span::styled(text.to_owned(), style);
+                                            spans.push(span);
+
+                                            // truncate slice to after newline
+                                            slice = &slice[end + 1..];
+
+                                            // make a new line
+                                            let spans = std::mem::replace(&mut spans, Vec::new());
+                                            lines.push(Spans::from(spans));
+                                        }
+
+                                        // if there's anything left, emit it too
+                                        if !slice.is_empty() {
+                                            let span = Span::styled(slice.to_owned(), style);
+                                            spans.push(span);
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            for line in text.lines() {
+                                let mut span = Span::styled(line.to_string(), code_style);
+                                lines.push(Spans::from(span));
+                            }
+                        }
+                    } else {
+                        for line in text.lines() {
+                            let mut span = Span::styled(line.to_string(), code_style);
+                            lines.push(Spans::from(span));
+                        }
                     }
                 } else if let Some(Tag::Heading(_)) = tags.last() {
                     let mut span = to_span(text);
@@ -113,7 +180,7 @@ impl Component for Markdown {
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
-        let text = parse(&self.contents);
+        let text = parse(&self.contents, Some(&cx.editor.theme));
 
         let par = Paragraph::new(text)
             .wrap(Wrap { trim: false })
@@ -124,18 +191,10 @@ impl Component for Markdown {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let contents = parse(&self.contents);
+        let contents = parse(&self.contents, None);
         let padding = 2;
         let width = std::cmp::min(contents.width() as u16 + padding, viewport.0);
         let height = std::cmp::min(contents.height() as u16 + padding, viewport.1);
         Some((width, height))
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn it_works() {}
 }
