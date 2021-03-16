@@ -1,14 +1,15 @@
-use crate::{theme::Theme, tree::Tree, Document, View};
+use crate::{theme::Theme, tree::Tree, Document, DocumentId, View};
 
 use std::path::PathBuf;
+use std::{cell::RefCell, rc::Rc};
 
-use slotmap::DefaultKey as Key;
+use slotmap::{DefaultKey as Key, SlotMap};
 
 use anyhow::Error;
 
 pub struct Editor {
     pub tree: Tree,
-    // pub documents: Vec<Document>,
+    pub documents: SlotMap<DocumentId, Rc<RefCell<Document>>>,
     pub count: Option<usize>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
@@ -25,6 +26,7 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
+            documents: SlotMap::with_key(),
             count: None,
             theme,
             language_servers,
@@ -33,10 +35,12 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
+        // TODO: issues with doc already being borrowed if called from inside goto()
+
         let existing_view = self
             .tree
             .views()
-            .find(|(view, _)| view.doc.path() == Some(&path));
+            .find(|(view, _)| view.doc.borrow().path() == Some(&path));
 
         if let Some((view, _)) = existing_view {
             self.tree.focus = view.id;
@@ -69,6 +73,10 @@ impl Editor {
             .unwrap();
         }
 
+        let doc = Rc::new(RefCell::new(doc));
+        // TODO: store id as doc.id
+        let id = self.documents.insert(doc.clone());
+
         let view = View::new(doc)?;
         self.tree.insert(view);
         Ok(())
@@ -80,7 +88,7 @@ impl Editor {
         let language_servers = &mut self.language_servers;
         let executor = self.executor;
 
-        let doc = &view.doc;
+        let doc = view.doc.borrow();
 
         let language_server = doc
             .language
@@ -90,7 +98,19 @@ impl Editor {
         if let Some(language_server) = language_server {
             smol::block_on(language_server.text_document_did_close(doc.identifier())).unwrap();
         }
-        self.tree.remove(id)
+
+        drop(doc); // to stop borrowing self.tree
+
+        // self.documents.remove(view.doc);
+        self.tree.remove(id);
+    }
+
+    pub fn resize(&mut self) {
+        self.tree.focus_next();
+    }
+
+    pub fn focus_next(&mut self) {
+        self.tree.focus_next();
     }
 
     pub fn should_close(&self) -> bool {
@@ -108,8 +128,9 @@ impl Editor {
     pub fn cursor_position(&self) -> Option<helix_core::Position> {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = self.view();
-        let cursor = view.doc.selection().cursor();
-        if let Some(mut pos) = view.screen_coords_at_pos(view.doc.text().slice(..), cursor) {
+        let doc = view.doc.borrow();
+        let cursor = doc.selection().cursor();
+        if let Some(mut pos) = view.screen_coords_at_pos(doc.text().slice(..), cursor) {
             pos.col += view.area.x as usize + OFFSET as usize;
             pos.row += view.area.y as usize;
             return Some(pos);

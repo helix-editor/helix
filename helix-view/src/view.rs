@@ -1,8 +1,9 @@
 use anyhow::Error;
 
 use std::borrow::Cow;
+use std::{cell::RefCell, rc::Rc};
 
-use crate::Document;
+use crate::{Document, DocumentId};
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
     Position, RopeSlice,
@@ -14,13 +15,13 @@ pub const PADDING: usize = 5;
 
 pub struct View {
     pub id: Key,
-    pub doc: Document,
+    pub doc: Rc<RefCell<Document>>,
     pub first_line: usize,
     pub area: Rect,
 }
 
 impl View {
-    pub fn new(doc: Document) -> Result<Self, Error> {
+    pub fn new(doc: Rc<RefCell<Document>>) -> Result<Self, Error> {
         let view = Self {
             id: Key::default(),
             doc,
@@ -32,8 +33,9 @@ impl View {
     }
 
     pub fn ensure_cursor_in_view(&mut self) {
-        let cursor = self.doc.selection().cursor();
-        let line = self.doc.text().char_to_line(cursor);
+        let doc = self.doc.borrow();
+        let cursor = doc.selection().cursor();
+        let line = doc.text().char_to_line(cursor);
         let document_end = self.first_line + (self.area.height as usize).saturating_sub(2);
 
         // TODO: side scroll
@@ -50,10 +52,11 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self) -> usize {
+        let doc = self.doc.borrow();
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
         std::cmp::min(
             self.first_line + height as usize,
-            self.doc.text().len_lines() - 1,
+            doc.text().len_lines() - 1,
         )
     }
 
@@ -71,7 +74,7 @@ impl View {
         let line_start = text.line_to_char(line);
         let line_slice = text.slice(line_start..pos);
         let mut col = 0;
-        let tab_width = self.doc.tab_width();
+        let tab_width = self.doc.borrow().tab_width();
 
         for grapheme in RopeGraphemes::new(line_slice) {
             if grapheme == "\t" {

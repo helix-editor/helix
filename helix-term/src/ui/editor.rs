@@ -57,7 +57,8 @@ impl EditorView {
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
-        self.render_diagnostics(&view.doc, area, surface, theme, is_focused);
+        let doc = view.doc.borrow();
+        self.render_diagnostics(&doc, area, surface, theme, is_focused);
 
         let area = Rect::new(
             viewport.x,
@@ -65,7 +66,7 @@ impl EditorView {
             viewport.width,
             1,
         );
-        self.render_statusline(&view.doc, area, surface, theme, is_focused);
+        self.render_statusline(&doc, area, surface, theme, is_focused);
     }
 
     pub fn render_buffer(
@@ -76,7 +77,8 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
     ) {
-        let text = view.doc.text();
+        let doc = view.doc.borrow();
+        let text = doc.text().slice(..);
 
         let last_line = view.last_line();
 
@@ -91,7 +93,7 @@ impl EditorView {
         // TODO: range doesn't actually restrict source, just highlight range
         // TODO: cache highlight results
         // TODO: only recalculate when state.doc is actually modified
-        let highlights: Vec<_> = match view.doc.syntax() {
+        let highlights: Vec<_> = match doc.syntax() {
             Some(syntax) => {
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |_| None)
@@ -105,7 +107,7 @@ impl EditorView {
         let mut spans = Vec::new();
         let mut visual_x = 0;
         let mut line = 0u16;
-        let tab_width = view.doc.tab_width();
+        let tab_width = doc.tab_width();
 
         'outer: for event in highlights {
             match event.unwrap() {
@@ -167,7 +169,7 @@ impl EditorView {
                             let width = grapheme_width(&grapheme) as u16;
 
                             // ugh,interleave highlight spans with diagnostic spans
-                            let is_diagnostic = view.doc.diagnostics.iter().any(|diagnostic| {
+                            let is_diagnostic = doc.diagnostics.iter().any(|diagnostic| {
                                 diagnostic.range.start <= char_index
                                     && diagnostic.range.end > char_index
                             });
@@ -202,7 +204,6 @@ impl EditorView {
                 let end = text.line_to_char(last_line + 1);
                 Range::new(start, end)
             };
-            let text = text.slice(..);
             let cursor_style = Style::default()
                 // .bg(Color::Rgb(255, 255, 255))
                 .add_modifier(Modifier::REVERSED);
@@ -212,6 +213,7 @@ impl EditorView {
 
             for selection in view
                 .doc
+                .borrow()
                 .selection()
                 .iter()
                 .filter(|range| range.overlaps(&screen))
@@ -293,7 +295,7 @@ impl EditorView {
         let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = view.doc.diagnostics.iter().find(|d| d.line == line) {
+            if let Some(diagnostic) = doc.diagnostics.iter().find(|d| d.line == line) {
                 surface.set_stringn(
                     viewport.x - OFFSET,
                     viewport.y + i as u16,
@@ -433,9 +435,8 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
-                let view = cx.editor.view_mut();
+                let mode = cx.editor.view().doc.borrow().mode();
 
-                let mode = view.doc.mode();
                 let mut cxt = commands::Context {
                     editor: &mut cx.editor,
                     count: 1,

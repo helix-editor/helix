@@ -125,15 +125,16 @@ impl Application {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
 
-                        let view = self
+                        let doc = self
                             .editor
-                            .tree
-                            .views()
-                            .map(|(view, _key)| view)
-                            .find(|view| view.doc.path() == path.as_ref());
+                            .documents
+                            .iter_mut()
+                            .find(|(_, doc)| doc.borrow().path() == path.as_ref());
 
-                        if let Some(view) = view {
-                            let doc = view.doc.text();
+                        if let Some((_, doc)) = doc {
+                            let mut doc = doc.borrow_mut();
+                            let text = doc.text();
+
                             let diagnostics = params
                                 .diagnostics
                                 .into_iter()
@@ -144,8 +145,8 @@ impl Application {
                                     };
                                     use helix_lsp::{lsp, util::lsp_pos_to_pos};
                                     use lsp::DiagnosticSeverity;
-                                    let start = lsp_pos_to_pos(doc, diagnostic.range.start);
-                                    let end = lsp_pos_to_pos(doc, diagnostic.range.end);
+                                    let start = lsp_pos_to_pos(text, diagnostic.range.start);
+                                    let end = lsp_pos_to_pos(text, diagnostic.range.end);
 
                                     Diagnostic {
                                         range: Range { start, end },
@@ -165,8 +166,8 @@ impl Application {
                                 })
                                 .collect();
 
-                            view.doc.diagnostics = diagnostics;
-
+                            doc.diagnostics = diagnostics;
+                            drop(doc);
                             // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                             self.render();
                         }

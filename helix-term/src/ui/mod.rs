@@ -39,9 +39,8 @@ pub fn regex_prompt(
         move |editor: &mut Editor, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
-                    // TODO: also revert doc
                     // TODO: also revert text
-                    let doc = &mut editor.view_mut().doc;
+                    let doc = &mut editor.view().doc.borrow_mut();
                     doc.set_selection(snapshot.clone());
                 }
                 PromptEvent::Validate => {
@@ -56,13 +55,15 @@ pub fn regex_prompt(
                     match Regex::new(input) {
                         Ok(regex) => {
                             let view = &mut editor.view_mut();
-                            let doc = &mut view.doc;
+                            let mut doc = view.doc.borrow_mut();
 
                             // revert state to what it was before the last update
                             // TODO: also revert text
                             doc.set_selection(snapshot.clone());
 
-                            fun(doc, regex);
+                            fun(&mut doc, regex);
+
+                            drop(doc);
 
                             view.ensure_cursor_in_view();
                         }
