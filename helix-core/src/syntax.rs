@@ -269,7 +269,7 @@ impl Syntax {
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
         mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
-    ) -> Result<impl Iterator<Item = Result<HighlightEvent, Error>> + 'a, Error> {
+    ) -> impl Iterator<Item = Result<HighlightEvent, Error>> + 'a {
         // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
         // prevents them from being moved. But both of these values are really just
         // pointers, so it's actually ok to move them.
@@ -325,7 +325,7 @@ impl Syntax {
             last_highlight_range: None,
         };
         result.sort_layers();
-        Ok(result)
+        result
     }
     // on_tokenize
     // on_change_highlighting
