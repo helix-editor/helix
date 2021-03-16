@@ -244,11 +244,12 @@ impl Client {
         uri: lsp::Url,
         version: i32,
         doc: &Rope,
+        language_id: String,
     ) -> Result<()> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri,
-                language_id: "rust".to_string(), // TODO: hardcoded for now
+                language_id,
                 version,
                 text: String::from(doc),
             },

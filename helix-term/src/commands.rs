@@ -1183,6 +1183,7 @@ pub fn completion(cx: &mut Context) {
     let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
 
     // TODO: handle fails
+
     let res = smol::block_on(language_server.completion(doc.identifier(), pos)).unwrap_or_default();
 
     // TODO: if no completion, show some message or something

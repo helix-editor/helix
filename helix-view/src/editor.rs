@@ -46,10 +46,17 @@ impl Editor {
         if let Some(language_server) = language_server {
             doc.set_language_server(Some(language_server.clone()));
 
+            let language_id = doc
+                .language()
+                .and_then(|s| s.split(".").last()) // source.rust
+                .map(ToOwned::to_owned)
+                .unwrap_or_default();
+
             smol::block_on(language_server.text_document_did_open(
                 doc.url().unwrap(),
                 doc.version(),
                 doc.text(),
+                language_id,
             ))
             .unwrap();
         }
