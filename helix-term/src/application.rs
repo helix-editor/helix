@@ -134,7 +134,7 @@ impl Application {
                             .find(|view| view.doc.path() == path.as_ref());
 
                         if let Some(view) = view {
-                            let doc = view.doc.text().slice(..);
+                            let doc = view.doc.text();
                             let diagnostics = params
                                 .diagnostics
                                 .into_iter()

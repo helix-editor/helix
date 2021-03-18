@@ -297,7 +297,6 @@ impl Client {
         }
 
         let old_text = old_text.slice(..);
-        let new_text = new_text.slice(..);
 
         while let Some(change) = iter.next() {
             let len = match change {

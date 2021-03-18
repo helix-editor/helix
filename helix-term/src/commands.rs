@@ -912,7 +912,7 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
             cx.editor.open(PathBuf::from(location.uri.path()));
             let doc = cx.doc();
             let definition_pos = location.range.start;
-            let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+            let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);
             doc.set_selection(Selection::point(new_pos));
         }
         [] => (), // maybe show user message that no definition was found?
@@ -928,8 +928,7 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                     editor.open(PathBuf::from(item.uri.path()));
                     let mut doc = &mut editor.view_mut().doc;
                     let definition_pos = item.range.start;
-                    let new_pos =
-                        helix_lsp::util::lsp_pos_to_pos(doc.text().slice(..), definition_pos);
+                    let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);
                     doc.set_selection(Selection::point(new_pos));
                 },
             );
@@ -946,7 +945,7 @@ pub fn goto_definition(cx: &mut Context) {
     };
 
     // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection().cursor());
 
     // TODO: handle fails
     let res =
@@ -962,7 +961,7 @@ pub fn goto_type_definition(cx: &mut Context) {
     };
 
     // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection().cursor());
 
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_type_definition(doc.identifier(), pos))
@@ -978,7 +977,7 @@ pub fn goto_implementation(cx: &mut Context) {
     };
 
     // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection().cursor());
 
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_implementation(doc.identifier(), pos))
@@ -994,7 +993,7 @@ pub fn goto_reference(cx: &mut Context) {
     };
 
     // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection().cursor());
 
     // TODO: handle fails
     let res =
@@ -1223,7 +1222,7 @@ pub fn format_selections(cx: &mut Context) {
         .selection()
         .ranges()
         .iter()
-        .map(|range| helix_lsp::util::range_to_lsp_range(doc.text().slice(..), *range))
+        .map(|range| helix_lsp::util::range_to_lsp_range(doc.text(), *range))
         .collect();
 
     for range in ranges {
@@ -1333,7 +1332,7 @@ pub fn completion(cx: &mut Context) {
     };
 
     // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection().cursor());
 
     // TODO: handle fails
 
@@ -1435,7 +1434,7 @@ pub fn hover(cx: &mut Context) {
 
     // TODO: blocking here is not ideal, make commands async fn?
     // not like we can process additional input meanwhile though
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text().slice(..), doc.selection().cursor());
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection().cursor());
 
     // TODO: handle fails
     let res = smol::block_on(language_server.text_document_hover(doc.identifier(), pos))
