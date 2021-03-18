@@ -5,8 +5,6 @@ mod transport;
 pub use jsonrpc_core as jsonrpc;
 pub use lsp_types as lsp;
 
-pub use once_cell::sync::{Lazy, OnceCell};
-
 pub use client::Client;
 pub use lsp::{Position, Url};
 
