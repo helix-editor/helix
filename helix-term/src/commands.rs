@@ -770,12 +770,8 @@ pub fn open_below(cx: &mut Context) {
     let changes: Vec<Change> = positions
         .map(|index| {
             // TODO: share logic with insert_newline for indentation
-            let indent_level = helix_core::indent::suggested_indent_for_pos(
-                doc.syntax.as_ref(),
-                text,
-                index,
-                true,
-            );
+            let indent_level =
+                helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
             let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
@@ -970,12 +966,8 @@ pub mod insert {
         let doc = cx.doc();
         let text = doc.text().slice(..);
         let transaction = Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
-            let indent_level = helix_core::indent::suggested_indent_for_pos(
-                doc.syntax.as_ref(),
-                text,
-                range.head,
-                true,
-            );
+            let indent_level =
+                helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, range.head, true);
             let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
@@ -1434,7 +1426,7 @@ pub fn toggle_comments(cx: &mut Context) {
 pub fn expand_selection(cx: &mut Context) {
     let doc = cx.doc();
 
-    if let Some(syntax) = &doc.syntax {
+    if let Some(syntax) = doc.syntax() {
         let text = doc.text().slice(..);
         let selection = object::expand_selection(syntax, text, doc.selection());
         doc.set_selection(selection);

@@ -7,11 +7,11 @@ use std::borrow::Cow;
 use std::string::String;
 
 pub struct Prompt {
-    pub prompt: String,
+    prompt: String,
     pub line: String,
-    pub cursor: usize,
-    pub completion: Vec<Cow<'static, str>>,
-    pub completion_selection_index: Option<usize>,
+    cursor: usize,
+    completion: Vec<Cow<'static, str>>,
+    completion_selection_index: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<Cow<'static, str>>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
 }

@@ -90,7 +90,7 @@ impl EditorView {
         // TODO: range doesn't actually restrict source, just highlight range
         // TODO: cache highlight results
         // TODO: only recalculate when state.doc is actually modified
-        let highlights: Vec<_> = match &view.doc.syntax {
+        let highlights: Vec<_> = match view.doc.syntax() {
             Some(syntax) => {
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |_| None)

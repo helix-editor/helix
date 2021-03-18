@@ -18,15 +18,13 @@ pub enum Mode {
 
 pub struct Document {
     pub state: State, // rope + selection
-    /// File path on disk.
     path: Option<PathBuf>,
 
     /// Current editing mode.
     pub mode: Mode,
     pub restore_cursor: bool,
 
-    /// Tree-sitter AST tree
-    pub syntax: Option<Syntax>,
+    syntax: Option<Syntax>,
     // /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
@@ -36,7 +34,6 @@ pub struct Document {
     old_state: Option<State>,
     /// Undo tree.
     history: History,
-    /// Current document version, incremented at each change.
     version: i32, // should be usize?
 
     pub diagnostics: Vec<Diagnostic>,
@@ -284,6 +281,7 @@ impl Document {
     }
 
     #[inline]
+    /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
     }
@@ -292,7 +290,13 @@ impl Document {
         self.language_server.as_deref()
     }
 
+    /// Tree-sitter AST tree
+    pub fn syntax(&self) -> Option<&Syntax> {
+        self.syntax.as_ref()
+    }
+
     #[inline]
+    /// File path on disk.
     pub fn path(&self) -> Option<&PathBuf> {
         self.path.as_ref()
     }

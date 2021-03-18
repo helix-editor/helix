@@ -95,7 +95,7 @@ impl Editor {
         self.tree.remove(id)
     }
 
-    pub fn should_close(&mut self) -> bool {
+    pub fn should_close(&self) -> bool {
         self.tree.is_empty()
     }
 
