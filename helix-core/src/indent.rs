@@ -2,7 +2,7 @@ use crate::{
     find_first_non_whitespace_char,
     syntax::Syntax,
     tree_sitter::{Node, Tree},
-    Rope, RopeSlice, State,
+    Rope, RopeSlice,
 };
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
@@ -162,12 +162,12 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
     increment as usize
 }
 
-fn suggested_indent_for_line(syntax: Option<&Syntax>, state: &State, line_num: usize) -> usize {
-    let line = state.doc.line(line_num);
+fn suggested_indent_for_line(syntax: Option<&Syntax>, text: RopeSlice, line_num: usize) -> usize {
+    let line = text.line(line_num);
     let current = indent_level_for_line(line);
 
-    if let Some(start) = find_first_non_whitespace_char(state.doc.slice(..), line_num) {
-        return suggested_indent_for_pos(syntax, state, start, false);
+    if let Some(start) = find_first_non_whitespace_char(text, line_num) {
+        return suggested_indent_for_pos(syntax, text, start, false);
     };
 
     // if the line is blank, indent should be zero
@@ -179,12 +179,12 @@ fn suggested_indent_for_line(syntax: Option<&Syntax>, state: &State, line_num: u
 // - it should look up the wrapper node and count it too when we press o/O
 pub fn suggested_indent_for_pos(
     syntax: Option<&Syntax>,
-    state: &State,
+    text: RopeSlice,
     pos: usize,
     new_line: bool,
 ) -> usize {
     if let Some(syntax) = syntax {
-        let byte_start = state.doc.char_to_byte(pos);
+        let byte_start = text.char_to_byte(pos);
         let node = get_highest_syntax_node_at_bytepos(syntax, byte_start);
 
         // TODO: special case for comments
@@ -279,7 +279,7 @@ std::panic::set_hook(Box::new(move |info| {
     1
 }}}
 
-pub fn change<I>(state: &State, changes: I) -> Self
+pub fn change<I>(document: &Document, changes: I) -> Self
 where
     I: IntoIterator<Item = Change> + ExactSizeIterator,
 {
@@ -288,20 +288,19 @@ where
 ",
         );
 
-        let state = State::new(doc);
-        // TODO: set_language
+        let doc = Rope::from(doc);
         let language_config = crate::syntax::LOADER
             .language_config_for_scope("source.rust")
             .unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap();
-        let syntax = Syntax::new(&state.doc, highlight_config.clone());
-        let text = state.doc.slice(..);
+        let syntax = Syntax::new(&doc, highlight_config.clone());
+        let text = doc.slice(..);
 
-        for i in 0..state.doc.len_lines() {
+        for i in 0..doc.len_lines() {
             let line = text.line(i);
             let indent = indent_level_for_line(line);
             assert_eq!(
-                suggested_indent_for_line(Some(&syntax), &state, i),
+                suggested_indent_for_line(Some(&syntax), text, i),
                 indent,
                 "line {}: {}",
                 i,

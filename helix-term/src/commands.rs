@@ -4,8 +4,8 @@ use helix_core::{
     movement, object, pos_at_coords,
     regex::{self, Regex},
     register, search, selection,
-    state::{Direction, Granularity, State},
-    Change, ChangeSet, Position, Range, RopeSlice, Selection, Tendril, Transaction,
+    state::{Direction, Granularity},
+    Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
 
 use once_cell::sync::Lazy;
@@ -107,7 +107,7 @@ pub fn move_line_down(cx: &mut Context) {
 
 pub fn move_line_end(cx: &mut Context) {
     let doc = cx.doc();
-    let lines = selection_lines(&doc.state);
+    let lines = selection_lines(doc.text(), doc.selection());
 
     let positions = lines
         .into_iter()
@@ -127,7 +127,7 @@ pub fn move_line_end(cx: &mut Context) {
 
 pub fn move_line_start(cx: &mut Context) {
     let doc = cx.doc();
-    let lines = selection_lines(&doc.state);
+    let lines = selection_lines(doc.text(), doc.selection());
 
     let positions = lines
         .into_iter()
@@ -586,8 +586,9 @@ pub fn extend_line(cx: &mut Context) {
 // heuristic: append changes to history after each command, unless we're in insert mode
 
 fn _delete_selection(doc: &mut Document) {
-    let transaction =
-        Transaction::change_by_selection(&doc.state, |range| (range.from(), range.to() + 1, None));
+    let transaction = Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
+        (range.from(), range.to() + 1, None)
+    });
     doc.apply(&transaction);
 }
 
@@ -722,12 +723,11 @@ pub fn buffer_picker(cx: &mut Context) {
 }
 
 // calculate line numbers for each selection range
-fn selection_lines(state: &State) -> Vec<usize> {
-    let mut lines = state
-        .selection
+fn selection_lines(doc: &Rope, selection: &Selection) -> Vec<usize> {
+    let mut lines = selection
         .ranges()
         .iter()
-        .map(|range| state.doc.char_to_line(range.head))
+        .map(|range| doc.char_to_line(range.head))
         .collect::<Vec<_>>();
 
     lines.sort_unstable(); // sorting by usize so _unstable is preferred
@@ -758,19 +758,21 @@ pub fn open_below(cx: &mut Context) {
     let doc = cx.doc();
     enter_insert_mode(doc);
 
-    let lines = selection_lines(&doc.state);
+    let lines = selection_lines(doc.text(), doc.selection());
 
     let positions = lines.into_iter().map(|index| {
         // adjust all positions to the end of the line (next line minus one)
         doc.text().line_to_char(index + 1).saturating_sub(1)
     });
 
+    let text = doc.text().slice(..);
+
     let changes: Vec<Change> = positions
         .map(|index| {
             // TODO: share logic with insert_newline for indentation
             let indent_level = helix_core::indent::suggested_indent_for_pos(
                 doc.syntax.as_ref(),
-                &doc.state,
+                text,
                 index,
                 true,
             );
@@ -955,7 +957,7 @@ pub mod insert {
     pub fn insert_char(cx: &mut Context, c: char) {
         let doc = cx.doc();
         let c = Tendril::from_char(c);
-        let transaction = Transaction::insert(&doc.state, c);
+        let transaction = Transaction::insert(doc.text(), doc.selection(), c);
 
         doc.apply(&transaction);
     }
@@ -966,10 +968,11 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let doc = cx.doc();
-        let transaction = Transaction::change_by_selection(&doc.state, |range| {
+        let text = doc.text().slice(..);
+        let transaction = Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
             let indent_level = helix_core::indent::suggested_indent_for_pos(
                 doc.syntax.as_ref(),
-                &doc.state,
+                text,
                 range.head,
                 true,
             );
@@ -987,7 +990,7 @@ pub mod insert {
         let count = cx.count;
         let doc = cx.doc();
         let text = doc.text().slice(..);
-        let transaction = Transaction::change_by_selection(&doc.state, |range| {
+        let transaction = Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
             (
                 graphemes::nth_prev_grapheme_boundary(text, range.head, count),
                 range.head,
@@ -1001,7 +1004,7 @@ pub mod insert {
         let count = cx.count;
         let doc = cx.doc();
         let text = doc.text().slice(..);
-        let transaction = Transaction::change_by_selection(&doc.state, |range| {
+        let transaction = Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
             (
                 range.head,
                 graphemes::nth_next_grapheme_boundary(text, range.head, count),
@@ -1076,12 +1079,12 @@ pub fn paste(cx: &mut Context) {
             // paste on the next line
             // TODO: can simply take a range + modifier and compute the right pos without ifs
             let text = doc.text();
-            Transaction::change_by_selection(&doc.state, |range| {
+            Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
                 let line_end = text.line_to_char(text.char_to_line(range.head) + 1);
                 (line_end, line_end, Some(values.next().unwrap()))
             })
         } else {
-            Transaction::change_by_selection(&doc.state, |range| {
+            Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
                 (range.head + 1, range.head + 1, Some(values.next().unwrap()))
             })
         };
@@ -1190,7 +1193,7 @@ pub fn format_selections(cx: &mut Context) {
         ))
         .unwrap_or_default();
 
-        let transaction = helix_lsp::util::generate_transaction_from_edits(&doc.state, edits);
+        let transaction = helix_lsp::util::generate_transaction_from_edits(doc.text(), edits);
 
         doc.apply(&transaction);
     }
@@ -1352,7 +1355,7 @@ pub fn completion(cx: &mut Context) {
 
                         // TODO: <-- if state has changed by further input, transaction will panic on len
                         let transaction =
-                            util::generate_transaction_from_edits(&doc.state, vec![edit]);
+                            util::generate_transaction_from_edits(doc.text(), vec![edit]);
                         doc.apply(&transaction);
                         // TODO: doc.append_changes_to_history(); if not in insert mode?
                     }
@@ -1421,7 +1424,7 @@ pub fn next_view(cx: &mut Context) {
 // comments
 pub fn toggle_comments(cx: &mut Context) {
     let doc = cx.doc();
-    let transaction = comment::toggle_line_comments(&doc.state);
+    let transaction = comment::toggle_line_comments(doc.text(), doc.selection());
 
     doc.apply(&transaction);
 }

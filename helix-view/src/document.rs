@@ -346,7 +346,7 @@ mod test {
 
         // insert
 
-        let transaction = Transaction::insert(&doc.state, " world".into());
+        let transaction = Transaction::insert(doc.text(), doc.selection(), " world".into());
         let old_doc = doc.state.clone();
         doc.apply(&transaction);
         let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());

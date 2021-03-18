@@ -30,7 +30,7 @@ pub enum Error {
 
 pub mod util {
     use super::*;
-    use helix_core::{Range, RopeSlice, State, Transaction};
+    use helix_core::{Range, Rope, RopeSlice, Transaction};
 
     pub fn lsp_pos_to_pos(doc: RopeSlice, pos: lsp::Position) -> usize {
         let line = doc.line_to_char(pos.line as usize);
@@ -52,13 +52,10 @@ pub mod util {
         lsp::Range::new(start, end)
     }
 
-    pub fn generate_transaction_from_edits(
-        state: &State,
-        edits: Vec<lsp::TextEdit>,
-    ) -> Transaction {
-        let doc = state.doc.slice(..);
+    pub fn generate_transaction_from_edits(doc: &Rope, edits: Vec<lsp::TextEdit>) -> Transaction {
+        let text = doc.slice(..); // would be unnecessary if Transaction::change took Rope | RopeSlice
         Transaction::change(
-            &state.doc,
+            doc,
             edits.into_iter().map(|edit| {
                 // simplify "" into None for cleaner changesets
                 let replacement = if !edit.new_text.is_empty() {
@@ -67,8 +64,8 @@ pub mod util {
                     None
                 };
 
-                let start = lsp_pos_to_pos(doc, edit.range.start);
-                let end = lsp_pos_to_pos(doc, edit.range.end);
+                let start = lsp_pos_to_pos(text, edit.range.start);
+                let end = lsp_pos_to_pos(text, edit.range.end);
                 (start, end, replacement)
             }),
         )

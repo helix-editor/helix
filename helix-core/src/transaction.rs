@@ -409,9 +409,9 @@ pub struct Transaction {
 
 impl Transaction {
     /// Create a new, empty transaction.
-    pub fn new(state: &mut State) -> Self {
+    pub fn new(doc: &Rope) -> Self {
         Self {
-            changes: ChangeSet::new(&state.doc),
+            changes: ChangeSet::new(doc),
             selection: None,
         }
     }
@@ -490,16 +490,18 @@ impl Transaction {
     }
 
     /// Generate a transaction with a change per selection range.
-    pub fn change_by_selection<F>(state: &State, f: F) -> Self
+    pub fn change_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
     where
         F: FnMut(&Range) -> Change,
     {
-        Self::change(&state.doc, state.selection.ranges().iter().map(f))
+        Self::change(doc, selection.ranges().iter().map(f))
     }
 
     /// Insert text at each selection head.
-    pub fn insert(state: &State, text: Tendril) -> Self {
-        Self::change_by_selection(state, |range| (range.head, range.head, Some(text.clone())))
+    pub fn insert(doc: &Rope, selection: &Selection, text: Tendril) -> Self {
+        Self::change_by_selection(doc, selection, |range| {
+            (range.head, range.head, Some(text.clone()))
+        })
     }
 }
 
@@ -628,15 +630,15 @@ mod test {
     #[test]
     fn optimized_composition() {
         let mut state = State::new("".into());
-        let t1 = Transaction::insert(&state, Tendril::from_char('h'));
+        let t1 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('h'));
         t1.apply(&mut state);
-        let t2 = Transaction::insert(&state, Tendril::from_char('e'));
+        let t2 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('e'));
         t2.apply(&mut state);
-        let t3 = Transaction::insert(&state, Tendril::from_char('l'));
+        let t3 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('l'));
         t3.apply(&mut state);
-        let t4 = Transaction::insert(&state, Tendril::from_char('l'));
+        let t4 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('l'));
         t4.apply(&mut state);
-        let t5 = Transaction::insert(&state, Tendril::from_char('o'));
+        let t5 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('o'));
         t5.apply(&mut state);
 
         assert_eq!(state.doc, Rope::from_str("hello"));

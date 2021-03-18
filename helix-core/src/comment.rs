@@ -1,4 +1,6 @@
-use crate::{find_first_non_whitespace_char2, Change, RopeSlice, State, Tendril, Transaction};
+use crate::{
+    find_first_non_whitespace_char2, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
+};
 use core::ops::Range;
 use std::borrow::Cow;
 
@@ -35,14 +37,14 @@ fn find_line_comment(
     (commented, skipped, min)
 }
 
-pub fn toggle_line_comments(state: &State) -> Transaction {
-    let text = state.doc.slice(..);
+pub fn toggle_line_comments(doc: &Rope, selection: &Selection) -> Transaction {
+    let text = doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();
 
     let token = "//";
     let comment = Tendril::from(format!("{} ", token));
 
-    for selection in state.selection.ranges() {
+    for selection in selection.ranges() {
         let start = text.char_to_line(selection.from());
         let end = text.char_to_line(selection.to());
         let lines = start..end + 1;
@@ -67,7 +69,7 @@ pub fn toggle_line_comments(state: &State) -> Transaction {
             }
         }
     }
-    Transaction::change(&state.doc, changes.into_iter())
+    Transaction::change(doc, changes.into_iter())
 }
 
 #[cfg(test)]
@@ -76,7 +78,7 @@ mod test {
 
     #[test]
     fn test_find_line_comment() {
-        use crate::{Rope, Selection};
+        use crate::State;
 
         // four lines, two space indented, except for line 1 which is blank.
         let doc = Rope::from("  1\n\n  2\n  3");
@@ -92,13 +94,13 @@ mod test {
         assert_eq!(res, (false, vec![1], 2));
 
         // comment
-        let transaction = toggle_line_comments(&state);
+        let transaction = toggle_line_comments(&state.doc, &state.selection);
         transaction.apply(&mut state);
 
         assert_eq!(state.doc, "  // 1\n\n  // 2\n  // 3");
 
         // uncomment
-        let transaction = toggle_line_comments(&state);
+        let transaction = toggle_line_comments(&state.doc, &state.selection);
         transaction.apply(&mut state);
         assert_eq!(state.doc, "  1\n\n  2\n  3");
 

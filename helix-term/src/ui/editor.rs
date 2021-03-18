@@ -6,7 +6,7 @@ use crate::ui::text_color;
 use helix_core::{
     indent::TAB_WIDTH,
     syntax::{self, HighlightEvent},
-    Position, Range, State,
+    Position, Range,
 };
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 use std::borrow::Cow;
