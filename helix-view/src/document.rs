@@ -63,13 +63,13 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn new(state: State) -> Self {
-        let changes = ChangeSet::new(&state.doc);
+    pub fn new(text: Rope) -> Self {
+        let changes = ChangeSet::new(&text);
         let old_state = None;
 
         Self {
             path: None,
-            state,
+            state: State::new(text),
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -93,7 +93,7 @@ impl Document {
 
         // TODO: create if not found
 
-        let mut doc = Self::new(State::new(doc));
+        let mut doc = Self::new(doc);
 
         let language_config = LOADER.language_config_for_file_name(path.as_path());
         doc.set_language(language_config, scopes);
@@ -340,13 +340,10 @@ mod test {
 
     #[test]
     fn changeset_to_changes() {
-        use helix_core::{Rope, State, Transaction};
-        // use helix_view::Document;
         use helix_lsp::{lsp, Client};
         let text = Rope::from("hello");
-        let mut state = State::new(text);
-        state.selection = Selection::single(5, 5);
-        let mut doc = Document::new(state);
+        let mut doc = Document::new(text);
+        doc.set_selection(Selection::single(5, 5));
 
         // insert
 
