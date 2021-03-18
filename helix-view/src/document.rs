@@ -40,7 +40,7 @@ pub struct Document {
     version: i32, // should be usize?
 
     pub diagnostics: Vec<Diagnostic>,
-    pub language_server: Option<Arc<helix_lsp::Client>>,
+    language_server: Option<Arc<helix_lsp::Client>>,
 }
 
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
@@ -172,7 +172,7 @@ impl Document {
         self.state.selection = selection;
     }
 
-    pub fn _apply(&mut self, transaction: &Transaction) -> bool {
+    fn _apply(&mut self, transaction: &Transaction) -> bool {
         let old_doc = self.text().clone();
 
         let success = transaction.apply(&mut self.state);
@@ -286,6 +286,10 @@ impl Document {
     #[inline]
     pub fn version(&self) -> i32 {
         self.version
+    }
+
+    pub fn language_server(&self) -> Option<&helix_lsp::Client> {
+        self.language_server.as_deref()
     }
 
     #[inline]

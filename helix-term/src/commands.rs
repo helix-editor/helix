@@ -888,7 +888,7 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
 
 pub fn goto_definition(cx: &mut Context) {
     let doc = cx.doc();
-    let language_server = match doc.language_server.as_ref() {
+    let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
@@ -904,7 +904,7 @@ pub fn goto_definition(cx: &mut Context) {
 
 pub fn goto_type_definition(cx: &mut Context) {
     let doc = cx.doc();
-    let language_server = match doc.language_server.as_ref() {
+    let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
@@ -920,7 +920,7 @@ pub fn goto_type_definition(cx: &mut Context) {
 
 pub fn goto_implementation(cx: &mut Context) {
     let doc = cx.doc();
-    let language_server = match doc.language_server.as_ref() {
+    let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
@@ -936,7 +936,7 @@ pub fn goto_implementation(cx: &mut Context) {
 
 pub fn goto_reference(cx: &mut Context) {
     let doc = cx.doc();
-    let language_server = match doc.language_server.as_ref() {
+    let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
@@ -1179,7 +1179,7 @@ pub fn format_selections(cx: &mut Context) {
         .collect();
 
     for range in ranges {
-        let language_server = match doc.language_server.as_ref() {
+        let language_server = match doc.language_server() {
             Some(language_server) => language_server,
             None => return,
         };
@@ -1279,7 +1279,7 @@ pub fn save(cx: &mut Context) {
 pub fn completion(cx: &mut Context) {
     let doc = cx.doc();
 
-    let language_server = match doc.language_server.as_ref() {
+    let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
@@ -1378,7 +1378,7 @@ pub fn hover(cx: &mut Context) {
 
     let doc = cx.doc();
 
-    let language_server = match doc.language_server.as_ref() {
+    let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
