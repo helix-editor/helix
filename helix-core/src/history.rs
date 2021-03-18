@@ -96,7 +96,7 @@ mod test {
         let mut state = State::new(doc);
 
         let transaction1 =
-            Transaction::change(&state, vec![(5, 5, Some(" world!".into()))].into_iter());
+            Transaction::change(&state.doc, vec![(5, 5, Some(" world!".into()))].into_iter());
 
         // Need to commit before applying!
         history.commit_revision(&transaction1, &state);
@@ -106,7 +106,7 @@ mod test {
         // ---
 
         let transaction2 =
-            Transaction::change(&state, vec![(6, 11, Some("世界".into()))].into_iter());
+            Transaction::change(&state.doc, vec![(6, 11, Some("世界".into()))].into_iter());
 
         // Need to commit before applying!
         history.commit_revision(&transaction2, &state);

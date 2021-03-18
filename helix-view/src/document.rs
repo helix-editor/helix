@@ -394,7 +394,7 @@ mod test {
 
         doc.state.selection = Selection::single(0, 5);
         let transaction = Transaction::change(
-            &doc.state,
+            &doc.state.doc,
             vec![(0, 2, Some("aei".into())), (3, 5, Some("ou".into()))].into_iter(),
         );
         // aeilou

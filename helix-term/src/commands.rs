@@ -807,7 +807,7 @@ pub fn open_below(cx: &mut Context) {
     );
 
     let transaction =
-        Transaction::change(&doc.state, changes.into_iter()).with_selection(selection);
+        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection);
 
     doc.apply(&transaction);
 }
@@ -1116,7 +1116,7 @@ pub fn indent(cx: &mut Context) {
     let indent = Tendril::from(" ".repeat(TAB_WIDTH));
 
     let transaction = Transaction::change(
-        &doc.state,
+        doc.text(),
         lines.into_iter().map(|line| {
             let pos = doc.text().line_to_char(line);
             (pos, pos, Some(indent.clone()))
@@ -1153,7 +1153,7 @@ pub fn unindent(cx: &mut Context) {
         }
     }
 
-    let transaction = Transaction::change(&doc.state, changes.into_iter());
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
 
     doc.apply(&transaction);
     doc.append_changes_to_history();
@@ -1234,7 +1234,7 @@ pub fn join_selections(cx: &mut Context) {
     // TODO: joining multiple empty lines should be replaced by a single space.
     // need to merge change ranges that touch
 
-    let transaction = Transaction::change(&doc.state, changes.into_iter());
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
     // TODO: select inserted spaces
     // .with_selection(selection);
 

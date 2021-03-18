@@ -67,7 +67,7 @@ pub fn toggle_line_comments(state: &State) -> Transaction {
             }
         }
     }
-    Transaction::change(state, changes.into_iter())
+    Transaction::change(&state.doc, changes.into_iter())
 }
 
 #[cfg(test)]

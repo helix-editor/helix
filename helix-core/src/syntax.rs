@@ -1591,7 +1591,7 @@ fn test_input_edits() {
 
     let mut state = State::new("hello world!\ntest 123".into());
     let transaction = Transaction::change(
-        &state,
+        &state.doc,
         vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
     );
     let edits = LanguageLayer::generate_edits(state.doc.slice(..), &transaction.changes);
@@ -1621,7 +1621,8 @@ fn test_input_edits() {
 
     // Testing with the official example from tree-sitter
     let mut state = State::new("fn test() {}".into());
-    let transaction = Transaction::change(&state, vec![(8, 8, Some("a: u32".into()))].into_iter());
+    let transaction =
+        Transaction::change(&state.doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
     let edits = LanguageLayer::generate_edits(state.doc.slice(..), &transaction.changes);
     transaction.apply(&mut state);
 

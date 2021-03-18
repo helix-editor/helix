@@ -459,11 +459,11 @@ impl Transaction {
     }
 
     /// Generate a transaction from a set of changes.
-    pub fn change<I>(state: &State, changes: I) -> Self
+    pub fn change<I>(doc: &Rope, changes: I) -> Self
     where
         I: IntoIterator<Item = Change> + ExactSizeIterator,
     {
-        let len = state.doc.len_chars();
+        let len = doc.len_chars();
         let acc = Vec::with_capacity(2 * changes.len() + 1);
         let mut changeset = ChangeSet { changes: acc, len };
 
@@ -494,7 +494,7 @@ impl Transaction {
     where
         F: FnMut(&Range) -> Change,
     {
-        Self::change(state, state.selection.ranges().iter().map(f))
+        Self::change(&state.doc, state.selection.ranges().iter().map(f))
     }
 
     /// Insert text at each selection head.
@@ -617,7 +617,7 @@ mod test {
     fn transaction_change() {
         let mut state = State::new("hello world!\ntest 123".into());
         let transaction = Transaction::change(
-            &state,
+            &state.doc,
             // (1, 1, None) is a useless 0-width delete
             vec![(1, 1, None), (6, 11, Some("void".into())), (12, 17, None)].into_iter(),
         );

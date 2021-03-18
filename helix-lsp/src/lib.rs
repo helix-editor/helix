@@ -58,7 +58,7 @@ pub mod util {
     ) -> Transaction {
         let doc = state.doc.slice(..);
         Transaction::change(
-            state,
+            &state.doc,
             edits.into_iter().map(|edit| {
                 // simplify "" into None for cleaner changesets
                 let replacement = if !edit.new_text.is_empty() {
