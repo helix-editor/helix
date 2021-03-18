@@ -17,7 +17,8 @@ pub enum Mode {
 }
 
 pub struct Document {
-    pub state: State, // rope + selection
+    // rope + selection
+    state: State,
     path: Option<PathBuf>,
 
     /// Current editing mode.

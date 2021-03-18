@@ -1,11 +1,11 @@
 use helix_core::{
     comment, coords_at_pos, graphemes,
     indent::TAB_WIDTH,
-    movement, object, pos_at_coords,
+    movement::{self, Direction},
+    object, pos_at_coords,
     regex::{self, Regex},
-    register, search, selection,
-    state::{Direction, Granularity},
-    Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection, Tendril, Transaction,
+    register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
+    Tendril, Transaction,
 };
 
 use once_cell::sync::Lazy;
@@ -72,36 +72,64 @@ pub type Command = fn(cx: &mut Context);
 pub fn move_char_left(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .move_selection(Direction::Backward, Granularity::Character, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_horizontally(
+            text,
+            range,
+            Direction::Backward,
+            count,
+            false, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
 pub fn move_char_right(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .move_selection(Direction::Forward, Granularity::Character, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_horizontally(
+            text,
+            range,
+            Direction::Forward,
+            count,
+            false, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
 pub fn move_line_up(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .move_selection(Direction::Backward, Granularity::Line, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_vertically(
+            text,
+            range,
+            Direction::Backward,
+            count,
+            false, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
 pub fn move_line_down(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .move_selection(Direction::Forward, Granularity::Line, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_vertically(
+            text,
+            range,
+            Direction::Forward,
+            count,
+            false, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
@@ -409,36 +437,64 @@ pub fn half_page_down(cx: &mut Context) {
 pub fn extend_char_left(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .extend_selection(Direction::Backward, Granularity::Character, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_horizontally(
+            text,
+            range,
+            Direction::Backward,
+            count,
+            true, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
 pub fn extend_char_right(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .extend_selection(Direction::Forward, Granularity::Character, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_horizontally(
+            text,
+            range,
+            Direction::Forward,
+            count,
+            true, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
 pub fn extend_line_up(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .extend_selection(Direction::Backward, Granularity::Line, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_vertically(
+            text,
+            range,
+            Direction::Backward,
+            count,
+            true, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
 pub fn extend_line_down(cx: &mut Context) {
     let count = cx.count;
     let doc = cx.doc();
-    let selection = doc
-        .state
-        .extend_selection(Direction::Forward, Granularity::Line, count);
+    let text = doc.text().slice(..);
+    let selection = doc.selection().transform(|range| {
+        movement::move_vertically(
+            text,
+            range,
+            Direction::Forward,
+            count,
+            true, /* extend */
+        )
+    });
     doc.set_selection(selection);
 }
 
