@@ -1,7 +1,5 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
-use crate::syntax::LOADER;
-use crate::{ChangeSet, Diagnostic, Position, Range, Rope, RopeSlice, Selection, Syntax};
-use anyhow::Error;
+use crate::{coords_at_pos, pos_at_coords, ChangeSet, Position, Range, Rope, RopeSlice, Selection};
 
 /// A state represents the current editor state of a single buffer.
 #[derive(Clone)]
@@ -83,96 +81,6 @@ impl State {
         Range::new(if extend { range.anchor } else { pos }, pos)
     }
 
-    pub fn move_next_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
-        for _ in 0..count {
-            if pos + 1 == slice.len_chars() {
-                return pos;
-            }
-
-            let mut ch = slice.char(pos);
-            let next = slice.char(pos + 1);
-
-            // if we're at the end of a word, or on whitespce right before new one
-            if categorize(ch) != categorize(next) {
-                pos += 1;
-                ch = next;
-            }
-
-            if is_word(ch) {
-                skip_over_next(slice, &mut pos, is_word);
-            } else if ch.is_ascii_punctuation() {
-                skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
-            }
-
-            // TODO: don't include newline?
-            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
-        }
-
-        pos
-    }
-
-    pub fn move_prev_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
-        for _ in 0..count {
-            if pos == 0 {
-                return pos;
-            }
-
-            let ch = slice.char(pos);
-            let prev = slice.char(pos - 1);
-
-            if categorize(ch) != categorize(prev) {
-                pos -= 1;
-            }
-
-            // TODO: skip while eol
-
-            // TODO: don't include newline?
-            skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_whitespace());
-
-            // refetch
-            let ch = slice.char(pos);
-
-            if is_word(ch) {
-                skip_over_prev(slice, &mut pos, is_word);
-            } else if ch.is_ascii_punctuation() {
-                skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_punctuation());
-            }
-            pos = pos.saturating_add(1)
-        }
-
-        pos
-    }
-
-    pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
-        for _ in 0..count {
-            if pos + 1 == slice.len_chars() {
-                return pos;
-            }
-
-            let ch = slice.char(pos);
-            let next = slice.char(pos + 1);
-
-            if categorize(ch) != categorize(next) {
-                pos += 1;
-            }
-
-            // TODO: don't include newline?
-            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
-
-            // refetch
-            let ch = slice.char(pos);
-
-            if is_word(ch) {
-                skip_over_next(slice, &mut pos, is_word);
-            } else if ch.is_ascii_punctuation() {
-                skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
-            }
-            pos -= 1
-        }
-
-        pos
-    }
-
     pub fn move_selection(
         &self,
         dir: Direction,
@@ -192,22 +100,6 @@ impl State {
         self.selection
             .transform(|range| self.move_range(range, dir, granularity, count, true))
     }
-}
-
-/// Convert a character index to (line, column) coordinates.
-pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
-    let line = text.char_to_line(pos);
-    let line_start = text.line_to_char(line);
-    let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
-    Position::new(line, col)
-}
-
-/// Convert (line, column) coordinates to a character index.
-pub fn pos_at_coords(text: RopeSlice, coords: Position) -> usize {
-    let Position { row, col } = coords;
-    let line_start = text.line_to_char(row);
-    // line_start + col
-    nth_next_grapheme_boundary(text, line_start, col)
 }
 
 fn move_vertically(
@@ -238,121 +130,9 @@ fn move_vertically(
     range
 }
 
-// used for by-word movement
-
-fn is_word(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
-}
-
-#[derive(Debug, Eq, PartialEq)]
-enum Category {
-    Whitespace,
-    Eol,
-    Word,
-    Punctuation,
-}
-fn categorize(ch: char) -> Category {
-    if ch == '\n' {
-        Category::Eol
-    } else if ch.is_ascii_whitespace() {
-        Category::Whitespace
-    } else if ch.is_ascii_punctuation() {
-        Category::Punctuation
-    } else if ch.is_ascii_alphanumeric() {
-        Category::Word
-    } else {
-        unreachable!()
-    }
-}
-
-#[inline]
-pub fn skip_over_next<F>(slice: RopeSlice, pos: &mut usize, fun: F)
-where
-    F: Fn(char) -> bool,
-{
-    let mut chars = slice.chars_at(*pos);
-
-    for ch in chars {
-        if !fun(ch) {
-            break;
-        }
-        *pos += 1;
-    }
-}
-
-#[inline]
-pub fn skip_over_prev<F>(slice: RopeSlice, pos: &mut usize, fun: F)
-where
-    F: Fn(char) -> bool,
-{
-    // need to +1 so that prev() includes current char
-    let mut chars = slice.chars_at(*pos + 1);
-
-    while let Some(ch) = chars.prev() {
-        if !fun(ch) {
-            break;
-        }
-        *pos = pos.saturating_sub(1);
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test_coords_at_pos() {
-        let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        let slice = text.slice(..);
-        // assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        // assert_eq!(coords_at_pos(slice, 5), (0, 5).into()); // position on \n
-        // assert_eq!(coords_at_pos(slice, 6), (1, 0).into()); // position on w
-        // assert_eq!(coords_at_pos(slice, 7), (1, 1).into()); // position on o
-        // assert_eq!(coords_at_pos(slice, 10), (1, 4).into()); // position on d
-
-        // test with grapheme clusters
-        let text = Rope::from("a̐éö̲\r\n");
-        let slice = text.slice(..);
-        assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 2), (0, 1).into());
-        assert_eq!(coords_at_pos(slice, 4), (0, 2).into());
-        assert_eq!(coords_at_pos(slice, 7), (0, 3).into());
-
-        let text = Rope::from("किमपि");
-        let slice = text.slice(..);
-        assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 2), (0, 1).into());
-        assert_eq!(coords_at_pos(slice, 3), (0, 2).into());
-        assert_eq!(coords_at_pos(slice, 5), (0, 3).into());
-    }
-
-    #[test]
-    fn test_pos_at_coords() {
-        let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        let slice = text.slice(..);
-        assert_eq!(pos_at_coords(slice, (0, 0).into()), 0);
-        assert_eq!(pos_at_coords(slice, (0, 5).into()), 5); // position on \n
-        assert_eq!(pos_at_coords(slice, (1, 0).into()), 6); // position on w
-        assert_eq!(pos_at_coords(slice, (1, 1).into()), 7); // position on o
-        assert_eq!(pos_at_coords(slice, (1, 4).into()), 10); // position on d
-
-        // test with grapheme clusters
-        let text = Rope::from("a̐éö̲\r\n");
-        let slice = text.slice(..);
-        assert_eq!(pos_at_coords(slice, (0, 0).into()), 0);
-        assert_eq!(pos_at_coords(slice, (0, 1).into()), 2);
-        assert_eq!(pos_at_coords(slice, (0, 2).into()), 4);
-        assert_eq!(pos_at_coords(slice, (0, 3).into()), 7); // \r\n is one char here
-        assert_eq!(pos_at_coords(slice, (0, 4).into()), 9);
-        let text = Rope::from("किमपि");
-        // 2 - 1 - 2 codepoints
-        // TODO: delete handling as per https://news.ycombinator.com/item?id=20058454
-        let slice = text.slice(..);
-        assert_eq!(pos_at_coords(slice, (0, 0).into()), 0);
-        assert_eq!(pos_at_coords(slice, (0, 1).into()), 2);
-        assert_eq!(pos_at_coords(slice, (0, 2).into()), 3);
-        assert_eq!(pos_at_coords(slice, (0, 3).into()), 5); // eol
-    }
 
     #[test]
     fn test_vertical_move() {

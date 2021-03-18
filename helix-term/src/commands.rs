@@ -1,10 +1,10 @@
 use helix_core::{
-    comment, graphemes,
+    comment, coords_at_pos, graphemes,
     indent::TAB_WIDTH,
-    object,
+    movement, object, pos_at_coords,
     regex::{self, Regex},
     register, search, selection,
-    state::{coords_at_pos, pos_at_coords, Direction, Granularity, State},
+    state::{Direction, Granularity, State},
     Change, ChangeSet, Position, Range, RopeSlice, Selection, Tendril, Transaction,
 };
 
@@ -152,7 +152,7 @@ pub fn move_next_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection().transform(|range| {
-        let pos = State::move_next_word_start(text, range.head, count);
+        let pos = movement::move_next_word_start(text, range.head, count);
         Range::new(pos, pos)
     });
 
@@ -165,7 +165,7 @@ pub fn move_prev_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection().transform(|range| {
-        let pos = State::move_prev_word_start(text, range.head, count);
+        let pos = movement::move_prev_word_start(text, range.head, count);
         Range::new(pos, pos)
     });
 
@@ -178,7 +178,7 @@ pub fn move_next_word_end(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection().transform(|range| {
-        let pos = State::move_next_word_end(text, range.head, count);
+        let pos = movement::move_next_word_end(text, range.head, count);
         Range::new(pos, pos)
     });
 
@@ -207,7 +207,7 @@ pub fn extend_next_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection().transform(|mut range| {
-        let pos = State::move_next_word_start(text, range.head, count);
+        let pos = movement::move_next_word_start(text, range.head, count);
         Range::new(range.anchor, pos)
     });
 
@@ -220,7 +220,7 @@ pub fn extend_prev_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection().transform(|mut range| {
-        let pos = State::move_prev_word_start(text, range.head, count);
+        let pos = movement::move_prev_word_start(text, range.head, count);
         Range::new(range.anchor, pos)
     });
     doc.set_selection(selection);
@@ -232,7 +232,7 @@ pub fn extend_next_word_end(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection().transform(|mut range| {
-        let pos = State::move_next_word_end(text, range.head, count);
+        let pos = movement::move_next_word_end(text, range.head, count);
         Range::new(range.anchor, pos)
     });
 
@@ -1199,7 +1199,7 @@ pub fn format_selections(cx: &mut Context) {
 }
 
 pub fn join_selections(cx: &mut Context) {
-    use helix_core::state::skip_over_next;
+    use movement::skip_over_next;
     let doc = cx.doc();
     let text = doc.text();
     let slice = doc.text().slice(..);

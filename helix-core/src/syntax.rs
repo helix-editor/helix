@@ -355,7 +355,7 @@ pub struct LanguageLayer {
     pub(crate) tree: Option<Tree>,
 }
 
-use crate::state::coords_at_pos;
+use crate::coords_at_pos;
 use crate::transaction::{ChangeSet, Operation};
 use crate::Tendril;
 

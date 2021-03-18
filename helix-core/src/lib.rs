@@ -5,6 +5,7 @@ pub mod graphemes;
 mod history;
 pub mod indent;
 pub mod macros;
+pub mod movement;
 pub mod object;
 mod position;
 pub mod register;
@@ -48,7 +49,7 @@ pub use tendril::StrTendril as Tendril;
 #[doc(inline)]
 pub use {regex, tree_sitter};
 
-pub use position::Position;
+pub use position::{coords_at_pos, pos_at_coords, Position};
 pub use selection::Range;
 pub use selection::Selection;
 pub use syntax::Syntax;
