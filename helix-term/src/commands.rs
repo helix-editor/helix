@@ -1290,7 +1290,7 @@ pub fn completion(cx: &mut Context) {
 
     // TODO: if no completion, show some message or something
     if !res.is_empty() {
-        let snapshot = doc.state.clone();
+        // let snapshot = doc.state.clone();
         let mut menu = ui::Menu::new(
             res,
             |item| {
@@ -1304,13 +1304,13 @@ pub fn completion(cx: &mut Context) {
                     PromptEvent::Abort => {
                         // revert state
                         let doc = &mut editor.view_mut().doc;
-                        doc.state = snapshot.clone();
+                        // doc.state = snapshot.clone();
                     }
                     PromptEvent::Validate => {
                         let doc = &mut editor.view_mut().doc;
 
                         // revert state to what it was before the last update
-                        doc.state = snapshot.clone();
+                        // doc.state = snapshot.clone();
 
                         // extract as fn(doc, item):
 
@@ -1350,6 +1350,7 @@ pub fn completion(cx: &mut Context) {
                             }
                         }
 
+                        // TODO: <-- if state has changed by further input, transaction will panic on len
                         let transaction =
                             util::generate_transaction_from_edits(&doc.state, vec![edit]);
                         doc.apply(&transaction);
