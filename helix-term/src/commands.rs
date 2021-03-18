@@ -1475,6 +1475,7 @@ pub fn toggle_comments(cx: &mut Context) {
     let transaction = comment::toggle_line_comments(doc.text(), doc.selection());
 
     doc.apply(&transaction);
+    doc.append_changes_to_history();
 }
 
 // tree sitter node selection
