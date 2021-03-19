@@ -141,6 +141,8 @@ pub fn default() -> Keymaps {
         shift!('T') => commands::till_prev_char,
         shift!('F') => commands::find_prev_char,
         // and matching set for select mode (extend)
+        //
+        key!('r') => commands::replace,
 
         key!('0') => commands::move_line_start,
         key!('$') => commands::move_line_end,

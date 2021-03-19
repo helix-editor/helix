@@ -380,6 +380,29 @@ pub fn extend_prev_char(cx: &mut Context) {
     )
 }
 
+pub fn replace(cx: &mut Context) {
+    // need to wait for next key
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            let text = Tendril::from_char(ch);
+
+            let mut doc = cx.doc();
+
+            let transaction =
+                Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
+                    (range.from(), range.to() + 1, Some(text.clone()))
+                });
+
+            doc.apply(&transaction);
+            doc.append_changes_to_history();
+        }
+    })
+}
+
 fn scroll(view: &mut View, offset: usize, direction: Direction) {
     use Direction::*;
     // we use short lived borrows since view's methods read from doc too
