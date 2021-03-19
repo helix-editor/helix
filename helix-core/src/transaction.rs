@@ -494,7 +494,7 @@ impl Transaction {
     where
         F: FnMut(&Range) -> Change,
     {
-        Self::change(doc, selection.ranges().iter().map(f))
+        Self::change(doc, selection.iter().map(f))
     }
 
     /// Insert text at each selection head.

@@ -269,6 +269,25 @@ impl Selection {
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
         self.ranges.iter().map(move |range| range.fragment(text))
     }
+
+    #[inline(always)]
+    pub fn iter(&self) -> std::slice::Iter<'_, Range> {
+        self.ranges.iter()
+    }
+
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.ranges.len()
+    }
+}
+
+impl<'a> IntoIterator for &'a Selection {
+    type Item = &'a Range;
+    type IntoIter = std::slice::Iter<'a, Range>;
+
+    fn into_iter(self) -> std::slice::Iter<'a, Range> {
+        self.ranges().iter()
+    }
 }
 
 // TODO: checkSelection -> check if valid for doc length
@@ -279,7 +298,6 @@ pub fn keep_matches(
     regex: &crate::regex::Regex,
 ) -> Option<Selection> {
     let result: SmallVec<_> = selection
-        .ranges()
         .iter()
         .filter(|range| regex.is_match(&range.fragment(text)))
         .copied()
@@ -297,9 +315,9 @@ pub fn select_on_matches(
     selection: &Selection,
     regex: &crate::regex::Regex,
 ) -> Option<Selection> {
-    let mut result = SmallVec::with_capacity(selection.ranges().len());
+    let mut result = SmallVec::with_capacity(selection.len());
 
-    for sel in selection.ranges() {
+    for sel in selection {
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
@@ -331,9 +349,9 @@ pub fn split_on_matches(
     selection: &Selection,
     regex: &crate::regex::Regex,
 ) -> Selection {
-    let mut result = SmallVec::with_capacity(selection.ranges().len());
+    let mut result = SmallVec::with_capacity(selection.len());
 
-    for sel in selection.ranges() {
+    for sel in selection {
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 

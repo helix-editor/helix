@@ -44,7 +44,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection) -> Transaction {
     let token = "//";
     let comment = Tendril::from(format!("{} ", token));
 
-    for selection in selection.ranges() {
+    for selection in selection {
         let start = text.char_to_line(selection.from());
         let end = text.char_to_line(selection.to());
         let lines = start..end + 1;

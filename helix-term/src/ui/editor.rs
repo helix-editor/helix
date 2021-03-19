@@ -211,7 +211,6 @@ impl EditorView {
             for selection in view
                 .doc
                 .selection()
-                .ranges()
                 .iter()
                 .filter(|range| range.overlaps(&screen))
             {

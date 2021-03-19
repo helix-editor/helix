@@ -781,7 +781,6 @@ pub fn buffer_picker(cx: &mut Context) {
 // calculate line numbers for each selection range
 fn selection_lines(doc: &Rope, selection: &Selection) -> Vec<usize> {
     let mut lines = selection
-        .ranges()
         .iter()
         .map(|range| doc.char_to_line(range.head))
         .collect::<Vec<_>>();
@@ -1145,7 +1144,7 @@ fn get_lines(doc: &Document) -> Vec<usize> {
     let mut lines = Vec::new();
 
     // Get all line numbers
-    for range in doc.selection().ranges() {
+    for range in doc.selection() {
         let start = doc.text().char_to_line(range.from());
         let end = doc.text().char_to_line(range.to());
 
@@ -1220,7 +1219,6 @@ pub fn format_selections(cx: &mut Context) {
 
     let ranges: Vec<lsp::Range> = doc
         .selection()
-        .ranges()
         .iter()
         .map(|range| helix_lsp::util::range_to_lsp_range(doc.text(), *range))
         .collect();
@@ -1257,7 +1255,7 @@ pub fn join_selections(cx: &mut Context) {
     let mut changes = Vec::new();
     let fragment = Tendril::from(" ");
 
-    for selection in doc.selection().ranges() {
+    for selection in doc.selection() {
         let start = text.char_to_line(selection.from());
         let mut end = text.char_to_line(selection.to());
         if start == end {
