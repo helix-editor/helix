@@ -160,7 +160,7 @@ pub fn default() -> Keymaps {
         key!('a') => commands::append_mode,
         shift!('A') => commands::append_to_line,
         key!('o') => commands::open_below,
-        // key!('O') => commands::open_above,
+        shift!('O') => commands::open_above,
         // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
 

@@ -16,7 +16,7 @@
 - [ ] CI binary builds
 
 - [ ] regex search / select next
-- [ ] open_above (O) command
+- [x] open_above (O) command
 - [ ] = for auto indent line/selection
 - [x] q should only close the view, if all are closed, close the editor
 - [ ] buffers should sit on editor.buffers, view simply refs them

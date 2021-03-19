@@ -869,13 +869,6 @@ pub fn open_below(cx: &mut Context) {
             text.push_str(&indent);
             let text = text.repeat(count);
 
-            // TODO: ideally we want to run a hook over the transactions to figure out and reindent all
-            // \n's as a post-processing step?
-            // behaviors:
-            // - on insert mode enter: we add newline + indent and position cursor at the end
-            // - on 3o/3O: we insert 3 newlines + indents each and position cursors at ends
-
-            // generate changes
             (index, index, Some(text.into()))
         })
         .collect();
@@ -902,6 +895,56 @@ pub fn open_below(cx: &mut Context) {
 }
 
 // O inserts a new line before each line with a selection
+pub fn open_above(cx: &mut Context) {
+    let count = cx.count;
+    let mut doc = cx.doc();
+    enter_insert_mode(&mut doc);
+
+    let lines = selection_lines(doc.text(), doc.selection());
+
+    let positions = lines.into_iter().map(|index| {
+        // adjust all positions to the end of the previous line
+        doc.text().line_to_char(index).saturating_sub(1)
+    });
+
+    let text = doc.text().slice(..);
+
+    let changes: Vec<Change> = positions
+        .map(|index| {
+            // TODO: share logic with insert_newline for indentation
+            let indent_level =
+                helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
+            let indent = doc.indent_unit().repeat(indent_level);
+            let mut text = String::with_capacity(1 + indent.len());
+            text.push('\n');
+            text.push_str(&indent);
+            let text = text.repeat(count);
+
+            // generate changes
+            (index, index, Some(text.into()))
+        })
+        .collect();
+
+    // TODO: count actually inserts "n" new lines and starts editing on all of them.
+    // TODO: append "count" newlines and modify cursors to those lines
+
+    let selection = Selection::new(
+        changes
+            .iter()
+            .map(|(start, _end, text): &Change| {
+                let len = text.as_ref().map(|text| text.len()).unwrap(); // minus newline
+                let pos = start + len;
+                Range::new(pos, pos)
+            })
+            .collect(),
+        0,
+    );
+
+    let transaction =
+        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection);
+
+    doc.apply(&transaction);
+}
 
 pub fn normal_mode(cx: &mut Context) {
     let mut doc = cx.doc();
