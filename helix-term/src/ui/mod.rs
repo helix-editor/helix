@@ -137,9 +137,9 @@ pub fn buffer_picker(views: &[View], current: usize) -> Picker<(Option<PathBuf>,
 }
 
 pub mod completers {
-    use std::borrow::Cow;
+    use std::{borrow::Cow, ops::RangeFrom};
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    pub fn filename(input: &str) -> Vec<Cow<'static, str>> {
+    pub fn filename(input: &str) -> Vec<(RangeFrom<usize>, Cow<'static, str>)> {
         // Rust's filename handling is really annoying.
 
         use ignore::WalkBuilder;
@@ -163,6 +163,8 @@ pub mod completers {
             (path, file_name)
         };
 
+        let end = (input.len()..);
+
         let mut files: Vec<_> = WalkBuilder::new(dir.clone())
             .max_depth(Some(1))
             .build()
@@ -178,10 +180,11 @@ pub mod completers {
                     if is_dir {
                         path.push("");
                     }
-                    Cow::from(path.to_str().unwrap().to_string())
+                    let path = path.to_str().unwrap().to_string();
+                    (end.clone(), Cow::from(path))
                 })
             }) // TODO: unwrap or skip
-            .filter(|path| !path.is_empty()) // TODO
+            .filter(|(_, path)| !path.is_empty()) // TODO
             .collect();
 
         // if empty, return a list of dirs and files in current dir
@@ -195,15 +198,20 @@ pub mod completers {
             // inefficient, but we need to calculate the scores, filter out None, then sort.
             let mut matches: Vec<_> = files
                 .into_iter()
-                .filter_map(|file| {
+                .filter_map(|(range, file)| {
                     matcher
                         .fuzzy_match(&file, &file_name)
                         .map(|score| (file, score))
                 })
                 .collect();
 
+            let range = ((input.len() - file_name.len())..);
+
             matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
-            files = matches.into_iter().map(|(file, _)| file).collect();
+            files = matches
+                .into_iter()
+                .map(|(file, _)| (range.clone(), file))
+                .collect();
 
             // TODO: complete to longest common match
         }

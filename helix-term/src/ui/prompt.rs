@@ -3,16 +3,15 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use helix_core::Position;
 use helix_view::Editor;
 use helix_view::Theme;
-use std::borrow::Cow;
-use std::string::String;
+use std::{borrow::Cow, ops::RangeFrom};
 
 pub struct Prompt {
     prompt: String,
     pub line: String,
     cursor: usize,
-    completion: Vec<Cow<'static, str>>,
+    completion: Vec<(RangeFrom<usize>, Cow<'static, str>)>,
     completion_selection_index: Option<usize>,
-    completion_fn: Box<dyn FnMut(&str) -> Vec<Cow<'static, str>>>,
+    completion_fn: Box<dyn FnMut(&str) -> Vec<(RangeFrom<usize>, Cow<'static, str>)>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
 }
 
@@ -29,7 +28,7 @@ pub enum PromptEvent {
 impl Prompt {
     pub fn new(
         prompt: String,
-        mut completion_fn: impl FnMut(&str) -> Vec<Cow<'static, str>> + 'static,
+        mut completion_fn: impl FnMut(&str) -> Vec<(RangeFrom<usize>, Cow<'static, str>)> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str, PromptEvent) + 'static,
     ) -> Prompt {
         Prompt {
@@ -85,15 +84,9 @@ impl Prompt {
             self.completion_selection_index.map(|i| i + 1).unwrap_or(0) % self.completion.len();
         self.completion_selection_index = Some(index);
 
-        let item = &self.completion[index];
+        let (range, item) = &self.completion[index];
 
-        // replace the last arg
-        if let Some(pos) = self.line.rfind(' ') {
-            self.line.replace_range(pos + 1.., item);
-        } else {
-            // need toowned_clone_into nightly feature to reuse allocation
-            self.line = item.to_string();
-        }
+        self.line.replace_range(range.clone(), item);
 
         self.move_end();
         // TODO: recalculate completion when completion item is accepted, (Enter)
@@ -135,7 +128,7 @@ impl Prompt {
                 Rect::new(0, area.height - col_height - 2, area.width, col_height),
                 theme.get("ui.statusline"),
             );
-            for (i, command) in self.completion.iter().enumerate() {
+            for (i, (_range, completion)) in self.completion.iter().enumerate() {
                 let color = if self.completion_selection_index.is_some()
                     && i == self.completion_selection_index.unwrap()
                 {
@@ -146,7 +139,7 @@ impl Prompt {
                 surface.set_stringn(
                     1 + col * BASE_WIDTH,
                     area.height - col_height - 2 + row,
-                    &command,
+                    &completion,
                     BASE_WIDTH as usize - 1,
                     color,
                 );

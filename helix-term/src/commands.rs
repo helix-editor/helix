@@ -723,20 +723,26 @@ pub fn command_mode(cx: &mut Context) {
             // simple heuristic: if there's no space, complete command.
             // if there's a space, file completion kicks in. We should specialize by command later.
             if parts.len() <= 1 {
+                use std::{borrow::Cow, ops::Range};
+                let end = 0..;
                 COMMAND_LIST
                     .iter()
                     .filter(|command| command.contains(input))
-                    .map(|command| std::borrow::Cow::Borrowed(*command))
+                    .map(|command| (end.clone(), Cow::Borrowed(*command)))
                     .collect()
             } else {
                 let part = parts.last().unwrap();
                 ui::completers::filename(part)
+                    .into_iter()
+                    .map(|(range, file)| {
+                        // offset ranges to input
+                        let offset = input.len() - part.len();
+                        let range = (range.start + offset)..;
+                        (range, file)
+                    })
+                    .collect()
 
                 // TODO
-                // completion needs to be more advanced: need to return starting index for replace
-                // for example, "src/" completion application.rs needs to insert after /, but "hx"
-                // completion helix-core needs to replace the text.
-                //
                 // additionally, completion items could have a info section that would get
                 // displayed in a popup above the prompt when items are tabbed over
             }
