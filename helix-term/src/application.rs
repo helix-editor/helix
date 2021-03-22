@@ -46,8 +46,8 @@ impl Application {
         compositor.push(Box::new(ui::EditorView::new()));
 
         let mut app = Self {
-            editor,
             compositor,
+            editor,
 
             executor,
         };

@@ -133,6 +133,7 @@ pub struct Selection {
     primary_index: usize,
 }
 
+#[allow(clippy::len_without_is_empty)] // a Selection is never empty
 impl Selection {
     // eq
 

@@ -139,7 +139,7 @@ impl Default for Theme {
 
         let scopes = mapping.keys().map(ToString::to_string).collect();
 
-        Self { mapping, scopes }
+        Self { scopes, mapping }
     }
 }
 
