@@ -6,6 +6,7 @@ pub mod graphemes;
 mod history;
 pub mod indent;
 pub mod macros;
+pub mod match_brackets;
 pub mod movement;
 pub mod object;
 mod position;

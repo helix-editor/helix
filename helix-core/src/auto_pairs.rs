@@ -1,6 +1,8 @@
 use crate::{Range, Rope, Selection, Tendril, Transaction};
 use smallvec::SmallVec;
 
+// Heavily based on https://github.com/codemirror/closebrackets/
+
 const PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('{', '}'),

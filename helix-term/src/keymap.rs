@@ -182,6 +182,9 @@ pub fn default() -> Keymaps {
         // or select mode X?
         // extend_to_whole_line, crop_to_whole_line
 
+
+        key!('m') => commands::match_brackets,
+        // TODO: refactor into
         // key!('m') => commands::select_to_matching,
         // key!('M') => commands::back_select_to_matching,
         // select mode extend equivalents

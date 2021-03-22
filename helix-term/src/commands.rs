@@ -1,5 +1,5 @@
 use helix_core::{
-    comment, coords_at_pos, graphemes,
+    comment, coords_at_pos, graphemes, match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -1590,5 +1590,17 @@ pub fn expand_selection(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = object::expand_selection(syntax, text, doc.selection());
         doc.set_selection(selection);
+    }
+}
+
+pub fn match_brackets(cx: &mut Context) {
+    let mut doc = cx.doc();
+
+    if let Some(syntax) = doc.syntax() {
+        let pos = doc.selection().cursor();
+        if let Some(pos) = match_brackets::find(syntax, doc.text(), pos) {
+            let selection = Selection::point(pos);
+            doc.set_selection(selection);
+        };
     }
 }
