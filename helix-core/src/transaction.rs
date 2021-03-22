@@ -464,10 +464,12 @@ impl Transaction {
         I: IntoIterator<Item = Change> + ExactSizeIterator,
     {
         let len = doc.len_chars();
-        let acc = Vec::with_capacity(2 * changes.len() + 1);
+        let acc = Vec::with_capacity(2 * changes.len() + 1); // rough estimate
         let mut changeset = ChangeSet { changes: acc, len };
 
         // TODO: verify ranges are ordered and not overlapping or change will panic.
+
+        // TODO: test for (pos, pos, None) to factor out as nothing
 
         let mut last = 0;
         for (from, to, tendril) in changes {

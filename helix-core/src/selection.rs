@@ -126,6 +126,7 @@ impl Range {
 }
 
 /// A selection consists of one or more selection ranges.
+/// invariant: A selection can never be empty (always contains at least primary range).
 #[derive(Debug, Clone)]
 pub struct Selection {
     ranges: SmallVec<[Range; 1]>,
@@ -205,12 +206,14 @@ impl Selection {
     // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
+        assert!(!ranges.is_empty());
+
         fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Selection {
             let primary = ranges[primary_index];
             ranges.sort_unstable_by_key(Range::from);
             primary_index = ranges.iter().position(|&range| range == primary).unwrap();
 
-            let mut result: SmallVec<[Range; 1]> = SmallVec::new();
+            let mut result = SmallVec::new();
 
             // TODO: we could do with one vec by removing elements as we mutate
 
@@ -294,7 +297,7 @@ impl<'a> IntoIterator for &'a Selection {
     }
 }
 
-// TODO: checkSelection -> check if valid for doc length
+// TODO: checkSelection -> check if valid for doc length && sorted
 
 pub fn keep_matches(
     text: RopeSlice,
@@ -386,6 +389,12 @@ pub fn split_on_matches(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    #[should_panic]
+    fn test_new_empty() {
+        let sel = Selection::new(smallvec![], 0);
+    }
 
     #[test]
     fn test_create_normalizes_and_merges() {
