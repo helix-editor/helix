@@ -5,8 +5,7 @@
 use crossterm::event::Event;
 use helix_core::Position;
 use smol::Executor;
-use tui::buffer::Buffer as Surface;
-use tui::layout::Rect;
+use tui::{buffer::Buffer as Surface, layout::Rect};
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Editor)>;
 

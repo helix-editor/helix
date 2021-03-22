@@ -1,8 +1,7 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use helix_core::Position;
-use helix_view::Editor;
-use helix_view::Theme;
+use helix_view::{Editor, Theme};
 use std::{borrow::Cow, ops::RangeFrom};
 
 pub struct Prompt {

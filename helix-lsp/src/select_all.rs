@@ -1,15 +1,15 @@
 //! An unbounded set of streams
 
-use core::fmt::{self, Debug};
-use core::iter::FromIterator;
-use core::pin::Pin;
+use core::{
+    fmt::{self, Debug},
+    iter::FromIterator,
+    pin::Pin,
+};
 
-use smol::ready;
-use smol::stream::Stream;
+use smol::{ready, stream::Stream};
 use std::task::{Context, Poll};
 
-use futures_util::stream::FusedStream;
-use futures_util::stream::{FuturesUnordered, StreamExt, StreamFuture};
+use futures_util::stream::{FusedStream, FuturesUnordered, StreamExt, StreamFuture};
 
 /// An unbounded set of streams
 ///

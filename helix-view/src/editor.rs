@@ -1,6 +1,4 @@
-use crate::theme::Theme;
-use crate::tree::Tree;
-use crate::{Document, View};
+use crate::{theme::Theme, tree::Tree, Document, View};
 
 use std::path::PathBuf;
 

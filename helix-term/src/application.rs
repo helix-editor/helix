@@ -2,8 +2,7 @@ use clap::ArgMatches as Args;
 
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::compositor::Compositor;
-use crate::ui;
+use crate::{compositor::Compositor, ui};
 
 use log::{error, info};
 
@@ -139,9 +138,8 @@ impl Application {
                                 .diagnostics
                                 .into_iter()
                                 .map(|diagnostic| {
-                                    use helix_core::diagnostic::Severity::*;
                                     use helix_core::{
-                                        diagnostic::{Range, Severity},
+                                        diagnostic::{Range, Severity, Severity::*},
                                         Diagnostic,
                                     };
                                     use helix_lsp::{lsp, util::lsp_pos_to_pos};

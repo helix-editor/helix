@@ -1,7 +1,9 @@
-use crate::commands;
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crate::keymap::{self, Keymaps};
-use crate::ui::text_color;
+use crate::{
+    commands,
+    compositor::{Component, Compositor, Context, EventResult},
+    keymap::{self, Keymaps},
+    ui::text_color,
+};
 
 use helix_core::{
     indent::TAB_WIDTH,

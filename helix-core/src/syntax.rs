@@ -1,12 +1,13 @@
 use crate::{Change, Rope, RopeSlice, Transaction};
-pub use helix_syntax::Lang;
-pub use helix_syntax::{get_language, get_language_name};
+pub use helix_syntax::{get_language, get_language_name, Lang};
 
-use std::borrow::Cow;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use once_cell::sync::{Lazy, OnceCell};
 
@@ -355,9 +356,11 @@ pub struct LanguageLayer {
     pub(crate) tree: Option<Tree>,
 }
 
-use crate::coords_at_pos;
-use crate::transaction::{ChangeSet, Operation};
-use crate::Tendril;
+use crate::{
+    coords_at_pos,
+    transaction::{ChangeSet, Operation},
+    Tendril,
+};
 
 impl LanguageLayer {
     // pub fn new() -> Self {

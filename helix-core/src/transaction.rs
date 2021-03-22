@@ -1,6 +1,5 @@
 use crate::{Range, Rope, Selection, State, Tendril};
-use std::borrow::Cow;
-use std::convert::TryFrom;
+use std::{borrow::Cow, convert::TryFrom};
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);

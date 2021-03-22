@@ -1,7 +1,7 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use tui::buffer::Buffer as Surface;
 use tui::{
+    buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Style},
     widgets::{Block, Borders},
@@ -107,8 +107,10 @@ impl Component for Popup {
     }
 
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        use tui::text::Text;
-        use tui::widgets::{Paragraph, Widget, Wrap};
+        use tui::{
+            text::Text,
+            widgets::{Paragraph, Widget, Wrap},
+        };
 
         cx.scroll = Some(self.scroll);
 

@@ -10,8 +10,10 @@ use helix_core::{
 
 use once_cell::sync::Lazy;
 
-use crate::compositor::Compositor;
-use crate::ui::{self, Popup, Prompt, PromptEvent};
+use crate::{
+    compositor::Compositor,
+    ui::{self, Popup, Prompt, PromptEvent},
+};
 
 use std::path::PathBuf;
 

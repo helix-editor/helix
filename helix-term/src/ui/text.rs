@@ -1,7 +1,7 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use tui::buffer::Buffer as Surface;
 use tui::{
+    buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Style},
 };
