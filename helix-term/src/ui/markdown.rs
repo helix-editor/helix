@@ -174,6 +174,13 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
         lines.push(Spans::from(spans));
     }
 
+    // if last line is empty, remove it
+    if let Some(line) = lines.last() {
+        if line.0.is_empty() {
+            lines.pop();
+        }
+    }
+
     Text::from(lines)
 }
 impl Component for Markdown {
