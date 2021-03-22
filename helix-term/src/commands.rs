@@ -1,6 +1,5 @@
 use helix_core::{
     comment, coords_at_pos, graphemes,
-    indent::TAB_WIDTH,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -835,7 +834,7 @@ pub fn open_below(cx: &mut Context) {
             // TODO: share logic with insert_newline for indentation
             let indent_level =
                 helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
-            let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
+            let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
             text.push_str(&indent);
@@ -1035,8 +1034,13 @@ pub mod insert {
     }
 
     pub fn insert_tab(cx: &mut Context) {
-        // TODO: tab should insert either \t or indent width spaces
-        insert_char(cx, '\t');
+        let doc = cx.doc();
+        // TODO: round out to nearest indentation level (for example a line with 3 spaces should
+        // indent by one to reach 4 spaces).
+
+        let indent = Tendril::from(doc.indent_unit());
+        let transaction = Transaction::insert(doc.text(), doc.selection(), indent);
+        doc.apply(&transaction);
     }
 
     pub fn insert_newline(cx: &mut Context) {
@@ -1045,7 +1049,7 @@ pub mod insert {
         let transaction = Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
             let indent_level =
                 helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, range.head, true);
-            let indent = " ".repeat(TAB_WIDTH).repeat(indent_level);
+            let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
             text.push_str(&indent);
@@ -1185,7 +1189,7 @@ pub fn indent(cx: &mut Context) {
     let lines = get_lines(doc);
 
     // Indent by one level
-    let indent = Tendril::from(" ".repeat(TAB_WIDTH));
+    let indent = Tendril::from(doc.indent_unit());
 
     let transaction = Transaction::change(
         doc.text(),
@@ -1202,6 +1206,7 @@ pub fn unindent(cx: &mut Context) {
     let doc = cx.doc();
     let lines = get_lines(doc);
     let mut changes = Vec::with_capacity(lines.len());
+    let tab_width = doc.tab_width();
 
     for line_idx in lines {
         let line = doc.text().line(line_idx);
@@ -1210,11 +1215,11 @@ pub fn unindent(cx: &mut Context) {
         for ch in line.chars() {
             match ch {
                 ' ' => width += 1,
-                '\t' => width = (width / TAB_WIDTH + 1) * TAB_WIDTH,
+                '\t' => width = (width / tab_width + 1) * tab_width,
                 _ => break,
             }
 
-            if width >= TAB_WIDTH {
+            if width >= tab_width {
                 break;
             }
         }

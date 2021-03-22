@@ -29,11 +29,17 @@ pub struct LanguageConfiguration {
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
     pub language_server_config: Option<LanguageServerConfiguration>,
+    pub indent_config: Option<IndentationConfiguration>,
 }
 
 pub struct LanguageServerConfiguration {
     pub command: String,
     pub args: Vec<String>,
+}
+
+pub struct IndentationConfiguration {
+    pub tab_width: usize,
+    pub indent_unit: String,
 }
 
 impl LanguageConfiguration {
@@ -104,6 +110,10 @@ impl Loader {
                     command: "rust-analyzer".to_string(),
                     args: vec![],
                 }),
+                indent_config: Some(IndentationConfiguration {
+                    tab_width: 4,
+                    indent_unit: String::from("    "),
+                }),
             },
             LanguageConfiguration {
                 scope: "source.toml".to_string(),
@@ -114,6 +124,10 @@ impl Loader {
                 path: "../helix-syntax/languages/tree-sitter-toml".into(),
                 roots: vec![],
                 language_server_config: None,
+                indent_config: Some(IndentationConfiguration {
+                    tab_width: 2,
+                    indent_unit: String::from("  "),
+                }),
             },
         ];
 

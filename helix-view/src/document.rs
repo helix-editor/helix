@@ -296,6 +296,26 @@ impl Document {
         self.syntax.as_ref()
     }
 
+    /// Tab size in columns.
+    pub fn tab_width(&self) -> usize {
+        self.language
+            .as_ref()
+            .and_then(|config| config.indent_config.as_ref())
+            .map(|config| config.tab_width)
+            .unwrap_or(4) // fallback to 4 columns
+    }
+
+    /// Returns a string containing a single level of indentation.
+    pub fn indent_unit(&self) -> &str {
+        self.language
+            .as_ref()
+            .and_then(|config| config.indent_config.as_ref())
+            .map(|config| config.indent_unit.as_str())
+            .unwrap_or("  ") // fallback to 2 spaces
+
+        // " ".repeat(TAB_WIDTH)
+    }
+
     #[inline]
     /// File path on disk.
     pub fn path(&self) -> Option<&PathBuf> {

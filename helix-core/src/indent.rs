@@ -8,19 +8,17 @@ use crate::{
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
 /// of the previous line.
 
-pub const TAB_WIDTH: usize = 4;
-
-fn indent_level_for_line(line: RopeSlice) -> usize {
+fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
     let mut len = 0;
     for ch in line.chars() {
         match ch {
-            '\t' => len += TAB_WIDTH,
+            '\t' => len += tab_width,
             ' ' => len += 1,
             _ => break,
         }
     }
 
-    len / TAB_WIDTH
+    len / tab_width
 }
 
 /// Find the highest syntax node at position.
@@ -162,9 +160,14 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
     increment as usize
 }
 
-fn suggested_indent_for_line(syntax: Option<&Syntax>, text: RopeSlice, line_num: usize) -> usize {
+fn suggested_indent_for_line(
+    syntax: Option<&Syntax>,
+    text: RopeSlice,
+    line_num: usize,
+    tab_width: usize,
+) -> usize {
     let line = text.line(line_num);
-    let current = indent_level_for_line(line);
+    let current = indent_level_for_line(line, tab_width);
 
     if let Some(start) = find_first_non_whitespace_char(text, line_num) {
         return suggested_indent_for_pos(syntax, text, start, false);
@@ -202,13 +205,14 @@ mod test {
 
     #[test]
     fn test_indent_level() {
+        let tab_width = 4;
         let line = Rope::from("        fn new"); // 8 spaces
-        assert_eq!(indent_level_for_line(line.slice(..)), 2);
+        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 2);
         let line = Rope::from("\t\t\tfn new"); // 3 tabs
-        assert_eq!(indent_level_for_line(line.slice(..)), 3);
+        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
         // mixed indentation
         let line = Rope::from("\t    \tfn new"); // 1 tab, 4 spaces, tab
-        assert_eq!(indent_level_for_line(line.slice(..)), 3);
+        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
     }
 
     #[test]
@@ -295,12 +299,13 @@ where
         let highlight_config = language_config.highlight_config(&[]).unwrap();
         let syntax = Syntax::new(&doc, highlight_config.clone());
         let text = doc.slice(..);
+        let tab_width = 4;
 
         for i in 0..doc.len_lines() {
             let line = text.line(i);
-            let indent = indent_level_for_line(line);
+            let indent = indent_level_for_line(line, tab_width);
             assert_eq!(
-                suggested_indent_for_line(Some(&syntax), text, i),
+                suggested_indent_for_line(Some(&syntax), text, i, tab_width),
                 indent,
                 "line {}: {}",
                 i,

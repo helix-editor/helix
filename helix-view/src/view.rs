@@ -5,7 +5,6 @@ use std::borrow::Cow;
 use crate::Document;
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
-    indent::TAB_WIDTH,
     Position, RopeSlice,
 };
 use slotmap::DefaultKey as Key;
@@ -72,10 +71,11 @@ impl View {
         let line_start = text.line_to_char(line);
         let line_slice = text.slice(line_start..pos);
         let mut col = 0;
+        let tab_width = self.doc.tab_width();
 
         for grapheme in RopeGraphemes::new(line_slice) {
             if grapheme == "\t" {
-                col += TAB_WIDTH;
+                col += tab_width;
             } else {
                 let grapheme = Cow::from(grapheme);
                 col += grapheme_width(&grapheme);

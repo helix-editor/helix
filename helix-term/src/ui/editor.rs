@@ -6,7 +6,6 @@ use crate::{
 };
 
 use helix_core::{
-    indent::TAB_WIDTH,
     syntax::{self, HighlightEvent},
     Position, Range,
 };
@@ -106,6 +105,7 @@ impl EditorView {
         let mut spans = Vec::new();
         let mut visual_x = 0;
         let mut line = 0u16;
+        let tab_width = view.doc.tab_width();
 
         'outer: for event in highlights {
             match event.unwrap() {
@@ -152,7 +152,7 @@ impl EditorView {
                                 break 'outer;
                             }
                         } else if grapheme == "\t" {
-                            visual_x += (TAB_WIDTH as u16);
+                            visual_x += (tab_width as u16);
                         } else {
                             if visual_x >= viewport.width {
                                 // if we're offscreen just keep going until we hit a new line
