@@ -137,9 +137,10 @@ pub fn buffer_picker(views: &[View], current: usize) -> Picker<(Option<PathBuf>,
 }
 
 pub mod completers {
-    use std::{borrow::Cow, ops::RangeFrom};
+    use crate::ui::prompt::Completion;
+    use std::borrow::Cow;
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    pub fn filename(input: &str) -> Vec<(RangeFrom<usize>, Cow<'static, str>)> {
+    pub fn filename(input: &str) -> Vec<Completion> {
         // Rust's filename handling is really annoying.
 
         use ignore::WalkBuilder;

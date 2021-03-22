@@ -4,13 +4,15 @@ use helix_core::Position;
 use helix_view::{Editor, Theme};
 use std::{borrow::Cow, ops::RangeFrom};
 
+pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
+
 pub struct Prompt {
     prompt: String,
     pub line: String,
     cursor: usize,
-    completion: Vec<(RangeFrom<usize>, Cow<'static, str>)>,
+    completion: Vec<Completion>,
     completion_selection_index: Option<usize>,
-    completion_fn: Box<dyn FnMut(&str) -> Vec<(RangeFrom<usize>, Cow<'static, str>)>>,
+    completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
 }
 
@@ -27,7 +29,7 @@ pub enum PromptEvent {
 impl Prompt {
     pub fn new(
         prompt: String,
-        mut completion_fn: impl FnMut(&str) -> Vec<(RangeFrom<usize>, Cow<'static, str>)> + 'static,
+        mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str, PromptEvent) + 'static,
     ) -> Prompt {
         Prompt {
