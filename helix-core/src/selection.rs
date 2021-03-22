@@ -180,6 +180,10 @@ impl Selection {
         &self.ranges
     }
 
+    pub fn primary_index(&self) -> usize {
+        self.primary_index
+    }
+
     #[must_use]
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {

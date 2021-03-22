@@ -1009,9 +1009,23 @@ pub fn goto_reference(cx: &mut Context) {
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
 pub mod insert {
     use super::*;
+    pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
+
+    use helix_core::auto_pairs;
+    const HOOKS: &[Hook] = &[auto_pairs::hook];
+
     // TODO: insert means add text just before cursor, on exit we should be on the last letter.
     pub fn insert_char(cx: &mut Context, c: char) {
         let doc = cx.doc();
+
+        // run through insert hooks, stopping on the first one that returns Some(t)
+        for hook in HOOKS {
+            if let Some(transaction) = hook(doc.text(), doc.selection(), c) {
+                doc.apply(&transaction);
+                return;
+            }
+        }
+
         let c = Tendril::from_char(c);
         let transaction = Transaction::insert(doc.text(), doc.selection(), c);
 
@@ -1019,6 +1033,7 @@ pub mod insert {
     }
 
     pub fn insert_tab(cx: &mut Context) {
+        // TODO: tab should insert either \t or indent width spaces
         insert_char(cx, '\t');
     }
 
