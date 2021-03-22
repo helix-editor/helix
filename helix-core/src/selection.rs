@@ -214,7 +214,7 @@ impl Selection {
             ranges.sort_unstable_by_key(Range::from);
             primary_index = ranges.iter().position(|&range| range == primary).unwrap();
 
-            let mut result = SmallVec::new();
+            let mut result = SmallVec::with_capacity(ranges.len()); // approx
 
             // TODO: we could do with one vec by removing elements as we mutate
 
