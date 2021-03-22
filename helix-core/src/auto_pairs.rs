@@ -54,6 +54,7 @@ fn next_char(doc: &Rope, pos: usize) -> Option<char> {
     }
     Some(doc.char(pos))
 }
+// TODO: selections should be extended if range, moved if point.
 
 // TODO: if not cursor but selection, wrap on both sides of selection (surround)
 fn handle_open(

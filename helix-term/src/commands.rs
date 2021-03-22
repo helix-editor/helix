@@ -433,7 +433,7 @@ fn scroll(view: &mut View, offset: usize, direction: Direction) {
     // clamp into viewport
     let line = (view.first_line + cursor_off).clamp(
         view.first_line + scrolloff,
-        view.first_line + view.last_line().saturating_sub(scrolloff),
+        view.last_line().saturating_sub(scrolloff),
     );
 
     let pos = pos_at_coords(text, Position::new(line, cursor.col)); // this func will properly truncate to line end
