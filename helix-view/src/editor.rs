@@ -1,7 +1,7 @@
 use crate::{theme::Theme, tree::Tree, Document, DocumentId, View};
+use tui::layout::Rect;
 
 use std::path::PathBuf;
-use std::{cell::RefCell, rc::Rc};
 
 use slotmap::{DefaultKey as Key, SlotMap};
 
@@ -9,7 +9,7 @@ use anyhow::Error;
 
 pub struct Editor {
     pub tree: Tree,
-    pub documents: SlotMap<DocumentId, Rc<RefCell<Document>>>,
+    pub documents: SlotMap<DocumentId, Document>,
     pub count: Option<usize>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
@@ -34,18 +34,25 @@ impl Editor {
         }
     }
 
-    pub fn open(&mut self, path: PathBuf) -> Result<(), Error> {
-        // TODO: issues with doc already being borrowed if called from inside goto()
-
-        let existing_view = self
-            .tree
-            .views()
-            .find(|(view, _)| view.doc.borrow().path() == Some(&path));
-
-        if let Some((view, _)) = existing_view {
-            self.tree.focus = view.id;
-            return Ok(());
+    fn _refresh(&mut self) {
+        for (view, _) in self.tree.views_mut() {
+            let doc = &self.documents[view.doc];
+            view.ensure_cursor_in_view(doc)
         }
+    }
+
+    pub fn open(&mut self, path: PathBuf) -> Result<DocumentId, Error> {
+        let existing_view = self.documents().find(|doc| doc.path() == Some(&path));
+
+        // TODO:
+        // if view with doc, focus it
+        // else open new split
+
+        // if let Some((view, _)) = existing_view {
+        //     let id = view.doc.id;
+        //     self.tree.focus = view.id;
+        //     return Ok(id);
+        // }
 
         let mut doc = Document::load(path, self.theme.scopes())?;
 
@@ -73,13 +80,14 @@ impl Editor {
             .unwrap();
         }
 
-        let doc = Rc::new(RefCell::new(doc));
-        // TODO: store id as doc.id
-        let id = self.documents.insert(doc.clone());
+        let id = self.documents.insert(doc);
+        self.documents[id].id = id;
 
-        let view = View::new(doc)?;
+        let view = View::new(id)?;
         self.tree.insert(view);
-        Ok(())
+        self._refresh();
+
+        Ok(id)
     }
 
     pub fn close(&mut self, id: Key) {
@@ -88,7 +96,7 @@ impl Editor {
         let language_servers = &mut self.language_servers;
         let executor = self.executor;
 
-        let doc = view.doc.borrow();
+        let doc = &self.documents[view.doc];
 
         let language_server = doc
             .language
@@ -99,14 +107,14 @@ impl Editor {
             smol::block_on(language_server.text_document_did_close(doc.identifier())).unwrap();
         }
 
-        drop(doc); // to stop borrowing self.tree
-
         // self.documents.remove(view.doc);
         self.tree.remove(id);
+        self._refresh();
     }
 
-    pub fn resize(&mut self) {
-        self.tree.focus_next();
+    pub fn resize(&mut self, area: Rect) {
+        self.tree.resize(area);
+        self._refresh();
     }
 
     pub fn focus_next(&mut self) {
@@ -125,12 +133,26 @@ impl Editor {
         self.tree.get_mut(self.tree.focus)
     }
 
+    pub fn ensure_cursor_in_view(&mut self, id: Key) {
+        let view = self.tree.get_mut(id);
+        let doc = &self.documents[view.doc];
+        view.ensure_cursor_in_view(doc)
+    }
+
+    pub fn document(&self, id: DocumentId) -> Option<&Document> {
+        self.documents.get(id)
+    }
+
+    pub fn documents(&self) -> impl Iterator<Item = &Document> {
+        self.documents.iter().map(|(_id, doc)| doc)
+    }
+
     pub fn cursor_position(&self) -> Option<helix_core::Position> {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = self.view();
-        let doc = view.doc.borrow();
+        let doc = &self.documents[view.doc];
         let cursor = doc.selection().cursor();
-        if let Some(mut pos) = view.screen_coords_at_pos(doc.text().slice(..), cursor) {
+        if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
             pos.col += view.area.x as usize + OFFSET as usize;
             pos.row += view.area.y as usize;
             return Some(pos);

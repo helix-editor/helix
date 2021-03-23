@@ -1,7 +1,6 @@
 use anyhow::Error;
 
 use std::borrow::Cow;
-use std::{cell::RefCell, rc::Rc};
 
 use crate::{Document, DocumentId};
 use helix_core::{
@@ -15,13 +14,13 @@ pub const PADDING: usize = 5;
 
 pub struct View {
     pub id: Key,
-    pub doc: Rc<RefCell<Document>>,
+    pub doc: DocumentId,
     pub first_line: usize,
     pub area: Rect,
 }
 
 impl View {
-    pub fn new(doc: Rc<RefCell<Document>>) -> Result<Self, Error> {
+    pub fn new(doc: DocumentId) -> Result<Self, Error> {
         let view = Self {
             id: Key::default(),
             doc,
@@ -32,8 +31,7 @@ impl View {
         Ok(view)
     }
 
-    pub fn ensure_cursor_in_view(&mut self) {
-        let doc = self.doc.borrow();
+    pub fn ensure_cursor_in_view(&mut self, doc: &Document) {
         let cursor = doc.selection().cursor();
         let line = doc.text().char_to_line(cursor);
         let document_end = self.first_line + (self.area.height as usize).saturating_sub(2);
@@ -51,8 +49,7 @@ impl View {
 
     /// Calculates the last visible line on screen
     #[inline]
-    pub fn last_line(&self) -> usize {
-        let doc = self.doc.borrow();
+    pub fn last_line(&self, doc: &Document) -> usize {
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
         std::cmp::min(
             self.first_line + height as usize,
@@ -63,10 +60,15 @@ impl View {
     /// Translates a document position to an absolute position in the terminal.
     /// Returns a (line, col) position if the position is visible on screen.
     // TODO: Could return width as well for the character width at cursor.
-    pub fn screen_coords_at_pos(&self, text: RopeSlice, pos: usize) -> Option<Position> {
+    pub fn screen_coords_at_pos(
+        &self,
+        doc: &Document,
+        text: RopeSlice,
+        pos: usize,
+    ) -> Option<Position> {
         let line = text.char_to_line(pos);
 
-        if line < self.first_line || line > self.last_line() {
+        if line < self.first_line || line > self.last_line(doc) {
             // Line is not visible on screen
             return None;
         }
@@ -74,7 +76,7 @@ impl View {
         let line_start = text.line_to_char(line);
         let line_slice = text.slice(line_start..pos);
         let mut col = 0;
-        let tab_width = self.doc.borrow().tab_width();
+        let tab_width = doc.tab_width();
 
         for grapheme in RopeGraphemes::new(line_slice) {
             if grapheme == "\t" {

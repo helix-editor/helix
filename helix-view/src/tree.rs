@@ -164,7 +164,18 @@ impl Tree {
         self.recalculate()
     }
 
-    pub fn views(&mut self) -> impl Iterator<Item = (&mut View, bool)> {
+    pub fn views(&self) -> impl Iterator<Item = (&View, bool)> {
+        let focus = self.focus;
+        self.nodes.iter().filter_map(move |(key, node)| match node {
+            Node {
+                content: Content::View(view),
+                ..
+            } => Some((view.as_ref(), focus == key)),
+            _ => None,
+        })
+    }
+
+    pub fn views_mut(&mut self) -> impl Iterator<Item = (&mut View, bool)> {
         let focus = self.focus;
         self.nodes
             .iter_mut()
@@ -231,7 +242,6 @@ impl Tree {
                 Content::View(view) => {
                     // debug!!("setting view area {:?}", area);
                     view.area = area;
-                    view.ensure_cursor_in_view();
                 } // TODO: call f()
                 Content::Container(container) => {
                     // debug!!("setting container area {:?}", area);

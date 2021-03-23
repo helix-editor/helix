@@ -129,10 +129,9 @@ impl Application {
                             .editor
                             .documents
                             .iter_mut()
-                            .find(|(_, doc)| doc.borrow().path() == path.as_ref());
+                            .find(|(_, doc)| doc.path() == path.as_ref());
 
                         if let Some((_, doc)) = doc {
-                            let mut doc = doc.borrow_mut();
                             let text = doc.text();
 
                             let diagnostics = params
@@ -167,7 +166,6 @@ impl Application {
                                 .collect();
 
                             doc.diagnostics = diagnostics;
-                            drop(doc);
                             // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                             self.render();
                         }

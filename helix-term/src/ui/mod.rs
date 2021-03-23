@@ -40,7 +40,8 @@ pub fn regex_prompt(
             match event {
                 PromptEvent::Abort => {
                     // TODO: also revert text
-                    let doc = &mut editor.view().doc.borrow_mut();
+                    let id = editor.view().doc;
+                    let doc = &mut editor.documents[id];
                     doc.set_selection(snapshot.clone());
                 }
                 PromptEvent::Validate => {
@@ -54,18 +55,17 @@ pub fn regex_prompt(
 
                     match Regex::new(input) {
                         Ok(regex) => {
-                            let view = &mut editor.view_mut();
-                            let mut doc = view.doc.borrow_mut();
+                            // let view = &mut editor.view_mut();
+                            let id = editor.view().doc;
+                            let doc = &mut editor.documents[id];
 
                             // revert state to what it was before the last update
                             // TODO: also revert text
                             doc.set_selection(snapshot.clone());
 
-                            fun(&mut doc, regex);
+                            fun(doc, regex);
 
-                            drop(doc);
-
-                            view.ensure_cursor_in_view();
+                            editor.ensure_cursor_in_view(editor.view().id);
                         }
                         Err(_err) => (), // TODO: mark command line as error
                     }
@@ -101,40 +101,39 @@ pub fn file_picker(root: &str) -> Picker<PathBuf> {
             path.strip_prefix("./").unwrap().to_str().unwrap().into()
         },
         move |editor: &mut Editor, path: &PathBuf| {
-            editor.open(path.into());
+            let document_id = editor.open(path.into()).expect("editor.open failed");
         },
     )
 }
 
 use helix_view::View;
-pub fn buffer_picker(views: &[View], current: usize) -> Picker<(Option<PathBuf>, usize)> {
-    unimplemented!();
-    // use helix_view::Editor;
-    // Picker::new(
-    //     views
-    //         .iter()
-    //         .enumerate()
-    //         .map(|(i, view)| (view.doc.relative_path().map(Path::to_path_buf), i))
-    //         .collect(),
-    //     move |(path, index): &(Option<PathBuf>, usize)| {
-    //         // format_fn
-    //         match path {
-    //             Some(path) => {
-    //                 if *index == current {
-    //                     format!("{} (*)", path.to_str().unwrap()).into()
-    //                 } else {
-    //                     path.to_str().unwrap().into()
-    //                 }
-    //             }
-    //             None => "[NEW]".into(),
-    //         }
-    //     },
-    //     |editor: &mut Editor, &(_, index): &(Option<PathBuf>, usize)| {
-    //         if index < editor.views.len() {
-    //             editor.focus = index;
-    //         }
-    //     },
-    // )
+pub fn buffer_picker(buffers: &[Document], current: usize) -> Picker<(Option<PathBuf>, usize)> {
+    use helix_view::Editor;
+    Picker::new(
+        buffers
+            .iter()
+            .enumerate()
+            .map(|(i, doc)| (doc.relative_path().map(Path::to_path_buf), i))
+            .collect(),
+        move |(path, index): &(Option<PathBuf>, usize)| {
+            // format_fn
+            match path {
+                Some(path) => {
+                    if *index == current {
+                        format!("{} (*)", path.to_str().unwrap()).into()
+                    } else {
+                        path.to_str().unwrap().into()
+                    }
+                }
+                None => "[NEW]".into(),
+            }
+        },
+        |editor: &mut Editor, &(_, index): &(Option<PathBuf>, usize)| {
+            // if index < editor.views.len() {
+            //     editor.focus = index;
+            // }
+        },
+    )
 }
 
 pub mod completers {

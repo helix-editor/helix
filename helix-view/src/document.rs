@@ -8,6 +8,8 @@ use helix_core::{
     ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
 };
 
+use crate::DocumentId;
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
@@ -18,6 +20,7 @@ pub enum Mode {
 
 pub struct Document {
     // rope + selection
+    pub(crate) id: DocumentId,
     state: State,
     path: Option<PathBuf>,
 
@@ -66,6 +69,7 @@ impl Document {
         let old_state = None;
 
         Self {
+            id: DocumentId::default(),
             path: None,
             state: State::new(text),
             mode: Mode::Normal,

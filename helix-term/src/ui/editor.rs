@@ -39,6 +39,7 @@ impl EditorView {
     }
     pub fn render_view(
         &self,
+        doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
@@ -51,13 +52,12 @@ impl EditorView {
             viewport.width - OFFSET,
             viewport.height.saturating_sub(1),
         ); // - 1 for statusline
-        self.render_buffer(view, area, surface, theme, is_focused);
+        self.render_buffer(&doc, view, area, surface, theme, is_focused);
 
         // clear with background color
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
-        let doc = view.doc.borrow();
         self.render_diagnostics(&doc, area, surface, theme, is_focused);
 
         let area = Rect::new(
@@ -71,16 +71,16 @@ impl EditorView {
 
     pub fn render_buffer(
         &self,
+        doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
     ) {
-        let doc = view.doc.borrow();
         let text = doc.text().slice(..);
 
-        let last_line = view.last_line();
+        let last_line = view.last_line(doc);
 
         let range = {
             // calculate viewport byte ranges
@@ -211,16 +211,14 @@ impl EditorView {
             // let selection_style = Style::default().bg(Color::Rgb(94, 0, 128));
             let selection_style = Style::default().bg(Color::Rgb(84, 0, 153));
 
-            for selection in view
-                .doc
-                .borrow()
+            for selection in doc
                 .selection()
                 .iter()
                 .filter(|range| range.overlaps(&screen))
             {
                 // TODO: render also if only one of the ranges is in viewport
-                let mut start = view.screen_coords_at_pos(text, selection.anchor);
-                let mut end = view.screen_coords_at_pos(text, selection.head);
+                let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
+                let mut end = view.screen_coords_at_pos(doc, text, selection.head);
 
                 // cursor
                 if let Some(end) = end {
@@ -292,7 +290,6 @@ impl EditorView {
         let info: Style = theme.get("info");
         let hint: Style = theme.get("hint");
 
-        let last_line = view.last_line();
         for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics.iter().find(|d| d.line == line) {
@@ -431,11 +428,12 @@ impl Component for EditorView {
         match event {
             Event::Resize(width, height) => {
                 // HAXX: offset the render area height by 1 to account for prompt/commandline
-                cx.editor.tree.resize(Rect::new(0, 0, width, height - 1));
+                cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
-                let mode = cx.editor.view().doc.borrow().mode();
+                let id = cx.editor.view().doc;
+                let mode = cx.editor.document(id).unwrap().mode();
 
                 let mut cxt = commands::Context {
                     editor: &mut cx.editor,
@@ -491,7 +489,7 @@ impl Component for EditorView {
                 // appease borrowck
                 let callback = cxt.callback.take();
                 drop(cxt);
-                cx.editor.view_mut().ensure_cursor_in_view();
+                cx.editor.ensure_cursor_in_view(cx.editor.tree.focus);
 
                 EventResult::Consumed(callback)
             }
@@ -501,7 +499,8 @@ impl Component for EditorView {
 
     fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
         for (view, is_focused) in cx.editor.tree.views() {
-            self.render_view(view, view.area, surface, &cx.editor.theme, is_focused);
+            let doc = cx.editor.document(view.doc).unwrap();
+            self.render_view(doc, view, view.area, surface, &cx.editor.theme, is_focused);
         }
     }
 
