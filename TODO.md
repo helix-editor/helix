@@ -1,9 +1,5 @@
-- Implement style configs, tab settings
 - Refactor tree-sitter-highlight to work like the atom one, recomputing partial tree updates.
 - syntax errors highlight query
-
-- UI work: completion popup
-
 
 ------
 
@@ -23,9 +19,12 @@
 - [ ] regex search / select next
 - [x] open_above (O) command
 - [ ] = for auto indent line/selection
-- [x] q should only close the view, if all are closed, close the editor
-- [ ] buffers should sit on editor.buffers, view simply refs them
 - [ ] yank on delete
+- [ ]  :x for closing buffers
+
+- [ ] jumplist (push selections on goto / select on the view)
+- [ ] repeat insert/command -> transaction
+- [ ] repeat selection
 
 - [ ] load toml configs, themes, tabsize/identation
 
@@ -36,9 +35,16 @@
 - [ ] lsp: document symbols (nested/vec)
 - [ ] lsp: code actions
 - [ ] lsp: formatting
-- [ ] lsp: goto
+- [x] lsp: goto
+
+- decide if markdown should have vertical padding too
+
+- completion/signature_help should be async callbacks to method responses.
+- the hooks system should be better for pre/post insert.
 
 2
+- [ ] surround bindings (select + surround ( wraps selection in parens )
+- [ ] macro recording
 - [ ] tab completion for paths on the prompt
 - [ ] extend selection (treesitter select parent node) (replaces viw, vi(, va( etc )
 - [ ] bracket pairs
@@ -50,7 +56,7 @@
 - [ ] highlight matched characters in completion
 
 3
-- [ ] diagnostics popups
+- [x] diagnostics popups
 - [ ] diff mode with highlighting?
 - [ ] snippet support (tab to jump between marks)
 - [ ] gamelisp/wasm scripting
