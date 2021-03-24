@@ -3,6 +3,7 @@ use ropey::{iter::Chunks, str_utils::byte_to_char_idx, RopeSlice};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 use unicode_width::UnicodeWidthStr;
 
+#[must_use]
 pub fn grapheme_width(g: &str) -> usize {
     if g.as_bytes()[0] <= 127 {
         // Fast-path ascii.
@@ -26,6 +27,7 @@ pub fn grapheme_width(g: &str) -> usize {
     }
 }
 
+#[must_use]
 pub fn nth_prev_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -> usize {
     // Bounds check
     debug_assert!(char_idx <= slice.len_chars());
@@ -71,6 +73,7 @@ pub fn prev_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     nth_prev_grapheme_boundary(slice, char_idx, 1)
 }
 
+#[must_use]
 pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -> usize {
     // Bounds check
     debug_assert!(char_idx <= slice.len_chars());
@@ -138,12 +141,12 @@ pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
                 let (ctx_chunk, ctx_byte_start, _, _) = slice.chunk_at_byte(n - 1);
                 gc.provide_context(ctx_chunk, ctx_byte_start);
             }
-            _ => unreachable!(),
+            Err(_) => unreachable!(),
         }
     }
 }
 
-/// An iterator over the graphemes of a RopeSlice.
+/// An iterator over the graphemes of a `RopeSlice`.
 #[derive(Clone)]
 pub struct RopeGraphemes<'a> {
     text: RopeSlice<'a>,
@@ -154,6 +157,7 @@ pub struct RopeGraphemes<'a> {
 }
 
 impl<'a> RopeGraphemes<'a> {
+    #[must_use]
     pub fn new(slice: RopeSlice) -> RopeGraphemes {
         let mut chunks = slice.chunks();
         let first_chunk = chunks.next().unwrap_or("");

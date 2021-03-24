@@ -99,14 +99,14 @@ impl Range {
     #[must_use]
     pub fn extend(&self, from: usize, to: usize) -> Self {
         if from <= self.anchor && to >= self.anchor {
-            return Range {
+            return Self {
                 anchor: from,
                 head: to,
                 horiz: None,
             };
         }
 
-        Range {
+        Self {
             anchor: self.anchor,
             head: if abs_difference(from, self.anchor) > abs_difference(to, self.anchor) {
                 from
@@ -253,7 +253,7 @@ impl Selection {
 
         // fast path for a single selection (cursor)
         if ranges.len() == 1 {
-            return Selection {
+            return Self {
                 ranges,
                 primary_index: 0,
             };

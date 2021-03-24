@@ -84,11 +84,7 @@ impl ChangeSet {
         }
 
         let new_last = match self.changes.as_mut_slice() {
-            [.., Insert(prev)] => {
-                prev.push_tendril(&fragment);
-                return;
-            }
-            [.., Insert(prev), Delete(_)] => {
+            [.., Insert(prev)] | [.., Insert(prev), Delete(_)] => {
                 prev.push_tendril(&fragment);
                 return;
             }
@@ -115,7 +111,7 @@ impl ChangeSet {
     /// Combine two changesets together.
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
-    pub fn compose(self, other: ChangeSet) -> Self {
+    pub fn compose(self, other: Self) -> Self {
         debug_assert!(self.len_after() == other.len);
 
         let len = self.changes.len();

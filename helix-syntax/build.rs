@@ -11,7 +11,7 @@ fn get_debug() -> bool {
     env::var("DEBUG").unwrap() == "true"
 }
 
-fn collect_tree_sitter_dirs(ignore: Vec<String>) -> Vec<String> {
+fn collect_tree_sitter_dirs(ignore: &[String]) -> Vec<String> {
     let mut dirs = Vec::new();
     for entry in fs::read_dir("languages").unwrap().flatten() {
         let path = entry.path();
@@ -97,12 +97,12 @@ fn build_dir(dir: &str, language: &str) {
         eprintln!("You can fix in using 'git submodule init && git submodule update --recursive'.");
         std::process::exit(1);
     }
-    let (c, cpp) = collect_src_files(&dir);
+    let (c, cpp) = collect_src_files(dir);
     if !c.is_empty() {
-        build_c(c, &language);
+        build_c(c, language);
     }
     if !cpp.is_empty() {
-        build_cpp(cpp, &language);
+        build_cpp(cpp, language);
     }
 }
 
@@ -111,7 +111,7 @@ fn main() {
         "tree-sitter-typescript".to_string(),
         "tree-sitter-cpp".to_string(),
     ];
-    let dirs = collect_tree_sitter_dirs(ignore);
+    let dirs = collect_tree_sitter_dirs(&ignore);
 
     let mut n_jobs = 0;
     let pool = threadpool::Builder::new().build(); // by going through the builder, it'll use num_cpus
@@ -123,7 +123,7 @@ fn main() {
 
         pool.execute(move || {
             let language = &dir[12..]; // skip tree-sitter- prefix
-            build_dir(&dir, &language);
+            build_dir(&dir, language);
 
             // report progress
             tx.send(1).unwrap();

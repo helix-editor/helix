@@ -24,6 +24,7 @@ const CLOSE_BEFORE: &str = ")]}'\":;> \n"; // includes space and newline
 
 // TODO: delete implementation where it erases the whole bracket (|) -> |
 
+#[must_use]
 pub fn hook(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
     for &(open, close) in PAIRS {
         if open == ch {

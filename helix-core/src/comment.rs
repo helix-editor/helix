@@ -37,6 +37,7 @@ fn find_line_comment(
     (commented, skipped, min)
 }
 
+#[must_use]
 pub fn toggle_line_comments(doc: &Rope, selection: &Selection) -> Transaction {
     let text = doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();

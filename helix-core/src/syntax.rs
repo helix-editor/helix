@@ -66,10 +66,10 @@ impl LanguageConfiguration {
                         language,
                         &highlights_query,
                         &injections_query,
-                        &locals_query,
+                        locals_query,
                     )
                     .unwrap(); // TODO: no unwrap
-                    config.configure(&scopes);
+                    config.configure(scopes);
                     Some(Arc::new(config))
                 }
             })
@@ -90,8 +90,8 @@ pub struct Loader {
 }
 
 impl Loader {
-    fn init() -> Loader {
-        let mut loader = Loader {
+    fn init() -> Self {
+        let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
         };
@@ -331,7 +331,7 @@ impl Syntax {
 
         let mut result = HighlightIter {
             source,
-            byte_offset: range.map(|r| r.start).unwrap_or(0), // TODO: simplify
+            byte_offset: range.map_or(0, |r| r.start), // TODO: simplify
             injection_callback,
             cancellation_flag,
             iter_count: 0,
@@ -1019,12 +1019,12 @@ impl<'a> HighlightIterLayer<'a> {
 
             if queue.is_empty() {
                 break;
-            } else {
-                let (next_config, next_depth, next_ranges) = queue.remove(0);
-                config = next_config;
-                depth = next_depth;
-                ranges = next_ranges;
             }
+
+            let (next_config, next_depth, next_ranges) = queue.remove(0);
+            config = next_config;
+            depth = next_depth;
+            ranges = next_ranges;
         }
 
         Ok(result)
@@ -1292,7 +1292,7 @@ where
             // If this capture represents an injection, then process the injection.
             if match_.pattern_index < layer.config.locals_pattern_index {
                 let (language_name, content_node, include_children) =
-                    injection_for_match(&layer.config, &layer.config.query, &match_, self.source);
+                    injection_for_match(layer.config, &layer.config.query, &match_, self.source);
 
                 // Explicitly remove this match so that none of its other captures will remain
                 // in the stream of captures.

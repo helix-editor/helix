@@ -37,7 +37,7 @@ impl Position {
 
 impl From<(usize, usize)> for Position {
     fn from(tuple: (usize, usize)) -> Self {
-        Position {
+        Self {
             row: tuple.0,
             col: tuple.1,
         }

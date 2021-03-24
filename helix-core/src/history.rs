@@ -53,7 +53,7 @@ impl History {
     }
 
     #[inline]
-    pub fn at_root(&self) -> bool {
+    pub const fn at_root(&self) -> bool {
         self.cursor == 0
     }
 
