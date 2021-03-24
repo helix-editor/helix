@@ -6,6 +6,7 @@ pub mod view;
 
 use slotmap::new_key_type;
 new_key_type! { pub struct DocumentId; }
+new_key_type! { pub struct ViewId; }
 
 pub use document::Document;
 pub use editor::Editor;

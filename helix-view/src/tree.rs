@@ -1,24 +1,24 @@
-use crate::View;
-use slotmap::{DefaultKey as Key, HopSlotMap};
+use crate::{View, ViewId};
+use slotmap::HopSlotMap;
 use tui::layout::Rect;
 
 // the dimensions are recomputed on windo resize/tree change.
 //
 pub struct Tree {
-    root: Key,
+    root: ViewId,
     // (container, index inside the container)
-    pub focus: Key,
+    pub focus: ViewId,
     // fullscreen: bool,
     area: Rect,
 
-    nodes: HopSlotMap<Key, Node>,
+    nodes: HopSlotMap<ViewId, Node>,
 
     // used for traversals
-    stack: Vec<(Key, Rect)>,
+    stack: Vec<(ViewId, Rect)>,
 }
 
 pub struct Node {
-    parent: Key,
+    parent: ViewId,
     content: Content,
 }
 
@@ -30,14 +30,14 @@ pub enum Content {
 impl Node {
     pub fn container() -> Self {
         Node {
-            parent: Key::default(),
+            parent: ViewId::default(),
             content: Content::Container(Box::new(Container::new())),
         }
     }
 
     pub fn view(view: View) -> Self {
         Node {
-            parent: Key::default(),
+            parent: ViewId::default(),
             content: Content::View(Box::new(view)),
         }
     }
@@ -53,7 +53,7 @@ pub enum Layout {
 
 pub struct Container {
     layout: Layout,
-    children: Vec<Key>,
+    children: Vec<ViewId>,
     area: Rect,
 }
 
@@ -77,7 +77,7 @@ impl Tree {
     pub fn new(area: Rect) -> Self {
         let root = Node::container();
 
-        let mut nodes = HopSlotMap::new();
+        let mut nodes = HopSlotMap::with_key();
         let root = nodes.insert(root);
 
         // root is it's own parent
@@ -93,7 +93,7 @@ impl Tree {
         }
     }
 
-    pub fn insert(&mut self, view: View) -> Key {
+    pub fn insert(&mut self, view: View) -> ViewId {
         let focus = self.focus;
         let parent = self.nodes[focus].parent;
         let mut node = Node::view(view);
@@ -131,7 +131,7 @@ impl Tree {
         node
     }
 
-    pub fn remove(&mut self, index: Key) {
+    pub fn remove(&mut self, index: ViewId) {
         let mut stack = Vec::new();
 
         if self.focus == index {
@@ -188,7 +188,7 @@ impl Tree {
             })
     }
 
-    pub fn get(&self, index: Key) -> &View {
+    pub fn get(&self, index: ViewId) -> &View {
         match &self.nodes[index] {
             Node {
                 content: Content::View(view),
@@ -198,7 +198,7 @@ impl Tree {
         }
     }
 
-    pub fn get_mut(&mut self, index: Key) -> &mut View {
+    pub fn get_mut(&mut self, index: ViewId) -> &mut View {
         match &mut self.nodes[index] {
             Node {
                 content: Content::View(view),
@@ -355,7 +355,7 @@ impl Tree {
 
 pub struct Traverse<'a> {
     tree: &'a Tree,
-    stack: Vec<Key>, // TODO: reuse the one we use on update
+    stack: Vec<ViewId>, // TODO: reuse the one we use on update
 }
 
 impl<'a> Traverse<'a> {
@@ -368,7 +368,7 @@ impl<'a> Traverse<'a> {
 }
 
 impl<'a> Iterator for Traverse<'a> {
-    type Item = (Key, &'a View);
+    type Item = (ViewId, &'a View);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {

@@ -1,9 +1,9 @@
-use crate::{theme::Theme, tree::Tree, Document, DocumentId, View};
+use crate::{theme::Theme, tree::Tree, Document, DocumentId, View, ViewId};
 use tui::layout::Rect;
 
 use std::path::PathBuf;
 
-use slotmap::{DefaultKey as Key, SlotMap};
+use slotmap::SlotMap;
 
 use anyhow::Error;
 
@@ -90,7 +90,7 @@ impl Editor {
         Ok(id)
     }
 
-    pub fn close(&mut self, id: Key) {
+    pub fn close(&mut self, id: ViewId) {
         let view = self.tree.get(self.tree.focus);
         // get around borrowck issues
         let language_servers = &mut self.language_servers;
@@ -133,7 +133,7 @@ impl Editor {
         self.tree.get_mut(self.tree.focus)
     }
 
-    pub fn ensure_cursor_in_view(&mut self, id: Key) {
+    pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
         let doc = &self.documents[view.doc];
         view.ensure_cursor_in_view(doc)

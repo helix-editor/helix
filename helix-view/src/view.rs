@@ -2,18 +2,17 @@ use anyhow::Error;
 
 use std::borrow::Cow;
 
-use crate::{Document, DocumentId};
+use crate::{Document, DocumentId, ViewId};
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
     Position, RopeSlice,
 };
-use slotmap::DefaultKey as Key;
 use tui::layout::Rect;
 
 pub const PADDING: usize = 5;
 
 pub struct View {
-    pub id: Key,
+    pub id: ViewId,
     pub doc: DocumentId,
     pub first_line: usize,
     pub area: Rect,
@@ -22,7 +21,7 @@ pub struct View {
 impl View {
     pub fn new(doc: DocumentId) -> Result<Self, Error> {
         let view = Self {
-            id: Key::default(),
+            id: ViewId::default(),
             doc,
             first_line: 0,
             area: Rect::default(), // will get calculated upon inserting into tree
