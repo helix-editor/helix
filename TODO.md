@@ -7,6 +7,11 @@
 
 ------
 
+- [ ] use signature_help_provider and completion_provider trigger characters in
+    a hook to trigger signature help text / autocompletion
+- [ ] document_on_type provider triggers
+- [ ] completion isIncomplete support
+
 1
 - [ ] respect view fullscreen flag
 - [ ] Implement marks (superset of Selection/Range)
@@ -42,6 +47,7 @@
 - [ ] multiple views into the same file
 - [ ] selection align
 - [ ] store some state between restarts: file positions, prompt history
+- [ ] highlight matched characters in completion
 
 3
 - [ ] diagnostics popups
