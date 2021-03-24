@@ -140,7 +140,9 @@ impl<T> Component for Menu<T> {
                 code: KeyCode::Enter,
                 ..
             } => {
-                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Validate);
+                if let Some(selection) = self.selection() {
+                    (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
+                }
                 return close_fn;
             }
             // KeyEvent {
