@@ -16,6 +16,12 @@ pub struct Editor {
     pub executor: &'static smol::Executor<'static>,
 }
 
+pub enum Action {
+    Replace,
+    HorizontalSplit,
+    VerticalSplit,
+}
+
 impl Editor {
     pub fn new(executor: &'static smol::Executor<'static>, mut area: tui::layout::Rect) -> Self {
         let theme = Theme::default();
@@ -41,50 +47,63 @@ impl Editor {
         }
     }
 
-    pub fn open(&mut self, path: PathBuf) -> Result<DocumentId, Error> {
-        let existing_view = self.documents().find(|doc| doc.path() == Some(&path));
+    pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
+        let id = self
+            .documents()
+            .find(|doc| doc.path() == Some(&path))
+            .map(|doc| doc.id);
 
-        // TODO:
-        // if view with doc, focus it
-        // else open new split
+        let id = if let Some(id) = id {
+            id
+        } else {
+            let mut doc = Document::load(path, self.theme.scopes())?;
 
-        // if let Some((view, _)) = existing_view {
-        //     let id = view.doc.id;
-        //     self.tree.focus = view.id;
-        //     return Ok(id);
-        // }
+            // try to find a language server based on the language name
+            let language_server = doc
+                .language
+                .as_ref()
+                .and_then(|language| self.language_servers.get(language, self.executor));
 
-        let mut doc = Document::load(path, self.theme.scopes())?;
+            if let Some(language_server) = language_server {
+                doc.set_language_server(Some(language_server.clone()));
 
-        // try to find a language server based on the language name
-        let language_server = doc
-            .language
-            .as_ref()
-            .and_then(|language| self.language_servers.get(language, self.executor));
+                let language_id = doc
+                    .language()
+                    .and_then(|s| s.split('.').last()) // source.rust
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_default();
 
-        if let Some(language_server) = language_server {
-            doc.set_language_server(Some(language_server.clone()));
+                smol::block_on(language_server.text_document_did_open(
+                    doc.url().unwrap(),
+                    doc.version(),
+                    doc.text(),
+                    language_id,
+                ))
+                .unwrap();
+            }
 
-            let language_id = doc
-                .language()
-                .and_then(|s| s.split('.').last()) // source.rust
-                .map(ToOwned::to_owned)
-                .unwrap_or_default();
+            let id = self.documents.insert(doc);
+            self.documents[id].id = id;
+            id
+        };
 
-            smol::block_on(language_server.text_document_did_open(
-                doc.url().unwrap(),
-                doc.version(),
-                doc.text(),
-                language_id,
-            ))
-            .unwrap();
+        use crate::tree::Layout;
+        match action {
+            Action::Replace => {
+                self.view_mut().doc = id;
+                // TODO: reset selection?
+                return Ok(id);
+            }
+            Action::HorizontalSplit => {
+                let view = View::new(id)?;
+                self.tree.split(view, Layout::Horizontal);
+            }
+            Action::VerticalSplit => {
+                let view = View::new(id)?;
+                self.tree.split(view, Layout::Vertical);
+            }
         }
 
-        let id = self.documents.insert(doc);
-        self.documents[id].id = id;
-
-        let view = View::new(id)?;
-        self.tree.insert(view);
         self._refresh();
 
         Ok(id)

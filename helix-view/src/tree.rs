@@ -28,10 +28,10 @@ pub enum Content {
 }
 
 impl Node {
-    pub fn container() -> Self {
+    pub fn container(layout: Layout) -> Self {
         Node {
             parent: ViewId::default(),
-            content: Content::Container(Box::new(Container::new())),
+            content: Content::Container(Box::new(Container::new(layout))),
         }
     }
 
@@ -45,6 +45,7 @@ impl Node {
 
 // TODO: screen coord to container + container coordinate helpers
 
+#[derive(PartialEq, Eq)]
 pub enum Layout {
     Horizontal,
     Vertical,
@@ -58,9 +59,9 @@ pub struct Container {
 }
 
 impl Container {
-    pub fn new() -> Self {
+    pub fn new(layout: Layout) -> Self {
         Self {
-            layout: Layout::Horizontal,
+            layout,
             children: Vec::new(),
             area: Rect::default(),
         }
@@ -69,13 +70,13 @@ impl Container {
 
 impl Default for Container {
     fn default() -> Self {
-        Self::new()
+        Self::new(Layout::Horizontal)
     }
 }
 
 impl Tree {
     pub fn new(area: Rect) -> Self {
-        let root = Node::container();
+        let root = Node::container(Layout::Horizontal);
 
         let mut nodes = HopSlotMap::with_key();
         let root = nodes.insert(root);
@@ -122,6 +123,79 @@ impl Tree {
         };
 
         container.children.insert(pos, node);
+        // focus the new node
+        self.focus = node;
+
+        // recalculate all the sizes
+        self.recalculate();
+
+        node
+    }
+
+    pub fn split(&mut self, view: View, layout: Layout) -> ViewId {
+        let focus = self.focus;
+        let parent = self.nodes[focus].parent;
+
+        let node = Node::view(view);
+        let node = self.nodes.insert(node);
+        self.get_mut(node).id = node;
+
+        let container = match &mut self.nodes[parent] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container,
+            _ => unreachable!(),
+        };
+
+        if container.layout == layout {
+            // insert node after the current item if there is children already
+            let pos = if container.children.is_empty() {
+                0
+            } else {
+                let pos = container
+                    .children
+                    .iter()
+                    .position(|&child| child == focus)
+                    .unwrap();
+                pos + 1
+            };
+            container.children.insert(pos, node);
+            self.nodes[node].parent = parent;
+        } else {
+            let split = Node::container(layout);
+            let split = self.nodes.insert(split);
+
+            let container = match &mut self.nodes[split] {
+                Node {
+                    content: Content::Container(container),
+                    ..
+                } => container,
+                _ => unreachable!(),
+            };
+            container.children.push(focus);
+            container.children.push(node);
+            self.nodes[focus].parent = split;
+            self.nodes[node].parent = split;
+
+            let container = match &mut self.nodes[parent] {
+                Node {
+                    content: Content::Container(container),
+                    ..
+                } => container,
+                _ => unreachable!(),
+            };
+
+            let pos = container
+                .children
+                .iter()
+                .position(|&child| child == focus)
+                .unwrap();
+
+            // replace focus on parent with split
+            container.children[pos] = split;
+        }
+
         // focus the new node
         self.focus = node;
 

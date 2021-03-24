@@ -39,7 +39,8 @@ impl Application {
 
         let files = args.values_of_t::<PathBuf>("files").unwrap();
         for file in files {
-            editor.open(file)?;
+            use helix_view::editor::Action;
+            editor.open(file, Action::HorizontalSplit)?;
         }
 
         compositor.push(Box::new(ui::EditorView::new()));

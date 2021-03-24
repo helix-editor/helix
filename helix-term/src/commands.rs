@@ -798,7 +798,8 @@ pub fn command_mode(cx: &mut Context) {
                     // editor.should_close = true,
                 }
                 ["o", path] | ["open", path] => {
-                    editor.open(path.into());
+                    use helix_view::editor::Action;
+                    editor.open(path.into(), Action::Replace);
                 }
                 ["w"] | ["write"] => {
                     // TODO: non-blocking via save() command
@@ -992,11 +993,13 @@ pub fn exit_select_mode(cx: &mut Context) {
 }
 
 fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
+    use helix_view::editor::Action;
     cx.doc().mode = Mode::Normal;
 
     match locations.as_slice() {
         [location] => {
-            cx.editor.open(PathBuf::from(location.uri.path()));
+            cx.editor
+                .open(PathBuf::from(location.uri.path()), Action::Replace);
             let doc = cx.doc();
             let definition_pos = location.range.start;
             let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);
@@ -1012,7 +1015,7 @@ fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                     format!("{}:{}", file, line).into()
                 },
                 move |editor: &mut Editor, item| {
-                    editor.open(PathBuf::from(item.uri.path()));
+                    editor.open(PathBuf::from(item.uri.path()), Action::Replace);
                     // TODO: issues with doc already being broo
                     let id = editor.view().doc;
                     let doc = &mut editor.documents[id];
