@@ -1122,13 +1122,105 @@ pub fn goto_reference(cx: &mut Context) {
     goto(cx, res);
 }
 
+pub fn signature_help(cx: &mut Context) {
+    let doc = cx.doc();
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // TODO: blocking here is not ideal
+    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection().cursor());
+
+    // TODO: handle fails
+
+    let res = smol::block_on(language_server.text_document_signature_help(doc.identifier(), pos))
+        .unwrap_or_default();
+
+    if let Some(signature_help) = res {
+        log::info!("{:?}", signature_help);
+        // signatures
+        // active_signature
+        // active_parameter
+        // render as:
+
+        // signature
+        // ----------
+        // doc
+
+        // with active param highlighted
+    }
+}
+
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
 pub mod insert {
     use super::*;
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
+    pub type PostHook = fn(&mut Context, char);
 
     use helix_core::auto_pairs;
     const HOOKS: &[Hook] = &[auto_pairs::hook];
+
+    fn completion(cx: &mut Context, ch: char) {
+        // if ch matches completion char, trigger completion
+        let doc = cx.doc();
+        let language_server = match doc.language_server() {
+            Some(language_server) => language_server,
+            None => return,
+        };
+
+        let capabilities = language_server.capabilities();
+
+        if let lsp::ServerCapabilities {
+            completion_provider:
+                Some(lsp::CompletionOptions {
+                    trigger_characters: Some(triggers),
+                    ..
+                }),
+            ..
+        } = capabilities
+        {
+            // TODO: what if trigger is multiple chars long
+            let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
+
+            if is_trigger {
+                super::completion(cx);
+            }
+        }
+    }
+
+    // TODO: the pre-hook handles ( so post hook never gets called
+    fn signature_help(cx: &mut Context, ch: char) {
+        // if ch matches signature_help char, trigger
+        let doc = cx.doc();
+        let language_server = match doc.language_server() {
+            Some(language_server) => language_server,
+            None => return,
+        };
+
+        let capabilities = language_server.capabilities();
+
+        if let lsp::ServerCapabilities {
+            signature_help_provider:
+                Some(lsp::SignatureHelpOptions {
+                    trigger_characters: Some(triggers),
+                    // TODO: retrigger_characters
+                    ..
+                }),
+            ..
+        } = capabilities
+        {
+            // TODO: what if trigger is multiple chars long
+            let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
+
+            if is_trigger {
+                super::signature_help(cx);
+            }
+        }
+    }
+
+    const POST_HOOKS: &[PostHook] = &[completion, signature_help];
 
     // TODO: insert means add text just before cursor, on exit we should be on the last letter.
     pub fn insert_char(cx: &mut Context, c: char) {
@@ -1142,10 +1234,17 @@ pub mod insert {
             }
         }
 
-        let c = Tendril::from_char(c);
-        let transaction = Transaction::insert(doc.text(), doc.selection(), c);
+        let t = Tendril::from_char(c);
+        let transaction = Transaction::insert(doc.text(), doc.selection(), t);
 
         doc.apply(&transaction);
+
+        // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
+        // this could also generically look at Transaction, but it's a bit annoying to look at
+        // Operation instead of Change.
+        for hook in POST_HOOKS {
+            hook(cx, c);
+        }
     }
 
     pub fn insert_tab(cx: &mut Context) {
@@ -1162,6 +1261,7 @@ pub mod insert {
         let doc = cx.doc();
         let text = doc.text().slice(..);
         let transaction = Transaction::change_by_selection(doc.text(), doc.selection(), |range| {
+            // TODO: offset range.head by 1? when calculating?
             let indent_level =
                 helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, range.head, true);
             let indent = doc.indent_unit().repeat(indent_level);
@@ -1514,6 +1614,7 @@ pub fn completion(cx: &mut Context) {
                         //
                         // or we could simply use doc.undo + apply when changing between options
 
+                        // always present here
                         let item = item.unwrap();
 
                         use helix_lsp::{lsp, util};

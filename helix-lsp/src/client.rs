@@ -85,6 +85,12 @@ impl Client {
         }
     }
 
+    pub fn capabilities(&self) -> &lsp::ServerCapabilities {
+        self.capabilities
+            .as_ref()
+            .expect("language server not yet initialized!")
+    }
+
     /// Execute a RPC request on the language server.
     pub async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
     where

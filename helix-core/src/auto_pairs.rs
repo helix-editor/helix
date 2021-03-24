@@ -28,13 +28,11 @@ const CLOSE_BEFORE: &str = ")]}'\":;> \n"; // includes space and newline
 pub fn hook(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
     for &(open, close) in PAIRS {
         if open == ch {
-            let t = if open == close {
-                return None;
-                // handle_same()
+            if open == close {
+                return handle_same(doc, selection, open);
             } else {
-                handle_open(doc, selection, open, close, CLOSE_BEFORE)
-            };
-            return Some(t);
+                return Some(handle_open(doc, selection, open, close, CLOSE_BEFORE));
+            }
         }
 
         if close == ch {
@@ -115,7 +113,21 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
 }
 
 // handle cases where open and close is the same, or in triples ("""docstring""")
-fn handle_same() {
+fn handle_same(doc: &Rope, selection: &Selection, token: char) -> Option<Transaction> {
     // if not cursor but selection, wrap
     // let next = next char
+
+    // if next == bracket {
+    //   // if start of syntax node, insert token twice (new pair because node is complete)
+    //   // elseif colsedBracketAt
+    //      // is_triple == allow triple && next 3 is equal
+    //      // cursor jump over
+    // }
+    //} else if allow_triple && followed by triple {
+    //}
+    //} else if next != word char && prev != bracket && prev != word char {
+    // // condition checks for cases like I' where you don't want I'' (or I'm)
+    //  insert pair ("")
+    //}
+    None
 }
