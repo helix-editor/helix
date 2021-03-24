@@ -253,6 +253,9 @@ pub fn default() -> Keymaps {
         shift!('K') => commands::hover,
 
         // z family for save/restore/combine from/to sels from register
+
+        ctrl!('i') => commands::jump_forward, // TODO: ctrl-i conflicts tab
+        ctrl!('o') => commands::jump_backward,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
     // we keep this separate select mode. More keys can fit into normal mode then, but it's weird

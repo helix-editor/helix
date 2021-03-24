@@ -5,17 +5,56 @@ use std::borrow::Cow;
 use crate::{Document, DocumentId, ViewId};
 use helix_core::{
     graphemes::{grapheme_width, RopeGraphemes},
-    Position, RopeSlice,
+    Position, RopeSlice, Selection,
 };
 use tui::layout::Rect;
 
 pub const PADDING: usize = 5;
+
+type Jump = (DocumentId, Selection);
+
+pub struct JumpList {
+    jumps: Vec<Jump>,
+    current: usize,
+}
+
+impl JumpList {
+    pub fn new(initial: Jump) -> Self {
+        Self {
+            jumps: vec![initial],
+            current: 0,
+        }
+    }
+
+    pub fn push(&mut self, jump: Jump) {
+        self.jumps.truncate(self.current + 1);
+        self.jumps.push(jump);
+        self.current += 1;
+    }
+
+    pub fn forward(&mut self, count: usize) -> Option<&Jump> {
+        if self.current + count < self.jumps.len() {
+            self.current += count;
+            return self.jumps.get(self.current);
+        }
+        None
+    }
+
+    pub fn backward(&mut self, count: usize) -> Option<&Jump> {
+        if self.current.checked_sub(count).is_some() {
+            self.current -= count;
+            return self.jumps.get(self.current);
+        }
+        None
+    }
+}
 
 pub struct View {
     pub id: ViewId,
     pub doc: DocumentId,
     pub first_line: usize,
     pub area: Rect,
+    pub jumps: JumpList,
 }
 
 impl View {
@@ -25,6 +64,7 @@ impl View {
             doc,
             first_line: 0,
             area: Rect::default(), // will get calculated upon inserting into tree
+            jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
         };
 
         Ok(view)

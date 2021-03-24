@@ -1642,3 +1642,25 @@ pub fn match_brackets(cx: &mut Context) {
         };
     }
 }
+
+//
+
+pub fn jump_forward(cx: &mut Context) {
+    let count = cx.count;
+    let view = cx.view();
+
+    if let Some((id, selection)) = view.jumps.forward(count) {
+        view.first_line = 0;
+        view.doc = *id;
+    };
+}
+
+pub fn jump_backward(cx: &mut Context) {
+    let count = cx.count;
+    let view = cx.view();
+
+    if let Some((id, selection)) = view.jumps.backward(count) {
+        view.first_line = 0;
+        view.doc = *id;
+    };
+}

@@ -90,7 +90,11 @@ impl Editor {
         use crate::tree::Layout;
         match action {
             Action::Replace => {
+                let view = self.view();
+                let jump = (view.doc, self.documents[view.doc].selection().clone());
+
                 let view = self.view_mut();
+                view.jumps.push(jump);
                 view.doc = id;
                 view.first_line = 0;
                 return Ok(id);
