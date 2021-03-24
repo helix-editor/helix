@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 
 use crate::{
     compositor::{Callback, Compositor},
-    ui::{self, Popup, Prompt, PromptEvent},
+    ui::{self, Picker, Popup, Prompt, PromptEvent},
 };
 
 use std::path::PathBuf;
@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use helix_view::{
     document::Mode,
     view::{View, PADDING},
-    Document, Editor,
+    Document, DocumentId, Editor,
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
@@ -820,10 +820,39 @@ pub fn file_picker(cx: &mut Context) {
 }
 
 pub fn buffer_picker(cx: &mut Context) {
-    // let documents = cx.editor.documents.iter().map(||).collect();
-    // (document_id, relative_path/name) mappings
-    // let picker = ui::buffer_picker(&documents, editor.focus);
-    // cx.push_layer(Box::new(picker));
+    use std::path::{Path, PathBuf};
+    let current = cx.editor.view().doc;
+
+    let picker = Picker::new(
+        cx.editor
+            .documents
+            .iter()
+            .map(|(id, doc)| (id, doc.relative_path().map(Path::to_path_buf)))
+            .collect(),
+        move |(id, path): &(DocumentId, Option<PathBuf>)| {
+            // format_fn
+            match path {
+                Some(path) => {
+                    if *id == current {
+                        format!("{} (*)", path.to_str().unwrap()).into()
+                    } else {
+                        path.to_str().unwrap().into()
+                    }
+                }
+                None => "[NEW]".into(),
+            }
+        },
+        |editor: &mut Editor, (_, path): &(DocumentId, Option<PathBuf>)| match path {
+            Some(path) => {
+                use helix_view::editor::Action;
+                editor
+                    .open(path.into(), Action::Replace)
+                    .expect("editor.open failed");
+            }
+            None => (),
+        },
+    );
+    cx.push_layer(Box::new(picker));
 }
 
 // calculate line numbers for each selection range

@@ -20,6 +20,8 @@ pub use tui::style::{Color, Modifier, Style};
 use helix_core::regex::Regex;
 use helix_view::{Document, Editor};
 
+use std::path::{Path, PathBuf};
+
 // TODO: temp
 #[inline(always)]
 pub fn text_color() -> Style {
@@ -75,7 +77,6 @@ pub fn regex_prompt(
     )
 }
 
-use std::path::{Path, PathBuf};
 pub fn file_picker(root: &str) -> Picker<PathBuf> {
     use ignore::Walk;
     // TODO: determine root based on git root
@@ -105,36 +106,6 @@ pub fn file_picker(root: &str) -> Picker<PathBuf> {
             let document_id = editor
                 .open(path.into(), Action::Replace)
                 .expect("editor.open failed");
-        },
-    )
-}
-
-use helix_view::View;
-pub fn buffer_picker(buffers: &[Document], current: usize) -> Picker<(Option<PathBuf>, usize)> {
-    use helix_view::Editor;
-    Picker::new(
-        buffers
-            .iter()
-            .enumerate()
-            .map(|(i, doc)| (doc.relative_path().map(Path::to_path_buf), i))
-            .collect(),
-        move |(path, index): &(Option<PathBuf>, usize)| {
-            // format_fn
-            match path {
-                Some(path) => {
-                    if *index == current {
-                        format!("{} (*)", path.to_str().unwrap()).into()
-                    } else {
-                        path.to_str().unwrap().into()
-                    }
-                }
-                None => "[NEW]".into(),
-            }
-        },
-        |editor: &mut Editor, &(_, index): &(Option<PathBuf>, usize)| {
-            // if index < editor.views.len() {
-            //     editor.focus = index;
-            // }
         },
     )
 }
