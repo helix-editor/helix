@@ -90,8 +90,9 @@ impl Editor {
         use crate::tree::Layout;
         match action {
             Action::Replace => {
-                self.view_mut().doc = id;
-                // TODO: reset selection?
+                let view = self.view_mut();
+                view.doc = id;
+                view.first_line = 0;
                 return Ok(id);
             }
             Action::HorizontalSplit => {
