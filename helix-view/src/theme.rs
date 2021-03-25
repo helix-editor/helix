@@ -1,5 +1,7 @@
-use helix_core::hashmap;
 use std::collections::HashMap;
+
+use serde::{Deserialize, Deserializer};
+use toml::Value;
 
 #[cfg(feature = "term")]
 pub use tui::style::{Color, Style};
@@ -83,69 +85,88 @@ pub use tui::style::{Color, Style};
 // }
 
 /// Color theme for syntax highlighting.
+#[derive(Debug)]
 pub struct Theme {
     scopes: Vec<String>,
-    mapping: HashMap<&'static str, Style>,
+    styles: HashMap<String, Style>,
 }
 
-impl Default for Theme {
-    fn default() -> Self {
-        let mapping = hashmap! {
-            "attribute" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "keyword" => Style::default().fg(Color::Rgb(236, 205, 186)), // almond
-            "punctuation" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            "punctuation.delimiter" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            "operator" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "property" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            "variable.parameter" => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
-            // TODO distinguish type from type.builtin?
-            "type" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "type.builtin" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "constructor" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "function" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "function.macro" => Style::default().fg(Color::Rgb(219, 191, 239)), // lilac
-            "comment" => Style::default().fg(Color::Rgb(105, 124, 129)), // sirocco
-            "variable.builtin" => Style::default().fg(Color::Rgb(159, 242, 143)), // mint
-            "constant" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "constant.builtin" => Style::default().fg(Color::Rgb(255, 255, 255)), // white
-            "string" => Style::default().fg(Color::Rgb(204, 204, 204)), // silver
-            "escape" => Style::default().fg(Color::Rgb(239, 186, 93)), // honey
-            // used for lifetimes
-            "label" => Style::default().fg(Color::Rgb(239, 186, 93)), // honey
+impl<'de> Deserialize<'de> for Theme {
+    fn deserialize<D>(deserializer: D) -> Result<Theme, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut styles = HashMap::new();
 
-            // TODO: diferentiate number builtin
-            // TODO: diferentiate doc comment
-            // TODO: variable as lilac
-            // TODO: mod/use statements as white
-            // TODO: mod stuff as chamoise
-            // TODO: add "(scoped_identifier) @path" for std::mem::
-            //
-            // concat (ERROR) @syntax-error and "MISSING ;" selectors for errors
+        if let Ok(colors) = HashMap::<String, Value>::deserialize(deserializer) {
+            // scopes.reserve(colors.len());
+            styles.reserve(colors.len());
+            for (name, style_value) in colors {
+                let mut style = Style::default();
+                parse_style(&mut style, style_value);
+                // scopes.push(name);
+                styles.insert(name, style);
+            }
+        }
 
-            "module" => Style::default().fg(Color::Rgb(255, 0, 0)), // white
-            "variable" => Style::default().fg(Color::Rgb(255, 0, 0)), // white
-            "function.builtin" => Style::default().fg(Color::Rgb(255, 0, 0)), // white
+        let scopes = styles.keys().map(ToString::to_string).collect();
+        Ok(Theme { scopes, styles })
+    }
+}
 
-            "ui.background" => Style::default().bg(Color::Rgb(59, 34, 76)), // midnight
-            "ui.linenr" => Style::default().fg(Color::Rgb(90, 89, 119)), // comet
-            "ui.statusline" => Style::default().bg(Color::Rgb(40, 23, 51)), // revolver
-            "ui.popup" => Style::default().bg(Color::Rgb(40, 23, 51)), // revolver
+fn parse_style(style: &mut Style, value: Value) {
+    if let Value::Table(entries) = value {
+        for (name, value) in entries {
+            match name.as_str() {
+                "fg" => {
+                    if let Some(color) = parse_color(value) {
+                        *style = style.fg(color);
+                    }
+                }
+                "bg" => {
+                    if let Some(color) = parse_color(value) {
+                        *style = style.bg(color);
+                    }
+                }
+                _ => (),
+            }
+        }
+    } else if let Some(color) = parse_color(value) {
+        *style = style.fg(color);
+    }
+}
 
-            "warning" => Style::default().fg(Color::Rgb(255, 205, 28)),
-            "error" => Style::default().fg(Color::Rgb(244, 120, 104)),
-            "info" => Style::default().fg(Color::Rgb(111, 68, 240)),
-            "hint" => Style::default().fg(Color::Rgb(204, 204, 204)),
-        };
+fn hex_string_to_rgb(s: &str) -> Option<(u8, u8, u8)> {
+    if s.starts_with("#") && s.len() >= 7 {
+        if let (Ok(red), Ok(green), Ok(blue)) = (
+            u8::from_str_radix(&s[1..3], 16),
+            u8::from_str_radix(&s[3..5], 16),
+            u8::from_str_radix(&s[5..7], 16),
+        ) {
+            Some((red, green, blue))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
 
-        let scopes = mapping.keys().map(ToString::to_string).collect();
-
-        Self { scopes, mapping }
+fn parse_color(value: Value) -> Option<Color> {
+    if let Value::String(s) = value {
+        if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
+            Some(Color::Rgb(red, green, blue))
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 
 impl Theme {
     pub fn get(&self, scope: &str) -> Style {
-        self.mapping
+        self.styles
             .get(scope)
             .copied()
             .unwrap_or_else(|| Style::default().fg(Color::Rgb(0, 0, 255)))

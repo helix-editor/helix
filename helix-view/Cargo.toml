@@ -26,3 +26,6 @@ smol = "1"
 futures-util = "0.3"
 
 slotmap = "1"
+
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.5"

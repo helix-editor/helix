@@ -565,8 +565,10 @@ dependencies = [
  "helix-core",
  "helix-lsp",
  "once_cell",
+ "serde",
  "slotmap",
  "smol",
+ "toml",
  "tui",
  "url",
 ]

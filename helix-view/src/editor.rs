@@ -24,7 +24,10 @@ pub enum Action {
 
 impl Editor {
     pub fn new(executor: &'static smol::Executor<'static>, mut area: tui::layout::Rect) -> Self {
-        let theme = Theme::default();
+        // TODO: load from config dir
+        let toml = include_str!("../../theme.toml");
+        let theme: Theme = toml::from_str(&toml).expect("failed to parse theme.toml");
+
         let language_servers = helix_lsp::Registry::new();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
