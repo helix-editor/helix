@@ -1,0 +1,20 @@
+[[language]]
+name = "rust"
+scope = "source.rust"
+injection-regex = "rust"
+file-types = ["rs"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-rust"
+
+language-server = { command = "rust-analyzer" }
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "toml"
+scope = "source.toml"
+injection-regex = "toml"
+file-types = ["toml"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-toml"
+
+indent = { tab-width = 2, unit = "  " }

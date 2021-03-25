@@ -489,6 +489,7 @@ dependencies = [
  "once_cell",
  "regex",
  "ropey",
+ "serde",
  "smallvec",
  "tendril",
  "tree-sitter",
@@ -523,6 +524,7 @@ name = "helix-syntax"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "serde",
  "threadpool",
  "tree-sitter",
 ]
@@ -549,6 +551,7 @@ dependencies = [
  "pulldown-cmark",
  "smol",
  "smol-timeout",
+ "toml",
  "tui",
 ]
 
@@ -1206,6 +1209,15 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
+
+[[package]]
+name = "toml"
+version = "0.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a31142970826733df8241ef35dc040ef98c679ab14d7c3e54d827099b3acecaa"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "tree-sitter"

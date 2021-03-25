@@ -10,9 +10,19 @@ use std::{
 };
 
 use once_cell::sync::{Lazy, OnceCell};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct Configuration {
+    language: Vec<LanguageConfiguration>,
+}
 
 // largely based on tree-sitter/cli/src/loader.rs
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct LanguageConfiguration {
+    #[serde(rename = "name")]
+    pub(crate) language_id: Lang,
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
@@ -24,22 +34,29 @@ pub struct LanguageConfiguration {
     // injection_regex
     // first_line_regex
     //
-    //
-    pub(crate) language_id: Lang,
+    #[serde(skip)]
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
-    pub language_server_config: Option<LanguageServerConfiguration>,
-    pub indent_config: Option<IndentationConfiguration>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language_server: Option<LanguageServerConfiguration>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub indent: Option<IndentationConfiguration>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
     pub command: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
     pub tab_width: usize,
-    pub indent_unit: String,
+    pub unit: String,
 }
 
 impl LanguageConfiguration {
@@ -81,7 +98,7 @@ impl LanguageConfiguration {
     }
 }
 
-pub static LOADER: Lazy<Loader> = Lazy::new(Loader::init);
+pub static LOADER: OnceCell<Loader> = OnceCell::new();
 
 pub struct Loader {
     // highlight_names ?
@@ -90,48 +107,13 @@ pub struct Loader {
 }
 
 impl Loader {
-    fn init() -> Self {
+    pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
         };
 
-        // hardcoded from now, might load from toml
-        let configs = vec![
-            LanguageConfiguration {
-                scope: "source.rust".to_string(),
-                file_types: vec!["rs".to_string()],
-                language_id: Lang::Rust,
-                highlight_config: OnceCell::new(),
-                //
-                path: "../helix-syntax/languages/tree-sitter-rust".into(),
-                roots: vec![],
-                language_server_config: Some(LanguageServerConfiguration {
-                    command: "rust-analyzer".to_string(),
-                    args: vec![],
-                }),
-                indent_config: Some(IndentationConfiguration {
-                    tab_width: 4,
-                    indent_unit: String::from("    "),
-                }),
-            },
-            LanguageConfiguration {
-                scope: "source.toml".to_string(),
-                file_types: vec!["toml".to_string()],
-                language_id: Lang::Toml,
-                highlight_config: OnceCell::new(),
-                //
-                path: "../helix-syntax/languages/tree-sitter-toml".into(),
-                roots: vec![],
-                language_server_config: None,
-                indent_config: Some(IndentationConfiguration {
-                    tab_width: 2,
-                    indent_unit: String::from("  "),
-                }),
-            },
-        ];
-
-        for config in configs {
+        for config in config.language {
             // get the next id
             let language_id = loader.language_configs.len();
 

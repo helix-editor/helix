@@ -97,7 +97,10 @@ impl Document {
 
         let mut doc = Self::new(doc);
 
-        let language_config = LOADER.language_config_for_file_name(path.as_path());
+        let language_config = LOADER
+            .get()
+            .unwrap()
+            .language_config_for_file_name(path.as_path());
         doc.set_language(language_config, scopes);
 
         // canonicalize path to absolute value
@@ -161,7 +164,8 @@ impl Document {
     }
 
     pub fn set_language2(&mut self, scope: &str, scopes: &[String]) {
-        let language_config = LOADER.language_config_for_scope(scope);
+        let language_config = LOADER.get().unwrap().language_config_for_scope(scope);
+
         self.set_language(language_config, scopes);
     }
 
@@ -304,7 +308,7 @@ impl Document {
     pub fn tab_width(&self) -> usize {
         self.language
             .as_ref()
-            .and_then(|config| config.indent_config.as_ref())
+            .and_then(|config| config.indent.as_ref())
             .map(|config| config.tab_width)
             .unwrap_or(4) // fallback to 4 columns
     }
@@ -313,8 +317,8 @@ impl Document {
     pub fn indent_unit(&self) -> &str {
         self.language
             .as_ref()
-            .and_then(|config| config.indent_config.as_ref())
-            .map(|config| config.indent_unit.as_str())
+            .and_then(|config| config.indent.as_ref())
+            .map(|config| config.unit.as_str())
             .unwrap_or("  ") // fallback to 2 spaces
 
         // " ".repeat(TAB_WIDTH)

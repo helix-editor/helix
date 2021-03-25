@@ -73,6 +73,14 @@ fn main() {
 
     setup_logging(verbosity).expect("failed to initialize logging.");
 
+    // initialize language registry
+    use helix_core::syntax::{Loader, LOADER};
+    let toml = include_str!("../../languages.toml");
+    LOADER.get_or_init(|| {
+        let config = toml::from_str(&toml).expect("Could not parse languages.toml");
+        Loader::new(config)
+    });
+
     for _ in 0..num_cpus::get() {
         std::thread::spawn(move || smol::block_on(EX.run(smol::future::pending::<()>())));
     }

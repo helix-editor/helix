@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 tree-sitter = "0.17"
+serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]
 cc = { version = "1",  features = ["parallel"] }

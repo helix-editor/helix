@@ -41,3 +41,6 @@ ignore = "0.4"
 dirs-next = "2.0"
 # markdown doc rendering
 pulldown-cmark = { version = "0.8", default-features = false }
+
+# config
+toml = "0.5"

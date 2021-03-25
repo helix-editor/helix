@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use tree_sitter::Language;
 
 #[macro_export]
@@ -12,7 +13,8 @@ macro_rules! mk_extern {
 #[macro_export]
 macro_rules! mk_enum {
     ( $( $camel:ident ),* ) => {
-        #[derive(Clone, Copy, Debug, PartialEq)]
+        #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+        #[serde(rename_all = "lowercase")]
         pub enum Lang {
             $(
                 $camel,

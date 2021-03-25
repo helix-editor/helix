@@ -80,6 +80,8 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
 
                         let rope = Rope::from(text.as_ref());
                         let syntax = syntax::LOADER
+                            .get()
+                            .unwrap()
                             .language_config_for_scope(&format!("source.{}", language))
                             .and_then(|config| config.highlight_config(theme.scopes()))
                             .map(|config| Syntax::new(&rope, config));

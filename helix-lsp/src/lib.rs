@@ -127,7 +127,7 @@ impl Registry {
         ex: &smol::Executor,
     ) -> Option<Arc<Client>> {
         // TODO: propagate the error
-        if let Some(config) = &language_config.language_server_config {
+        if let Some(config) = &language_config.language_server {
             // avoid borrow issues
             let inner = &mut self.inner;
             let s_incoming = &self.incoming;
