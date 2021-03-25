@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Configuration {
-    language: Vec<LanguageConfiguration>,
+    pub language: Vec<LanguageConfiguration>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs

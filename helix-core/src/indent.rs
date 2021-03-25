@@ -293,9 +293,28 @@ where
         );
 
         let doc = Rope::from(doc);
-        let language_config = crate::syntax::LOADER
-            .language_config_for_scope("source.rust")
-            .unwrap();
+        use crate::syntax::{
+            Configuration, IndentationConfiguration, Lang, LanguageConfiguration, Loader,
+        };
+        use once_cell::sync::OnceCell;
+        let loader = Loader::new(Configuration {
+            language: vec![LanguageConfiguration {
+                scope: "source.rust".to_string(),
+                file_types: vec!["rs".to_string()],
+                language_id: Lang::Rust,
+                highlight_config: OnceCell::new(),
+                //
+                path: "../helix-syntax/languages/tree-sitter-rust".into(),
+                roots: vec![],
+                language_server: None,
+                indent: Some(IndentationConfiguration {
+                    tab_width: 4,
+                    unit: String::from("    "),
+                }),
+            }],
+        });
+
+        let language_config = loader.language_config_for_scope("source.rust").unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap();
         let syntax = Syntax::new(&doc, highlight_config.clone());
         let text = doc.slice(..);
