@@ -137,7 +137,7 @@ fn parse_style(style: &mut Style, value: Value) {
 }
 
 fn hex_string_to_rgb(s: &str) -> Option<(u8, u8, u8)> {
-    if s.starts_with("#") && s.len() >= 7 {
+    if s.starts_with('#') && s.len() >= 7 {
         if let (Ok(red), Ok(green), Ok(blue)) = (
             u8::from_str_radix(&s[1..3], 16),
             u8::from_str_radix(&s[3..5], 16),
