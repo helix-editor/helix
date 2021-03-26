@@ -130,9 +130,7 @@ impl Prompt {
                 theme.get("ui.statusline"),
             );
             for (i, (_range, completion)) in self.completion.iter().enumerate() {
-                let color = if self.completion_selection_index.is_some()
-                    && i == self.completion_selection_index.unwrap()
-                {
+                let color = if Some(i) == self.completion_selection_index {
                     Style::default().bg(Color::Rgb(104, 60, 232))
                 } else {
                     text_color

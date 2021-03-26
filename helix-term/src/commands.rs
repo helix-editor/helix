@@ -831,12 +831,12 @@ pub fn buffer_picker(cx: &mut Context) {
             .collect(),
         move |(id, path): &(DocumentId, Option<PathBuf>)| {
             // format_fn
-            match path {
+            match path.as_ref().and_then(|path| path.to_str()) {
                 Some(path) => {
                     if *id == current {
-                        format!("{} (*)", path.to_str().unwrap()).into()
+                        format!("{} (*)", path).into()
                     } else {
-                        path.to_str().unwrap().into()
+                        path.into()
                     }
                 }
                 None => "[NEW]".into(),

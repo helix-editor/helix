@@ -172,7 +172,7 @@ thread_local! {
 pub struct Syntax {
     config: Arc<HighlightConfiguration>,
 
-    pub(crate) root_layer: LanguageLayer,
+    root_layer: LanguageLayer,
 }
 
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
@@ -251,7 +251,7 @@ impl Syntax {
     //
     // fn parse(language, old_tree, ranges)
     //
-    fn tree(&self) -> &Tree {
+    pub fn tree(&self) -> &Tree {
         self.root_layer.tree()
     }
     //
@@ -363,7 +363,7 @@ impl LanguageLayer {
     //     Self { tree: None }
     // }
 
-    fn tree(&self) -> &Tree {
+    pub fn tree(&self) -> &Tree {
         // TODO: no unwrap
         self.tree.as_ref().unwrap()
     }
@@ -1566,7 +1566,7 @@ fn test_parser() {
     ",
     );
     let syntax = Syntax::new(&source, Arc::new(config));
-    let tree = syntax.root_layer.tree.unwrap();
+    let tree = syntax.tree();
     let root = tree.root_node();
     assert_eq!(root.kind(), "source_file");
 

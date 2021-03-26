@@ -24,7 +24,7 @@ fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
 /// Find the highest syntax node at position.
 /// This is to identify the column where this node (e.g., an HTML closing tag) ends.
 fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Node> {
-    let tree = syntax.root_layer.tree.as_ref().unwrap();
+    let tree = syntax.tree();
 
     // named_descendant
     let mut node = match tree.root_node().descendant_for_byte_range(pos, pos) {

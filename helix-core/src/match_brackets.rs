@@ -5,7 +5,7 @@ use crate::{Range, Rope, Selection, Syntax};
 
 #[must_use]
 pub fn find(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
-    let tree = syntax.root_layer.tree.as_ref().unwrap();
+    let tree = syntax.tree();
 
     let byte_pos = doc.char_to_byte(pos);
 

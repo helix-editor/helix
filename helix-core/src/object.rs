@@ -4,7 +4,7 @@ use smallvec::smallvec;
 // TODO: to contract_selection we'd need to store the previous ranges before expand.
 // Maybe just contract to the first child node?
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
-    let tree = syntax.root_layer.tree.as_ref().unwrap();
+    let tree = syntax.tree();
 
     selection.transform(|range| {
         let from = text.char_to_byte(range.from());
