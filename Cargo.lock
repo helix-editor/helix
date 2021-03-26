@@ -549,6 +549,8 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "pulldown-cmark",
+ "serde",
+ "serde_json",
  "smol",
  "smol-timeout",
  "toml",

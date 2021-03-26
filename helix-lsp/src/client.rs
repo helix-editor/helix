@@ -1,13 +1,12 @@
 use crate::{
     transport::{Payload, Transport},
-    Call, Error,
+    Call, Error, Result,
 };
-
-type Result<T> = core::result::Result<T, Error>;
 
 use helix_core::{ChangeSet, Rope};
 
 // use std::collections::HashMap;
+use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use jsonrpc_core as jsonrpc;
@@ -97,6 +96,21 @@ impl Client {
         R::Params: serde::Serialize,
         R::Result: core::fmt::Debug, // TODO: temporary
     {
+        // a future that resolves into the response
+        let future = self.call::<R>(params).await?;
+        let json = future.await?;
+        let response = serde_json::from_value(json)?;
+        Ok(response)
+    }
+
+    /// Execute a RPC request on the language server.
+    pub async fn call<R: lsp::request::Request>(
+        &self,
+        params: R::Params,
+    ) -> Result<impl Future<Output = Result<Value>>>
+    where
+        R::Params: serde::Serialize,
+    {
         let params = serde_json::to_value(params)?;
 
         let request = jsonrpc::MethodCall {
@@ -119,15 +133,15 @@ impl Client {
         use smol_timeout::TimeoutExt;
         use std::time::Duration;
 
-        let response = match rx.recv().timeout(Duration::from_secs(2)).await {
-            Some(response) => response,
-            None => return Err(Error::Timeout),
-        }
-        .map_err(|e| Error::Other(e.into()))??;
+        let future = async move {
+            rx.recv()
+                .timeout(Duration::from_secs(2))
+                .await
+                .ok_or(Error::Timeout)? // return Timeout
+                .map_err(|e| Error::Other(e.into()))?
+        };
 
-        let response = serde_json::from_value(response)?;
-
-        Ok(response)
+        Ok(future)
     }
 
     /// Send a RPC notification to the language server.
@@ -447,7 +461,8 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> Result<Vec<lsp::CompletionItem>> {
+    ) -> Result<impl Future<Output = Result<Value>>> {
+        // ) -> Result<Vec<lsp::CompletionItem>> {
         let params = lsp::CompletionParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,
@@ -464,19 +479,7 @@ impl Client {
             // lsp::CompletionContext { trigger_kind: , trigger_character: Some(), }
         };
 
-        let response = self.request::<lsp::request::Completion>(params).await?;
-
-        let items = match response {
-            Some(lsp::CompletionResponse::Array(items)) => items,
-            // TODO: do something with is_incomplete
-            Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                is_incomplete: _is_incomplete,
-                items,
-            })) => items,
-            None => Vec::new(),
-        };
-
-        Ok(items)
+        self.call::<lsp::request::Completion>(params).await
     }
 
     pub async fn text_document_signature_help(

@@ -439,6 +439,7 @@ impl Component for EditorView {
                     editor: &mut cx.editor,
                     count: 1,
                     callback: None,
+                    callbacks: cx.callbacks,
                     on_next_key_callback: None,
                 };
 

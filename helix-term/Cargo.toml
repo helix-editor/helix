@@ -44,3 +44,6 @@ pulldown-cmark = { version = "0.8", default-features = false }
 
 # config
 toml = "0.5"
+
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }

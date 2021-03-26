@@ -10,7 +10,7 @@ use helix_core::{
 use once_cell::sync::Lazy;
 
 use crate::{
-    compositor::{Callback, Compositor},
+    compositor::{Callback, Component, Compositor},
     ui::{self, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -26,13 +26,19 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use helix_lsp::lsp;
 
+use crate::application::{LspCallbackWrapper, LspCallbacks};
+
 pub struct Context<'a> {
     pub count: usize,
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
+    pub callbacks: &'a mut LspCallbacks,
 }
+
+use futures_util::FutureExt;
+use std::future::Future;
 
 impl<'a> Context<'a> {
     #[inline]
@@ -47,7 +53,7 @@ impl<'a> Context<'a> {
     }
 
     /// Push a new component onto the compositor.
-    pub fn push_layer(&mut self, mut component: Box<dyn crate::compositor::Component>) {
+    pub fn push_layer(&mut self, mut component: Box<dyn Component>) {
         self.callback = Some(Box::new(
             |compositor: &mut Compositor, editor: &mut Editor| {
                 let size = compositor.size();
@@ -64,6 +70,27 @@ impl<'a> Context<'a> {
         on_next_key_callback: impl FnOnce(&mut Context, KeyEvent) + 'static,
     ) {
         self.on_next_key_callback = Some(Box::new(on_next_key_callback));
+    }
+
+    #[inline]
+    pub fn callback<T, F>(
+        &mut self,
+        call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+        callback: F,
+    ) where
+        T: for<'de> serde::Deserialize<'de> + Send + 'static,
+        F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
+    {
+        let callback = Box::pin(async move {
+            let json = call.await?;
+            let response = serde_json::from_value(json)?;
+            let call: LspCallbackWrapper =
+                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                    callback(editor, compositor, response)
+                });
+            Ok(call)
+        });
+        self.callbacks.push(callback);
     }
 }
 
@@ -1564,6 +1591,24 @@ pub fn save(cx: &mut Context) {
 }
 
 pub fn completion(cx: &mut Context) {
+    // trigger on trigger char, or if user calls it
+    // (or on word char typing??)
+    // after it's triggered, if response marked is_incomplete, update on every subsequent keypress
+    //
+    // lsp calls are done via a callback: it sends a request and doesn't block.
+    // when we get the response similarly to notification, trigger a call to the completion popup
+    //
+    // language_server.completion(params, |cx: &mut Context, _meta, response| {
+    //    // called at response time
+    //    // compositor, lookup completion layer
+    //    // downcast dyn Component to Completion component
+    //    // emit response to completion (completion.complete/handle(response))
+    // })
+    // async {
+    //    let (response, callback) = response.await?;
+    //    callback(response)
+    // }
+
     let doc = cx.doc();
 
     let language_server = match doc.language_server() {
@@ -1576,91 +1621,119 @@ pub fn completion(cx: &mut Context) {
 
     // TODO: handle fails
 
-    let res = smol::block_on(language_server.completion(doc.identifier(), pos)).unwrap_or_default();
+    let res = smol::block_on(language_server.completion(doc.identifier(), pos)).unwrap();
 
-    // TODO: if no completion, show some message or something
-    if !res.is_empty() {
-        // let snapshot = doc.state.clone();
-        let mut menu = ui::Menu::new(
-            res,
-            |item| {
-                // format_fn
-                item.label.as_str().into()
+    cx.callback(
+        res,
+        |editor: &mut Editor,
+         compositor: &mut Compositor,
+         response: Option<lsp::CompletionResponse>| {
+            let items = match response {
+                Some(lsp::CompletionResponse::Array(items)) => items,
+                // TODO: do something with is_incomplete
+                Some(lsp::CompletionResponse::List(lsp::CompletionList {
+                    is_incomplete: _is_incomplete,
+                    items,
+                })) => items,
+                None => Vec::new(),
+            };
 
-                // TODO: use item.filter_text for filtering
-            },
-            move |editor: &mut Editor, item, event| {
-                match event {
-                    PromptEvent::Abort => {
-                        // revert state
-                        // let id = editor.view().doc;
-                        // let doc = &mut editor.documents[id];
-                        // doc.state = snapshot.clone();
-                    }
-                    PromptEvent::Validate => {
-                        let id = editor.view().doc;
-                        let doc = &mut editor.documents[id];
+            // TODO: if no completion, show some message or something
+            if !items.is_empty() {
+                // let snapshot = doc.state.clone();
+                let mut menu = ui::Menu::new(
+                    items,
+                    |item| {
+                        // format_fn
+                        item.label.as_str().into()
 
-                        // revert state to what it was before the last update
-                        // doc.state = snapshot.clone();
+                        // TODO: use item.filter_text for filtering
+                    },
+                    move |editor: &mut Editor, item, event| {
+                        match event {
+                            PromptEvent::Abort => {
+                                // revert state
+                                // let id = editor.view().doc;
+                                // let doc = &mut editor.documents[id];
+                                // doc.state = snapshot.clone();
+                            }
+                            PromptEvent::Validate => {
+                                let id = editor.view().doc;
+                                let doc = &mut editor.documents[id];
 
-                        // extract as fn(doc, item):
+                                // revert state to what it was before the last update
+                                // doc.state = snapshot.clone();
 
-                        // TODO: need to apply without composing state...
-                        // TODO: need to update lsp on accept/cancel by diffing the snapshot with
-                        // the final state?
-                        // -> on update simply update the snapshot, then on accept redo the call,
-                        // finally updating doc.changes + notifying lsp.
-                        //
-                        // or we could simply use doc.undo + apply when changing between options
+                                // extract as fn(doc, item):
 
-                        // always present here
-                        let item = item.unwrap();
+                                // TODO: need to apply without composing state...
+                                // TODO: need to update lsp on accept/cancel by diffing the snapshot with
+                                // the final state?
+                                // -> on update simply update the snapshot, then on accept redo the call,
+                                // finally updating doc.changes + notifying lsp.
+                                //
+                                // or we could simply use doc.undo + apply when changing between options
 
-                        use helix_lsp::{lsp, util};
-                        // determine what to insert: text_edit | insert_text | label
-                        let edit = if let Some(edit) = &item.text_edit {
-                            match edit {
-                                lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                                lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                                    unimplemented!("completion: insert_and_replace {:?}", item)
+                                // always present here
+                                let item = item.unwrap();
+
+                                use helix_lsp::{lsp, util};
+                                // determine what to insert: text_edit | insert_text | label
+                                let edit = if let Some(edit) = &item.text_edit {
+                                    match edit {
+                                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                                            unimplemented!(
+                                                "completion: insert_and_replace {:?}",
+                                                item
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    item.insert_text.as_ref().unwrap_or(&item.label);
+                                    unimplemented!();
+                                    // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
+                                    // and we insert at position.
+                                };
+
+                                // TODO: merge edit with additional_text_edits
+                                if let Some(additional_edits) = &item.additional_text_edits {
+                                    if !additional_edits.is_empty() {
+                                        unimplemented!(
+                                            "completion: additional_text_edits: {:?}",
+                                            additional_edits
+                                        );
+                                    }
                                 }
+
+                                let transaction =
+                                    util::generate_transaction_from_edits(doc.text(), vec![edit]);
+                                doc.apply(&transaction);
+                                // TODO: doc.append_changes_to_history(); if not in insert mode?
                             }
-                        } else {
-                            item.insert_text.as_ref().unwrap_or(&item.label);
-                            unimplemented!();
-                            // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
-                            // and we insert at position.
+                            _ => (),
                         };
+                    },
+                );
 
-                        // TODO: merge edit with additional_text_edits
-                        if let Some(additional_edits) = &item.additional_text_edits {
-                            if !additional_edits.is_empty() {
-                                unimplemented!(
-                                    "completion: additional_text_edits: {:?}",
-                                    additional_edits
-                                );
-                            }
-                        }
+                let popup = Popup::new(Box::new(menu));
+                let mut component: Box<dyn Component> = Box::new(popup);
 
-                        // TODO: <-- if state has changed by further input, transaction will panic on len
-                        let transaction =
-                            util::generate_transaction_from_edits(doc.text(), vec![edit]);
-                        doc.apply(&transaction);
-                        // TODO: doc.append_changes_to_history(); if not in insert mode?
-                    }
-                    _ => (),
-                };
-            },
-        );
+                //  Server error: content modified
 
-        let popup = Popup::new(Box::new(menu));
-        cx.push_layer(Box::new(popup));
+                // TODO: this is shared with cx.push_layer
+                let size = compositor.size();
+                // trigger required_size on init
+                component.required_size((size.width, size.height));
+                compositor.push(component);
+            }
+        },
+    );
 
-        // TODO!: when iterating over items, show the docs in popup
+    //    // TODO!: when iterating over items, show the docs in popup
 
-        // language server client needs to be accessible via a registry of some sort
-    }
+    //    // language server client needs to be accessible via a registry of some sort
+    //}
 }
 
 pub fn hover(cx: &mut Context) {

@@ -25,10 +25,13 @@ pub enum EventResult {
 
 use helix_view::{Editor, View};
 
+use crate::application::LspCallbacks;
+
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
     pub executor: &'static smol::Executor<'static>,
     pub scroll: Option<usize>,
+    pub callbacks: &'a mut LspCallbacks,
 }
 
 pub trait Component {

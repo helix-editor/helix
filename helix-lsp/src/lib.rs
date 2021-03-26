@@ -8,6 +8,8 @@ pub use lsp_types as lsp;
 pub use client::Client;
 pub use lsp::{Position, Url};
 
+pub type Result<T> = core::result::Result<T, Error>;
+
 use helix_core::syntax::LanguageConfiguration;
 
 use thiserror::Error;

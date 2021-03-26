@@ -24,11 +24,23 @@ use crossterm::{
 
 use tui::layout::Rect;
 
+// use futures_util::future::BoxFuture;
+use futures_util::stream::FuturesUnordered;
+use std::pin::Pin;
+
+type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
+pub type LspCallback =
+    BoxFuture<Result<Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>, anyhow::Error>>;
+
+pub type LspCallbacks = FuturesUnordered<LspCallback>;
+pub type LspCallbackWrapper = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
+
 pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
     executor: &'static smol::Executor<'static>,
+    callbacks: LspCallbacks,
 }
 
 impl Application {
@@ -50,6 +62,7 @@ impl Application {
             editor,
 
             executor,
+            callbacks: FuturesUnordered::new(),
         };
 
         Ok(app)
@@ -59,10 +72,12 @@ impl Application {
         let executor = &self.executor;
         let editor = &mut self.editor;
         let compositor = &mut self.compositor;
+        let callbacks = &mut self.callbacks;
 
         let mut cx = crate::compositor::Context {
             editor,
             executor,
+            callbacks,
             scroll: None,
         };
 
@@ -87,7 +102,20 @@ impl Application {
                 call = self.editor.language_servers.incoming.next().fuse() => {
                     self.handle_language_server_message(call).await
                 }
+                callback = self.callbacks.next().fuse() => {
+                    self.handle_language_server_callback(callback)
+                }
             }
+        }
+    }
+    pub fn handle_language_server_callback(
+        &mut self,
+        callback: Option<Result<LspCallbackWrapper, anyhow::Error>>,
+    ) {
+        if let Some(Ok(callback)) = callback {
+            // TODO: handle Err()
+            callback(&mut self.editor, &mut self.compositor);
+            self.render();
         }
     }
 
@@ -95,6 +123,7 @@ impl Application {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             executor: &self.executor,
+            callbacks: &mut self.callbacks,
             scroll: None,
         };
         // Handle key events
