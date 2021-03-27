@@ -156,14 +156,14 @@ impl Loader {
     }
 }
 
-pub struct TSParser {
+pub struct TsParser {
     parser: tree_sitter::Parser,
     cursors: Vec<QueryCursor>,
 }
 
 // could also just use a pool, or a single instance?
 thread_local! {
-    pub static PARSER: RefCell<TSParser> = RefCell::new(TSParser {
+    pub static PARSER: RefCell<TsParser> = RefCell::new(TsParser {
         parser: Parser::new(),
         cursors: Vec::new(),
     })
@@ -370,7 +370,7 @@ impl LanguageLayer {
 
     fn parse(
         &mut self,
-        ts_parser: &mut TSParser,
+        ts_parser: &mut TsParser,
         config: &HighlightConfiguration,
         source: &Rope,
         mut depth: usize,
@@ -554,7 +554,7 @@ impl LanguageLayer {
 
     fn update(
         &mut self,
-        ts_parser: &mut TSParser,
+        ts_parser: &mut TsParser,
         config: &HighlightConfiguration,
         old_source: &Rope,
         source: &Rope,
