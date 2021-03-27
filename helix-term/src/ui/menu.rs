@@ -9,6 +9,9 @@ use tui::{
 
 use std::borrow::Cow;
 
+use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
+use fuzzy_matcher::FuzzyMatcher;
+
 use helix_core::Position;
 use helix_view::Editor;
 
@@ -16,6 +19,10 @@ pub struct Menu<T> {
     options: Vec<T>,
 
     cursor: Option<usize>,
+
+    matcher: Box<Matcher>,
+    /// (index, score)
+    matches: Vec<(usize, i64)>,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
@@ -32,14 +39,53 @@ impl<T> Menu<T> {
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
-        Self {
+        let mut menu = Self {
             options,
+            matcher: Box::new(Matcher::default()),
+            matches: Vec::new(),
             cursor: None,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
             scroll: 0,
             size: (0, 0),
-        }
+        };
+
+        // TODO: scoring on empty input should just use a fastpath
+        menu.score("");
+
+        menu
+    }
+
+    pub fn score(&mut self, pattern: &str) {
+        // need to borrow via pattern match otherwise it complains about simultaneous borrow
+        let Self {
+            ref mut options,
+            ref mut matcher,
+            ref mut matches,
+            ref format_fn,
+            ..
+        } = *self;
+
+        // reuse the matches allocation
+        matches.clear();
+        matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    // TODO: maybe using format_fn isn't the best idea here
+                    let text = (format_fn)(option);
+                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    matcher
+                        .fuzzy_match(&text, pattern)
+                        .map(|score| (index, score))
+                }),
+        );
+        matches.sort_unstable_by_key(|(_, score)| -score);
+
+        // reset cursor position
+        self.cursor = None;
+        self.scroll = 0;
     }
 
     pub fn move_up(&mut self) {
@@ -71,7 +117,11 @@ impl<T> Menu<T> {
     }
 
     pub fn selection(&self) -> Option<&T> {
-        self.cursor.and_then(|cursor| self.options.get(cursor))
+        self.cursor.and_then(|cursor| {
+            self.matches
+                .get(cursor)
+                .map(|(index, _score)| &self.options[*index])
+        })
     }
 }
 
@@ -186,7 +236,17 @@ impl<T> Component for Menu<T> {
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
         let scroll = self.scroll;
-        let len = self.options.len();
+
+        let options: Vec<_> = self
+            .matches
+            .iter()
+            .map(|(index, _score)| {
+                // (index, self.options.get(*index).unwrap()) // get_unchecked
+                &self.options[*index] // get_unchecked
+            })
+            .collect();
+
+        let len = options.len();
 
         let win_height = area.height as usize;
 
@@ -199,7 +259,7 @@ impl<T> Component for Menu<T> {
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));
 
-        for (i, option) in self.options[scroll..(scroll + win_height).min(len)]
+        for (i, option) in options[scroll..(scroll + win_height).min(len)]
             .iter()
             .enumerate()
         {

@@ -92,7 +92,10 @@ impl Compositor {
             .expect("Unable to resize terminal")
     }
 
-    pub fn push(&mut self, layer: Box<dyn Component>) {
+    pub fn push(&mut self, mut layer: Box<dyn Component>) {
+        let size = self.size();
+        // trigger required_size on init
+        layer.required_size((size.width, size.height));
         self.layers.push(layer);
     }
 

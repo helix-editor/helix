@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 
 use crate::{
     compositor::{Callback, Component, Compositor},
-    ui::{self, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
 };
 
 use std::path::PathBuf;
@@ -55,12 +55,7 @@ impl<'a> Context<'a> {
     /// Push a new component onto the compositor.
     pub fn push_layer(&mut self, mut component: Box<dyn Component>) {
         self.callback = Some(Box::new(
-            |compositor: &mut Compositor, editor: &mut Editor| {
-                let size = compositor.size();
-                // trigger required_size on init
-                component.required_size((size.width, size.height));
-                compositor.push(component);
-            },
+            |compositor: &mut Compositor, editor: &mut Editor| compositor.push(component),
         ));
     }
 
@@ -1604,10 +1599,28 @@ pub fn completion(cx: &mut Context) {
     //    // downcast dyn Component to Completion component
     //    // emit response to completion (completion.complete/handle(response))
     // })
-    // async {
-    //    let (response, callback) = response.await?;
-    //    callback(response)
-    // }
+    //
+    // typing after prompt opens: usually start offset is tracked and everything between
+    // start_offset..cursor is replaced. For our purposes we could keep the start state (doc,
+    // selection) and revert to them before applying. This needs to properly reset changes/history
+    // though...
+    //
+    // company-mode does this by matching the prefix of the completion and removing it.
+
+    // ignore isIncomplete for now
+    // keep state while typing
+    // the behavior should be, filter the menu based on input
+    // if items returns empty at any point, remove the popup
+    // if backspace past initial offset point, remove the popup
+    //
+    // debounce requests!
+    //
+    // need an idle timeout thing.
+    // https://github.com/company-mode/company-mode/blob/master/company.el#L620-L622
+    //
+    //  "The idle delay in seconds until completion starts automatically.
+    // The prefix still has to satisfy `company-minimum-prefix-length' before that
+    // happens.  The value of nil means no idle completion."
 
     let doc = cx.doc();
 
@@ -1623,11 +1636,13 @@ pub fn completion(cx: &mut Context) {
 
     let res = smol::block_on(language_server.completion(doc.identifier(), pos)).unwrap();
 
+    let trigger_offset = doc.selection().cursor();
+
     cx.callback(
         res,
-        |editor: &mut Editor,
-         compositor: &mut Compositor,
-         response: Option<lsp::CompletionResponse>| {
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::CompletionResponse>| {
             let items = match response {
                 Some(lsp::CompletionResponse::Array(items)) => items,
                 // TODO: do something with is_incomplete
@@ -1640,92 +1655,11 @@ pub fn completion(cx: &mut Context) {
 
             // TODO: if no completion, show some message or something
             if !items.is_empty() {
-                // let snapshot = doc.state.clone();
-                let mut menu = ui::Menu::new(
-                    items,
-                    |item| {
-                        // format_fn
-                        item.label.as_str().into()
-
-                        // TODO: use item.filter_text for filtering
-                    },
-                    move |editor: &mut Editor, item, event| {
-                        match event {
-                            PromptEvent::Abort => {
-                                // revert state
-                                // let id = editor.view().doc;
-                                // let doc = &mut editor.documents[id];
-                                // doc.state = snapshot.clone();
-                            }
-                            PromptEvent::Validate => {
-                                let id = editor.view().doc;
-                                let doc = &mut editor.documents[id];
-
-                                // revert state to what it was before the last update
-                                // doc.state = snapshot.clone();
-
-                                // extract as fn(doc, item):
-
-                                // TODO: need to apply without composing state...
-                                // TODO: need to update lsp on accept/cancel by diffing the snapshot with
-                                // the final state?
-                                // -> on update simply update the snapshot, then on accept redo the call,
-                                // finally updating doc.changes + notifying lsp.
-                                //
-                                // or we could simply use doc.undo + apply when changing between options
-
-                                // always present here
-                                let item = item.unwrap();
-
-                                use helix_lsp::{lsp, util};
-                                // determine what to insert: text_edit | insert_text | label
-                                let edit = if let Some(edit) = &item.text_edit {
-                                    match edit {
-                                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                                            unimplemented!(
-                                                "completion: insert_and_replace {:?}",
-                                                item
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    item.insert_text.as_ref().unwrap_or(&item.label);
-                                    unimplemented!();
-                                    // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
-                                    // and we insert at position.
-                                };
-
-                                // TODO: merge edit with additional_text_edits
-                                if let Some(additional_edits) = &item.additional_text_edits {
-                                    if !additional_edits.is_empty() {
-                                        unimplemented!(
-                                            "completion: additional_text_edits: {:?}",
-                                            additional_edits
-                                        );
-                                    }
-                                }
-
-                                let transaction =
-                                    util::generate_transaction_from_edits(doc.text(), vec![edit]);
-                                doc.apply(&transaction);
-                                // TODO: doc.append_changes_to_history(); if not in insert mode?
-                            }
-                            _ => (),
-                        };
-                    },
-                );
-
-                let popup = Popup::new(Box::new(menu));
-                let mut component: Box<dyn Component> = Box::new(popup);
+                let completion = Completion::new(items, trigger_offset);
 
                 //  Server error: content modified
 
-                // TODO: this is shared with cx.push_layer
-                let size = compositor.size();
-                // trigger required_size on init
-                component.required_size((size.width, size.height));
-                compositor.push(component);
+                compositor.push(Box::new(completion));
             }
         },
     );
@@ -1774,7 +1708,7 @@ pub fn hover(cx: &mut Context) {
         // skip if contents empty
 
         let contents = ui::Markdown::new(contents);
-        let mut popup = Popup::new(Box::new(contents));
+        let mut popup = Popup::new(contents);
         cx.push_layer(Box::new(popup));
     }
 }

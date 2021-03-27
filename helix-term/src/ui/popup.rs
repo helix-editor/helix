@@ -15,17 +15,17 @@ use helix_view::Editor;
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
 
-pub struct Popup {
-    contents: Box<dyn Component>,
+pub struct Popup<T: Component> {
+    contents: T,
     position: Option<Position>,
     size: (u16, u16),
     scroll: usize,
 }
 
-impl Popup {
+impl<T: Component> Popup<T> {
     // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
     // rendering)
-    pub fn new(contents: Box<dyn Component>) -> Self {
+    pub fn new(contents: T) -> Self {
         Self {
             contents,
             position: None,
@@ -45,9 +45,13 @@ impl Popup {
             self.scroll = self.scroll.saturating_sub(offset);
         }
     }
+
+    pub fn contents(&mut self) -> &mut T {
+        &mut self.contents
+    }
 }
 
-impl Component for Popup {
+impl<T: Component> Component for Popup<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key = match event {
             Event::Key(event) => event,

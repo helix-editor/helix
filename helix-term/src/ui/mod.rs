@@ -1,3 +1,4 @@
+mod completion;
 mod editor;
 mod markdown;
 mod menu;
@@ -6,6 +7,7 @@ mod popup;
 mod prompt;
 mod text;
 
+pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
