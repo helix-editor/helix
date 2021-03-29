@@ -390,6 +390,10 @@ impl ChangeSet {
         }
         new_pos
     }
+
+    pub fn changes_iter(&self) -> ChangeIterator {
+        ChangeIterator::new(self)
+    }
 }
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
@@ -502,6 +506,10 @@ impl Transaction {
             (range.head, range.head, Some(text.clone()))
         })
     }
+
+    pub fn changes_iter(&self) -> ChangeIterator {
+        self.changes.changes_iter()
+    }
 }
 
 impl From<ChangeSet> for Transaction {
@@ -509,6 +517,51 @@ impl From<ChangeSet> for Transaction {
         Self {
             changes,
             selection: None,
+        }
+    }
+}
+
+pub struct ChangeIterator<'a> {
+    iter: std::iter::Peekable<std::slice::Iter<'a, Operation>>,
+    pos: usize,
+}
+
+impl<'a> ChangeIterator<'a> {
+    fn new(changeset: &'a ChangeSet) -> Self {
+        let iter = changeset.changes.iter().peekable();
+        Self { iter, pos: 0 }
+    }
+}
+
+impl<'a> Iterator for ChangeIterator<'a> {
+    type Item = Change;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use Operation::*;
+
+        loop {
+            match self.iter.next()? {
+                Retain(len) => {
+                    self.pos += len;
+                }
+                Delete(len) => {
+                    let start = self.pos;
+                    self.pos += len;
+                    return Some((start, self.pos, None));
+                }
+                Insert(s) => {
+                    let start = self.pos;
+                    // a subsequent delete means a replace, consume it
+                    if let Some(Delete(len)) = self.iter.peek() {
+                        self.iter.next();
+
+                        self.pos += len;
+                        return Some((start, self.pos, Some(s.clone())));
+                    } else {
+                        return Some((start, start, Some(s.clone())));
+                    }
+                }
+            }
         }
     }
 }
@@ -624,6 +677,14 @@ mod test {
         );
         transaction.apply(&mut state);
         assert_eq!(state.doc, Rope::from_str("hello void! 123"));
+    }
+
+    #[test]
+    fn changes_iter() {
+        let mut state = State::new("hello world!\ntest 123".into());
+        let changes = vec![(6, 11, Some("void".into())), (12, 17, None)];
+        let transaction = Transaction::change(&state.doc, changes.clone().into_iter());
+        assert_eq!(transaction.changes_iter().collect::<Vec<_>>(), changes);
     }
 
     #[test]
