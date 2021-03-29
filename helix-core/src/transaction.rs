@@ -350,6 +350,8 @@ impl ChangeSet {
 
                     // a subsequent delete means a replace, consume it
                     if let Some(Delete(len)) = iter.peek() {
+                        iter.next();
+
                         old_end = old_pos + len;
                         // in range of replaced text
                         if old_end > pos {
