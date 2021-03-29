@@ -174,6 +174,11 @@ impl Editor {
         self.documents.iter().map(|(_id, doc)| doc)
     }
 
+    // pub fn current_document(&self) -> Document {
+    //     let id = self.view().doc;
+    //     let doc = &mut editor.documents[id];
+    // }
+
     pub fn cursor_position(&self) -> Option<helix_core::Position> {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = self.view();

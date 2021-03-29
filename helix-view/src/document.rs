@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{Context, Error};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -90,7 +90,8 @@ impl Document {
         use std::{env, fs::File, io::BufReader};
         let _current_dir = env::current_dir()?;
 
-        let doc = Rope::from_reader(BufReader::new(File::open(path.clone())?))?;
+        let file = File::open(path.clone()).context(format!("unable to open {:?}", path))?;
+        let doc = Rope::from_reader(BufReader::new(file))?;
 
         // TODO: create if not found
 
@@ -183,7 +184,7 @@ impl Document {
         let success = transaction.apply(&mut self.state);
 
         if !transaction.changes().is_empty() {
-            // TODO: self.version += 1;?
+            self.version += 1;
 
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
@@ -193,7 +194,11 @@ impl Document {
                     .unwrap();
             }
 
-            // TODO: map state.diagnostics over changes::map_pos too
+            // if let Some(diagnostics) = &mut self.diagnostics {
+            //     for diagnostic in diagnostics {
+            //         // TODO: map state.diagnostics over changes::map_pos too
+            //     }
+            // }
 
             // emit lsp notification
             if let Some(language_server) = &self.language_server {
@@ -230,7 +235,6 @@ impl Document {
 
     pub fn undo(&mut self) -> bool {
         if let Some(transaction) = self.history.undo() {
-            self.version += 1;
             let success = self._apply(&transaction);
 
             // reset changeset to fix len
@@ -243,8 +247,6 @@ impl Document {
 
     pub fn redo(&mut self) -> bool {
         if let Some(transaction) = self.history.redo() {
-            self.version += 1;
-
             let success = self._apply(&transaction);
 
             // reset changeset to fix len
@@ -265,9 +267,6 @@ impl Document {
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
         let transaction = Transaction::from(changes).with_selection(self.selection().clone());
-
-        // increment document version
-        self.version += 1;
 
         // HAXX: we need to reconstruct the state as it was before the changes..
         let old_state = self.old_state.take().expect("no old_state available");
