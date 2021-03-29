@@ -26,6 +26,7 @@ use tui::{
 pub struct EditorView {
     keymap: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
+    status_msg: Option<String>,
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -35,6 +36,7 @@ impl EditorView {
         Self {
             keymap: keymap::default(),
             on_next_key: None,
+            status_msg: None,
         }
     }
 
@@ -68,6 +70,12 @@ impl EditorView {
             1,
         );
         self.render_statusline(&doc, area, surface, theme, is_focused);
+
+        // render status
+        if let Some(status_msg) = &self.status_msg {
+            let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
+            surface.set_string(viewport.x, viewport.y + viewport.height, status_msg, style);
+        }
     }
 
     pub fn render_buffer(
@@ -441,7 +449,11 @@ impl Component for EditorView {
                     callback: None,
                     callbacks: cx.callbacks,
                     on_next_key_callback: None,
+                    status_msg: None,
                 };
+
+                // clear status
+                self.status_msg = None;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -486,6 +498,7 @@ impl Component for EditorView {
                 }
 
                 self.on_next_key = cxt.on_next_key_callback.take();
+                self.status_msg = cxt.status_msg.take();
 
                 // appease borrowck
                 let callback = cxt.callback.take();

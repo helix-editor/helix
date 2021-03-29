@@ -35,6 +35,7 @@ pub struct Context<'a> {
     pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
     pub callbacks: &'a mut LspCallbacks,
+    pub status_msg: Option<String>,
 }
 
 use futures_util::FutureExt;
@@ -86,6 +87,11 @@ impl<'a> Context<'a> {
             Ok(call)
         });
         self.callbacks.push(callback);
+    }
+
+    // TODO: allow &'static str?
+    pub fn set_status(&mut self, msg: String) {
+        self.status_msg = Some(msg);
     }
 }
 
@@ -1378,7 +1384,7 @@ pub fn redo(cx: &mut Context) {
 pub fn yank(cx: &mut Context) {
     // TODO: should selections be made end inclusive?
     let doc = cx.doc();
-    let values = doc
+    let values: Vec<String> = doc
         .selection()
         .fragments(doc.text().slice(..))
         .map(|cow| cow.into_owned())
@@ -1386,7 +1392,11 @@ pub fn yank(cx: &mut Context) {
 
     // TODO: allow specifying reg
     let reg = '"';
+    let msg = format!("yanked {} selection(s) to register {}", values.len(), reg);
+
     register::set(reg, values);
+
+    cx.set_status(msg)
 }
 
 pub fn paste(cx: &mut Context) {
