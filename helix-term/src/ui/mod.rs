@@ -79,10 +79,9 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: &str) -> Picker<PathBuf> {
+pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
     use ignore::Walk;
-    // TODO: determine root based on git root
-    let files = Walk::new(root).filter_map(|entry| match entry {
+    let files = Walk::new(root.clone()).filter_map(|entry| match entry {
         Ok(entry) => {
             // filter dirs, but we might need special handling for symlinks!
             if !entry.file_type().unwrap().is_dir() {
@@ -96,12 +95,11 @@ pub fn file_picker(root: &str) -> Picker<PathBuf> {
 
     const MAX: usize = 1024;
 
-    use helix_view::Editor;
     Picker::new(
         files.take(MAX).collect(),
-        |path: &PathBuf| {
+        move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix("./").unwrap().to_str().unwrap().into()
+            path.strip_prefix(&root).unwrap().to_str().unwrap().into()
         },
         move |editor: &mut Editor, path: &PathBuf, action| {
             let document_id = editor

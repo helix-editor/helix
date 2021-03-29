@@ -14,7 +14,7 @@ use crate::{
     ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
 };
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use helix_view::{
     document::Mode,
@@ -840,8 +840,34 @@ pub fn command_mode(cx: &mut Context) {
     );
     cx.push_layer(Box::new(prompt));
 }
+
+fn find_root(root: Option<&str>) -> Option<PathBuf> {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+
+    let root = match root {
+        Some(root) => {
+            let root = Path::new(root);
+            if root.is_absolute() {
+                root.to_path_buf()
+            } else {
+                current_dir.join(root)
+            }
+        }
+        None => current_dir,
+    };
+
+    for ancestor in root.ancestors() {
+        // TODO: also use defined roots if git isn't found
+        if ancestor.join(".git").is_dir() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
+}
+
 pub fn file_picker(cx: &mut Context) {
-    let picker = ui::file_picker("./");
+    let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
+    let picker = ui::file_picker(root);
     cx.push_layer(Box::new(picker));
 }
 
