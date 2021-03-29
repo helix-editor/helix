@@ -864,7 +864,7 @@ pub fn buffer_picker(cx: &mut Context) {
                 None => "[NEW]".into(),
             }
         },
-        |editor: &mut Editor, (_, path): &(DocumentId, Option<PathBuf>)| match path {
+        |editor: &mut Editor, (_, path): &(DocumentId, Option<PathBuf>), _action| match path {
             Some(path) => {
                 use helix_view::editor::Action;
                 editor
@@ -1082,10 +1082,10 @@ fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                     let line = item.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
-                move |editor: &mut Editor, item| {
-                    editor.open(PathBuf::from(item.uri.path()), Action::Replace);
-                    // TODO: issues with doc already being broo
-                    let id = editor.view().doc;
+                move |editor: &mut Editor, item, action| {
+                    let id = editor
+                        .open(PathBuf::from(item.uri.path()), action)
+                        .expect("editor.open failed");
                     let doc = &mut editor.documents[id];
                     let definition_pos = item.range.start;
                     let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);

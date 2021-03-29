@@ -103,10 +103,9 @@ pub fn file_picker(root: &str) -> Picker<PathBuf> {
             // format_fn
             path.strip_prefix("./").unwrap().to_str().unwrap().into()
         },
-        move |editor: &mut Editor, path: &PathBuf| {
-            use helix_view::editor::Action;
+        move |editor: &mut Editor, path: &PathBuf, action| {
             let document_id = editor
-                .open(path.into(), Action::Replace)
+                .open(path.into(), action)
                 .expect("editor.open failed");
         },
     )

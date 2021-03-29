@@ -14,6 +14,7 @@ use std::borrow::Cow;
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
+use helix_view::editor::Action;
 use helix_view::Editor;
 
 pub struct Picker<T> {
@@ -28,14 +29,14 @@ pub struct Picker<T> {
     prompt: Prompt,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
-    callback_fn: Box<dyn Fn(&mut Editor, &T)>,
+    callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
 }
 
 impl<T> Picker<T> {
     pub fn new(
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
-        callback_fn: impl Fn(&mut Editor, &T) + 'static,
+        callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".to_string(),
@@ -133,13 +134,6 @@ impl<T> Component for Picker<T> {
         )));
 
         match key_event {
-            // KeyEvent {
-            //     code: KeyCode::Char(c),
-            //     modifiers: KeyModifiers::NONE,
-            // } => {
-            //     self.insert_char(c);
-            //     (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
-            // }
             KeyEvent {
                 code: KeyCode::Up, ..
             }
@@ -165,7 +159,25 @@ impl<T> Component for Picker<T> {
                 ..
             } => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option);
+                    (self.callback_fn)(&mut cx.editor, option, Action::Replace);
+                }
+                return close_fn;
+            }
+            KeyEvent {
+                code: KeyCode::Char('x'),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
+                }
+                return close_fn;
+            }
+            KeyEvent {
+                code: KeyCode::Char('v'),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(&mut cx.editor, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
