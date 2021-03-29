@@ -1032,7 +1032,24 @@ pub fn normal_mode(cx: &mut Context) {
 }
 
 pub fn goto_mode(cx: &mut Context) {
-    cx.doc().mode = Mode::Goto;
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            // TODO: temporarily show GOTO in the mode list
+            match ch {
+                'g' => move_file_start(cx),
+                'e' => move_file_end(cx),
+                'd' => goto_definition(cx),
+                't' => goto_type_definition(cx),
+                'r' => goto_reference(cx),
+                'i' => goto_implementation(cx),
+                _ => (),
+            }
+        }
+    })
 }
 
 pub fn select_mode(cx: &mut Context) {
@@ -1043,7 +1060,7 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-fn goto(cx: &mut Context, locations: Vec<lsp::Location>) {
+fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
     use helix_view::editor::Action;
     cx.doc().mode = Mode::Normal;
 
@@ -1093,7 +1110,7 @@ pub fn goto_definition(cx: &mut Context) {
     // TODO: handle fails
     let res =
         smol::block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
-    goto(cx, res);
+    _goto(cx, res);
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
@@ -1109,7 +1126,7 @@ pub fn goto_type_definition(cx: &mut Context) {
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_type_definition(doc.identifier(), pos))
         .unwrap_or_default();
-    goto(cx, res);
+    _goto(cx, res);
 }
 
 pub fn goto_implementation(cx: &mut Context) {
@@ -1125,7 +1142,7 @@ pub fn goto_implementation(cx: &mut Context) {
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_implementation(doc.identifier(), pos))
         .unwrap_or_default();
-    goto(cx, res);
+    _goto(cx, res);
 }
 
 pub fn goto_reference(cx: &mut Context) {
@@ -1141,7 +1158,7 @@ pub fn goto_reference(cx: &mut Context) {
     // TODO: handle fails
     let res =
         smol::block_on(language_server.goto_reference(doc.identifier(), pos)).unwrap_or_default();
-    goto(cx, res);
+    _goto(cx, res);
 }
 
 pub fn signature_help(cx: &mut Context) {

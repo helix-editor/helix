@@ -37,6 +37,7 @@ impl EditorView {
             on_next_key: None,
         }
     }
+
     pub fn render_view(
         &self,
         doc: &Document,
@@ -385,7 +386,6 @@ impl EditorView {
             Mode::Insert => "INS",
             Mode::Select => "SEL",
             Mode::Normal => "NOR",
-            Mode::Goto => "GOTO",
         };
         // TODO: share text_color styles inside theme
         let text_color = if is_focused {

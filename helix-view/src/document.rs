@@ -15,7 +15,6 @@ pub enum Mode {
     Normal,
     Select,
     Insert,
-    Goto,
 }
 
 pub struct Document {
