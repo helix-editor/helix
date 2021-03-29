@@ -1032,6 +1032,16 @@ pub fn normal_mode(cx: &mut Context) {
 }
 
 pub fn goto_mode(cx: &mut Context) {
+    let count = cx.count;
+    if count > 1 {
+        // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
+        // to 1g
+        let doc = cx.doc();
+        let pos = doc.text().line_to_char(count - 1);
+        doc.set_selection(Selection::point(pos));
+        return;
+    }
+
     cx.on_next_key(move |cx, event| {
         if let KeyEvent {
             code: KeyCode::Char(ch),
