@@ -240,8 +240,6 @@ pub fn move_next_word_end(cx: &mut Context) {
 pub fn move_file_start(cx: &mut Context) {
     let doc = cx.doc();
     doc.set_selection(Selection::point(0));
-
-    doc.mode = Mode::Normal;
 }
 
 pub fn move_file_end(cx: &mut Context) {
@@ -249,8 +247,6 @@ pub fn move_file_end(cx: &mut Context) {
     let text = doc.text();
     let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
     doc.set_selection(Selection::point(last_line));
-
-    doc.mode = Mode::Normal;
 }
 
 pub fn extend_next_word_start(cx: &mut Context) {
@@ -1072,35 +1068,31 @@ pub fn exit_select_mode(cx: &mut Context) {
 
 fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
     use helix_view::editor::Action;
-    cx.doc().mode = Mode::Normal;
+
+    fn jump_to(editor: &mut Editor, location: &lsp::Location, action: Action) {
+        let id = editor
+            .open(PathBuf::from(location.uri.path()), action)
+            .expect("editor.open failed");
+        let doc = &mut editor.documents[id];
+        let definition_pos = location.range.start;
+        let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);
+        doc.set_selection(Selection::point(new_pos));
+    }
 
     match locations.as_slice() {
         [location] => {
-            cx.editor
-                .open(PathBuf::from(location.uri.path()), Action::Replace);
-            let doc = cx.doc();
-            let definition_pos = location.range.start;
-            let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);
-            doc.set_selection(Selection::point(new_pos));
+            jump_to(cx.editor, location, Action::Replace);
         }
         [] => (), // maybe show user message that no definition was found?
         _locations => {
             let mut picker = ui::Picker::new(
                 locations,
-                |item| {
-                    let file = item.uri.as_str();
-                    let line = item.range.start.line;
+                |location| {
+                    let file = location.uri.as_str();
+                    let line = location.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
-                move |editor: &mut Editor, item, action| {
-                    let id = editor
-                        .open(PathBuf::from(item.uri.path()), action)
-                        .expect("editor.open failed");
-                    let doc = &mut editor.documents[id];
-                    let definition_pos = item.range.start;
-                    let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);
-                    doc.set_selection(Selection::point(new_pos));
-                },
+                move |editor: &mut Editor, location, action| jump_to(editor, location, action),
             );
             cx.push_layer(Box::new(picker));
         }
@@ -1797,5 +1789,8 @@ pub fn jump_backward(cx: &mut Context) {
     if let Some((id, selection)) = view.jumps.backward(count) {
         view.first_line = 0;
         view.doc = *id;
+        let selection = selection.clone();
+        let doc = cx.doc();
+        doc.set_selection(selection);
     };
 }
