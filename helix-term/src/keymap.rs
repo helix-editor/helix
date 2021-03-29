@@ -258,6 +258,7 @@ pub fn default() -> Keymaps {
 
         ctrl!('i') => commands::jump_forward, // TODO: ctrl-i conflicts tab
         ctrl!('o') => commands::jump_backward,
+        // ctrl!('s') => commands::save_selection,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
     // we keep this separate select mode. More keys can fit into normal mode then, but it's weird

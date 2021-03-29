@@ -27,9 +27,12 @@ impl JumpList {
     }
 
     pub fn push(&mut self, jump: Jump) {
-        self.jumps.truncate(self.current + 1);
-        self.jumps.push(jump);
-        self.current += 1;
+        self.jumps.truncate(self.current);
+        // don't push duplicates
+        if self.jumps.last() != Some(&jump) {
+            self.jumps.push(jump);
+            self.current = self.jumps.len();
+        }
     }
 
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {

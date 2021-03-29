@@ -275,6 +275,11 @@ impl Document {
     }
 
     #[inline]
+    pub fn id(&self) -> DocumentId {
+        self.id
+    }
+
+    #[inline]
     pub fn mode(&self) -> Mode {
         self.mode
     }

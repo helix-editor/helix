@@ -238,11 +238,13 @@ pub fn move_next_word_end(cx: &mut Context) {
 }
 
 pub fn move_file_start(cx: &mut Context) {
+    push_jump(cx);
     let doc = cx.doc();
     doc.set_selection(Selection::point(0));
 }
 
 pub fn move_file_end(cx: &mut Context) {
+    push_jump(cx);
     let doc = cx.doc();
     let text = doc.text();
     let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
@@ -1027,9 +1029,21 @@ pub fn normal_mode(cx: &mut Context) {
     }
 }
 
+// Store a jump on the jumplist.
+fn push_jump(cx: &mut Context) {
+    let jump = {
+        let doc = cx.doc();
+        (doc.id(), doc.selection().clone())
+    };
+    cx.view().jumps.push(jump);
+}
+
 pub fn goto_mode(cx: &mut Context) {
     let count = cx.count;
+
     if count > 1 {
+        push_jump(cx);
+
         // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
         // to 1g
         let doc = cx.doc();
@@ -1068,6 +1082,8 @@ pub fn exit_select_mode(cx: &mut Context) {
 
 fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
     use helix_view::editor::Action;
+
+    push_jump(cx);
 
     fn jump_to(editor: &mut Editor, location: &lsp::Location, action: Action) {
         let id = editor

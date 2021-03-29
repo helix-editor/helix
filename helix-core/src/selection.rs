@@ -127,7 +127,7 @@ impl Range {
 
 /// A selection consists of one or more selection ranges.
 /// invariant: A selection can never be empty (always contains at least primary range).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Selection {
     ranges: SmallVec<[Range; 1]>,
     primary_index: usize,

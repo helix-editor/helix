@@ -49,7 +49,7 @@ pub fn regex_prompt(
                     doc.set_selection(snapshot.clone());
                 }
                 PromptEvent::Validate => {
-                    //
+                    // TODO: push_jump to store selection just before jump
                 }
                 PromptEvent::Update => {
                     // skip empty input, TODO: trigger default
