@@ -11,13 +11,10 @@
 1
 - [ ] respect view fullscreen flag
 - [ ] Implement marks (superset of Selection/Range)
-- [ ] ctrl-v/ctrl-x on file picker
-- [ ] linewise selection work
 - [ ] nixos packaging
 - [ ] CI binary builds
 
 - [ ] regex search / select next
-- [x] open_above (O) command
 - [ ] = for auto indent line/selection
 - [ ] yank on delete
 - [ ]  :x for closing buffers
@@ -39,13 +36,12 @@
 
 - decide if markdown should have vertical padding too
 
-- completion/signature_help should be async callbacks to method responses.
 - the hooks system should be better for pre/post insert.
 
 2
 - [ ] surround bindings (select + surround ( wraps selection in parens )
 - [ ] macro recording
-- [ ] tab completion for paths on the prompt
+- [x] tab completion for paths on the prompt
 - [ ] extend selection (treesitter select parent node) (replaces viw, vi(, va( etc )
 - [ ] bracket pairs
 - [x] comment block (gcc)
