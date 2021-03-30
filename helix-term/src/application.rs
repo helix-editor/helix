@@ -99,10 +99,10 @@ impl Application {
                 event = reader.next().fuse() => {
                     self.handle_terminal_events(event)
                 }
-                call = self.editor.language_servers.incoming.next().fuse() => {
+                call = futures_util::StreamExt::select_next_some(&mut self.editor.language_servers.incoming) => {
                     self.handle_language_server_message(call).await
                 }
-                callback = self.callbacks.next().fuse() => {
+                callback = futures_util::StreamExt::select_next_some(&mut self.callbacks) => {
                     self.handle_language_server_callback(callback)
                 }
             }
@@ -110,9 +110,9 @@ impl Application {
     }
     pub fn handle_language_server_callback(
         &mut self,
-        callback: Option<Result<LspCallbackWrapper, anyhow::Error>>,
+        callback: Result<LspCallbackWrapper, anyhow::Error>,
     ) {
-        if let Some(Ok(callback)) = callback {
+        if let Ok(callback) = callback {
             // TODO: handle Err()
             callback(&mut self.editor, &mut self.compositor);
             self.render();
@@ -144,12 +144,10 @@ impl Application {
         }
     }
 
-    pub async fn handle_language_server_message(&mut self, call: Option<helix_lsp::Call>) {
+    pub async fn handle_language_server_message(&mut self, call: helix_lsp::Call) {
         use helix_lsp::{Call, Notification};
         match call {
-            Some(Call::Notification(helix_lsp::jsonrpc::Notification {
-                method, params, ..
-            })) => {
+            Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = Notification::parse(&method, params);
                 match notification {
                     Notification::PublishDiagnostics(params) => {
@@ -203,7 +201,7 @@ impl Application {
                     _ => unreachable!(),
                 }
             }
-            Some(Call::MethodCall(call)) => {
+            Call::MethodCall(call) => {
                 error!("Method not found {}", call.method);
 
                 // self.language_server.reply(
@@ -216,7 +214,6 @@ impl Application {
                 //     }),
                 // );
             }
-            None => (),
             e => unreachable!("{:?}", e),
         }
     }
