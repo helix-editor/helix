@@ -922,18 +922,25 @@ fn selection_lines(doc: &Rope, selection: &Selection) -> Vec<usize> {
 
 // I inserts at the start of each line with a selection
 pub fn prepend_to_line(cx: &mut Context) {
+    move_line_start(cx);
     let doc = cx.doc();
     enter_insert_mode(doc);
-
-    move_line_start(cx);
 }
 
 // A inserts at the end of each line with a selection
 pub fn append_to_line(cx: &mut Context) {
+    move_line_end(cx);
+
     let doc = cx.doc();
     enter_insert_mode(doc);
 
-    move_line_end(cx);
+    // offset by another 1 char since move_line_end will position on the last char, we want to
+    // append past that
+    let selection = doc.selection().transform(|range| {
+        let pos = range.head + 1;
+        Range::new(pos, pos)
+    });
+    doc.set_selection(selection);
 }
 
 // o inserts a new line after each line with a selection
