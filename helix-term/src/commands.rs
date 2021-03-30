@@ -1853,3 +1853,23 @@ pub fn jump_backward(cx: &mut Context) {
         doc.set_selection(selection);
     };
 }
+
+//
+
+pub fn space_mode(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            // TODO: temporarily show SPC in the mode list
+            match ch {
+                'f' => file_picker(cx),
+                'b' => buffer_picker(cx),
+                // ' ' => toggle_alternate_buffer(cx),
+                _ => (),
+            }
+        }
+    })
+}

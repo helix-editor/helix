@@ -244,8 +244,6 @@ pub fn default() -> Keymaps {
         ctrl!('u') => commands::half_page_up,
         ctrl!('d') => commands::half_page_down,
 
-        ctrl!('p') => commands::file_picker,
-        ctrl!('b') => commands::buffer_picker,
         KeyEvent {
             code: KeyCode::Tab,
             modifiers: KeyModifiers::NONE
@@ -260,6 +258,8 @@ pub fn default() -> Keymaps {
         ctrl!('i') => commands::jump_forward, // TODO: ctrl-i conflicts tab
         ctrl!('o') => commands::jump_backward,
         // ctrl!('s') => commands::save_selection,
+
+        key!(' ') => commands::space_mode,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
     // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
