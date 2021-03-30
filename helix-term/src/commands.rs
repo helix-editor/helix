@@ -830,7 +830,7 @@ pub fn command_mode(cx: &mut Context) {
                 ["w"] | ["write"] => {
                     // TODO: non-blocking via save() command
                     let id = editor.view().doc;
-                    let doc = &mut editor.document(id).unwrap();
+                    let doc = &mut editor.documents[id];
                     smol::block_on(doc.save());
                 }
 

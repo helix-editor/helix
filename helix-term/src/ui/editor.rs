@@ -415,14 +415,15 @@ impl EditorView {
 
         if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
+
+            let title = format!("{}{}", path, if doc.modified() { "[+]" } else { "" });
             surface.set_stringn(
                 viewport.x + 6,
                 viewport.y,
-                path,
+                title,
                 viewport.width.saturating_sub(6) as usize,
                 text_color,
             );
-            // TODO: append [+] if modified
         }
 
         surface.set_string(

@@ -31,6 +31,7 @@ pub struct Document {
     // /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
+    modified: bool,
     /// Pending changes since last history commit.
     changes: ChangeSet,
     /// State at last commit. Used for calculating reverts.
@@ -75,6 +76,7 @@ impl Document {
             restore_cursor: false,
             syntax: None,
             language: None,
+            modified: false,
             changes,
             old_state,
             diagnostics: Vec::new(),
@@ -111,7 +113,7 @@ impl Document {
 
     // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
     // or is that handled by the OS/async layer
-    pub fn save(&self) -> impl Future<Output = Result<(), anyhow::Error>> {
+    pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
 
@@ -120,9 +122,11 @@ impl Document {
         let identifier = self.identifier();
 
         // TODO: mark changes up to now as saved
-        // TODO: mark dirty false
 
         let language_server = self.language_server.clone();
+
+        // reset the modified flag
+        self.modified = false;
 
         async move {
             use smol::{fs::File, prelude::*};
@@ -224,6 +228,10 @@ impl Document {
 
         let success = self._apply(&transaction);
 
+        self.modified = true;
+        // TODO: be smarter about modified by keeping track of saved version instead. That way if
+        // current version == version then it's not modified.
+
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
             take_with(&mut self.changes, |changes| {
@@ -277,6 +285,11 @@ impl Document {
     #[inline]
     pub fn id(&self) -> DocumentId {
         self.id
+    }
+
+    #[inline]
+    pub fn modified(&self) -> bool {
+        self.modified
     }
 
     #[inline]
