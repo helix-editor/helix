@@ -722,7 +722,7 @@ pub fn delete_selection(cx: &mut Context) {
 pub fn change_selection(cx: &mut Context) {
     let doc = cx.doc();
     _delete_selection(doc);
-    insert_mode(cx);
+    enter_insert_mode(doc);
 }
 
 pub fn collapse_selection(cx: &mut Context) {

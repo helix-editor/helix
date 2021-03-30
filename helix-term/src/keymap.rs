@@ -88,43 +88,44 @@ use std::collections::HashMap;
 // }
 
 // #[cfg(feature = "term")]
-pub use crossterm::event::{KeyCode, KeyEvent as Key, KeyModifiers as Modifiers};
+pub use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-pub type Keymap = HashMap<Key, Command>;
+pub type Keymap = HashMap<KeyEvent, Command>;
 pub type Keymaps = HashMap<Mode, Keymap>;
 
+#[macro_export]
 macro_rules! key {
-    ($ch:expr) => {
-        Key {
-            code: KeyCode::Char($ch),
-            modifiers: Modifiers::NONE,
+    ($($ch:tt)*) => {
+        KeyEvent {
+            code: KeyCode::Char($($ch)*),
+            modifiers: KeyModifiers::NONE,
         }
     };
 }
 
 macro_rules! shift {
-    ($ch:expr) => {
-        Key {
-            code: KeyCode::Char($ch),
-            modifiers: Modifiers::SHIFT,
+    ($($ch:tt)*) => {
+        KeyEvent {
+            code: KeyCode::Char($($ch)*),
+            modifiers: KeyModifiers::SHIFT,
         }
     };
 }
 
 macro_rules! ctrl {
-    ($ch:expr) => {
-        Key {
-            code: KeyCode::Char($ch),
-            modifiers: Modifiers::CONTROL,
+    ($($ch:tt)*) => {
+        KeyEvent {
+            code: KeyCode::Char($($ch)*),
+            modifiers: KeyModifiers::CONTROL,
         }
     };
 }
 
 macro_rules! alt {
-    ($ch:expr) => {
-        Key {
-            code: KeyCode::Char($ch),
-            modifiers: Modifiers::ALT,
+    ($($ch:tt)*) => {
+        KeyEvent {
+            code: KeyCode::Char($($ch)*),
+            modifiers: KeyModifiers::ALT,
         }
     };
 }
@@ -228,26 +229,26 @@ pub fn default() -> Keymaps {
 
         // C / altC = copy (repeat) selections on prev/next lines
 
-        Key {
+        KeyEvent {
             code: KeyCode::Esc,
-            modifiers: Modifiers::NONE
+            modifiers: KeyModifiers::NONE
         } => commands::normal_mode,
-        Key {
+        KeyEvent {
             code: KeyCode::PageUp,
-            modifiers: Modifiers::NONE
+            modifiers: KeyModifiers::NONE
         } => commands::page_up,
-        Key {
+        KeyEvent {
             code: KeyCode::PageDown,
-            modifiers: Modifiers::NONE
+            modifiers: KeyModifiers::NONE
         } => commands::page_down,
         ctrl!('u') => commands::half_page_up,
         ctrl!('d') => commands::half_page_down,
 
         ctrl!('p') => commands::file_picker,
         ctrl!('b') => commands::buffer_picker,
-        Key {
+        KeyEvent {
             code: KeyCode::Tab,
-            modifiers: Modifiers::NONE
+            modifiers: KeyModifiers::NONE
         } => commands::next_view,
 
         // move under <space>c
@@ -280,9 +281,9 @@ pub fn default() -> Keymaps {
             shift!('T') => commands::extend_till_prev_char,
             shift!('F') => commands::extend_prev_char,
 
-            Key {
+            KeyEvent {
                 code: KeyCode::Esc,
-                modifiers: Modifiers::NONE
+                modifiers: KeyModifiers::NONE
             } => commands::exit_select_mode as Command,
         )
         .into_iter(),
@@ -294,25 +295,25 @@ pub fn default() -> Keymaps {
         Mode::Normal => normal,
         Mode::Select => select,
         Mode::Insert => hashmap!(
-            Key {
+            KeyEvent {
                 code: KeyCode::Esc,
-                modifiers: Modifiers::NONE
+                modifiers: KeyModifiers::NONE
             } => commands::normal_mode as Command,
-            Key {
+            KeyEvent {
                 code: KeyCode::Backspace,
-                modifiers: Modifiers::NONE
+                modifiers: KeyModifiers::NONE
             } => commands::insert::delete_char_backward,
-            Key {
+            KeyEvent {
                 code: KeyCode::Delete,
-                modifiers: Modifiers::NONE
+                modifiers: KeyModifiers::NONE
             } => commands::insert::delete_char_forward,
-            Key {
+            KeyEvent {
                 code: KeyCode::Enter,
-                modifiers: Modifiers::NONE
+                modifiers: KeyModifiers::NONE
             } => commands::insert::insert_newline,
-            Key {
+            KeyEvent {
                 code: KeyCode::Tab,
-                modifiers: Modifiers::NONE
+                modifiers: KeyModifiers::NONE
             } => commands::insert::insert_tab,
 
             ctrl!('x') => commands::completion,

@@ -1,6 +1,7 @@
 use crate::{
     commands,
     compositor::{Component, Compositor, Context, EventResult},
+    key,
     keymap::{self, Keymaps},
     ui::text_color,
 };
@@ -27,6 +28,7 @@ pub struct EditorView {
     keymap: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     status_msg: Option<String>,
+    last_insert: (commands::Command, Vec<KeyEvent>),
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -37,6 +39,7 @@ impl EditorView {
             keymap: keymap::default(),
             on_next_key: None,
             status_msg: None,
+            last_insert: (commands::normal_mode, Vec::new()),
         }
     }
 
@@ -429,6 +432,48 @@ impl EditorView {
             text_color,
         );
     }
+
+    fn insert_mode(&self, cxt: &mut commands::Context, event: KeyEvent) {
+        if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
+            command(cxt);
+        } else if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            commands::insert::insert_char(cxt, ch);
+        }
+    }
+
+    fn command_mode(&self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
+        match event {
+            // count handling
+            key!(i @ '0'..='9') => {
+                let i = i.to_digit(10).unwrap() as usize;
+                cxt.editor.count = Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
+            }
+            // special handling for repeat operator
+            key!('.') => {
+                // first execute whatever put us into insert mode
+                (self.last_insert.0)(cxt);
+                // then replay the inputs
+                for key in &self.last_insert.1 {
+                    self.insert_mode(cxt, *key)
+                }
+            }
+            _ => {
+                // set the count
+                cxt.count = cxt.editor.count.take().unwrap_or(1);
+                // TODO: edge case: 0j -> reset to 1
+                // if this fails, count was Some(0)
+                // debug_assert!(cxt.count != 0);
+
+                if let Some(command) = self.keymap[&mode].get(&event) {
+                    command(cxt);
+                }
+            }
+        }
+    }
 }
 
 impl Component for EditorView {
@@ -461,49 +506,31 @@ impl Component for EditorView {
                 } else {
                     match mode {
                         Mode::Insert => {
-                            if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
-                                command(&mut cxt);
-                            } else if let KeyEvent {
-                                code: KeyCode::Char(c),
-                                ..
-                            } = event
-                            {
-                                commands::insert::insert_char(&mut cxt, c);
-                            }
-                        }
-                        mode => {
-                            match event {
-                                KeyEvent {
-                                    code: KeyCode::Char(i @ '0'..='9'),
-                                    modifiers: KeyModifiers::NONE,
-                                } => {
-                                    let i = i.to_digit(10).unwrap() as usize;
-                                    cxt.editor.count =
-                                        Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
-                                }
-                                _ => {
-                                    // set the count
-                                    cxt.count = cxt.editor.count.take().unwrap_or(1);
-                                    // TODO: edge case: 0j -> reset to 1
-                                    // if this fails, count was Some(0)
-                                    // debug_assert!(cxt.count != 0);
+                            // record last_insert key
+                            self.last_insert.1.push(event);
 
-                                    if let Some(command) = self.keymap[&mode].get(&event) {
-                                        command(&mut cxt);
-                                    }
-                                }
-                            }
+                            self.insert_mode(&mut cxt, event)
                         }
+                        mode => self.command_mode(mode, &mut cxt, event),
                     }
                 }
-
                 self.on_next_key = cxt.on_next_key_callback.take();
                 self.status_msg = cxt.status_msg.take();
-
                 // appease borrowck
                 let callback = cxt.callback.take();
-                drop(cxt);
+
                 cx.editor.ensure_cursor_in_view(cx.editor.tree.focus);
+
+                if mode == Mode::Normal && cx.editor.document(id).unwrap().mode() == Mode::Insert {
+                    // HAXX: if we just entered insert mode from normal, clear key buf
+                    // and record the command that got us into this mode.
+
+                    // how we entered insert mode is important, and we should track that so
+                    // we can repeat the side effect.
+
+                    self.last_insert.0 = self.keymap[&mode][&event];
+                    self.last_insert.1.clear();
+                };
 
                 EventResult::Consumed(callback)
             }
