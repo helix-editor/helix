@@ -1938,6 +1938,17 @@ pub fn jump_backward(cx: &mut Context) {
 
 //
 
+pub fn vsplit(cx: &mut Context) {
+    // TODO: use doc.id directly, this can only split saved files
+    let path = cx.doc().path().cloned();
+
+    if let Some(path) = path {
+        // open the same file again. this will vsplit
+        cx.editor
+            .open(path, helix_view::editor::Action::HorizontalSplit);
+    }
+}
+
 pub fn space_mode(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let KeyEvent {
@@ -1949,6 +1960,7 @@ pub fn space_mode(cx: &mut Context) {
             match ch {
                 'f' => file_picker(cx),
                 'b' => buffer_picker(cx),
+                'v' => vsplit(cx),
                 // ' ' => toggle_alternate_buffer(cx),
                 _ => (),
             }
