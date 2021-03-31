@@ -22,7 +22,7 @@ pub enum Mode {
 pub struct Document {
     // rope + selection
     pub(crate) id: DocumentId,
-    state: State,
+    text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
 
     path: Option<PathBuf>,
@@ -75,7 +75,7 @@ impl Document {
         Self {
             id: DocumentId::default(),
             path: None,
-            state: State::new(text),
+            text,
             selections: HashMap::default(),
             mode: Mode::Normal,
             restore_cursor: false,
@@ -160,7 +160,7 @@ impl Document {
     ) {
         if let Some(language_config) = language_config {
             if let Some(highlight_config) = language_config.highlight_config(scopes) {
-                let syntax = Syntax::new(&self.state.doc, highlight_config);
+                let syntax = Syntax::new(&self.text, highlight_config);
                 self.syntax = Some(syntax);
                 // TODO: config.configure(scopes) is now delayed, is that ok?
             }
@@ -190,7 +190,7 @@ impl Document {
     fn _apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         let old_doc = self.text().clone();
 
-        let success = transaction.changes().apply(&mut self.state.doc);
+        let success = transaction.changes().apply(&mut self.text);
 
         if !transaction.changes().is_empty() {
             // update the selection: either take the selection specified in the transaction, or map the
@@ -207,7 +207,7 @@ impl Document {
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
                 syntax
-                    .update(&old_doc, &self.state.doc, transaction.changes())
+                    .update(&old_doc, &self.text, transaction.changes())
                     .unwrap();
             }
 
@@ -236,7 +236,10 @@ impl Document {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
         if self.changes.is_empty() && !transaction.changes().is_empty() {
-            self.old_state = Some(self.state.clone());
+            self.old_state = Some(State {
+                doc: self.text.clone(),
+                selection: self.selection(view_id).clone(),
+            });
         }
 
         let success = self._apply(&transaction, view_id);
@@ -365,7 +368,7 @@ impl Document {
     }
 
     pub fn text(&self) -> &Rope {
-        &self.state.doc
+        &self.text
     }
 
     pub fn selection(&self, view_id: ViewId) -> &Selection {
@@ -412,9 +415,9 @@ mod test {
         // insert
 
         let transaction = Transaction::insert(doc.text(), doc.selection(view), " world".into());
-        let old_doc = doc.state.clone();
+        let old_doc = doc.text().clone();
         doc.apply(&transaction, view);
-        let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());
+        let changes = Client::changeset_to_changes(&old_doc, doc.text(), transaction.changes());
 
         assert_eq!(
             changes,
@@ -430,10 +433,10 @@ mod test {
 
         // delete
 
-        let transaction = transaction.invert(&old_doc.doc);
-        let old_doc = doc.state.clone();
+        let transaction = transaction.invert(&old_doc);
+        let old_doc = doc.text().clone();
         doc.apply(&transaction, view);
-        let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());
+        let changes = Client::changeset_to_changes(&old_doc, doc.text(), transaction.changes());
 
         // line: 0-based.
         // col: 0-based, gaps between chars.
@@ -459,13 +462,13 @@ mod test {
 
         doc.set_selection(view, Selection::single(0, 5));
         let transaction = Transaction::change(
-            &doc.state.doc,
+            doc.text(),
             vec![(0, 2, Some("aei".into())), (3, 5, Some("ou".into()))].into_iter(),
         );
         // aeilou
+        let old_doc = doc.text().clone();
         doc.apply(&transaction, view);
-        let changes =
-            Client::changeset_to_changes(&doc.state.doc, doc.text(), transaction.changes());
+        let changes = Client::changeset_to_changes(&old_doc, doc.text(), transaction.changes());
 
         assert_eq!(
             changes,
