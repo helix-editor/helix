@@ -242,7 +242,7 @@ impl Document {
             });
         }
 
-        let success = self._apply(&transaction, view_id);
+        let success = self._apply(transaction, view_id);
 
         self.modified = true;
         // TODO: be smarter about modified by keeping track of saved version instead. That way if
@@ -342,8 +342,7 @@ impl Document {
         self.language
             .as_ref()
             .and_then(|config| config.indent.as_ref())
-            .map(|config| config.tab_width)
-            .unwrap_or(4) // fallback to 4 columns
+            .map_or(4, |config| config.tab_width) // fallback to 4 columns
     }
 
     /// Returns a string containing a single level of indentation.
@@ -351,8 +350,7 @@ impl Document {
         self.language
             .as_ref()
             .and_then(|config| config.indent.as_ref())
-            .map(|config| config.unit.as_str())
-            .unwrap_or("  ") // fallback to 2 spaces
+            .map_or("  ", |config| config.unit.as_str()) // fallback to 2 spaces
 
         // " ".repeat(TAB_WIDTH)
     }

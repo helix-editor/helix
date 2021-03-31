@@ -19,7 +19,7 @@ use smol::{
     Executor,
 };
 
-pub(crate) enum Payload {
+pub enum Payload {
     Request {
         chan: Sender<Result<Value>>,
         value: jsonrpc::MethodCall,
@@ -40,7 +40,7 @@ enum Message {
     Call(jsonrpc::Call),
 }
 
-pub(crate) struct Transport {
+pub struct Transport {
     incoming: Sender<jsonrpc::Call>,
     outgoing: Receiver<Payload>,
 
@@ -68,8 +68,8 @@ impl Transport {
             stderr,
             incoming,
             outgoing,
-            pending_requests: Default::default(),
-            headers: Default::default(),
+            pending_requests: HashMap::default(),
+            headers: HashMap::default(),
         };
 
         ex.spawn(transport.duplex()).detach();

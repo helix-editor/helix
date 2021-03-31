@@ -149,10 +149,7 @@ pub mod completers {
             .build()
             .filter_map(|file| {
                 file.ok().map(|entry| {
-                    let is_dir = entry
-                        .file_type()
-                        .map(|entry| entry.is_dir())
-                        .unwrap_or(false);
+                    let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let mut path = entry.path().strip_prefix(&dir).unwrap().to_path_buf();
 

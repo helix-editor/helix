@@ -29,14 +29,14 @@ pub enum Content {
 
 impl Node {
     pub fn container(layout: Layout) -> Self {
-        Node {
+        Self {
             parent: ViewId::default(),
             content: Content::Container(Box::new(Container::new(layout))),
         }
     }
 
     pub fn view(view: View) -> Self {
-        Node {
+        Self {
             parent: ViewId::default(),
             content: Content::View(Box::new(view)),
         }
@@ -414,15 +414,12 @@ impl Tree {
         let mut iter = iter.skip_while(|&(key, _view)| key != self.focus);
         iter.next(); // take the focused value
 
-        match iter.next() {
-            Some((key, _)) => {
-                self.focus = key;
-            }
-            None => {
-                // extremely crude, take the first item again
-                let (key, _) = self.traverse().next().unwrap();
-                self.focus = key;
-            }
+        if let Some((key, _)) = iter.next() {
+            self.focus = key;
+        } else {
+            // extremely crude, take the first item again
+            let (key, _) = self.traverse().next().unwrap();
+            self.focus = key;
         }
     }
 }

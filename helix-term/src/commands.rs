@@ -14,6 +14,7 @@ use crate::{
     ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
 };
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use helix_view::{
@@ -333,7 +334,7 @@ where
             let text = doc.text().slice(..);
 
             let selection = doc.selection(view_id).transform(|mut range| {
-                if let Some(pos) = search::find_nth_next(text, ch, range.head, count, inclusive) {
+                search::find_nth_next(text, ch, range.head, count, inclusive).map_or(range, |pos| {
                     if extend {
                         Range::new(range.anchor, pos)
                     } else {
@@ -341,9 +342,7 @@ where
                         Range::new(range.head, pos)
                     }
                     // or (pos, pos) to move to found val
-                } else {
-                    range
-                }
+                })
             });
 
             doc.set_selection(view_id, selection);
@@ -642,7 +641,7 @@ fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex) {
     let start = doc.selection(view_id).cursor();
 
     // TODO: use find_at to find the next match after the cursor, loop around the end
-    if let Some(mat) = regex.find_at(&contents, start) {
+    if let Some(mat) = regex.find_at(contents, start) {
         let start = text.byte_to_char(mat.start());
         let end = text.byte_to_char(mat.end());
         let selection = Selection::single(start, end - 1);
@@ -859,15 +858,15 @@ pub fn command_mode(cx: &mut Context) {
             let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
 
             match *parts.as_slice() {
-                ["q"] | ["quit"] => {
+                ["q" | "quit"] => {
                     editor.close(editor.view().id);
                     // editor.should_close = true,
                 }
-                ["o", path] | ["open", path] => {
+                ["o" | "open", path] => {
                     use helix_view::editor::Action;
                     editor.open(path.into(), Action::Replace);
                 }
-                ["w"] | ["write"] => {
+                ["w" | "write"] => {
                     // TODO: non-blocking via save() command
                     let id = editor.view().doc;
                     let doc = &mut editor.documents[id];
@@ -1487,7 +1486,7 @@ pub fn yank(cx: &mut Context) {
     let values: Vec<String> = doc
         .selection(view_id)
         .fragments(doc.text().slice(..))
-        .map(|cow| cow.into_owned())
+        .map(Cow::into_owned)
         .collect();
 
     // TODO: allow specifying reg

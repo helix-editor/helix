@@ -122,7 +122,7 @@ impl Application {
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
-            executor: &self.executor,
+            executor: self.executor,
             callbacks: &mut self.callbacks,
             scroll: None,
         };

@@ -16,6 +16,7 @@ pub struct Editor {
     pub executor: &'static smol::Executor<'static>,
 }
 
+#[derive(Copy, Clone)]
 pub enum Action {
     Replace,
     HorizontalSplit,

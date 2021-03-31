@@ -77,7 +77,7 @@ fn main() {
     use helix_core::syntax::{Loader, LOADER};
     let toml = include_str!("../../languages.toml");
     LOADER.get_or_init(|| {
-        let config = toml::from_str(&toml).expect("Could not parse languages.toml");
+        let config = toml::from_str(toml).expect("Could not parse languages.toml");
         Loader::new(config)
     });
 

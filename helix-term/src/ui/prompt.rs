@@ -81,8 +81,7 @@ impl Prompt {
         if self.completion.is_empty() {
             return;
         }
-        let index =
-            self.completion_selection_index.map(|i| i + 1).unwrap_or(0) % self.completion.len();
+        let index = self.completion_selection_index.map_or(0, |i| i + 1) % self.completion.len();
         self.completion_selection_index = Some(index);
 
         let (range, item) = &self.completion[index];
@@ -183,11 +182,7 @@ impl Component for Prompt {
             // char or shift char
             KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::SHIFT,
+                modifiers: KeyModifiers::NONE | KeyModifiers::SHIFT,
             } => {
                 self.insert_char(c);
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);

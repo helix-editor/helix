@@ -58,13 +58,13 @@ impl EditorView {
             viewport.width - OFFSET,
             viewport.height.saturating_sub(1),
         ); // - 1 for statusline
-        self.render_buffer(&doc, view, area, surface, theme, is_focused);
+        self.render_buffer(doc, view, area, surface, theme, is_focused);
 
         // clear with background color
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
-        self.render_diagnostics(&doc, view, area, surface, theme, is_focused);
+        self.render_diagnostics(doc, view, area, surface, theme, is_focused);
 
         let area = Rect::new(
             viewport.x,
@@ -72,7 +72,7 @@ impl EditorView {
             viewport.width,
             1,
         );
-        self.render_statusline(&doc, area, surface, theme, is_focused);
+        self.render_statusline(doc, area, surface, theme, is_focused);
 
         // render status
         if let Some(status_msg) = &self.status_msg {
