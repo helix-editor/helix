@@ -96,13 +96,15 @@ mod test {
 
         // comment
         let transaction = toggle_line_comments(&state.doc, &state.selection);
-        transaction.apply(&mut state);
+        transaction.apply(&mut state.doc);
+        state.selection = state.selection.clone().map(transaction.changes());
 
         assert_eq!(state.doc, "  // 1\n\n  // 2\n  // 3");
 
         // uncomment
         let transaction = toggle_line_comments(&state.doc, &state.selection);
-        transaction.apply(&mut state);
+        transaction.apply(&mut state.doc);
+        state.selection = state.selection.clone().map(transaction.changes());
         assert_eq!(state.doc, "  1\n\n  2\n  3");
 
         // TODO: account for no margin after comment

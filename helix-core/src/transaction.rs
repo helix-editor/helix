@@ -400,9 +400,7 @@ impl ChangeSet {
 /// a single transaction.
 #[derive(Debug, Clone)]
 pub struct Transaction {
-    /// Changes made to the buffer.
-    pub(crate) changes: ChangeSet,
-    /// When set, explicitly updates the selection.
+    changes: ChangeSet,
     selection: Option<Selection>,
     // effects, annotations
     // scroll_into_view
@@ -417,40 +415,35 @@ impl Transaction {
         }
     }
 
+    /// Changes made to the buffer.
     pub fn changes(&self) -> &ChangeSet {
         &self.changes
     }
 
+    /// When set, explicitly updates the selection.
+    pub fn selection(&self) -> Option<&Selection> {
+        self.selection.as_ref()
+    }
+
     /// Returns true if applied successfully.
-    pub fn apply(&self, state: &mut State) -> bool {
+    pub fn apply(&self, doc: &mut Rope) -> bool {
         if !self.changes.is_empty() {
             // apply changes to the document
-            if !self.changes.apply(&mut state.doc) {
+            if !self.changes.apply(doc) {
                 return false;
             }
         }
-
-        // TODO: also avoid mapping the selection if not necessary
-
-        // update the selection: either take the selection specified in the transaction, or map the
-        // current selection through changes.
-        state.selection = self
-            .selection
-            .clone()
-            .unwrap_or_else(|| state.selection.clone().map(&self.changes));
 
         true
     }
 
     /// Generate a transaction that reverts this one.
-    pub fn invert(&self, original: &State) -> Self {
-        let changes = self.changes.invert(&original.doc);
-        // Store the current cursor position
-        let selection = original.selection.clone();
+    pub fn invert(&self, original: &Rope) -> Self {
+        let changes = self.changes.invert(original);
 
         Self {
             changes,
-            selection: Some(selection),
+            selection: None,
         }
     }
 
@@ -675,7 +668,7 @@ mod test {
             // (1, 1, None) is a useless 0-width delete
             vec![(1, 1, None), (6, 11, Some("void".into())), (12, 17, None)].into_iter(),
         );
-        transaction.apply(&mut state);
+        transaction.apply(&mut state.doc);
         assert_eq!(state.doc, Rope::from_str("hello void! 123"));
     }
 
@@ -691,15 +684,20 @@ mod test {
     fn optimized_composition() {
         let mut state = State::new("".into());
         let t1 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('h'));
-        t1.apply(&mut state);
+        t1.apply(&mut state.doc);
+        state.selection = state.selection.clone().map(t1.changes());
         let t2 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('e'));
-        t2.apply(&mut state);
+        t2.apply(&mut state.doc);
+        state.selection = state.selection.clone().map(t2.changes());
         let t3 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('l'));
-        t3.apply(&mut state);
+        t3.apply(&mut state.doc);
+        state.selection = state.selection.clone().map(t3.changes());
         let t4 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('l'));
-        t4.apply(&mut state);
+        t4.apply(&mut state.doc);
+        state.selection = state.selection.clone().map(t4.changes());
         let t5 = Transaction::insert(&state.doc, &state.selection, Tendril::from_char('o'));
-        t5.apply(&mut state);
+        t5.apply(&mut state.doc);
+        state.selection = state.selection.clone().map(t5.changes());
 
         assert_eq!(state.doc, Rope::from_str("hello"));
 

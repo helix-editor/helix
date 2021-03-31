@@ -33,7 +33,10 @@ impl Default for History {
 impl History {
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
         // TODO: could store a single transaction, if deletes also stored the text they delete
-        let revert = transaction.invert(original);
+        let revert = transaction
+            .invert(&original.doc)
+            // Store the current cursor position
+            .with_selection(original.selection.clone());
 
         let new_cursor = self.revisions.len();
         self.revisions.push(Revision {
@@ -100,7 +103,7 @@ mod test {
 
         // Need to commit before applying!
         history.commit_revision(&transaction1, &state);
-        transaction1.apply(&mut state);
+        transaction1.apply(&mut state.doc);
         assert_eq!("hello world!", state.doc);
 
         // ---
@@ -110,18 +113,18 @@ mod test {
 
         // Need to commit before applying!
         history.commit_revision(&transaction2, &state);
-        transaction2.apply(&mut state);
+        transaction2.apply(&mut state.doc);
         assert_eq!("hello 世界!", state.doc);
 
         // ---
         fn undo(history: &mut History, state: &mut State) {
             if let Some(transaction) = history.undo() {
-                transaction.apply(state);
+                transaction.apply(&mut state.doc);
             }
         }
         fn redo(history: &mut History, state: &mut State) {
             if let Some(transaction) = history.redo() {
-                transaction.apply(state);
+                transaction.apply(&mut state.doc);
             }
         }
 

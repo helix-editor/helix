@@ -1593,7 +1593,7 @@ fn test_input_edits() {
         &state.doc,
         vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
     );
-    let edits = LanguageLayer::generate_edits(state.doc.slice(..), &transaction.changes);
+    let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
     // transaction.apply(&mut state);
 
     assert_eq!(
@@ -1622,8 +1622,8 @@ fn test_input_edits() {
     let mut state = State::new("fn test() {}".into());
     let transaction =
         Transaction::change(&state.doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-    let edits = LanguageLayer::generate_edits(state.doc.slice(..), &transaction.changes);
-    transaction.apply(&mut state);
+    let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
+    transaction.apply(&mut state.doc);
 
     assert_eq!(state.doc, "fn test(a: u32) {}");
     assert_eq!(

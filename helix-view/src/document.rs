@@ -21,6 +21,7 @@ pub struct Document {
     // rope + selection
     pub(crate) id: DocumentId,
     state: State,
+
     path: Option<PathBuf>,
 
     /// Current editing mode.
@@ -185,9 +186,16 @@ impl Document {
     fn _apply(&mut self, transaction: &Transaction) -> bool {
         let old_doc = self.text().clone();
 
-        let success = transaction.apply(&mut self.state);
+        let success = transaction.changes().apply(&mut self.state.doc);
 
         if !transaction.changes().is_empty() {
+            // update the selection: either take the selection specified in the transaction, or map the
+            // current selection through changes.
+            self.state.selection = transaction
+                .selection()
+                .cloned()
+                .unwrap_or_else(|| self.selection().clone().map(transaction.changes()));
+
             self.version += 1;
 
             // update tree-sitter syntax tree
@@ -415,7 +423,7 @@ mod test {
 
         // delete
 
-        let transaction = transaction.invert(&old_doc);
+        let transaction = transaction.invert(&old_doc.doc);
         let old_doc = doc.state.clone();
         doc.apply(&transaction);
         let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());
