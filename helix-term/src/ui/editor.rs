@@ -64,7 +64,7 @@ impl EditorView {
         // TODO: this seems to prevent setting style later
         // surface.set_style(viewport, theme.get("ui.background"));
 
-        self.render_diagnostics(&doc, area, surface, theme, is_focused);
+        self.render_diagnostics(&doc, view, area, surface, theme, is_focused);
 
         let area = Rect::new(
             viewport.x,
@@ -224,7 +224,7 @@ impl EditorView {
             let selection_style = Style::default().bg(Color::Rgb(84, 0, 153));
 
             for selection in doc
-                .selection()
+                .selection(view.id)
                 .iter()
                 .filter(|range| range.overlaps(&screen))
             {
@@ -332,6 +332,7 @@ impl EditorView {
     pub fn render_diagnostics(
         &self,
         doc: &Document,
+        view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
@@ -344,7 +345,7 @@ impl EditorView {
             widgets::{Paragraph, Widget},
         };
 
-        let cursor = doc.selection().cursor();
+        let cursor = doc.selection(view.id).cursor();
         let line = doc.text().char_to_line(cursor);
 
         let diagnostics = doc.diagnostics.iter().filter(|diagnostic| {
@@ -486,11 +487,14 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
-                let id = cx.editor.view().doc;
+                let view = cx.editor.view();
+                let view_id = view.id;
+                let id = view.doc;
                 let mode = cx.editor.document(id).unwrap().mode();
 
                 let mut cxt = commands::Context {
                     editor: &mut cx.editor,
+                    view_id,
                     count: 1,
                     callback: None,
                     callbacks: cx.callbacks,

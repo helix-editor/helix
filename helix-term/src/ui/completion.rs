@@ -21,6 +21,7 @@ use lsp::CompletionItem;
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>, // TODO: Popup<Menu> need to be able to access contents.
     trigger_offset: usize,
+    // TODO: maintain a completioncontext with trigger kind & trigger char
 }
 
 impl Completion {
@@ -43,7 +44,9 @@ impl Completion {
                         // doc.state = snapshot.clone();
                     }
                     PromptEvent::Validate => {
-                        let id = editor.view().doc;
+                        let view = editor.view();
+                        let view_id = view.id;
+                        let id = view.doc;
                         let doc = &mut editor.documents[id];
 
                         // revert state to what it was before the last update
@@ -89,18 +92,18 @@ impl Completion {
                         }
 
                         // if more text was entered, remove it
-                        let cursor = doc.selection().cursor();
+                        let cursor = doc.selection(view_id).cursor();
                         if trigger_offset < cursor {
                             let remove = Transaction::change(
                                 doc.text(),
                                 vec![(trigger_offset, cursor, None)].into_iter(),
                             );
-                            doc.apply(&remove);
+                            doc.apply(&remove, view_id);
                         }
 
                         let transaction =
                             util::generate_transaction_from_edits(doc.text(), vec![edit]);
-                        doc.apply(&transaction);
+                        doc.apply(&transaction, view_id);
                     }
                     _ => (),
                 };
@@ -124,15 +127,32 @@ impl Component for Completion {
         {
             // recompute menu based on matches
             let menu = self.popup.contents();
-            let id = cx.editor.view().doc;
+            let view = cx.editor.view();
+            let view_id = view.id;
+            let id = view.doc;
             let doc = cx.editor.document(id).unwrap();
 
-            let cursor = doc.selection().cursor();
+            // cx.hooks()
+            // cx.add_hook(enum type,  ||)
+            // cx.trigger_hook(enum type, &str, ...) <-- there has to be enough to identify doc/view
+            // callback with editor & compositor
+            //
+            // trigger_hook sends event into channel, that's consumed in the global loop and
+            // triggers all registered callbacks
+            // TODO: hooks should get processed immediately so maybe do it after select!(), before
+            // looping?
+
+            let cursor = doc.selection(view_id).cursor();
             if self.trigger_offset <= cursor {
                 let fragment = doc.text().slice(self.trigger_offset..cursor);
+                // ^ problem seems to be that we handle events here before the editor layer, so the
+                // keypress isn't included in the editor layer yet...
+                // so we can't use ..= for now.
                 let text = Cow::from(fragment);
                 // TODO: logic is same as ui/picker
                 menu.score(&text);
+
+                // TODO: if after scoring the selection is 0 items, remove popup
             }
         }
 

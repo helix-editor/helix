@@ -91,24 +91,40 @@ impl Editor {
         };
 
         use crate::tree::Layout;
+        use helix_core::Selection;
         match action {
             Action::Replace => {
                 let view = self.view();
-                let jump = (view.doc, self.documents[view.doc].selection().clone());
+                let jump = (
+                    view.doc,
+                    self.documents[view.doc].selection(view.id).clone(),
+                );
 
                 let view = self.view_mut();
                 view.jumps.push(jump);
                 view.doc = id;
                 view.first_line = 0;
+                let view_id = view.id;
+
+                // initialize selection for view
+                let doc = &mut self.documents[id];
+                doc.selections.insert(view_id, Selection::point(0));
+
                 return Ok(id);
             }
             Action::HorizontalSplit => {
                 let view = View::new(id)?;
-                self.tree.split(view, Layout::Horizontal);
+                let view_id = self.tree.split(view, Layout::Horizontal);
+                // initialize selection for view
+                let doc = &mut self.documents[id];
+                doc.selections.insert(view_id, Selection::point(0));
             }
             Action::VerticalSplit => {
                 let view = View::new(id)?;
-                self.tree.split(view, Layout::Vertical);
+                let view_id = self.tree.split(view, Layout::Vertical);
+                // initialize selection for view
+                let doc = &mut self.documents[id];
+                doc.selections.insert(view_id, Selection::point(0));
             }
         }
 
@@ -133,6 +149,9 @@ impl Editor {
         if let Some(language_server) = language_server {
             smol::block_on(language_server.text_document_did_close(doc.identifier())).unwrap();
         }
+
+        // remove selection
+        self.documents[view.doc].selections.remove(&id);
 
         // self.documents.remove(view.doc);
         self.tree.remove(id);
@@ -183,7 +202,7 @@ impl Editor {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = self.view();
         let doc = &self.documents[view.doc];
-        let cursor = doc.selection().cursor();
+        let cursor = doc.selection(view.id).cursor();
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
             pos.col += view.area.x as usize + OFFSET as usize;
             pos.row += view.area.y as usize;

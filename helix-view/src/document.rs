@@ -8,7 +8,9 @@ use helix_core::{
     ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
 };
 
-use crate::DocumentId;
+use crate::{DocumentId, ViewId};
+
+use std::collections::HashMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
@@ -21,6 +23,7 @@ pub struct Document {
     // rope + selection
     pub(crate) id: DocumentId,
     state: State,
+    pub(crate) selections: HashMap<ViewId, Selection>,
 
     path: Option<PathBuf>,
 
@@ -73,6 +76,7 @@ impl Document {
             id: DocumentId::default(),
             path: None,
             state: State::new(text),
+            selections: HashMap::default(),
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -178,12 +182,12 @@ impl Document {
         self.language_server = language_server;
     }
 
-    pub fn set_selection(&mut self, selection: Selection) {
+    pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
         // TODO: use a transaction?
-        self.state.selection = selection;
+        self.selections.insert(view_id, selection);
     }
 
-    fn _apply(&mut self, transaction: &Transaction) -> bool {
+    fn _apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         let old_doc = self.text().clone();
 
         let success = transaction.changes().apply(&mut self.state.doc);
@@ -191,10 +195,11 @@ impl Document {
         if !transaction.changes().is_empty() {
             // update the selection: either take the selection specified in the transaction, or map the
             // current selection through changes.
-            self.state.selection = transaction
+            let selection = transaction
                 .selection()
                 .cloned()
-                .unwrap_or_else(|| self.selection().clone().map(transaction.changes()));
+                .unwrap_or_else(|| self.selection(view_id).clone().map(transaction.changes()));
+            self.set_selection(view_id, selection);
 
             self.version += 1;
 
@@ -227,14 +232,14 @@ impl Document {
         success
     }
 
-    pub fn apply(&mut self, transaction: &Transaction) -> bool {
+    pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
         if self.changes.is_empty() && !transaction.changes().is_empty() {
             self.old_state = Some(self.state.clone());
         }
 
-        let success = self._apply(&transaction);
+        let success = self._apply(&transaction, view_id);
 
         self.modified = true;
         // TODO: be smarter about modified by keeping track of saved version instead. That way if
@@ -249,9 +254,9 @@ impl Document {
         success
     }
 
-    pub fn undo(&mut self) -> bool {
+    pub fn undo(&mut self, view_id: ViewId) -> bool {
         if let Some(transaction) = self.history.undo() {
-            let success = self._apply(&transaction);
+            let success = self._apply(&transaction, view_id);
 
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
@@ -261,9 +266,9 @@ impl Document {
         false
     }
 
-    pub fn redo(&mut self) -> bool {
+    pub fn redo(&mut self, view_id: ViewId) -> bool {
         if let Some(transaction) = self.history.redo() {
-            let success = self._apply(&transaction);
+            let success = self._apply(&transaction, view_id);
 
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
@@ -273,7 +278,7 @@ impl Document {
         false
     }
 
-    pub fn append_changes_to_history(&mut self) {
+    pub fn append_changes_to_history(&mut self, view_id: ViewId) {
         if self.changes.is_empty() {
             return;
         }
@@ -282,7 +287,8 @@ impl Document {
         let changes = std::mem::replace(&mut self.changes, new_changeset);
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
-        let transaction = Transaction::from(changes).with_selection(self.selection().clone());
+        let transaction =
+            Transaction::from(changes).with_selection(self.selection(view_id).clone());
 
         // HAXX: we need to reconstruct the state as it was before the changes..
         let old_state = self.old_state.take().expect("no old_state available");
@@ -362,8 +368,8 @@ impl Document {
         &self.state.doc
     }
 
-    pub fn selection(&self) -> &Selection {
-        &self.state.selection
+    pub fn selection(&self, view_id: ViewId) -> &Selection {
+        &self.selections[&view_id]
     }
 
     pub fn relative_path(&self) -> Option<&Path> {
@@ -400,13 +406,14 @@ mod test {
         use helix_lsp::{lsp, Client};
         let text = Rope::from("hello");
         let mut doc = Document::new(text);
-        doc.set_selection(Selection::single(5, 5));
+        let view = ViewId::default();
+        doc.set_selection(view, Selection::single(5, 5));
 
         // insert
 
-        let transaction = Transaction::insert(doc.text(), doc.selection(), " world".into());
+        let transaction = Transaction::insert(doc.text(), doc.selection(view), " world".into());
         let old_doc = doc.state.clone();
-        doc.apply(&transaction);
+        doc.apply(&transaction, view);
         let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());
 
         assert_eq!(
@@ -425,7 +432,7 @@ mod test {
 
         let transaction = transaction.invert(&old_doc.doc);
         let old_doc = doc.state.clone();
-        doc.apply(&transaction);
+        doc.apply(&transaction, view);
         let changes = Client::changeset_to_changes(&old_doc.doc, doc.text(), transaction.changes());
 
         // line: 0-based.
@@ -450,13 +457,13 @@ mod test {
 
         // also tests that changes are layered, positions depend on previous changes.
 
-        doc.state.selection = Selection::single(0, 5);
+        doc.set_selection(view, Selection::single(0, 5));
         let transaction = Transaction::change(
             &doc.state.doc,
             vec![(0, 2, Some("aei".into())), (3, 5, Some("ou".into()))].into_iter(),
         );
         // aeilou
-        doc.apply(&transaction);
+        doc.apply(&transaction, view);
         let changes =
             Client::changeset_to_changes(&doc.state.doc, doc.text(), transaction.changes());
 
