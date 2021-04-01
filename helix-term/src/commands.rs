@@ -7,27 +7,31 @@ use helix_core::{
     SmallVec, Tendril, Transaction,
 };
 
-use once_cell::sync::Lazy;
-
-use crate::{
-    compositor::{Callback, Component, Compositor},
-    ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
-};
-
-use std::borrow::Cow;
-use std::path::{Path, PathBuf};
-
 use helix_view::{
     document::Mode,
     view::{View, PADDING},
     Document, DocumentId, Editor, ViewId,
 };
 
-use crossterm::event::{KeyCode, KeyEvent};
+use helix_lsp::{
+    lsp,
+    util::{lsp_pos_to_pos, pos_to_lsp_pos, range_to_lsp_range},
+};
 
-use helix_lsp::lsp;
+use crate::{
+    compositor::{Callback, Component, Compositor},
+    ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
+};
 
 use crate::application::{LspCallbackWrapper, LspCallbacks};
+use futures_util::FutureExt;
+use std::future::Future;
+
+use std::borrow::Cow;
+use std::path::{Path, PathBuf};
+
+use crossterm::event::{KeyCode, KeyEvent};
+use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
     pub count: usize,
@@ -39,9 +43,6 @@ pub struct Context<'a> {
     pub callbacks: &'a mut LspCallbacks,
     pub status_msg: Option<String>,
 }
-
-use futures_util::FutureExt;
-use std::future::Future;
 
 impl<'a> Context<'a> {
     #[inline]
@@ -778,7 +779,6 @@ pub fn append_mode(cx: &mut Context) {
 
 const COMMAND_LIST: &[&str] = &["write", "open", "quit"];
 
-// TODO: I, A, o and O can share a lot of the primitives.
 pub fn command_mode(cx: &mut Context) {
     let prompt = Prompt::new(
         ":".to_owned(),
@@ -1091,7 +1091,7 @@ fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
             .expect("editor.open failed");
         let (view, doc) = editor.current();
         let definition_pos = location.range.start;
-        let new_pos = helix_lsp::util::lsp_pos_to_pos(doc.text(), definition_pos);
+        let new_pos = lsp_pos_to_pos(doc.text(), definition_pos);
         doc.set_selection(view.id, Selection::point(new_pos));
     }
 
@@ -1122,8 +1122,7 @@ pub fn goto_definition(cx: &mut Context) {
         None => return,
     };
 
-    // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
 
     // TODO: handle fails
     let res =
@@ -1138,8 +1137,7 @@ pub fn goto_type_definition(cx: &mut Context) {
         None => return,
     };
 
-    // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
 
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_type_definition(doc.identifier(), pos))
@@ -1154,8 +1152,7 @@ pub fn goto_implementation(cx: &mut Context) {
         None => return,
     };
 
-    // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
 
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_implementation(doc.identifier(), pos))
@@ -1170,8 +1167,7 @@ pub fn goto_reference(cx: &mut Context) {
         None => return,
     };
 
-    // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
 
     // TODO: handle fails
     let res =
@@ -1187,8 +1183,7 @@ pub fn signature_help(cx: &mut Context) {
         None => return,
     };
 
-    // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
 
     // TODO: handle fails
 
@@ -1519,18 +1514,15 @@ pub fn unindent(cx: &mut Context) {
 }
 
 pub fn format_selections(cx: &mut Context) {
-    use helix_lsp::lsp;
     let (view, doc) = cx.current();
 
     // via lsp if available
     // else via tree-sitter indentation calculations
 
-    // TODO: blocking here is not ideal
-
     let ranges: Vec<lsp::Range> = doc
         .selection(view.id)
         .iter()
-        .map(|range| helix_lsp::util::range_to_lsp_range(doc.text(), *range))
+        .map(|range| range_to_lsp_range(doc.text(), *range))
         .collect();
 
     for range in ranges {
@@ -1675,11 +1667,9 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
-    // TODO: blocking here is not ideal
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
 
     // TODO: handle fails
-
     let res = smol::block_on(language_server.completion(doc.identifier(), pos)).unwrap();
 
     let trigger_offset = doc.selection(view.id).cursor();
@@ -1702,13 +1692,11 @@ pub fn completion(cx: &mut Context) {
             // TODO: if no completion, show some message or something
             if !items.is_empty() {
                 let completion = Completion::new(items, trigger_offset);
-
-                //  Server error: content modified
-
                 compositor.push(Box::new(completion));
             }
         },
     );
+    //  TODO: Server error: content modified
 
     //    // TODO!: when iterating over items, show the docs in popup
 
@@ -1717,8 +1705,6 @@ pub fn completion(cx: &mut Context) {
 }
 
 pub fn hover(cx: &mut Context) {
-    use helix_lsp::lsp;
-
     let (view, doc) = cx.current();
 
     let language_server = match doc.language_server() {
@@ -1730,7 +1716,7 @@ pub fn hover(cx: &mut Context) {
 
     // TODO: blocking here is not ideal, make commands async fn?
     // not like we can process additional input meanwhile though
-    let pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
 
     // TODO: handle fails
     let res = smol::block_on(language_server.text_document_hover(doc.identifier(), pos))
