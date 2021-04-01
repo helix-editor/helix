@@ -53,6 +53,7 @@ pub use {regex, tree_sitter};
 
 pub use position::{coords_at_pos, pos_at_coords, Position};
 pub use selection::{Range, Selection};
+pub use smallvec::SmallVec;
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;

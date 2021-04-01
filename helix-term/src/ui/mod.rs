@@ -82,7 +82,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
     let files = Walk::new(root.clone()).filter_map(|entry| match entry {
         Ok(entry) => {
             // filter dirs, but we might need special handling for symlinks!
-            if !entry.file_type().unwrap().is_dir() {
+            if !entry.file_type().map_or(false, |entry| entry.is_dir()) {
                 Some(entry.into_path())
             } else {
                 None
@@ -97,7 +97,11 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         files.take(MAX).collect(),
         move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix(&root).unwrap().to_str().unwrap().into()
+            path.strip_prefix(&root)
+                .unwrap_or(path)
+                .to_str()
+                .unwrap()
+                .into()
         },
         move |editor: &mut Editor, path: &PathBuf, action| {
             let document_id = editor
@@ -144,12 +148,13 @@ pub mod completers {
                 file.ok().map(|entry| {
                     let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
-                    let mut path = entry.path().strip_prefix(&dir).unwrap().to_path_buf();
+                    let path = entry.path();
+                    let mut path = path.strip_prefix(&dir).unwrap_or(path).to_path_buf();
 
                     if is_dir {
                         path.push("");
                     }
-                    let path = path.to_str().unwrap().to_string();
+                    let path = path.to_str().unwrap().to_owned();
                     (end.clone(), Cow::from(path))
                 })
             }) // TODO: unwrap or skip

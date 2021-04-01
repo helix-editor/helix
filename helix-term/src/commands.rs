@@ -1,10 +1,10 @@
 use helix_core::{
-    comment, coords_at_pos, graphemes, match_brackets,
+    comment, coords_at_pos, graphemes, indent, match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
-    Tendril, Transaction,
+    SmallVec, Tendril, Transaction,
 };
 
 use once_cell::sync::Lazy;
@@ -951,25 +951,28 @@ pub fn open_below(cx: &mut Context) {
     let (view, doc) = cx.current();
     enter_insert_mode(doc);
 
+    let text = doc.text().slice(..);
     let lines = selection_lines(doc.text(), doc.selection(view.id));
 
-    let positions = lines.into_iter().map(|index| {
-        // adjust all positions to the end of the line (next line minus one)
-        doc.text().line_to_char(index + 1).saturating_sub(1)
-    });
+    let mut ranges = SmallVec::with_capacity(lines.len());
 
-    let text = doc.text().slice(..);
+    let changes: Vec<Change> = lines
+        .into_iter()
+        .map(|line| {
+            // adjust all positions to the end of the line (next line minus one)
+            let index = doc.text().line_to_char(line + 1).saturating_sub(1);
 
-    let changes: Vec<Change> = positions
-        .map(|index| {
             // TODO: share logic with insert_newline for indentation
-            let indent_level =
-                helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
+            let indent_level = indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
             text.push_str(&indent);
             let text = text.repeat(count);
+
+            // calculate new selection range
+            let pos = index + text.len();
+            ranges.push(Range::new(pos, pos));
 
             (index, index, Some(text.into()))
         })
@@ -978,17 +981,7 @@ pub fn open_below(cx: &mut Context) {
     // TODO: count actually inserts "n" new lines and starts editing on all of them.
     // TODO: append "count" newlines and modify cursors to those lines
 
-    let selection = Selection::new(
-        changes
-            .iter()
-            .map(|(start, _end, text): &Change| {
-                let len = text.as_ref().map(|text| text.len()).unwrap(); // minus newline
-                let pos = start + len;
-                Range::new(pos, pos)
-            })
-            .collect(),
-        0,
-    );
+    let selection = Selection::new(ranges, 0);
 
     let transaction =
         Transaction::change(doc.text(), changes.into_iter()).with_selection(selection);
@@ -1002,25 +995,28 @@ pub fn open_above(cx: &mut Context) {
     let (view, doc) = cx.current();
     enter_insert_mode(doc);
 
+    let text = doc.text().slice(..);
     let lines = selection_lines(doc.text(), doc.selection(view.id));
 
-    let positions = lines.into_iter().map(|index| {
-        // adjust all positions to the end of the previous line
-        doc.text().line_to_char(index).saturating_sub(1)
-    });
+    let mut ranges = SmallVec::with_capacity(lines.len());
 
-    let text = doc.text().slice(..);
+    let changes: Vec<Change> = lines
+        .into_iter()
+        .map(|line| {
+            // adjust all positions to the end of the previous line
+            let index = doc.text().line_to_char(line).saturating_sub(1);
 
-    let changes: Vec<Change> = positions
-        .map(|index| {
             // TODO: share logic with insert_newline for indentation
-            let indent_level =
-                helix_core::indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
+            let indent_level = indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
             text.push_str(&indent);
             let text = text.repeat(count);
+
+            // calculate new selection range
+            let pos = index + text.len();
+            ranges.push(Range::new(pos, pos));
 
             // generate changes
             (index, index, Some(text.into()))
@@ -1030,17 +1026,7 @@ pub fn open_above(cx: &mut Context) {
     // TODO: count actually inserts "n" new lines and starts editing on all of them.
     // TODO: append "count" newlines and modify cursors to those lines
 
-    let selection = Selection::new(
-        changes
-            .iter()
-            .map(|(start, _end, text): &Change| {
-                let len = text.as_ref().map(|text| text.len()).unwrap(); // minus newline
-                let pos = start + len;
-                Range::new(pos, pos)
-            })
-            .collect(),
-        0,
-    );
+    let selection = Selection::new(ranges, 0);
 
     let transaction =
         Transaction::change(doc.text(), changes.into_iter()).with_selection(selection);
@@ -1359,12 +1345,8 @@ pub mod insert {
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 // TODO: offset range.head by 1? when calculating?
-                let indent_level = helix_core::indent::suggested_indent_for_pos(
-                    doc.syntax(),
-                    text,
-                    range.head,
-                    true,
-                );
+                let indent_level =
+                    indent::suggested_indent_for_pos(doc.syntax(), text, range.head, true);
                 let indent = doc.indent_unit().repeat(indent_level);
                 let mut text = String::with_capacity(1 + indent.len());
                 text.push('\n');
