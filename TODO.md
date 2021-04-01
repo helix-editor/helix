@@ -23,6 +23,8 @@
 - [ ] repeat insert/command -> transaction
 - [ ] repeat selection
 
+- [] jump to alt buffer
+
 - [ ] load toml configs, themes, tabsize/identation
 
 - [ ] draw separator line between views

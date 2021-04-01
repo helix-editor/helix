@@ -172,6 +172,12 @@ impl Editor {
         self.tree.is_empty()
     }
 
+    pub fn current(&mut self) -> (&mut View, &mut Document) {
+        let view = self.tree.get_mut(self.tree.focus);
+        let doc = &mut self.documents[view.doc];
+        (view, doc)
+    }
+
     pub fn view(&self) -> &View {
         self.tree.get(self.tree.focus)
     }

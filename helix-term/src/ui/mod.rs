@@ -45,11 +45,8 @@ pub fn regex_prompt(
             match event {
                 PromptEvent::Abort => {
                     // TODO: also revert text
-                    let view = editor.view();
-                    let view_id = view.id;
-                    let id = view.doc;
-                    let doc = &mut editor.documents[id];
-                    doc.set_selection(view_id, snapshot.clone());
+                    let (view, doc) = editor.current();
+                    doc.set_selection(view.id, snapshot.clone());
                 }
                 PromptEvent::Validate => {
                     // TODO: push_jump to store selection just before jump
@@ -62,19 +59,15 @@ pub fn regex_prompt(
 
                     match Regex::new(input) {
                         Ok(regex) => {
-                            // let view = &mut editor.view_mut();
-                            let view = editor.view();
-                            let view_id = view.id;
-                            let id = view.doc;
-                            let doc = &mut editor.documents[id];
+                            let (view, doc) = editor.current();
 
                             // revert state to what it was before the last update
                             // TODO: also revert text
-                            doc.set_selection(view_id, snapshot.clone());
+                            doc.set_selection(view.id, snapshot.clone());
 
                             fun(doc, regex);
 
-                            editor.ensure_cursor_in_view(view_id);
+                            view.ensure_cursor_in_view(doc);
                         }
                         Err(_err) => (), // TODO: mark command line as error
                     }

@@ -44,10 +44,7 @@ impl Completion {
                         // doc.state = snapshot.clone();
                     }
                     PromptEvent::Validate => {
-                        let view = editor.view();
-                        let view_id = view.id;
-                        let id = view.doc;
-                        let doc = &mut editor.documents[id];
+                        let (view, doc) = editor.current();
 
                         // revert state to what it was before the last update
                         // doc.state = snapshot.clone();
@@ -92,18 +89,18 @@ impl Completion {
                         }
 
                         // if more text was entered, remove it
-                        let cursor = doc.selection(view_id).cursor();
+                        let cursor = doc.selection(view.id).cursor();
                         if trigger_offset < cursor {
                             let remove = Transaction::change(
                                 doc.text(),
                                 vec![(trigger_offset, cursor, None)].into_iter(),
                             );
-                            doc.apply(&remove, view_id);
+                            doc.apply(&remove, view.id);
                         }
 
                         let transaction =
                             util::generate_transaction_from_edits(doc.text(), vec![edit]);
-                        doc.apply(&transaction, view_id);
+                        doc.apply(&transaction, view.id);
                     }
                     _ => (),
                 };
@@ -127,10 +124,7 @@ impl Component for Completion {
         {
             // recompute menu based on matches
             let menu = self.popup.contents();
-            let view = cx.editor.view();
-            let view_id = view.id;
-            let id = view.doc;
-            let doc = cx.editor.document(id).unwrap();
+            let (view, doc) = cx.editor.current();
 
             // cx.hooks()
             // cx.add_hook(enum type,  ||)
@@ -142,7 +136,7 @@ impl Component for Completion {
             // TODO: hooks should get processed immediately so maybe do it after select!(), before
             // looping?
 
-            let cursor = doc.selection(view_id).cursor();
+            let cursor = doc.selection(view.id).cursor();
             if self.trigger_offset <= cursor {
                 let fragment = doc.text().slice(self.trigger_offset..cursor);
                 // ^ problem seems to be that we handle events here before the editor layer, so the

@@ -487,14 +487,12 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(event) => {
-                let view = cx.editor.view();
-                let view_id = view.id;
-                let id = view.doc;
-                let mode = cx.editor.document(id).unwrap().mode();
+                let (view, doc) = cx.editor.current();
+                let mode = doc.mode();
 
                 let mut cxt = commands::Context {
+                    view_id: view.id,
                     editor: &mut cx.editor,
-                    view_id,
                     count: 1,
                     callback: None,
                     callbacks: cx.callbacks,
@@ -524,9 +522,10 @@ impl Component for EditorView {
                 // appease borrowck
                 let callback = cxt.callback.take();
 
-                cx.editor.ensure_cursor_in_view(cx.editor.tree.focus);
+                let (view, doc) = cx.editor.current();
+                view.ensure_cursor_in_view(doc);
 
-                if mode == Mode::Normal && cx.editor.document(id).unwrap().mode() == Mode::Insert {
+                if mode == Mode::Normal && doc.mode() == Mode::Insert {
                     // HAXX: if we just entered insert mode from normal, clear key buf
                     // and record the command that got us into this mode.
 
