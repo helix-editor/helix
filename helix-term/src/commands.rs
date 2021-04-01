@@ -945,8 +945,12 @@ pub fn append_to_line(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-// o inserts a new line after each line with a selection
-pub fn open_below(cx: &mut Context) {
+enum Open {
+    Below,
+    Above,
+}
+
+fn open(cx: &mut Context, open: Open) {
     let count = cx.count;
     let (view, doc) = cx.current();
     enter_insert_mode(doc);
@@ -959,8 +963,14 @@ pub fn open_below(cx: &mut Context) {
     let changes: Vec<Change> = lines
         .into_iter()
         .map(|line| {
-            // adjust all positions to the end of the line (next line minus one)
-            let index = doc.text().line_to_char(line + 1).saturating_sub(1);
+            let line = match open {
+                // adjust position to the end of the line (next line - 1)
+                Open::Below => line + 1,
+                // adjust position to the end of the previous line (current line - 1)
+                Open::Above => line,
+            };
+
+            let index = doc.text().line_to_char(line).saturating_sub(1);
 
             // TODO: share logic with insert_newline for indentation
             let indent_level = indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
@@ -989,49 +999,14 @@ pub fn open_below(cx: &mut Context) {
     doc.apply(&transaction, view.id);
 }
 
+// o inserts a new line after each line with a selection
+pub fn open_below(cx: &mut Context) {
+    open(cx, Open::Below)
+}
+
 // O inserts a new line before each line with a selection
 pub fn open_above(cx: &mut Context) {
-    let count = cx.count;
-    let (view, doc) = cx.current();
-    enter_insert_mode(doc);
-
-    let text = doc.text().slice(..);
-    let lines = selection_lines(doc.text(), doc.selection(view.id));
-
-    let mut ranges = SmallVec::with_capacity(lines.len());
-
-    let changes: Vec<Change> = lines
-        .into_iter()
-        .map(|line| {
-            // adjust all positions to the end of the previous line
-            let index = doc.text().line_to_char(line).saturating_sub(1);
-
-            // TODO: share logic with insert_newline for indentation
-            let indent_level = indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
-            let indent = doc.indent_unit().repeat(indent_level);
-            let mut text = String::with_capacity(1 + indent.len());
-            text.push('\n');
-            text.push_str(&indent);
-            let text = text.repeat(count);
-
-            // calculate new selection range
-            let pos = index + text.len();
-            ranges.push(Range::new(pos, pos));
-
-            // generate changes
-            (index, index, Some(text.into()))
-        })
-        .collect();
-
-    // TODO: count actually inserts "n" new lines and starts editing on all of them.
-    // TODO: append "count" newlines and modify cursors to those lines
-
-    let selection = Selection::new(ranges, 0);
-
-    let transaction =
-        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection);
-
-    doc.apply(&transaction, view.id);
+    open(cx, Open::Above)
 }
 
 pub fn normal_mode(cx: &mut Context) {
@@ -1344,14 +1319,14 @@ pub mod insert {
         let text = doc.text().slice(..);
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                let pos = range.head;
                 // TODO: offset range.head by 1? when calculating?
-                let indent_level =
-                    indent::suggested_indent_for_pos(doc.syntax(), text, range.head, true);
+                let indent_level = indent::suggested_indent_for_pos(doc.syntax(), text, pos, true);
                 let indent = doc.indent_unit().repeat(indent_level);
                 let mut text = String::with_capacity(1 + indent.len());
                 text.push('\n');
                 text.push_str(&indent);
-                (range.head, range.head, Some(text.into()))
+                (pos, pos, Some(text.into()))
             });
         doc.apply(&transaction, view.id);
     }
