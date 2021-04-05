@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Compositor, Context, EventResult},
     key,
     keymap::{self, Keymaps},
-    ui::text_color,
+    ui::{text_color, Completion},
 };
 
 use helix_core::{
@@ -29,6 +29,7 @@ pub struct EditorView {
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     status_msg: Option<String>,
     last_insert: (commands::Command, Vec<KeyEvent>),
+    completion: Option<Completion>,
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -40,6 +41,7 @@ impl EditorView {
             on_next_key: None,
             status_msg: None,
             last_insert: (commands::normal_mode, Vec::new()),
+            completion: None,
         }
     }
 
@@ -435,15 +437,15 @@ impl EditorView {
         );
     }
 
-    fn insert_mode(&self, cxt: &mut commands::Context, event: KeyEvent) {
+    fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
         if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
-            command(cxt);
+            command(cx);
         } else if let KeyEvent {
             code: KeyCode::Char(ch),
             ..
         } = event
         {
-            commands::insert::insert_char(cxt, ch);
+            commands::insert::insert_char(cx, ch);
         }
     }
 
@@ -475,6 +477,18 @@ impl EditorView {
                 }
             }
         }
+    }
+
+    pub fn set_completion(
+        &mut self,
+        items: Vec<helix_lsp::lsp::CompletionItem>,
+        trigger_offset: usize,
+        size: Rect,
+    ) {
+        let mut completion = Completion::new(items, trigger_offset);
+        // TODO : propagate required size on resize to completion too
+        completion.required_size((size.width, size.height));
+        self.completion = Some(completion);
     }
 }
 
@@ -512,7 +526,15 @@ impl Component for EditorView {
                             // record last_insert key
                             self.last_insert.1.push(event);
 
-                            self.insert_mode(&mut cxt, event)
+                            self.insert_mode(&mut cxt, event);
+
+                            if let Some(completion) = &mut self.completion {
+                                completion.update(&mut cxt);
+                                if completion.is_empty() {
+                                    self.completion = None;
+                                }
+                                // TODO: if exiting InsertMode, remove completion
+                            }
                         }
                         mode => self.command_mode(mode, &mut cxt, event),
                     }
@@ -546,6 +568,11 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             self.render_view(doc, view, view.area, surface, &cx.editor.theme, is_focused);
+        }
+
+        if let Some(completion) = &self.completion {
+            completion.render(area, surface, cx)
+            // render completion here
         }
     }
 

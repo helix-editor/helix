@@ -123,11 +123,19 @@ impl<T> Menu<T> {
                 .map(|(index, _score)| &self.options[*index])
         })
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.matches.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.matches.len()
+    }
 }
 
 use super::PromptEvent as MenuEvent;
 
-impl<T> Component for Menu<T> {
+impl<T: 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => event,

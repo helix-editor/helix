@@ -46,7 +46,11 @@ impl<T: Component> Popup<T> {
         }
     }
 
-    pub fn contents(&mut self) -> &mut T {
+    pub fn contents(&self) -> &T {
+        &self.contents
+    }
+
+    pub fn contents_mut(&mut self) -> &mut T {
         &mut self.contents
     }
 }

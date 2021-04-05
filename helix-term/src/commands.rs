@@ -1691,8 +1691,12 @@ pub fn completion(cx: &mut Context) {
 
             // TODO: if no completion, show some message or something
             if !items.is_empty() {
-                let completion = Completion::new(items, trigger_offset);
-                compositor.push(Box::new(completion));
+                use crate::compositor::AnyComponent;
+                let size = compositor.size();
+                let ui = compositor.find("hx::ui::editor::EditorView").unwrap();
+                if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
+                    ui.set_completion(items, trigger_offset, size);
+                };
             }
         },
     );

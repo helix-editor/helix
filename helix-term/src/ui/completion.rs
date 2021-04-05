@@ -12,6 +12,7 @@ use std::borrow::Cow;
 use helix_core::{Position, Transaction};
 use helix_view::Editor;
 
+use crate::commands;
 use crate::ui::{Menu, Popup, PromptEvent};
 
 use helix_lsp::lsp;
@@ -112,44 +113,50 @@ impl Completion {
             trigger_offset,
         }
     }
+
+    pub fn update(&mut self, cx: &mut commands::Context) {
+        // recompute menu based on matches
+        let menu = self.popup.contents_mut();
+        let (view, doc) = cx.editor.current();
+
+        // cx.hooks()
+        // cx.add_hook(enum type,  ||)
+        // cx.trigger_hook(enum type, &str, ...) <-- there has to be enough to identify doc/view
+        // callback with editor & compositor
+        //
+        // trigger_hook sends event into channel, that's consumed in the global loop and
+        // triggers all registered callbacks
+        // TODO: hooks should get processed immediately so maybe do it after select!(), before
+        // looping?
+
+        let cursor = doc.selection(view.id).cursor();
+        if self.trigger_offset <= cursor {
+            let fragment = doc.text().slice(self.trigger_offset..=cursor);
+            let text = Cow::from(fragment);
+            // TODO: logic is same as ui/picker
+            menu.score(&text);
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.popup.contents().is_empty()
+    }
 }
+
+// need to:
+// - trigger on the right trigger char
+//   - detect previous open instance and recycle
+// - update after input, but AFTER the document has changed
+// - if no more matches, need to auto close
+//
+// missing bits:
+// - a more robust hook system: emit to a channel, process in main loop
+// - a way to find specific layers in compositor
+// - components register for hooks, then unregister when terminated
+// ... since completion is a special case, maybe just build it into doc/render?
 
 impl Component for Completion {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
-        // input
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        }) = event
-        {
-            // recompute menu based on matches
-            let menu = self.popup.contents();
-            let (view, doc) = cx.editor.current();
-
-            // cx.hooks()
-            // cx.add_hook(enum type,  ||)
-            // cx.trigger_hook(enum type, &str, ...) <-- there has to be enough to identify doc/view
-            // callback with editor & compositor
-            //
-            // trigger_hook sends event into channel, that's consumed in the global loop and
-            // triggers all registered callbacks
-            // TODO: hooks should get processed immediately so maybe do it after select!(), before
-            // looping?
-
-            let cursor = doc.selection(view.id).cursor();
-            if self.trigger_offset <= cursor {
-                let fragment = doc.text().slice(self.trigger_offset..cursor);
-                // ^ problem seems to be that we handle events here before the editor layer, so the
-                // keypress isn't included in the editor layer yet...
-                // so we can't use ..= for now.
-                let text = Cow::from(fragment);
-                // TODO: logic is same as ui/picker
-                menu.score(&text);
-
-                // TODO: if after scoring the selection is 0 items, remove popup
-            }
-        }
-
         self.popup.handle_event(event, cx)
     }
 

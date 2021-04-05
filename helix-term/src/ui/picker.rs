@@ -118,7 +118,7 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-impl<T> Component for Picker<T> {
+impl<T: 'static> Component for Picker<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
