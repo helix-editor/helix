@@ -61,99 +61,110 @@ pub fn move_vertically(
     range
 }
 
-pub fn move_next_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
+pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {
+    let mut end = begin;
+
     for _ in 0..count {
-        if pos + 1 == slice.len_chars() {
-            return pos;
+        if begin + 1 == slice.len_chars() {
+            return None;
         }
 
-        let mut ch = slice.char(pos);
-        let next = slice.char(pos + 1);
+        let mut ch = slice.char(begin);
+        let next = slice.char(begin + 1);
 
         // if we're at the end of a word, or on whitespce right before new one
         if categorize(ch) != categorize(next) {
-            pos += 1;
-            ch = next;
+            begin += 1;
         }
+
+        // return if not skip while?
+        skip_over_next(slice, &mut begin, |ch| ch == '\n');
+        ch = slice.char(begin);
+
+        end = begin + 1;
 
         if is_word(ch) {
-            skip_over_next(slice, &mut pos, is_word);
+            skip_over_next(slice, &mut end, is_word);
         } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
         }
 
-        // TODO: don't include newline?
-        skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+        skip_over_next(slice, &mut end, is_horiz_blank);
     }
 
-    pos
+    Some(Range::new(begin, end - 1))
 }
 
-pub fn move_prev_word_start(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
+pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {
+    let mut with_end = false;
+    let mut end = begin;
+
     for _ in 0..count {
-        if pos == 0 {
-            return pos;
+        if begin == 0 {
+            return None;
         }
 
-        let ch = slice.char(pos);
-        let prev = slice.char(pos - 1);
+        let ch = slice.char(begin);
+        let prev = slice.char(begin - 1);
 
         if categorize(ch) != categorize(prev) {
-            pos -= 1;
+            begin -= 1;
         }
 
-        // match (category c1, category c2) => {
-        //  if c1 != c2 {
-        //  }
-        // }
+        // return if not skip while?
+        skip_over_prev(slice, &mut begin, |ch| ch == '\n');
 
-        // TODO: skip while eol
+        end = begin;
 
-        // TODO: don't include newline?
-        skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+        with_end = skip_over_prev(slice, &mut end, is_horiz_blank);
 
         // refetch
-        let ch = slice.char(pos);
+        let ch = slice.char(end);
 
         if is_word(ch) {
-            skip_over_prev(slice, &mut pos, is_word);
+            with_end = skip_over_prev(slice, &mut end, is_word);
         } else if ch.is_ascii_punctuation() {
-            skip_over_prev(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+            with_end = skip_over_prev(slice, &mut end, |ch| ch.is_ascii_punctuation());
         }
-        pos = pos.saturating_add(1)
     }
 
-    pos
+    // we want to include begin
+    Some(Range::new(begin + 1, if with_end { end } else { end + 1 }))
 }
 
-pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, count: usize) -> usize {
+pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {
+    let mut end = begin;
+
     for _ in 0..count {
-        if pos + 1 == slice.len_chars() {
-            return pos;
+        if begin + 1 == slice.len_chars() {
+            return None;
         }
 
-        let ch = slice.char(pos);
-        let next = slice.char(pos + 1);
+        let ch = slice.char(begin);
+        let next = slice.char(begin + 1);
 
         if categorize(ch) != categorize(next) {
-            pos += 1;
+            begin += 1;
         }
 
-        // TODO: don't include newline?
-        skip_over_next(slice, &mut pos, |ch| ch.is_ascii_whitespace());
+        // return if not skip while?
+        skip_over_next(slice, &mut begin, |ch| ch == '\n');
+
+        end = begin;
+
+        skip_over_next(slice, &mut end, is_horiz_blank);
 
         // refetch
-        let ch = slice.char(pos);
+        let ch = slice.char(end);
 
         if is_word(ch) {
-            skip_over_next(slice, &mut pos, is_word);
+            skip_over_next(slice, &mut end, is_word);
         } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut pos, |ch| ch.is_ascii_punctuation());
+            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
         }
-        pos -= 1
     }
 
-    pos
+    Some(Range::new(begin, end - 1))
 }
 
 // ---- util ------------
@@ -162,6 +173,10 @@ pub fn move_next_word_end(slice: RopeSlice, mut pos: usize, count: usize) -> usi
 
 fn is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
+}
+
+fn is_horiz_blank(ch: char) -> bool {
+    matches!(ch, ' ' | '\t')
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -201,7 +216,8 @@ where
 }
 
 #[inline]
-pub fn skip_over_prev<F>(slice: RopeSlice, pos: &mut usize, fun: F)
+/// Returns true if the final pos matches the predicate.
+pub fn skip_over_prev<F>(slice: RopeSlice, pos: &mut usize, fun: F) -> bool
 where
     F: Fn(char) -> bool,
 {
@@ -214,6 +230,7 @@ where
         }
         *pos = pos.saturating_sub(1);
     }
+    return fun(slice.char(*pos));
 }
 
 #[cfg(test)]

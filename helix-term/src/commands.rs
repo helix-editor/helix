@@ -218,8 +218,7 @@ pub fn move_next_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|range| {
-        let pos = movement::move_next_word_start(text, range.head, count);
-        Range::new(pos, pos)
+        movement::move_next_word_start(text, range.head, count).unwrap_or(range)
     });
 
     doc.set_selection(view.id, selection);
@@ -231,8 +230,7 @@ pub fn move_prev_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|range| {
-        let pos = movement::move_prev_word_start(text, range.head, count);
-        Range::new(pos, pos)
+        movement::move_prev_word_start(text, range.head, count).unwrap_or(range)
     });
 
     doc.set_selection(view.id, selection);
@@ -243,10 +241,9 @@ pub fn move_next_word_end(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).transform(|range| {
-        let pos = movement::move_next_word_end(text, range.head, count);
-        Range::new(pos, pos)
-    });
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_next_word_end(text, range.head, count).unwrap_or(range));
 
     doc.set_selection(view.id, selection);
 }
@@ -271,7 +268,8 @@ pub fn extend_next_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let pos = movement::move_next_word_start(text, range.head, count);
+        let word = movement::move_next_word_start(text, range.head, count).unwrap_or(range);
+        let pos = word.head;
         Range::new(range.anchor, pos)
     });
 
@@ -284,7 +282,8 @@ pub fn extend_prev_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let pos = movement::move_prev_word_start(text, range.head, count);
+        let word = movement::move_prev_word_start(text, range.head, count).unwrap_or(range);
+        let pos = word.head;
         Range::new(range.anchor, pos)
     });
     doc.set_selection(view.id, selection);
@@ -296,7 +295,8 @@ pub fn extend_next_word_end(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let pos = movement::move_next_word_end(text, range.head, count);
+        let word = movement::move_next_word_end(text, range.head, count).unwrap_or(range);
+        let pos = word.head;
         Range::new(range.anchor, pos)
     });
 
