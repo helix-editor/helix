@@ -230,7 +230,7 @@ where
         }
         *pos = pos.saturating_sub(1);
     }
-    return fun(slice.char(*pos));
+    fun(slice.char(*pos))
 }
 
 #[cfg(test)]
