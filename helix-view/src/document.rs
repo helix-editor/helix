@@ -192,7 +192,7 @@ impl Document {
 
         let success = transaction.changes().apply(&mut self.text);
 
-        if !transaction.changes().is_empty() {
+        if success {
             // update the selection: either take the selection specified in the transaction, or map the
             // current selection through changes.
             let selection = transaction
@@ -200,7 +200,9 @@ impl Document {
                 .cloned()
                 .unwrap_or_else(|| self.selection(view_id).clone().map(transaction.changes()));
             self.set_selection(view_id, selection);
+        }
 
+        if !transaction.changes().is_empty() {
             self.version += 1;
 
             // update tree-sitter syntax tree
