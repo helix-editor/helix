@@ -384,13 +384,11 @@ impl Client {
         let capabilities = self.capabilities.as_ref().unwrap();
 
         let sync_capabilities = match capabilities.text_document_sync {
-            Some(
-                lsp::TextDocumentSyncCapability::Kind(kind)
-                | lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
-                    change: Some(kind),
-                    ..
-                }),
-            ) => kind,
+            Some(lsp::TextDocumentSyncCapability::Kind(kind))
+            | Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                change: Some(kind),
+                ..
+            })) => kind,
             // None | SyncOptions { changes: None }
             _ => return Ok(()),
         };
@@ -540,7 +538,7 @@ impl Client {
 
         // check if we're able to format
         match capabilities.document_formatting_provider {
-            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
             _ => return Ok(Vec::new()),
         };
@@ -569,7 +567,7 @@ impl Client {
 
         // check if we're able to format
         match capabilities.document_range_formatting_provider {
-            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
             _ => return Ok(Vec::new()),
         };

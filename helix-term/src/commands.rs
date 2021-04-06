@@ -821,15 +821,15 @@ pub fn command_mode(cx: &mut Context) {
             let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
 
             match *parts.as_slice() {
-                ["q" | "quit"] => {
+                ["q"] | ["quit"] => {
                     editor.close(editor.view().id);
                     // editor.should_close = true,
                 }
-                ["o" | "open", path] => {
+                ["o", path] | ["open", path] => {
                     use helix_view::editor::Action;
                     editor.open(path.into(), Action::Replace);
                 }
-                ["w" | "write"] => {
+                ["w"] | ["write"] => {
                     // TODO: non-blocking via save() command
                     let id = editor.view().doc;
                     let doc = &mut editor.documents[id];

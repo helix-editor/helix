@@ -182,7 +182,11 @@ impl Component for Prompt {
             // char or shift char
             KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers: KeyModifiers::NONE | KeyModifiers::SHIFT,
+                modifiers: KeyModifiers::NONE,
+            }
+            | KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: KeyModifiers::SHIFT,
             } => {
                 self.insert_char(c);
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
