@@ -27,15 +27,35 @@ pub struct ChangeSet {
     pub(crate) changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
     len: usize,
+    len_after: usize,
+}
+
+impl Default for ChangeSet {
+    fn default() -> Self {
+        Self {
+            changes: Vec::new(),
+            len: 0,
+            len_after: 0,
+        }
+    }
 }
 
 impl ChangeSet {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            changes: Vec::with_capacity(capacity),
+            len: 0,
+            len_after: 0,
+        }
+    }
+
     #[must_use]
     pub fn new(doc: &Rope) -> Self {
         let len = doc.len_chars();
         Self {
-            changes: vec![Operation::Retain(len)],
+            changes: Vec::new(),
             len,
+            len_after: len,
         }
     }
 
@@ -47,27 +67,14 @@ impl ChangeSet {
         &self.changes
     }
 
-    #[must_use]
-    fn len_after(&self) -> usize {
-        use Operation::*;
-
-        let mut len = 0;
-        for change in &self.changes {
-            match change {
-                Retain(i) => len += i,
-                Insert(s) => len += s.chars().count(),
-                Delete(_) => (),
-            }
-        }
-        len
-    }
-
     // Changeset builder operations: delete/insert/retain
     fn delete(&mut self, n: usize) {
         use Operation::*;
         if n == 0 {
             return;
         }
+
+        self.len += n;
 
         if let Some(Delete(count)) = self.changes.last_mut() {
             *count += n;
@@ -82,6 +89,8 @@ impl ChangeSet {
         if fragment.is_empty() {
             return;
         }
+
+        self.len_after += fragment.len();
 
         let new_last = match self.changes.as_mut_slice() {
             [.., Insert(prev)] | [.., Insert(prev), Delete(_)] => {
@@ -101,6 +110,9 @@ impl ChangeSet {
             return;
         }
 
+        self.len += n;
+        self.len_after += n;
+
         if let Some(Retain(count)) = self.changes.last_mut() {
             *count += n;
         } else {
@@ -112,7 +124,13 @@ impl ChangeSet {
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
     pub fn compose(self, other: Self) -> Self {
-        debug_assert!(self.len_after() == other.len);
+        debug_assert!(self.len_after == other.len);
+
+        // composing fails in weird ways if one of the sets is empty
+        // a: [] len: 0 len_after: 1 | b: [Insert(Tendril<UTF8>(inline: "\n")), Retain(1)] len 1
+        if self.changes.is_empty() {
+            return other;
+        }
 
         let len = self.changes.len();
 
@@ -122,10 +140,7 @@ impl ChangeSet {
         let mut head_a = changes_a.next();
         let mut head_b = changes_b.next();
 
-        let mut changes = Self {
-            len: self.len,
-            changes: Vec::with_capacity(len), // TODO: max(a, b), shrink_to_fit() afterwards
-        };
+        let mut changes = Self::with_capacity(len); // TODO: max(a, b), shrink_to_fit() afterwards
 
         loop {
             use std::cmp::Ordering;
@@ -228,6 +243,9 @@ impl ChangeSet {
             };
         }
 
+        // starting len should still equal original starting len
+        debug_assert!(changes.len == self.len);
+
         changes
     }
 
@@ -251,7 +269,8 @@ impl ChangeSet {
     pub fn invert(&self, original_doc: &Rope) -> Self {
         assert!(original_doc.len_chars() == self.len);
 
-        let mut changes = Vec::with_capacity(self.changes.len());
+        let mut changes = Self::with_capacity(self.changes.len());
+
         let mut pos = 0;
         let mut len = 0;
 
@@ -259,24 +278,22 @@ impl ChangeSet {
             use Operation::*;
             match change {
                 Retain(n) => {
-                    changes.push(Retain(*n));
+                    changes.retain(*n);
                     pos += n;
-                    len += n;
                 }
                 Delete(n) => {
                     let text = Cow::from(original_doc.slice(pos..pos + *n));
-                    changes.push(Insert(Tendril::from_slice(&text)));
+                    changes.insert(Tendril::from_slice(&text));
                     pos += n;
                 }
                 Insert(s) => {
                     let chars = s.chars().count();
-                    changes.push(Delete(chars));
-                    len += chars;
+                    changes.delete(chars);
                 }
             }
         }
 
-        Self { changes, len }
+        changes
     }
 
     /// Returns true if applied successfully.
@@ -309,7 +326,7 @@ impl ChangeSet {
     /// `true` when the set is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        matches!(self.changes.as_slice(), [] | [Operation::Retain(_)])
+        self.changes.is_empty()
     }
 
     /// Map a position through the changes.
@@ -458,8 +475,8 @@ impl Transaction {
         I: IntoIterator<Item = Change> + ExactSizeIterator,
     {
         let len = doc.len_chars();
-        let acc = Vec::with_capacity(2 * changes.len() + 1); // rough estimate
-        let mut changeset = ChangeSet { changes: acc, len };
+
+        let mut changeset = ChangeSet::with_capacity(2 * changes.len() + 1); // rough estimate
 
         // TODO: verify ranges are ordered and not overlapping or change will panic.
 
@@ -576,11 +593,13 @@ mod test {
                 Insert("abc".into()),
             ],
             len: 8,
+            len_after: 15,
         };
 
         let b = ChangeSet {
             changes: vec![Delete(10), Insert("world".into()), Retain(5)],
             len: 15,
+            len_after: 10,
         };
 
         let mut text = Rope::from("hello xz");
@@ -597,8 +616,9 @@ mod test {
         use Operation::*;
 
         let changes = ChangeSet {
-            changes: vec![Retain(4), Delete(5), Insert("test".into()), Retain(3)],
+            changes: vec![Retain(4), Insert("test".into()), Delete(5), Retain(3)],
             len: 12,
+            len_after: 11,
         };
 
         let doc = Rope::from("世界3 hello xz");
@@ -627,6 +647,7 @@ mod test {
         let cs = ChangeSet {
             changes: vec![Retain(4), Insert("!!".into()), Retain(4)],
             len: 8,
+            len_after: 10,
         };
 
         assert_eq!(cs.map_pos(0, Assoc::Before), 0); // before insert region
@@ -638,6 +659,7 @@ mod test {
         let cs = ChangeSet {
             changes: vec![Retain(4), Delete(4), Retain(4)],
             len: 12,
+            len_after: 8,
         };
         assert_eq!(cs.map_pos(0, Assoc::Before), 0); // at start
         assert_eq!(cs.map_pos(4, Assoc::Before), 4); // before a delete
@@ -655,6 +677,7 @@ mod test {
                 Delete(2),
             ],
             len: 4,
+            len_after: 4,
         };
         assert_eq!(cs.map_pos(2, Assoc::Before), 2);
         assert_eq!(cs.map_pos(2, Assoc::After), 2);
@@ -716,5 +739,19 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert("hello".into())]);
         // instead of insert h, insert e, insert l, insert l, insert o
+    }
+
+    #[test]
+    fn combine_with_empty() {
+        let empty = Rope::from("");
+        let mut a = ChangeSet::new(&empty);
+
+        let mut b = ChangeSet::new(&empty);
+        b.insert("a".into());
+
+        let changes = a.compose(b);
+
+        use Operation::*;
+        assert_eq!(changes.changes, &[Insert("a".into())]);
     }
 }
