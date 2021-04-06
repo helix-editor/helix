@@ -500,7 +500,7 @@ impl Component for EditorView {
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
-            Event::Key(event) => {
+            Event::Key(key) => {
                 let (view, doc) = cx.editor.current();
                 let mode = doc.mode();
 
@@ -519,24 +519,50 @@ impl Component for EditorView {
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
-                    on_next_key(&mut cxt, event);
+                    on_next_key(&mut cxt, key);
                 } else {
                     match mode {
                         Mode::Insert => {
                             // record last_insert key
-                            self.last_insert.1.push(event);
+                            self.last_insert.1.push(key);
 
-                            self.insert_mode(&mut cxt, event);
-
+                            // let completion swallow the event if necessary
+                            let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
-                                completion.update(&mut cxt);
-                                if completion.is_empty() {
-                                    self.completion = None;
+                                // use a fake context here
+                                let mut cx = Context {
+                                    editor: cxt.editor,
+                                    callbacks: cxt.callbacks,
+                                    executor: cx.executor,
+                                    scroll: None,
+                                };
+                                let res = completion.handle_event(event, &mut cx);
+
+                                if let EventResult::Consumed(callback) = res {
+                                    consumed = true;
+
+                                    if callback.is_some() {
+                                        // assume close_fn
+                                        self.completion = None;
+                                    }
                                 }
-                                // TODO: if exiting InsertMode, remove completion
+                            }
+
+                            // if completion didn't take the event, we pass it onto commands
+                            if !consumed {
+                                self.insert_mode(&mut cxt, key);
+
+                                // lastly we recalculate completion
+                                if let Some(completion) = &mut self.completion {
+                                    completion.update(&mut cxt);
+                                    if completion.is_empty() {
+                                        self.completion = None;
+                                    }
+                                    // TODO: if exiting InsertMode, remove completion
+                                }
                             }
                         }
-                        mode => self.command_mode(mode, &mut cxt, event),
+                        mode => self.command_mode(mode, &mut cxt, key),
                     }
                 }
                 self.on_next_key = cxt.on_next_key_callback.take();
@@ -554,7 +580,7 @@ impl Component for EditorView {
                     // how we entered insert mode is important, and we should track that so
                     // we can repeat the side effect.
 
-                    self.last_insert.0 = self.keymap[&mode][&event];
+                    self.last_insert.0 = self.keymap[&mode][&key];
                     self.last_insert.1.clear();
                 };
 

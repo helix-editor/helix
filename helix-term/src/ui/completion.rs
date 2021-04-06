@@ -131,7 +131,7 @@ impl Completion {
 
         let cursor = doc.selection(view.id).cursor();
         if self.trigger_offset <= cursor {
-            let fragment = doc.text().slice(self.trigger_offset..=cursor);
+            let fragment = doc.text().slice(self.trigger_offset..cursor);
             let text = Cow::from(fragment);
             // TODO: logic is same as ui/picker
             menu.score(&text);
