@@ -56,7 +56,7 @@ fn main() {
         .arg(
             Arg::new("files")
                 .about("Sets the input file to use")
-                .required(true)
+                .required(false)
                 .multiple(true)
                 .index(1),
         )

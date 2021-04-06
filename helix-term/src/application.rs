@@ -45,14 +45,17 @@ pub struct Application {
 
 impl Application {
     pub fn new(mut args: Args, executor: &'static smol::Executor<'static>) -> Result<Self, Error> {
+        use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
         let mut editor = Editor::new(executor, size);
 
-        let files = args.values_of_t::<PathBuf>("files").unwrap();
-        for file in files {
-            use helix_view::editor::Action;
-            editor.open(file, Action::HorizontalSplit)?;
+        if let Ok(files) = args.values_of_t::<PathBuf>("files") {
+            for file in files {
+                editor.open(file, Action::HorizontalSplit)?;
+            }
+        } else {
+            editor.new_file(Action::HorizontalSplit)?;
         }
 
         compositor.push(Box::new(ui::EditorView::new()));

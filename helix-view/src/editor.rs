@@ -51,46 +51,7 @@ impl Editor {
         }
     }
 
-    pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let id = self
-            .documents()
-            .find(|doc| doc.path() == Some(&path))
-            .map(|doc| doc.id);
-
-        let id = if let Some(id) = id {
-            id
-        } else {
-            let mut doc = Document::load(path, self.theme.scopes())?;
-
-            // try to find a language server based on the language name
-            let language_server = doc
-                .language
-                .as_ref()
-                .and_then(|language| self.language_servers.get(language, self.executor));
-
-            if let Some(language_server) = language_server {
-                doc.set_language_server(Some(language_server.clone()));
-
-                let language_id = doc
-                    .language()
-                    .and_then(|s| s.split('.').last()) // source.rust
-                    .map(ToOwned::to_owned)
-                    .unwrap_or_default();
-
-                smol::block_on(language_server.text_document_did_open(
-                    doc.url().unwrap(),
-                    doc.version(),
-                    doc.text(),
-                    language_id,
-                ))
-                .unwrap();
-            }
-
-            let id = self.documents.insert(doc);
-            self.documents[id].id = id;
-            id
-        };
-
+    fn _open(&mut self, id: DocumentId, action: Action) -> Result<DocumentId, Error> {
         use crate::tree::Layout;
         use helix_core::Selection;
         match action {
@@ -132,6 +93,57 @@ impl Editor {
         self._refresh();
 
         Ok(id)
+    }
+
+    pub fn new_file(&mut self, action: Action) -> Result<DocumentId, Error> {
+        use helix_core::Rope;
+        let doc = Document::new(Rope::from("\n"));
+        let id = self.documents.insert(doc);
+        self.documents[id].id = id;
+        self._open(id, action)
+    }
+
+    pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
+        let id = self
+            .documents()
+            .find(|doc| doc.path() == Some(&path))
+            .map(|doc| doc.id);
+
+        let id = if let Some(id) = id {
+            id
+        } else {
+            let mut doc = Document::load(path, self.theme.scopes())?;
+
+            // try to find a language server based on the language name
+            let language_server = doc
+                .language
+                .as_ref()
+                .and_then(|language| self.language_servers.get(language, self.executor));
+
+            if let Some(language_server) = language_server {
+                doc.set_language_server(Some(language_server.clone()));
+
+                let language_id = doc
+                    .language()
+                    .and_then(|s| s.split('.').last()) // source.rust
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_default();
+
+                smol::block_on(language_server.text_document_did_open(
+                    doc.url().unwrap(),
+                    doc.version(),
+                    doc.text(),
+                    language_id,
+                ))
+                .unwrap();
+            }
+
+            let id = self.documents.insert(doc);
+            self.documents[id].id = id;
+            id
+        };
+
+        self._open(id, action)
     }
 
     pub fn close(&mut self, id: ViewId) {
