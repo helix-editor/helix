@@ -106,8 +106,11 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         let parent_kind = parent.kind();
         let start = parent.start_position().row;
 
-        // println!(
-        //     "name: {}\tparent: {}\trange:\t{} {}\tfirst={:?}\tlast={:?} start={} prev={}",
+        // detect deeply nested indents in the same line
+        let starts_same_line = start == prev_start;
+
+        // log::error!(
+        //     "name: {}\tparent: {}\trange:\t{} {}\tfirst={:?}\tlast={:?} start={} prev={} same_line={}",
         //     node.kind(),
         //     parent.kind(),
         //     node.range().start_point,
@@ -116,14 +119,11 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         //     node.next_sibling().is_none(),
         //     node.start_position(),
         //     prev_start,
+        //     starts_same_line
         // );
 
-        // detect deeply nested indents in the same line
-        let starts_same_line = start == prev_start;
-
-        if outdent.contains(&node.kind()) {
+        if outdent.contains(&node.kind()) && !starts_same_line {
             // we outdent by skipping the rules for the current level and jumping up
-            // println!("skipping..");
             // node = parent;
             increment -= 1;
             // continue;
