@@ -62,7 +62,7 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                 match tag {
                     Tag::Heading(_) | Tag::Paragraph | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
                         // whenever code block or paragraph closes, new line
-                        let spans = std::mem::replace(&mut spans, Vec::new());
+                        let spans = std::mem::take(&mut spans);
                         if !spans.is_empty() {
                             lines.push(Spans::from(spans));
                         }
@@ -118,7 +118,7 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                                             slice = &slice[end + 1..];
 
                                             // make a new line
-                                            let spans = std::mem::replace(&mut spans, Vec::new());
+                                            let spans = std::mem::take(&mut spans);
                                             lines.push(Spans::from(spans));
                                         }
 
