@@ -93,6 +93,27 @@ h6:target::before {
     margin-right: auto;
     max-width: var(--content-max-width);
 }
+
+
+/* 2 1.75 1.5 1.25 1 .875 */
+
+.content h1 { font-size: 2em }
+.content h2 { font-size: 1.75em }
+.content h3 { font-size: 1.5em }
+.content h4 { font-size: 1.25em }
+.content h5 { font-size: 1em }
+.content h6 { font-size: .875em }
+
+.content h1, .content h2, .content h3, .content h4 {
+    font-weight: 500;
+    margin-top: 1.275em;
+    margin-bottom: .875em;
+}
+.content p, .content ol, .content ul, .content table, .content blockquote {
+    margin-top: 0;
+    margin-bottom: .875em;
+}
+
 .content p { line-height: 1.45em; }
 .content ol { line-height: 1.45em; }
 .content ul { line-height: 1.45em; }

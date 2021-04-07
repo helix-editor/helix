@@ -381,7 +381,6 @@ ul#searchresults span.teaser em {
 .chapter {
     list-style: none outside none;
     padding-left: 0;
-    line-height: 2.2em;
     margin: .25rem 0;
 }
 
@@ -426,7 +425,7 @@ ul#searchresults span.teaser em {
 }
 
 .chapter li.chapter-item {
-    padding: .875rem 1.5rem .125rem;
+    padding: 1rem 1.5rem;
 }
 
 .chapter .section li.chapter-item {
