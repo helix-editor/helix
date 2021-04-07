@@ -233,7 +233,7 @@ impl EditorView {
                 // TODO: render also if only one of the ranges is in viewport
                 let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
                 let mut end = view.screen_coords_at_pos(doc, text, selection.head);
-                   
+
                 let head = end;
 
                 if selection.head < selection.anchor {
@@ -282,7 +282,7 @@ impl EditorView {
                         selection_style,
                     );
                 }
-                    
+
                 // cursor
                 if let Some(head) = head {
                     surface.set_style(

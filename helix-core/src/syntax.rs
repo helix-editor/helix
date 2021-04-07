@@ -65,12 +65,14 @@ impl LanguageConfiguration {
             .get_or_init(|| {
                 // let name = get_language_name(&self.language_id);
 
+                let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
                 let highlights_query =
-                    std::fs::read_to_string(self.path.join("queries/highlights.scm"))
+                    std::fs::read_to_string(root.join(&self.path).join("queries/highlights.scm"))
                         .unwrap_or_default();
 
                 let injections_query =
-                    std::fs::read_to_string(self.path.join("queries/injections.scm"))
+                    std::fs::read_to_string(root.join(&self.path).join("queries/injections.scm"))
                         .unwrap_or_default();
 
                 let locals_query = "";
