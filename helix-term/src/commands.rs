@@ -707,6 +707,18 @@ pub fn extend_line(cx: &mut Context) {
 // heuristic: append changes to history after each command, unless we're in insert mode
 
 fn _delete_selection(doc: &mut Document, view_id: ViewId) {
+    // first yank the selection
+    let values: Vec<String> = doc
+        .selection(view_id)
+        .fragments(doc.text().slice(..))
+        .map(Cow::into_owned)
+        .collect();
+
+    // TODO: allow specifying reg
+    let reg = '"';
+    register::set(reg, values);
+
+    // then delete
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
             (range.from(), range.to() + 1, None)
