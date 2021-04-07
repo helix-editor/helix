@@ -74,10 +74,17 @@ fn main() {
     setup_logging(verbosity).expect("failed to initialize logging.");
 
     // initialize language registry
+    use helix_core::config_dir;
     use helix_core::syntax::{Loader, LOADER};
-    let toml = include_str!("../../languages.toml");
+
+    // load $HOME/.config/helix/languages.toml, fallback to default config
+    let config = std::fs::read(config_dir().join("languages.toml"));
+    let toml = config
+        .as_deref()
+        .unwrap_or(include_bytes!("../../languages.toml"));
+
     LOADER.get_or_init(|| {
-        let config = toml::from_str(toml).expect("Could not parse languages.toml");
+        let config = toml::from_slice(toml).expect("Could not parse languages.toml");
         Loader::new(config)
     });
 

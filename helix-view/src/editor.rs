@@ -25,9 +25,13 @@ pub enum Action {
 
 impl Editor {
     pub fn new(executor: &'static smol::Executor<'static>, mut area: tui::layout::Rect) -> Self {
-        // TODO: load from config dir
-        let toml = include_str!("../../theme.toml");
-        let theme: Theme = toml::from_str(&toml).expect("failed to parse theme.toml");
+        use helix_core::config_dir;
+        let config = std::fs::read(config_dir().join("theme.toml"));
+        // load $HOME/.config/helix/theme.toml, fallback to default config
+        let toml = config
+            .as_deref()
+            .unwrap_or(include_bytes!("../../theme.toml"));
+        let theme: Theme = toml::from_slice(&toml).expect("failed to parse theme.toml");
 
         let language_servers = helix_lsp::Registry::new();
 

@@ -44,6 +44,13 @@ pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -
     None
 }
 
+pub fn config_dir() -> std::path::PathBuf {
+    // TODO: allow env var override
+    let xdg_dirs =
+        xdg::BaseDirectories::with_prefix("helix").expect("Unable to find XDG directories!");
+    xdg_dirs.get_config_home()
+}
+
 pub use ropey::{Rope, RopeSlice};
 
 pub use tendril::StrTendril as Tendril;
