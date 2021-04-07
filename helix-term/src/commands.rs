@@ -1405,7 +1405,13 @@ pub fn yank(cx: &mut Context) {
     cx.set_status(msg)
 }
 
-pub fn paste(cx: &mut Context) {
+#[derive(Copy, Clone)]
+enum Paste {
+    Before,
+    After,
+}
+
+fn _paste(doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
     // TODO: allow specifying reg
     let reg = '"';
     if let Some(values) = register::get(reg) {
@@ -1416,40 +1422,57 @@ pub fn paste(cx: &mut Context) {
                 .unwrap(),
         );
 
-        // TODO: if any of values ends \n it's linewise paste
-        //
-        // p => paste after
-        // P => paste before
-        // alt-p => paste every yanked selection after selected text
-        // alt-P => paste every yanked selection before selected text
-        // R => replace selected text with yanked text
-        // alt-R => replace selected text with every yanked text
-        //
-        // append => insert at next line
-        // insert => insert at start of line
-        // replace => replace
-        // default insert
-
+        // if any of values ends \n it's linewise paste
         let linewise = values.iter().any(|value| value.ends_with('\n'));
 
         let mut values = values.into_iter().map(Tendril::from).chain(repeat);
 
-        let (view, doc) = cx.current();
+        // paste on the next line
+        // TODO: can simply take a range + modifier and compute the right pos without ifs
+        let text = doc.text();
 
-        let transaction = if linewise {
-            // paste on the next line
-            // TODO: can simply take a range + modifier and compute the right pos without ifs
-            let text = doc.text();
+        let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let line_end = text.line_to_char(text.char_to_line(range.head) + 1);
-                (line_end, line_end, Some(values.next().unwrap()))
-            })
-        } else {
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                (range.head + 1, range.head + 1, Some(values.next().unwrap()))
-            })
-        };
+                let pos = match (action, linewise) {
+                    // paste linewise before
+                    (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
+                    // paste linewise after
+                    (Paste::After, true) => text.line_to_char(text.char_to_line(range.to()) + 1),
+                    // paste insert
+                    (Paste::Before, false) => range.from(),
+                    // paste append
+                    (Paste::After, false) => range.to() + 1,
+                };
+                (pos, pos, Some(values.next().unwrap()))
+            });
+        return Some(transaction);
+    }
+    None
+}
 
+// alt-p => paste every yanked selection after selected text
+// alt-P => paste every yanked selection before selected text
+// R => replace selected text with yanked text
+// alt-R => replace selected text with every yanked text
+//
+// append => insert at next line
+// insert => insert at start of line
+// replace => replace
+// default insert
+
+pub fn paste_after(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    if let Some(transaction) = _paste(doc, view, Paste::After) {
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
+    }
+}
+
+pub fn paste_before(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    if let Some(transaction) = _paste(doc, view, Paste::Before) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }

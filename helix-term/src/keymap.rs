@@ -207,8 +207,9 @@ pub fn default() -> Keymaps {
 
         key!('y') => commands::yank,
         // yank_all
-        key!('p') => commands::paste,
+        key!('p') => commands::paste_after,
         // paste_all
+        shift!('P') => commands::paste_before,
 
         key!('>') => commands::indent,
         key!('<') => commands::unindent,
