@@ -128,8 +128,7 @@ pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
         }
     }
 
-    // we want to include begin
-    Some(Range::new(begin + 1, if with_end { end } else { end + 1 }))
+    Some(Range::new(begin, if with_end { end } else { end + 1 }))
 }
 
 pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {

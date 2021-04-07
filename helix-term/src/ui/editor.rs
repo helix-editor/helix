@@ -233,19 +233,8 @@ impl EditorView {
                 // TODO: render also if only one of the ranges is in viewport
                 let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
                 let mut end = view.screen_coords_at_pos(doc, text, selection.head);
-
-                // cursor
-                if let Some(end) = end {
-                    surface.set_style(
-                        Rect::new(
-                            viewport.x + end.col as u16,
-                            viewport.y + end.row as u16,
-                            1,
-                            1,
-                        ),
-                        cursor_style,
-                    );
-                }
+                   
+                let head = end;
 
                 if selection.head < selection.anchor {
                     std::mem::swap(&mut start, &mut end);
@@ -260,7 +249,7 @@ impl EditorView {
                         Rect::new(
                             viewport.x + start.col as u16,
                             viewport.y + start.row as u16,
-                            (end.col - start.col) as u16,
+                            (end.col - start.col) as u16 + 1,
                             1,
                         ),
                         selection_style,
@@ -291,6 +280,19 @@ impl EditorView {
                     surface.set_style(
                         Rect::new(viewport.x, viewport.y + end.row as u16, end.col as u16, 1),
                         selection_style,
+                    );
+                }
+                    
+                // cursor
+                if let Some(head) = head {
+                    surface.set_style(
+                        Rect::new(
+                            viewport.x + head.col as u16,
+                            viewport.y + head.row as u16,
+                            1,
+                            1,
+                        ),
+                        cursor_style,
                     );
                 }
             }
