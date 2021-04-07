@@ -3,7 +3,8 @@
 "punctuation" = "#a4a0e8" # lavender
 "punctuation.delimiter" = "#a4a0e8" # lavender
 "operator" = "#dbbfef" # lilac
-"property" = "#a4a0e8" # lavender
+# "property" = "#a4a0e8" # lavender
+"property" = "#ffffff" # white
 "variable.parameter" = "#a4a0e8" # lavender
 # TODO distinguish type from type.builtin?
 "type" = "#ffffff" # white
@@ -16,6 +17,7 @@
 "constant" = "#ffffff" # white
 "constant.builtin" = "#ffffff" # white
 "string" = "#cccccc" # silver
+"number" = "#e8dca0" # chamois
 "escape" = "#efba5d" # honey
 # used for lifetimes
 "label" = "#efba5d" # honey
@@ -24,13 +26,13 @@
 # TODO: diferentiate doc comment
 # TODO: variable as lilac
 # TODO: mod/use statements as white
-# TODO: mod stuff as chamoise
+# TODO: mod stuff as chamois
 # TODO: add "(scoped_identifier) @path" for std::mem::
 #
 # concat (ERROR) @syntax-error and "MISSING ;" selectors for errors
 
 "module" = "#ff0000"
-"variable" = "#ff0000"
+"variable" = "#a4a0e8" # lavender
 "function.builtin" = "#ff0000"
 
 "ui.background" = { bg = "#3b224c" } # midnight

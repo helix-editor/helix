@@ -70,7 +70,7 @@ mk_langs!(
     (Bash, tree_sitter_bash),
     (C, tree_sitter_c),
     (CSharp, tree_sitter_c_sharp),
-    // (Cpp, tree_sitter_cpp),
+    (Cpp, tree_sitter_cpp),
     (Css, tree_sitter_css),
     (Go, tree_sitter_go),
     // (Haskell, tree_sitter_haskell),

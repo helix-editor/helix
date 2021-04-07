@@ -18,3 +18,44 @@ roots = []
 path = "../helix-syntax/languages/tree-sitter-toml"
 
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "cpp"
+scope = "source.cpp"
+injection-regex = "cpp"
+file-types = ["cc", "cpp", "hpp", "h"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-cpp" # TODO: also C highlights
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "javascript"
+scope = "source.js"
+injection-regex = "^(js|javascript)$"
+file-types = ["js"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-javascript"
+# TODO: highlights-jsx, highlights-params
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "css"
+scope = "source.css"
+injection-regex = "css"
+file-types = ["css"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-css"
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "html"
+scope = "text.html.basic"
+injection-regex = "html"
+file-types = ["html"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-html"
+
+indent = { tab-width = 2, unit = "  " }
