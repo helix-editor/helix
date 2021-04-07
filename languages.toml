@@ -20,6 +20,26 @@ path = "../helix-syntax/languages/tree-sitter-toml"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "json"
+scope = "source.json"
+injection-regex = "json"
+file-types = ["json"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-json"
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "c"
+scope = "source.c"
+injection-regex = "c"
+file-types = ["c"] # TODO: ["h"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-c"
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
@@ -27,6 +47,18 @@ file-types = ["cc", "cpp", "hpp", "h"]
 roots = []
 path = "../helix-syntax/languages/tree-sitter-cpp" # TODO: also C highlights
 
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "go"
+scope = "source.go"
+injection-regex = "go"
+file-types = ["go"]
+roots = ["Gopkg.toml", "go.mod"]
+path = "../helix-syntax/languages/tree-sitter-go"
+
+language-server = { command = "gopls" }
+# TODO: gopls needs utf-8 offsets
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -70,4 +102,36 @@ path = "../helix-syntax/languages/tree-sitter-python"
 
 language-server = { command = "pyls" }
 # TODO: pyls needs utf-8 offsets
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "ruby"
+scope = "source.ruby"
+injection-regex = "ruby"
+file-types = ["rb"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-ruby"
+
+language-server = { command = "solargraph", args = ["stdio"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "bash"
+scope = "source.bash"
+injection-regex = "bash"
+file-types = ["sh", "bash"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-bash"
+
+language-server = { command = "bash-language-server", args = ["start"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "php"
+scope = "source.php"
+injection-regex = "php"
+file-types = ["php"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-php"
+
 indent = { tab-width = 2, unit = "  " }

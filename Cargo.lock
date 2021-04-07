@@ -486,6 +486,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "helix-syntax",
+ "log",
  "once_cell",
  "regex",
  "ropey",

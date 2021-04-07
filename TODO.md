@@ -3,6 +3,17 @@
 
 ------
 
+- tree sitter:
+  - lua
+  - markdown
+  - zig
+  - regex
+  - vue
+  - kotlin
+  - julia
+  - clojure
+  - erlang
+
 - [ ] use signature_help_provider and completion_provider trigger characters in
     a hook to trigger signature help text / autocompletion
 - [ ] document_on_type provider triggers
@@ -19,8 +30,8 @@
 - [ ] yank on delete
 - [ ]  :x for closing buffers
 
-- [ ] jumplist (push selections on goto / select on the view)
-- [ ] repeat insert/command -> transaction
+- [x] jumplist (push selections on goto / select on the view)
+- [x] repeat insert/command -> transaction
 - [ ] repeat selection
 
 - [] jump to alt buffer
@@ -36,6 +47,9 @@
 - [ ] lsp: formatting
 - [x] lsp: goto
 
+- [ ] search: wrap around file
+- [ ] search: smart case by default: insensitive unless upper detected
+
 - decide if markdown should have vertical padding too
 
 - the hooks system should be better for pre/post insert.
@@ -48,7 +62,6 @@
 - [ ] bracket pairs
 - [x] comment block (gcc)
 - [ ] completion signature popups/docs
-- [ ] multiple views into the same file
 - [ ] selection align
 - [ ] store some state between restarts: file positions, prompt history
 - [ ] highlight matched characters in completion
