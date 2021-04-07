@@ -5,6 +5,7 @@
 "operator" = "#dbbfef" # lilac
 # "property" = "#a4a0e8" # lavender
 "property" = "#ffffff" # white
+"variable" = "#a4a0e8" # lavender
 "variable.parameter" = "#a4a0e8" # lavender
 # TODO distinguish type from type.builtin?
 "type" = "#ffffff" # white
@@ -12,6 +13,7 @@
 "constructor" = "#dbbfef" # lilac
 "function" = "#ffffff" # white
 "function.macro" = "#dbbfef" # lilac
+"function.builtin" = "#ffffff" # white
 "comment" = "#697C81" # sirocco
 "variable.builtin" = "#9ff28f" # mint
 "constant" = "#ffffff" # white
@@ -32,8 +34,6 @@
 # concat (ERROR) @syntax-error and "MISSING ;" selectors for errors
 
 "module" = "#ff0000"
-"variable" = "#a4a0e8" # lavender
-"function.builtin" = "#ff0000"
 
 "ui.background" = { bg = "#3b224c" } # midnight
 "ui.linenr" = { fg = "#5a5977" } # comet

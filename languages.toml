@@ -59,3 +59,15 @@ roots = []
 path = "../helix-syntax/languages/tree-sitter-html"
 
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "python"
+scope = "source.python"
+injection-regex = "python"
+file-types = ["py"]
+roots = []
+path = "../helix-syntax/languages/tree-sitter-python"
+
+language-server = { command = "pyls" }
+# TODO: pyls needs utf-8 offsets
+indent = { tab-width = 2, unit = "  " }
