@@ -104,7 +104,7 @@ use crate::select_all::SelectAll;
 use smol::channel::Receiver;
 
 pub struct Registry {
-    inner: HashMap<LanguageId, Arc<Client>>,
+    inner: HashMap<LanguageId, Option<Arc<Client>>>,
 
     pub incoming: SelectAll<Receiver<Call>>,
 }
@@ -140,17 +140,19 @@ impl Registry {
                     // TODO: lookup defaults for id (name, args)
 
                     // initialize a new client
-                    let (mut client, incoming) = Client::start(&ex, &config.command, &config.args);
+                    let (mut client, incoming) =
+                        Client::start(&ex, &config.command, &config.args).ok()?;
+
                     // TODO: run this async without blocking
                     smol::block_on(client.initialize()).unwrap();
 
                     s_incoming.push(incoming);
 
-                    Arc::new(client)
+                    Some(Arc::new(client))
                 })
                 .clone();
 
-            return Some(language_server);
+            return language_server;
         }
 
         None

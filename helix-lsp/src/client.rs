@@ -34,15 +34,25 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn start(ex: &Executor, cmd: &str, args: &[String]) -> (Self, Receiver<Call>) {
-        let mut process = Command::new(cmd)
+    pub fn start(ex: &Executor, cmd: &str, args: &[String]) -> Result<(Self, Receiver<Call>)> {
+        // smol makes sure the process is reaped on drop, but using kill_on_drop(true) maybe?
+        let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn()
-            .expect("Failed to start language server");
-        // smol makes sure the process is reaped on drop, but using kill_on_drop(true) maybe?
+            .spawn();
+
+        // use std::io::ErrorKind;
+        let mut process = match process {
+            Ok(process) => process,
+            Err(err) => match err.kind() {
+                // ErrorKind::NotFound | ErrorKind::PermissionDenied => {
+                //     return Err(Error::Other(err.into()))
+                // }
+                _kind => return Err(Error::Other(err.into())),
+            },
+        };
 
         // TODO: do we need bufreader/writer here? or do we use async wrappers on unblock?
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
@@ -65,7 +75,7 @@ impl Client {
         // TODO: async client.initialize()
         // maybe use an arc<atomic> flag
 
-        (client, incoming)
+        Ok((client, incoming))
     }
 
     fn next_request_id(&self) -> jsonrpc::Id {
