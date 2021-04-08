@@ -163,7 +163,8 @@ impl Tree {
             container.children.insert(pos, node);
             self.nodes[node].parent = parent;
         } else {
-            let split = Node::container(layout);
+            let mut split = Node::container(layout);
+            split.parent = parent;
             let split = self.nodes.insert(split);
 
             let container = match &mut self.nodes[split] {
