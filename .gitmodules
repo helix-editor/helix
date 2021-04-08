@@ -82,3 +82,6 @@
 	path = helix-syntax/languages/tree-sitter-toml
 	url = https://github.com/ikatyang/tree-sitter-toml
 	shallow = true
+[submodule "helix-syntax/nvim-treesitter"]
+	path = helix-syntax/nvim-treesitter
+	url = https://github.com/nvim-treesitter/nvim-treesitter

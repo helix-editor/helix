@@ -27,7 +27,6 @@
 
 - [ ] regex search / select next
 - [ ] = for auto indent line/selection
-- [ ] yank on delete
 - [ ]  :x for closing buffers
 
 - [x] jumplist (push selections on goto / select on the view)
@@ -59,7 +58,7 @@
 - [ ] macro recording
 - [x] tab completion for paths on the prompt
 - [ ] extend selection (treesitter select parent node) (replaces viw, vi(, va( etc )
-- [ ] bracket pairs
+- [x] bracket pairs
 - [x] comment block (gcc)
 - [ ] completion signature popups/docs
 - [ ] selection align

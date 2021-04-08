@@ -612,8 +612,11 @@ fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex) {
     let text = doc.text();
     let start = doc.selection(view_id).cursor();
 
-    // TODO: use find_at to find the next match after the cursor, loop around the end
-    if let Some(mat) = regex.find_at(contents, start) {
+    // use find_at to find the next match after the cursor, loop around the end
+    let mat = regex
+        .find_at(contents, start)
+        .or_else(|| regex.find(contents));
+    if let Some(mat) = mat {
         let start = text.byte_to_char(mat.start());
         let end = text.byte_to_char(mat.end());
         let selection = Selection::single(start, end - 1);
