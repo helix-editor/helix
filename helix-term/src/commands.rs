@@ -1427,8 +1427,6 @@ fn _paste(doc: &mut Document, view: &View, action: Paste) -> Option<Transaction>
 
         let mut values = values.into_iter().map(Tendril::from).chain(repeat);
 
-        // paste on the next line
-        // TODO: can simply take a range + modifier and compute the right pos without ifs
         let text = doc.text();
 
         let transaction =
