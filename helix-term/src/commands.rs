@@ -1854,7 +1854,7 @@ pub fn vsplit(cx: &mut Context) {
     if let Some(path) = path {
         // open the same file again. this will vsplit
         cx.editor
-            .open(path, helix_view::editor::Action::HorizontalSplit);
+            .open(path, helix_view::editor::Action::VerticalSplit);
     }
 }
 

@@ -52,10 +52,10 @@ impl Application {
 
         if let Ok(files) = args.values_of_t::<PathBuf>("files") {
             for file in files {
-                editor.open(file, Action::HorizontalSplit)?;
+                editor.open(file, Action::VerticalSplit)?;
             }
         } else {
-            editor.new_file(Action::HorizontalSplit)?;
+            editor.new_file(Action::VerticalSplit)?;
         }
 
         compositor.push(Box::new(ui::EditorView::new()));

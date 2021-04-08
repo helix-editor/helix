@@ -70,13 +70,13 @@ impl Container {
 
 impl Default for Container {
     fn default() -> Self {
-        Self::new(Layout::Horizontal)
+        Self::new(Layout::Vertical)
     }
 }
 
 impl Tree {
     pub fn new(area: Rect) -> Self {
-        let root = Node::container(Layout::Horizontal);
+        let root = Node::container(Layout::Vertical);
 
         let mut nodes = HopSlotMap::with_key();
         let root = nodes.insert(root);
@@ -322,7 +322,7 @@ impl Tree {
                     container.area = area;
 
                     match container.layout {
-                        Layout::Vertical => {
+                        Layout::Horizontal => {
                             let len = container.children.len();
 
                             let height = area.height / len as u16;
@@ -347,7 +347,7 @@ impl Tree {
                                 self.stack.push((*child, area));
                             }
                         }
-                        Layout::Horizontal => {
+                        Layout::Vertical => {
                             let len = container.children.len();
 
                             let width = area.width / len as u16;
