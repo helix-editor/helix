@@ -353,6 +353,9 @@ impl Tree {
 
                             let width = area.width / len as u16;
 
+                            let inner_gap = 1u16;
+                            // let total_gap = inner_gap * (len as u16 - 1);
+
                             let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
@@ -362,7 +365,7 @@ impl Tree {
                                     width,
                                     container.area.height,
                                 );
-                                child_x += width;
+                                child_x += width + inner_gap;
 
                                 // last child takes the remaining width because we can get uneven
                                 // space from rounding

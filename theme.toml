@@ -39,6 +39,7 @@
 "ui.linenr" = { fg = "#5a5977" } # comet
 "ui.statusline" = { bg = "#281733" } # revolver
 "ui.popup" = { bg = "#281733" } # revolver
+"ui.window" = { bg = "#452859" } # bossa nova
 
 "warning" = "#ffcd1c"
 "error" = "#f47868"

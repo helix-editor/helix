@@ -55,12 +55,25 @@ impl EditorView {
         is_focused: bool,
     ) {
         let area = Rect::new(
-            viewport.x + OFFSET,
-            viewport.y,
-            viewport.width - OFFSET,
-            viewport.height.saturating_sub(1),
+            view.area.x + OFFSET,
+            view.area.y,
+            view.area.width - OFFSET,
+            view.area.height.saturating_sub(1),
         ); // - 1 for statusline
         self.render_buffer(doc, view, area, surface, theme, is_focused);
+
+        // if we're not at the edge of the screen, draw a right border
+        if viewport.right() != view.area.right() {
+            let x = area.right();
+            let border_style = theme.get("ui.window");
+            for y in area.top()..area.bottom() {
+                surface
+                    .get_mut(x, y)
+                    // .set_symbol(tui::symbols::line::VERTICAL)
+                    .set_symbol(" ")
+                    .set_style(border_style);
+            }
+        }
 
         // clear with background color
         // TODO: this seems to prevent setting style later
@@ -69,9 +82,9 @@ impl EditorView {
         self.render_diagnostics(doc, view, area, surface, theme, is_focused);
 
         let area = Rect::new(
-            viewport.x,
-            viewport.y + viewport.height.saturating_sub(1),
-            viewport.width,
+            view.area.x,
+            view.area.y + view.area.height.saturating_sub(1),
+            view.area.width,
             1,
         );
         self.render_statusline(doc, area, surface, theme, is_focused);
@@ -79,7 +92,12 @@ impl EditorView {
         // render status
         if let Some(status_msg) = &self.status_msg {
             let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
-            surface.set_string(viewport.x, viewport.y + viewport.height, status_msg, style);
+            surface.set_string(
+                view.area.x,
+                view.area.y + view.area.height,
+                status_msg,
+                style,
+            );
         }
     }
 
@@ -595,7 +613,7 @@ impl Component for EditorView {
     fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(doc, view, view.area, surface, &cx.editor.theme, is_focused);
+            self.render_view(doc, view, area, surface, &cx.editor.theme, is_focused);
         }
 
         if let Some(completion) = &self.completion {
