@@ -116,13 +116,15 @@
 
 (self) @variable.builtin
 
-(char_literal) @string
-(string_literal) @string
-(raw_string_literal) @string
+[
+(char_literal)
+(string_literal)
+(raw_string_literal)
+] @string
 
 (boolean_literal) @constant.builtin
-(integer_literal) @constant.builtin
-(float_literal) @constant.builtin
+(integer_literal) @number
+(float_literal) @number
 
 (escape_sequence) @escape
 
