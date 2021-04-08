@@ -486,7 +486,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "helix-syntax",
- "log",
  "once_cell",
  "regex",
  "ropey",
@@ -1227,9 +1226,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.17.1"
+version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d18dcb776d3affaba6db04d11d645946d34a69b3172e588af96ce9fecd20faac"
+checksum = "1f41201fed3db3b520405a9c01c61773a250d4c3f43e9861c14b2bb232c981ab"
 dependencies = [
  "cc",
  "regex",

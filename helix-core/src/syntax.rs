@@ -1,4 +1,4 @@
-use crate::{Change, Rope, RopeSlice, Transaction};
+use crate::{regex::Regex, Change, Rope, RopeSlice, Transaction};
 pub use helix_syntax::{get_language, get_language_name, Lang};
 
 use std::{
@@ -59,21 +59,53 @@ pub struct IndentationConfiguration {
     pub unit: String,
 }
 
+fn read_query(language: &str, filename: &str) -> String {
+    static INHERITS_REGEX: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
+
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    let path = root
+        .join("../runtime/queries")
+        .join(language)
+        .join(filename);
+
+    let query = std::fs::read_to_string(&path).unwrap_or_default();
+
+    // TODO: the collect() is not ideal
+    let inherits = INHERITS_REGEX
+        .captures_iter(&query)
+        .flat_map(|captures| {
+            captures[1]
+                .split(',')
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+
+    if inherits.is_empty() {
+        return query;
+    }
+
+    let mut queries = inherits
+        .iter()
+        .map(|language| read_query(language, filename))
+        .collect::<Vec<_>>();
+
+    queries.push(query);
+
+    queries.concat()
+}
+
 impl LanguageConfiguration {
     pub fn highlight_config(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
         self.highlight_config
             .get_or_init(|| {
-                // let name = get_language_name(&self.language_id);
+                let language = get_language_name(self.language_id).to_ascii_lowercase();
 
-                let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                let highlights_query = read_query(&language, "highlights.scm");
 
-                let highlights_query =
-                    std::fs::read_to_string(root.join(&self.path).join("queries/highlights.scm"))
-                        .unwrap_or_default();
-
-                let injections_query =
-                    std::fs::read_to_string(root.join(&self.path).join("queries/injections.scm"))
-                        .unwrap_or_default();
+                let injections_query = read_query(&language, "injections.scm");
 
                 let locals_query = "";
 
