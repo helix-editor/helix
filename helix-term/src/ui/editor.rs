@@ -7,6 +7,7 @@ use crate::{
 };
 
 use helix_core::{
+    coords_at_pos,
     syntax::{self, HighlightEvent},
     Position, Range,
 };
@@ -87,7 +88,7 @@ impl EditorView {
             view.area.width,
             1,
         );
-        self.render_statusline(doc, area, surface, theme, is_focused);
+        self.render_statusline(doc, view, area, surface, theme, is_focused);
 
         // render status
         if let Some(status_msg) = &self.status_msg {
@@ -411,6 +412,7 @@ impl EditorView {
     pub fn render_statusline(
         &self,
         doc: &Document,
+        view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
@@ -449,10 +451,24 @@ impl EditorView {
             );
         }
 
-        surface.set_string(
-            viewport.x + viewport.width.saturating_sub(10),
+        surface.set_stringn(
+            viewport.x + viewport.width.saturating_sub(15),
             viewport.y,
             format!("{}", doc.diagnostics.len()),
+            4,
+            text_color,
+        );
+
+        // render line:col
+        let pos = coords_at_pos(doc.text().slice(..), doc.selection(view.id).cursor());
+
+        let text = format!("{}:{}", pos.row + 1, pos.col + 1); // convert to 1-indexing
+        let len = text.len();
+
+        surface.set_string(
+            viewport.x + viewport.width.saturating_sub(len as u16 + 1),
+            viewport.y,
+            text,
             text_color,
         );
     }
