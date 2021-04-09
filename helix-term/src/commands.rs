@@ -608,9 +608,10 @@ pub fn split_selection_on_newline(cx: &mut Context) {
 // I'd probably collect all the matches right now and store the current index. The cache needs
 // wiping if input happens.
 
-fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex) {
+fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
-    let start = doc.selection(view_id).cursor();
+    let selection = doc.selection(view_id);
+    let start = selection.cursor();
 
     // use find_at to find the next match after the cursor, loop around the end
     let mat = regex
@@ -619,7 +620,13 @@ fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex) {
     if let Some(mat) = mat {
         let start = text.byte_to_char(mat.start());
         let end = text.byte_to_char(mat.end());
-        let selection = Selection::single(start, end - 1);
+
+        let selection = if extend {
+            selection.clone().add(Range::new(start, end - 1))
+        } else {
+            Selection::single(start, end - 1)
+        };
+
         // TODO: (first_match, regex) stuff in register?
         doc.set_selection(view_id, selection);
     };
@@ -639,7 +646,7 @@ pub fn search(cx: &mut Context) {
     let prompt = ui::regex_prompt(cx, "search:".to_string(), move |doc, regex| {
         let text = doc.text();
         let start = doc.selection(view_id).cursor();
-        _search(doc, view_id, &contents, &regex);
+        _search(doc, view_id, &contents, &regex, false);
 
         // TODO: only store on enter (accept), not update
         register::set('\\', vec![regex.as_str().to_string()]);
@@ -648,15 +655,23 @@ pub fn search(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn search_next(cx: &mut Context) {
+pub fn _search_next(cx: &mut Context, extend: bool) {
     if let Some(query) = register::get('\\') {
         let query = query.first().unwrap();
         let view_id = cx.view_id;
         let doc = cx.doc();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(&query).unwrap();
-        _search(doc, view_id, &contents, &regex);
+        _search(doc, view_id, &contents, &regex, extend);
     }
+}
+
+pub fn search_next(cx: &mut Context) {
+    _search_next(cx, false);
+}
+
+pub fn extend_search_next(cx: &mut Context) {
+    _search_next(cx, true);
 }
 
 pub fn search_selection(cx: &mut Context) {

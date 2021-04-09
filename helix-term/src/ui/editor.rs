@@ -61,6 +61,7 @@ impl EditorView {
             view.area.width - OFFSET,
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
+
         self.render_buffer(doc, view, area, surface, theme, is_focused);
 
         // if we're not at the edge of the screen, draw a right border

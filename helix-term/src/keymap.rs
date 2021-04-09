@@ -199,6 +199,7 @@ pub fn default() -> Keymaps {
         key!('/') => commands::search,
         // ? for search_reverse
         key!('n') => commands::search_next,
+        shift!('N') => commands::extend_search_next,
         // N for search_prev
         key!('*') => commands::search_selection,
 

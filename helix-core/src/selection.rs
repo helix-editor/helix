@@ -159,6 +159,12 @@ impl Selection {
         }
     }
 
+    pub fn add(mut self, range: Range) -> Self {
+        let index = self.ranges.len();
+        self.ranges.push(range);
+
+        Self::normalize(self.ranges, index)
+    }
     // add_range // push
     // replace_range
 
@@ -204,52 +210,52 @@ impl Selection {
         Self::single(pos, pos)
     }
 
+    fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Selection {
+        let primary = ranges[primary_index];
+        ranges.sort_unstable_by_key(Range::from);
+        primary_index = ranges.iter().position(|&range| range == primary).unwrap();
+
+        let mut result = SmallVec::with_capacity(ranges.len()); // approx
+
+        // TODO: we could do with one vec by removing elements as we mutate
+
+        for (i, range) in ranges.into_iter().enumerate() {
+            // if previous value exists
+            if let Some(prev) = result.last_mut() {
+                // and we overlap it
+                if range.overlaps(prev) {
+                    let from = prev.from();
+                    let to = std::cmp::max(range.to(), prev.to());
+
+                    if i <= primary_index {
+                        primary_index -= 1
+                    }
+
+                    // merge into previous
+                    if range.anchor > range.head {
+                        prev.anchor = to;
+                        prev.head = from;
+                    } else {
+                        prev.anchor = from;
+                        prev.head = to;
+                    }
+                    continue;
+                }
+            }
+
+            result.push(range)
+        }
+
+        Selection {
+            ranges: result,
+            primary_index,
+        }
+    }
+
     // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
         assert!(!ranges.is_empty());
-
-        fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Selection {
-            let primary = ranges[primary_index];
-            ranges.sort_unstable_by_key(Range::from);
-            primary_index = ranges.iter().position(|&range| range == primary).unwrap();
-
-            let mut result = SmallVec::with_capacity(ranges.len()); // approx
-
-            // TODO: we could do with one vec by removing elements as we mutate
-
-            for (i, range) in ranges.into_iter().enumerate() {
-                // if previous value exists
-                if let Some(prev) = result.last_mut() {
-                    // and we overlap it
-                    if range.overlaps(prev) {
-                        let from = prev.from();
-                        let to = std::cmp::max(range.to(), prev.to());
-
-                        if i <= primary_index {
-                            primary_index -= 1
-                        }
-
-                        // merge into previous
-                        if range.anchor > range.head {
-                            prev.anchor = to;
-                            prev.head = from;
-                        } else {
-                            prev.anchor = from;
-                            prev.head = to;
-                        }
-                        continue;
-                    }
-                }
-
-                result.push(range)
-            }
-
-            Selection {
-                ranges: result,
-                primary_index,
-            }
-        }
 
         // fast path for a single selection (cursor)
         if ranges.len() == 1 {
@@ -260,7 +266,7 @@ impl Selection {
         }
 
         // TODO: only normalize if needed (any ranges out of order)
-        normalize(ranges, primary_index)
+        Self::normalize(ranges, primary_index)
     }
 
     /// Takes a closure and maps each selection over the closure.
