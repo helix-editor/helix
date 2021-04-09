@@ -304,7 +304,6 @@ where
                 language_id: Lang::Rust,
                 highlight_config: OnceCell::new(),
                 //
-                path: "../helix-syntax/languages/tree-sitter-rust".into(),
                 roots: vec![],
                 language_server: None,
                 indent: Some(IndentationConfiguration {

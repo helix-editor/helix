@@ -27,7 +27,7 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
 
-    pub path: PathBuf,
+    // pub path: PathBuf,
     // root_path for tree-sitter (^)
 
     // content_regex
@@ -104,6 +104,8 @@ impl LanguageConfiguration {
                 let language = get_language_name(self.language_id).to_ascii_lowercase();
 
                 let highlights_query = read_query(&language, "highlights.scm");
+                // always highlight syntax errors
+                // highlights_query += "\n(ERROR) @error";
 
                 let injections_query = read_query(&language, "injections.scm");
 

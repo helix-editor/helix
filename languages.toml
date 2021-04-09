@@ -4,7 +4,6 @@ scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-rust"
 
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
@@ -15,7 +14,6 @@ scope = "source.toml"
 injection-regex = "toml"
 file-types = ["toml"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-toml"
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -25,7 +23,6 @@ scope = "source.json"
 injection-regex = "json"
 file-types = ["json"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-json"
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -35,7 +32,6 @@ scope = "source.c"
 injection-regex = "c"
 file-types = ["c"] # TODO: ["h"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-c"
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -45,7 +41,6 @@ scope = "source.cpp"
 injection-regex = "cpp"
 file-types = ["cc", "cpp", "hpp", "h"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-cpp" # TODO: also C highlights
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -55,7 +50,6 @@ scope = "source.go"
 injection-regex = "go"
 file-types = ["go"]
 roots = ["Gopkg.toml", "go.mod"]
-path = "../helix-syntax/languages/tree-sitter-go"
 
 language-server = { command = "gopls" }
 # TODO: gopls needs utf-8 offsets
@@ -67,7 +61,6 @@ scope = "source.js"
 injection-regex = "^(js|javascript)$"
 file-types = ["js"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-javascript"
 # TODO: highlights-jsx, highlights-params
 
 indent = { tab-width = 2, unit = "  " }
@@ -78,7 +71,6 @@ scope = "source.css"
 injection-regex = "css"
 file-types = ["css"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-css"
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -88,7 +80,6 @@ scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-html"
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -98,7 +89,6 @@ scope = "source.python"
 injection-regex = "python"
 file-types = ["py"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-python"
 
 language-server = { command = "pyls" }
 # TODO: pyls needs utf-8 offsets
@@ -110,7 +100,6 @@ scope = "source.ruby"
 injection-regex = "ruby"
 file-types = ["rb"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-ruby"
 
 language-server = { command = "solargraph", args = ["stdio"] }
 indent = { tab-width = 2, unit = "  " }
@@ -121,7 +110,6 @@ scope = "source.bash"
 injection-regex = "bash"
 file-types = ["sh", "bash"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-bash"
 
 language-server = { command = "bash-language-server", args = ["start"] }
 indent = { tab-width = 2, unit = "  " }
@@ -132,6 +120,5 @@ scope = "source.php"
 injection-regex = "php"
 file-types = ["php"]
 roots = []
-path = "../helix-syntax/languages/tree-sitter-php"
 
 indent = { tab-width = 2, unit = "  " }
