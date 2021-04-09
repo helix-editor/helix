@@ -59,11 +59,11 @@ impl Range {
     #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {
         // cursor overlap is checked differently
-        if self.is_empty() {
-            self.from() <= other.to()
-        } else {
-            self.from() < other.to()
-        }
+        // if self.is_empty() {
+        //     self.from() <= other.to()
+        // } else {
+        self.to() >= other.from() && other.to() >= self.from()
+        // }
     }
 
     pub fn contains(&self, pos: usize) -> bool {
