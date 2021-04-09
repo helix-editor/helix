@@ -13,7 +13,7 @@
       let
         pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlay ]; };
         naerskLib = pkgs.callPackage naersk {
-          inherit (pkgs.rust-bin.nightly.latest) rustc cargo;
+          inherit (pkgs.rust-bin.stable.latest.default) rustc cargo;
         };
       in rec {
         packages.helix = naerskLib.buildPackage {
