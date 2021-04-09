@@ -220,6 +220,7 @@ pub fn default() -> Keymaps {
         shift!('K') => commands::keep_selections,
         // TODO: and another method for inverse
 
+        // TODO: clashes with space mode
         key!(' ') => commands::keep_primary_selection,
 
         // key!('q') => commands::record_macro,

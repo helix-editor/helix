@@ -35,10 +35,6 @@
 
 - [] jump to alt buffer
 
-- [ ] load toml configs, themes, tabsize/identation
-
-- [ ] draw separator line between views
-
 - [ ] lsp: signature help
 - [x] lsp: hover
 - [ ] lsp: document symbols (nested/vec)

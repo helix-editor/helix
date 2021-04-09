@@ -1898,6 +1898,8 @@ pub fn space_mode(cx: &mut Context) {
                     cx.editor.close(cx.view_id);
                 }
                 // ' ' => toggle_alternate_buffer(cx),
+                // TODO: temporary since space mode took it's old key
+                ' ' => keep_primary_selection(cx),
                 _ => (),
             }
         }
