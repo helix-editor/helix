@@ -1873,6 +1873,15 @@ pub fn space_mode(cx: &mut Context) {
                 'f' => file_picker(cx),
                 'b' => buffer_picker(cx),
                 'v' => vsplit(cx),
+                'w' => {
+                    // save current buffer
+                    let doc = cx.doc();
+                    smol::block_on(doc.save());
+                }
+                'c' => {
+                    // close current split
+                    cx.editor.close(cx.view_id);
+                }
                 // ' ' => toggle_alternate_buffer(cx),
                 _ => (),
             }
