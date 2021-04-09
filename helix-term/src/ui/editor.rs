@@ -77,10 +77,6 @@ impl EditorView {
             }
         }
 
-        // clear with background color
-        // TODO: this seems to prevent setting style later
-        // surface.set_style(viewport, theme.get("ui.background"));
-
         self.render_diagnostics(doc, view, area, surface, theme, is_focused);
 
         let area = Rect::new(
@@ -630,6 +626,9 @@ impl Component for EditorView {
     }
 
     fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // clear with background color
+        surface.set_style(area, cx.editor.theme.get("ui.background"));
+
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             self.render_view(doc, view, area, surface, &cx.editor.theme, is_focused);
