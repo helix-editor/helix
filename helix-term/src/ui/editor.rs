@@ -189,17 +189,19 @@ impl EditorView {
                         } else if grapheme == "\t" {
                             visual_x += (tab_width as u16);
                         } else {
-                            if visual_x >= viewport.width {
-                                // if we're offscreen just keep going until we hit a new line
-                                // TODO: will need tweaking when we also take into account
-                                // horizontal scrolling
-                                continue;
-                            }
+                            let out_of_bounds = visual_x < view.first_col as u16
+                                || visual_x >= viewport.width + view.first_col as u16;
 
                             // Cow will prevent allocations if span contained in a single slice
                             // which should really be the majority case
                             let grapheme = Cow::from(grapheme);
                             let width = grapheme_width(&grapheme) as u16;
+
+                            if out_of_bounds {
+                                // if we're offscreen just keep going until we hit a new line
+                                visual_x += width;
+                                continue;
+                            }
 
                             // ugh,interleave highlight spans with diagnostic spans
                             let is_diagnostic = doc.diagnostics.iter().any(|diagnostic| {
@@ -214,7 +216,7 @@ impl EditorView {
                             };
 
                             surface.set_string(
-                                viewport.x + visual_x,
+                                viewport.x + visual_x - view.first_col as u16,
                                 viewport.y + line,
                                 grapheme,
                                 style,

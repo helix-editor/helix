@@ -4,6 +4,7 @@ use std::borrow::Cow;
 
 use crate::{Document, DocumentId, ViewId};
 use helix_core::{
+    coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
     Position, RopeSlice, Selection,
 };
@@ -56,6 +57,7 @@ pub struct View {
     pub id: ViewId,
     pub doc: DocumentId,
     pub first_line: usize,
+    pub first_col: usize,
     pub area: Rect,
     pub jumps: JumpList,
 }
@@ -66,6 +68,7 @@ impl View {
             id: ViewId::default(),
             doc,
             first_line: 0,
+            first_col: 0,
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
         };
@@ -75,17 +78,29 @@ impl View {
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document) {
         let cursor = doc.selection(self.id).cursor();
-        let line = doc.text().char_to_line(cursor);
-        let document_end = self.first_line + (self.area.height as usize).saturating_sub(2);
+        let pos = coords_at_pos(doc.text().slice(..), cursor);
+        let line = pos.row;
+        let col = pos.col;
+        let last_line = self.first_line + (self.area.height as usize).saturating_sub(2);
 
-        // TODO: side scroll
+        // TODO: not ideal
+        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
+        let last_col = self.first_col + (self.area.width as usize - OFFSET);
 
-        if line > document_end.saturating_sub(PADDING) {
+        if line > last_line.saturating_sub(PADDING) {
             // scroll down
-            self.first_line += line - (document_end.saturating_sub(PADDING));
+            self.first_line += line - (last_line.saturating_sub(PADDING));
         } else if line < self.first_line + PADDING {
             // scroll up
             self.first_line = line.saturating_sub(PADDING);
+        }
+
+        if col > last_col.saturating_sub(PADDING) {
+            // scroll right
+            self.first_col += col - (last_col.saturating_sub(PADDING));
+        } else if col < self.first_col + PADDING {
+            // scroll left
+            self.first_col = col.saturating_sub(PADDING);
         }
     }
 
@@ -130,6 +145,7 @@ impl View {
         }
 
         let row = line - self.first_line as usize;
+        let col = col - self.first_col as usize;
 
         Some(Position::new(row, col))
     }
