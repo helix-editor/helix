@@ -622,7 +622,7 @@ fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex, e
         let end = text.byte_to_char(mat.end());
 
         let selection = if extend {
-            selection.clone().add(Range::new(start, end - 1))
+            selection.clone().push(Range::new(start, end - 1))
         } else {
             Selection::single(start, end - 1)
         };

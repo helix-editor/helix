@@ -59,11 +59,12 @@ impl Range {
     #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {
         // cursor overlap is checked differently
-        // if self.is_empty() {
-        //     self.from() <= other.to()
-        // } else {
-        self.to() >= other.from() && other.to() >= self.from()
-        // }
+        if self.is_empty() {
+            let pos = self.head;
+            pos >= other.from() && other.to() >= pos
+        } else {
+            self.to() > other.from() && other.to() > self.from()
+        }
     }
 
     pub fn contains(&self, pos: usize) -> bool {
@@ -159,13 +160,12 @@ impl Selection {
         }
     }
 
-    pub fn add(mut self, range: Range) -> Self {
+    pub fn push(mut self, range: Range) -> Self {
         let index = self.ranges.len();
         self.ranges.push(range);
 
         Self::normalize(self.ranges, index)
     }
-    // add_range // push
     // replace_range
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after
@@ -223,6 +223,9 @@ impl Selection {
             // if previous value exists
             if let Some(prev) = result.last_mut() {
                 // and we overlap it
+
+                // TODO: we used to simply check range.from() <(=) prev.to()
+                // avoiding two comparisons
                 if range.overlaps(prev) {
                     let from = prev.from();
                     let to = std::cmp::max(range.to(), prev.to());
