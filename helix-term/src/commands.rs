@@ -1122,6 +1122,8 @@ fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
         let definition_pos = location.range.start;
         let new_pos = lsp_pos_to_pos(doc.text(), definition_pos);
         doc.set_selection(view.id, Selection::point(new_pos));
+        let line = doc.text().char_to_line(new_pos);
+        view.first_line = line.saturating_sub(view.area.height as usize / 2);
     }
 
     match locations.as_slice() {
