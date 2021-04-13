@@ -79,6 +79,7 @@
 "break" @keyword
 "const" @keyword
 "continue" @keyword
+(crate) @keyword
 "default" @keyword
 "dyn" @keyword
 "else" @keyword
