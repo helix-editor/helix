@@ -1953,3 +1953,50 @@ pub fn space_mode(cx: &mut Context) {
         }
     })
 }
+
+pub fn view_mode(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            // if lock, call cx again
+            // TODO: temporarily show VIE in the mode list
+            match ch {
+                // center
+                'z' | 'c'
+                // top
+                | 't'
+                // bottom
+                | 'b' => {
+                    let (view, doc) = cx.current();
+                    let pos = doc.selection(view.id).cursor();
+                    // TODO: extract this centering into a function to share with _goto?
+                    let line = doc.text().char_to_line(pos);
+
+                    let relative = match ch {
+                        'z' | 'c' => view.area.height as usize / 2,
+                        't' => 0,
+                        'b' => view.area.height as usize,
+                        _ => unreachable!()
+                    };
+                    view.first_line = line.saturating_sub(relative);
+                }
+                'm' => {
+                    let (view, doc) = cx.current();
+                    let pos = doc.selection(view.id).cursor();
+                    let pos = coords_at_pos(doc.text().slice(..), pos);
+
+                    const OFFSET: usize = 7; // gutters
+                    view.first_col = pos.col.saturating_sub((view.area.width as usize - OFFSET) / 2);
+                },
+                'h' => (),
+                'j' => scroll(cx, 1, Direction::Forward),
+                'k' => scroll(cx, 1, Direction::Backward),
+                'l' => (),
+                _ => (),
+            }
+        }
+    })
+}
