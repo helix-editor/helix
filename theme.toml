@@ -5,7 +5,8 @@
 "operator" = "#dbbfef" # lilac
 # "property" = "#a4a0e8" # lavender
 "property" = "#ffffff" # white
-"variable" = "#a4a0e8" # lavender
+# "variable" = "#a4a0e8" # lavender
+"variable" = "#eccdba" # almond
 "variable.parameter" = "#a4a0e8" # lavender
 # TODO distinguish type from type.builtin?
 "type" = "#ffffff" # white

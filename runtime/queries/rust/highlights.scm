@@ -116,6 +116,7 @@
 (super) @keyword
 
 (self) @variable.builtin
+(metavariable) @variable
 
 [
 (char_literal)
