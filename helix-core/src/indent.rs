@@ -65,6 +65,8 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         "declaration_list",
         "field_declaration_list",
         "field_initializer_list",
+        "struct_pattern",
+        "tuple_pattern",
         "enum_variant_list",
         // "function_item",
         // "closure_expression",
