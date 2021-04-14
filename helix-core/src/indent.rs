@@ -48,7 +48,6 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
 
     // Hardcoded for rust for now
     let indent_scopes = &[
-        // indent except first or block?
         "while_expression",
         "for_expression",
         "loop_expression",
@@ -56,14 +55,9 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         "if_let_expression",
         // "match_expression",
         // "match_arm",
-    ];
 
-    // this is for multiline things, such as:
-    // self.method()
-    //  .chain()
-    //  .chain()
-    //  where the first line isn't indented
-    let indent_except_first_scopes = &[
+        // indent_except_first_scopes
+        "use_list",
         "block",
         "match_block",
         "arguments",
@@ -74,10 +68,7 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         // "closure_expression",
         "binary_expression",
         "field_expression",
-        //
         "where_clause",
-        //
-        "use_list",
     ];
 
     let outdent = &["where", "}", "]", ")"];
@@ -92,35 +83,19 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
     // if we're calculating indentation for a brand new line then the current node will become the
     // parent node. We need to take it's indentation level into account too.
     let node_kind = node.kind();
-    if newline
-        && (indent_scopes.contains(&node_kind) || indent_except_first_scopes.contains(&node_kind))
-    {
+    if newline && indent_scopes.contains(&node_kind) {
         increment += 1;
     }
 
     while let Some(parent) = node.parent() {
-        let not_first_sibling = node.prev_sibling().is_some();
-        let not_last_sibling = node.next_sibling().is_some();
-        let not_first_or_last_sibling = not_first_sibling && not_last_sibling;
-
         let parent_kind = parent.kind();
         let start = parent.start_position().row;
 
         // detect deeply nested indents in the same line
+        // .map(|a| {       <-- ({ is two scopes
+        //     let len = 1; <-- indents one level
+        // })               <-- }) is two scopes
         let starts_same_line = start == prev_start;
-
-        // log::error!(
-        //     "name: {}\tparent: {}\trange:\t{} {}\tfirst={:?}\tlast={:?} start={} prev={} same_line={}",
-        //     node.kind(),
-        //     parent.kind(),
-        //     node.range().start_point,
-        //     node.range().end_point,
-        //     node.prev_sibling().is_none(),
-        //     node.next_sibling().is_none(),
-        //     node.start_position(),
-        //     prev_start,
-        //     starts_same_line
-        // );
 
         if outdent.contains(&node.kind()) && !starts_same_line {
             // we outdent by skipping the rules for the current level and jumping up
@@ -129,26 +104,13 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
             // continue;
         }
 
-        // TODO: problem seems to be, ({ is two scopes that merge into one.
-        // so when seeing } we're supposed to jump all the way out of both scopes, but we only do
-        // so for one.
-        // .map(|a| {
-        //     let len = 1;
-        // })
-
-        if (indent_scopes.contains(&parent_kind) // && not_first_or_last_sibling
-            || indent_except_first_scopes.contains(&parent_kind))
+        if indent_scopes.contains(&parent_kind) // && not_first_or_last_sibling
             && !starts_same_line
         {
             // println!("is_scope {}", parent_kind);
             prev_start = start;
             increment += 1
         }
-
-        // TODO: detect deeply nested indents in same line:
-        // std::panic::set_hook(Box::new(move |info| {
-        //     hook(info); <-- indent here is 1
-        // }));
 
         // if last_scope && increment > 0 && ...{ ignore }
 
