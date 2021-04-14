@@ -81,7 +81,8 @@ impl View {
         let pos = coords_at_pos(doc.text().slice(..), cursor);
         let line = pos.row;
         let col = pos.col;
-        let last_line = self.last_line(doc);
+        let height = self.area.height.saturating_sub(1); // - 1 for statusline
+        let last_line = self.first_line + height as usize;
 
         let scrolloff = PADDING.min(self.area.height as usize / 2); // TODO: user pref
 
