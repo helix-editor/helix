@@ -20,7 +20,7 @@ pub use tui::layout::Rect;
 pub use tui::style::{Color, Modifier, Style};
 
 use helix_core::regex::Regex;
-use helix_view::{Document, Editor};
+use helix_view::{View, Document, Editor};
 
 use std::path::{Path, PathBuf};
 
@@ -33,7 +33,7 @@ pub fn text_color() -> Style {
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: String,
-    fun: impl Fn(&mut Document, Regex) + 'static,
+    fun: impl Fn(&mut View, &mut Document, Regex) + 'static,
 ) -> Prompt {
     let view_id = cx.view().id;
     let snapshot = cx.doc().selection(view_id).clone();
@@ -65,7 +65,7 @@ pub fn regex_prompt(
                             // TODO: also revert text
                             doc.set_selection(view.id, snapshot.clone());
 
-                            fun(doc, regex);
+                            fun(view, doc, regex);
 
                             view.ensure_cursor_in_view(doc);
                         }

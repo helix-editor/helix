@@ -574,12 +574,11 @@ pub fn select_all(cx: &mut Context) {
 }
 
 pub fn select_regex(cx: &mut Context) {
-    let view_id = cx.view_id;
-    let prompt = ui::regex_prompt(cx, "select:".to_string(), move |doc, regex| {
+    let prompt = ui::regex_prompt(cx, "select:".to_string(), move |view, doc, regex| {
         let text = doc.text().slice(..);
-        if let Some(selection) = selection::select_on_matches(text, doc.selection(view_id), &regex)
+        if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
         {
-            doc.set_selection(view_id, selection);
+            doc.set_selection(view.id, selection);
         }
     });
 
@@ -587,11 +586,10 @@ pub fn select_regex(cx: &mut Context) {
 }
 
 pub fn split_selection(cx: &mut Context) {
-    let view_id = cx.view_id;
-    let prompt = ui::regex_prompt(cx, "split:".to_string(), move |doc, regex| {
+    let prompt = ui::regex_prompt(cx, "split:".to_string(), move |view, doc, regex| {
         let text = doc.text().slice(..);
-        let selection = selection::split_on_matches(text, doc.selection(view_id), &regex);
-        doc.set_selection(view_id, selection);
+        let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
+        doc.set_selection(view.id, selection);
     });
 
     cx.push_layer(Box::new(prompt));
@@ -614,9 +612,9 @@ pub fn split_selection_on_newline(cx: &mut Context) {
 // I'd probably collect all the matches right now and store the current index. The cache needs
 // wiping if input happens.
 
-fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex, extend: bool) {
+fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
-    let selection = doc.selection(view_id);
+    let selection = doc.selection(view.id);
     let start = selection.cursor();
 
     // use find_at to find the next match after the cursor, loop around the end
@@ -627,14 +625,19 @@ fn _search(doc: &mut Document, view_id: ViewId, contents: &str, regex: &Regex, e
         let start = text.byte_to_char(mat.start());
         let end = text.byte_to_char(mat.end());
 
+        let head = end - 1;
+
         let selection = if extend {
-            selection.clone().push(Range::new(start, end - 1))
+            selection.clone().push(Range::new(start, head))
         } else {
-            Selection::single(start, end - 1)
+            Selection::single(start, head)
         };
 
         // TODO: (first_match, regex) stuff in register?
-        doc.set_selection(view_id, selection);
+        doc.set_selection(view.id, selection);
+        // TODO: extract this centering into a function to share with _goto?
+        let line = doc.text().char_to_line(head);
+        view.first_line = line.saturating_sub(view.area.height as usize / 2);
     };
 }
 
@@ -649,10 +652,10 @@ pub fn search(cx: &mut Context) {
     let contents = doc.text().slice(..).to_string();
 
     let view_id = cx.view_id;
-    let prompt = ui::regex_prompt(cx, "search:".to_string(), move |doc, regex| {
+    let prompt = ui::regex_prompt(cx, "search:".to_string(), move |view, doc, regex| {
         let text = doc.text();
-        let start = doc.selection(view_id).cursor();
-        _search(doc, view_id, &contents, &regex, false);
+        let start = doc.selection(view.id).cursor();
+        _search(doc, view, &contents, &regex, false);
 
         // TODO: only store on enter (accept), not update
         register::set('\\', vec![regex.as_str().to_string()]);
@@ -664,11 +667,10 @@ pub fn search(cx: &mut Context) {
 pub fn _search_next(cx: &mut Context, extend: bool) {
     if let Some(query) = register::get('\\') {
         let query = query.first().unwrap();
-        let view_id = cx.view_id;
-        let doc = cx.doc();
+        let (view, doc) = cx.current();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(&query).unwrap();
-        _search(doc, view_id, &contents, &regex, extend);
+        _search(doc, view, &contents, &regex, extend);
     }
 }
 
@@ -1652,12 +1654,11 @@ pub fn join_selections(cx: &mut Context) {
 
 pub fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
-    let view_id = cx.view_id;
-    let prompt = ui::regex_prompt(cx, "keep:".to_string(), move |doc, regex| {
+    let prompt = ui::regex_prompt(cx, "keep:".to_string(), move |view, doc, regex| {
         let text = doc.text().slice(..);
 
-        if let Some(selection) = selection::keep_matches(text, doc.selection(view_id), &regex) {
-            doc.set_selection(view_id, selection);
+        if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
+            doc.set_selection(view.id, selection);
         }
     });
 
