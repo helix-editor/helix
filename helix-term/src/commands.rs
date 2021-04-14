@@ -450,10 +450,11 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         return;
     }
 
-    let scrolloff = PADDING; // min(user pref, half win width/height)
+    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
 
     // cursor visual offset
-    let cursor_off = cursor.row - view.first_line;
+    // TODO: only if dragging via mouse?
+    // let cursor_off = cursor.row - view.first_line;
 
     view.first_line = match direction {
         Forward => view.first_line + offset,
@@ -461,14 +462,19 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     }
     .min(doc_last_line);
 
+    // recalculate last line
+    let last_line = view.last_line(doc);
+
     // clamp into viewport
-    let line = (view.first_line + cursor_off)
-        .max(view.first_line + scrolloff)
-        .min(last_line.saturating_sub(scrolloff));
+    let line = cursor.row.clamp(
+        view.first_line + scrolloff,
+        last_line.saturating_sub(scrolloff),
+    );
 
     let text = doc.text().slice(..);
     let pos = pos_at_coords(text, Position::new(line, cursor.col)); // this func will properly truncate to line end
 
+    // TODO: only manipulate main selection
     doc.set_selection(view.id, Selection::point(pos));
 }
 

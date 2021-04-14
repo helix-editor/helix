@@ -81,26 +81,28 @@ impl View {
         let pos = coords_at_pos(doc.text().slice(..), cursor);
         let line = pos.row;
         let col = pos.col;
-        let last_line = self.first_line + (self.area.height as usize).saturating_sub(2);
+        let last_line = self.last_line(doc);
+
+        let scrolloff = PADDING.min(self.area.height as usize / 2); // TODO: user pref
 
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let last_col = self.first_col + (self.area.width as usize - OFFSET);
 
-        if line > last_line.saturating_sub(PADDING) {
+        if line > last_line.saturating_sub(scrolloff) {
             // scroll down
-            self.first_line += line - (last_line.saturating_sub(PADDING));
-        } else if line < self.first_line + PADDING {
+            self.first_line += line - (last_line.saturating_sub(scrolloff));
+        } else if line < self.first_line + scrolloff {
             // scroll up
-            self.first_line = line.saturating_sub(PADDING);
+            self.first_line = line.saturating_sub(scrolloff);
         }
 
-        if col > last_col.saturating_sub(PADDING) {
+        if col > last_col.saturating_sub(scrolloff) {
             // scroll right
-            self.first_col += col - (last_col.saturating_sub(PADDING));
-        } else if col < self.first_col + PADDING {
+            self.first_col += col - (last_col.saturating_sub(scrolloff));
+        } else if col < self.first_col + scrolloff {
             // scroll left
-            self.first_col = col.saturating_sub(PADDING);
+            self.first_col = col.saturating_sub(scrolloff);
         }
     }
 
