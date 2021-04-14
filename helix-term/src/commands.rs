@@ -16,6 +16,7 @@ use helix_view::{
 use helix_lsp::{
     lsp,
     util::{lsp_pos_to_pos, pos_to_lsp_pos, range_to_lsp_range},
+    OffsetEncoding,
 };
 
 use crate::{
@@ -1117,18 +1118,24 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
+fn _goto(cx: &mut Context, locations: Vec<lsp::Location>, offset_encoding: OffsetEncoding) {
     use helix_view::editor::Action;
 
     push_jump(cx);
 
-    fn jump_to(editor: &mut Editor, location: &lsp::Location, action: Action) {
+    fn jump_to(
+        editor: &mut Editor,
+        location: &lsp::Location,
+        offset_encoding: OffsetEncoding,
+        action: Action,
+    ) {
         let id = editor
             .open(PathBuf::from(location.uri.path()), action)
             .expect("editor.open failed");
         let (view, doc) = editor.current();
         let definition_pos = location.range.start;
-        let new_pos = lsp_pos_to_pos(doc.text(), definition_pos);
+        // TODO: convert inside server
+        let new_pos = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding);
         doc.set_selection(view.id, Selection::point(new_pos));
         let line = doc.text().char_to_line(new_pos);
         view.first_line = line.saturating_sub(view.area.height as usize / 2);
@@ -1136,7 +1143,7 @@ fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
 
     match locations.as_slice() {
         [location] => {
-            jump_to(cx.editor, location, Action::Replace);
+            jump_to(cx.editor, location, offset_encoding, Action::Replace);
         }
         [] => (), // maybe show user message that no definition was found?
         _locations => {
@@ -1147,7 +1154,9 @@ fn _goto(cx: &mut Context, locations: Vec<lsp::Location>) {
                     let line = location.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
-                move |editor: &mut Editor, location, action| jump_to(editor, location, action),
+                move |editor: &mut Editor, location, action| {
+                    jump_to(editor, location, offset_encoding, action)
+                },
             );
             cx.push_layer(Box::new(picker));
         }
@@ -1161,12 +1170,14 @@ pub fn goto_definition(cx: &mut Context) {
         None => return,
     };
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
     let res =
         smol::block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
-    _goto(cx, res);
+    _goto(cx, res, offset_encoding);
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
@@ -1176,12 +1187,14 @@ pub fn goto_type_definition(cx: &mut Context) {
         None => return,
     };
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_type_definition(doc.identifier(), pos))
         .unwrap_or_default();
-    _goto(cx, res);
+    _goto(cx, res, offset_encoding);
 }
 
 pub fn goto_implementation(cx: &mut Context) {
@@ -1191,12 +1204,14 @@ pub fn goto_implementation(cx: &mut Context) {
         None => return,
     };
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
     let res = smol::block_on(language_server.goto_implementation(doc.identifier(), pos))
         .unwrap_or_default();
-    _goto(cx, res);
+    _goto(cx, res, offset_encoding);
 }
 
 pub fn goto_reference(cx: &mut Context) {
@@ -1206,12 +1221,14 @@ pub fn goto_reference(cx: &mut Context) {
         None => return,
     };
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
     let res =
         smol::block_on(language_server.goto_reference(doc.identifier(), pos)).unwrap_or_default();
-    _goto(cx, res);
+    _goto(cx, res, offset_encoding);
 }
 
 pub fn signature_help(cx: &mut Context) {
@@ -1222,7 +1239,11 @@ pub fn signature_help(cx: &mut Context) {
         None => return,
     };
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(
+        doc.text(),
+        doc.selection(view.id).cursor(),
+        language_server.offset_encoding(),
+    );
 
     // TODO: handle fails
 
@@ -1579,10 +1600,15 @@ pub fn format_selections(cx: &mut Context) {
     // via lsp if available
     // else via tree-sitter indentation calculations
 
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
     let ranges: Vec<lsp::Range> = doc
         .selection(view.id)
         .iter()
-        .map(|range| range_to_lsp_range(doc.text(), *range))
+        .map(|range| range_to_lsp_range(doc.text(), *range, language_server.offset_encoding()))
         .collect();
 
     for range in ranges {
@@ -1590,7 +1616,6 @@ pub fn format_selections(cx: &mut Context) {
             Some(language_server) => language_server,
             None => return,
         };
-
         // TODO: handle fails
         // TODO: concurrent map
         let edits = smol::block_on(language_server.text_document_range_formatting(
@@ -1600,7 +1625,11 @@ pub fn format_selections(cx: &mut Context) {
         ))
         .unwrap_or_default();
 
-        let transaction = helix_lsp::util::generate_transaction_from_edits(doc.text(), edits);
+        let transaction = helix_lsp::util::generate_transaction_from_edits(
+            doc.text(),
+            edits,
+            language_server.offset_encoding(),
+        );
 
         doc.apply(&transaction, view.id);
     }
@@ -1726,7 +1755,13 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = pos_to_lsp_pos(
+        doc.text(),
+        doc.selection(view.id).cursor(),
+        language_server.offset_encoding(),
+    );
 
     // TODO: handle fails
     let res = smol::block_on(language_server.completion(doc.identifier(), pos)).unwrap();
@@ -1754,7 +1789,7 @@ pub fn completion(cx: &mut Context) {
                 let size = compositor.size();
                 let ui = compositor.find("hx::ui::editor::EditorView").unwrap();
                 if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                    ui.set_completion(items, trigger_offset, size);
+                    ui.set_completion(items, offset_encoding, trigger_offset, size);
                 };
             }
         },
@@ -1779,7 +1814,11 @@ pub fn hover(cx: &mut Context) {
 
     // TODO: blocking here is not ideal, make commands async fn?
     // not like we can process additional input meanwhile though
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor());
+    let pos = pos_to_lsp_pos(
+        doc.text(),
+        doc.selection(view.id).cursor(),
+        language_server.offset_encoding(),
+    );
 
     // TODO: handle fails
     let res = smol::block_on(language_server.text_document_hover(doc.identifier(), pos))

@@ -26,7 +26,11 @@ pub struct Completion {
 }
 
 impl Completion {
-    pub fn new(items: Vec<CompletionItem>, trigger_offset: usize) -> Self {
+    pub fn new(
+        items: Vec<CompletionItem>,
+        offset_encoding: helix_lsp::OffsetEncoding,
+        trigger_offset: usize,
+    ) -> Self {
         // let items: Vec<CompletionItem> = Vec::new();
         let mut menu = Menu::new(
             items,
@@ -99,8 +103,12 @@ impl Completion {
                             doc.apply(&remove, view.id);
                         }
 
-                        let transaction =
-                            util::generate_transaction_from_edits(doc.text(), vec![edit]);
+                        use helix_lsp::OffsetEncoding;
+                        let transaction = util::generate_transaction_from_edits(
+                            doc.text(),
+                            vec![edit],
+                            offset_encoding, // TODO: should probably transcode in Client
+                        );
                         doc.apply(&transaction, view.id);
                     }
                     _ => (),

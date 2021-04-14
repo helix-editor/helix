@@ -1,6 +1,6 @@
 use crate::{
     transport::{Payload, Transport},
-    Call, Error, Result,
+    Call, Error, OffsetEncoding, Result,
 };
 
 use helix_core::{ChangeSet, Rope};
@@ -29,8 +29,7 @@ pub struct Client {
     pub request_counter: AtomicU64,
 
     capabilities: Option<lsp::ServerCapabilities>,
-    // TODO: handle PublishDiagnostics Version
-    // diagnostics: HashMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    offset_encoding: OffsetEncoding,
 }
 
 impl Client {
@@ -70,6 +69,7 @@ impl Client {
 
             capabilities: None,
             // diagnostics: HashMap::new(),
+            offset_encoding: OffsetEncoding::Utf8,
         };
 
         // TODO: async client.initialize()
@@ -98,6 +98,10 @@ impl Client {
         self.capabilities
             .as_ref()
             .expect("language server not yet initialized!")
+    }
+
+    pub fn offset_encoding(&self) -> OffsetEncoding {
+        self.offset_encoding
     }
 
     /// Execute a RPC request on the language server.
@@ -291,6 +295,7 @@ impl Client {
         old_text: &Rope,
         new_text: &Rope,
         changeset: &ChangeSet,
+        offset_encoding: OffsetEncoding,
     ) -> Vec<lsp::TextDocumentContentChangeEvent> {
         let mut iter = changeset.changes().iter().peekable();
         let mut old_pos = 0;
@@ -340,7 +345,7 @@ impl Client {
                     new_pos += i;
                 }
                 Delete(_) => {
-                    let start = pos_to_lsp_pos(new_text, new_pos);
+                    let start = pos_to_lsp_pos(new_text, new_pos, offset_encoding);
                     let end = traverse(start, old_text.slice(old_pos..old_end));
 
                     // deletion
@@ -351,7 +356,7 @@ impl Client {
                     });
                 }
                 Insert(s) => {
-                    let start = pos_to_lsp_pos(new_text, new_pos);
+                    let start = pos_to_lsp_pos(new_text, new_pos, offset_encoding);
 
                     new_pos += s.chars().count();
 
@@ -413,7 +418,7 @@ impl Client {
                 }]
             }
             lsp::TextDocumentSyncKind::Incremental => {
-                Self::changeset_to_changes(old_text, new_text, changes)
+                Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding)
             }
             lsp::TextDocumentSyncKind::None => return Ok(()),
         };

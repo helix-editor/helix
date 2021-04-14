@@ -16,6 +16,8 @@ use thiserror::Error;
 
 use std::{collections::HashMap, sync::Arc};
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("protocol error: {0}")]
@@ -28,31 +30,76 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum OffsetEncoding {
+    /// UTF-8 code units aka bytes
+    #[serde(rename = "utf-8")]
+    Utf8,
+    /// UTF-16 code units
+    #[serde(rename = "utf-16")]
+    Utf16,
+}
+
 pub mod util {
     use super::*;
     use helix_core::{Range, Rope, Transaction};
 
-    pub fn lsp_pos_to_pos(doc: &Rope, pos: lsp::Position) -> usize {
-        let line = doc.line_to_char(pos.line as usize);
-        let line_start = doc.char_to_utf16_cu(line);
-        doc.utf16_cu_to_char(line_start + pos.character as usize)
+    pub fn lsp_pos_to_pos(
+        doc: &Rope,
+        pos: lsp::Position,
+        offset_encoding: OffsetEncoding,
+    ) -> usize {
+        match offset_encoding {
+            OffsetEncoding::Utf8 => {
+                let line = doc.line_to_char(pos.line as usize);
+                line + pos.character as usize
+            }
+            OffsetEncoding::Utf16 => {
+                let line = doc.line_to_char(pos.line as usize);
+                let line_start = doc.char_to_utf16_cu(line);
+                doc.utf16_cu_to_char(line_start + pos.character as usize)
+            }
+        }
     }
-    pub fn pos_to_lsp_pos(doc: &Rope, pos: usize) -> lsp::Position {
-        let line = doc.char_to_line(pos);
-        let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
-        let col = doc.char_to_utf16_cu(pos) - line_start;
+    pub fn pos_to_lsp_pos(
+        doc: &Rope,
+        pos: usize,
+        offset_encoding: OffsetEncoding,
+    ) -> lsp::Position {
+        match offset_encoding {
+            OffsetEncoding::Utf8 => {
+                let line = doc.char_to_line(pos);
+                let line_start = doc.line_to_char(line);
+                let col = pos - line_start;
 
-        lsp::Position::new(line as u32, col as u32)
+                lsp::Position::new(line as u32, col as u32)
+            }
+            OffsetEncoding::Utf16 => {
+                let line = doc.char_to_line(pos);
+                let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
+                let col = doc.char_to_utf16_cu(pos) - line_start;
+
+                lsp::Position::new(line as u32, col as u32)
+            }
+        }
     }
 
-    pub fn range_to_lsp_range(doc: &Rope, range: Range) -> lsp::Range {
-        let start = pos_to_lsp_pos(doc, range.from());
-        let end = pos_to_lsp_pos(doc, range.to());
+    pub fn range_to_lsp_range(
+        doc: &Rope,
+        range: Range,
+        offset_encoding: OffsetEncoding,
+    ) -> lsp::Range {
+        let start = pos_to_lsp_pos(doc, range.from(), offset_encoding);
+        let end = pos_to_lsp_pos(doc, range.to(), offset_encoding);
 
         lsp::Range::new(start, end)
     }
 
-    pub fn generate_transaction_from_edits(doc: &Rope, edits: Vec<lsp::TextEdit>) -> Transaction {
+    pub fn generate_transaction_from_edits(
+        doc: &Rope,
+        edits: Vec<lsp::TextEdit>,
+        offset_encoding: OffsetEncoding,
+    ) -> Transaction {
         Transaction::change(
             doc,
             edits.into_iter().map(|edit| {
@@ -63,8 +110,8 @@ pub mod util {
                     None
                 };
 
-                let start = lsp_pos_to_pos(doc, edit.range.start);
-                let end = lsp_pos_to_pos(doc, edit.range.end);
+                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding);
+                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding);
                 (start, end, replacement)
             }),
         )

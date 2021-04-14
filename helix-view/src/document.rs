@@ -406,7 +406,7 @@ mod test {
 
     #[test]
     fn changeset_to_changes() {
-        use helix_lsp::{lsp, Client};
+        use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
         let mut doc = Document::new(text);
         let view = ViewId::default();
@@ -417,7 +417,12 @@ mod test {
         let transaction = Transaction::insert(doc.text(), doc.selection(view), " world".into());
         let old_doc = doc.text().clone();
         doc.apply(&transaction, view);
-        let changes = Client::changeset_to_changes(&old_doc, doc.text(), transaction.changes());
+        let changes = Client::changeset_to_changes(
+            &old_doc,
+            doc.text(),
+            transaction.changes(),
+            OffsetEncoding::Utf8,
+        );
 
         assert_eq!(
             changes,
@@ -436,7 +441,12 @@ mod test {
         let transaction = transaction.invert(&old_doc);
         let old_doc = doc.text().clone();
         doc.apply(&transaction, view);
-        let changes = Client::changeset_to_changes(&old_doc, doc.text(), transaction.changes());
+        let changes = Client::changeset_to_changes(
+            &old_doc,
+            doc.text(),
+            transaction.changes(),
+            OffsetEncoding::Utf8,
+        );
 
         // line: 0-based.
         // col: 0-based, gaps between chars.
@@ -468,7 +478,12 @@ mod test {
         // aeilou
         let old_doc = doc.text().clone();
         doc.apply(&transaction, view);
-        let changes = Client::changeset_to_changes(&old_doc, doc.text(), transaction.changes());
+        let changes = Client::changeset_to_changes(
+            &old_doc,
+            doc.text(),
+            transaction.changes(),
+            OffsetEncoding::Utf8,
+        );
 
         assert_eq!(
             changes,

@@ -175,8 +175,20 @@ impl Application {
                                     };
                                     use helix_lsp::{lsp, util::lsp_pos_to_pos};
                                     use lsp::DiagnosticSeverity;
-                                    let start = lsp_pos_to_pos(text, diagnostic.range.start);
-                                    let end = lsp_pos_to_pos(text, diagnostic.range.end);
+
+                                    let language_server = doc.language_server().unwrap();
+
+                                    // TODO: convert inside server
+                                    let start = lsp_pos_to_pos(
+                                        text,
+                                        diagnostic.range.start,
+                                        language_server.offset_encoding(),
+                                    );
+                                    let end = lsp_pos_to_pos(
+                                        text,
+                                        diagnostic.range.end,
+                                        language_server.offset_encoding(),
+                                    );
 
                                     Diagnostic {
                                         range: Range { start, end },

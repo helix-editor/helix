@@ -20,7 +20,7 @@ pub use tui::layout::Rect;
 pub use tui::style::{Color, Modifier, Style};
 
 use helix_core::regex::Regex;
-use helix_view::{View, Document, Editor};
+use helix_view::{Document, Editor, View};
 
 use std::path::{Path, PathBuf};
 
