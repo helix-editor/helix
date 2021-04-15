@@ -123,6 +123,8 @@ pub mod util {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Notification {
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
+    ShowMessage(lsp::ShowMessageParams),
+    LogMessage(lsp::LogMessageParams),
 }
 
 impl Notification {
@@ -137,6 +139,19 @@ impl Notification {
 
                 // TODO: need to loop over diagnostics and distinguish them by URI
                 Notification::PublishDiagnostics(params)
+            }
+
+            lsp::notification::ShowMessage::METHOD => {
+                let params: lsp::ShowMessageParams =
+                    params.parse().expect("Failed to parse ShowMessage params");
+
+                Notification::ShowMessage(params)
+            }
+            lsp::notification::LogMessage::METHOD => {
+                let params: lsp::LogMessageParams =
+                    params.parse().expect("Failed to parse ShowMessage params");
+
+                Notification::LogMessage(params)
             }
             _ => unimplemented!("unhandled notification: {}", method),
         }

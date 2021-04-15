@@ -152,6 +152,7 @@ impl Application {
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = Notification::parse(&method, params);
+                // TODO: parse should return Result/Option
                 match notification {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
@@ -212,6 +213,12 @@ impl Application {
                             // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                             self.render();
                         }
+                    }
+                    Notification::ShowMessage(params) => {
+                        log::warn!("unhandled window/showMessage: {:?}", params);
+                    }
+                    Notification::LogMessage(params) => {
+                        log::warn!("unhandled window/logMessage: {:?}", params);
                     }
                     _ => unreachable!(),
                 }

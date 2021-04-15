@@ -52,7 +52,7 @@ file-types = ["go"]
 roots = ["Gopkg.toml", "go.mod"]
 
 language-server = { command = "gopls" }
-# TODO: gopls needs utf-8 offsets
+# TODO: gopls needs utf-8 offsets?
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
