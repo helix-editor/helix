@@ -11,7 +11,7 @@ helix-core = { path = "../helix-core" }
 
 once_cell = "1.4"
 
-lsp-types = { version = "0.88", features = ["proposed"] }
+lsp-types = { version = "0.89", features = ["proposed"] }
 smol = "1.2"
 smol-timeout = "0.6"
 url = "2"
