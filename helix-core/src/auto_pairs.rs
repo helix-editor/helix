@@ -69,7 +69,12 @@ fn handle_open(
         let pos = range.head;
         let next = next_char(doc, pos);
 
-        ranges.push(Range::new(range.anchor, pos + open.len_utf8())); // pos + open
+        let head = pos + open.len_utf8();
+        // if selection, retain anchor, if cursor, move over
+        ranges.push(Range::new(
+            if range.is_empty() { head } else { range.anchor },
+            head,
+        ));
 
         match next {
             Some(ch) if !close_before.contains(ch) => {
@@ -98,7 +103,12 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
         let pos = range.head;
         let next = next_char(doc, pos);
 
-        ranges.push(Range::new(range.anchor, pos + close.len_utf8())); // pos + close
+        let head = pos + close.len_utf8();
+        // if selection, retain anchor, if cursor, move over
+        ranges.push(Range::new(
+            if range.is_empty() { head } else { range.anchor },
+            head,
+        ));
 
         if next == Some(close) {
             //  return transaction that moves past close
