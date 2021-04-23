@@ -1,3 +1,5 @@
+"goto" @keyword
+"register" @keyword
 "break" @keyword
 "case" @keyword
 "const" @keyword
@@ -20,15 +22,17 @@
 "volatile" @keyword
 "while" @keyword
 
-"#define" @keyword
-"#elif" @keyword
-"#else" @keyword
-"#endif" @keyword
-"#if" @keyword
-"#ifdef" @keyword
-"#ifndef" @keyword
-"#include" @keyword
-(preproc_directive) @keyword
+[
+ "#define"
+ "#elif"
+ "#else"
+ "#endif"
+ "#if"
+ "#ifdef"
+ "#ifndef"
+ "#include"
+ (preproc_directive)
+] @keyword.directive
 
 "--" @operator
 "-" @operator
@@ -47,8 +51,8 @@
 ">" @operator
 "||" @operator
 
-"." @delimiter
-";" @delimiter
+"." @punctuation.delimiter
+";" @punctuation.delimiter
 
 (string_literal) @string
 (system_lib_string) @string

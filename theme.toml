@@ -1,12 +1,13 @@
 "attribute" = "#dbbfef" # lilac
 "keyword" = "#eccdba" # almond
+"keyword.directive" = "#dbbfef" # lilac -- preprocessor comments (#if in C)
 "punctuation" = "#a4a0e8" # lavender
 "punctuation.delimiter" = "#a4a0e8" # lavender
 "operator" = "#dbbfef" # lilac
 # "property" = "#a4a0e8" # lavender
 "property" = "#ffffff" # white
-# "variable" = "#a4a0e8" # lavender
-"variable" = "#eccdba" # almond
+"variable" = "#a4a0e8" # lavender
+# "variable" = "#eccdba" # almond TODO: metavariables only
 "variable.parameter" = "#a4a0e8" # lavender
 # TODO distinguish type from type.builtin?
 "type" = "#ffffff" # white
