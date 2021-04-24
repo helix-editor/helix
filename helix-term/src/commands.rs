@@ -1889,12 +1889,16 @@ pub fn match_brackets(cx: &mut Context) {
 
 pub fn jump_forward(cx: &mut Context) {
     let count = cx.count;
-    let view = cx.view();
+    let (view, doc) = cx.current();
 
     if let Some((id, selection)) = view.jumps.forward(count) {
-        // TODO: position first_line so that main cursor is centered
-        view.first_line = 0;
         view.doc = *id;
+        let selection = selection.clone();
+        let cursor = selection.cursor();
+        doc.set_selection(view.id, selection);
+        // TODO: extract this centering into a function to share with _goto?
+        let line = doc.text().char_to_line(cursor);
+        view.first_line = line.saturating_sub(view.area.height as usize / 2);
     };
 }
 
@@ -1903,11 +1907,13 @@ pub fn jump_backward(cx: &mut Context) {
     let (view, doc) = cx.current();
 
     if let Some((id, selection)) = view.jumps.backward(count) {
-        // TODO: position first_line so that main cursor is centered
-        view.first_line = 0;
         view.doc = *id;
         let selection = selection.clone();
+        let cursor = selection.cursor();
         doc.set_selection(view.id, selection);
+        // TODO: extract this centering into a function to share with _goto?
+        let line = doc.text().char_to_line(cursor);
+        view.first_line = line.saturating_sub(view.area.height as usize / 2);
     };
 }
 
