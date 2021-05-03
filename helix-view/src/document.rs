@@ -35,13 +35,13 @@ pub struct Document {
     // /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
 
-    modified: bool,
     /// Pending changes since last history commit.
     changes: ChangeSet,
     /// State at last commit. Used for calculating reverts.
     old_state: Option<State>,
     /// Undo tree.
     history: History,
+    last_saved_revision: usize,
     version: i32, // should be usize?
 
     pub diagnostics: Vec<Diagnostic>,
@@ -81,12 +81,12 @@ impl Document {
             restore_cursor: false,
             syntax: None,
             language: None,
-            modified: false,
             changes,
             old_state,
             diagnostics: Vec::new(),
             version: 0,
             history: History::default(),
+            last_saved_revision: 0,
             language_server: None,
         }
     }
@@ -131,7 +131,7 @@ impl Document {
         let language_server = self.language_server.clone();
 
         // reset the modified flag
-        self.modified = false;
+        self.last_saved_revision = self.history.current_revision();
 
         async move {
             use smol::{fs::File, prelude::*};
@@ -246,10 +246,6 @@ impl Document {
 
         let success = self._apply(transaction, view_id);
 
-        self.modified = true;
-        // TODO: be smarter about modified by keeping track of saved version instead. That way if
-        // current version == version then it's not modified.
-
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
             take_with(&mut self.changes, |changes| {
@@ -307,8 +303,10 @@ impl Document {
     }
 
     #[inline]
-    pub fn modified(&self) -> bool {
-        self.modified
+    pub fn is_modified(&self) -> bool {
+        self.path.is_some()
+            && (self.history.current_revision() != self.last_saved_revision
+                || !self.changes.is_empty())
     }
 
     #[inline]

@@ -56,6 +56,11 @@ impl History {
     }
 
     #[inline]
+    pub fn current_revision(&self) -> usize {
+        self.cursor
+    }
+
+    #[inline]
     pub const fn at_root(&self) -> bool {
         self.cursor == 0
     }

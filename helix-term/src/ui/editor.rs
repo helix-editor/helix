@@ -440,7 +440,7 @@ impl EditorView {
         if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
 
-            let title = format!("{}{}", path, if doc.modified() { "[+]" } else { "" });
+            let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
             surface.set_stringn(
                 viewport.x + 6,
                 viewport.y,
