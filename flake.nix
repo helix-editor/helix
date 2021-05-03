@@ -12,8 +12,15 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlay ]; };
-        naerskLib = pkgs.callPackage naersk {
-          inherit (pkgs.rust-bin.stable.latest.default) rustc cargo;
+        rust = (pkgs.rustChannelOf {
+            date = "2021-05-01";
+            channel = "nightly";
+        }).minimal; # cargo, rustc and rust-std
+        naerskLib = naersk.lib."${system}".override {
+          # naersk can't build with stable?!
+          # inherit (pkgs.rust-bin.stable.latest) rustc cargo;
+          rustc = rust;
+          cargo = rust;
         };
       in rec {
         packages.helix = naerskLib.buildPackage {
