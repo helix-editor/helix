@@ -13,7 +13,7 @@ use helix_core::{Position, Transaction};
 use helix_view::Editor;
 
 use crate::commands;
-use crate::ui::{Menu, Popup, PromptEvent};
+use crate::ui::{Markdown, Menu, Popup, PromptEvent};
 
 use helix_lsp::lsp;
 use lsp::CompletionItem;
@@ -173,6 +173,47 @@ impl Component for Completion {
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.popup.render(area, surface, cx)
+        self.popup.render(area, surface, cx);
+
+        // TODO: if we have a selection, render a markdown popup on top/below with info
+        if let Some(option) = self.popup.contents().selection() {
+            // need to render:
+            // option.detail
+            // ---
+            // option.documentation
+            match &option.documentation {
+                Some(lsp::Documentation::String(s))
+                | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                    kind: lsp::MarkupKind::PlainText,
+                    value: s,
+                })) => {
+                    // TODO: convert to wrapped text
+                    let doc = s;
+                }
+                Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                    kind: lsp::MarkupKind::Markdown,
+                    value: contents,
+                })) => {
+                    let doc = Markdown::new(contents.clone());
+                    let half = area.height / 2;
+                    let height = 15.min(half);
+                    // -2 to subtract command line + statusline. a bit of a hack, because of splits.
+                    let area = Rect::new(0, area.height - height - 2, area.width, height);
+
+                    // clear area
+                    let background = cx.editor.theme.get("ui.popup");
+                    for y in area.top()..area.bottom() {
+                        for x in area.left()..area.right() {
+                            let cell = surface.get_mut(x, y);
+                            cell.reset();
+                            // cell.symbol.clear();
+                            cell.set_style(background);
+                        }
+                    }
+                    doc.render(area, surface, cx);
+                }
+                None => (),
+            }
+        }
     }
 }
