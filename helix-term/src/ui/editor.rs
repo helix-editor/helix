@@ -601,10 +601,17 @@ impl Component for EditorView {
                         mode => self.command_mode(mode, &mut cxt, key),
                     }
                 }
+
                 self.on_next_key = cxt.on_next_key_callback.take();
                 self.status_msg = cxt.status_msg.take();
                 // appease borrowck
                 let callback = cxt.callback.take();
+
+                // if the command consumed the last view, skip the render.
+                // on the next loop cycle the Application will then terminate.
+                if cx.editor.should_close() {
+                    return EventResult::Ignored;
+                }
 
                 let (view, doc) = cx.editor.current();
                 view.ensure_cursor_in_view(doc);
