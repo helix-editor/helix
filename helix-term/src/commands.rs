@@ -1271,9 +1271,6 @@ pub mod insert {
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
     pub type PostHook = fn(&mut Context, char);
 
-    use helix_core::auto_pairs;
-    const HOOKS: &[Hook] = &[auto_pairs::hook];
-
     fn completion(cx: &mut Context, ch: char) {
         // if ch matches completion char, trigger completion
         let doc = cx.doc();
@@ -1302,7 +1299,6 @@ pub mod insert {
         }
     }
 
-    // TODO: the pre-hook handles ( so post hook never gets called
     fn signature_help(cx: &mut Context, ch: char) {
         // if ch matches signature_help char, trigger
         let doc = cx.doc();
@@ -1330,26 +1326,34 @@ pub mod insert {
                 super::signature_help(cx);
             }
         }
+
+        // 2021-05-03T17:54:36.326 hx::commands [INFO] SignatureHelp { signatures: [SignatureInformation { label: "fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error>", documentation: None, parameters: Some([ParameterInformation { label: Simple("path: PathBuf"), documentation: None }, ParameterInformation { label: Simple("action: Action"), documentation: None }]), active_parameter: Some(0) }], active_signature: None, active_parameter: Some(0) }
     }
 
+    // The default insert hook: simply insert the character
+    fn insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
+        let t = Tendril::from_char(ch);
+        let transaction = Transaction::insert(doc, selection, t);
+        Some(transaction)
+    }
+
+    use helix_core::auto_pairs;
+    const HOOKS: &[Hook] = &[auto_pairs::hook, insert];
     const POST_HOOKS: &[PostHook] = &[completion, signature_help];
 
-    // TODO: insert means add text just before cursor, on exit we should be on the last letter.
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = cx.current();
 
+        let text = doc.text();
+        let selection = doc.selection(view.id);
+
         // run through insert hooks, stopping on the first one that returns Some(t)
         for hook in HOOKS {
-            if let Some(transaction) = hook(doc.text(), doc.selection(view.id), c) {
+            if let Some(transaction) = hook(text, selection, c) {
                 doc.apply(&transaction, view.id);
-                return;
+                break;
             }
         }
-
-        let t = Tendril::from_char(c);
-        let transaction = Transaction::insert(doc.text(), doc.selection(view.id), t);
-
-        doc.apply(&transaction, view.id);
 
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at

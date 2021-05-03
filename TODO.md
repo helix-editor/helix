@@ -42,12 +42,7 @@
 - [ ] lsp: formatting
 - [x] lsp: goto
 
-- [ ] search: wrap around file
 - [ ] search: smart case by default: insensitive unless upper detected
-
-- decide if markdown should have vertical padding too
-
-- the hooks system should be better for pre/post insert.
 
 2
 - [ ] surround bindings (select + surround ( wraps selection in parens )
