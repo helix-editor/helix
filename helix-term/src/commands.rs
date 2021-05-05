@@ -1327,10 +1327,24 @@ pub mod insert {
             }
         }
 
-        // 2021-05-03T17:54:36.326 hx::commands [INFO] SignatureHelp { signatures: [SignatureInformation { label: "fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error>", documentation: None, parameters: Some([ParameterInformation { label: Simple("path: PathBuf"), documentation: None }, ParameterInformation { label: Simple("action: Action"), documentation: None }]), active_parameter: Some(0) }], active_signature: None, active_parameter: Some(0) }
+        // SignatureHelp {
+        // signatures: [
+        //  SignatureInformation {
+        //      label: "fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error>",
+        //      documentation: None,
+        //      parameters: Some(
+        //          [ParameterInformation { label: Simple("path: PathBuf"), documentation: None },
+        //          ParameterInformation { label: Simple("action: Action"), documentation: None }]
+        //      ),
+        //      active_parameter: Some(0)
+        //  }
+        // ],
+        // active_signature: None, active_parameter: Some(0)
+        // }
     }
 
     // The default insert hook: simply insert the character
+    #[allow(clippy::unnecessary_wraps)] // need to use Option<> because of the Hook signature
     fn insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
         let t = Tendril::from_char(ch);
         let transaction = Transaction::insert(doc, selection, t);
