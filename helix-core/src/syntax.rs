@@ -841,7 +841,7 @@ impl HighlightConfiguration {
         }
 
         let highlight_indices = vec![None; query.capture_names().len()];
-        Ok(HighlightConfiguration {
+        Ok(Self {
             language,
             query,
             combined_injections_query,

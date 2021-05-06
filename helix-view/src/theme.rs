@@ -92,7 +92,7 @@ pub struct Theme {
 }
 
 impl<'de> Deserialize<'de> for Theme {
-    fn deserialize<D>(deserializer: D) -> Result<Theme, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -110,7 +110,7 @@ impl<'de> Deserialize<'de> for Theme {
         }
 
         let scopes = styles.keys().map(ToString::to_string).collect();
-        Ok(Theme { scopes, styles })
+        Ok(Self { scopes, styles })
     }
 }
 

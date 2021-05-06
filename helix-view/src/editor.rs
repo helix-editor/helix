@@ -30,7 +30,7 @@ impl Editor {
         let toml = config
             .as_deref()
             .unwrap_or(include_bytes!("../../theme.toml"));
-        let theme: Theme = toml::from_slice(&toml).expect("failed to parse theme.toml");
+        let theme: Theme = toml::from_slice(toml).expect("failed to parse theme.toml");
 
         let language_servers = helix_lsp::Registry::new();
 

@@ -61,7 +61,7 @@ impl Client {
 
         let (incoming, outgoing) = Transport::start(reader, writer, stderr);
 
-        let client = Client {
+        let client = Self {
             _process: process,
 
             outgoing,

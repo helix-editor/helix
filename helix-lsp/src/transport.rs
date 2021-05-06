@@ -75,7 +75,7 @@ impl Transport {
     }
 
     async fn recv(
-        reader: &mut (impl AsyncBufRead + Unpin),
+        reader: &mut (impl AsyncBufRead + Unpin + Send),
         headers: &mut HashMap<String, String>,
     ) -> core::result::Result<Message, std::io::Error> {
         // read headers
@@ -117,7 +117,7 @@ impl Transport {
     }
 
     async fn err(
-        err: &mut (impl AsyncBufRead + Unpin),
+        err: &mut (impl AsyncBufRead + Unpin + Send),
     ) -> core::result::Result<(), std::io::Error> {
         let mut line = String::new();
         err.read_line(&mut line).await?;

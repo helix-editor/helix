@@ -258,7 +258,7 @@ impl<T: 'static> Component for Menu<T> {
 
         let win_height = area.height as usize;
 
-        fn div_ceil(a: usize, b: usize) -> usize {
+        const fn div_ceil(a: usize, b: usize) -> usize {
             (a + b - 1) / a
         }
 

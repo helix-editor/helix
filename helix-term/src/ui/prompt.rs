@@ -31,8 +31,8 @@ impl Prompt {
         prompt: String,
         mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Editor, &str, PromptEvent) + 'static,
-    ) -> Prompt {
-        Prompt {
+    ) -> Self {
+        Self {
             prompt,
             line: String::new(),
             cursor: 0,
