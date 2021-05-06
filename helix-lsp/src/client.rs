@@ -112,49 +112,49 @@ impl Client {
         R::Result: core::fmt::Debug, // TODO: temporary
     {
         // a future that resolves into the response
-        let future = self.call::<R>(params).await?;
-        let json = future.await?;
+        let json = self.call::<R>(params).await?;
         let response = serde_json::from_value(json)?;
         Ok(response)
     }
 
     /// Execute a RPC request on the language server.
-    pub async fn call<R: lsp::request::Request>(
+    pub fn call<R: lsp::request::Request>(
         &self,
         params: R::Params,
-    ) -> Result<impl Future<Output = Result<Value>>>
+    ) -> impl Future<Output = Result<Value>>
     where
         R::Params: serde::Serialize,
     {
-        let params = serde_json::to_value(params)?;
+        let outgoing = self.outgoing.clone();
+        let id = self.next_request_id();
 
-        let request = jsonrpc::MethodCall {
-            jsonrpc: Some(jsonrpc::Version::V2),
-            id: self.next_request_id(),
-            method: R::METHOD.to_string(),
-            params: Self::value_into_params(params),
-        };
+        async move {
+            let params = serde_json::to_value(params)?;
 
-        let (tx, mut rx) = channel::<Result<Value>>(1);
+            let request = jsonrpc::MethodCall {
+                jsonrpc: Some(jsonrpc::Version::V2),
+                id,
+                method: R::METHOD.to_string(),
+                params: Self::value_into_params(params),
+            };
 
-        self.outgoing
-            .send(Payload::Request {
-                chan: tx,
-                value: request,
-            })
-            .map_err(|e| Error::Other(e.into()))?;
+            let (tx, mut rx) = channel::<Result<Value>>(1);
 
-        use std::time::Duration;
-        use tokio::time::timeout;
+            outgoing
+                .send(Payload::Request {
+                    chan: tx,
+                    value: request,
+                })
+                .map_err(|e| Error::Other(e.into()))?;
 
-        let future = async move {
+            use std::time::Duration;
+            use tokio::time::timeout;
+
             timeout(Duration::from_secs(2), rx.recv())
                 .await
                 .map_err(|e| Error::Timeout)? // return Timeout
                 .unwrap() // TODO: None if channel closed
-        };
-
-        Ok(future)
+        }
     }
 
     /// Send a RPC notification to the language server.
@@ -269,21 +269,21 @@ impl Client {
         self.request::<lsp::request::Shutdown>(()).await
     }
 
-    pub async fn exit(&self) -> Result<()> {
-        self.notify::<lsp::notification::Exit>(()).await
+    pub fn exit(&self) -> impl Future<Output = Result<()>> {
+        self.notify::<lsp::notification::Exit>(())
     }
 
     // -------------------------------------------------------------------------------------------
     // Text document
     // -------------------------------------------------------------------------------------------
 
-    pub async fn text_document_did_open(
+    pub fn text_document_did_open(
         &self,
         uri: lsp::Url,
         version: i32,
         doc: &Rope,
         language_id: String,
-    ) -> Result<()> {
+    ) -> impl Future<Output = Result<()>> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri,
@@ -292,7 +292,6 @@ impl Client {
                 text: String::from(doc),
             },
         })
-        .await
     }
 
     pub fn changeset_to_changes(
@@ -435,14 +434,13 @@ impl Client {
         ))
     }
 
-    pub async fn text_document_did_close(
+    pub fn text_document_did_close(
         &self,
         text_document: lsp::TextDocumentIdentifier,
-    ) -> Result<()> {
+    ) -> impl Future<Output = Result<()>> {
         self.notify::<lsp::notification::DidCloseTextDocument>(lsp::DidCloseTextDocumentParams {
             text_document,
         })
-        .await
     }
 
     // will_save / will_save_wait_until
@@ -477,11 +475,11 @@ impl Client {
         .await
     }
 
-    pub async fn completion(
+    pub fn completion(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> Result<impl Future<Output = Result<Value>>> {
+    ) -> impl Future<Output = Result<Value>> {
         // ) -> Result<Vec<lsp::CompletionItem>> {
         let params = lsp::CompletionParams {
             text_document_position: lsp::TextDocumentPositionParams {
@@ -499,7 +497,7 @@ impl Client {
             // lsp::CompletionContext { trigger_kind: , trigger_character: Some(), }
         };
 
-        self.call::<lsp::request::Completion>(params).await
+        self.call::<lsp::request::Completion>(params)
     }
 
     pub async fn text_document_signature_help(

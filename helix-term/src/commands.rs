@@ -1790,12 +1790,12 @@ pub fn completion(cx: &mut Context) {
     );
 
     // TODO: handle fails
-    let res = block_on(language_server.completion(doc.identifier(), pos)).unwrap();
+    let future = language_server.completion(doc.identifier(), pos);
 
     let trigger_offset = doc.selection(view.id).cursor();
 
     cx.callback(
-        res,
+        future,
         move |editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CompletionResponse>| {

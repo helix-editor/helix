@@ -131,14 +131,12 @@ impl Editor {
                     .map(ToOwned::to_owned)
                     .unwrap_or_default();
 
-                let rt = tokio::runtime::Handle::current();
-                rt.block_on(language_server.text_document_did_open(
+                tokio::spawn(language_server.text_document_did_open(
                     doc.url().unwrap(),
                     doc.version(),
                     doc.text(),
                     language_id,
-                ))
-                .unwrap();
+                ));
             }
 
             let id = self.documents.insert(doc);
@@ -162,9 +160,7 @@ impl Editor {
             .and_then(|language| language_servers.get(language));
 
         if let Some(language_server) = language_server {
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(language_server.text_document_did_close(doc.identifier()))
-                .unwrap();
+            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
         // remove selection
