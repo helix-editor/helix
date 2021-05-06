@@ -12,8 +12,8 @@ helix-core = { path = "../helix-core" }
 once_cell = "1.4"
 
 lsp-types = { version = "0.89", features = ["proposed"] }
-smol = "1.2"
-smol-timeout = "0.6"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1.5"
 url = "2"
 pathdiff = "0.2"
 shellexpand = "2.0"

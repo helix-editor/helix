@@ -108,6 +108,16 @@ impl<'a> Context<'a> {
 /// state (usually by creating and applying a transaction).
 pub type Command = fn(cx: &mut Context);
 
+#[inline]
+fn block_on<T>(future: impl Future<Output = T>) -> T {
+    use tokio::runtime::Runtime;
+    // let rt = Runtime::new().unwrap();
+    let rt = tokio::runtime::Handle::current();
+    // let local = LocalSet::new();
+    // local.block_on(&rt, future)
+    rt.block_on(future)
+}
+
 pub fn move_char_left(cx: &mut Context) {
     let count = cx.count;
     let (view, doc) = cx.current();
@@ -861,7 +871,6 @@ pub fn command_mode(cx: &mut Context) {
             match *parts.as_slice() {
                 ["q"] | ["quit"] => {
                     editor.close(editor.view().id);
-                    // editor.should_close = true,
                 }
                 ["o", path] | ["open", path] => {
                     use helix_view::editor::Action;
@@ -871,7 +880,7 @@ pub fn command_mode(cx: &mut Context) {
                     // TODO: non-blocking via save() command
                     let id = editor.view().doc;
                     let doc = &mut editor.documents[id];
-                    smol::block_on(doc.save());
+                    block_on(doc.save());
                 }
 
                 _ => (),
@@ -1175,8 +1184,7 @@ pub fn goto_definition(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res =
-        smol::block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
+    let res = block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
     _goto(cx, res, offset_encoding);
 }
 
@@ -1192,8 +1200,8 @@ pub fn goto_type_definition(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res = smol::block_on(language_server.goto_type_definition(doc.identifier(), pos))
-        .unwrap_or_default();
+    let res =
+        block_on(language_server.goto_type_definition(doc.identifier(), pos)).unwrap_or_default();
     _goto(cx, res, offset_encoding);
 }
 
@@ -1209,8 +1217,8 @@ pub fn goto_implementation(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res = smol::block_on(language_server.goto_implementation(doc.identifier(), pos))
-        .unwrap_or_default();
+    let res =
+        block_on(language_server.goto_implementation(doc.identifier(), pos)).unwrap_or_default();
     _goto(cx, res, offset_encoding);
 }
 
@@ -1226,8 +1234,7 @@ pub fn goto_reference(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res =
-        smol::block_on(language_server.goto_reference(doc.identifier(), pos)).unwrap_or_default();
+    let res = block_on(language_server.goto_reference(doc.identifier(), pos)).unwrap_or_default();
     _goto(cx, res, offset_encoding);
 }
 
@@ -1247,7 +1254,7 @@ pub fn signature_help(cx: &mut Context) {
 
     // TODO: handle fails
 
-    let res = smol::block_on(language_server.text_document_signature_help(doc.identifier(), pos))
+    let res = block_on(language_server.text_document_signature_help(doc.identifier(), pos))
         .unwrap_or_default();
 
     if let Some(signature_help) = res {
@@ -1636,7 +1643,7 @@ pub fn format_selections(cx: &mut Context) {
         };
         // TODO: handle fails
         // TODO: concurrent map
-        let edits = smol::block_on(language_server.text_document_range_formatting(
+        let edits = block_on(language_server.text_document_range_formatting(
             doc.identifier(),
             range,
             lsp::FormattingOptions::default(),
@@ -1726,7 +1733,8 @@ pub fn save(cx: &mut Context) {
     // Spawns an async task to actually do the saving. This way we prevent blocking.
 
     // TODO: handle save errors somehow?
-    cx.editor.executor.spawn(cx.doc().save()).detach();
+    // TODO: don't block
+    block_on(cx.doc().save());
 }
 
 pub fn completion(cx: &mut Context) {
@@ -1782,7 +1790,7 @@ pub fn completion(cx: &mut Context) {
     );
 
     // TODO: handle fails
-    let res = smol::block_on(language_server.completion(doc.identifier(), pos)).unwrap();
+    let res = block_on(language_server.completion(doc.identifier(), pos)).unwrap();
 
     let trigger_offset = doc.selection(view.id).cursor();
 
@@ -1839,8 +1847,8 @@ pub fn hover(cx: &mut Context) {
     );
 
     // TODO: handle fails
-    let res = smol::block_on(language_server.text_document_hover(doc.identifier(), pos))
-        .unwrap_or_default();
+    let res =
+        block_on(language_server.text_document_hover(doc.identifier(), pos)).unwrap_or_default();
 
     if let Some(hover) = res {
         // hover.contents / .range <- used for visualizing
@@ -1963,7 +1971,7 @@ pub fn space_mode(cx: &mut Context) {
                 'w' => {
                     // save current buffer
                     let doc = cx.doc();
-                    smol::block_on(doc.save());
+                    block_on(doc.save());
                 }
                 'c' => {
                     // close current split

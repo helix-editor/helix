@@ -4,7 +4,6 @@
 
 use crossterm::event::Event;
 use helix_core::Position;
-use smol::Executor;
 use tui::{buffer::Buffer as Surface, layout::Rect};
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Editor)>;
@@ -29,7 +28,6 @@ use crate::application::LspCallbacks;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
-    pub executor: &'static smol::Executor<'static>,
     pub scroll: Option<usize>,
     pub callbacks: &'a mut LspCallbacks,
 }

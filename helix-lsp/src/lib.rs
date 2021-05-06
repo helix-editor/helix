@@ -18,6 +18,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("protocol error: {0}")]
@@ -163,12 +165,11 @@ pub use jsonrpc::Call;
 type LanguageId = String;
 
 use crate::select_all::SelectAll;
-use smol::channel::Receiver;
 
 pub struct Registry {
     inner: HashMap<LanguageId, Option<Arc<Client>>>,
 
-    pub incoming: SelectAll<Receiver<Call>>,
+    pub incoming: SelectAll<UnboundedReceiverStream<Call>>,
 }
 
 impl Default for Registry {
@@ -185,11 +186,7 @@ impl Registry {
         }
     }
 
-    pub fn get(
-        &mut self,
-        language_config: &LanguageConfiguration,
-        ex: &smol::Executor,
-    ) -> Option<Arc<Client>> {
+    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Option<Arc<Client>> {
         // TODO: propagate the error
         if let Some(config) = &language_config.language_server {
             // avoid borrow issues
@@ -203,12 +200,13 @@ impl Registry {
 
                     // initialize a new client
                     let (mut client, incoming) =
-                        Client::start(&ex, &config.command, &config.args).ok()?;
+                        Client::start(&config.command, &config.args).ok()?;
 
                     // TODO: run this async without blocking
-                    smol::block_on(client.initialize()).unwrap();
+                    let rt = tokio::runtime::Handle::current();
+                    rt.block_on(client.initialize()).unwrap();
 
-                    s_incoming.push(incoming);
+                    s_incoming.push(UnboundedReceiverStream::new(incoming));
 
                     Some(Arc::new(client))
                 })

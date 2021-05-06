@@ -14,8 +14,6 @@ use std::path::PathBuf;
 
 use anyhow::Error;
 
-static EX: smol::Executor = smol::Executor::new();
-
 fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
     let mut base_config = fern::Dispatch::new();
 
@@ -88,12 +86,12 @@ fn main() {
         Loader::new(config)
     });
 
-    for _ in 0..num_cpus::get() {
-        std::thread::spawn(move || smol::block_on(EX.run(smol::future::pending::<()>())));
-    }
+    let runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let mut app = Application::new(args, &EX).unwrap();
+    // TODO: use the thread local executor to spawn the application task separately from the work pool
+    runtime.block_on(async move {
+        let mut app = Application::new(args).unwrap();
 
-    // we use the thread local executor to spawn the application task separately from the work pool
-    smol::block_on(app.run());
+        app.run().await;
+    });
 }

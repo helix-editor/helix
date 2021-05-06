@@ -134,7 +134,7 @@ impl Document {
         self.last_saved_revision = self.history.current_revision();
 
         async move {
-            use smol::{fs::File, prelude::*};
+            use tokio::{fs::File, io::AsyncWriteExt};
             let mut file = File::create(path).await?;
 
             // write all the rope chunks to file
@@ -232,7 +232,9 @@ impl Document {
                     transaction.changes(),
                 );
 
-                smol::block_on(notify).expect("failed to emit textDocument/didChange");
+                if let Some(notify) = notify {
+                    tokio::spawn(notify);
+                } //.expect("failed to emit textDocument/didChange");
             }
         }
         success

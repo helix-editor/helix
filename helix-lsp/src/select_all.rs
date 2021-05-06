@@ -6,10 +6,10 @@ use core::{
     pin::Pin,
 };
 
-use smol::{ready, stream::Stream};
 use std::task::{Context, Poll};
 
 use futures_util::stream::{FusedStream, FuturesUnordered, StreamExt, StreamFuture};
+use futures_util::{ready, stream::Stream};
 
 /// An unbounded set of streams
 ///

@@ -13,7 +13,6 @@ pub struct Editor {
     pub count: Option<usize>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
-    pub executor: &'static smol::Executor<'static>,
 }
 
 #[derive(Copy, Clone)]
@@ -24,7 +23,7 @@ pub enum Action {
 }
 
 impl Editor {
-    pub fn new(executor: &'static smol::Executor<'static>, mut area: tui::layout::Rect) -> Self {
+    pub fn new(mut area: tui::layout::Rect) -> Self {
         use helix_core::config_dir;
         let config = std::fs::read(config_dir().join("theme.toml"));
         // load $HOME/.config/helix/theme.toml, fallback to default config
@@ -44,7 +43,6 @@ impl Editor {
             count: None,
             theme,
             language_servers,
-            executor,
         }
     }
 
@@ -122,7 +120,7 @@ impl Editor {
             let language_server = doc
                 .language
                 .as_ref()
-                .and_then(|language| self.language_servers.get(language, self.executor));
+                .and_then(|language| self.language_servers.get(language));
 
             if let Some(language_server) = language_server {
                 doc.set_language_server(Some(language_server.clone()));
@@ -133,7 +131,8 @@ impl Editor {
                     .map(ToOwned::to_owned)
                     .unwrap_or_default();
 
-                smol::block_on(language_server.text_document_did_open(
+                let rt = tokio::runtime::Handle::current();
+                rt.block_on(language_server.text_document_did_open(
                     doc.url().unwrap(),
                     doc.version(),
                     doc.text(),
@@ -154,17 +153,18 @@ impl Editor {
         let view = self.tree.get(self.tree.focus);
         // get around borrowck issues
         let language_servers = &mut self.language_servers;
-        let executor = self.executor;
 
         let doc = &self.documents[view.doc];
 
         let language_server = doc
             .language
             .as_ref()
-            .and_then(|language| language_servers.get(language, executor));
+            .and_then(|language| language_servers.get(language));
 
         if let Some(language_server) = language_server {
-            smol::block_on(language_server.text_document_did_close(doc.identifier())).unwrap();
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(language_server.text_document_did_close(doc.identifier()))
+                .unwrap();
         }
 
         // remove selection

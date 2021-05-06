@@ -207,7 +207,7 @@ impl EditorView {
                             });
 
                             let style = if is_diagnostic {
-                                style.clone().add_modifier(Modifier::UNDERLINED)
+                                style.add_modifier(Modifier::UNDERLINED)
                             } else {
                                 style
                             };
@@ -569,7 +569,6 @@ impl Component for EditorView {
                                 let mut cx = Context {
                                     editor: cxt.editor,
                                     callbacks: cxt.callbacks,
-                                    executor: cx.executor,
                                     scroll: None,
                                 };
                                 let res = completion.handle_event(event, &mut cx);

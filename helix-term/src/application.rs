@@ -7,13 +7,12 @@ use crate::{compositor::Compositor, ui};
 use log::{error, info};
 
 use std::{
+    future::Future,
     io::{self, stdout, Stdout, Write},
     path::PathBuf,
     sync::Arc,
     time::Duration,
 };
-
-use smol::prelude::*;
 
 use anyhow::Error;
 
@@ -39,16 +38,15 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
-    executor: &'static smol::Executor<'static>,
     callbacks: LspCallbacks,
 }
 
 impl Application {
-    pub fn new(mut args: Args, executor: &'static smol::Executor<'static>) -> Result<Self, Error> {
+    pub fn new(mut args: Args) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
-        let mut editor = Editor::new(executor, size);
+        let mut editor = Editor::new(size);
 
         if let Ok(files) = args.values_of_t::<PathBuf>("files") {
             for file in files {
@@ -64,7 +62,6 @@ impl Application {
             compositor,
             editor,
 
-            executor,
             callbacks: FuturesUnordered::new(),
         };
 
@@ -72,14 +69,12 @@ impl Application {
     }
 
     fn render(&mut self) {
-        let executor = &self.executor;
         let editor = &mut self.editor;
         let compositor = &mut self.compositor;
         let callbacks = &mut self.callbacks;
 
         let mut cx = crate::compositor::Context {
             editor,
-            executor,
             callbacks,
             scroll: None,
         };
@@ -97,7 +92,7 @@ impl Application {
                 break;
             }
 
-            use futures_util::{select, FutureExt};
+            use futures_util::{select, FutureExt, StreamExt};
             select! {
                 event = reader.next().fuse() => {
                     self.handle_terminal_events(event)
@@ -125,7 +120,6 @@ impl Application {
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
-            executor: self.executor,
             callbacks: &mut self.callbacks,
             scroll: None,
         };
