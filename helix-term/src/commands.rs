@@ -1471,17 +1471,52 @@ pub mod insert {
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
-        let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let pos = range.head;
-                // TODO: offset range.head by 1? when calculating?
-                let indent_level = indent::suggested_indent_for_pos(doc.syntax(), text, pos, true);
-                let indent = doc.indent_unit().repeat(indent_level);
-                let mut text = String::with_capacity(1 + indent.len());
+
+        let contents = doc.text();
+        let selection = doc.selection(view.id);
+        let mut ranges = SmallVec::with_capacity(selection.len());
+
+        let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+            let pos = range.head;
+
+            let prev = if pos == 0 {
+                ' '
+            } else {
+                contents.char(pos - 1)
+            };
+            let curr = contents.char(pos);
+
+            // TODO: offset range.head by 1? when calculating?
+            let indent_level =
+                indent::suggested_indent_for_pos(doc.syntax(), text, pos.saturating_sub(1), true);
+            let indent = doc.indent_unit().repeat(indent_level);
+            let mut text = String::with_capacity(1 + indent.len());
+            text.push('\n');
+            text.push_str(&indent);
+
+            let head = pos + text.len();
+
+            ranges.push(Range::new(
+                if range.is_empty() { head } else { range.anchor },
+                head,
+            ));
+
+            // if between a bracket pair
+            if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
+                // another newline, indent the end bracket one level less
+                let indent = doc.indent_unit().repeat(indent_level.saturating_sub(1));
                 text.push('\n');
                 text.push_str(&indent);
+
                 (pos, pos, Some(text.into()))
-            });
+            } else {
+                (pos, pos, Some(text.into()))
+            }
+        });
+
+        transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+        //
+
         doc.apply(&transaction, view.id);
     }
 

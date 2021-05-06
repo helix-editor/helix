@@ -3,7 +3,7 @@ use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
 
-const PAIRS: &[(char, char)] = &[
+pub const PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('{', '}'),
     ('[', ']'),
