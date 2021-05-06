@@ -152,7 +152,7 @@ impl Client {
 
             timeout(Duration::from_secs(2), rx.recv())
                 .await
-                .map_err(|e| Error::Timeout)? // return Timeout
+                .map_err(|_| Error::Timeout)? // return Timeout
                 .unwrap() // TODO: None if channel closed
         }
     }
@@ -500,11 +500,11 @@ impl Client {
         self.call::<lsp::request::Completion>(params)
     }
 
-    pub async fn text_document_signature_help(
+    pub fn text_document_signature_help(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Option<lsp::SignatureHelp>> {
+    ) -> impl Future<Output = Result<Value>> {
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -517,18 +517,14 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        let response = self
-            .request::<lsp::request::SignatureHelpRequest>(params)
-            .await?;
-
-        Ok(response)
+        self.call::<lsp::request::SignatureHelpRequest>(params)
     }
 
-    pub async fn text_document_hover(
+    pub fn text_document_hover(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Option<lsp::Hover>> {
+    ) -> impl Future<Output = Result<Value>> {
         let params = lsp::HoverParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -540,9 +536,7 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        let response = self.request::<lsp::request::HoverRequest>(params).await?;
-
-        Ok(response)
+        self.call::<lsp::request::HoverRequest>(params)
     }
 
     // formatting
@@ -607,7 +601,7 @@ impl Client {
         Ok(response.unwrap_or_default())
     }
 
-    async fn goto_request<
+    fn goto_request<
         T: lsp::request::Request<
             Params = lsp::GotoDefinitionParams,
             Result = Option<lsp::GotoDefinitionResponse>,
@@ -616,7 +610,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Vec<lsp::Location>> {
+    ) -> impl Future<Output = Result<Value>> {
         let params = lsp::GotoDefinitionParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -630,56 +624,38 @@ impl Client {
             },
         };
 
-        let response = self.request::<T>(params).await?;
-
-        let items = match response {
-            Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-            Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
-            Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
-                .into_iter()
-                .map(|location_link| lsp::Location {
-                    uri: location_link.target_uri,
-                    range: location_link.target_range,
-                })
-                .collect(),
-            None => Vec::new(),
-        };
-
-        Ok(items)
+        self.call::<T>(params)
     }
 
-    pub async fn goto_definition(
+    pub fn goto_definition(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Vec<lsp::Location>> {
+    ) -> impl Future<Output = Result<Value>> {
         self.goto_request::<lsp::request::GotoDefinition>(text_document, position)
-            .await
     }
 
-    pub async fn goto_type_definition(
+    pub fn goto_type_definition(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Vec<lsp::Location>> {
+    ) -> impl Future<Output = Result<Value>> {
         self.goto_request::<lsp::request::GotoTypeDefinition>(text_document, position)
-            .await
     }
 
-    pub async fn goto_implementation(
+    pub fn goto_implementation(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Vec<lsp::Location>> {
+    ) -> impl Future<Output = Result<Value>> {
         self.goto_request::<lsp::request::GotoImplementation>(text_document, position)
-            .await
     }
 
-    pub async fn goto_reference(
+    pub fn goto_reference(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> anyhow::Result<Vec<lsp::Location>> {
+    ) -> impl Future<Output = Result<Value>> {
         let params = lsp::ReferenceParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,
@@ -696,8 +672,6 @@ impl Client {
             },
         };
 
-        let response = self.request::<lsp::request::References>(params).await?;
-
-        Ok(response.unwrap_or_default())
+        self.call::<lsp::request::References>(params)
     }
 }

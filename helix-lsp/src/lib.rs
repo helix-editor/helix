@@ -203,8 +203,7 @@ impl Registry {
                         Client::start(&config.command, &config.args).ok()?;
 
                     // TODO: run this async without blocking
-                    let rt = tokio::runtime::Handle::current();
-                    rt.block_on(client.initialize()).unwrap();
+                    futures_executor::block_on(client.initialize()).unwrap();
 
                     s_incoming.push(UnboundedReceiverStream::new(incoming));
 

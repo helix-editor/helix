@@ -108,16 +108,6 @@ impl<'a> Context<'a> {
 /// state (usually by creating and applying a transaction).
 pub type Command = fn(cx: &mut Context);
 
-#[inline]
-fn block_on<T>(future: impl Future<Output = T>) -> T {
-    use tokio::runtime::Runtime;
-    // let rt = Runtime::new().unwrap();
-    let rt = tokio::runtime::Handle::current();
-    // let local = LocalSet::new();
-    // local.block_on(&rt, future)
-    rt.block_on(future)
-}
-
 pub fn move_char_left(cx: &mut Context) {
     let count = cx.count;
     let (view, doc) = cx.current();
@@ -260,13 +250,13 @@ pub fn move_next_word_end(cx: &mut Context) {
 }
 
 pub fn move_file_start(cx: &mut Context) {
-    push_jump(cx);
+    push_jump(cx.editor);
     let (view, doc) = cx.current();
     doc.set_selection(view.id, Selection::point(0));
 }
 
 pub fn move_file_end(cx: &mut Context) {
-    push_jump(cx);
+    push_jump(cx.editor);
     let (view, doc) = cx.current();
     let text = doc.text();
     let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
@@ -880,7 +870,7 @@ pub fn command_mode(cx: &mut Context) {
                     // TODO: non-blocking via save() command
                     let id = editor.view().doc;
                     let doc = &mut editor.documents[id];
-                    block_on(doc.save());
+                    tokio::spawn(doc.save());
                 }
 
                 _ => (),
@@ -1079,8 +1069,8 @@ pub fn normal_mode(cx: &mut Context) {
 }
 
 // Store a jump on the jumplist.
-fn push_jump(cx: &mut Context) {
-    let (view, doc) = cx.current();
+fn push_jump(editor: &mut Editor) {
+    let (view, doc) = editor.current();
     let jump = { (doc.id(), doc.selection(view.id).clone()) };
     view.jumps.push(jump);
 }
@@ -1089,7 +1079,7 @@ pub fn goto_mode(cx: &mut Context) {
     let count = cx.count;
 
     if count > 1 {
-        push_jump(cx);
+        push_jump(cx.editor);
 
         // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
         // to 1g
@@ -1127,10 +1117,15 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-fn _goto(cx: &mut Context, locations: Vec<lsp::Location>, offset_encoding: OffsetEncoding) {
+fn _goto(
+    editor: &mut Editor,
+    compositor: &mut Compositor,
+    locations: Vec<lsp::Location>,
+    offset_encoding: OffsetEncoding,
+) {
     use helix_view::editor::Action;
 
-    push_jump(cx);
+    push_jump(editor);
 
     fn jump_to(
         editor: &mut Editor,
@@ -1152,7 +1147,7 @@ fn _goto(cx: &mut Context, locations: Vec<lsp::Location>, offset_encoding: Offse
 
     match locations.as_slice() {
         [location] => {
-            jump_to(cx.editor, location, offset_encoding, Action::Replace);
+            jump_to(editor, location, offset_encoding, Action::Replace);
         }
         [] => (), // maybe show user message that no definition was found?
         _locations => {
@@ -1167,7 +1162,7 @@ fn _goto(cx: &mut Context, locations: Vec<lsp::Location>, offset_encoding: Offse
                     jump_to(editor, location, offset_encoding, action)
                 },
             );
-            cx.push_layer(Box::new(picker));
+            compositor.push(Box::new(picker));
         }
     }
 }
@@ -1184,8 +1179,29 @@ pub fn goto_definition(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res = block_on(language_server.goto_definition(doc.identifier(), pos)).unwrap_or_default();
-    _goto(cx, res, offset_encoding);
+    let future = language_server.goto_definition(doc.identifier(), pos);
+
+    cx.callback(
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::GotoDefinitionResponse>| {
+            let items = match response {
+                Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
+                Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+                Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
+                    .into_iter()
+                    .map(|location_link| lsp::Location {
+                        uri: location_link.target_uri,
+                        range: location_link.target_range,
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
+
+            _goto(editor, compositor, items, offset_encoding);
+        },
+    );
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
@@ -1200,9 +1216,29 @@ pub fn goto_type_definition(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res =
-        block_on(language_server.goto_type_definition(doc.identifier(), pos)).unwrap_or_default();
-    _goto(cx, res, offset_encoding);
+    let future = language_server.goto_type_definition(doc.identifier(), pos);
+
+    cx.callback(
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::GotoDefinitionResponse>| {
+            let items = match response {
+                Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
+                Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+                Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
+                    .into_iter()
+                    .map(|location_link| lsp::Location {
+                        uri: location_link.target_uri,
+                        range: location_link.target_range,
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
+
+            _goto(editor, compositor, items, offset_encoding);
+        },
+    );
 }
 
 pub fn goto_implementation(cx: &mut Context) {
@@ -1217,9 +1253,29 @@ pub fn goto_implementation(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res =
-        block_on(language_server.goto_implementation(doc.identifier(), pos)).unwrap_or_default();
-    _goto(cx, res, offset_encoding);
+    let future = language_server.goto_implementation(doc.identifier(), pos);
+
+    cx.callback(
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::GotoDefinitionResponse>| {
+            let items = match response {
+                Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
+                Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+                Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
+                    .into_iter()
+                    .map(|location_link| lsp::Location {
+                        uri: location_link.target_uri,
+                        range: location_link.target_range,
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
+
+            _goto(editor, compositor, items, offset_encoding);
+        },
+    );
 }
 
 pub fn goto_reference(cx: &mut Context) {
@@ -1234,8 +1290,21 @@ pub fn goto_reference(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let res = block_on(language_server.goto_reference(doc.identifier(), pos)).unwrap_or_default();
-    _goto(cx, res, offset_encoding);
+    let future = language_server.goto_reference(doc.identifier(), pos);
+
+    cx.callback(
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              items: Option<Vec<lsp::Location>>| {
+            _goto(
+                editor,
+                compositor,
+                items.unwrap_or_default(),
+                offset_encoding,
+            );
+        },
+    );
 }
 
 pub fn signature_help(cx: &mut Context) {
@@ -1253,23 +1322,28 @@ pub fn signature_help(cx: &mut Context) {
     );
 
     // TODO: handle fails
+    let future = language_server.text_document_signature_help(doc.identifier(), pos);
 
-    let res = block_on(language_server.text_document_signature_help(doc.identifier(), pos))
-        .unwrap_or_default();
+    cx.callback(
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::SignatureHelp>| {
+            if let Some(signature_help) = response {
+                log::info!("{:?}", signature_help);
+                // signatures
+                // active_signature
+                // active_parameter
+                // render as:
 
-    if let Some(signature_help) = res {
-        log::info!("{:?}", signature_help);
-        // signatures
-        // active_signature
-        // active_parameter
-        // render as:
+                // signature
+                // ----------
+                // doc
 
-        // signature
-        // ----------
-        // doc
-
-        // with active param highlighted
-    }
+                // with active param highlighted
+            }
+        },
+    );
 }
 
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
@@ -1643,20 +1717,22 @@ pub fn format_selections(cx: &mut Context) {
         };
         // TODO: handle fails
         // TODO: concurrent map
-        let edits = block_on(language_server.text_document_range_formatting(
-            doc.identifier(),
-            range,
-            lsp::FormattingOptions::default(),
-        ))
-        .unwrap_or_default();
+        unimplemented!(); // neeed to block to get the formatting
 
-        let transaction = helix_lsp::util::generate_transaction_from_edits(
-            doc.text(),
-            edits,
-            language_server.offset_encoding(),
-        );
+        // let edits = block_on(language_server.text_document_range_formatting(
+        //     doc.identifier(),
+        //     range,
+        //     lsp::FormattingOptions::default(),
+        // ))
+        // .unwrap_or_default();
 
-        doc.apply(&transaction, view.id);
+        // let transaction = helix_lsp::util::generate_transaction_from_edits(
+        //     doc.text(),
+        //     edits,
+        //     language_server.offset_encoding(),
+        // );
+
+        // doc.apply(&transaction, view.id);
     }
 
     doc.append_changes_to_history(view.id);
@@ -1734,7 +1810,7 @@ pub fn save(cx: &mut Context) {
 
     // TODO: handle save errors somehow?
     // TODO: don't block
-    block_on(cx.doc().save());
+    tokio::spawn(cx.doc().save());
 }
 
 pub fn completion(cx: &mut Context) {
@@ -1847,30 +1923,34 @@ pub fn hover(cx: &mut Context) {
     );
 
     // TODO: handle fails
-    let res =
-        block_on(language_server.text_document_hover(doc.identifier(), pos)).unwrap_or_default();
+    let future = language_server.text_document_hover(doc.identifier(), pos);
 
-    if let Some(hover) = res {
-        // hover.contents / .range <- used for visualizing
-        let contents = match hover.contents {
-            lsp::HoverContents::Scalar(contents) => {
-                // markedstring(string/languagestring to be highlighted)
-                // TODO
-                unimplemented!("{:?}", contents)
+    cx.callback(
+        future,
+        move |editor: &mut Editor, compositor: &mut Compositor, response: Option<lsp::Hover>| {
+            if let Some(hover) = response {
+                // hover.contents / .range <- used for visualizing
+                let contents = match hover.contents {
+                    lsp::HoverContents::Scalar(contents) => {
+                        // markedstring(string/languagestring to be highlighted)
+                        // TODO
+                        unimplemented!("{:?}", contents)
+                    }
+                    lsp::HoverContents::Array(contents) => {
+                        unimplemented!("{:?}", contents)
+                    }
+                    // TODO: render markdown
+                    lsp::HoverContents::Markup(contents) => contents.value,
+                };
+
+                // skip if contents empty
+
+                let contents = ui::Markdown::new(contents);
+                let mut popup = Popup::new(contents);
+                compositor.push(Box::new(popup));
             }
-            lsp::HoverContents::Array(contents) => {
-                unimplemented!("{:?}", contents)
-            }
-            // TODO: render markdown
-            lsp::HoverContents::Markup(contents) => contents.value,
-        };
-
-        // skip if contents empty
-
-        let contents = ui::Markdown::new(contents);
-        let mut popup = Popup::new(contents);
-        cx.push_layer(Box::new(popup));
-    }
+        },
+    );
 }
 
 // view movements
@@ -1971,7 +2051,7 @@ pub fn space_mode(cx: &mut Context) {
                 'w' => {
                     // save current buffer
                     let doc = cx.doc();
-                    block_on(doc.save());
+                    tokio::spawn(doc.save());
                 }
                 'c' => {
                     // close current split
