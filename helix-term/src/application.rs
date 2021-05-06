@@ -23,7 +23,6 @@ use crossterm::{
 
 use tui::layout::Rect;
 
-// use futures_util::future::BoxFuture;
 use futures_util::stream::FuturesUnordered;
 use std::pin::Pin;
 
@@ -92,15 +91,16 @@ impl Application {
                 break;
             }
 
-            use futures_util::{select, FutureExt, StreamExt};
-            select! {
-                event = reader.next().fuse() => {
+            use futures_util::StreamExt;
+
+            tokio::select! {
+                event = reader.next() => {
                     self.handle_terminal_events(event)
                 }
-                call = futures_util::StreamExt::select_next_some(&mut self.editor.language_servers.incoming) => {
+                Some(call) = self.editor.language_servers.incoming.next() => {
                     self.handle_language_server_message(call).await
                 }
-                callback = futures_util::StreamExt::select_next_some(&mut self.callbacks) => {
+                Some(callback) = &mut self.callbacks.next() => {
                     self.handle_language_server_callback(callback)
                 }
             }

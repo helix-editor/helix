@@ -25,7 +25,7 @@ tui = { version = "0.15", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.19", features = ["event-stream"] }
 clap = { version = "3.0.0-beta.2 ", default-features = false, features = ["std", "cargo"] }
 
-futures-util = "0.3"
+futures-util = { version = "0.3", features = ["std", "async-await"] }
 
 # Logging
 fern = "0.6"

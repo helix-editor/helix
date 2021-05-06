@@ -22,7 +22,6 @@ once_cell = "1.4"
 url = "2"
 
 tokio = { version = "1", features = ["full"] }
-futures-util = "0.3"
 
 slotmap = "1"
 
