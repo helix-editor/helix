@@ -24,12 +24,6 @@ use helix_view::{Document, Editor, View};
 
 use std::path::{Path, PathBuf};
 
-// TODO: temp
-#[inline(always)]
-pub fn text_color() -> Style {
-    Style::default().fg(Color::Rgb(219, 191, 239)) // lilac
-}
-
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: String,

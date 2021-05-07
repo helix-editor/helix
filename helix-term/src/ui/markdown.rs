@@ -104,7 +104,7 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                                             Some(span) => {
                                                 theme.get(theme.scopes()[span.0].as_str())
                                             }
-                                            None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
+                                            None => text_style,
                                         };
 
                                         let mut slice = &text[start..end];

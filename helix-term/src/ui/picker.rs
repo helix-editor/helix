@@ -245,7 +245,7 @@ impl<T: 'static> Component for Picker<T> {
 
         // -- Render the contents:
 
-        let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
+        let style = cx.editor.theme.get("ui.text");
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
         let rows = inner.height - 2; // -1 for search bar

@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Compositor, Context, EventResult},
     key,
     keymap::{self, Keymaps},
-    ui::{text_color, Completion},
+    ui::Completion,
 };
 
 use helix_core::{
@@ -150,7 +150,7 @@ impl EditorView {
                     // first rule that matches (rule.all(|scope| scopes.contains(scope)))
                     let style = match spans.first() {
                         Some(span) => theme.get(theme.scopes()[span.0].as_str()),
-                        None => Style::default().fg(Color::Rgb(164, 160, 232)), // lavender
+                        None => theme.get("ui.text"),
                     };
 
                     // TODO: we could render the text to a surface, then cache that, that
@@ -409,11 +409,10 @@ impl EditorView {
             Mode::Select => "SEL",
             Mode::Normal => "NOR",
         };
-        // TODO: share text_color styles inside theme
         let text_color = if is_focused {
-            Style::default().fg(Color::Rgb(219, 191, 239)) // lilac
+            theme.get("ui.text.focus")
         } else {
-            Style::default().fg(Color::Rgb(164, 160, 232)) // lavender
+            theme.get("ui.text")
         };
         // statusline
         surface.set_style(
@@ -632,7 +631,7 @@ impl Component for EditorView {
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
             } else {
-                Style::default().fg(Color::Rgb(164, 160, 232)) // lavender
+                cx.editor.theme.get("ui.text")
             };
 
             surface.set_string(

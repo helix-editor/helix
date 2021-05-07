@@ -43,6 +43,9 @@
 "ui.popup" = { bg = "#281733" } # revolver
 "ui.window" = { bg = "#452859" } # bossa nova
 
+"ui.text" = { fg = "#a4a0e8"} # lavender
+"ui.text.focus" = { fg = "#dbbfef"} # lilac
+
 "warning" = "#ffcd1c"
 "error" = "#f47868"
 "info" = "#6F44F0"

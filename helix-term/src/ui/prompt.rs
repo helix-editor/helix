@@ -103,11 +103,10 @@ use tui::{
 };
 
 const BASE_WIDTH: u16 = 30;
-use crate::ui::text_color;
 
 impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, theme: &Theme) {
-        let text_color = text_color();
+        let text_color = theme.get("ui.text.focus");
         // completion
         if !self.completion.is_empty() {
             // TODO: find out better way of clearing individual lines of the screen

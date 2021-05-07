@@ -240,7 +240,7 @@ impl<T: 'static> Component for Menu<T> {
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
+        let style = cx.editor.theme.get("ui.text");
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
         let scroll = self.scroll;

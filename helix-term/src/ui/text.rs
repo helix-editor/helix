@@ -25,7 +25,7 @@ impl Component for Text {
         use tui::widgets::{Paragraph, Widget, Wrap};
         let contents = tui::text::Text::from(self.contents.clone());
 
-        let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
+        let style = cx.editor.theme.get("ui.text");
 
         let par = Paragraph::new(contents).wrap(Wrap { trim: false });
         // .scroll(x, y) offsets
