@@ -905,13 +905,13 @@ mod cmd {
         },
     ];
 
-    pub static COMMANDS: Lazy<HashMap<&'static str, Command>> = Lazy::new(|| {
+    pub static COMMANDS: Lazy<HashMap<&'static str, &'static Command>> = Lazy::new(|| {
         let mut map = HashMap::new();
 
         for cmd in COMMAND_LIST {
-            map.insert(cmd.name, cmd.clone());
+            map.insert(cmd.name, cmd);
             if let Some(alias) = cmd.alias {
-                map.insert(alias, cmd.clone());
+                map.insert(alias, cmd);
             }
         }
 
