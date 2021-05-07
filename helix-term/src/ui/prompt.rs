@@ -116,18 +116,18 @@ impl Prompt {
             let max_col = area.width / BASE_WIDTH;
             let col_height = ((self.completion.len() as u16 + max_col - 1) / max_col);
 
-            for i in (3..col_height + 3) {
-                surface.set_string(
-                    0,
-                    area.height - i as u16,
-                    " ".repeat(area.width as usize),
-                    text_color,
-                );
+            // completion box area
+            let area = Rect::new(area.x, area.height - col_height - 2, area.width, col_height);
+            let background = theme.get("ui.statusline");
+
+            for y in area.top()..area.bottom() {
+                for x in area.left()..area.right() {
+                    let cell = surface.get_mut(x, y);
+                    cell.reset();
+                    cell.set_style(background);
+                }
             }
-            surface.set_style(
-                Rect::new(0, area.height - col_height - 2, area.width, col_height),
-                theme.get("ui.statusline"),
-            );
+
             for (i, (_range, completion)) in self.completion.iter().enumerate() {
                 let color = if Some(i) == self.completion_selection_index {
                     Style::default().bg(Color::Rgb(104, 60, 232))
@@ -135,14 +135,14 @@ impl Prompt {
                     text_color
                 };
                 surface.set_stringn(
-                    1 + col * BASE_WIDTH,
-                    area.height - col_height - 2 + row,
+                    area.x + 1 + col * BASE_WIDTH,
+                    area.y + row,
                     &completion,
                     BASE_WIDTH as usize - 1,
                     color,
                 );
                 row += 1;
-                if row > col_height - 1 {
+                if row > area.height - 1 {
                     row = 0;
                     col += 1;
                 }
