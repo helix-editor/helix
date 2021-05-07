@@ -935,9 +935,7 @@ pub fn buffer_picker(cx: &mut Context) {
         },
         |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
             use helix_view::editor::Action;
-            editor
-                .switch(*id, Action::Replace)
-                .expect("editor.open failed");
+            editor.switch(*id, Action::Replace);
         },
     );
     cx.push_layer(Box::new(picker));

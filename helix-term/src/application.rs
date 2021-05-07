@@ -52,7 +52,7 @@ impl Application {
                 editor.open(file, Action::VerticalSplit)?;
             }
         } else {
-            editor.new_file(Action::VerticalSplit)?;
+            editor.new_file(Action::VerticalSplit);
         }
 
         compositor.push(Box::new(ui::EditorView::new()));

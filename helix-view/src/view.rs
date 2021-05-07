@@ -1,5 +1,3 @@
-use anyhow::Error;
-
 use std::borrow::Cow;
 
 use crate::{Document, DocumentId, ViewId};
@@ -63,17 +61,15 @@ pub struct View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId) -> Result<Self, Error> {
-        let view = Self {
+    pub fn new(doc: DocumentId) -> Self {
+        Self {
             id: ViewId::default(),
             doc,
             first_line: 0,
             first_col: 0,
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
-        };
-
-        Ok(view)
+        }
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document) {

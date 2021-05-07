@@ -66,7 +66,7 @@ impl Editor {
         }
     }
 
-    pub fn switch(&mut self, id: DocumentId, action: Action) -> Result<DocumentId, Error> {
+    pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
         use helix_core::Selection;
         match action {
@@ -87,17 +87,17 @@ impl Editor {
                 let doc = &mut self.documents[id];
                 doc.selections.insert(view_id, Selection::point(0));
 
-                return Ok(id);
+                return;
             }
             Action::HorizontalSplit => {
-                let view = View::new(id)?;
+                let view = View::new(id);
                 let view_id = self.tree.split(view, Layout::Horizontal);
                 // initialize selection for view
                 let doc = &mut self.documents[id];
                 doc.selections.insert(view_id, Selection::point(0));
             }
             Action::VerticalSplit => {
-                let view = View::new(id)?;
+                let view = View::new(id);
                 let view_id = self.tree.split(view, Layout::Vertical);
                 // initialize selection for view
                 let doc = &mut self.documents[id];
@@ -106,16 +106,15 @@ impl Editor {
         }
 
         self._refresh();
-
-        Ok(id)
     }
 
-    pub fn new_file(&mut self, action: Action) -> Result<DocumentId, Error> {
+    pub fn new_file(&mut self, action: Action) -> DocumentId {
         use helix_core::Rope;
         let doc = Document::new(Rope::from("\n"));
         let id = self.documents.insert(doc);
         self.documents[id].id = id;
-        self.switch(id, action)
+        self.switch(id, action);
+        id
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
@@ -159,7 +158,8 @@ impl Editor {
             id
         };
 
-        self.switch(id, action)
+        self.switch(id, action);
+        Ok(id)
     }
 
     pub fn close(&mut self, id: ViewId) {
