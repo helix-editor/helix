@@ -814,6 +814,7 @@ mod cmd {
     use std::collections::HashMap;
 
     use helix_view::editor::Action;
+    use ui::completers::{self, Completer};
 
     #[derive(Clone)]
     pub struct Command {
@@ -822,6 +823,7 @@ mod cmd {
         pub doc: &'static str,
         // params, flags, helper, completer
         pub fun: fn(&mut Editor, &[&str], PromptEvent),
+        pub completer: Option<Completer>,
     }
 
     fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
@@ -878,30 +880,35 @@ mod cmd {
             alias: Some("q"),
             doc: "Close the current view.",
             fun: quit,
+            completer: None,
         },
         Command {
             name: "quit!",
             alias: Some("q!"),
             doc: "Close the current view.",
             fun: force_quit,
+            completer: None,
         },
         Command {
             name: "open",
             alias: Some("o"),
             doc: "Open a file from disk into the current view.",
             fun: open,
+            completer: Some(completers::filename),
         },
         Command {
             name: "write",
             alias: Some("w"),
             doc: "Write changes to disk.",
             fun: write,
+            completer: Some(completers::filename),
         },
         Command {
             name: "new",
             alias: Some("n"),
             doc: "Create a new scratch buffer.",
             fun: new_file,
+            completer: Some(completers::filename),
         },
     ];
 
@@ -920,14 +927,17 @@ mod cmd {
 }
 
 pub fn command_mode(cx: &mut Context) {
+    // TODO: completion items should have a info section that would get displayed in
+    // a popup above the prompt when items are tabbed over
+
     let prompt = Prompt::new(
         ":".to_owned(),
         |input: &str| {
             // we use .this over split_ascii_whitespace() because we care about empty segments
             let parts = input.split(' ').collect::<Vec<&str>>();
 
-            // simple heuristic: if there's no space, complete command.
-            // if there's a space, file completion kicks in. We should specialize by command later.
+            // simple heuristic: if there's no just one part, complete command name.
+            // if there's a space, per command completion kicks in.
             if parts.len() <= 1 {
                 use std::{borrow::Cow, ops::Range};
                 let end = 0..;
@@ -938,19 +948,24 @@ pub fn command_mode(cx: &mut Context) {
                     .collect()
             } else {
                 let part = parts.last().unwrap();
-                ui::completers::filename(part)
-                    .into_iter()
-                    .map(|(range, file)| {
-                        // offset ranges to input
-                        let offset = input.len() - part.len();
-                        let range = (range.start + offset)..;
-                        (range, file)
-                    })
-                    .collect()
 
-                // TODO
-                // additionally, completion items could have a info section that would get
-                // displayed in a popup above the prompt when items are tabbed over
+                if let Some(cmd::Command {
+                    completer: Some(completer),
+                    ..
+                }) = cmd::COMMANDS.get(parts[0])
+                {
+                    completer(part)
+                        .into_iter()
+                        .map(|(range, file)| {
+                            // offset ranges to input
+                            let offset = input.len() - part.len();
+                            let range = (range.start + offset)..;
+                            (range, file)
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                }
             }
         }, // completion
         move |editor: &mut Editor, input: &str, event: PromptEvent| {

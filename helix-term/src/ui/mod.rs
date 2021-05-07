@@ -114,6 +114,9 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
 pub mod completers {
     use crate::ui::prompt::Completion;
     use std::borrow::Cow;
+
+    pub type Completer = fn(&str) -> Vec<Completion>;
+
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     pub fn filename(input: &str) -> Vec<Completion> {
         // Rust's filename handling is really annoying.
