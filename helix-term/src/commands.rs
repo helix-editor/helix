@@ -856,7 +856,7 @@ pub fn command_mode(cx: &mut Context) {
 
             match *parts.as_slice() {
                 ["q"] | ["quit"] => {
-                    editor.close(editor.view().id);
+                    editor.close(editor.view().id, /* close_buffer */ false);
                 }
                 ["o", path] | ["open", path] => {
                     editor.open(path.into(), Action::Replace);
@@ -2085,7 +2085,7 @@ pub fn space_mode(cx: &mut Context) {
                 }
                 'c' => {
                     // close current split
-                    cx.editor.close(cx.view_id);
+                    cx.editor.close(cx.view_id, /* close_buffer */ false);
                 }
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took it's old key

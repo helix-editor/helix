@@ -162,26 +162,26 @@ impl Editor {
         Ok(id)
     }
 
-    pub fn close(&mut self, id: ViewId) {
+    pub fn close(&mut self, id: ViewId, close_buffer: bool) {
         let view = self.tree.get(self.tree.focus);
-        // get around borrowck issues
-        let language_servers = &mut self.language_servers;
-
-        let doc = &self.documents[view.doc];
-
-        let language_server = doc
-            .language
-            .as_ref()
-            .and_then(|language| language_servers.get(language));
-
-        if let Some(language_server) = language_server {
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-        }
-
         // remove selection
         self.documents[view.doc].selections.remove(&id);
 
-        // self.documents.remove(view.doc);
+        if close_buffer {
+            // get around borrowck issues
+            let language_servers = &mut self.language_servers;
+            let doc = &self.documents[view.doc];
+
+            let language_server = doc
+                .language
+                .as_ref()
+                .and_then(|language| language_servers.get(language));
+            if let Some(language_server) = language_server {
+                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            }
+            self.documents.remove(view.doc);
+        }
+
         self.tree.remove(id);
         self._refresh();
     }
