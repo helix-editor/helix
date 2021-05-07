@@ -809,7 +809,115 @@ pub fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-const COMMAND_LIST: &[&str] = &["write", "open", "quit", "quit!"];
+mod cmd {
+    use super::*;
+    use std::collections::HashMap;
+
+    use helix_view::editor::Action;
+
+    #[derive(Clone)]
+    pub struct Command {
+        pub name: &'static str,
+        pub alias: Option<&'static str>,
+        pub doc: &'static str,
+        // params, flags, helper, completer
+        pub fun: fn(&mut Editor, &[&str], PromptEvent),
+    }
+
+    fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        // last view and we have unsaved changes
+        if editor.tree.views().count() == 1 {
+            let modified: Vec<_> = editor
+                .documents()
+                .filter(|doc| doc.is_modified())
+                .map(|doc| {
+                    doc.relative_path()
+                        .and_then(|path| path.to_str())
+                        .unwrap_or("[scratch]")
+                })
+                .collect();
+
+            if !modified.is_empty() {
+                let err = format!(
+                    "{} unsaved buffer(s) remaining: {:?}",
+                    modified.len(),
+                    modified
+                );
+                editor.set_error(err);
+                return;
+            }
+        }
+        editor.close(editor.view().id, /* close_buffer */ false);
+    }
+
+    fn force_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        editor.close(editor.view().id, /* close_buffer */ false);
+    }
+
+    fn open(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let path = args[0];
+        editor.open(path.into(), Action::Replace);
+    }
+
+    fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let id = editor.view().doc;
+        let doc = &mut editor.documents[id];
+        if doc.path().is_none() {
+            editor.set_error("cannot write a buffer without a filename".to_string());
+            return;
+        }
+        tokio::spawn(doc.save());
+    }
+    fn new_file(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        editor.new_file(Action::Replace);
+    }
+
+    pub const COMMAND_LIST: &[Command] = &[
+        Command {
+            name: "quit",
+            alias: Some("q"),
+            doc: "Close the current view.",
+            fun: quit,
+        },
+        Command {
+            name: "quit!",
+            alias: Some("q!"),
+            doc: "Close the current view.",
+            fun: force_quit,
+        },
+        Command {
+            name: "open",
+            alias: Some("o"),
+            doc: "Open a file from disk into the current view.",
+            fun: open,
+        },
+        Command {
+            name: "write",
+            alias: Some("w"),
+            doc: "Write changes to disk.",
+            fun: write,
+        },
+        Command {
+            name: "new",
+            alias: Some("n"),
+            doc: "Create a new scratch buffer.",
+            fun: new_file,
+        },
+    ];
+
+    pub static COMMANDS: Lazy<HashMap<&'static str, Command>> = Lazy::new(|| {
+        let mut map = HashMap::new();
+
+        for cmd in COMMAND_LIST {
+            map.insert(cmd.name, cmd.clone());
+            if let Some(alias) = cmd.alias {
+                map.insert(alias, cmd.clone());
+            }
+        }
+
+        map
+    });
+}
 
 pub fn command_mode(cx: &mut Context) {
     let prompt = Prompt::new(
@@ -823,10 +931,10 @@ pub fn command_mode(cx: &mut Context) {
             if parts.len() <= 1 {
                 use std::{borrow::Cow, ops::Range};
                 let end = 0..;
-                COMMAND_LIST
+                cmd::COMMAND_LIST
                     .iter()
-                    .filter(|command| command.contains(input))
-                    .map(|command| (end.clone(), Cow::Borrowed(*command)))
+                    .filter(|command| command.name.contains(input))
+                    .map(|command| (end.clone(), Cow::Borrowed(command.name)))
                     .collect()
             } else {
                 let part = parts.last().unwrap();
@@ -854,52 +962,11 @@ pub fn command_mode(cx: &mut Context) {
 
             let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
 
-            match *parts.as_slice() {
-                ["q"] | ["quit"] => {
-                    // last view and we have unsaved changes
-                    if editor.tree.views().count() == 1 {
-                        let modified: Vec<_> = editor
-                            .documents()
-                            .filter(|doc| doc.is_modified())
-                            .map(|doc| {
-                                doc.relative_path()
-                                    .and_then(|path| path.to_str())
-                                    .unwrap_or("[scratch]")
-                            })
-                            .collect();
-
-                        if !modified.is_empty() {
-                            let err = format!(
-                                "{} unsaved buffer(s) remaining: {:?}",
-                                modified.len(),
-                                modified
-                            );
-                            editor.set_error(err);
-                            return;
-                        }
-                    }
-                    editor.close(editor.view().id, /* close_buffer */ false);
-                }
-                ["q!"] | ["quit!"] => {
-                    editor.close(editor.view().id, /* close_buffer */ false);
-                }
-                ["o", path] | ["open", path] => {
-                    editor.open(path.into(), Action::Replace);
-                }
-                ["w"] | ["write"] => {
-                    let id = editor.view().doc;
-                    let doc = &mut editor.documents[id];
-                    if doc.path().is_none() {
-                        editor.set_error("cannot write a buffer without a filename".to_string());
-                        return;
-                    }
-                    tokio::spawn(doc.save());
-                }
-                ["new"] => {
-                    editor.new_file(Action::Replace);
-                }
-                _ => (),
-            }
+            if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
+                (cmd.fun)(editor, &parts[1..], event);
+            } else {
+                editor.set_error(format!("no such command: '{}'", parts[0]));
+            };
         },
     );
     cx.push_layer(Box::new(prompt));
