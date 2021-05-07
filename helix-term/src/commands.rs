@@ -664,7 +664,7 @@ pub fn _search_next(cx: &mut Context, extend: bool) {
         let query = query.first().unwrap();
         let (view, doc) = cx.current();
         let contents = doc.text().slice(..).to_string();
-        let regex = Regex::new(&query).unwrap();
+        let regex = Regex::new(query).unwrap();
         _search(doc, view, &contents, &regex, extend);
     }
 }
@@ -809,7 +809,7 @@ pub fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-const COMMAND_LIST: &[&str] = &["write", "open", "quit"];
+const COMMAND_LIST: &[&str] = &["write", "open", "quit", "quit!"];
 
 pub fn command_mode(cx: &mut Context) {
     let prompt = Prompt::new(
@@ -856,6 +856,31 @@ pub fn command_mode(cx: &mut Context) {
 
             match *parts.as_slice() {
                 ["q"] | ["quit"] => {
+                    // last view and we have unsaved changes
+                    if editor.tree.views().count() == 1 {
+                        let modified: Vec<_> = editor
+                            .documents()
+                            .filter(|doc| doc.is_modified())
+                            .map(|doc| {
+                                doc.relative_path()
+                                    .and_then(|path| path.to_str())
+                                    .unwrap_or("[scratch]")
+                            })
+                            .collect();
+
+                        if !modified.is_empty() {
+                            let err = format!(
+                                "{} unsaved buffer(s) remaining: {:?}",
+                                modified.len(),
+                                modified
+                            );
+                            editor.set_error(err);
+                            return;
+                        }
+                    }
+                    editor.close(editor.view().id, /* close_buffer */ false);
+                }
+                ["q!"] | ["quit!"] => {
                     editor.close(editor.view().id, /* close_buffer */ false);
                 }
                 ["o", path] | ["open", path] => {
