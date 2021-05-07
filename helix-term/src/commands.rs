@@ -930,17 +930,14 @@ pub fn buffer_picker(cx: &mut Context) {
                         path.into()
                     }
                 }
-                None => "[NEW]".into(),
+                None => "[scratch buffer]".into(),
             }
         },
-        |editor: &mut Editor, (_, path): &(DocumentId, Option<PathBuf>), _action| match path {
-            Some(path) => {
-                use helix_view::editor::Action;
-                editor
-                    .open(path.into(), Action::Replace)
-                    .expect("editor.open failed");
-            }
-            None => (),
+        |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
+            use helix_view::editor::Action;
+            editor
+                .switch(*id, Action::Replace)
+                .expect("editor.open failed");
         },
     );
     cx.push_layer(Box::new(picker));

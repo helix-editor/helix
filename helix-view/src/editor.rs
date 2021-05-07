@@ -66,7 +66,7 @@ impl Editor {
         }
     }
 
-    fn _open(&mut self, id: DocumentId, action: Action) -> Result<DocumentId, Error> {
+    pub fn switch(&mut self, id: DocumentId, action: Action) -> Result<DocumentId, Error> {
         use crate::tree::Layout;
         use helix_core::Selection;
         match action {
@@ -115,7 +115,7 @@ impl Editor {
         let doc = Document::new(Rope::from("\n"));
         let id = self.documents.insert(doc);
         self.documents[id].id = id;
-        self._open(id, action)
+        self.switch(id, action)
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
@@ -159,7 +159,7 @@ impl Editor {
             id
         };
 
-        self._open(id, action)
+        self.switch(id, action)
     }
 
     pub fn close(&mut self, id: ViewId) {
