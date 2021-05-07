@@ -28,7 +28,6 @@ use tui::{
 pub struct EditorView {
     keymap: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    status_msg: Option<String>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
 }
@@ -40,7 +39,6 @@ impl EditorView {
         Self {
             keymap: keymap::default(),
             on_next_key: None,
-            status_msg: None,
             last_insert: (commands::normal_mode, Vec::new()),
             completion: None,
         }
@@ -86,17 +84,6 @@ impl EditorView {
             1,
         );
         self.render_statusline(doc, view, area, surface, theme, is_focused);
-
-        // render status
-        if let Some(status_msg) = &self.status_msg {
-            let style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
-            surface.set_string(
-                view.area.x,
-                view.area.y + view.area.height,
-                status_msg,
-                style,
-            );
-        }
     }
 
     pub fn render_buffer(
@@ -537,6 +524,9 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(key) => {
+                // clear status
+                cx.editor.status_msg = None;
+
                 let (view, doc) = cx.editor.current();
                 let mode = doc.mode();
 
@@ -547,11 +537,7 @@ impl Component for EditorView {
                     callback: None,
                     callbacks: cx.callbacks,
                     on_next_key_callback: None,
-                    status_msg: None,
                 };
-
-                // clear status
-                self.status_msg = None;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -602,7 +588,6 @@ impl Component for EditorView {
                 }
 
                 self.on_next_key = cxt.on_next_key_callback.take();
-                self.status_msg = cxt.status_msg.take();
                 // appease borrowck
                 let callback = cxt.callback.take();
 
@@ -639,6 +624,23 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             self.render_view(doc, view, area, surface, &cx.editor.theme, is_focused);
+        }
+
+        // render status msg
+        if let Some((status_msg, severity)) = &cx.editor.status_msg {
+            use helix_view::editor::Severity;
+            let style = if *severity == Severity::Error {
+                cx.editor.theme.get("error")
+            } else {
+                Style::default().fg(Color::Rgb(164, 160, 232)) // lavender
+            };
+
+            surface.set_string(
+                area.x,
+                area.y + area.height.saturating_sub(1),
+                status_msg,
+                style,
+            );
         }
 
         if let Some(completion) = &self.completion {

@@ -42,7 +42,6 @@ pub struct Context<'a> {
     pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
     pub callbacks: &'a mut LspCallbacks,
-    pub status_msg: Option<String>,
 }
 
 impl<'a> Context<'a> {
@@ -96,11 +95,6 @@ impl<'a> Context<'a> {
             Ok(call)
         });
         self.callbacks.push(callback);
-    }
-
-    // TODO: allow &'static str?
-    pub fn set_status(&mut self, msg: String) {
-        self.status_msg = Some(msg);
     }
 }
 
@@ -852,6 +846,8 @@ pub fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |editor: &mut Editor, input: &str, event: PromptEvent| {
+            use helix_view::editor::Action;
+
             if event != PromptEvent::Validate {
                 return;
             }
@@ -863,16 +859,20 @@ pub fn command_mode(cx: &mut Context) {
                     editor.close(editor.view().id);
                 }
                 ["o", path] | ["open", path] => {
-                    use helix_view::editor::Action;
                     editor.open(path.into(), Action::Replace);
                 }
                 ["w"] | ["write"] => {
-                    // TODO: non-blocking via save() command
                     let id = editor.view().doc;
                     let doc = &mut editor.documents[id];
+                    if doc.path().is_none() {
+                        editor.set_error("cannot write a buffer without a filename".to_string());
+                        return;
+                    }
                     tokio::spawn(doc.save());
                 }
-
+                ["new"] => {
+                    editor.new_file(Action::Replace);
+                }
                 _ => (),
             }
         },
@@ -1585,7 +1585,7 @@ pub fn yank(cx: &mut Context) {
 
     register::set(reg, values);
 
-    cx.set_status(msg)
+    cx.editor.set_status(msg)
 }
 
 #[derive(Copy, Clone)]

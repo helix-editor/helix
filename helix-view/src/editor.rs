@@ -7,12 +7,16 @@ use slotmap::SlotMap;
 
 use anyhow::Error;
 
+pub use helix_core::diagnostic::Severity;
+
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
     pub count: Option<usize>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+
+    pub status_msg: Option<(String, Severity)>,
 }
 
 #[derive(Copy, Clone)]
@@ -43,7 +47,16 @@ impl Editor {
             count: None,
             theme,
             language_servers,
+            status_msg: None,
         }
+    }
+
+    pub fn set_status(&mut self, status: String) {
+        self.status_msg = Some((status, Severity::Info));
+    }
+
+    pub fn set_error(&mut self, error: String) {
+        self.status_msg = Some((error, Severity::Error));
     }
 
     fn _refresh(&mut self) {
