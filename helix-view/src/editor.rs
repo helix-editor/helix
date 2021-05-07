@@ -119,6 +119,8 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
+        let path = std::fs::canonicalize(path)?;
+
         let id = self
             .documents()
             .find(|doc| doc.path() == Some(&path))
