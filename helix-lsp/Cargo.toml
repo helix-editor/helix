@@ -17,7 +17,6 @@ tokio-stream = "0.1.5"
 futures-executor = { version =  "0.3" }
 url = "2"
 pathdiff = "0.2"
-shellexpand = "2.0"
 glob = "0.3"
 anyhow = "1"
 serde_json = "1.0"
