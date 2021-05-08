@@ -2167,6 +2167,7 @@ pub fn jump_forward(cx: &mut Context) {
     if let Some((id, selection)) = view.jumps.forward(count) {
         view.doc = *id;
         let selection = selection.clone();
+        let (view, doc) = cx.current(); // refetch doc
         doc.set_selection(view.id, selection);
 
         align_view(doc, view, Align::Center);
@@ -2179,7 +2180,9 @@ pub fn jump_backward(cx: &mut Context) {
 
     if let Some((id, selection)) = view.jumps.backward(count) {
         view.doc = *id;
-        doc.set_selection(view.id, selection.clone());
+        let selection = selection.clone();
+        let (view, doc) = cx.current(); // refetch doc
+        doc.set_selection(view.id, selection);
 
         align_view(doc, view, Align::Center);
     };
@@ -2189,9 +2192,17 @@ pub fn jump_backward(cx: &mut Context) {
 
 pub fn vsplit(cx: &mut Context) {
     use helix_view::editor::Action;
-    let id = cx.doc().id();
+    let (view, doc) = cx.current();
+    let id = doc.id();
+    let selection = doc.selection(view.id).clone();
+    let first_line = view.first_line;
 
     cx.editor.switch(id, Action::VerticalSplit);
+
+    // match the selection in the previous view
+    let (view, doc) = cx.current();
+    view.first_line = first_line;
+    doc.set_selection(view.id, selection);
 }
 
 pub fn space_mode(cx: &mut Context) {
