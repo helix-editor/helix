@@ -165,7 +165,7 @@ impl Prompt {
             let text = ui::Text::new(doc.to_string());
 
             let area = Rect::new(
-                completion_area.x + 0,
+                completion_area.x,
                 completion_area.y - 3,
                 completion_area.width,
                 3,
