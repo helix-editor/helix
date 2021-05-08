@@ -1,4 +1,5 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
+use crate::ui;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use helix_core::Position;
 use helix_view::{Editor, Theme};
@@ -11,9 +12,10 @@ pub struct Prompt {
     pub line: String,
     cursor: usize,
     completion: Vec<Completion>,
-    completion_selection_index: Option<usize>,
+    selection: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
+    pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
 }
 
 #[derive(PartialEq)]
@@ -37,9 +39,10 @@ impl Prompt {
             line: String::new(),
             cursor: 0,
             completion: completion_fn(""),
-            completion_selection_index: None,
+            selection: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
+            doc_fn: Box::new(|_| None),
         }
     }
 
@@ -81,8 +84,8 @@ impl Prompt {
         if self.completion.is_empty() {
             return;
         }
-        let index = self.completion_selection_index.map_or(0, |i| i + 1) % self.completion.len();
-        self.completion_selection_index = Some(index);
+        let index = self.selection.map_or(0, |i| i + 1) % self.completion.len();
+        self.selection = Some(index);
 
         let (range, item) = &self.completion[index];
 
@@ -92,7 +95,7 @@ impl Prompt {
         // TODO: recalculate completion when completion item is accepted, (Enter)
     }
     pub fn exit_selection(&mut self) {
-        self.completion_selection_index = None;
+        self.selection = None;
     }
 }
 
@@ -105,18 +108,22 @@ use tui::{
 const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
-    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, theme: &Theme) {
+    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let theme = &cx.editor.theme;
         let text_color = theme.get("ui.text.focus");
         // completion
-        if !self.completion.is_empty() {
-            // TODO: find out better way of clearing individual lines of the screen
-            let mut row = 0;
-            let mut col = 0;
-            let max_col = area.width / BASE_WIDTH;
-            let col_height = ((self.completion.len() as u16 + max_col - 1) / max_col);
 
-            // completion box area
-            let area = Rect::new(area.x, area.height - col_height - 2, area.width, col_height);
+        let max_col = area.width / BASE_WIDTH;
+        let height = ((self.completion.len() as u16 + max_col - 1) / max_col);
+        let completion_area = Rect::new(
+            area.x,
+            (area.height - height).saturating_sub(1),
+            area.width,
+            height,
+        );
+
+        if !self.completion.is_empty() {
+            let area = completion_area;
             let background = theme.get("ui.statusline");
 
             for y in area.top()..area.bottom() {
@@ -127,8 +134,11 @@ impl Prompt {
                 }
             }
 
+            let mut row = 0;
+            let mut col = 0;
+
             for (i, (_range, completion)) in self.completion.iter().enumerate() {
-                let color = if Some(i) == self.completion_selection_index {
+                let color = if Some(i) == self.selection {
                     Style::default().bg(Color::Rgb(104, 60, 232))
                 } else {
                     text_color
@@ -150,6 +160,37 @@ impl Prompt {
                 }
             }
         }
+
+        if let Some(doc) = (self.doc_fn)(&self.line) {
+            let text = ui::Text::new(doc.to_string());
+
+            let area = Rect::new(
+                completion_area.x + 0,
+                completion_area.y - 3,
+                completion_area.width,
+                3,
+            );
+
+            let background = theme.get("ui.window");
+            for y in area.top()..area.bottom() {
+                for x in area.left()..area.right() {
+                    let cell = surface.get_mut(x, y);
+                    cell.reset();
+                    cell.set_style(background);
+                }
+            }
+
+            use tui::layout::Margin;
+            text.render(
+                area.inner(&Margin {
+                    vertical: 1,
+                    horizontal: 1,
+                }),
+                surface,
+                cx,
+            );
+        }
+
         let line = area.height - 1;
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, text_color);
@@ -240,7 +281,7 @@ impl Component for Prompt {
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.render_prompt(area, surface, &cx.editor.theme)
+        self.render_prompt(area, surface, cx)
     }
 
     fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {

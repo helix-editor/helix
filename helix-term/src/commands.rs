@@ -948,7 +948,7 @@ pub fn command_mode(cx: &mut Context) {
     // TODO: completion items should have a info section that would get displayed in
     // a popup above the prompt when items are tabbed over
 
-    let prompt = Prompt::new(
+    let mut prompt = Prompt::new(
         ":".to_owned(),
         |input: &str| {
             // we use .this over split_ascii_whitespace() because we care about empty segments
@@ -1002,6 +1002,16 @@ pub fn command_mode(cx: &mut Context) {
             };
         },
     );
+    prompt.doc_fn = Box::new(|input: &str| {
+        let part = input.split(' ').next().unwrap_or_default();
+
+        if let Some(cmd::Command { doc, .. }) = cmd::COMMANDS.get(part) {
+            return Some(doc);
+        }
+
+        None
+    });
+
     cx.push_layer(Box::new(prompt));
 }
 
