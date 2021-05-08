@@ -1268,7 +1268,9 @@ fn _goto(
         [location] => {
             jump_to(editor, location, offset_encoding, Action::Replace);
         }
-        [] => (), // maybe show user message that no definition was found?
+        [] => {
+            editor.set_error("No definition found.".to_string());
+        }
         _locations => {
             let mut picker = ui::Picker::new(
                 locations,
@@ -2039,14 +2041,15 @@ pub fn completion(cx: &mut Context) {
             };
 
             // TODO: if no completion, show some message or something
-            if !items.is_empty() {
-                use crate::compositor::AnyComponent;
-                let size = compositor.size();
-                let ui = compositor.find("hx::ui::editor::EditorView").unwrap();
-                if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                    ui.set_completion(items, offset_encoding, trigger_offset, size);
-                };
+            if items.is_empty() {
+                return;
             }
+            use crate::compositor::AnyComponent;
+            let size = compositor.size();
+            let ui = compositor.find("hx::ui::editor::EditorView").unwrap();
+            if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
+                ui.set_completion(items, offset_encoding, trigger_offset, size);
+            };
         },
     );
     //  TODO: Server error: content modified
