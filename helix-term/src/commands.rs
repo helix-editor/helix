@@ -98,6 +98,25 @@ impl<'a> Context<'a> {
     }
 }
 
+enum Align {
+    Top,
+    Center,
+    Bottom,
+}
+
+fn align_view(doc: &Document, view: &mut View, align: Align) {
+    let pos = doc.selection(view.id).cursor();
+    let line = doc.text().char_to_line(pos);
+
+    let relative = match align {
+        Align::Center => view.area.height as usize / 2,
+        Align::Top => 0,
+        Align::Bottom => view.area.height as usize,
+    };
+
+    view.first_line = line.saturating_sub(relative);
+}
+
 /// A command is a function that takes the current state and a count, and does a side-effect on the
 /// state (usually by creating and applying a transaction).
 pub type Command = fn(cx: &mut Context);
@@ -616,6 +635,7 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
     let mat = regex
         .find_at(contents, start)
         .or_else(|| regex.find(contents));
+    // TODO: message on wraparound
     if let Some(mat) = mat {
         let start = text.byte_to_char(mat.start());
         let end = text.byte_to_char(mat.end());
@@ -630,9 +650,7 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
 
         // TODO: (first_match, regex) stuff in register?
         doc.set_selection(view.id, selection);
-        // TODO: extract this centering into a function to share with _goto?
-        let line = doc.text().char_to_line(head);
-        view.first_line = line.saturating_sub(view.area.height as usize / 2);
+        align_view(doc, view, Align::Center);
     };
 }
 
@@ -1243,8 +1261,7 @@ fn _goto(
         // TODO: convert inside server
         let new_pos = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding);
         doc.set_selection(view.id, Selection::point(new_pos));
-        let line = doc.text().char_to_line(new_pos);
-        view.first_line = line.saturating_sub(view.area.height as usize / 2);
+        align_view(doc, view, Align::Center);
     }
 
     match locations.as_slice() {
@@ -1946,7 +1963,6 @@ pub fn save(cx: &mut Context) {
     // Spawns an async task to actually do the saving. This way we prevent blocking.
 
     // TODO: handle save errors somehow?
-    // TODO: don't block
     tokio::spawn(cx.doc().save());
 }
 
@@ -2051,8 +2067,6 @@ pub fn hover(cx: &mut Context) {
 
     // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
 
-    // TODO: blocking here is not ideal, make commands async fn?
-    // not like we can process additional input meanwhile though
     let pos = pos_to_lsp_pos(
         doc.text(),
         doc.selection(view.id).cursor(),
@@ -2137,11 +2151,9 @@ pub fn jump_forward(cx: &mut Context) {
     if let Some((id, selection)) = view.jumps.forward(count) {
         view.doc = *id;
         let selection = selection.clone();
-        let cursor = selection.cursor();
         doc.set_selection(view.id, selection);
-        // TODO: extract this centering into a function to share with _goto?
-        let line = doc.text().char_to_line(cursor);
-        view.first_line = line.saturating_sub(view.area.height as usize / 2);
+
+        align_view(doc, view, Align::Center);
     };
 }
 
@@ -2151,12 +2163,9 @@ pub fn jump_backward(cx: &mut Context) {
 
     if let Some((id, selection)) = view.jumps.backward(count) {
         view.doc = *id;
-        let selection = selection.clone();
-        let cursor = selection.cursor();
-        doc.set_selection(view.id, selection);
-        // TODO: extract this centering into a function to share with _goto?
-        let line = doc.text().char_to_line(cursor);
-        view.first_line = line.saturating_sub(view.area.height as usize / 2);
+        doc.set_selection(view.id, selection.clone());
+
+        align_view(doc, view, Align::Center);
     };
 }
 
@@ -2216,17 +2225,13 @@ pub fn view_mode(cx: &mut Context) {
                 // bottom
                 | 'b' => {
                     let (view, doc) = cx.current();
-                    let pos = doc.selection(view.id).cursor();
-                    // TODO: extract this centering into a function to share with _goto?
-                    let line = doc.text().char_to_line(pos);
 
-                    let relative = match ch {
-                        'z' | 'c' => view.area.height as usize / 2,
-                        't' => 0,
-                        'b' => view.area.height as usize,
+                    align_view(doc, view, match ch {
+                        'z' | 'c' => Align::Center,
+                        't' => Align::Top,
+                        'b' => Align::Bottom,
                         _ => unreachable!()
-                    };
-                    view.first_line = line.saturating_sub(relative);
+                    });
                 }
                 'm' => {
                     let (view, doc) = cx.current();
