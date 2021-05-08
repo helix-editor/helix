@@ -145,7 +145,11 @@ impl Application {
         use helix_lsp::{Call, Notification};
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
-                let notification = Notification::parse(&method, params);
+                let notification = match Notification::parse(&method, params) {
+                    Some(notification) => notification,
+                    None => return,
+                };
+
                 // TODO: parse should return Result/Option
                 match notification {
                     Notification::PublishDiagnostics(params) => {

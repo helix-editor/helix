@@ -1883,7 +1883,8 @@ pub fn format_selections(cx: &mut Context) {
         };
         // TODO: handle fails
         // TODO: concurrent map
-        unimplemented!(); // neeed to block to get the formatting
+
+        // TODO: need to block to get the formatting
 
         // let edits = block_on(language_server.text_document_range_formatting(
         //     doc.identifier(),
@@ -2098,10 +2099,12 @@ pub fn hover(cx: &mut Context) {
                     lsp::HoverContents::Scalar(contents) => {
                         // markedstring(string/languagestring to be highlighted)
                         // TODO
-                        unimplemented!("{:?}", contents)
+                        log::error!("hover contents {:?}", contents);
+                        return;
                     }
                     lsp::HoverContents::Array(contents) => {
-                        unimplemented!("{:?}", contents)
+                        log::error!("hover contents {:?}", contents);
+                        return;
                     }
                     // TODO: render markdown
                     lsp::HoverContents::Markup(contents) => contents.value,

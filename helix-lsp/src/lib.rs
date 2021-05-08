@@ -130,10 +130,10 @@ pub enum Notification {
 }
 
 impl Notification {
-    pub fn parse(method: &str, params: jsonrpc::Params) -> Notification {
+    pub fn parse(method: &str, params: jsonrpc::Params) -> Option<Notification> {
         use lsp::notification::Notification as _;
 
-        match method {
+        let notification = match method {
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params
                     .parse()
@@ -155,8 +155,13 @@ impl Notification {
 
                 Notification::LogMessage(params)
             }
-            _ => unimplemented!("unhandled notification: {}", method),
-        }
+            _ => {
+                log::error!("unhandled LSP notification: {}", method);
+                return None;
+            }
+        };
+
+        Some(notification)
     }
 }
 
