@@ -63,7 +63,8 @@ fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
 
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let root = crate::runtime_dir();
+    // let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     let path = root
         .join("../runtime/queries")
