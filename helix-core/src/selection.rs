@@ -210,7 +210,7 @@ impl Selection {
         Self::single(pos, pos)
     }
 
-    fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Selection {
+    fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Self {
         let primary = ranges[primary_index];
         ranges.sort_unstable_by_key(Range::from);
         primary_index = ranges.iter().position(|&range| range == primary).unwrap();
@@ -249,7 +249,7 @@ impl Selection {
             result.push(range)
         }
 
-        Selection {
+        Self {
             ranges: result,
             primary_index,
         }

@@ -140,20 +140,20 @@ impl Notification {
                     .expect("Failed to parse PublishDiagnostics params");
 
                 // TODO: need to loop over diagnostics and distinguish them by URI
-                Notification::PublishDiagnostics(params)
+                Self::PublishDiagnostics(params)
             }
 
             lsp::notification::ShowMessage::METHOD => {
                 let params: lsp::ShowMessageParams =
                     params.parse().expect("Failed to parse ShowMessage params");
 
-                Notification::ShowMessage(params)
+                Self::ShowMessage(params)
             }
             lsp::notification::LogMessage::METHOD => {
                 let params: lsp::LogMessageParams =
                     params.parse().expect("Failed to parse ShowMessage params");
 
-                Notification::LogMessage(params)
+                Self::LogMessage(params)
             }
             _ => {
                 log::error!("unhandled LSP notification: {}", method);
