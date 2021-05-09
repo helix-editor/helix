@@ -1,10 +1,5 @@
+use crate::{backend::Backend, buffer::Buffer, layout::Rect};
 use std::io;
-use tui::{
-    backend::Backend,
-    buffer::Buffer,
-    layout::Rect,
-    widgets::{StatefulWidget, Widget},
-};
 
 #[derive(Debug, Clone, PartialEq)]
 /// UNSTABLE

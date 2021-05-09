@@ -67,7 +67,7 @@ pub trait Component: Any + AnyComponent {
 use anyhow::Error;
 use std::io::stdout;
 use tui::backend::CrosstermBackend;
-type Terminal = crate::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,

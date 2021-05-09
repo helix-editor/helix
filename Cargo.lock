@@ -330,6 +330,7 @@ dependencies = [
  "fuzzy-matcher",
  "helix-core",
  "helix-lsp",
+ "helix-tui",
  "helix-view",
  "ignore",
  "log",
@@ -340,7 +341,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
- "tui",
+]
+
+[[package]]
+name = "helix-tui"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "cassowary",
+ "crossterm",
+ "serde",
+ "unicode-segmentation",
+ "unicode-width",
 ]
 
 [[package]]
@@ -351,12 +363,12 @@ dependencies = [
  "crossterm",
  "helix-core",
  "helix-lsp",
+ "helix-tui",
  "once_cell",
  "serde",
  "slotmap",
  "tokio",
  "toml",
- "tui",
  "url",
 ]
 
@@ -953,19 +965,6 @@ checksum = "1f41201fed3db3b520405a9c01c61773a250d4c3f43e9861c14b2bb232c981ab"
 dependencies = [
  "cc",
  "regex",
-]
-
-[[package]]
-name = "tui"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "861d8f3ad314ede6219bcb2ab844054b1de279ee37a9bc38e3d606f9d3fb2a71"
-dependencies = [
- "bitflags",
- "cassowary",
- "crossterm",
- "unicode-segmentation",
- "unicode-width",
 ]
 
 [[package]]

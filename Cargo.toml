@@ -3,6 +3,7 @@ members = [
   "helix-core",
   "helix-view",
   "helix-term",
+  "helix-tui",
   "helix-syntax",
   "helix-lsp",
 ]
