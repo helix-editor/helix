@@ -5,9 +5,8 @@
 //!
 //! The available widgets are:
 //! - [`Block`]
-//! - [`Tabs`]
-//! - [`List`]
-//! - [`Table`]
+// //! - [`List`]
+// //! - [`Table`]
 //! - [`Paragraph`]
 
 mod block;
