@@ -55,7 +55,8 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         "if_let_expression",
         // "match_expression",
         // "match_arm",
-
+        "tuple_expression",
+        "array_expression",
         // indent_except_first_scopes
         "use_list",
         "block",
@@ -253,6 +254,15 @@ pub fn change<I>(document: &Document, changes: I) -> Self
 where
     I: IntoIterator<Item = Change> + ExactSizeIterator,
 {
+    [
+        1,
+        2,
+        3,
+    ];
+    (
+        1,
+        2
+    );
     true
 }
 ",
