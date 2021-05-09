@@ -211,12 +211,10 @@ impl Component for Prompt {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(
-            |compositor: &mut Compositor, editor: &mut Editor| {
-                // remove the layer
-                compositor.pop();
-            },
-        )));
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+            // remove the layer
+            compositor.pop();
+        })));
 
         match event {
             // char or shift char

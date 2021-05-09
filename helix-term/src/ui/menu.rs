@@ -142,12 +142,10 @@ impl<T: 'static> Component for Menu<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(
-            |compositor: &mut Compositor, editor: &mut Editor| {
-                // remove the layer
-                compositor.pop();
-            },
-        )));
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+            // remove the layer
+            compositor.pop();
+        })));
 
         match event {
             // esc or ctrl-c aborts the completion and closes the menu

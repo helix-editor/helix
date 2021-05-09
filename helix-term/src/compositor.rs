@@ -6,7 +6,7 @@ use crossterm::event::Event;
 use helix_core::Position;
 use tui::{buffer::Buffer as Surface, layout::Rect};
 
-pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Editor)>;
+pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
 
 // --> EventResult should have a callback that takes a context with methods like .popup(),
 // .prompt() etc. That way we can abstract it from the renderer.
@@ -22,7 +22,7 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
-use helix_view::{Editor, View};
+use helix_view::Editor;
 
 use crate::application::LspCallbacks;
 
@@ -111,7 +111,7 @@ impl Compositor {
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
-                    callback(self, cx.editor);
+                    callback(self);
                     return true;
                 }
                 EventResult::Consumed(None) => return true,

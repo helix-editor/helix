@@ -63,9 +63,9 @@ impl<'a> Context<'a> {
 
     /// Push a new component onto the compositor.
     pub fn push_layer(&mut self, mut component: Box<dyn Component>) {
-        self.callback = Some(Box::new(
-            |compositor: &mut Compositor, editor: &mut Editor| compositor.push(component),
-        ));
+        self.callback = Some(Box::new(|compositor: &mut Compositor| {
+            compositor.push(component)
+        }));
     }
 
     #[inline]
