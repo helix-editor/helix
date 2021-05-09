@@ -4,7 +4,7 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Borders},
+    widgets::{Block, BorderType, Borders},
 };
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
@@ -224,7 +224,6 @@ impl<T: 'static> Component for Picker<T> {
         self.prompt.render(area, surface, cx);
 
         // -- Separator
-        use tui::widgets::BorderType;
         let style = Style::default().fg(Color::Rgb(90, 89, 119));
         let symbols = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {

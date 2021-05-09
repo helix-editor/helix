@@ -4,7 +4,6 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Borders},
 };
 
 use std::borrow::Cow;
@@ -113,11 +112,6 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        use tui::{
-            text::Text,
-            widgets::{Paragraph, Widget, Wrap},
-        };
-
         cx.scroll = Some(self.scroll);
 
         let position = self
