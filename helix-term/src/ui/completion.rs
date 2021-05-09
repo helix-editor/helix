@@ -202,14 +202,7 @@ impl Component for Completion {
 
                     // clear area
                     let background = cx.editor.theme.get("ui.popup");
-                    for y in area.top()..area.bottom() {
-                        for x in area.left()..area.right() {
-                            let cell = surface.get_mut(x, y);
-                            cell.reset();
-                            // cell.symbol.clear();
-                            cell.set_style(background);
-                        }
-                    }
+                    surface.clear_with(area, background);
                     doc.render(area, surface, cx);
                 }
                 None => (),

@@ -126,13 +126,7 @@ impl Prompt {
             let area = completion_area;
             let background = theme.get("ui.statusline");
 
-            for y in area.top()..area.bottom() {
-                for x in area.left()..area.right() {
-                    let cell = surface.get_mut(x, y);
-                    cell.reset();
-                    cell.set_style(background);
-                }
-            }
+            surface.clear_with(area, background);
 
             let mut row = 0;
             let mut col = 0;
@@ -172,13 +166,7 @@ impl Prompt {
             );
 
             let background = theme.get("ui.window");
-            for y in area.top()..area.bottom() {
-                for x in area.left()..area.right() {
-                    let cell = surface.get_mut(x, y);
-                    cell.reset();
-                    cell.set_style(background);
-                }
-            }
+            surface.clear_with(area, background);
 
             use tui::layout::Margin;
             text.render(

@@ -205,14 +205,7 @@ impl<T: 'static> Component for Picker<T> {
 
         // clear area
         let background = cx.editor.theme.get("ui.background");
-        for y in area.top()..area.bottom() {
-            for x in area.left()..area.right() {
-                let cell = surface.get_mut(x, y);
-                cell.reset();
-                // cell.symbol.clear();
-                cell.set_style(background);
-            }
-        }
+        surface.clear_with(area, background);
 
         use tui::widgets::Widget;
         // don't like this but the lifetime sucks

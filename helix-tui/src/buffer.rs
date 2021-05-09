@@ -379,6 +379,26 @@ impl Buffer {
         }
     }
 
+    /// Clear an area in the buffer
+    pub fn clear(&mut self, area: Rect) {
+        for x in area.left()..area.right() {
+            for y in area.top()..area.bottom() {
+                self.get_mut(x, y).reset();
+            }
+        }
+    }
+
+    /// Clear an area in the buffer with a default style.
+    pub fn clear_with(&mut self, area: Rect, style: Style) {
+        for x in area.left()..area.right() {
+            for y in area.top()..area.bottom() {
+                let cell = self.get_mut(x, y);
+                cell.reset();
+                cell.set_style(style);
+            }
+        }
+    }
+
     /// Merge an other buffer into this one
     pub fn merge(&mut self, other: &Buffer) {
         let area = self.area.union(other.area);
