@@ -1,17 +1,18 @@
 name: Release
-on: [push]
+on:
   # schedule:
   # - cron: '0 0 * * *' # midnight UTC
 
-  # push:
-    # branches:
-    # - release
+  push:
+    # tags:
+    ## - release
 
 jobs:
   dist:
     name: Dist
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false # don't fail other jobs if one fails
       matrix:
         build: [linux, linux-arm, macos, win-msvc] #, win-gnu, win32-msvc
         include:
