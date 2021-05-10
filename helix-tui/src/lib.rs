@@ -58,17 +58,17 @@
 //! use helix_tui::layout::{Layout, Constraint, Direction};
 //!
 //! fn main() -> Result<(), io::Error> {
-//!     terminal::enable_raw_mode()?;
+//!     terminal::enable_raw_mode().unwrap();
 //!     let stdout = io::stdout();
 //!     let backend = CrosstermBackend::new(stdout);
 //!     let mut terminal = Terminal::new(backend)?;
-//!     terminal.draw(|f| {
-//!         let size = f.size();
-//!         let block = Block::default()
-//!             .title("Block")
-//!             .borders(Borders::ALL);
-//!         f.render_widget(block, size);
-//!     })?;
+//!     // terminal.draw(|f| {
+//!     //     let size = f.size();
+//!     //     let block = Block::default()
+//!     //         .title("Block")
+//!     //         .borders(Borders::ALL);
+//!     //     f.render_widget(block, size);
+//!     // })?;
 //!     Ok(())
 //! }
 //! ```
@@ -88,31 +88,31 @@
 //! use helix_tui::layout::{Layout, Constraint, Direction};
 //!
 //! fn main() -> Result<(), io::Error> {
-//!     terminal::enable_raw_mode()?;
+//!     terminal::enable_raw_mode().unwrap();
 //!     let stdout = io::stdout();
 //!     let backend = CrosstermBackend::new(stdout);
 //!     let mut terminal = Terminal::new(backend)?;
-//!     terminal.draw(|f| {
-//!         let chunks = Layout::default()
-//!             .direction(Direction::Vertical)
-//!             .margin(1)
-//!             .constraints(
-//!                 [
-//!                     Constraint::Percentage(10),
-//!                     Constraint::Percentage(80),
-//!                     Constraint::Percentage(10)
-//!                 ].as_ref()
-//!             )
-//!             .split(f.size());
-//!         let block = Block::default()
-//!              .title("Block")
-//!              .borders(Borders::ALL);
-//!         f.render_widget(block, chunks[0]);
-//!         let block = Block::default()
-//!              .title("Block 2")
-//!              .borders(Borders::ALL);
-//!         f.render_widget(block, chunks[1]);
-//!     })?;
+//!     // terminal.draw(|f| {
+//!     //     let chunks = Layout::default()
+//!     //         .direction(Direction::Vertical)
+//!     //         .margin(1)
+//!     //         .constraints(
+//!     //             [
+//!     //                 Constraint::Percentage(10),
+//!     //                 Constraint::Percentage(80),
+//!     //                 Constraint::Percentage(10)
+//!     //             ].as_ref()
+//!     //         )
+//!     //         .split(f.size());
+//!     //     let block = Block::default()
+//!     //          .title("Block")
+//!     //          .borders(Borders::ALL);
+//!     //     f.render_widget(block, chunks[0]);
+//!     //     let block = Block::default()
+//!     //          .title("Block 2")
+//!     //          .borders(Borders::ALL);
+//!     //     f.render_widget(block, chunks[1]);
+//!     // })?;
 //!     Ok(())
 //! }
 //! ```
