@@ -289,6 +289,11 @@ where
             }],
         });
 
+        // set runtime path so we can find the queries
+        let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        runtime.push("../runtime");
+        std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
+
         let language_config = loader.language_config_for_scope("source.rust").unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap();
         let syntax = Syntax::new(&doc, highlight_config.clone());
