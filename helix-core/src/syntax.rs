@@ -66,10 +66,7 @@ fn read_query(language: &str, filename: &str) -> String {
     let root = crate::runtime_dir();
     // let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let path = root
-        .join("../runtime/queries")
-        .join(language)
-        .join(filename);
+    let path = root.join("queries").join(language).join(filename);
 
     let query = std::fs::read_to_string(&path).unwrap_or_default();
 
