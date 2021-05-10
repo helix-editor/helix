@@ -20,7 +20,7 @@ jobs:
         - build: x86_64-linux
           os: ubuntu-20.04
           rust: stable
-          target: x86_64-unknown-linux-musl
+          target: x86_64-unknown-linux-gnu
           cross: false
         - build: aarch64-linux
           os: ubuntu-20.04
@@ -89,10 +89,11 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          outdir="$(ci/cargo-out-dir "${{ env.TARGET_DIR }}")"
+          # outdir="$(ci/cargo-out-dir "${{ env.TARGET_DIR }}")"
           staging="helix-${{ env.RELEASE_VERSION }}-${{ matrix.target }}"
-          mkdir -p "$staging"/{complete,doc}
-          cp {README.md,LICENSE} "$staging/"
+          mkdir "$staging"
+          cp README.md "$staging/"
+          # cp {README.md,LICENSE} "$staging/"
           # cp {CHANGELOG.md,FAQ.md,GUIDE.md} "$staging/doc/"
           # cp "$outdir"/{hx.bash,hx.fish,_hx.ps1} "$staging/complete/"
           # cp complete/_hx "$staging/complete/"
