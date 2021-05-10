@@ -60,7 +60,7 @@ jobs:
           use-cross: true
           command: build
           args: --release --locked --target ${{ matrix.target }}
-          
+
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
