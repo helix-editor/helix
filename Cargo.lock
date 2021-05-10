@@ -151,6 +151,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "etcetera"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "016b04fd1e94fb833d432634245c9bb61cf1c7409668a0e7d4c3ab00c5172dec"
+dependencies = [
+ "cfg-if",
+ "dirs-next",
+ "thiserror",
+]
+
+[[package]]
 name = "fern"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -271,6 +282,7 @@ name = "helix-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "etcetera",
  "helix-syntax",
  "once_cell",
  "regex",
@@ -281,7 +293,6 @@ dependencies = [
  "tree-sitter",
  "unicode-segmentation",
  "unicode-width",
- "xdg",
 ]
 
 [[package]]
@@ -1090,9 +1101,3 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-
-[[package]]
-name = "xdg"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d089681aa106a86fade1b0128fb5daf07d5867a509ab036d99988dec80429a57"

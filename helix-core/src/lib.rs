@@ -58,9 +58,11 @@ pub fn runtime_dir() -> std::path::PathBuf {
 
 pub fn config_dir() -> std::path::PathBuf {
     // TODO: allow env var override
-    let xdg_dirs =
-        xdg::BaseDirectories::with_prefix("helix").expect("Unable to find XDG directories!");
-    xdg_dirs.get_config_home()
+    use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
+    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
+    let mut path = strategy.config_dir();
+    path.push("helix");
+    path
 }
 
 pub use ropey::{Rope, RopeSlice};
