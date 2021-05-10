@@ -1,11 +1,11 @@
 name: Release
-on:
-  schedule:
-  - cron: '0 0 * * *' # midnight UTC
+on: [push]
+  # schedule:
+  # - cron: '0 0 * * *' # midnight UTC
 
-  push:
-    branches:
-    - release
+  # push:
+    # branches:
+    # - release
 
 jobs:
   dist:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        build: [linux, linux-arm, macos, win-msvc, win-gnu, win32-msvc]
+        build: [linux, linux-arm, macos, win-msvc] #, win-gnu, win32-msvc
         include:
         - build: linux
           os: ubuntu-20.04
