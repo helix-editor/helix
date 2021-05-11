@@ -86,14 +86,23 @@ jobs:
             aarch64-linux-gnu-strip \
             /target/${{ matrix.target }}/release/hx
 
+      - name: Calculate tag name
+        run: |
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+          echo ::set-output name=val::$name
+          echo TAG=$name >> $GITHUB_ENV
+        id: tagname
+
       - name: Build archive
         shell: bash
         run: |
           # outdir="$(ci/cargo-out-dir "${{ env.TARGET_DIR }}")"
           staging="helix-${{ env.RELEASE_VERSION }}-${{ matrix.target }}"
           mkdir "$staging"
-          cp README.md "$staging/"
-          # cp {README.md,LICENSE} "$staging/"
+          cp {README.md,LICENSE} "$staging/"
           # cp {CHANGELOG.md,FAQ.md,GUIDE.md} "$staging/doc/"
           # cp "$outdir"/{hx.bash,hx.fish,_hx.ps1} "$staging/complete/"
           # cp complete/_hx "$staging/complete/"
@@ -112,7 +121,7 @@ jobs:
       # package
       - uses: actions/upload-artifact@v1
         with:
-          name: bins-${{ matrix.build }}
+          name: tarballs-${{ matrix.build }}
           path: ${{ env.ASSET }}
 
   publish:
@@ -120,21 +129,26 @@ jobs:
     needs: [dist]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-        with:
-          submodules: false
-
       - uses: actions/download-artifact@v2
         with:
           path: dist
       - run: ls -al ./dist
 
+      - name: Calculate tag name
+        run: |
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+          echo ::set-output name=val::$name
+          echo TAG=$name >> $GITHUB_ENV
+        id: tagname
+
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/*
+          file: dist/**/*
           file_glob: true
-          tag: ${{ github.ref }}
+          tag: ${{ steps.tagname.outputs.val }}
           overwrite: true
