@@ -86,49 +86,31 @@ jobs:
             aarch64-linux-gnu-strip \
             /target/${{ matrix.target }}/release/hx
 
-      - name: Calculate tag name
-        run: |
-          name=dev
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
-            name=${GITHUB_REF:10}
-          fi
-          echo ::set-output name=val::$name
-          echo TAG=$name >> $GITHUB_ENV
-        id: tagname
-
       - name: Build archive
         shell: bash
         run: |
-          # outdir="$(ci/cargo-out-dir "${{ env.TARGET_DIR }}")"
-          staging="helix-${{ env.RELEASE_VERSION }}-${{ matrix.target }}"
-          mkdir "$staging"
-          cp {README.md,LICENSE} "$staging/"
-          # cp {CHANGELOG.md,FAQ.md,GUIDE.md} "$staging/doc/"
-          # cp "$outdir"/{hx.bash,hx.fish,_hx.ps1} "$staging/complete/"
-          # cp complete/_hx "$staging/complete/"
+          mkdir dist
           if [ "${{ matrix.os }}" = "windows-2019" ]; then
-            cp "target/${{ matrix.target }}/release/hx.exe" "$staging/"
-            7z a "$staging.zip" "$staging"
-            echo "ASSET=$staging.zip" >> $GITHUB_ENV
+            cp "target/${{ matrix.target }}/release/hx.exe" "dist/"
           else
-            # The man page is only generated on Unix systems. ¯\_(ツ)_/¯
-            # cp "$outdir"/hx.1 "$staging/doc/"
-            cp "target/${{ matrix.target }}/release/hx" "$staging/"
-            tar czf "$staging.tar.gz" "$staging"
-            echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
+            cp "target/${{ matrix.target }}/release/hx" "dist/"
           fi
 
-      # package
       - uses: actions/upload-artifact@v1
         with:
-          name: tarballs-${{ matrix.build }}
-          path: ${{ env.ASSET }}
+          name: bins-${{ matrix.build }}
+          path: dist
 
   publish:
     name: Publish
     needs: [dist]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          submodules: false
+
       - uses: actions/download-artifact@v2
         with:
           path: dist
@@ -144,11 +126,39 @@ jobs:
           echo TAG=$name >> $GITHUB_ENV
         id: tagname
 
+      - name: Build archive
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          rm -rf tmp
+          mkdir tmp
+          mkdir dist
+
+          for dir in bins-* ; do
+              platform=${dir#"bins-"}
+              if [[ $platform =~ "windows" ]]; then
+                  exe=".exe"
+              fi
+              pkgname=helix-$TAG-$platform
+              mkdir tmp/$pkgname
+              cp LICENSE README.md tmp/$pkgname
+              cp -r runtime tmp/$pkgname/
+              mv bins-$platform/hx$exe tmp/$pkgname
+              chmod +x tmp/$pkgname/hx$exe
+
+              if [ "$exe" = "" ]; then
+                  tar cJf dist/$pkgname.tar.xz -C tmp $pkgname
+              else
+                  (cd tmp && 7z a -r ../dist/$pkgname.zip $pkgname)
+              fi
+          done
+
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/**/*
+          file: dist/*
           file_glob: true
           tag: ${{ steps.tagname.outputs.val }}
           overwrite: true

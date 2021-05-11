@@ -1,9 +1,14 @@
 # Helix
 
+
+[![Build status](https://github.com/helix-editor/helix/workflows/ci/badge.svg)](https://github.com/helix-editor/helix/actions)
+
 A kakoune / neovim inspired editor, written in Rust.
 
 The editing model is very heavily based on kakoune; during development I found
 myself agreeing with most of kakoune's design decisions.
+
+For more information, see the [website](https://helix-editor.com).
 
 # Features
 
@@ -40,7 +45,7 @@ Some suggestions to get started:
 
 - You can look at the [good first issue](https://github.com/helix-editor/helix/labels/good%20first%20issue) label on the issue tracker.
 - Help with packaging on various distributions needed!
-- If your preffered language is missing, integrating a tree-sitter grammar for
+- If your preferred language is missing, integrating a tree-sitter grammar for
     it and defining syntax highlight queries for it is straight forward and
     doesn't require much knowledge of the internals.
 
@@ -49,5 +54,5 @@ a good overview of the internals.
 
 # Getting help
 
-Discuss the project on the community [Matrix channel](https://matrix.to/#/#helix-editor:example.com).
+Discuss the project on the community [Matrix channel](https://matrix.to/#/#helix-editor:matrix.org).
 
