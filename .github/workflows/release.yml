@@ -112,9 +112,10 @@ jobs:
           submodules: false
 
       - uses: actions/download-artifact@v2
-        with:
-          path: dist
-      - run: ls -al ./dist
+        # with:
+        #   path: dist
+      # - run: ls -al ./dist
+      - run: ls -al bins-*
 
       - name: Calculate tag name
         run: |
