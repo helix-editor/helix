@@ -130,7 +130,7 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          set -euxo pipefail
+          set -ex
 
           rm -rf tmp
           mkdir tmp
