@@ -1,6 +1,6 @@
 # Installation
 
-TODO: Prebuilt binaries on GitHub Releases page
+We provide pre-built binaries on the [GitHub Releases page](https://github.com/helix-editor/helix/releases).
 
 ## OSX
 
@@ -26,9 +26,13 @@ TODO: AUR
 ## Build from source
 
 ```
-$ git clone --depth 1 --recurse-submodules -j8 https://github.com/helix-editor/helix
-$ cd helix
-$ cargo install --path helix-term
+git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
+cd helix
+cargo install --path helix-term
 ```
 
 This will install the `hx` binary to `$HOME/.cargo/bin`.
+
+Now copy the `runtime/` directory somewhere. Helix will by default look for the
+runtime inside the same folder as the executable, but that can be overriden via
+the `HELIX_RUNTIME` environment variable.
