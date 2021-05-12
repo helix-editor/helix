@@ -20,6 +20,8 @@ use serde::{Deserialize, Serialize};
 
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+pub use futures_executor::block_on;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("protocol error: {0}")]

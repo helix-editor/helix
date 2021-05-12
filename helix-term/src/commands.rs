@@ -888,8 +888,32 @@ mod cmd {
         }
         tokio::spawn(doc.save());
     }
+
     fn new_file(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         editor.new_file(Action::Replace);
+    }
+
+    fn format(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let (view, doc) = editor.current();
+
+        if let Some(language_server) = doc.language_server() {
+            // TODO: await, no blocking
+            let transaction = helix_lsp::block_on(
+                language_server
+                    .text_document_formatting(doc.identifier(), lsp::FormattingOptions::default()),
+            )
+            .map(|edits| {
+                helix_lsp::util::generate_transaction_from_edits(
+                    doc.text(),
+                    edits,
+                    language_server.offset_encoding(),
+                )
+            });
+
+            if let Ok(transaction) = transaction {
+                doc.apply(&transaction, view.id);
+            }
+        }
     }
 
     pub const COMMAND_LIST: &[Command] = &[
@@ -927,6 +951,13 @@ mod cmd {
             doc: "Create a new scratch buffer.",
             fun: new_file,
             completer: Some(completers::filename),
+        },
+        Command {
+            name: "format",
+            alias: Some("fmt"),
+            doc: "Format the file using a formatter.",
+            fun: format,
+            completer: None,
         },
     ];
 
