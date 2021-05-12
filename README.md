@@ -3,6 +3,8 @@
 
 [![Build status](https://github.com/helix-editor/helix/workflows/ci/badge.svg)](https://github.com/helix-editor/helix/actions)
 
+![Screenshot](./screenshot.png)
+
 A kakoune / neovim inspired editor, written in Rust.
 
 The editing model is very heavily based on kakoune; during development I found
@@ -21,6 +23,8 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 (similar to emacs) in wgpu or skulpin.
 
 # Installation
+
+Note: Only the Rust syntax has indentation definitions at the moment.
 
 We provide packaging for various distributions, but here's a quick method to
 build from source.
