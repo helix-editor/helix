@@ -24,7 +24,7 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 
 # Installation
 
-Note: Only the Rust syntax has indentation definitions at the moment.
+Note: Only Rust and Golang have indentation definitions at the moment.
 
 We provide packaging for various distributions, but here's a quick method to
 build from source.
