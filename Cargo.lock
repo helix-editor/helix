@@ -291,6 +291,7 @@ dependencies = [
  "serde",
  "smallvec",
  "tendril",
+ "toml",
  "tree-sitter",
  "unicode-segmentation",
  "unicode-width",

@@ -329,6 +329,11 @@ impl Document {
     }
 
     #[inline]
+    pub fn language_config(&self) -> Option<&LanguageConfiguration> {
+        self.language.as_deref()
+    }
+
+    #[inline]
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version

@@ -1171,7 +1171,13 @@ fn open(cx: &mut Context, open: Open) {
             let index = doc.text().line_to_char(line).saturating_sub(1);
 
             // TODO: share logic with insert_newline for indentation
-            let indent_level = indent::suggested_indent_for_pos(doc.syntax(), text, index, true);
+            let indent_level = indent::suggested_indent_for_pos(
+                doc.language_config(),
+                doc.syntax(),
+                text,
+                index,
+                true,
+            );
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');
@@ -1649,8 +1655,13 @@ pub mod insert {
             let curr = contents.char(pos);
 
             // TODO: offset range.head by 1? when calculating?
-            let indent_level =
-                indent::suggested_indent_for_pos(doc.syntax(), text, pos.saturating_sub(1), true);
+            let indent_level = indent::suggested_indent_for_pos(
+                doc.language_config(),
+                doc.syntax(),
+                text,
+                pos.saturating_sub(1),
+                true,
+            );
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
             text.push('\n');

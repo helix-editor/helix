@@ -1,0 +1,30 @@
+indent = [
+ "while_expression",
+ "for_expression",
+ "loop_expression",
+ "if_expression",
+ "if_let_expression",
+ "tuple_expression",
+ "array_expression",
+ "use_list",
+ "block",
+ "match_block",
+ "arguments",
+ "parameters",
+ "declaration_list",
+ "field_declaration_list",
+ "field_initializer_list",
+ "struct_pattern",
+ "tuple_pattern",
+ "enum_variant_list",
+ "binary_expression",
+ "field_expression",
+ "where_clause"
+]
+
+outdent = [
+ "where",
+ "}",
+ "]",
+ ")"
+]

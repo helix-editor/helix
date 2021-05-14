@@ -4,7 +4,7 @@ pub use helix_syntax::{get_language, get_language_name, Lang};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -41,6 +41,9 @@ pub struct LanguageConfiguration {
     pub language_server: Option<LanguageServerConfiguration>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
+
+    #[serde(skip)]
+    pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -57,6 +60,17 @@ pub struct LanguageServerConfiguration {
 pub struct IndentationConfiguration {
     pub tab_width: usize,
     pub unit: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct IndentQuery {
+    #[serde(default)]
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    pub indent: HashSet<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    pub outdent: HashSet<String>,
 }
 
 fn read_query(language: &str, filename: &str) -> String {
@@ -125,6 +139,20 @@ impl LanguageConfiguration {
                 }
             })
             .clone()
+    }
+
+    pub fn indent_query(&self) -> Option<&IndentQuery> {
+        self.indent_query
+            .get_or_init(|| {
+                let language = get_language_name(self.language_id).to_ascii_lowercase();
+
+                let root = crate::runtime_dir();
+                let path = root.join("queries").join(language).join("indents.toml");
+
+                let toml = std::fs::read(&path).ok()?;
+                toml::from_slice(&toml).ok()
+            })
+            .as_ref()
     }
 
     pub fn scope(&self) -> &str {

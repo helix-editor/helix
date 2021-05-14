@@ -1,6 +1,6 @@
 use crate::{
     find_first_non_whitespace_char,
-    syntax::Syntax,
+    syntax::{IndentQuery, LanguageConfiguration, Syntax},
     tree_sitter::{Node, Tree},
     Rope, RopeSlice,
 };
@@ -43,40 +43,11 @@ fn get_highest_syntax_node_at_bytepos(syntax: &Syntax, pos: usize) -> Option<Nod
     Some(node)
 }
 
-fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
+fn calculate_indentation(query: &IndentQuery, node: Option<Node>, newline: bool) -> usize {
+    // NOTE: can't use contains() on query because of comparing Vec<String> and &str
+    // https://doc.rust-lang.org/std/vec/struct.Vec.html#method.contains
+
     let mut increment: i32 = 0;
-
-    // Hardcoded for rust for now
-    let indent_scopes = &[
-        "while_expression",
-        "for_expression",
-        "loop_expression",
-        "if_expression",
-        "if_let_expression",
-        // "match_expression",
-        // "match_arm",
-        "tuple_expression",
-        "array_expression",
-        // indent_except_first_scopes
-        "use_list",
-        "block",
-        "match_block",
-        "arguments",
-        "parameters",
-        "declaration_list",
-        "field_declaration_list",
-        "field_initializer_list",
-        "struct_pattern",
-        "tuple_pattern",
-        "enum_variant_list",
-        // "function_item",
-        // "closure_expression",
-        "binary_expression",
-        "field_expression",
-        "where_clause",
-    ];
-
-    let outdent = &["where", "}", "]", ")"];
 
     let mut node = match node {
         Some(node) => node,
@@ -88,7 +59,7 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
     // if we're calculating indentation for a brand new line then the current node will become the
     // parent node. We need to take it's indentation level into account too.
     let node_kind = node.kind();
-    if newline && indent_scopes.contains(&node_kind) {
+    if newline && query.indent.contains(node_kind) {
         increment += 1;
     }
 
@@ -102,14 +73,14 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
         // })               <-- }) is two scopes
         let starts_same_line = start == prev_start;
 
-        if outdent.contains(&node.kind()) && !starts_same_line {
+        if query.outdent.contains(node.kind()) && !starts_same_line {
             // we outdent by skipping the rules for the current level and jumping up
             // node = parent;
             increment -= 1;
             // continue;
         }
 
-        if indent_scopes.contains(&parent_kind) // && not_first_or_last_sibling
+        if query.indent.contains(parent_kind) // && not_first_or_last_sibling
             && !starts_same_line
         {
             // println!("is_scope {}", parent_kind);
@@ -128,6 +99,7 @@ fn calculate_indentation(node: Option<Node>, newline: bool) -> usize {
 }
 
 fn suggested_indent_for_line(
+    language_config: &LanguageConfiguration,
     syntax: Option<&Syntax>,
     text: RopeSlice,
     line_num: usize,
@@ -137,7 +109,7 @@ fn suggested_indent_for_line(
     let current = indent_level_for_line(line, tab_width);
 
     if let Some(start) = find_first_non_whitespace_char(text, line_num) {
-        return suggested_indent_for_pos(syntax, text, start, false);
+        return suggested_indent_for_pos(Some(language_config), syntax, text, start, false);
     };
 
     // if the line is blank, indent should be zero
@@ -148,18 +120,24 @@ fn suggested_indent_for_line(
 // - it should return 0 when mass indenting stuff
 // - it should look up the wrapper node and count it too when we press o/O
 pub fn suggested_indent_for_pos(
+    language_config: Option<&LanguageConfiguration>,
     syntax: Option<&Syntax>,
     text: RopeSlice,
     pos: usize,
     new_line: bool,
 ) -> usize {
-    if let Some(syntax) = syntax {
+    if let (Some(query), Some(syntax)) = (
+        language_config.and_then(|config| config.indent_query()),
+        syntax,
+    ) {
         let byte_start = text.char_to_byte(pos);
         let node = get_highest_syntax_node_at_bytepos(syntax, byte_start);
 
+        // let config = load indentation query config from Syntax(should contain language_config)
+
         // TODO: special case for comments
         // TODO: if preserve_leading_whitespace
-        calculate_indentation(node, new_line)
+        calculate_indentation(query, node, new_line)
     } else {
         // TODO: heuristics for non-tree sitter grammars
         0
@@ -286,6 +264,7 @@ where
                     tab_width: 4,
                     unit: String::from("    "),
                 }),
+                indent_query: OnceCell::new(),
             }],
         });
 
@@ -304,7 +283,7 @@ where
             let line = text.line(i);
             let indent = indent_level_for_line(line, tab_width);
             assert_eq!(
-                suggested_indent_for_line(Some(&syntax), text, i, tab_width),
+                suggested_indent_for_line(&language_config, Some(&syntax), text, i, tab_width),
                 indent,
                 "line {}: {}",
                 i,
