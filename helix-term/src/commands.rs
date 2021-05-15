@@ -829,7 +829,7 @@ pub fn append_mode(cx: &mut Context) {
     if selection.iter().any(|range| range.head == end) {
         let transaction = Transaction::change(
             doc.text(),
-            vec![(end, end, Some(Tendril::from_char('\n')))].into_iter(),
+            std::array::IntoIter::new([(end, end, Some(Tendril::from_char('\n')))]),
         );
         doc.apply(&transaction, view.id);
     }
