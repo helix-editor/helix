@@ -823,6 +823,17 @@ pub fn append_mode(cx: &mut Context) {
             graphemes::next_grapheme_boundary(text, range.to()), // to() + next char
         )
     });
+
+    let end = text.len_chars();
+
+    if selection.iter().any(|range| range.head == end) {
+        let transaction = Transaction::change(
+            doc.text(),
+            vec![(end, end, Some(Tendril::from_char('\n')))].into_iter(),
+        );
+        doc.apply(&transaction, view.id);
+    }
+
     doc.set_selection(view.id, selection);
 }
 
