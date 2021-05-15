@@ -37,7 +37,6 @@ use once_cell::sync::Lazy;
 pub struct Context<'a> {
     pub count: usize,
     pub editor: &'a mut Editor,
-    pub view_id: ViewId,
 
     pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
@@ -656,7 +655,7 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
 
 // TODO: use one function for search vs extend
 pub fn search(cx: &mut Context) {
-    let doc = cx.doc();
+    let (view, doc) = cx.current();
 
     // TODO: could probably share with select_on_matches?
 
@@ -664,7 +663,7 @@ pub fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let view_id = cx.view_id;
+    let view_id = view.id;
     let prompt = ui::regex_prompt(cx, "search:".to_string(), move |view, doc, regex| {
         let text = doc.text();
         let start = doc.selection(view.id).cursor();
@@ -1739,12 +1738,12 @@ pub mod insert {
 // storing it?
 
 pub fn undo(cx: &mut Context) {
-    let view_id = cx.view_id;
+    let view_id = cx.view().id;
     cx.doc().undo(view_id);
 }
 
 pub fn redo(cx: &mut Context) {
-    let view_id = cx.view_id;
+    let view_id = cx.view().id;
     cx.doc().redo(view_id);
 }
 
@@ -2272,8 +2271,9 @@ pub fn space_mode(cx: &mut Context) {
                     tokio::spawn(doc.save());
                 }
                 'c' => {
+                    let view_id = cx.view().id;
                     // close current split
-                    cx.editor.close(cx.view_id, /* close_buffer */ false);
+                    cx.editor.close(view_id, /* close_buffer */ false);
                 }
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took it's old key

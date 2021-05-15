@@ -530,7 +530,6 @@ impl Component for EditorView {
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
-                    view_id: view.id,
                     editor: &mut cx.editor,
                     count: 1,
                     callback: None,
