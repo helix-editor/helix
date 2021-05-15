@@ -65,14 +65,20 @@ fn handle_open(
 ) -> Transaction {
     let mut ranges = SmallVec::with_capacity(selection.len());
 
+    let mut offs = 0;
+
     let mut transaction = Transaction::change_by_selection(doc, selection, |range| {
         let pos = range.head;
         let next = next_char(doc, pos);
 
-        let head = pos + open.len_utf8();
+        let head = pos + offs + open.len_utf8();
         // if selection, retain anchor, if cursor, move over
         ranges.push(Range::new(
-            if range.is_empty() { head } else { range.anchor },
+            if range.is_empty() {
+                head
+            } else {
+                range.anchor + offs
+            },
             head,
         ));
 
@@ -88,6 +94,8 @@ fn handle_open(
                 pair.push_char(open);
                 pair.push_char(close);
 
+                offs += 2;
+
                 (pos, pos, Some(pair))
             }
         }
@@ -99,14 +107,20 @@ fn handle_open(
 fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> Transaction {
     let mut ranges = SmallVec::with_capacity(selection.len());
 
+    let mut offs = 0;
+
     let mut transaction = Transaction::change_by_selection(doc, selection, |range| {
         let pos = range.head;
         let next = next_char(doc, pos);
 
-        let head = pos + close.len_utf8();
+        let head = pos + offs + close.len_utf8();
         // if selection, retain anchor, if cursor, move over
         ranges.push(Range::new(
-            if range.is_empty() { head } else { range.anchor },
+            if range.is_empty() {
+                head
+            } else {
+                range.anchor + offs
+            },
             head,
         ));
 
@@ -114,6 +128,8 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
             //  return transaction that moves past close
             (pos, pos, None) // no-op
         } else {
+            offs += close.len_utf8();
+
             // TODO: else return (use default handler that inserts close)
             (pos, pos, Some(Tendril::from_char(close)))
         }

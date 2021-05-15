@@ -1644,6 +1644,9 @@ pub mod insert {
         let selection = doc.selection(view.id);
         let mut ranges = SmallVec::with_capacity(selection.len());
 
+        // TODO: this is annoying, but we need to do it to properly calculate pos after edits
+        let mut offs = 0;
+
         let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
             let pos = range.head;
 
@@ -1667,10 +1670,14 @@ pub mod insert {
             text.push('\n');
             text.push_str(&indent);
 
-            let head = pos + text.len();
+            let head = pos + offs + text.len();
 
             ranges.push(Range::new(
-                if range.is_empty() { head } else { range.anchor },
+                if range.is_empty() {
+                    head
+                } else {
+                    range.anchor + offs
+                },
                 head,
             ));
 
@@ -1680,11 +1687,11 @@ pub mod insert {
                 let indent = doc.indent_unit().repeat(indent_level.saturating_sub(1));
                 text.push('\n');
                 text.push_str(&indent);
-
-                (pos, pos, Some(text.into()))
-            } else {
-                (pos, pos, Some(text.into()))
             }
+
+            offs += text.len();
+
+            (pos, pos, Some(text.into()))
         });
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
