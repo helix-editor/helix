@@ -639,6 +639,11 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
         let start = text.byte_to_char(mat.start());
         let end = text.byte_to_char(mat.end());
 
+        if end == 0 {
+            // skip empty matches that don't make sense
+            return;
+        }
+
         let head = end - 1;
 
         let selection = if extend {
