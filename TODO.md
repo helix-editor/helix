@@ -1,5 +1,4 @@
 - Refactor tree-sitter-highlight to work like the atom one, recomputing partial tree updates.
-- syntax errors highlight query
 
 ------
 
@@ -19,15 +18,11 @@
 - [ ] document.on_type provider triggers
 - [ ] completion isIncomplete support
 
-- [ ] extract indentation calculation queries so we can support other languages.
-
 1
-- [ ] :format/:fmt that formats the buffer
 - [ ] respect view fullscreen flag
 - [ ] Implement marks (superset of Selection/Range)
 
 - [ ] nixos packaging
-- [ ] CI binary builds
 
 - [ ] = for auto indent line/selection
 - [ ]  :x for closing buffers

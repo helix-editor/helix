@@ -1,10 +1,28 @@
 ; Identifier conventions
 
+
 ; Assume all-caps names are constants
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]+$'"))
 
+; Assume other uppercase names are enum constructors
+((identifier) @constructor
+ (#match? @constructor "^[A-Z]"))
+
 ; Assume that uppercase names in paths are types
+(mod_item
+ name: (identifier) @namespace)
+(scoped_identifier
+  path: (identifier) @namespace)
+(scoped_identifier
+ (scoped_identifier
+  name: (identifier) @namespace))
+(scoped_type_identifier
+  path: (identifier) @namespace)
+(scoped_type_identifier
+ (scoped_identifier
+  name: (identifier) @namespace))
+
 ((scoped_identifier
   path: (identifier) @type)
  (#match? @type "^[A-Z]"))
@@ -13,9 +31,15 @@
     name: (identifier) @type))
  (#match? @type "^[A-Z]"))
 
-; Assume other uppercase names are enum constructors
-((identifier) @constructor
- (#match? @constructor "^[A-Z]"))
+; Namespaces
+
+(crate) @namespace
+(scoped_use_list
+  path: (identifier) @namespace)
+(scoped_use_list
+  path: (scoped_identifier
+            (identifier) @namespace))
+(use_list (scoped_identifier (identifier) @namespace . (_)))
 
 ; Function calls
 
@@ -38,9 +62,19 @@
   function: (field_expression
     field: (field_identifier) @function.method))
 
+; (macro_invocation
+;   macro: (identifier) @function.macro
+;   "!" @function.macro)
 (macro_invocation
-  macro: (identifier) @function.macro
-  "!" @function.macro)
+  macro: (identifier) @function.macro)
+(macro_invocation
+  macro: (scoped_identifier
+           (identifier) @function.macro .))
+
+; (metavariable) @variable
+(metavariable) @function.macro
+
+"$" @function.macro
 
 ; Function definitions
 
@@ -73,6 +107,7 @@
 ";" @punctuation.delimiter
 
 (parameter (identifier) @variable.parameter)
+(closure_parameters (_) @variable.parameter)
 
 (lifetime (identifier) @label)
 
@@ -114,9 +149,9 @@
 (scoped_use_list (self) @keyword)
 (scoped_identifier (self) @keyword)
 (super) @keyword
+"as" @keyword
 
 (self) @variable.builtin
-(metavariable) @variable
 
 [
 (char_literal)
@@ -133,7 +168,44 @@
 (attribute_item) @attribute
 (inner_attribute_item) @attribute
 
-"as" @operator
-"*" @operator
-"&" @operator
-"'" @operator
+[
+"*"
+"'"
+"->"
+"=>"
+"<="
+"="
+"=="
+"!"
+"!="
+"%"
+"%="
+"&"
+"&="
+"&&"
+"|"
+"|="
+"||"
+"^"
+"^="
+"*"
+"*="
+"-"
+"-="
+"+"
+"+="
+"/"
+"/="
+">"
+"<"
+">="
+">>"
+"<<"
+">>="
+"@"
+".."
+"..="
+"'"
+] @operator
+
+"?" @special
