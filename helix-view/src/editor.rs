@@ -81,11 +81,15 @@ impl Editor {
                 view.jumps.push(jump);
                 view.doc = id;
                 view.first_line = 0;
-                let view_id = view.id;
+
+                let (view, doc) = self.current();
 
                 // initialize selection for view
-                let doc = &mut self.documents[id];
-                doc.selections.insert(view_id, Selection::point(0));
+                let selection = doc.selections.entry(view.id).or_insert(Selection::point(0));
+                // TODO: reuse align_view
+                let pos = selection.cursor();
+                let line = doc.text().char_to_line(pos);
+                view.first_line = line.saturating_sub(view.area.height as usize / 2);
 
                 return;
             }
