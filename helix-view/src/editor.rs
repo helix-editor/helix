@@ -85,7 +85,10 @@ impl Editor {
                 let (view, doc) = self.current();
 
                 // initialize selection for view
-                let selection = doc.selections.entry(view.id).or_insert(Selection::point(0));
+                let selection = doc
+                    .selections
+                    .entry(view.id)
+                    .or_insert_with(|| Selection::point(0));
                 // TODO: reuse align_view
                 let pos = selection.cursor();
                 let line = doc.text().char_to_line(pos);
