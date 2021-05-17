@@ -82,16 +82,6 @@ impl Completion {
                             // and we insert at position.
                         };
 
-                        // TODO: merge edit with additional_text_edits
-                        if let Some(additional_edits) = &item.additional_text_edits {
-                            if !additional_edits.is_empty() {
-                                unimplemented!(
-                                    "completion: additional_text_edits: {:?}",
-                                    additional_edits
-                                );
-                            }
-                        }
-
                         // if more text was entered, remove it
                         let cursor = doc.selection(view.id).cursor();
                         if trigger_offset < cursor {
@@ -109,6 +99,19 @@ impl Completion {
                             offset_encoding, // TODO: should probably transcode in Client
                         );
                         doc.apply(&transaction, view.id);
+
+                        // TODO: merge edit with additional_text_edits
+                        if let Some(additional_edits) = &item.additional_text_edits {
+                            // gopls uses this to add extra imports
+                            if !additional_edits.is_empty() {
+                                let transaction = util::generate_transaction_from_edits(
+                                    doc.text(),
+                                    additional_edits.clone(),
+                                    offset_encoding, // TODO: should probably transcode in Client
+                                );
+                                doc.apply(&transaction, view.id);
+                            }
+                        }
                     }
                     _ => (),
                 };
