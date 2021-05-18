@@ -927,6 +927,7 @@ mod cmd {
 
             if let Ok(transaction) = transaction {
                 doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
             }
         }
     }
