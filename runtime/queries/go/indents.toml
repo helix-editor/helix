@@ -2,6 +2,7 @@ indent = [
   "import_declaration",
   "const_declaration",
   "var_declaration",
+  "type_declaration",
   "function_declaration",
   "method_declaration",
   "composite_literal",
