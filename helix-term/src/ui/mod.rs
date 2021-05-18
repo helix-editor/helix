@@ -85,7 +85,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         Err(_err) => None,
     });
 
-    const MAX: usize = 1024;
+    const MAX: usize = 2048;
 
     Picker::new(
         files.take(MAX).collect(),
