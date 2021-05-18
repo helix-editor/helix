@@ -186,37 +186,31 @@ pub fn move_line_down(cx: &mut Context) {
 
 pub fn move_line_end(cx: &mut Context) {
     let (view, doc) = cx.current();
-    let lines = selection_lines(doc.text(), doc.selection(view.id));
 
-    let positions = lines
-        .into_iter()
-        .map(|index| {
-            // adjust all positions to the end of the line.
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
 
-            // Line end is pos at the start of next line - 1
-            // subtract another 1 because the line ends with \n
-            doc.text().line_to_char(index + 1).saturating_sub(2)
-        })
-        .map(|pos| Range::new(pos, pos));
-
-    let selection = Selection::new(positions.collect(), 0);
+        // Line end is pos at the start of next line - 1
+        // subtract another 1 because the line ends with \n
+        let pos = text.line_to_char(line + 1).saturating_sub(2);
+        Range::new(pos, pos)
+    });
 
     doc.set_selection(view.id, selection);
 }
 
 pub fn move_line_start(cx: &mut Context) {
     let (view, doc) = cx.current();
-    let lines = selection_lines(doc.text(), doc.selection(view.id));
 
-    let positions = lines
-        .into_iter()
-        .map(|index| {
-            // adjust all positions to the start of the line.
-            doc.text().line_to_char(index)
-        })
-        .map(|pos| Range::new(pos, pos));
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
 
-    let selection = Selection::new(positions.collect(), 0);
+        // adjust to start of the line
+        let pos = text.line_to_char(line);
+        Range::new(pos, pos)
+    });
 
     doc.set_selection(view.id, selection);
 }
@@ -1123,19 +1117,6 @@ pub fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(picker));
 }
 
-// calculate line numbers for each selection range
-fn selection_lines(doc: &Rope, selection: &Selection) -> Vec<usize> {
-    let mut lines = selection
-        .iter()
-        .map(|range| doc.char_to_line(range.head))
-        .collect::<Vec<_>>();
-
-    lines.sort_unstable(); // sorting by usize so _unstable is preferred
-    lines.dedup();
-
-    lines
-}
-
 // I inserts at the start of each line with a selection
 pub fn prepend_to_line(cx: &mut Context) {
     move_line_start(cx);
@@ -1169,13 +1150,15 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(doc);
 
     let text = doc.text().slice(..);
-    let lines = selection_lines(doc.text(), doc.selection(view.id));
+    let selection = doc.selection(view.id);
 
-    let mut ranges = SmallVec::with_capacity(lines.len());
+    let mut ranges = SmallVec::with_capacity(selection.len());
 
-    let changes: Vec<Change> = lines
-        .into_iter()
-        .map(|line| {
+    let changes: Vec<Change> = selection
+        .iter()
+        .map(|range| {
+            let line = text.char_to_line(range.head);
+
             let line = match open {
                 // adjust position to the end of the line (next line - 1)
                 Open::Below => line + 1,

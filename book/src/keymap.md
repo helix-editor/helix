@@ -17,7 +17,7 @@
 | f   | find next char |
 | T   | find 'till previous char |
 | F   | find previous char |
-| 0   | move to the start of the line |
+| ^   | move to the start of the line |
 | $   | move to the end of the line |
 | m   | Jump to matching bracket | 
 | PageUp | Move page up |

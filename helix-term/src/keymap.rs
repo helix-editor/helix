@@ -145,7 +145,7 @@ pub fn default() -> Keymaps {
         //
         key!('r') => commands::replace,
 
-        key!('0') => commands::move_line_start,
+        key!('^') => commands::move_line_start,
         key!('$') => commands::move_line_end,
 
         key!('w') => commands::move_next_word_start,
