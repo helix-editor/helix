@@ -1145,15 +1145,14 @@ pub fn prepend_to_line(cx: &mut Context) {
 
 // A inserts at the end of each line with a selection
 pub fn append_to_line(cx: &mut Context) {
-    move_line_end(cx);
-
     let (view, doc) = cx.current();
     enter_insert_mode(doc);
 
-    // offset by another 1 char since move_line_end will position on the last char, we want to
-    // append past that
     let selection = doc.selection(view.id).transform(|range| {
-        let pos = range.head + 1;
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
+        // we can't use line_to_char(line + 1) - 2 because the last line might not contain \n
+        let pos = (text.line_to_char(line) + text.line(line).len_chars()).saturating_sub(1);
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
