@@ -1873,14 +1873,17 @@ pub fn indent(cx: &mut Context) {
 }
 
 pub fn unindent(cx: &mut Context) {
+    let count = cx.count;
     let (view, doc) = cx.current();
     let lines = get_lines(doc, view.id);
     let mut changes = Vec::with_capacity(lines.len());
     let tab_width = doc.tab_width();
+    let indent_width = count * tab_width;
 
     for line_idx in lines {
         let line = doc.text().line(line_idx);
         let mut width = 0;
+        let mut pos = 0;
 
         for ch in line.chars() {
             match ch {
@@ -1889,14 +1892,17 @@ pub fn unindent(cx: &mut Context) {
                 _ => break,
             }
 
-            if width >= tab_width {
+            pos += 1;
+
+            if width >= indent_width {
                 break;
             }
         }
 
-        if width > 0 {
+        // now delete from start to first non-blank
+        if pos > 0 {
             let start = doc.text().line_to_char(line_idx);
-            changes.push((start, start + width, None))
+            changes.push((start, start + pos, None))
         }
     }
 
