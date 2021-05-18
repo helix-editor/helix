@@ -1855,11 +1855,12 @@ fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
 }
 
 pub fn indent(cx: &mut Context) {
+    let count = cx.count;
     let (view, doc) = cx.current();
     let lines = get_lines(doc, view.id);
 
     // Indent by one level
-    let indent = Tendril::from(doc.indent_unit());
+    let indent = Tendril::from(doc.indent_unit().repeat(count));
 
     let transaction = Transaction::change(
         doc.text(),
