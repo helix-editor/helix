@@ -12,10 +12,62 @@ use helix_core::{Position, Transaction};
 use helix_view::Editor;
 
 use crate::commands;
-use crate::ui::{Markdown, Menu, Popup, PromptEvent};
+use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
 use helix_lsp::lsp;
 use lsp::CompletionItem;
+
+impl menu::Item for CompletionItem {
+    fn filter_text(&self) -> &str {
+        self.filter_text
+            .as_ref()
+            .unwrap_or_else(|| &self.label)
+            .as_str()
+    }
+
+    fn label(&self) -> &str {
+        self.label.as_str()
+    }
+
+    fn row(&self) -> menu::Row {
+        menu::Row::new(vec![
+            menu::Cell::from(self.label.as_str()),
+            menu::Cell::from(match self.kind {
+                Some(lsp::CompletionItemKind::Text) => "text",
+                Some(lsp::CompletionItemKind::Method) => "method",
+                Some(lsp::CompletionItemKind::Function) => "function",
+                Some(lsp::CompletionItemKind::Constructor) => "constructor",
+                Some(lsp::CompletionItemKind::Field) => "field",
+                Some(lsp::CompletionItemKind::Variable) => "variable",
+                Some(lsp::CompletionItemKind::Class) => "class",
+                Some(lsp::CompletionItemKind::Interface) => "interface",
+                Some(lsp::CompletionItemKind::Module) => "module",
+                Some(lsp::CompletionItemKind::Property) => "property",
+                Some(lsp::CompletionItemKind::Unit) => "unit",
+                Some(lsp::CompletionItemKind::Value) => "value",
+                Some(lsp::CompletionItemKind::Enum) => "enum",
+                Some(lsp::CompletionItemKind::Keyword) => "keyword",
+                Some(lsp::CompletionItemKind::Snippet) => "snippet",
+                Some(lsp::CompletionItemKind::Color) => "color",
+                Some(lsp::CompletionItemKind::File) => "file",
+                Some(lsp::CompletionItemKind::Reference) => "reference",
+                Some(lsp::CompletionItemKind::Folder) => "folder",
+                Some(lsp::CompletionItemKind::EnumMember) => "enum_member",
+                Some(lsp::CompletionItemKind::Constant) => "constant",
+                Some(lsp::CompletionItemKind::Struct) => "struct",
+                Some(lsp::CompletionItemKind::Event) => "event",
+                Some(lsp::CompletionItemKind::Operator) => "operator",
+                Some(lsp::CompletionItemKind::TypeParameter) => "type_param",
+                None => "",
+            }),
+            // self.detail.as_deref().unwrap_or("")
+            // self.label_details
+            //     .as_ref()
+            //     .or(self.detail())
+            //     .as_str(),
+        ])
+    }
+}
 
 /// Wraps a Menu.
 pub struct Completion {
@@ -31,92 +83,83 @@ impl Completion {
         trigger_offset: usize,
     ) -> Self {
         // let items: Vec<CompletionItem> = Vec::new();
-        let mut menu = Menu::new(
-            items,
-            |item| {
-                // format_fn
-                item.label.as_str().into()
+        let mut menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+            match event {
+                PromptEvent::Abort => {
+                    // revert state
+                    // let id = editor.view().doc;
+                    // let doc = &mut editor.documents[id];
+                    // doc.state = snapshot.clone();
+                }
+                PromptEvent::Validate => {
+                    let (view, doc) = editor.current();
 
-                // TODO: use item.filter_text for filtering
-            },
-            move |editor: &mut Editor, item, event| {
-                match event {
-                    PromptEvent::Abort => {
-                        // revert state
-                        // let id = editor.view().doc;
-                        // let doc = &mut editor.documents[id];
-                        // doc.state = snapshot.clone();
-                    }
-                    PromptEvent::Validate => {
-                        let (view, doc) = editor.current();
+                    // revert state to what it was before the last update
+                    // doc.state = snapshot.clone();
 
-                        // revert state to what it was before the last update
-                        // doc.state = snapshot.clone();
+                    // extract as fn(doc, item):
 
-                        // extract as fn(doc, item):
+                    // TODO: need to apply without composing state...
+                    // TODO: need to update lsp on accept/cancel by diffing the snapshot with
+                    // the final state?
+                    // -> on update simply update the snapshot, then on accept redo the call,
+                    // finally updating doc.changes + notifying lsp.
+                    //
+                    // or we could simply use doc.undo + apply when changing between options
 
-                        // TODO: need to apply without composing state...
-                        // TODO: need to update lsp on accept/cancel by diffing the snapshot with
-                        // the final state?
-                        // -> on update simply update the snapshot, then on accept redo the call,
-                        // finally updating doc.changes + notifying lsp.
-                        //
-                        // or we could simply use doc.undo + apply when changing between options
+                    // always present here
+                    let item = item.unwrap();
 
-                        // always present here
-                        let item = item.unwrap();
-
-                        use helix_lsp::{lsp, util};
-                        // determine what to insert: text_edit | insert_text | label
-                        let edit = if let Some(edit) = &item.text_edit {
-                            match edit {
-                                lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                                lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                                    unimplemented!("completion: insert_and_replace {:?}", item)
-                                }
+                    use helix_lsp::{lsp, util};
+                    // determine what to insert: text_edit | insert_text | label
+                    let edit = if let Some(edit) = &item.text_edit {
+                        match edit {
+                            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                            lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                                unimplemented!("completion: insert_and_replace {:?}", item)
                             }
-                        } else {
-                            item.insert_text.as_ref().unwrap_or(&item.label);
-                            unimplemented!();
-                            // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
-                            // and we insert at position.
-                        };
-
-                        // if more text was entered, remove it
-                        let cursor = doc.selection(view.id).cursor();
-                        if trigger_offset < cursor {
-                            let remove = Transaction::change(
-                                doc.text(),
-                                vec![(trigger_offset, cursor, None)].into_iter(),
-                            );
-                            doc.apply(&remove, view.id);
                         }
+                    } else {
+                        item.insert_text.as_ref().unwrap_or(&item.label);
+                        unimplemented!();
+                        // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
+                        // and we insert at position.
+                    };
 
-                        use helix_lsp::OffsetEncoding;
-                        let transaction = util::generate_transaction_from_edits(
+                    // if more text was entered, remove it
+                    let cursor = doc.selection(view.id).cursor();
+                    if trigger_offset < cursor {
+                        let remove = Transaction::change(
                             doc.text(),
-                            vec![edit],
-                            offset_encoding, // TODO: should probably transcode in Client
+                            vec![(trigger_offset, cursor, None)].into_iter(),
                         );
-                        doc.apply(&transaction, view.id);
+                        doc.apply(&remove, view.id);
+                    }
 
-                        // TODO: merge edit with additional_text_edits
-                        if let Some(additional_edits) = &item.additional_text_edits {
-                            // gopls uses this to add extra imports
-                            if !additional_edits.is_empty() {
-                                let transaction = util::generate_transaction_from_edits(
-                                    doc.text(),
-                                    additional_edits.clone(),
-                                    offset_encoding, // TODO: should probably transcode in Client
-                                );
-                                doc.apply(&transaction, view.id);
-                            }
+                    use helix_lsp::OffsetEncoding;
+                    let transaction = util::generate_transaction_from_edits(
+                        doc.text(),
+                        vec![edit],
+                        offset_encoding, // TODO: should probably transcode in Client
+                    );
+                    doc.apply(&transaction, view.id);
+
+                    // TODO: merge edit with additional_text_edits
+                    if let Some(additional_edits) = &item.additional_text_edits {
+                        // gopls uses this to add extra imports
+                        if !additional_edits.is_empty() {
+                            let transaction = util::generate_transaction_from_edits(
+                                doc.text(),
+                                additional_edits.clone(),
+                                offset_encoding, // TODO: should probably transcode in Client
+                            );
+                            doc.apply(&transaction, view.id);
                         }
                     }
-                    _ => (),
-                };
-            },
-        );
+                }
+                _ => (),
+            };
+        });
         let popup = Popup::new(menu);
         Self {
             popup,

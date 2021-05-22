@@ -4,7 +4,10 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Style},
+    widgets::Table,
 };
+
+pub use tui::widgets::{Cell, Row};
 
 use std::borrow::Cow;
 
@@ -14,7 +17,15 @@ use fuzzy_matcher::FuzzyMatcher;
 use helix_core::Position;
 use helix_view::Editor;
 
-pub struct Menu<T> {
+pub trait Item {
+    // TODO: sort_text
+    fn filter_text(&self) -> &str;
+
+    fn label(&self) -> &str;
+    fn row(&self) -> Row;
+}
+
+pub struct Menu<T: Item> {
     options: Vec<T>,
 
     cursor: Option<usize>,
@@ -23,19 +34,17 @@ pub struct Menu<T> {
     /// (index, score)
     matches: Vec<(usize, i64)>,
 
-    format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
 
     scroll: usize,
     size: (u16, u16),
 }
 
-impl<T> Menu<T> {
+impl<T: Item> Menu<T> {
     // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
     // rendering)
     pub fn new(
         options: Vec<T>,
-        format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let mut menu = Self {
@@ -43,7 +52,6 @@ impl<T> Menu<T> {
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             cursor: None,
-            format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
             scroll: 0,
             size: (0, 0),
@@ -61,7 +69,6 @@ impl<T> Menu<T> {
             ref mut options,
             ref mut matcher,
             ref mut matches,
-            ref format_fn,
             ..
         } = *self;
 
@@ -72,8 +79,7 @@ impl<T> Menu<T> {
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
-                    // TODO: maybe using format_fn isn't the best idea here
-                    let text = (format_fn)(option);
+                    let text = option.filter_text();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     matcher
                         .fuzzy_match(&text, pattern)
@@ -134,7 +140,7 @@ impl<T> Menu<T> {
 
 use super::PromptEvent as MenuEvent;
 
-impl<T: 'static> Component for Menu<T> {
+impl<T: Item + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
@@ -264,20 +270,26 @@ impl<T: 'static> Component for Menu<T> {
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));
 
-        for (i, option) in options[scroll..(scroll + win_height).min(len)]
-            .iter()
-            .enumerate()
-        {
-            let line = Some(i + scroll);
-            // TODO: set bg for the whole row if selected
-            surface.set_stringn(
-                area.x,
-                area.y + i as u16,
-                (self.format_fn)(option),
-                area.width as usize - 1,
-                if line == self.cursor { selected } else { style },
-            );
+        use tui::layout::Constraint;
+        let rows = options.iter().map(|option| option.row());
+        let table = Table::new(rows)
+            .style(style)
+            .highlight_style(selected)
+            .column_spacing(1)
+            .widths(&[Constraint::Percentage(50), Constraint::Percentage(50)]);
 
+        use tui::widgets::TableState;
+
+        table.render_table(
+            area,
+            surface,
+            &mut TableState {
+                offset: scroll,
+                selected: self.cursor,
+            },
+        );
+
+        for (i, option) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if is_marked {

@@ -3,7 +3,7 @@ use crate::{
     layout::{Constraint, Rect},
     style::Style,
     text::Text,
-    widgets::{Block, StatefulWidget, Widget},
+    widgets::{Block, Widget},
 };
 use cassowary::{
     strength::{MEDIUM, REQUIRED, WEAK},
@@ -368,8 +368,8 @@ impl<'a> Table<'a> {
 
 #[derive(Debug, Clone)]
 pub struct TableState {
-    offset: usize,
-    selected: Option<usize>,
+    pub offset: usize,
+    pub selected: Option<usize>,
 }
 
 impl Default for TableState {
@@ -394,10 +394,11 @@ impl TableState {
     }
 }
 
-impl<'a> StatefulWidget for Table<'a> {
-    type State = TableState;
+// impl<'a> StatefulWidget for Table<'a> {
+impl<'a> Table<'a> {
+    // type State = TableState;
 
-    fn render(mut self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    pub fn render_table(mut self, area: Rect, buf: &mut Buffer, state: &mut TableState) {
         if area.area() == 0 {
             return;
         }
@@ -522,7 +523,7 @@ fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect) {
 impl<'a> Widget for Table<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = TableState::default();
-        StatefulWidget::render(self, area, buf, &mut state);
+        Table::render_table(self, area, buf, &mut state);
     }
 }
 
