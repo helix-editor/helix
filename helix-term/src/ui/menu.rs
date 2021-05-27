@@ -230,7 +230,7 @@ impl<T: Item + 'static> Component for Menu<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let width = std::cmp::min(30, viewport.0);
 
-        const MAX: usize = 5;
+        const MAX: usize = 10;
         let height = std::cmp::min(self.options.len(), MAX);
         let height = std::cmp::min(height, viewport.1 as usize);
 
@@ -242,9 +242,11 @@ impl<T: Item + 'static> Component for Menu<T> {
         Some(self.size)
     }
 
+    // TODO: required size should re-trigger when we filter items so we can draw a smaller menu
+
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get("ui.text");
-        let selected = Style::default().fg(Color::Rgb(255, 255, 255));
+        let selected = cx.editor.theme.get("ui.menu.selected");
 
         let scroll = self.scroll;
 
@@ -289,13 +291,21 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
         );
 
+        // // TODO: set bg for the whole row if selected
+        // if line == self.cursor {
+        //     surface.set_style(
+        //         Rect::new(area.x, area.y + i as u16, area.width - 1, 1),
+        //         selected,
+        //     )
+        // }
+
         for (i, option) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if is_marked {
                 let cell = surface.get_mut(area.x + area.width - 2, area.y + i as u16);
                 cell.set_symbol("▐ ");
-                cell.set_style(selected);
+                // cell.set_style(selected);
                 // cell.set_style(if is_marked { selected } else { style });
             }
         }
