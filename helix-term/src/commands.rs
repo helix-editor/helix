@@ -674,6 +674,7 @@ pub fn search(cx: &mut Context) {
 
     cx.push_layer(Box::new(prompt));
 }
+// can't search next for ""compose"" for some reason
 
 pub fn _search_next(cx: &mut Context, extend: bool) {
     if let Some(query) = register::get('\\') {
@@ -1670,6 +1671,9 @@ pub mod insert {
 
             let head = pos + offs + text.len();
 
+            // TODO: range replace or extend
+            // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
+            // can be used with cx.mode to do replace or extend on most changes
             ranges.push(Range::new(
                 if range.is_empty() {
                     head

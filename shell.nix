@@ -12,6 +12,7 @@ pkgs.mkShell {
   # https://github.com/rust-lang/rust/issues/55979
   LD_LIBRARY_PATH="${stdenv.cc.cc.lib}/lib64:$LD_LIBRARY_PATH";
 
-  HELIX_RUNTIME=./runtime;
+  # HELIX_RUNTIME=./runtime;
+  HELIX_RUNTIME="/home/speed/src/helix/runtime";
 }
 

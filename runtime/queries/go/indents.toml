@@ -3,6 +3,7 @@ indent = [
   "const_declaration",
   "var_declaration",
   "type_declaration",
+  "type_spec",
   "function_declaration",
   "method_declaration",
   "composite_literal",

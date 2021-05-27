@@ -148,6 +148,13 @@ impl EditorView {
                     // TODO: scope matching: biggest union match? [string] & [html, string], [string, html] & [ string, html]
                     // can do this by sorting our theme matches based on array len (longest first) then stopping at the
                     // first rule that matches (rule.all(|scope| scopes.contains(scope)))
+                    // log::info!(
+                    //     "scopes: {:?}",
+                    //     spans
+                    //         .iter()
+                    //         .map(|span| theme.scopes()[span.0].as_str())
+                    //         .collect::<Vec<_>>()
+                    // );
                     let style = match spans.first() {
                         Some(span) => theme.get(theme.scopes()[span.0].as_str()),
                         None => theme.get("ui.text"),

@@ -745,7 +745,7 @@ struct LocalScope<'a> {
     local_defs: Vec<LocalDef<'a>>,
 }
 
-struct HighlightIter<'a, F>
+struct HighlightIter<'a, 'tree: 'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
 {
@@ -753,16 +753,16 @@ where
     byte_offset: usize,
     injection_callback: F,
     cancellation_flag: Option<&'a AtomicUsize>,
-    layers: Vec<HighlightIterLayer<'a>>,
+    layers: Vec<HighlightIterLayer<'a, 'tree>>,
     iter_count: usize,
     next_event: Option<HighlightEvent>,
     last_highlight_range: Option<(usize, usize, usize)>,
 }
 
-struct HighlightIterLayer<'a> {
+struct HighlightIterLayer<'a, 'tree: 'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: iter::Peekable<QueryCaptures<'a, Cow<'a, [u8]>>>,
+    captures: iter::Peekable<QueryCaptures<'a, 'tree, Cow<'a, [u8]>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
@@ -929,7 +929,7 @@ impl HighlightConfiguration {
     }
 }
 
-impl<'a> HighlightIterLayer<'a> {
+impl<'a, 'tree: 'a> HighlightIterLayer<'a, 'tree> {
     /// Create a new 'layer' of highlighting for this document.
     ///
     /// In the even that the new layer contains "combined injections" (injections where multiple
@@ -1193,7 +1193,7 @@ impl<'a> HighlightIterLayer<'a> {
     }
 }
 
-impl<'a, F> HighlightIter<'a, F>
+impl<'a, 'tree: 'a, F> HighlightIter<'a, 'tree, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
 {
@@ -1244,7 +1244,7 @@ where
         }
     }
 
-    fn insert_layer(&mut self, mut layer: HighlightIterLayer<'a>) {
+    fn insert_layer(&mut self, mut layer: HighlightIterLayer<'a, 'tree>) {
         if let Some(sort_key) = layer.sort_key() {
             let mut i = 1;
             while i < self.layers.len() {
@@ -1263,7 +1263,7 @@ where
     }
 }
 
-impl<'a, F> Iterator for HighlightIter<'a, F>
+impl<'a, 'tree: 'a, F> Iterator for HighlightIter<'a, 'tree, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
 {

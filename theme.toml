@@ -47,6 +47,8 @@
 "ui.text" = { fg = "#a4a0e8"} # lavender
 "ui.text.focus" = { fg = "#dbbfef"} # lilac
 
+"ui.menu.selected" = { fg = "#281733", bg = "#ffffff" } # revolver
+
 "warning" = "#ffcd1c"
 "error" = "#f47868"
 "info" = "#6F44F0"

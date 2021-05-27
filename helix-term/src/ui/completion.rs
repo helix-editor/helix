@@ -19,10 +19,7 @@ use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
     fn filter_text(&self) -> &str {
-        self.filter_text
-            .as_ref()
-            .unwrap_or_else(|| &self.label)
-            .as_str()
+        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
     }
 
     fn label(&self) -> &str {

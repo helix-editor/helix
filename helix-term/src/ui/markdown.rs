@@ -107,6 +107,8 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                                             None => text_style,
                                         };
 
+                                        // TODO: replace tabs with indentation
+
                                         let mut slice = &text[start..end];
                                         while let Some(end) = slice.find('\n') {
                                             // emit span up to newline
@@ -153,6 +155,7 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                 }
             }
             Event::Code(text) | Event::Html(text) => {
+                log::warn!("code {:?}", text);
                 let mut span = to_span(text);
                 span.style = code_style;
                 spans.push(span);
@@ -167,7 +170,9 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                 lines.push(Spans::default());
             }
             // TaskListMarker(bool) true if checked
-            _ => (),
+            _ => {
+                log::warn!("unhandled markdown event {:?}", event);
+            }
         }
         // build up a vec of Paragraph tui widgets
     }

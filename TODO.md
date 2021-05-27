@@ -2,6 +2,8 @@
 
 ------
 
+as you type completion!
+
 - tree sitter:
   - lua
   - markdown
@@ -17,6 +19,9 @@
     a hook to trigger signature help text / autocompletion
 - [ ] document.on_type provider triggers
 - [ ] completion isIncomplete support
+
+- [ ] scroll wheel support
+- [ ] matching bracket highlight
 
 1
 - [ ] respect view fullscreen flag
