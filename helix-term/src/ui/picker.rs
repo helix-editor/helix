@@ -118,6 +118,20 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
+fn inner_rect(area: Rect) -> Rect {
+    let padding_vertical = area.height * 20 / 100;
+    let padding_horizontal = area.width * 20 / 100;
+
+    let area = Rect::new(
+        area.x + padding_horizontal,
+        area.y + padding_vertical,
+        area.width - padding_horizontal * 2,
+        area.height - padding_vertical * 2,
+    );
+
+    area
+}
+
 impl<T: 'static> Component for Picker<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
@@ -191,15 +205,7 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let padding_vertical = area.height * 20 / 100;
-        let padding_horizontal = area.width * 20 / 100;
-
-        let area = Rect::new(
-            area.x + padding_horizontal,
-            area.y + padding_vertical,
-            area.width - padding_horizontal * 2,
-            area.height - padding_vertical * 2,
-        );
+        let area = inner_rect(area);
 
         // -- Render the frame:
 
@@ -260,6 +266,15 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+        // TODO: this is mostly duplicate code
+        let area = inner_rect(area);
+        let block = Block::default().borders(Borders::ALL);
+        // calculate the inner area inside the box
+        let inner = block.inner(area);
+
+        // prompt area
+        let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
+
         self.prompt.cursor_position(area, editor)
     }
 }

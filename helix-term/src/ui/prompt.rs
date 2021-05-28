@@ -271,8 +271,9 @@ impl Component for Prompt {
     }
 
     fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+        let line = area.height as usize - 1;
         Some(Position::new(
-            area.y as usize,
+            area.y as usize + line,
             area.x as usize + self.prompt.len() + self.cursor,
         ))
     }
