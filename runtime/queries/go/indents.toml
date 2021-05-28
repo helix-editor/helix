@@ -4,8 +4,9 @@ indent = [
   "var_declaration",
   "type_declaration",
   "type_spec",
-  "function_declaration",
-  "method_declaration",
+  # simply block should be enough
+  # "function_declaration",
+  # "method_declaration",
   "composite_literal",
   "func_literal",
   "literal_value",
