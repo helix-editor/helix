@@ -116,6 +116,29 @@ impl Document {
         Ok(doc)
     }
 
+    // TODO: remove view_id dependency here
+    pub fn format(&mut self, view_id: ViewId) {
+        if let Some(language_server) = self.language_server() {
+            // TODO: await, no blocking
+            let transaction = helix_lsp::block_on(
+                language_server
+                    .text_document_formatting(self.identifier(), lsp::FormattingOptions::default()),
+            )
+            .map(|edits| {
+                helix_lsp::util::generate_transaction_from_edits(
+                    self.text(),
+                    edits,
+                    language_server.offset_encoding(),
+                )
+            });
+
+            if let Ok(transaction) = transaction {
+                self.apply(&transaction, view_id);
+                self.append_changes_to_history(view_id);
+            }
+        }
+    }
+
     // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
     // or is that handled by the OS/async layer
     pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {

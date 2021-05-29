@@ -890,12 +890,12 @@ mod cmd {
     }
 
     fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let id = editor.view().doc;
-        let doc = &mut editor.documents[id];
+        let (view, doc) = editor.current();
         if doc.path().is_none() {
             editor.set_error("cannot write a buffer without a filename".to_string());
             return;
         }
+        doc.format(view.id); // TODO: merge into save
         tokio::spawn(doc.save());
     }
 
@@ -906,25 +906,7 @@ mod cmd {
     fn format(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let (view, doc) = editor.current();
 
-        if let Some(language_server) = doc.language_server() {
-            // TODO: await, no blocking
-            let transaction = helix_lsp::block_on(
-                language_server
-                    .text_document_formatting(doc.identifier(), lsp::FormattingOptions::default()),
-            )
-            .map(|edits| {
-                helix_lsp::util::generate_transaction_from_edits(
-                    doc.text(),
-                    edits,
-                    language_server.offset_encoding(),
-                )
-            });
-
-            if let Ok(transaction) = transaction {
-                doc.apply(&transaction, view.id);
-                doc.append_changes_to_history(view.id);
-            }
-        }
+        doc.format(view.id)
     }
 
     pub const COMMAND_LIST: &[Command] = &[
@@ -2277,7 +2259,8 @@ pub fn space_mode(cx: &mut Context) {
                 'v' => vsplit(cx),
                 'w' => {
                     // save current buffer
-                    let doc = cx.doc();
+                    let (view, doc) = cx.current();
+                    doc.format(view.id); // TODO: merge into save
                     tokio::spawn(doc.save());
                 }
                 'c' => {
