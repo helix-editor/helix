@@ -584,7 +584,6 @@ impl Component for EditorView {
                                     if completion.is_empty() {
                                         self.completion = None;
                                     }
-                                    // TODO: if exiting InsertMode, remove completion
                                 }
                             }
                         }
@@ -605,16 +604,24 @@ impl Component for EditorView {
                 let (view, doc) = cx.editor.current();
                 view.ensure_cursor_in_view(doc);
 
-                if mode == Mode::Normal && doc.mode() == Mode::Insert {
-                    // HAXX: if we just entered insert mode from normal, clear key buf
-                    // and record the command that got us into this mode.
+                // mode transitions
+                match (mode, doc.mode()) {
+                    (Mode::Normal, Mode::Insert) => {
+                        // HAXX: if we just entered insert mode from normal, clear key buf
+                        // and record the command that got us into this mode.
 
-                    // how we entered insert mode is important, and we should track that so
-                    // we can repeat the side effect.
+                        // how we entered insert mode is important, and we should track that so
+                        // we can repeat the side effect.
 
-                    self.last_insert.0 = self.keymap[&mode][&key];
-                    self.last_insert.1.clear();
-                };
+                        self.last_insert.0 = self.keymap[&mode][&key];
+                        self.last_insert.1.clear();
+                    }
+                    (Mode::Insert, Mode::Normal) => {
+                        // if exiting insert mode, remove completion
+                        self.completion = None;
+                    }
+                    _ => (),
+                }
 
                 EventResult::Consumed(callback)
             }

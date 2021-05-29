@@ -122,14 +122,12 @@ fn inner_rect(area: Rect) -> Rect {
     let padding_vertical = area.height * 20 / 100;
     let padding_horizontal = area.width * 20 / 100;
 
-    let area = Rect::new(
+    Rect::new(
         area.x + padding_horizontal,
         area.y + padding_vertical,
         area.width - padding_horizontal * 2,
         area.height - padding_vertical * 2,
-    );
-
-    area
+    )
 }
 
 impl<T: 'static> Component for Picker<T> {
