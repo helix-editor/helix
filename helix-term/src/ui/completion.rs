@@ -230,32 +230,52 @@ impl Component for Completion {
             // option.detail
             // ---
             // option.documentation
-            match &option.documentation {
-                Some(lsp::Documentation::String(s))
+
+            let doc = match &option.documentation {
+                Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
                     kind: lsp::MarkupKind::PlainText,
-                    value: s,
+                    value: contents,
                 })) => {
                     // TODO: convert to wrapped text
-                    let doc = s;
+                    Markdown::new(format!(
+                        "```rust\n{}\n```\n{}",
+                        option.detail.as_deref().unwrap_or_default(),
+                        contents.clone()
+                    ))
                 }
                 Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
                     kind: lsp::MarkupKind::Markdown,
                     value: contents,
                 })) => {
-                    let doc = Markdown::new(contents.clone());
-                    let half = area.height / 2;
-                    let height = 15.min(half);
-                    // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-                    let area = Rect::new(0, area.height - height - 2, area.width, height);
-
-                    // clear area
-                    let background = cx.editor.theme.get("ui.popup");
-                    surface.clear_with(area, background);
-                    doc.render(area, surface, cx);
+                    // TODO: set language based on doc scope
+                    Markdown::new(format!(
+                        "```rust\n{}\n```\n{}",
+                        option.detail.as_deref().unwrap_or_default(),
+                        contents.clone()
+                    ))
                 }
-                None => (),
-            }
+                None if option.detail.is_some() => {
+                    // TODO: copied from above
+
+                    // TODO: set language based on doc scope
+                    Markdown::new(format!(
+                        "```rust\n{}\n```",
+                        option.detail.as_deref().unwrap_or_default(),
+                    ))
+                }
+                None => return,
+            };
+
+            let half = area.height / 2;
+            let height = 15.min(half);
+            // -2 to subtract command line + statusline. a bit of a hack, because of splits.
+            let area = Rect::new(0, area.height - height - 2, area.width, height);
+
+            // clear area
+            let background = cx.editor.theme.get("ui.popup");
+            surface.clear_with(area, background);
+            doc.render(area, surface, cx);
         }
     }
 }
