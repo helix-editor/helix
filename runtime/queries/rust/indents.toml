@@ -19,7 +19,8 @@ indent = [
  "enum_variant_list",
  "binary_expression",
  "field_expression",
- "where_clause"
+ "where_clause",
+ "macro_invocation"
 ]
 
 outdent = [
