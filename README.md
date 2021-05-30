@@ -58,5 +58,5 @@ a good overview of the internals.
 
 # Getting help
 
-Discuss the project on the community [Matrix channel](https://matrix.to/#/#helix-editor:matrix.org).
+Discuss the project on the community [Matrix channel](https://matrix.to/#/#helix-community:matrix.org).
 
