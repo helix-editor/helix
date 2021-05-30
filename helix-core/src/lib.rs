@@ -13,7 +13,7 @@ mod position;
 pub mod register;
 pub mod search;
 pub mod selection;
-pub mod state;
+mod state;
 pub mod syntax;
 mod transaction;
 
