@@ -231,6 +231,12 @@ impl Component for Completion {
             // ---
             // option.documentation
 
+            let (view, doc) = cx.editor.current();
+            let language = doc
+                .language()
+                .and_then(|scope| scope.strip_prefix("source."))
+                .unwrap_or("");
+
             let doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
@@ -239,7 +245,8 @@ impl Component for Completion {
                 })) => {
                     // TODO: convert to wrapped text
                     Markdown::new(format!(
-                        "```rust\n{}\n```\n{}",
+                        "```{}\n{}\n```\n{}",
+                        language,
                         option.detail.as_deref().unwrap_or_default(),
                         contents.clone()
                     ))
@@ -250,7 +257,8 @@ impl Component for Completion {
                 })) => {
                     // TODO: set language based on doc scope
                     Markdown::new(format!(
-                        "```rust\n{}\n```\n{}",
+                        "```{}\n{}\n```\n{}",
+                        language,
                         option.detail.as_deref().unwrap_or_default(),
                         contents.clone()
                     ))
@@ -260,7 +268,8 @@ impl Component for Completion {
 
                     // TODO: set language based on doc scope
                     Markdown::new(format!(
-                        "```rust\n{}\n```",
+                        "```{}\n{}\n```",
+                        language,
                         option.detail.as_deref().unwrap_or_default(),
                     ))
                 }

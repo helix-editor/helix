@@ -113,7 +113,8 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                                         while let Some(end) = slice.find('\n') {
                                             // emit span up to newline
                                             let text = &slice[..end];
-                                            let span = Span::styled(text.to_owned(), style);
+                                            let text = text.replace('\t', "    "); // replace tabs
+                                            let span = Span::styled(text, style);
                                             spans.push(span);
 
                                             // truncate slice to after newline
@@ -126,7 +127,8 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
 
                                         // if there's anything left, emit it too
                                         if !slice.is_empty() {
-                                            let span = Span::styled(slice.to_owned(), style);
+                                            let span =
+                                                Span::styled(slice.replace('\t', "    "), style);
                                             spans.push(span);
                                         }
                                     }
