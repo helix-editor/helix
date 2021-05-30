@@ -1,0 +1,359 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Keymap</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;700&display=swap" rel="stylesheet">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html" class="active"><strong aria-hidden="true">3.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.2.</strong> Hooks</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="keymap"><a class="header" href="#keymap">Keymap</a></h1>
+<h2 id="normal-mode"><a class="header" href="#normal-mode">Normal mode</a></h2>
+<h3 id="movement"><a class="header" href="#movement">Movement</a></h3>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td>h</td><td>move left</td></tr>
+<tr><td>j</td><td>move down</td></tr>
+<tr><td>k</td><td>move up</td></tr>
+<tr><td>l</td><td>move right</td></tr>
+<tr><td>w</td><td>move next word start</td></tr>
+<tr><td>b</td><td>move previous word start</td></tr>
+<tr><td>e</td><td>move next word end</td></tr>
+<tr><td>t</td><td>find 'till next char</td></tr>
+<tr><td>f</td><td>find next char</td></tr>
+<tr><td>T</td><td>find 'till previous char</td></tr>
+<tr><td>F</td><td>find previous char</td></tr>
+<tr><td>^</td><td>move to the start of the line</td></tr>
+<tr><td>$</td><td>move to the end of the line</td></tr>
+<tr><td>m</td><td>Jump to matching bracket</td></tr>
+<tr><td>PageUp</td><td>Move page up</td></tr>
+<tr><td>PageDown</td><td>Move page down</td></tr>
+<tr><td>ctrl-u</td><td>Move half page up</td></tr>
+<tr><td>ctrl-d</td><td>Move half page down</td></tr>
+<tr><td>Tab</td><td>Switch to next view</td></tr>
+<tr><td>ctrl-i</td><td>Jump forward on the jumplist TODO: conflicts tab</td></tr>
+<tr><td>ctrl-o</td><td>Jump backward on the jumplist</td></tr>
+<tr><td>v</td><td>Enter select (extend) mode</td></tr>
+<tr><td>g</td><td>Enter goto mode</td></tr>
+<tr><td>:</td><td>Enter command mode</td></tr>
+<tr><td>z</td><td>Enter view mode</td></tr>
+<tr><td>space</td><td>Enter space mode</td></tr>
+<tr><td>K</td><td>Show documentation for the item under the cursor</td></tr>
+</tbody></table>
+<h3 id="changes"><a class="header" href="#changes">Changes</a></h3>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td>r</td><td>replace (single character change)</td></tr>
+<tr><td>i</td><td>Insert before selection</td></tr>
+<tr><td>a</td><td>Insert after selection (append)</td></tr>
+<tr><td>I</td><td>Insert at the start of the line</td></tr>
+<tr><td>A</td><td>Insert at the end of the line</td></tr>
+<tr><td>o</td><td>Open new line below selection</td></tr>
+<tr><td>o</td><td>Open new line above selection</td></tr>
+<tr><td>u</td><td>Undo change</td></tr>
+<tr><td>U</td><td>Redo change</td></tr>
+<tr><td>y</td><td>Yank selection</td></tr>
+<tr><td>p</td><td>Paste after selection</td></tr>
+<tr><td>P</td><td>Paste before selection</td></tr>
+<tr><td>&gt;</td><td>Indent selection</td></tr>
+<tr><td>&lt;</td><td>Unindent selection</td></tr>
+<tr><td>=</td><td>Format selection</td></tr>
+<tr><td>d</td><td>Delete selection</td></tr>
+<tr><td>c</td><td>Change selection (delete and enter insert mode)</td></tr>
+</tbody></table>
+<h3 id="selection-manipulation"><a class="header" href="#selection-manipulation">Selection manipulation</a></h3>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td>s</td><td>Select all regex matches inside selections</td></tr>
+<tr><td>S</td><td>Split selection into subselections on regex matches</td></tr>
+<tr><td>alt-s</td><td>Split selection on newlines</td></tr>
+<tr><td>;</td><td>Collapse selection onto a single cursor</td></tr>
+<tr><td>alt-;</td><td>Flip selection cursor and anchor</td></tr>
+<tr><td>%</td><td>Select entire file</td></tr>
+<tr><td>x</td><td>Select current line</td></tr>
+<tr><td>X</td><td>Extend to next line</td></tr>
+<tr><td>[</td><td>Expand selection to parent syntax node TODO: pick a key</td></tr>
+<tr><td>J</td><td>join lines inside selection</td></tr>
+<tr><td>K</td><td>keep selections matching the regex TODO: overlapped by hover help</td></tr>
+<tr><td>space</td><td>keep only the primary selection TODO: overlapped by space mode</td></tr>
+<tr><td>ctrl-c</td><td>Comment/uncomment the selections</td></tr>
+</tbody></table>
+<h3 id="search"><a class="header" href="#search">Search</a></h3>
+<blockquote>
+<p>TODO: The search implementation isn't ideal yet -- we don't support searching
+in reverse, or searching via smartcase.</p>
+</blockquote>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td>/</td><td>Search for regex pattern</td></tr>
+<tr><td>n</td><td>Select next search match</td></tr>
+<tr><td>N</td><td>Add next search match to selection</td></tr>
+<tr><td>*</td><td>Use current selection as the search pattern</td></tr>
+</tbody></table>
+<h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
+<p>I'm still pondering whether to keep this mode or not. It changes movement
+commands to extend the existing selection instead of replacing it.</p>
+<blockquote>
+<p>NOTE: It's a bit confusing at the moment because extend hasn't been
+implemented for all movement commands yet.</p>
+</blockquote>
+<h2 id="view-mode"><a class="header" href="#view-mode">View mode</a></h2>
+<p>View mode is intended for scrolling and manipulating the view without changing
+the selection.</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td>z , c</td><td>Vertically center the line</td></tr>
+<tr><td>t</td><td>Align the line to the top of the screen</td></tr>
+<tr><td>b</td><td>Align the line to the bottom of the screen</td></tr>
+<tr><td>m</td><td>Align the line to the middle of the screen (horizontally)</td></tr>
+<tr><td>j</td><td>Scroll the view downwards</td></tr>
+<tr><td>k</td><td>Scroll the view upwards</td></tr>
+</tbody></table>
+<h2 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h2>
+<p>Jumps to various locations.</p>
+<blockquote>
+<p>NOTE: Some of these features are only available with the LSP present.</p>
+</blockquote>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td>g</td><td>Go to the start of the file</td></tr>
+<tr><td>e</td><td>Go to the end of the file</td></tr>
+<tr><td>e</td><td>Go to definition</td></tr>
+<tr><td>t</td><td>Go to type definition</td></tr>
+<tr><td>r</td><td>Go to references</td></tr>
+<tr><td>i</td><td>Go to implementation</td></tr>
+</tbody></table>
+<h2 id="object-mode"><a class="header" href="#object-mode">Object mode</a></h2>
+<p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>
+<h2 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h2>
+<p>This layer is a kludge of mappings I had under leader key in neovim.</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td>f</td><td>Open file picker</td></tr>
+<tr><td>b</td><td>Open buffer picker</td></tr>
+<tr><td>v</td><td>Open a new vertical split into the current file</td></tr>
+<tr><td>w</td><td>Save changes to file</td></tr>
+<tr><td>c</td><td>Close the current split</td></tr>
+<tr><td>space</td><td>Keep primary selection TODO: it's here because space mode replaced it</td></tr>
+</tbody></table>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="configuration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="hooks.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="configuration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a rel="next" href="hooks.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
