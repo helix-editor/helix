@@ -21,7 +21,7 @@ shell for working on Helix.
 
 ### Arch Linux
 
-TODO: AUR
+A binary package is available on AUR as [helix-bin](https://aur.archlinux.org/packages/helix-bin/).
 
 ## Build from source
 

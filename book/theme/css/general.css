@@ -109,7 +109,7 @@ h6:target::before {
     margin-top: 1.275em;
     margin-bottom: .875em;
 }
-.content p, .content ol, .content ul, .content table, .content blockquote {
+.content p, .content ol, .content ul, .content table {
     margin-top: 0;
     margin-bottom: .875em;
 }
@@ -123,8 +123,7 @@ h6:target::before {
 .content .header:link,
 .content .header:visited {
     color: var(--fg);
-    /* color: white; */
-    color: #281733;
+    color: var(--heading-fg);
 }
 .content .header:link,
 .content .header:visited:hover {
@@ -168,12 +167,15 @@ table tbody tr:nth-child(2n) {
 
 
 blockquote {
-    margin: 20px 0;
-    padding: 0 20px;
+    margin: 1.5rem 0;
+    padding: 1rem 1.5rem;
     color: var(--fg);
+    opacity: .9;
     background-color: var(--quote-bg);
-    border-top: .1em solid var(--quote-border);
-    border-bottom: .1em solid var(--quote-border);
+    border-left: 4px solid var(--quote-border);
+}
+blockquote *:last-child {
+  margin-bottom: 0;
 }
 
 
