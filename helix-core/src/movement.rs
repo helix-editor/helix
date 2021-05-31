@@ -189,10 +189,10 @@ fn categorize(ch: char) -> Category {
         Category::Eol
     } else if ch.is_ascii_whitespace() {
         Category::Whitespace
+    } else if is_word(ch) {
+        Category::Word
     } else if ch.is_ascii_punctuation() {
         Category::Punctuation
-    } else if ch.is_ascii_alphanumeric() {
-        Category::Word
     } else {
         unreachable!()
     }
