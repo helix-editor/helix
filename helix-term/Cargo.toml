@@ -24,7 +24,7 @@ tokio = { version = "1", features = ["full"] }
 num_cpus = "1"
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.19", features = ["event-stream"] }
-clap = { version = "3.0.0-beta.2 ", default-features = false, features = ["std", "cargo"] }
+pico-args = "0.4"
 
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 

@@ -1,8 +1,6 @@
-use clap::ArgMatches as Args;
-
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{compositor::Compositor, ui};
+use crate::{compositor::Compositor, ui, Args};
 
 use log::{error, info};
 
@@ -47,8 +45,8 @@ impl Application {
         let size = compositor.size();
         let mut editor = Editor::new(size);
 
-        if let Ok(files) = args.values_of_t::<PathBuf>("files") {
-            for file in files {
+        if !args.files.is_empty() {
+            for file in args.files {
                 editor.open(file, Action::VerticalSplit)?;
             }
         } else {

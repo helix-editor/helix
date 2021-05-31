@@ -11,7 +11,6 @@ license = "MPL-2.0"
 helix-syntax = { path = "../helix-syntax" }
 
 ropey = "1.2"
-anyhow = "1"
 smallvec = "1.4"
 tendril = "0.4.2"
 unicode-segmentation = "1.6"

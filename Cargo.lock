@@ -78,21 +78,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clap"
-version = "3.0.0-beta.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bd1061998a501ee7d4b6d449020df3266ca3124b941ec56cf2005c3779ca142"
-dependencies = [
- "bitflags",
- "indexmap",
- "lazy_static",
- "os_str_bytes",
- "textwrap",
- "unicode-width",
- "vec_map",
-]
-
-[[package]]
 name = "crossbeam-utils"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -273,16 +258,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "hashbrown"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
-
-[[package]]
 name = "helix-core"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "etcetera",
  "helix-syntax",
  "once_cell",
@@ -335,7 +313,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "clap",
  "crossterm",
  "dirs-next",
  "fern",
@@ -349,6 +326,7 @@ dependencies = [
  "log",
  "num_cpus",
  "once_cell",
+ "pico-args",
  "pulldown-cmark",
  "serde",
  "serde_json",
@@ -421,16 +399,6 @@ dependencies = [
  "thread_local",
  "walkdir",
  "winapi-util",
-]
-
-[[package]]
-name = "indexmap"
-version = "1.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
-dependencies = [
- "autocfg",
- "hashbrown",
 ]
 
 [[package]]
@@ -603,12 +571,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af8b08b04175473088b46763e51ee54da5f9a164bc162f615b91bc179dbf15a3"
 
 [[package]]
-name = "os_str_bytes"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb2e1c3ee07430c2cf76151675e583e0f19985fa6efae47d6848a3e2c824f85"
-
-[[package]]
 name = "parking_lot"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -644,6 +606,12 @@ name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
+
+[[package]]
+name = "pico-args"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d7afeb98c5a10e0bffcc7fc16e105b04d06729fac5fd6384aebf7ff5cb5a67d"
 
 [[package]]
 name = "pin-project-lite"
@@ -858,15 +826,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "textwrap"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "203008d98caf094106cfaba70acfed15e18ed3ddb7d94e49baec153a2b462789"
-dependencies = [
- "unicode-width",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1043,12 +1002,6 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
-
-[[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "version_check"

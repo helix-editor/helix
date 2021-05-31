@@ -8,7 +8,6 @@ mod ui;
 
 use application::Application;
 
-use clap::{App, Arg};
 use std::path::PathBuf;
 
 use anyhow::Error;
@@ -48,25 +47,48 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-fn main() {
-    let args = clap::app_from_crate!()
-        .arg(
-            Arg::new("files")
-                .about("Sets the input file to use")
-                .required(false)
-                .multiple(true)
-                .index(1),
-        )
-        .arg(
-            Arg::new("verbose")
-                .about("Increases logging verbosity each use for up to 3 times")
-                .short('v')
-                .takes_value(false)
-                .multiple_occurrences(true),
-        )
-        .get_matches();
+pub struct Args {
+    files: Vec<PathBuf>,
+}
 
-    let verbosity: u64 = args.occurrences_of("verbose");
+fn main() {
+    let help = format!(
+        "\
+{} {}
+{}
+{}
+
+USAGE:
+    hx [FLAGS] [files]...
+
+ARGS:
+    <files>...    Sets the input file to use
+
+FLAGS:
+    -h, --help       Prints help information
+    -v               Increases logging verbosity each use for up to 3 times
+    -V, --version    Prints version information
+",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        env!("CARGO_PKG_AUTHORS"),
+        env!("CARGO_PKG_DESCRIPTION"),
+    );
+
+    let mut pargs = pico_args::Arguments::from_env();
+
+    // Help has a higher priority and should be handled separately.
+    if pargs.contains(["-h", "--help"]) {
+        print!("{}", help);
+        std::process::exit(0);
+    }
+
+    let args = Args {
+        files: pargs.finish().into_iter().map(|arg| arg.into()).collect(),
+    };
+
+    // let verbosity: u64 = args.occurrences_of("verbose");
+    let verbosity: u64 = 0;
 
     setup_logging(verbosity).expect("failed to initialize logging.");
 
