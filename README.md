@@ -1,7 +1,7 @@
 # Helix
 
 
-[![Build status](https://github.com/helix-editor/helix/workflows/ci/badge.svg)](https://github.com/helix-editor/helix/actions)
+[![Build status](https://github.com/helix-editor/helix/workflows/build/badge.svg)](https://github.com/helix-editor/helix/actions)
 
 ![Screenshot](./screenshot.png)
 
@@ -10,7 +10,8 @@ A kakoune / neovim inspired editor, written in Rust.
 The editing model is very heavily based on kakoune; during development I found
 myself agreeing with most of kakoune's design decisions.
 
-For more information, see the [website](https://helix-editor.com).
+For more information, see the [website](https://helix-editor.com) or
+[documentation](https://docs.helix-editor.com/).
 
 # Features
 
