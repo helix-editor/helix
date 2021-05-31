@@ -83,14 +83,17 @@ FLAGS:
         std::process::exit(0);
     }
 
+    let mut verbosity: u64 = 0;
+
+    if pargs.contains("-v") {
+        verbosity = 1;
+    }
+
+    setup_logging(verbosity).expect("failed to initialize logging.");
+
     let args = Args {
         files: pargs.finish().into_iter().map(|arg| arg.into()).collect(),
     };
-
-    // let verbosity: u64 = args.occurrences_of("verbose");
-    let verbosity: u64 = 0;
-
-    setup_logging(verbosity).expect("failed to initialize logging.");
 
     // initialize language registry
     use helix_core::config_dir;
