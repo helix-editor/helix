@@ -12,8 +12,10 @@ indent = [
   "literal_value",
   "expression_case",
   "default_case",
+  # "communication_case",
   "argument_list",
-  "block"
+  "select_statement",
+  "block",
 ]
 
 outdent = [
