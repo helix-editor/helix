@@ -1,7 +1,7 @@
 # Helix
 
 
-[![Build status](https://github.com/helix-editor/helix/workflows/build/badge.svg)](https://github.com/helix-editor/helix/actions)
+[![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 
 ![Screenshot](./screenshot.png)
 
