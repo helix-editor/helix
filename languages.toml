@@ -144,3 +144,12 @@ file-types = ["php"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "haskell"
+scope = "source.haskell"
+injection-regex = "haskell"
+file-types = ["hs"]
+roots = []
+
+indent = { tab-width = 2, unit = "  " }
