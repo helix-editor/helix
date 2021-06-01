@@ -885,8 +885,15 @@ mod cmd {
     }
 
     fn open(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let path = args[0];
-        editor.open(path.into(), Action::Replace);
+        match args.get(0) {
+            Some(path) => {
+                // TODO: handle error
+                editor.open(path.into(), Action::Replace);
+            }
+            None => {
+                editor.set_error("wrong argument count".to_string());
+            }
+        };
     }
 
     fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
