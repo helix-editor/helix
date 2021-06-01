@@ -898,6 +898,12 @@ mod cmd {
 
     fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let (view, doc) = editor.current();
+        if let Some(path) = args.get(0) {
+            if let Err(err) = doc.set_path(Path::new(path)) {
+                editor.set_error(format!("invalid filepath: {}", err));
+                return;
+            };
+        }
         if doc.path().is_none() {
             editor.set_error("cannot write a buffer without a filename".to_string());
             return;
@@ -941,7 +947,7 @@ mod cmd {
         Command {
             name: "write",
             alias: Some("w"),
-            doc: "Write changes to disk.",
+            doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
             completer: Some(completers::filename),
         },

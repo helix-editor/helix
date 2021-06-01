@@ -1,6 +1,6 @@
 use anyhow::{Context, Error};
 use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
@@ -62,6 +62,42 @@ where
             .unwrap_or_else(|_| ::std::process::abort());
         ptr::write(mut_ref, new_t);
     }
+}
+
+/// Normalize a path, removing things like `.` and `..`.
+///
+/// CAUTION: This does not resolve symlinks (unlike
+/// [`std::fs::canonicalize`]). This may cause incorrect or surprising
+/// behavior at times. This should be used carefully. Unfortunately,
+/// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
+/// fail, or on Windows returns annoying device paths. This is a problem Cargo
+/// needs to improve on.
+/// Copied from cargo: https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81
+pub fn normalize_path(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
 }
 
 use helix_lsp::lsp;
@@ -174,6 +210,20 @@ impl Document {
 
             Ok(())
         }
+    }
+
+    pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
+        // canonicalize path to absolute value
+        let current_dir = std::env::current_dir()?;
+        let path = normalize_path(&current_dir.join(path));
+
+        if let Some(parent) = path.parent() {
+            // TODO: return error as necessary
+            if parent.exists() {
+                self.path = Some(path);
+            }
+        }
+        Ok(())
     }
 
     pub fn set_language(
