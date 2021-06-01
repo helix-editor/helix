@@ -12,9 +12,9 @@ indent = [
   "literal_value",
   "expression_case",
   "default_case",
-  # "communication_case",
+  "type_case",
+  "communication_case",
   "argument_list",
-  "select_statement",
   "block",
 ]
 
