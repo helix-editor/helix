@@ -42,6 +42,11 @@ Now copy the `runtime/` directory somewhere. Helix will by default look for the
 runtime inside the same folder as the executable, but that can be overriden via
 the `HELIX_RUNTIME` environment variable.
 
+## Arch Linux
+There are two packages available from AUR:
+ - `helix-bin`: contains prebuilt binary from GitHub releases
+ - `helix-git`: builds the master branch of this repository
+
 # Contributing
 
 Contributors are very welcome! **No contribution is too small and all contributions are valued.**
