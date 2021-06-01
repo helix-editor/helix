@@ -64,8 +64,14 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
     let mut end = begin;
 
     for _ in 0..count {
+        // if beyond end of line, do nothing
         if begin + 1 == slice.len_chars() {
             return None;
+        }
+        // if on last char, only select that char
+        if begin + 2 == slice.len_chars() {
+            end += 1;
+            break;
         }
 
         let mut ch = slice.char(begin);
@@ -134,8 +140,14 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
     let mut end = begin;
 
     for _ in 0..count {
+        // if beyond end of line, do nothing
         if begin + 1 == slice.len_chars() {
             return None;
+        }
+        // if on last char, only select that char
+        if begin + 2 == slice.len_chars() {
+            end += 1;
+            break;
         }
 
         let ch = slice.char(begin);
