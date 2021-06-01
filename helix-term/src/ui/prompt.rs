@@ -111,6 +111,7 @@ impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let text_color = theme.get("ui.text.focus");
+        let selected_color = theme.get("ui.menu.selected");
         // completion
 
         let max_col = area.width / BASE_WIDTH;
@@ -133,7 +134,8 @@ impl Prompt {
 
             for (i, (_range, completion)) in self.completion.iter().enumerate() {
                 let color = if Some(i) == self.selection {
-                    Style::default().bg(Color::Rgb(104, 60, 232))
+                    // Style::default().bg(Color::Rgb(104, 60, 232))
+                    selected_color // TODO: just invert bg
                 } else {
                     text_color
                 };
@@ -158,14 +160,9 @@ impl Prompt {
         if let Some(doc) = (self.doc_fn)(&self.line) {
             let text = ui::Text::new(doc.to_string());
 
-            let area = Rect::new(
-                completion_area.x,
-                completion_area.y - 3,
-                completion_area.width,
-                3,
-            );
+            let area = Rect::new(completion_area.x, completion_area.y - 3, BASE_WIDTH * 3, 3);
 
-            let background = theme.get("ui.window");
+            let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
             use tui::layout::Margin;

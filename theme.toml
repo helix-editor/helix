@@ -43,8 +43,11 @@
 "ui.statusline" = { bg = "#281733" } # revolver
 "ui.popup" = { bg = "#281733" } # revolver
 "ui.window" = { bg = "#452859" } # bossa nova
+"ui.window" = { bg = "#452859" } # bossa nova
+"ui.help" = { bg = "#6F44F0", fg = "#a4a0e8" }
+"ui.help" = { bg = "#7958DC", fg = "#171452" }
 
-"ui.text" = { fg = "#a4a0e8"} # lavender
+"ui.text" = { fg = "#a4a0e8" } # lavender
 "ui.text.focus" = { fg = "#dbbfef"} # lilac
 
 "ui.menu.selected" = { fg = "#281733", bg = "#ffffff" } # revolver
