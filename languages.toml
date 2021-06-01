@@ -66,6 +66,17 @@ roots = []
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "typescript"
+scope = "source.ts"
+injection-regex = "^(ts|typescript)$"
+file-types = ["ts"]
+roots = []
+# TODO: highlights-jsx, highlights-params
+
+language-server = { command = "typescript-language-server", args = ["--stdio"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "css"
 scope = "source.css"
 injection-regex = "css"

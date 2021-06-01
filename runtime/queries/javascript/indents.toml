@@ -1,0 +1,28 @@
+indent = [
+ "array",
+ "object",
+ "arguments",
+ "formal_parameters",
+
+ "statement_block",
+ "object_pattern",
+ "class_body",
+ "named_imports",
+
+ "binary_expression",
+ "return_statement",
+ "template_substitution",
+ # (expression_statement (call_expression))
+ "export_clause",
+
+ # typescript
+ "enum_declaration",
+ "interface_declaration",
+ "object_type",
+]
+
+outdent = [
+ "}",
+ "]",
+ ")"
+]
