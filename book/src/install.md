@@ -6,10 +6,7 @@ We provide pre-built binaries on the [GitHub Releases page](https://github.com/h
 
 TODO: brew tap
 
-```
-$ brew tap helix-editor/helix
-$ brew install helix
-```
+Please use a pre-built binary release for the time being.
 
 ## Linux
 
@@ -21,7 +18,9 @@ shell for working on Helix.
 
 ### Arch Linux
 
-A binary package is available on AUR as [helix-bin](https://aur.archlinux.org/packages/helix-bin/).
+Binary packages are available on AUR:
+- [helix-bin](https://aur.archlinux.org/packages/helix-bin/) contains the pre-built release
+- [helix-git](https://aur.archlinux.org/packages/helix-git/) builds the master branch
 
 ## Build from source
 
