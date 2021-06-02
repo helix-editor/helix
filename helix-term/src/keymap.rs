@@ -240,10 +240,12 @@ pub fn default() -> Keymaps {
             code: KeyCode::PageUp,
             modifiers: KeyModifiers::NONE
         } => commands::page_up,
+        ctrl!('b') => commands::page_up,
         KeyEvent {
             code: KeyCode::PageDown,
             modifiers: KeyModifiers::NONE
         } => commands::page_down,
+        ctrl!('f') => commands::page_down,
         ctrl!('u') => commands::half_page_up,
         ctrl!('d') => commands::half_page_down,
 
