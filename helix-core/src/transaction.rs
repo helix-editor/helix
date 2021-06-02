@@ -415,7 +415,7 @@ impl ChangeSet {
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
 /// a single transaction.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Transaction {
     changes: ChangeSet,
     selection: Option<Selection>,
