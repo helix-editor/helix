@@ -65,6 +65,11 @@ Some suggestions to get started:
 We provide an [architecture.md](./docs/architecture.md) that should give you
 a good overview of the internals.
 
+## Usage
+ 
+### Shortcuts
+ - <space>f - fuzzy searching of open files in the buffer
+
 # Getting help
 
 Discuss the project on the community [Matrix channel](https://matrix.to/#/#helix-community:matrix.org).
