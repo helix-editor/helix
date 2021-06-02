@@ -18,6 +18,15 @@ roots = []
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "elixir"
+scope = "source.elixir"
+injection-regex = "elixir"
+file-types = ["ex", "exs"]
+roots = []
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "json"
 scope = "source.json"
 injection-regex = "json"
