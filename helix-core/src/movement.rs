@@ -64,7 +64,7 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
     let mut end = begin;
 
     for _ in 0..count {
-        if begin + 2 > slice.len_chars() {
+        if begin + 1 == slice.len_chars() {
             return None;
         }
 
@@ -76,8 +76,9 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
             begin += 1;
         }
 
-        // return if not skip while?
-        skip_over_next(slice, &mut begin, |ch| ch == '\n');
+        if !skip_over_next(slice, &mut begin, |ch| ch == '\n') {
+            return None;
+        };
         ch = slice.char(begin);
 
         end = begin + 1;
@@ -134,7 +135,7 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
     let mut end = begin;
 
     for _ in 0..count {
-        if begin + 2 > slice.len_chars() {
+        if begin + 2 >= slice.len_chars() {
             return None;
         }
 
@@ -145,8 +146,9 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
             begin += 1;
         }
 
-        // return if not skip while?
-        skip_over_next(slice, &mut begin, |ch| ch == '\n');
+        if !skip_over_next(slice, &mut begin, |ch| ch == '\n') {
+            return None;
+        };
 
         end = begin;
 
@@ -199,18 +201,20 @@ fn categorize(ch: char) -> Category {
 }
 
 #[inline]
-pub fn skip_over_next<F>(slice: RopeSlice, pos: &mut usize, fun: F)
+/// Returns true if there are more characters left after the new position.
+pub fn skip_over_next<F>(slice: RopeSlice, pos: &mut usize, fun: F) -> bool
 where
     F: Fn(char) -> bool,
 {
     let mut chars = slice.chars_at(*pos);
 
-    for ch in chars {
+    while let Some(ch) = chars.next() {
         if !fun(ch) {
             break;
         }
         *pos += 1;
     }
+    chars.next().is_some()
 }
 
 #[inline]
