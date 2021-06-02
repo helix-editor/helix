@@ -107,7 +107,10 @@ fn build_dir(dir: &str, language: &str) {
 }
 
 fn main() {
-    let ignore = vec!["tree-sitter-typescript".to_string(), ".DS_Store".to_string()];
+    let ignore = vec![
+        "tree-sitter-typescript".to_string(),
+        ".DS_Store".to_string(),
+    ];
     let dirs = collect_tree_sitter_dirs(&ignore);
 
     let mut n_jobs = 0;
