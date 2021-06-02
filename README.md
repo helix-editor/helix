@@ -67,8 +67,11 @@ a good overview of the internals.
 
 ## Usage
  
-### Shortcuts
+### Common shortcuts
  - <space>f - fuzzy searching of open files in the buffer
+
+All shortcuts/keymaps can be found in the documentation on the website:
+- https://docs.helix-editor.com/keymap.html
 
 # Getting help
 
