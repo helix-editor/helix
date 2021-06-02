@@ -122,7 +122,9 @@ impl Compositor {
     }
 
     pub fn render(&mut self, cx: &mut Context) {
+        self.terminal.autoresize().unwrap();
         let area = self.size();
+
         let surface = self.terminal.current_buffer_mut();
 
         for layer in &self.layers {
