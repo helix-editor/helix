@@ -7,6 +7,10 @@ pub fn find_nth_next(
     n: usize,
     inclusive: bool,
 ) -> Option<usize> {
+    if pos >= text.len_chars() {
+        return None;
+    }
+
     // start searching right after pos
     let mut chars = text.chars_at(pos + 1);
 
