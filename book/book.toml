@@ -4,3 +4,6 @@ language = "en"
 multilingual = false
 src = "src"
 theme = "colibri"
+
+[output.html]
+cname = "docs.helix-editor.com"
