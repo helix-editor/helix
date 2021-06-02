@@ -35,10 +35,10 @@ use std::collections::HashMap;
 //          f = find_char()
 //          g = goto (gg, G, gc, gd, etc)
 //
-//          h = move_char_left(n)
-//          j = move_line_down(n)
-//          k = move_line_up(n)
-//          l = move_char_right(n)
+//          h = move_char_left(n)   || arrow-left  = move_char_left(n)
+//          j = move_line_down(n)   || arrow-down  = move_line_down(n)
+//          k = move_line_up(n)     || arrow_up    = move_line_up(n)
+//          l = move_char_right(n)  || arrow-right = move_char_right(n)
 //          : = command line
 //          ; = collapse selection to cursor
 //          " = use register
@@ -127,6 +127,24 @@ pub fn default() -> Keymaps {
         key!('j') => commands::move_line_down,
         key!('k') => commands::move_line_up,
         key!('l') => commands::move_char_right,
+
+        KeyEvent {
+            code: KeyCode::Left,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_char_left as Command,
+        KeyEvent {
+            code: KeyCode::Down,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_line_down,
+        KeyEvent {
+            code: KeyCode::Up,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_line_up,
+        KeyEvent {
+            code: KeyCode::Right,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_char_right,
+
 
         key!('t') => commands::find_till_char,
         key!('f') => commands::find_next_char,
@@ -268,6 +286,23 @@ pub fn default() -> Keymaps {
             key!('j') => commands::extend_line_down,
             key!('k') => commands::extend_line_up,
             key!('l') => commands::extend_char_right,
+
+            KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_char_left as Command,
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_line_down,
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_line_up,
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_char_right,
 
             key!('w') => commands::extend_next_word_start,
             key!('b') => commands::extend_prev_word_start,
