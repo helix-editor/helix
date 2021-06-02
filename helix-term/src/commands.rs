@@ -1031,6 +1031,9 @@ pub fn command_mode(cx: &mut Context) {
             }
 
             let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
+            if parts.is_empty() {
+                return;
+            }
 
             if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
                 (cmd.fun)(editor, &parts[1..], event);
