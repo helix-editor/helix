@@ -85,8 +85,8 @@ FLAGS:
 
     let mut verbosity: u64 = 0;
 
-    if pargs.contains("-v") {
-        verbosity = 1;
+    while pargs.contains("-v") {
+        verbosity += 1;
     }
 
     let conf_dir = config_dir();
