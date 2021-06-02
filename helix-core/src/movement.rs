@@ -64,7 +64,7 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
     let mut end = begin;
 
     for _ in 0..count {
-        if begin + 1 == slice.len_chars() {
+        if begin + 2 > slice.len_chars() {
             return None;
         }
 
@@ -134,7 +134,7 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
     let mut end = begin;
 
     for _ in 0..count {
-        if begin + 1 == slice.len_chars() {
+        if begin + 2 > slice.len_chars() {
             return None;
         }
 
