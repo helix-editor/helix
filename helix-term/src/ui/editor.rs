@@ -543,9 +543,14 @@ impl Component for EditorView {
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
-            Event::Key(key) => {
+            Event::Key(mut key) => {
                 // clear status
                 cx.editor.status_msg = None;
+
+                 //canonicalize the key
+                if key.modifiers == KeyModifiers::SHIFT {
+                    key.modifiers = KeyModifiers::NONE;
+                }
 
                 let (view, doc) = cx.editor.current();
                 let mode = doc.mode();

@@ -103,15 +103,6 @@ macro_rules! key {
     };
 }
 
-macro_rules! shift {
-    ($($ch:tt)*) => {
-        KeyEvent {
-            code: KeyCode::Char($($ch)*),
-            modifiers: KeyModifiers::SHIFT,
-        }
-    };
-}
-
 macro_rules! ctrl {
     ($($ch:tt)*) => {
         KeyEvent {
@@ -139,8 +130,8 @@ pub fn default() -> Keymaps {
 
         key!('t') => commands::find_till_char,
         key!('f') => commands::find_next_char,
-        shift!('T') => commands::till_prev_char,
-        shift!('F') => commands::find_prev_char,
+        key!('T') => commands::till_prev_char,
+        key!('F') => commands::find_prev_char,
         // and matching set for select mode (extend)
         //
         key!('r') => commands::replace,
@@ -157,11 +148,11 @@ pub fn default() -> Keymaps {
         key!(':') => commands::command_mode,
 
         key!('i') => commands::insert_mode,
-        shift!('I') => commands::prepend_to_line,
+        key!('I') => commands::prepend_to_line,
         key!('a') => commands::append_mode,
-        shift!('A') => commands::append_to_line,
+        key!('A') => commands::append_to_line,
         key!('o') => commands::open_below,
-        shift!('O') => commands::open_above,
+        key!('O') => commands::open_above,
         // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
 
@@ -174,12 +165,12 @@ pub fn default() -> Keymaps {
 
         key!('s') => commands::select_regex,
         alt!('s') => commands::split_selection_on_newline,
-        shift!('S') => commands::split_selection,
+        key!('S') => commands::split_selection,
         key!(';') => commands::collapse_selection,
         alt!(';') => commands::flip_selections,
         key!('%') => commands::select_all,
         key!('x') => commands::select_line,
-        shift!('X') => commands::extend_line,
+        key!('X') => commands::extend_line,
         // or select mode X?
         // extend_to_whole_line, crop_to_whole_line
 
@@ -199,25 +190,25 @@ pub fn default() -> Keymaps {
         key!('/') => commands::search,
         // ? for search_reverse
         key!('n') => commands::search_next,
-        shift!('N') => commands::extend_search_next,
+        key!('N') => commands::extend_search_next,
         // N for search_prev
         key!('*') => commands::search_selection,
 
         key!('u') => commands::undo,
-        shift!('U') => commands::redo,
+        key!('U') => commands::redo,
 
         key!('y') => commands::yank,
         // yank_all
         key!('p') => commands::paste_after,
         // paste_all
-        shift!('P') => commands::paste_before,
+        key!('P') => commands::paste_before,
 
         key!('>') => commands::indent,
         key!('<') => commands::unindent,
         key!('=') => commands::format_selections,
-        shift!('J') => commands::join_selections,
+        key!('J') => commands::join_selections,
         // TODO: conflicts hover/doc
-        shift!('K') => commands::keep_selections,
+        key!('K') => commands::keep_selections,
         // TODO: and another method for inverse
 
         // TODO: clashes with space mode
@@ -256,7 +247,7 @@ pub fn default() -> Keymaps {
 
         // move under <space>c
         ctrl!('c') => commands::toggle_comments,
-        shift!('K') => commands::hover,
+        key!('K') => commands::hover,
 
         // z family for save/restore/combine from/to sels from register
 
@@ -284,8 +275,8 @@ pub fn default() -> Keymaps {
 
             key!('t') => commands::extend_till_char,
             key!('f') => commands::extend_next_char,
-            shift!('T') => commands::extend_till_prev_char,
-            shift!('F') => commands::extend_prev_char,
+            key!('T') => commands::extend_till_prev_char,
+            key!('F') => commands::extend_prev_char,
 
             KeyEvent {
                 code: KeyCode::Esc,
