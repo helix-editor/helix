@@ -10,9 +10,9 @@ use application::Application;
 
 use std::path::PathBuf;
 
-use anyhow::Error;
+use anyhow::{Context, Result};
 
-fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
+fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
     // Let's say we depend on something which whose "info" level messages are too
@@ -27,7 +27,7 @@ fn setup_logging(verbosity: u64) -> Result<(), fern::InitError> {
         _3_or_more => base_config.level(log::LevelFilter::Trace),
     };
 
-    let home = dirs_next::home_dir().expect("can't find the home directory");
+    let home = dirs_next::home_dir().context("can't find the home directory")?;
 
     // Separate file config so we can include year, month and day in file logs
     let file_config = fern::Dispatch::new()
@@ -51,7 +51,7 @@ pub struct Args {
     files: Vec<PathBuf>,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let help = format!(
         "\
 {} {}
@@ -89,7 +89,7 @@ FLAGS:
         verbosity = 1;
     }
 
-    setup_logging(verbosity).expect("failed to initialize logging.");
+    setup_logging(verbosity).context("failed to initialize logging")?;
 
     let args = Args {
         files: pargs.finish().into_iter().map(|arg| arg.into()).collect(),
@@ -105,17 +105,16 @@ FLAGS:
         .as_deref()
         .unwrap_or(include_bytes!("../../languages.toml"));
 
-    LOADER.get_or_init(|| {
-        let config = toml::from_slice(toml).expect("Could not parse languages.toml");
-        Loader::new(config)
-    });
+    let config = toml::from_slice(toml).context("Could not parse languages.toml")?;
+    LOADER.get_or_init(|| Loader::new(config));
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let runtime = tokio::runtime::Runtime::new().context("unable to start tokio runtime")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
+    let mut app = Application::new(args).context("unable to create new appliction")?;
     runtime.block_on(async move {
-        let mut app = Application::new(args).unwrap();
-
         app.run().await;
     });
+
+    Ok(())
 }
