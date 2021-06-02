@@ -143,8 +143,9 @@ impl View {
             }
         }
 
-        let row = line - self.first_line as usize;
-        let col = col - self.first_col as usize;
+        // It is possible for underflow to occur if the buffer length is larger than the terminal width.
+        let row = line.saturating_sub(self.first_line);
+        let col = col.saturating_sub(self.first_col);
 
         Some(Position::new(row, col))
     }
