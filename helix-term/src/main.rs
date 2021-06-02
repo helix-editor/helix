@@ -8,6 +8,8 @@ mod ui;
 
 use application::Application;
 
+use helix_core::config_dir;
+
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
@@ -27,8 +29,6 @@ fn setup_logging(verbosity: u64) -> Result<()> {
         _3_or_more => base_config.level(log::LevelFilter::Trace),
     };
 
-    let home = dirs_next::home_dir().context("can't find the home directory")?;
-
     // Separate file config so we can include year, month and day in file logs
     let file_config = fern::Dispatch::new()
         .format(|out, message, record| {
@@ -40,7 +40,7 @@ fn setup_logging(verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(fern::log_file(home.join("helix.log"))?);
+        .chain(fern::log_file(config_dir().join("helix.log"))?);
 
     base_config.chain(file_config).apply()?;
 
@@ -89,6 +89,12 @@ FLAGS:
         verbosity = 1;
     }
 
+    let conf_dir = config_dir();
+
+    if !conf_dir.exists() {
+        std::fs::create_dir(&conf_dir);
+    }
+
     setup_logging(verbosity).context("failed to initialize logging")?;
 
     let args = Args {
@@ -96,7 +102,6 @@ FLAGS:
     };
 
     // initialize language registry
-    use helix_core::config_dir;
     use helix_core::syntax::{Loader, LOADER};
 
     // load $HOME/.config/helix/languages.toml, fallback to default config
