@@ -60,19 +60,19 @@ fn parse_args(mut args: Args) -> Result<Args> {
 
     iter.next(); // skip the program, we don't care about that
 
-    loop {
-        match iter.next() {
-            Some(arg) if arg == "--" => break, // stop parsing at this point treat the remaining as files
-            Some(arg) if arg == "--version" => args.display_version = true,
-            Some(arg) if arg == "--help" => args.display_help = true,
-            Some(arg) if arg.starts_with("--") => {
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--" => break, // stop parsing at this point treat the remaining as files
+            "--version" => args.display_version = true,
+            "--help" => args.display_help = true,
+            arg if arg.starts_with("--") => {
                 return Err(Error::msg(format!(
                     "unexpected double dash argument: {}",
                     arg
                 )))
             }
-            Some(arg) if arg.starts_with('-') => {
-                let arg = arg.as_str().get(1..).unwrap().chars();
+            arg if arg.starts_with('-') => {
+                let arg = arg.get(1..).unwrap().chars();
                 for chr in arg {
                     match chr {
                         'v' => args.verbosity += 1,
@@ -82,8 +82,7 @@ fn parse_args(mut args: Args) -> Result<Args> {
                     }
                 }
             }
-            Some(arg) => args.files.push(PathBuf::from(arg)),
-            None => break, // No more arguments to reduce
+            arg => args.files.push(PathBuf::from(arg)),
         }
     }
 
