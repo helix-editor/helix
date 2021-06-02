@@ -118,7 +118,7 @@ Jumps to various locations.
 |-----|-----------|
 | g   | Go to the start of the file |
 | e   | Go to the end of the file |
-| e   | Go to definition |
+| d   | Go to definition |
 | t   | Go to type definition |
 | r   | Go to references |
 | i   | Go to implementation |
