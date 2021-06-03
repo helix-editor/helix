@@ -272,7 +272,7 @@ pub fn default() -> Keymaps {
         ctrl!('o') => commands::jump_backward,
         // ctrl!('s') => commands::save_selection,
 
-        key!(' ') => commands::space_mode,
+        key!(' ') => commands::enter_space_mode,
         key!('z') => commands::view_mode,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
@@ -320,11 +320,26 @@ pub fn default() -> Keymaps {
         .into_iter(),
     );
 
+    let space = hashmap!(
+        key!('f') => commands::file_picker as Command,
+        key!('b') => commands::buffer_picker as Command,
+        key!('v') => commands::vsplit as Command,
+        key!('h') => commands::hsplit as Command,
+        key!('w') => commands::save_current_buffer as Command,
+        key!('c') => commands::close_split as Command,
+        // TODO: implement toggle alternate buffer for <space>
+        KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE
+        } => commands::exit_space_mode as Command,
+    );
+
     hashmap!(
         // as long as you cast the first item, rust is able to infer the other cases
         // TODO: select could be normal mode with some bindings merged over
         Mode::Normal => normal,
         Mode::Select => select,
+        Mode::Space => space,
         Mode::Insert => hashmap!(
             KeyEvent {
                 code: KeyCode::Esc,

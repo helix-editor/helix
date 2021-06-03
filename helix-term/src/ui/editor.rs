@@ -429,6 +429,7 @@ impl EditorView {
             Mode::Insert => "INS",
             Mode::Select => "SEL",
             Mode::Normal => "NOR",
+            Mode::Space => "SPC",
         };
         let text_color = if is_focused {
             theme.get("ui.text.focus")

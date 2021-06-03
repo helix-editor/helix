@@ -9,6 +9,7 @@ use helix_core::{
 
 use helix_view::{
     document::Mode,
+    editor::Action,
     view::{View, PADDING},
     Document, DocumentId, Editor, ViewId,
 };
@@ -2247,16 +2248,17 @@ pub fn jump_backward(cx: &mut Context) {
     };
 }
 
-//
-
-pub fn vsplit(cx: &mut Context) {
-    use helix_view::editor::Action;
+pub fn split(cx: &mut Context, vertical: bool) {
     let (view, doc) = cx.current();
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
     let first_line = view.first_line;
 
-    cx.editor.switch(id, Action::VerticalSplit);
+    if vertical {
+        cx.editor.switch(id, Action::VerticalSplit);
+    } else {
+        cx.editor.switch(id, Action::HorizontalSplit);
+    }
 
     // match the selection in the previous view
     let (view, doc) = cx.current();
@@ -2264,36 +2266,33 @@ pub fn vsplit(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-pub fn space_mode(cx: &mut Context) {
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            // TODO: temporarily show SPC in the mode list
-            match ch {
-                'f' => file_picker(cx),
-                'b' => buffer_picker(cx),
-                'v' => vsplit(cx),
-                'w' => {
-                    // save current buffer
-                    let (view, doc) = cx.current();
-                    doc.format(view.id); // TODO: merge into save
-                    tokio::spawn(doc.save());
-                }
-                'c' => {
-                    let view_id = cx.view().id;
-                    // close current split
-                    cx.editor.close(view_id, /* close_buffer */ false);
-                }
-                // ' ' => toggle_alternate_buffer(cx),
-                // TODO: temporary since space mode took it's old key
-                ' ' => keep_primary_selection(cx),
-                _ => (),
-            }
-        }
-    })
+pub fn hsplit(cx: &mut Context) {
+    split(cx, false);
+}
+
+pub fn vsplit(cx: &mut Context) {
+    split(cx, true);
+}
+
+pub fn enter_space_mode(cx: &mut Context) {
+    cx.doc().mode = Mode::Space;
+}
+
+pub fn exit_space_mode(cx: &mut Context) {
+    cx.doc().mode = Mode::Normal;
+}
+
+pub fn close_split(cx: &mut Context) {
+    let view_id = cx.view().id;
+    // close current split
+    cx.editor.close(view_id, /* close_buffer */ false);
+}
+
+pub fn save_current_buffer(cx: &mut Context) {
+    // save current buffer
+    let (view, doc) = cx.current();
+    doc.format(view.id); // TODO: merge into save
+    tokio::spawn(doc.save());
 }
 
 pub fn view_mode(cx: &mut Context) {

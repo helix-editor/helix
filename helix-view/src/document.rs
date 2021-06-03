@@ -16,6 +16,7 @@ use std::collections::HashMap;
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
+    Space,
     Select,
     Insert,
 }
