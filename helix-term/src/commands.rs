@@ -762,7 +762,6 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
             use std::cmp::{max, min};
             let max_to = max(0, doc.text().len_chars() - 1);
             let to = min(max_to, range.to() + 1);
-            log::info!("{} {} {}", max_to, to, doc.text().len_chars());
             (range.from(), to, None)
         });
     doc.apply(&transaction, view_id);
