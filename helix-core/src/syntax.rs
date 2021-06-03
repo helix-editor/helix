@@ -73,16 +73,37 @@ pub struct IndentQuery {
     pub outdent: HashSet<String>,
 }
 
+#[cfg(not(feature = "embed_runtime"))]
+fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
+    let root = crate::runtime_dir();
+    let path = root.join("queries").join(language).join(filename);
+    std::fs::read_to_string(&path)
+}
+
+#[cfg(feature = "embed_runtime")]
+use rust_embed::RustEmbed;
+
+#[cfg(feature = "embed_runtime")]
+#[derive(RustEmbed)]
+#[folder = "../runtime/"]
+struct Runtime;
+
+#[cfg(feature = "embed_runtime")]
+fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let root = PathBuf::new();
+    let path = root.join("queries").join(language).join(filename);
+
+    let query_bytes = Runtime::get(&path.as_path().display().to_string()).unwrap_or_default();
+    std::str::from_utf8(query_bytes.as_ref())
+        .map(|s| s.to_string())
+        .map_err(|err| err.into())
+}
+
 fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
 
-    let root = crate::runtime_dir();
-    // let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-
-    let path = root.join("queries").join(language).join(filename);
-
-    let query = std::fs::read_to_string(&path).unwrap_or_default();
+    let query = load_runtime_file(language, filename).unwrap_or_default();
 
     // TODO: the collect() is not ideal
     let inherits = INHERITS_REGEX
@@ -146,11 +167,8 @@ impl LanguageConfiguration {
             .get_or_init(|| {
                 let language = get_language_name(self.language_id).to_ascii_lowercase();
 
-                let root = crate::runtime_dir();
-                let path = root.join("queries").join(language).join("indents.toml");
-
-                let toml = std::fs::read(&path).ok()?;
-                toml::from_slice(&toml).ok()
+                let toml = load_runtime_file(&language, "indents.toml").ok()?;
+                toml::from_slice(&toml.as_bytes()).ok()
             })
             .as_ref()
     }

@@ -45,6 +45,13 @@ the `HELIX_RUNTIME` environment variable.
 > NOTE: You should set this to <path to repository>/runtime in development (if
 > running via cargo).
 
+If you want to bake the `runtime/` directory into the Helix binary you can build
+it with:
+
+```
+cargo install --path helix-term --features "embed_runtime"
+```
+
 ## Arch Linux
 There are two packages available from AUR:
  - `helix-bin`: contains prebuilt binary from GitHub releases

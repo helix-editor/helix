@@ -7,6 +7,10 @@ license = "MPL-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[features]
+embed_runtime = []
+
 [dependencies]
 helix-syntax = { path = "../helix-syntax" }
 
@@ -24,3 +28,4 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 
 etcetera = "0.3"
+rust-embed="5.9.0" 
