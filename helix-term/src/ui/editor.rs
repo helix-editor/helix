@@ -530,6 +530,7 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(mut key) => {
+                canonicalize_key(&mut key);
                 // clear status
                 cx.editor.status_msg = None;
 
@@ -551,7 +552,7 @@ impl Component for EditorView {
                     match mode {
                         Mode::Insert => {
                             // record last_insert key
-                            self.last_insert.1.push(canonicalize_key(&mut key));
+                            self.last_insert.1.push(key);
 
                             // let completion swallow the event if necessary
                             let mut consumed = false;
@@ -576,7 +577,7 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                self.insert_mode(&mut cxt, canonicalize_key(&mut key));
+                                self.insert_mode(&mut cxt, key);
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
@@ -587,7 +588,7 @@ impl Component for EditorView {
                                 }
                             }
                         }
-                        mode => self.command_mode(mode, &mut cxt, canonicalize_key(&mut key)),
+                        mode => self.command_mode(mode, &mut cxt, key),
                     }
                 }
 
@@ -673,7 +674,7 @@ impl Component for EditorView {
     }
 }
 
-fn canonicalize_key(key: &mut KeyEvent) -> KeyEvent {
+fn canonicalize_key(key: &mut KeyEvent) {
     if let KeyEvent {
         code: KeyCode::Char(_),
         modifiers: _,
@@ -681,5 +682,4 @@ fn canonicalize_key(key: &mut KeyEvent) -> KeyEvent {
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
     }
-    *key
 }
