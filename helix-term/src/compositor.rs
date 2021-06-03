@@ -122,10 +122,16 @@ impl Compositor {
     }
 
     pub fn render(&mut self, cx: &mut Context) {
-        self.terminal.autoresize().unwrap();
-        let area = self.size();
+        let area = self
+            .terminal
+            .autoresize()
+            .expect("Unable to determine terminal size");
+
+        // TODO: need to recalculate view tree if necessary
 
         let surface = self.terminal.current_buffer_mut();
+
+        let area = surface.area().clone();
 
         for layer in &self.layers {
             layer.render(area, surface, cx)

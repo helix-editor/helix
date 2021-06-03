@@ -160,7 +160,13 @@ impl Prompt {
         if let Some(doc) = (self.doc_fn)(&self.line) {
             let text = ui::Text::new(doc.to_string());
 
-            let area = Rect::new(completion_area.x, completion_area.y - 3, BASE_WIDTH * 3, 3);
+            let viewport = area;
+            let area = viewport.intersection(Rect::new(
+                completion_area.x,
+                completion_area.y - 3,
+                BASE_WIDTH * 3,
+                3,
+            ));
 
             let background = theme.get("ui.help");
             surface.clear_with(area, background);

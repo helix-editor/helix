@@ -137,12 +137,12 @@ where
     }
 
     /// Queries the backend for size and resizes if it doesn't match the previous size.
-    pub fn autoresize(&mut self) -> io::Result<()> {
+    pub fn autoresize(&mut self) -> io::Result<Rect> {
         let size = self.size()?;
         if size != self.viewport.area {
             self.resize(size)?;
         };
-        Ok(())
+        Ok(size)
     }
 
     /// Synchronizes terminal size, calls the rendering closure, flushes the current internal state

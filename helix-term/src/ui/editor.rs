@@ -240,7 +240,7 @@ impl EditorView {
             for selection in doc
                 .selection(view.id)
                 .iter()
-                .filter(|range| range.overlaps(&screen))
+                .filter(|range| screen.overlaps(&range))
             {
                 // TODO: render also if only one of the ranges is in viewport
                 let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
@@ -261,7 +261,7 @@ impl EditorView {
                         Rect::new(
                             viewport.x + start.col as u16,
                             viewport.y + start.row as u16,
-                            (end.col - start.col) as u16 + 1,
+                            ((end.col - start.col) as u16 + 1).min(viewport.width),
                             1,
                         ),
                         selection_style,
@@ -632,6 +632,10 @@ impl Component for EditorView {
     fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
+
+        // if the terminal size suddenly changed, we need to trigger a resize
+        cx.editor
+            .resize(Rect::new(area.x, area.y, area.width, area.height - 1)); // - 1 to account for commandline
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
