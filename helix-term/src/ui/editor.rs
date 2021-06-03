@@ -306,6 +306,7 @@ impl EditorView {
                         ),
                         cursor_style,
                     );
+                    // TODO: set cursor position for IME
                     if let Some(syntax) = doc.syntax() {
                         use helix_core::match_brackets;
                         let pos = doc.selection(view.id).cursor();
@@ -313,10 +314,15 @@ impl EditorView {
                         if let Some(pos) = pos {
                             let pos = view.screen_coords_at_pos(doc, text, pos);
                             if let Some(pos) = pos {
-                                let style = Style::default().add_modifier(Modifier::REVERSED);
-                                surface
-                                    .get_mut(pos.col as u16 + OFFSET, pos.row as u16)
-                                    .set_style(style);
+                                // this only prevents panic due to painting selection too far
+                                // TODO: prevent painting when scroll past x or in gutter
+                                // TODO: use a more correct width check
+                                if (pos.col as u16) < viewport.width {
+                                    let style = Style::default().add_modifier(Modifier::REVERSED);
+                                    surface
+                                        .get_mut(pos.col as u16 + OFFSET, pos.row as u16)
+                                        .set_style(style);
+                                }
                             }
                         }
                     }
