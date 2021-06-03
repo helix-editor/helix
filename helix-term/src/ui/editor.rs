@@ -692,8 +692,12 @@ impl Component for EditorView {
 }
 
 fn canonicalize_key(key: &mut KeyEvent) -> KeyEvent {
-    if let KeyEvent { code: KeyCode::Char(_), modifiers: KeyModifiers::SHIFT } = key {
-            key.modifiers = KeyModifiers::NONE;
+    if let KeyEvent {
+        code: KeyCode::Char(_),
+        modifiers: _,
+    } = key
+    {
+        key.modifiers.remove(KeyModifiers::SHIFT)
     }
     *key
 }
