@@ -131,7 +131,7 @@ impl Compositor {
 
         let surface = self.terminal.current_buffer_mut();
 
-        let area = surface.area().clone();
+        let area = *surface.area();
 
         for layer in &self.layers {
             layer.render(area, surface, cx)
