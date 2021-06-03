@@ -140,7 +140,7 @@ pub fn default() -> Keymaps {
         KeyEvent {
             code: KeyCode::Left,
             modifiers: KeyModifiers::NONE
-        } => commands::move_char_left as Command,
+        } => commands::move_char_left,
         KeyEvent {
             code: KeyCode::Down,
             modifiers: KeyModifiers::NONE
@@ -153,7 +153,6 @@ pub fn default() -> Keymaps {
             code: KeyCode::Right,
             modifiers: KeyModifiers::NONE
         } => commands::move_char_right,
-
 
         key!('t') => commands::find_till_char,
         key!('f') => commands::find_next_char,
@@ -299,19 +298,19 @@ pub fn default() -> Keymaps {
             KeyEvent {
                 code: KeyCode::Left,
                 modifiers: KeyModifiers::NONE
-            } => commands::move_char_left as Command,
+            } => commands::extend_char_left,
             KeyEvent {
                 code: KeyCode::Down,
                 modifiers: KeyModifiers::NONE
-            } => commands::move_line_down,
+            } => commands::extend_line_down,
             KeyEvent {
                 code: KeyCode::Up,
                 modifiers: KeyModifiers::NONE
-            } => commands::move_line_up,
+            } => commands::extend_line_up,
             KeyEvent {
                 code: KeyCode::Right,
                 modifiers: KeyModifiers::NONE
-            } => commands::move_char_right,
+            } => commands::extend_char_right,
 
             key!('w') => commands::extend_next_word_start,
             key!('b') => commands::extend_prev_word_start,
