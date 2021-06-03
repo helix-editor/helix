@@ -306,6 +306,20 @@ impl EditorView {
                         ),
                         cursor_style,
                     );
+                    if let Some(syntax) = doc.syntax() {
+                        use helix_core::match_brackets;
+                        let pos = doc.selection(view.id).cursor();
+                        let pos = match_brackets::find(syntax, doc.text(), pos);
+                        if let Some(pos) = pos {
+                            let pos = view.screen_coords_at_pos(doc, text, pos);
+                            if let Some(pos) = pos {
+                                let style = Style::default().add_modifier(Modifier::REVERSED);
+                                surface
+                                    .get_mut(pos.col as u16 + OFFSET, pos.row as u16)
+                                    .set_style(style);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -529,7 +543,8 @@ impl Component for EditorView {
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
-            Event::Key(key) => {
+            Event::Key(mut key) => {
+                canonicalize_key(&mut key);
                 // clear status
                 cx.editor.status_msg = None;
 
@@ -674,5 +689,15 @@ impl Component for EditorView {
 
         // It's easier to just not render the cursor and use selection rendering instead.
         None
+    }
+}
+
+fn canonicalize_key(key: &mut KeyEvent) {
+    if let KeyEvent {
+        code: KeyCode::Char(_),
+        modifiers: _,
+    } = key
+    {
+        key.modifiers.remove(KeyModifiers::SHIFT)
     }
 }

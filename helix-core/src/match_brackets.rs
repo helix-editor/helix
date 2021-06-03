@@ -1,6 +1,6 @@
 use crate::{Range, Rope, Selection, Syntax};
 
-// const PAIRS: &[(char, char)] = &[('(', ')'), ('{', '}'), ('[', ']')];
+const PAIRS: &[(char, char)] = &[('(', ')'), ('{', '}'), ('[', ']'), ('<', '>')];
 // limit matching pairs to only ( ) { } [ ] < >
 
 #[must_use]
@@ -20,15 +20,21 @@ pub fn find(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
         None => return None,
     };
 
+    if node.is_error() {
+        return None;
+    }
+
     let start_byte = node.start_byte();
     let end_byte = node.end_byte() - 1; // it's end exclusive
 
-    if start_byte == byte_pos {
-        return Some(doc.byte_to_char(end_byte));
-    }
+    if PAIRS.contains(&(doc.char(start_byte), doc.char(end_byte))) {
+        if start_byte == byte_pos {
+            return Some(doc.byte_to_char(end_byte));
+        }
 
-    if end_byte == byte_pos {
-        return Some(doc.byte_to_char(start_byte));
+        if end_byte == byte_pos {
+            return Some(doc.byte_to_char(start_byte));
+        }
     }
 
     None
