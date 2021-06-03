@@ -494,6 +494,10 @@ impl Document {
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
+
+    pub fn empty(&self) -> bool {
+        self.text == "\n"
+    }
 }
 
 #[cfg(test)]
