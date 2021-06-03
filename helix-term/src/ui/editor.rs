@@ -240,7 +240,7 @@ impl EditorView {
             for selection in doc
                 .selection(view.id)
                 .iter()
-                .filter(|range| screen.overlaps(&range))
+                .filter(|range| range.overlaps(&screen))
             {
                 // TODO: render also if only one of the ranges is in viewport
                 let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
