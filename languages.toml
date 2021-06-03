@@ -42,6 +42,7 @@ injection-regex = "c"
 file-types = ["c"] # TODO: ["h"]
 roots = []
 
+language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -51,6 +52,7 @@ injection-regex = "cpp"
 file-types = ["cc", "cpp", "hpp", "h"]
 roots = []
 
+language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]

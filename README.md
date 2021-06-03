@@ -65,6 +65,13 @@ Some suggestions to get started:
 We provide an [architecture.md](./docs/architecture.md) that should give you
 a good overview of the internals.
 
+## Usage
+ 
+### Keyboard shortcuts / Keymap
+
+All shortcuts/keymaps can be found in the documentation on the website:
+- https://docs.helix-editor.com/keymap.html
+
 # Getting help
 
 Discuss the project on the community [Matrix channel](https://matrix.to/#/#helix-community:matrix.org).

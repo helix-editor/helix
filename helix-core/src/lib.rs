@@ -58,12 +58,21 @@ pub fn runtime_dir() -> std::path::PathBuf {
 
 pub fn config_dir() -> std::path::PathBuf {
     // TODO: allow env var override
-    use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.config_dir();
     path.push("helix");
     path
 }
+
+pub fn cache_dir() -> std::path::PathBuf {
+    // TODO: allow env var override
+    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
+    let mut path = strategy.cache_dir();
+    path.push("helix");
+    path
+}
+
+use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 
 pub use ropey::{Rope, RopeSlice};
 

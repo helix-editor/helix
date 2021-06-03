@@ -1,4 +1,5 @@
 use anyhow::{Context, Error};
+use std::cell::Cell;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
@@ -40,7 +41,10 @@ pub struct Document {
     /// State at last commit. Used for calculating reverts.
     old_state: Option<State>,
     /// Undo tree.
-    history: History,
+    // It can be used as a cell where we will take it out to get some parts of the history and put
+    // it back as it separated from the edits. We could split out the parts manually but that will
+    // be more troublesome.
+    history: Cell<History>,
     last_saved_revision: usize,
     version: i32, // should be usize?
 
@@ -121,7 +125,7 @@ impl Document {
             old_state,
             diagnostics: Vec::new(),
             version: 0,
-            history: History::default(),
+            history: Cell::new(History::default()),
             last_saved_revision: 0,
             language_server: None,
         }
@@ -190,7 +194,9 @@ impl Document {
         let language_server = self.language_server.clone();
 
         // reset the modified flag
-        self.last_saved_revision = self.history.current_revision();
+        let history = self.history.take();
+        self.last_saved_revision = history.current_revision();
+        self.history.set(history);
 
         async move {
             use tokio::{fs::File, io::AsyncWriteExt};
@@ -335,7 +341,8 @@ impl Document {
     }
 
     pub fn undo(&mut self, view_id: ViewId) -> bool {
-        if let Some(transaction) = self.history.undo() {
+        let mut history = self.history.take();
+        if let Some(transaction) = history.undo() {
             let success = self._apply(&transaction, view_id);
 
             // reset changeset to fix len
@@ -343,11 +350,13 @@ impl Document {
 
             return success;
         }
+        self.history.set(history);
         false
     }
 
     pub fn redo(&mut self, view_id: ViewId) -> bool {
-        if let Some(transaction) = self.history.redo() {
+        let mut history = self.history.take();
+        if let Some(transaction) = history.redo() {
             let success = self._apply(&transaction, view_id);
 
             // reset changeset to fix len
@@ -355,6 +364,7 @@ impl Document {
 
             return success;
         }
+        self.history.set(history);
         false
     }
 
@@ -373,7 +383,9 @@ impl Document {
         // HAXX: we need to reconstruct the state as it was before the changes..
         let old_state = self.old_state.take().expect("no old_state available");
 
-        self.history.commit_revision(&transaction, &old_state);
+        let mut history = self.history.take();
+        history.commit_revision(&transaction, &old_state);
+        self.history.set(history);
     }
 
     #[inline]
@@ -383,9 +395,11 @@ impl Document {
 
     #[inline]
     pub fn is_modified(&self) -> bool {
+        let history = self.history.take();
+        let current_revision = history.current_revision();
+        self.history.set(history);
         self.path.is_some()
-            && (self.history.current_revision() != self.last_saved_revision
-                || !self.changes.is_empty())
+            && (current_revision != self.last_saved_revision || !self.changes.is_empty())
     }
 
     #[inline]

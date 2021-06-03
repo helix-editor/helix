@@ -194,8 +194,9 @@ impl Editor {
     }
 
     pub fn resize(&mut self, area: Rect) {
-        self.tree.resize(area);
-        self._refresh();
+        if self.tree.resize(area) {
+            self._refresh();
+        };
     }
 
     pub fn focus_next(&mut self) {

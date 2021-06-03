@@ -65,9 +65,7 @@ impl History {
         self.cursor == 0
     }
 
-    // TODO: I'd like to pass Transaction by reference but it fights with the borrowck
-
-    pub fn undo(&mut self) -> Option<Transaction> {
+    pub fn undo(&mut self) -> Option<&Transaction> {
         if self.at_root() {
             // We're at the root of undo, nothing to do.
             return None;
@@ -77,17 +75,17 @@ impl History {
 
         self.cursor = current_revision.parent;
 
-        Some(current_revision.revert.clone())
+        Some(&current_revision.revert)
     }
 
-    pub fn redo(&mut self) -> Option<Transaction> {
+    pub fn redo(&mut self) -> Option<&Transaction> {
         let current_revision = &self.revisions[self.cursor];
 
         // for now, simply pick the latest child (linear undo / redo)
         if let Some((index, transaction)) = current_revision.children.last() {
             self.cursor = *index;
 
-            return Some(transaction.clone());
+            return Some(&transaction);
         }
         None
     }

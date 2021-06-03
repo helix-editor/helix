@@ -6,10 +6,10 @@
 
 | Key | Description |
 |-----|-----------|
-| h   | move left |
-| j   | move down |
-| k   | move up |
-| l   | move right |
+| h, Left   | move left |
+| j, Down   | move down |
+| k, Up   | move up |
+| l, Right   | move right |
 | w   | move next word start |
 | b   | move previous word start |
 | e   | move next word end |

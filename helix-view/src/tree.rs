@@ -293,9 +293,13 @@ impl Tree {
         }
     }
 
-    pub fn resize(&mut self, area: Rect) {
-        self.area = area;
-        self.recalculate();
+    pub fn resize(&mut self, area: Rect) -> bool {
+        if self.area != area {
+            self.area = area;
+            self.recalculate();
+            return true;
+        }
+        false
     }
 
     pub fn recalculate(&mut self) {

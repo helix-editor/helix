@@ -8,13 +8,11 @@ mod ui;
 
 use application::Application;
 
-use helix_core::config_dir;
-
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 
-fn setup_logging(verbosity: u64) -> Result<()> {
+fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
     // Let's say we depend on something which whose "info" level messages are too
@@ -40,7 +38,7 @@ fn setup_logging(verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(fern::log_file(config_dir().join("helix.log"))?);
+        .chain(fern::log_file(logpath)?);
 
     base_config.chain(file_config).apply()?;
 
@@ -48,10 +46,60 @@ fn setup_logging(verbosity: u64) -> Result<()> {
 }
 
 pub struct Args {
+    display_help: bool,
+    display_version: bool,
+    verbosity: u64,
     files: Vec<PathBuf>,
 }
 
-fn main() -> Result<()> {
+fn parse_args(mut args: Args) -> Result<Args> {
+    let argv: Vec<String> = std::env::args().collect();
+    let mut iter = argv.iter();
+
+    iter.next(); // skip the program, we don't care about that
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--" => break, // stop parsing at this point treat the remaining as files
+            "--version" => args.display_version = true,
+            "--help" => args.display_help = true,
+            arg if arg.starts_with("--") => {
+                return Err(Error::msg(format!(
+                    "unexpected double dash argument: {}",
+                    arg
+                )))
+            }
+            arg if arg.starts_with('-') => {
+                let arg = arg.get(1..).unwrap().chars();
+                for chr in arg {
+                    match chr {
+                        'v' => args.verbosity += 1,
+                        'V' => args.display_version = true,
+                        'h' => args.display_help = true,
+                        _ => return Err(Error::msg(format!("unexpected short arg {}", chr))),
+                    }
+                }
+            }
+            arg => args.files.push(PathBuf::from(arg)),
+        }
+    }
+
+    // push the remaining args, if any to the files
+    for filename in iter {
+        args.files.push(PathBuf::from(filename));
+    }
+
+    Ok(args)
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let cache_dir = helix_core::cache_dir();
+    if !cache_dir.exists() {
+        std::fs::create_dir(&cache_dir);
+    }
+
+    let logpath = cache_dir.join("helix.log");
     let help = format!(
         "\
 {} {}
@@ -67,45 +115,48 @@ ARGS:
 FLAGS:
     -h, --help       Prints help information
     -v               Increases logging verbosity each use for up to 3 times
+                     (default file: {})
     -V, --version    Prints version information
 ",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
+        logpath.display(),
     );
 
-    let mut pargs = pico_args::Arguments::from_env();
+    let mut args: Args = Args {
+        display_help: false,
+        display_version: false,
+        verbosity: 0,
+        files: [].to_vec(),
+    };
+
+    args = parse_args(args).context("could not parse arguments")?;
 
     // Help has a higher priority and should be handled separately.
-    if pargs.contains(["-h", "--help"]) {
+    if args.display_help {
         print!("{}", help);
         std::process::exit(0);
     }
 
-    let mut verbosity: u64 = 0;
-
-    if pargs.contains("-v") {
-        verbosity = 1;
+    if args.display_version {
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        std::process::exit(0);
     }
 
-    let conf_dir = config_dir();
-
+    let conf_dir = helix_core::config_dir();
     if !conf_dir.exists() {
         std::fs::create_dir(&conf_dir);
     }
 
-    setup_logging(verbosity).context("failed to initialize logging")?;
-
-    let args = Args {
-        files: pargs.finish().into_iter().map(|arg| arg.into()).collect(),
-    };
+    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     // initialize language registry
     use helix_core::syntax::{Loader, LOADER};
 
     // load $HOME/.config/helix/languages.toml, fallback to default config
-    let config = std::fs::read(config_dir().join("languages.toml"));
+    let config = std::fs::read(helix_core::config_dir().join("languages.toml"));
     let toml = config
         .as_deref()
         .unwrap_or(include_bytes!("../../languages.toml"));
@@ -113,13 +164,9 @@ FLAGS:
     let config = toml::from_slice(toml).context("Could not parse languages.toml")?;
     LOADER.get_or_init(|| Loader::new(config));
 
-    let runtime = tokio::runtime::Runtime::new().context("unable to start tokio runtime")?;
-
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args).context("unable to create new appliction")?;
-    runtime.block_on(async move {
-        app.run().await;
-    });
+    app.run().await;
 
     Ok(())
 }
