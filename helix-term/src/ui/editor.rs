@@ -547,11 +547,6 @@ impl Component for EditorView {
                 // clear status
                 cx.editor.status_msg = None;
 
-                 //canonicalize the key
-                if key.modifiers == KeyModifiers::SHIFT {
-                    key.modifiers = KeyModifiers::NONE;
-                }
-
                 let (view, doc) = cx.editor.current();
                 let mode = doc.mode();
 
@@ -570,7 +565,7 @@ impl Component for EditorView {
                     match mode {
                         Mode::Insert => {
                             // record last_insert key
-                            self.last_insert.1.push(key);
+                            self.last_insert.1.push(canonicalize_key(&mut key));
 
                             // let completion swallow the event if necessary
                             let mut consumed = false;
@@ -595,7 +590,7 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                self.insert_mode(&mut cxt, key);
+                                self.insert_mode(&mut cxt, canonicalize_key(&mut key));
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
@@ -606,7 +601,7 @@ impl Component for EditorView {
                                 }
                             }
                         }
-                        mode => self.command_mode(mode, &mut cxt, key),
+                        mode => self.command_mode(mode, &mut cxt, canonicalize_key(&mut key)),
                     }
                 }
 
@@ -694,4 +689,11 @@ impl Component for EditorView {
         // It's easier to just not render the cursor and use selection rendering instead.
         None
     }
+}
+
+fn canonicalize_key(key: &mut KeyEvent) -> KeyEvent {
+    if let KeyEvent { code: KeyCode::Char(_), modifiers: KeyModifiers::SHIFT } = key {
+            key.modifiers = KeyModifiers::NONE;
+    }
+    *key
 }
