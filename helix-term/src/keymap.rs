@@ -321,6 +321,30 @@ pub fn default() -> Keymaps {
                 code: KeyCode::Tab,
                 modifiers: KeyModifiers::NONE
             } => commands::insert::insert_tab,
+            KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_char_left,
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_line_down,
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_line_up,
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_char_right,
+            KeyEvent {
+                code: KeyCode::Home,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_line_start,
+            KeyEvent {
+                code: KeyCode::End,
+                modifiers: KeyModifiers::NONE
+            } => commands::move_line_end,
 
             ctrl!('x') => commands::completion,
         ),
