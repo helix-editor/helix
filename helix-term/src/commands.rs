@@ -265,7 +265,7 @@ pub fn move_file_end(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = cx.current();
     let text = doc.text();
-    let last_line = text.line_to_char(text.len_lines().saturating_sub(1));
+    let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
     doc.set_selection(view.id, Selection::point(last_line));
 }
 
