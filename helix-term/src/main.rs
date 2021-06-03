@@ -8,13 +8,11 @@ mod ui;
 
 use application::Application;
 
-use helix_core::config_dir;
-
 use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result};
 
-fn setup_logging(verbosity: u64) -> Result<()> {
+fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
     // Let's say we depend on something which whose "info" level messages are too
@@ -40,7 +38,7 @@ fn setup_logging(verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(fern::log_file(config_dir().join("helix.log"))?);
+        .chain(fern::log_file(logpath)?);
 
     base_config.chain(file_config).apply()?;
 
@@ -96,6 +94,12 @@ fn parse_args(mut args: Args) -> Result<Args> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let cache_dir = helix_core::cache_dir();
+    if !cache_dir.exists() {
+        std::fs::create_dir(&cache_dir);
+    }
+
+    let logpath = cache_dir.join("helix.log");
     let help = format!(
         "\
 {} {}
@@ -111,12 +115,14 @@ ARGS:
 FLAGS:
     -h, --help       Prints help information
     -v               Increases logging verbosity each use for up to 3 times
+                     (default file: {})
     -V, --version    Prints version information
 ",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
+        logpath.display(),
     );
 
     let mut args: Args = Args {
@@ -139,19 +145,18 @@ FLAGS:
         std::process::exit(0);
     }
 
-    let conf_dir = config_dir();
-
+    let conf_dir = helix_core::config_dir();
     if !conf_dir.exists() {
         std::fs::create_dir(&conf_dir);
     }
 
-    setup_logging(args.verbosity).context("failed to initialize logging")?;
+    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     // initialize language registry
     use helix_core::syntax::{Loader, LOADER};
 
     // load $HOME/.config/helix/languages.toml, fallback to default config
-    let config = std::fs::read(config_dir().join("languages.toml"));
+    let config = std::fs::read(helix_core::config_dir().join("languages.toml"));
     let toml = config
         .as_deref()
         .unwrap_or(include_bytes!("../../languages.toml"));
