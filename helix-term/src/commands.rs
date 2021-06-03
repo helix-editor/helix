@@ -745,6 +745,10 @@ pub fn extend_line(cx: &mut Context) {
 // heuristic: append changes to history after each command, unless we're in insert mode
 
 fn _delete_selection(doc: &mut Document, view_id: ViewId) {
+    if doc.empty() {
+        return;
+    }
+
     // first yank the selection
     let values: Vec<String> = doc
         .selection(view_id)
