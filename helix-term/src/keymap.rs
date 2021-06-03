@@ -303,11 +303,11 @@ pub fn default() -> Keymaps {
             KeyEvent {
                 code: KeyCode::Home,
                 modifiers: KeyModifiers::NONE
-            } => commands::move_line_start,
+            } => commands::extend_line_start,
             KeyEvent {
                 code: KeyCode::End,
                 modifiers: KeyModifiers::NONE
-            } => commands::move_line_end,
+            } => commands::extend_line_end,
         )
         .into_iter(),
     );
