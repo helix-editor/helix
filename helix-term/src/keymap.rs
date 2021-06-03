@@ -295,20 +295,23 @@ pub fn default() -> Keymaps {
             key!('f') => commands::extend_next_char,
             shift!('T') => commands::extend_till_prev_char,
             shift!('F') => commands::extend_prev_char,
-
-            KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: KeyModifiers::NONE
-            } => commands::exit_select_mode as Command,
+            
+            key!('^') => commands::extend_line_start,
             KeyEvent {
                 code: KeyCode::Home,
                 modifiers: KeyModifiers::NONE
             } => commands::extend_line_start,
+            key!('$') => commands::extend_line_end,
             KeyEvent {
                 code: KeyCode::End,
                 modifiers: KeyModifiers::NONE
             } => commands::extend_line_end,
-        )
+
+            KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: KeyModifiers::NONE
+            } => commands::exit_select_mode,
+                    )
         .into_iter(),
     );
 
