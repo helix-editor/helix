@@ -193,7 +193,7 @@ pub fn move_line_end(cx: &mut Context) {
 
         // Line end is pos at the start of next line - 1
         // subtract another 1 because the line ends with \n
-        let pos = text.line_to_char(line + 1).saturating_sub(2);
+        let pos = text.line_to_char(line + 1).saturating_sub(1);
         Range::new(pos, pos)
     });
 
@@ -265,7 +265,7 @@ pub fn move_file_end(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = cx.current();
     let text = doc.text();
-    let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
+    let last_line = text.line_to_char(text.len_lines().saturating_sub(1));
     doc.set_selection(view.id, Selection::point(last_line));
 }
 
@@ -1250,7 +1250,7 @@ pub fn goto_mode(cx: &mut Context) {
         // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
         // to 1g
         let (view, doc) = cx.current();
-        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(2));
+        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(1));
         let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
         return;
@@ -1655,7 +1655,12 @@ pub mod insert {
             } else {
                 contents.char(pos - 1)
             };
-            let curr = contents.char(pos);
+            
+            let curr = if pos != contents.len_chars() { 
+                contents.char(pos)
+            } else {
+                ' '
+            };
 
             // TODO: offset range.head by 1? when calculating?
             let indent_level = indent::suggested_indent_for_pos(

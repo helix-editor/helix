@@ -25,7 +25,7 @@ pub fn move_horizontally(
         }
         Direction::Forward => {
             // Line end is pos at the start of next line - 1
-            let end = text.line_to_char(line + 1).saturating_sub(1);
+            let end = text.line_to_char(line + 1);
             nth_next_grapheme_boundary(text, pos, count).min(end)
         }
     };
@@ -45,7 +45,7 @@ pub fn move_vertically(
 
     let new_line = match dir {
         Direction::Backward => row.saturating_sub(count),
-        Direction::Forward => std::cmp::min(row.saturating_add(count), text.len_lines().saturating_sub(2)),
+        Direction::Forward => std::cmp::min(row.saturating_add(count), text.len_lines().saturating_sub(1)),
     };
 
     // convert to 0-indexed, subtract another 1 because len_chars() counts \n
