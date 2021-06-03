@@ -114,7 +114,7 @@ impl Prompt {
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
-        let max_col = area.width / BASE_WIDTH;
+        let max_col = std::cmp::max(1, area.width / BASE_WIDTH);
         let height = ((self.completion.len() as u16 + max_col - 1) / max_col);
         let completion_area = Rect::new(
             area.x,
