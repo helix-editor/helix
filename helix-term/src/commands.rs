@@ -1250,7 +1250,8 @@ pub fn goto_mode(cx: &mut Context) {
         // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
         // to 1g
         let (view, doc) = cx.current();
-        let pos = doc.text().line_to_char(count - 1);
+        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(2));
+        let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
         return;
     }
