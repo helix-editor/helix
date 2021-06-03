@@ -342,29 +342,35 @@ impl Document {
 
     pub fn undo(&mut self, view_id: ViewId) -> bool {
         let mut history = self.history.take();
-        if let Some(transaction) = history.undo() {
-            let success = self._apply(&transaction, view_id);
+        let success = if let Some(transaction) = history.undo() {
+            self._apply(&transaction, view_id)
+        } else {
+            false
+        };
+        self.history.set(history);
 
+        if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
-
-            return success;
         }
-        self.history.set(history);
-        false
+
+        success
     }
 
     pub fn redo(&mut self, view_id: ViewId) -> bool {
         let mut history = self.history.take();
-        if let Some(transaction) = history.redo() {
-            let success = self._apply(&transaction, view_id);
+        let success = if let Some(transaction) = history.redo() {
+            self._apply(&transaction, view_id)
+        } else {
+            false
+        };
+        self.history.set(history);
 
+        if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
-
-            return success;
         }
-        self.history.set(history);
+
         false
     }
 
