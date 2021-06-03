@@ -306,6 +306,20 @@ impl EditorView {
                         ),
                         cursor_style,
                     );
+                    if let Some(syntax) = doc.syntax() {
+                        use helix_core::match_brackets;
+                        let pos = doc.selection(view.id).cursor();
+                        let pos = match_brackets::find(syntax, doc.text(), pos);
+                        if let Some(pos) = pos {
+                            let pos = view.screen_coords_at_pos(doc, text, pos);
+                            if let Some(pos) = pos {
+                                let style = Style::default().add_modifier(Modifier::REVERSED);
+                                surface
+                                    .get_mut(pos.col as u16 + OFFSET, pos.row as u16)
+                                    .set_style(style);
+                            }
+                        }
+                    }
                 }
             }
         }
