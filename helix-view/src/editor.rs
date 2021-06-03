@@ -117,7 +117,7 @@ impl Editor {
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
         use helix_core::Rope;
-        let doc = Document::new(Rope::from("\n"));
+        let doc = Document::new(Rope::new());
         let id = self.documents.insert(doc);
         self.documents[id].id = id;
         self.switch(id, action);
