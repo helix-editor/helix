@@ -321,7 +321,6 @@ pub fn default() -> Keymaps {
 
             key!('T') => commands::extend_till_prev_char,
             key!('F') => commands::extend_prev_char,
-            
             key!('^') => commands::extend_line_start,
             KeyEvent {
                 code: KeyCode::Home,
