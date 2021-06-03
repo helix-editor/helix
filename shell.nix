@@ -4,6 +4,8 @@ pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
     (rust-bin.stable.latest.default.override { extensions = ["rust-src"]; })
     lld_10
+    lldb
+    # pythonPackages.six
     stdenv.cc.cc.lib
     # pkg-config
   ];
