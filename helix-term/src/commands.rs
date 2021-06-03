@@ -759,9 +759,8 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
     // then delete
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-            use std::cmp::{max, min};
-            let max_to = max(0, doc.text().len_chars() - 1);
-            let to = min(max_to, range.to() + 1);
+            let max_to = doc.text().len_chars().saturating_sub(1);
+            let to = std::cmp::min(max_to, range.to() + 1);
             (range.from(), to, None)
         });
     doc.apply(&transaction, view_id);
