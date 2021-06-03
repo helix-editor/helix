@@ -89,8 +89,9 @@ impl ChangeSet {
         if fragment.is_empty() {
             return;
         }
-
-        self.len_after += fragment.len();
+        
+        // Avoiding std::str::len() to account for UTF-8 characters.
+        self.len_after += fragment.chars().count();
 
         let new_last = match self.changes.as_mut_slice() {
             [.., Insert(prev)] | [.., Insert(prev), Delete(_)] => {
