@@ -1270,9 +1270,32 @@ pub fn goto_mode(cx: &mut Context) {
                 'g' => move_file_start(cx),
                 'e' => move_file_end(cx),
                 'd' => goto_definition(cx),
-                't' => goto_type_definition(cx),
+                'y' => goto_type_definition(cx),
                 'r' => goto_reference(cx),
                 'i' => goto_implementation(cx),
+
+                't' | 'm' | 'b' => {
+                    let (view, doc) = cx.current();
+
+                    let pos = doc.selection(view.id).cursor();
+                    let line = doc.text().char_to_line(pos);
+
+                    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+
+                    let last_line = view.last_line(doc);
+
+                    let line = match ch {
+                        't' => (view.first_line + scrolloff),
+                        'm' => (view.first_line + (view.area.height as usize / 2)),
+                        'b' => last_line.saturating_sub(scrolloff),
+                        _ => unreachable!(),
+                    }
+                    .min(last_line.saturating_sub(scrolloff));
+
+                    let pos = doc.text().line_to_char(line);
+
+                    doc.set_selection(view.id, Selection::point(pos));
+                }
                 _ => (),
             }
         }

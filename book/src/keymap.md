@@ -118,8 +118,11 @@ Jumps to various locations.
 |-----|-----------|
 | g   | Go to the start of the file |
 | e   | Go to the end of the file |
+| t   | Go to the top of the screen |
+| m   | Go to the middle of the screen |
+| b   | Go to the bottom of the screen |
 | d   | Go to definition |
-| t   | Go to type definition |
+| y   | Go to type definition |
 | r   | Go to references |
 | i   | Go to implementation |
 
