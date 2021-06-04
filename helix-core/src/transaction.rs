@@ -89,7 +89,7 @@ impl ChangeSet {
         if fragment.is_empty() {
             return;
         }
-        
+
         // Avoiding std::str::len() to account for UTF-8 characters.
         self.len_after += fragment.chars().count();
 

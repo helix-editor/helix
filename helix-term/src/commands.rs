@@ -759,7 +759,7 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
     // then delete
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-            let max_to = doc.text().len_chars().saturating_sub(1);
+            let max_to = doc.text().len_chars();
             let to = std::cmp::min(max_to, range.to() + 1);
             (range.from(), to, None)
         });
@@ -1655,8 +1655,8 @@ pub mod insert {
             } else {
                 contents.char(pos - 1)
             };
-            
-            let curr = if pos != contents.len_chars() { 
+
+            let curr = if pos != contents.len_chars() {
                 contents.char(pos)
             } else {
                 ' '
