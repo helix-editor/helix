@@ -34,6 +34,9 @@
 ; Namespaces
 
 (crate) @namespace
+(extern_crate_declaration
+    (crate)
+    name: (identifier) @namespace)
 (scoped_use_list
   path: (identifier) @namespace)
 (scoped_use_list
@@ -62,11 +65,9 @@
   function: (field_expression
     field: (field_identifier) @function.method))
 
-; (macro_invocation
-;   macro: (identifier) @function.macro
-;   "!" @function.macro)
 (macro_invocation
-  macro: (identifier) @function.macro)
+  macro: (identifier) @function.macro
+  "!" @function.macro)
 (macro_invocation
   macro: (scoped_identifier
            (identifier) @function.macro .))
@@ -111,6 +112,7 @@
 
 (lifetime (identifier) @label)
 
+"async" @keyword
 "break" @keyword
 "const" @keyword
 "continue" @keyword
@@ -144,7 +146,7 @@
 "use" @keyword
 "where" @keyword
 "while" @keyword
-(mutable_specifier) @keyword
+(mutable_specifier) @keyword.mut
 (use_list (self) @keyword)
 (scoped_use_list (self) @keyword)
 (scoped_identifier (self) @keyword)

@@ -45,15 +45,27 @@ impl Application {
         let size = compositor.size();
         let mut editor = Editor::new(size);
 
+        compositor.push(Box::new(ui::EditorView::new()));
+
         if !args.files.is_empty() {
-            for file in args.files {
-                editor.open(file, Action::VerticalSplit)?;
+            let first = &args.files[0]; // we know it's not empty
+            if first.is_dir() {
+                editor.new_file(Action::VerticalSplit);
+                compositor.push(Box::new(ui::file_picker(first.clone())));
+            } else {
+                for file in args.files {
+                    if file.is_dir() {
+                        return Err(anyhow::anyhow!(
+                            "expected a path to file, found a directory. (to open a directory pass it as first argument)"
+                        ));
+                    } else {
+                        editor.open(file, Action::VerticalSplit)?;
+                    }
+                }
             }
         } else {
             editor.new_file(Action::VerticalSplit);
         }
-
-        compositor.push(Box::new(ui::EditorView::new()));
 
         let mut app = Self {
             compositor,
