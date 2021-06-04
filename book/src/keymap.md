@@ -17,8 +17,6 @@
 | f   | find next char |
 | T   | find 'till previous char |
 | F   | find previous char |
-| ^   | move to the start of the line |
-| $   | move to the end of the line |
 | m   | Jump to matching bracket | 
 | PageUp | Move page up |
 | PageDown | Move page down |
@@ -118,6 +116,8 @@ Jumps to various locations.
 |-----|-----------|
 | g   | Go to the start of the file |
 | e   | Go to the end of the file |
+| h   | Go to the start of the line |
+| l   | Go to the end of the line |
 | t   | Go to the top of the screen |
 | m   | Go to the middle of the screen |
 | b   | Go to the bottom of the screen |
