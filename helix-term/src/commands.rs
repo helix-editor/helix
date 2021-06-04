@@ -718,7 +718,9 @@ pub fn select_line(cx: &mut Context) {
 
     let line = text.char_to_line(pos.head);
     let start = text.line_to_char(line);
-    let end = text.line_to_char(line + count).saturating_sub(1);
+    let end = text
+        .line_to_char(std::cmp::min(text.len_lines(), line + count))
+        .saturating_sub(1);
 
     doc.set_selection(view.id, Selection::single(start, end));
 }
