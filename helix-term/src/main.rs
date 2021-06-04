@@ -141,7 +141,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("GIT_DESCRIBE"));
         std::process::exit(0);
     }
 
