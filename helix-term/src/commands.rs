@@ -640,7 +640,7 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
             return;
         }
 
-        let head = end - 1;
+        let head = end;
 
         let selection = if extend {
             selection.clone().push(Range::new(start, head))
