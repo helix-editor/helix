@@ -203,3 +203,39 @@ impl Theme {
         &self.scopes
     }
 }
+
+#[test]
+fn test_parse_style_string() {
+    let fg = Value::String("#ffffff".to_string());
+
+    let mut style = Style::default();
+    parse_style(&mut style, fg);
+
+    assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
+}
+
+#[test]
+fn test_parse_style_table() {
+    let table = toml::toml! {
+        "keyword" = {
+            fg = "#ffffff",
+            bg = "#000000",
+            modifiers = ["bold"],
+        }
+    };
+
+    let mut style = Style::default();
+    if let Value::Table(entries) = table {
+        for (_name, value) in entries {
+            parse_style(&mut style, value);
+        }
+    }
+
+    assert_eq!(
+        style,
+        Style::default()
+            .fg(Color::Rgb(255, 255, 255))
+            .bg(Color::Rgb(0, 0, 0))
+            .add_modifier(Modifier::BOLD)
+    );
+}
