@@ -24,7 +24,6 @@ pub fn move_horizontally(
             nth_prev_grapheme_boundary(text, pos, count).max(start)
         }
         Direction::Forward => {
-            // Line end is pos at the start of next line - 1
             let end = text.line_to_char(line + 1);
             nth_next_grapheme_boundary(text, pos, count).min(end)
         }
