@@ -62,11 +62,9 @@
   function: (field_expression
     field: (field_identifier) @function.method))
 
-; (macro_invocation
-;   macro: (identifier) @function.macro
-;   "!" @function.macro)
 (macro_invocation
-  macro: (identifier) @function.macro)
+  macro: (identifier) @function.macro
+  "!" @function.macro)
 (macro_invocation
   macro: (scoped_identifier
            (identifier) @function.macro .))
@@ -111,6 +109,7 @@
 
 (lifetime (identifier) @label)
 
+"async" @keyword
 "break" @keyword
 "const" @keyword
 "continue" @keyword
