@@ -475,8 +475,8 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     // clamp into viewport
     let line = cursor
         .row
-        .min(view.first_line + scrolloff)
-        .max(last_line.saturating_sub(scrolloff));
+        .max(view.first_line + scrolloff)
+        .min(last_line.saturating_sub(scrolloff));
 
     let text = doc.text().slice(..);
     let pos = pos_at_coords(text, Position::new(line, cursor.col)); // this func will properly truncate to line end
