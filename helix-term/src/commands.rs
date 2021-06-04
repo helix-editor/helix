@@ -434,7 +434,9 @@ pub fn replace(cx: &mut Context) {
 
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    (range.from(), range.to() + 1, Some(text.clone()))
+                    let max_to = doc.text().len_chars();
+                    let to = std::cmp::min(max_to, range.to() + 1);
+                    (range.from(), to, Some(text.clone()))
                 });
 
             doc.apply(&transaction, view.id);
