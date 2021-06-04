@@ -166,13 +166,15 @@ pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+    scopes: Vec<String>,
 }
 
 impl Loader {
-    pub fn new(config: Configuration) -> Self {
+    pub fn new(config: Configuration, scopes: Vec<String>) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
+            scopes,
         };
 
         for config in config.language {
@@ -190,6 +192,10 @@ impl Loader {
         }
 
         loader
+    }
+
+    pub fn scopes(&self) -> &[String] {
+        &self.scopes
     }
 
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
