@@ -67,12 +67,12 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
     let mut end = begin;
 
     for _ in 0..count {
-        if begin + 1 == slice.len_chars() {
+        if begin == slice.len_chars() {
             return None;
         }
 
-        let mut ch = slice.char(begin);
-        let next = slice.char(begin + 1);
+        let mut ch = slice.char(begin.saturating_sub(1));
+        let next = slice.char(begin);
 
         // if we're at the end of a word, or on whitespce right before new one
         if categorize(ch) != categorize(next) {
