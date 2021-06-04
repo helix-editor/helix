@@ -767,6 +767,9 @@ mod test {
         let changes = a.compose(b);
 
         use Operation::*;
-        assert_eq!(changes.changes, &[Insert("これはヒレクスエディターです！ Definitely.".into())]);
+        assert_eq!(
+            changes.changes,
+            &[Insert("これはヒレクスエディターです！ Definitely.".into())]
+        );
     }
 }

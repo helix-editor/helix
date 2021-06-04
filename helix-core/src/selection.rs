@@ -485,7 +485,7 @@ mod test {
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
             &["abcd", "efg", "rs", "xyz", "1"]
         );
-        
+
         assert_eq!(
             result.ranges(),
             &[
