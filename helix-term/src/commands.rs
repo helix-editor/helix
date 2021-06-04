@@ -924,6 +924,27 @@ mod cmd {
         doc.format(view.id)
     }
 
+    fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        use parse_duration::parse;
+        use std::time::Duration;
+
+        let (view, doc) = editor.current();
+        let duration = match parse(&args.join(" ")) {
+            Ok(v) => v,
+            Err(e) => {
+                editor.set_error(e.to_string());
+                return;
+            }
+        };
+
+        let transaction = Transaction::insert(
+            doc.text(),
+            doc.selection(view.id),
+            Tendril::from(format!("{:?}", duration)),
+        );
+        doc.apply(&transaction, view.id);
+    }
+
     pub const COMMAND_LIST: &[Command] = &[
         Command {
             name: "quit",
@@ -965,6 +986,13 @@ mod cmd {
             alias: Some("fmt"),
             doc: "Format the file using a formatter.",
             fun: format,
+            completer: None,
+        },
+        Command {
+            name: "earlier",
+            alias: None,
+            doc: "Jump back to an earlier point in edit history.",
+            fun: earlier,
             completer: None,
         },
     ];
