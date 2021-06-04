@@ -475,8 +475,8 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     // clamp into viewport
     let line = cursor
         .row
-        .min(view.first_line + scrolloff)
-        .max(last_line.saturating_sub(scrolloff));
+        .max(view.first_line + scrolloff)
+        .min(last_line.saturating_sub(scrolloff));
 
     let text = doc.text().slice(..);
     let pos = pos_at_coords(text, Position::new(line, cursor.col)); // this func will properly truncate to line end
@@ -802,6 +802,9 @@ pub fn delete_selection(cx: &mut Context) {
     _delete_selection(doc, view.id);
 
     doc.append_changes_to_history(view.id);
+
+    // exit select mode, if currently in select mode
+    exit_select_mode(cx);
 }
 
 pub fn change_selection(cx: &mut Context) {
@@ -1281,7 +1284,8 @@ pub fn goto_mode(cx: &mut Context) {
         // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
         // to 1g
         let (view, doc) = cx.current();
-        let pos = doc.text().line_to_char(count - 1);
+        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(2));
+        let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
         return;
     }
@@ -1296,10 +1300,35 @@ pub fn goto_mode(cx: &mut Context) {
             match ch {
                 'g' => move_file_start(cx),
                 'e' => move_file_end(cx),
+                'h' => move_line_start(cx),
+                'l' => move_line_end(cx),
                 'd' => goto_definition(cx),
-                't' => goto_type_definition(cx),
+                'y' => goto_type_definition(cx),
                 'r' => goto_reference(cx),
                 'i' => goto_implementation(cx),
+
+                't' | 'm' | 'b' => {
+                    let (view, doc) = cx.current();
+
+                    let pos = doc.selection(view.id).cursor();
+                    let line = doc.text().char_to_line(pos);
+
+                    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+
+                    let last_line = view.last_line(doc);
+
+                    let line = match ch {
+                        't' => (view.first_line + scrolloff),
+                        'm' => (view.first_line + (view.area.height as usize / 2)),
+                        'b' => last_line.saturating_sub(scrolloff),
+                        _ => unreachable!(),
+                    }
+                    .min(last_line.saturating_sub(scrolloff));
+
+                    let pos = doc.text().line_to_char(line);
+
+                    doc.set_selection(view.id, Selection::point(pos));
+                }
                 _ => (),
             }
         }

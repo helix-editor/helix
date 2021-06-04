@@ -26,14 +26,16 @@ pub fn find(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
 
     let start_byte = node.start_byte();
     let end_byte = node.end_byte() - 1; // it's end exclusive
+    let start_char = doc.byte_to_char(start_byte);
+    let end_char = doc.byte_to_char(end_byte);
 
-    if PAIRS.contains(&(doc.char(start_byte), doc.char(end_byte))) {
+    if PAIRS.contains(&(doc.char(start_char), doc.char(end_char))) {
         if start_byte == byte_pos {
-            return Some(doc.byte_to_char(end_byte));
+            return Some(end_char);
         }
 
         if end_byte == byte_pos {
-            return Some(doc.byte_to_char(start_byte));
+            return Some(start_char);
         }
     }
 
