@@ -755,4 +755,18 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert("a".into())]);
     }
+
+    #[test]
+    fn combine_with_utf8() {
+        let empty = Rope::from("");
+        let mut a = ChangeSet::new(&empty);
+
+        let mut b = ChangeSet::new(&empty);
+        b.insert("これはヒレクスエディターです！ Definitely.".into());
+
+        let changes = a.compose(b);
+
+        use Operation::*;
+        assert_eq!(changes.changes, &[Insert("これはヒレクスエディターです！ Definitely.".into())]);
+    }
 }

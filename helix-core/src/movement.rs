@@ -254,7 +254,7 @@ mod test {
                 slice,
                 move_vertically(slice, range, Direction::Forward, 1, false).head
             ),
-            (1, 2).into()
+            (1, 3).into()
         );
     }
 }

@@ -122,7 +122,7 @@ impl Range {
 
     #[inline]
     pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
-        Cow::from(text.slice(self.from()..self.to()))
+        Cow::from(text.slice(self.from()..std::cmp::min(text.len_chars(), self.to() + 1)))
     }
 }
 
@@ -388,7 +388,7 @@ pub fn split_on_matches(
         }
 
         if start <= sel_end {
-            result.push(Range::new(start, sel_end));
+            result.push(Range::new(start, sel_end - 1));
         }
     }
 
@@ -477,10 +477,15 @@ mod test {
 
         let text = Rope::from("abcd efg wrs   xyz 123 456");
 
-        let selection = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 19),], 0);
+        let selection = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 20),], 0);
 
         let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
 
+        assert_eq!(
+            result.fragments(text.slice(..)).collect::<Vec<_>>(),
+            &["abcd", "efg", "rs", "xyz", "1"]
+        );
+        
         assert_eq!(
             result.ranges(),
             &[
@@ -490,11 +495,6 @@ mod test {
                 Range::new(15, 17),
                 Range::new(19, 19),
             ]
-        );
-
-        assert_eq!(
-            result.fragments(text.slice(..)).collect::<Vec<_>>(),
-            &["abcd", "efg", "rs", "xyz", "1"]
         );
     }
 }
