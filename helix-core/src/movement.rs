@@ -25,7 +25,7 @@ pub fn move_horizontally(
         }
         Direction::Forward => {
             // Line end is pos at the start of next line - 1
-            let end = text.line_to_char(line + 1).saturating_sub(1);
+            let end = text.line_to_char(line + 1);
             nth_next_grapheme_boundary(text, pos, count).min(end)
         }
     };
@@ -52,7 +52,7 @@ pub fn move_vertically(
     };
 
     // convert to 0-indexed, subtract another 1 because len_chars() counts \n
-    let new_line_len = text.line(new_line).len_chars().saturating_sub(2);
+    let new_line_len = text.line(new_line).len_chars().saturating_sub(1);
 
     let new_col = std::cmp::min(horiz as usize, new_line_len);
 
@@ -67,12 +67,12 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
     let mut end = begin;
 
     for _ in 0..count {
-        if begin + 1 == slice.len_chars() {
+        if begin == slice.len_chars() {
             return None;
         }
 
-        let mut ch = slice.char(begin);
-        let next = slice.char(begin + 1);
+        let mut ch = slice.char(begin.saturating_sub(1));
+        let next = slice.char(begin);
 
         // if we're at the end of a word, or on whitespce right before new one
         if categorize(ch) != categorize(next) {
