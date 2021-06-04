@@ -129,8 +129,8 @@ fn parse_style(style: &mut Style, value: Value) {
                     }
                 }
                 "modifiers" => {
-                    if let Some(modifiers) = parse_modifiers(value) {
-                        for modifier in modifiers {
+                    if let Value::Array(arr) = value {
+                        for modifier in arr.iter().filter_map(parse_modifier) {
                             *style = style.add_modifier(modifier);
                         }
                     }
@@ -171,7 +171,7 @@ fn parse_color(value: Value) -> Option<Color> {
     }
 }
 
-fn parse_modifier(value: Value) -> Option<Modifier> {
+fn parse_modifier(value: &Value) -> Option<Modifier> {
     if let Value::String(s) = value {
         match s.as_str() {
             "bold" => Some(Modifier::BOLD),
@@ -185,20 +185,6 @@ fn parse_modifier(value: Value) -> Option<Modifier> {
             "crossed_out" => Some(Modifier::CROSSED_OUT),
             _ => None,
         }
-    } else {
-        None
-    }
-}
-
-fn parse_modifiers(value: Value) -> Option<Vec<Modifier>> {
-    if let Value::Array(arr) = value {
-        let mut modifiers = Vec::new();
-        for val in arr {
-            if let Some(modifier) = parse_modifier(val) {
-                modifiers.push(modifier);
-            }
-        }
-        Some(modifiers)
     } else {
         None
     }
