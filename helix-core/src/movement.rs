@@ -52,7 +52,7 @@ pub fn move_vertically(
     };
 
     // convert to 0-indexed, subtract another 1 because len_chars() counts \n
-    let new_line_len = text.line(new_line).len_chars().saturating_sub(1);
+    let new_line_len = text.line(new_line).len_chars().saturating_sub(2);
 
     let new_col = std::cmp::min(horiz as usize, new_line_len);
 

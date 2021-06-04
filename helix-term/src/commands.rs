@@ -193,7 +193,7 @@ pub fn move_line_end(cx: &mut Context) {
 
         // Line end is pos at the start of next line - 1
         // subtract another 1 because the line ends with \n
-        let pos = text.line_to_char(line + 1).saturating_sub(1);
+        let pos = text.line_to_char(line + 1).saturating_sub(2);
         Range::new(pos, pos)
     });
 
@@ -759,7 +759,7 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
     // then delete
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-            let max_to = doc.text().len_chars();
+            let max_to = doc.text().len_chars().saturating_sub(1);
             let to = std::cmp::min(max_to, range.to() + 1);
             (range.from(), to, None)
         });
@@ -1253,7 +1253,7 @@ pub fn goto_mode(cx: &mut Context) {
         // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
         // to 1g
         let (view, doc) = cx.current();
-        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(1));
+        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(2));
         let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
         return;
@@ -1659,11 +1659,7 @@ pub mod insert {
                 contents.char(pos - 1)
             };
 
-            let curr = if pos != contents.len_chars() {
-                contents.char(pos)
-            } else {
-                ' '
-            };
+            let curr = contents.char(pos);
 
             // TODO: offset range.head by 1? when calculating?
             let indent_level = indent::suggested_indent_for_pos(

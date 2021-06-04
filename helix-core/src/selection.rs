@@ -122,7 +122,7 @@ impl Range {
 
     #[inline]
     pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
-        Cow::from(text.slice(self.from()..self.to()))
+        Cow::from(text.slice(self.from()..self.to() + 1))
     }
 }
 
