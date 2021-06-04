@@ -34,6 +34,9 @@
 ; Namespaces
 
 (crate) @namespace
+(extern_crate_declaration
+    (crate)
+    name: (identifier) @namespace)
 (scoped_use_list
   path: (identifier) @namespace)
 (scoped_use_list
@@ -143,7 +146,7 @@
 "use" @keyword
 "where" @keyword
 "while" @keyword
-(mutable_specifier) @keyword
+(mutable_specifier) @keyword.mut
 (use_list (self) @keyword)
 (scoped_use_list (self) @keyword)
 (scoped_identifier (self) @keyword)
