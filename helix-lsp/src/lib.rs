@@ -1,5 +1,4 @@
 mod client;
-mod select_all;
 mod transport;
 
 pub use jsonrpc_core as jsonrpc;
@@ -171,7 +170,7 @@ pub use jsonrpc::Call;
 
 type LanguageId = String;
 
-use crate::select_all::SelectAll;
+use futures_util::stream::select_all::SelectAll;
 
 pub struct Registry {
     inner: HashMap<LanguageId, Option<Arc<Client>>>,
@@ -198,7 +197,7 @@ impl Registry {
         if let Some(config) = &language_config.language_server {
             // avoid borrow issues
             let inner = &mut self.inner;
-            let s_incoming = &self.incoming;
+            let s_incoming = &mut self.incoming;
 
             let language_server = inner
                 .entry(language_config.scope.clone()) // can't use entry with Borrow keys: https://github.com/rust-lang/rfcs/pull/1769

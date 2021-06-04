@@ -36,6 +36,18 @@ impl Editor {
             .unwrap_or(include_bytes!("../../theme.toml"));
         let theme: Theme = toml::from_slice(toml).expect("failed to parse theme.toml");
 
+        // initialize language registry
+        use helix_core::syntax::{Loader, LOADER};
+
+        // load $HOME/.config/helix/languages.toml, fallback to default config
+        let config = std::fs::read(helix_core::config_dir().join("languages.toml"));
+        let toml = config
+            .as_deref()
+            .unwrap_or(include_bytes!("../../languages.toml"));
+
+        let config = toml::from_slice(toml).expect("Could not parse languages.toml");
+        LOADER.get_or_init(|| Loader::new(config, theme.scopes().to_vec()));
+
         let language_servers = helix_lsp::Registry::new();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
@@ -135,7 +147,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::load(path, self.theme.scopes())?;
+            let mut doc = Document::load(path)?;
 
             // try to find a language server based on the language name
             let language_server = doc

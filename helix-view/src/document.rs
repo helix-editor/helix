@@ -131,9 +131,8 @@ impl Document {
         }
     }
 
-    // TODO: passing scopes here is awkward
     // TODO: async fn?
-    pub fn load(path: PathBuf, scopes: &[String]) -> Result<Self, Error> {
+    pub fn load(path: PathBuf) -> Result<Self, Error> {
         use std::{env, fs::File, io::BufReader};
         let _current_dir = env::current_dir()?;
 
@@ -143,15 +142,8 @@ impl Document {
         // TODO: create if not found
 
         let mut doc = Self::new(doc);
-
-        let language_config = LOADER
-            .get()
-            .unwrap()
-            .language_config_for_file_name(path.as_path());
-        doc.set_language(language_config, scopes);
-
-        // canonicalize path to absolute value
-        doc.path = Some(std::fs::canonicalize(path)?);
+        // set the path and try detecting the language
+        doc.set_path(&path)?;
 
         Ok(doc)
     }
@@ -218,6 +210,15 @@ impl Document {
         }
     }
 
+    fn detect_language(&mut self) {
+        if let Some(path) = self.path() {
+            let loader = LOADER.get().unwrap();
+            let language_config = loader.language_config_for_file_name(path);
+            let scopes = loader.scopes();
+            self.set_language(language_config, scopes);
+        }
+    }
+
     pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
         // canonicalize path to absolute value
         let current_dir = std::env::current_dir()?;
@@ -229,6 +230,10 @@ impl Document {
                 self.path = Some(path);
             }
         }
+
+        // try detecting the language based on filepath
+        self.detect_language();
+
         Ok(())
     }
 
@@ -251,8 +256,10 @@ impl Document {
         };
     }
 
-    pub fn set_language2(&mut self, scope: &str, scopes: &[String]) {
-        let language_config = LOADER.get().unwrap().language_config_for_scope(scope);
+    pub fn set_language2(&mut self, scope: &str) {
+        let loader = LOADER.get().unwrap();
+        let language_config = loader.language_config_for_scope(scope);
+        let scopes = loader.scopes();
 
         self.set_language(language_config, scopes);
     }

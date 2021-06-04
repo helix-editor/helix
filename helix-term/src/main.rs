@@ -152,18 +152,6 @@ FLAGS:
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
-    // initialize language registry
-    use helix_core::syntax::{Loader, LOADER};
-
-    // load $HOME/.config/helix/languages.toml, fallback to default config
-    let config = std::fs::read(helix_core::config_dir().join("languages.toml"));
-    let toml = config
-        .as_deref()
-        .unwrap_or(include_bytes!("../../languages.toml"));
-
-    let config = toml::from_slice(toml).context("Could not parse languages.toml")?;
-    LOADER.get_or_init(|| Loader::new(config));
-
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args).context("unable to create new appliction")?;
     app.run().await;

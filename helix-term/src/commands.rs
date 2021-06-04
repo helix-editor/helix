@@ -771,6 +771,9 @@ pub fn delete_selection(cx: &mut Context) {
     _delete_selection(doc, view.id);
 
     doc.append_changes_to_history(view.id);
+
+    // exit select mode, if currently in select mode
+    exit_select_mode(cx);
 }
 
 pub fn change_selection(cx: &mut Context) {
