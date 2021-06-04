@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use log::warn;
 use serde::{Deserialize, Deserializer};
 use toml::Value;
 
@@ -164,9 +165,11 @@ fn parse_color(value: Value) -> Option<Color> {
         if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
             Some(Color::Rgb(red, green, blue))
         } else {
+            warn!("malformed hexcode: {}", s);
             None
         }
     } else {
+        warn!("unrecognized value: {}", value);
         None
     }
 }
@@ -183,9 +186,13 @@ fn parse_modifier(value: &Value) -> Option<Modifier> {
             "reversed" => Some(Modifier::REVERSED),
             "hidden" => Some(Modifier::HIDDEN),
             "crossed_out" => Some(Modifier::CROSSED_OUT),
-            _ => None,
+            _ => {
+                warn!("unrecognized modifier: {}", s);
+                None
+            }
         }
     } else {
+        warn!("unrecognized modifier: {}", value);
         None
     }
 }

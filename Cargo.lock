@@ -354,6 +354,7 @@ dependencies = [
  "helix-core",
  "helix-lsp",
  "helix-tui",
+ "log",
  "once_cell",
  "serde",
  "slotmap",
