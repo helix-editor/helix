@@ -320,7 +320,10 @@ impl EditorView {
                                 if (pos.col as u16) < viewport.width {
                                     let style = Style::default().add_modifier(Modifier::REVERSED);
                                     surface
-                                        .get_mut(pos.col as u16 + OFFSET, pos.row as u16)
+                                        .get_mut(
+                                            viewport.x + pos.col as u16,
+                                            viewport.y + pos.row as u16,
+                                        )
                                         .set_style(style);
                                 }
                             }
