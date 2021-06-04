@@ -1269,6 +1269,8 @@ pub fn goto_mode(cx: &mut Context) {
             match ch {
                 'g' => move_file_start(cx),
                 'e' => move_file_end(cx),
+                'h' => move_line_start(cx),
+                'l' => move_line_end(cx),
                 'd' => goto_definition(cx),
                 'y' => goto_type_definition(cx),
                 'r' => goto_reference(cx),
