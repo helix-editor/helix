@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer};
 use toml::Value;
 
 #[cfg(feature = "term")]
-pub use tui::style::{Color, Style};
+pub use tui::style::{Color, Modifier, Style};
 
 // #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 // pub struct Color {
@@ -128,6 +128,13 @@ fn parse_style(style: &mut Style, value: Value) {
                         *style = style.bg(color);
                     }
                 }
+                "modifiers" => {
+                    if let Some(modifiers) = parse_modifiers(value) {
+                        for modifier in modifiers {
+                            *style = style.add_modifier(modifier);
+                        }
+                    }
+                }
                 _ => (),
             }
         }
@@ -159,6 +166,39 @@ fn parse_color(value: Value) -> Option<Color> {
         } else {
             None
         }
+    } else {
+        None
+    }
+}
+
+fn parse_modifier(value: Value) -> Option<Modifier> {
+    if let Value::String(s) = value {
+        match s.as_str() {
+            "bold" => Some(Modifier::BOLD),
+            "dim" => Some(Modifier::DIM),
+            "italic" => Some(Modifier::ITALIC),
+            "underlined" => Some(Modifier::UNDERLINED),
+            "slow_blink" => Some(Modifier::SLOW_BLINK),
+            "rapid_blink" => Some(Modifier::RAPID_BLINK),
+            "reversed" => Some(Modifier::REVERSED),
+            "hidden" => Some(Modifier::HIDDEN),
+            "crossed_out" => Some(Modifier::CROSSED_OUT),
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
+fn parse_modifiers(value: Value) -> Option<Vec<Modifier>> {
+    if let Value::Array(arr) = value {
+        let mut modifiers = Vec::new();
+        for val in arr {
+            if let Some(modifier) = parse_modifier(val) {
+                modifiers.push(modifier);
+            }
+        }
+        Some(modifiers)
     } else {
         None
     }
