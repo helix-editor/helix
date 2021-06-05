@@ -284,6 +284,8 @@ pub fn default() -> Keymaps {
 
         key!(' ') => commands::space_mode,
         key!('z') => commands::view_mode,
+
+        key!('"') => commands::select_register,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
     // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
