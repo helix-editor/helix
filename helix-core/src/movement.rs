@@ -94,7 +94,7 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
         skip_over_next(slice, &mut end, is_horiz_blank);
     }
 
-    Some(Range::new(begin, end - 1))
+    Some(Range::new(begin, end))
 }
 
 pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {

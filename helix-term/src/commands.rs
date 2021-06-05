@@ -225,7 +225,9 @@ pub fn move_next_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_next_word_start(text, range.head, count).unwrap_or(range)
+        let max_head = doc.text().len_chars();
+        let head = std::cmp::min(max_head, range.head + 1);
+        movement::move_next_word_start(text, head, count).unwrap_or(range)
     });
 
     doc.set_selection(view.id, selection);
@@ -237,7 +239,8 @@ pub fn move_prev_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_prev_word_start(text, range.head, count).unwrap_or(range)
+        let head = range.head.saturating_sub(1);
+        movement::move_prev_word_start(text, head, count).unwrap_or(range)
     });
 
     doc.set_selection(view.id, selection);
@@ -265,7 +268,7 @@ pub fn move_file_end(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = cx.current();
     let text = doc.text();
-    let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
+    let last_line = text.line_to_char(text.len_lines().saturating_sub(1));
     doc.set_selection(view.id, Selection::point(last_line));
 }
 
@@ -736,7 +739,7 @@ pub fn extend_line(cx: &mut Context) {
     let line_start = text.char_to_line(pos.anchor);
     let mut line = text.char_to_line(pos.head);
     let line_end = text.line_to_char(line + 1).saturating_sub(1);
-    if line_start <= pos.anchor && pos.head == line_end && line != text.len_lines() {
+    if line_start <= pos.anchor && pos.head == line_end && (line + 1) != text.len_lines() {
         line += 1;
     }
 
@@ -1141,7 +1144,7 @@ pub fn append_to_line(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
         // we can't use line_to_char(line + 1) - 2 because the last line might not contain \n
-        let pos = (text.line_to_char(line) + text.line(line).len_chars()).saturating_sub(1);
+        let pos = (text.line_to_char(line) + text.line(line).len_chars());
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);

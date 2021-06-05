@@ -387,8 +387,10 @@ pub fn split_on_matches(
             start = text.byte_to_char(start_byte + mat.end());
         }
 
-        if start <= sel_end {
+        if start < sel_end {
             result.push(Range::new(start, sel_end - 1));
+        } else if start == sel_end {
+            result.push(Range::new(start, sel_end))
         }
     }
 
