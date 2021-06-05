@@ -253,8 +253,13 @@ impl Component for Prompt {
                 code: KeyCode::Enter,
                 ..
             } => {
-                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
-                return close_fn;
+                if self.line.ends_with('/') {
+                    self.completion = (self.completion_fn)(&self.line);
+                    self.exit_selection();
+                } else {
+                    (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
+                    return close_fn;
+                }
             }
             KeyEvent {
                 code: KeyCode::Tab, ..
