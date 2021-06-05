@@ -199,7 +199,7 @@ fn categorize(ch: char) -> Category {
     } else if ch.is_ascii_punctuation() {
         Category::Punctuation
     } else {
-        unreachable!()
+        unreachable!("unknown '{}' character category", ch)
     }
 }
 
