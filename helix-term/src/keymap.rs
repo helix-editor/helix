@@ -264,10 +264,7 @@ pub fn default() -> Keymaps {
         ctrl!('u') => commands::half_page_up,
         ctrl!('d') => commands::half_page_down,
 
-        KeyEvent {
-            code: KeyCode::Tab,
-            modifiers: KeyModifiers::NONE
-        } => commands::next_view,
+        ctrl!('w') => commands::window_mode,
 
         // move under <space>c
         ctrl!('c') => commands::toggle_comments,
