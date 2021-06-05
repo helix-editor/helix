@@ -174,22 +174,22 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
 // used for by-word movement
 
-fn is_word(ch: char) -> bool {
+pub(crate) fn is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
 
-fn is_horiz_blank(ch: char) -> bool {
+pub(crate) fn is_horiz_blank(ch: char) -> bool {
     matches!(ch, ' ' | '\t')
 }
 
 #[derive(Debug, Eq, PartialEq)]
-enum Category {
+pub(crate) enum Category {
     Whitespace,
     Eol,
     Word,
     Punctuation,
 }
-fn categorize(ch: char) -> Category {
+pub(crate) fn categorize(ch: char) -> Category {
     if ch == '\n' {
         Category::Eol
     } else if ch.is_ascii_whitespace() {
