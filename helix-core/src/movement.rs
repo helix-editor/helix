@@ -25,7 +25,7 @@ pub fn move_horizontally(
         }
         Direction::Forward => {
             // Line end is pos at the start of next line - 1
-            let end = text.line_to_char(line + 1).saturating_sub(2);
+            let end = text.line_to_char(line + 1).saturating_sub(1);
             nth_next_grapheme_boundary(text, pos, count).min(end)
         }
     };
