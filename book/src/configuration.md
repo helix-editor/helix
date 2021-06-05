@@ -2,7 +2,7 @@
 
 ## Theme
 
-Use a custom theme by placing a theme.toml in your config directory (i.e ~/.config/helix/theme.toml). A sample theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml)
+Use a custom theme by placing a theme.toml in your config directory (i.e ~/.config/helix/theme.toml). The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/contrib/themes).
 
 Styles in theme.toml are specified of in the form:
 
