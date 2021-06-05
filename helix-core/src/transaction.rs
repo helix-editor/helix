@@ -758,18 +758,25 @@ mod test {
 
     #[test]
     fn combine_with_utf8() {
+        const TEST_CASE: &'static str = "Hello, これはヒレクスエディターです！";
+
         let empty = Rope::from("");
         let mut a = ChangeSet::new(&empty);
 
         let mut b = ChangeSet::new(&empty);
-        b.insert("これはヒレクスエディターです！ Definitely.".into());
-
+        b.insert(TEST_CASE.into());
+        
         let changes = a.compose(b);
 
         use Operation::*;
         assert_eq!(
             changes.changes,
-            &[Insert("これはヒレクスエディターです！ Definitely.".into())]
+            &[Insert(TEST_CASE.into())]
+        );
+
+        assert_eq!(
+            changes.len_after,
+            TEST_CASE.chars().count()
         );
     }
 }

@@ -1,0 +1,15 @@
+struct Foo {}
+
+impl std::ops::Drop for Foo {
+    fn drop(&mut self) {
+        println!("hello");
+    }
+}
+
+fn foo() {
+    let f = Foo {};
+    panic!();
+}
+fn main() {
+    foo()
+}
