@@ -63,7 +63,8 @@ fn build_cpp(files: Vec<String>, language: &str) {
             .include(PathBuf::from(file).parent().unwrap())
             .pic(true)
             .warnings(false)
-            .cpp(true);
+            .cpp(true)
+            .flag("-std=c++14");
     }
     build.compile(&format!("tree-sitter-{}-cpp", language));
 }
