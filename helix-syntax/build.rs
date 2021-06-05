@@ -57,6 +57,13 @@ fn build_c(files: Vec<String>, language: &str) {
 
 fn build_cpp(files: Vec<String>, language: &str) {
     let mut build = cc::Build::new();
+
+    let flag = if build.get_compiler().is_like_msvc() {
+        "/std:c++14"
+    } else {
+        "-std=c++14"
+    };
+
     for file in files {
         build
             .file(&file)
@@ -64,7 +71,7 @@ fn build_cpp(files: Vec<String>, language: &str) {
             .pic(true)
             .warnings(false)
             .cpp(true)
-            .flag("-std=c++14");
+            .flag_if_supported(flag);
     }
     build.compile(&format!("tree-sitter-{}-cpp", language));
 }
