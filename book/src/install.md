@@ -36,7 +36,7 @@ Now copy the `runtime/` directory somewhere. Helix will by default look for the
 runtime inside the same folder as the executable, but that can be overriden via
 the `HELIX_RUNTIME` environment variable.
 
-If you want to bake the `runtime/` directory into the Helix binary you can build
+If you want to embed the `runtime/` directory into the Helix binary you can build
 it with:
 
 ```
