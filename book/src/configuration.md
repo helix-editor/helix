@@ -7,14 +7,14 @@ Use a custom theme by placing a theme.toml in your config directory (i.e ~/.conf
 Styles in theme.toml are specified of in the form:
 
 ```toml
-"name" = { fg = "#ffffff", bg = "#000000", modifiers = ["bold", "italic"] }
+"key" = { fg = "#ffffff", bg = "#000000", modifiers = ["bold", "italic"] }
 ```
  where name represents what you want to style, fg specifies the foreground colour, bg the background colour, and modifiers is a list of style modifiers. bg or bold can be omitted to defer to the defaults.
 
  If you only want to specify the foreground color, you can do so as:
 
  ```toml
- "name" = "#ffffff"
+ "key" = "#ffffff"
  ```
 
  Possible entries for modifiers are:
@@ -31,10 +31,10 @@ Styles in theme.toml are specified of in the form:
 | hidden |
 | crossed\_out |
 
- Possible entries for name are:
+ Possible entries for key are:
 
-| name | notes |
-----------------
+| key | notes |
+---------------
 | attribute | |
 | keyword | |
 | keyword.directive | preprocessor directives (\#if in C) |
@@ -74,3 +74,7 @@ Styles in theme.toml are specified of in the form:
 | error | LSP error |
 | info | LSP info |
 | hint | LSP hint |
+
+These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We sorta half-follow the common scopes from [here](https://macromates.com/manual/en/language_grammars) with some differences.
+
+For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight function.macro and function.builtin as well, but you can use more specific scopes to highlight specific cases differently.
