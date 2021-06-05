@@ -1,5 +1,5 @@
+use std::fs;
 use std::path::PathBuf;
-use std::{env, fs};
 
 use std::sync::mpsc::channel;
 
