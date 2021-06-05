@@ -61,8 +61,8 @@ use std::collections::HashMap;
 //          in kakoune these are alt-h alt-l / gh gl
 //                              select from curs to begin end / move curs to begin end
 //          0 = start of line
-//          ^ = start of line (first non blank char)
-//          $ = end of line
+//          ^ = start of line(first non blank char) || Home  = start of line(first non blank char)
+//          $ = end of line                         || End   = end of line
 //
 //          z = save selections
 //          Z = restore selections
@@ -152,6 +152,16 @@ pub fn default() -> Keymaps {
         // and matching set for select mode (extend)
         //
         key!('r') => commands::replace,
+
+        KeyEvent {
+            code: KeyCode::Home,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_line_start,
+
+        KeyEvent {
+            code: KeyCode::End,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_line_end,
 
         key!('w') => commands::move_next_word_start,
         key!('b') => commands::move_prev_word_start,
@@ -306,13 +316,21 @@ pub fn default() -> Keymaps {
 
             key!('t') => commands::extend_till_char,
             key!('f') => commands::extend_next_char,
+
             key!('T') => commands::extend_till_prev_char,
             key!('F') => commands::extend_prev_char,
-
+            KeyEvent {
+                code: KeyCode::Home,
+                modifiers: KeyModifiers::NONE
+            } => commands::extend_line_start,
+            KeyEvent {
+                code: KeyCode::End,
+                modifiers: KeyModifiers::NONE
+            } => commands::extend_line_end,
             KeyEvent {
                 code: KeyCode::Esc,
                 modifiers: KeyModifiers::NONE
-            } => commands::exit_select_mode as Command,
+            } => commands::exit_select_mode,
         )
         .into_iter(),
     );

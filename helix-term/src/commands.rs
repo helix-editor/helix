@@ -573,6 +573,37 @@ pub fn extend_line_down(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+pub fn extend_line_end(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
+
+        // Line end is pos at the start of next line - 1
+        // subtract another 1 because the line ends with \n
+        let pos = text.line_to_char(line + 1).saturating_sub(2);
+        Range::new(range.anchor, pos)
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
+pub fn extend_line_start(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
+
+        // adjust to start of the line
+        let pos = text.line_to_char(line);
+        Range::new(range.anchor, pos)
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
 pub fn select_all(cx: &mut Context) {
     let (view, doc) = cx.current();
 
