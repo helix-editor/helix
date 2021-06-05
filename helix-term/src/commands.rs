@@ -35,6 +35,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
+    pub register: helix_view::RegisterSelection,
     pub count: usize,
     pub editor: &'a mut Editor,
 
@@ -777,7 +778,7 @@ pub fn extend_line(cx: &mut Context) {
 
 // heuristic: append changes to history after each command, unless we're in insert mode
 
-fn _delete_selection(doc: &mut Document, view_id: ViewId) {
+fn _delete_selection(reg: char, doc: &mut Document, view_id: ViewId) {
     // first yank the selection
     let values: Vec<String> = doc
         .selection(view_id)
@@ -785,8 +786,6 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
         .map(Cow::into_owned)
         .collect();
 
-    // TODO: allow specifying reg
-    let reg = '"';
     register::set(reg, values);
 
     // then delete
@@ -800,8 +799,9 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
 }
 
 pub fn delete_selection(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
-    _delete_selection(doc, view.id);
+    _delete_selection(reg, doc, view.id);
 
     doc.append_changes_to_history(view.id);
 
@@ -810,8 +810,9 @@ pub fn delete_selection(cx: &mut Context) {
 }
 
 pub fn change_selection(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
-    _delete_selection(doc, view.id);
+    _delete_selection(reg, doc, view.id);
     enter_insert_mode(doc);
 }
 
@@ -1893,11 +1894,13 @@ pub fn yank(cx: &mut Context) {
         .map(Cow::into_owned)
         .collect();
 
-    // TODO: allow specifying reg
-    let reg = '"';
-    let msg = format!("yanked {} selection(s) to register {}", values.len(), reg);
+    let msg = format!(
+        "yanked {} selection(s) to register {}",
+        values.len(),
+        cx.register.name()
+    );
 
-    register::set(reg, values);
+    register::set(cx.register.name(), values);
 
     cx.editor.set_status(msg)
 }
@@ -1908,9 +1911,7 @@ enum Paste {
     After,
 }
 
-fn _paste(doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
-    // TODO: allow specifying reg
-    let reg = '"';
+fn _paste(reg: char, doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
     if let Some(values) = register::get(reg) {
         let repeat = std::iter::repeat(
             values
@@ -1956,18 +1957,20 @@ fn _paste(doc: &mut Document, view: &View, action: Paste) -> Option<Transaction>
 // default insert
 
 pub fn paste_after(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
 
-    if let Some(transaction) = _paste(doc, view, Paste::After) {
+    if let Some(transaction) = _paste(reg, doc, view, Paste::After) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
 }
 
 pub fn paste_before(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
 
-    if let Some(transaction) = _paste(doc, view, Paste::Before) {
+    if let Some(transaction) = _paste(reg, doc, view, Paste::Before) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
@@ -2426,6 +2429,18 @@ pub fn wclose(cx: &mut Context) {
     cx.editor.close(view_id, /* close_buffer */ false);
 }
 
+pub fn select_register(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            cx.editor.register.select(ch);
+        }
+    })
+}
+
 pub fn space_mode(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let KeyEvent {
@@ -2439,7 +2454,7 @@ pub fn space_mode(cx: &mut Context) {
                 'b' => buffer_picker(cx),
                 'w' => window_mode(cx),
                 // ' ' => toggle_alternate_buffer(cx),
-                // TODO: temporary since space mode took it's old key
+                // TODO: temporary since space mode took its old key
                 ' ' => keep_primary_selection(cx),
                 _ => (),
             }
