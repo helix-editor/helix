@@ -638,7 +638,7 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
             return;
         }
 
-        let head = end;
+        let head = end - 1;
 
         let selection = if extend {
             selection.clone().push(Range::new(start, head))
@@ -718,9 +718,7 @@ pub fn select_line(cx: &mut Context) {
 
     let line = text.char_to_line(pos.head);
     let start = text.line_to_char(line);
-    let end = text
-        .line_to_char(std::cmp::min(doc.text().len_lines(), line + count))
-        .saturating_sub(1);
+    let end = text.line_to_char(line + count).saturating_sub(1);
 
     doc.set_selection(view.id, Selection::single(start, end));
 }
