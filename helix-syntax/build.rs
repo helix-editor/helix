@@ -59,7 +59,7 @@ fn build_cpp(files: Vec<String>, language: &str) {
     let mut build = cc::Build::new();
 
     let flag = if build.get_compiler().is_like_msvc() {
-        "/std:c++14"
+        "/std:c++17"
     } else {
         "-std=c++14"
     };
