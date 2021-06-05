@@ -87,8 +87,7 @@ struct Runtime;
 
 #[cfg(feature = "embed_runtime")]
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let root = PathBuf::new();
-    let path = root.join("queries").join(language).join(filename);
+    let path = PathBuf::from("queries").join(language).join(filename);
 
     let query_bytes = Runtime::get(&path.display().to_string()).unwrap_or_default();
     std::str::from_utf8(query_bytes.as_ref())
