@@ -770,7 +770,6 @@ mod test {
 
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
-
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
     }
 }
