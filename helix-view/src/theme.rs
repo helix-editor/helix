@@ -116,6 +116,7 @@ impl<'de> Deserialize<'de> for Theme {
 }
 
 fn parse_style(style: &mut Style, value: Value) {
+    //TODO: alert user of parsing failures
     if let Value::Table(entries) = value {
         for (name, value) in entries {
             match name.as_str() {
@@ -165,11 +166,11 @@ fn parse_color(value: Value) -> Option<Color> {
         if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
             Some(Color::Rgb(red, green, blue))
         } else {
-            warn!("malformed hexcode: {}", s);
+            warn!("malformed hexcode in theme: {}", s);
             None
         }
     } else {
-        warn!("unrecognized value: {}", value);
+        warn!("unrecognized value in theme: {}", value);
         None
     }
 }
@@ -187,12 +188,12 @@ fn parse_modifier(value: &Value) -> Option<Modifier> {
             "hidden" => Some(Modifier::HIDDEN),
             "crossed_out" => Some(Modifier::CROSSED_OUT),
             _ => {
-                warn!("unrecognized modifier: {}", s);
+                warn!("unrecognized modifier in theme: {}", s);
                 None
             }
         }
     } else {
-        warn!("unrecognized modifier: {}", value);
+        warn!("unrecognized modifier in theme: {}", value);
         None
     }
 }
