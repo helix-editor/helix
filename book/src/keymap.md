@@ -24,13 +24,13 @@
 | PageDown | Move page down |
 | ctrl-u | Move half page up |
 | ctrl-d | Move half page down |
-| Tab | Switch to next view |
 | ctrl-i | Jump forward on the jumplist TODO: conflicts tab |
 | ctrl-o | Jump backward on the jumplist |
 | v   | Enter select (extend) mode |
 | g   | Enter goto mode |
 | :   | Enter command mode |
 | z   | Enter view mode |
+| ctrl-w | Enter window mode |
 | space   | Enter space mode |
 | K | Show documentation for the item under the cursor |
 
@@ -132,6 +132,17 @@ Jumps to various locations.
 
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
+## Window mode
+
+This layer is similar to vim keybindings as kakoune does not support window.
+
+| Key | Description |
+|-----|-------------|
+| w, ctrl-w | Switch to next window |
+| v, ctrl-v | Vertical right split |
+| h, ctrl-h | Horizontal bottom split |
+| q, ctrl-q | Close current window |
+
 ## Space mode
 
 This layer is a kludge of mappings I had under leader key in neovim.
@@ -140,7 +151,5 @@ This layer is a kludge of mappings I had under leader key in neovim.
 |-----|-----------|
 | f   | Open file picker |
 | b   | Open buffer picker |
-| v   | Open a new vertical split into the current file |
 | w   | Save changes to file |
-| c   | Close the current split |
 | space   | Keep primary selection TODO: it's here because space mode replaced it |
