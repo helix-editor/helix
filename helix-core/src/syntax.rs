@@ -1717,3 +1717,10 @@ fn test_input_edits() {
         }]
     );
 }
+
+#[test]
+fn test_load_runtime_file() {
+    // Test to make sure we can load some data from the runtime directory.
+    let contents = load_runtime_file("rust", "indents.toml").unwrap();
+    assert!(!contents.is_empty())
+}
