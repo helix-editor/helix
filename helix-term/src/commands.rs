@@ -3,8 +3,8 @@ use helix_core::{
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
-    SmallVec, Tendril, Transaction,
+    register, search, selection, words, Change, ChangeSet, Position, Range, Rope, RopeSlice,
+    Selection, SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -1782,7 +1782,6 @@ pub mod insert {
 
     pub fn delete_char_forward(cx: &mut Context) {
         let count = cx.count;
-        let doc = cx.doc();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
         let transaction =
@@ -1790,6 +1789,21 @@ pub mod insert {
                 (
                     range.head,
                     graphemes::nth_next_grapheme_boundary(text, range.head, count),
+                    None,
+                )
+            });
+        doc.apply(&transaction, view.id);
+    }
+
+    pub fn delete_word_backward(cx: &mut Context) {
+        let count = cx.count;
+        let (view, doc) = cx.current();
+        let text = doc.text().slice(..);
+        let transaction =
+            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                (
+                    words::nth_prev_word_boundary(text, range.head, count),
+                    range.head,
                     None,
                 )
             });

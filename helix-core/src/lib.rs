@@ -16,6 +16,7 @@ pub mod selection;
 mod state;
 pub mod syntax;
 mod transaction;
+pub mod words;
 
 pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> {
     // find first non-whitespace char

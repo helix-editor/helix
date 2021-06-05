@@ -360,6 +360,7 @@ pub fn default() -> Keymaps {
             } => commands::insert::insert_tab,
 
             ctrl!('x') => commands::completion,
+            ctrl!('w') => commands::insert::delete_word_backward,
         ),
     )
 }
