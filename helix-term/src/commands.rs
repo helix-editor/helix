@@ -315,7 +315,7 @@ fn _find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
 where
     // TODO: make an options struct for and abstract this Fn into a searcher type
     // use the definition for w/b/e too
-    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize>,
+    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
 {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
@@ -332,7 +332,7 @@ where
             let text = doc.text().slice(..);
 
             let selection = doc.selection(view.id).transform(|mut range| {
-                search::find_nth_next(text, ch, range.head, count, inclusive).map_or(range, |pos| {
+                search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
                     if extend {
                         Range::new(range.anchor, pos)
                     } else {
