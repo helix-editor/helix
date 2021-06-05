@@ -81,10 +81,7 @@ fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::
 }
 
 #[cfg(feature = "embed_runtime")]
-use rust_embed::RustEmbed;
-
-#[cfg(feature = "embed_runtime")]
-#[derive(RustEmbed)]
+#[derive(rust_embed::RustEmbed)]
 #[folder = "../runtime/"]
 struct Runtime;
 
@@ -93,7 +90,7 @@ fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn s
     let root = PathBuf::new();
     let path = root.join("queries").join(language).join(filename);
 
-    let query_bytes = Runtime::get(&path.as_path().display().to_string()).unwrap_or_default();
+    let query_bytes = Runtime::get(&path.display().to_string()).unwrap_or_default();
     std::str::from_utf8(query_bytes.as_ref())
         .map(|s| s.to_string())
         .map_err(|err| err.into())
