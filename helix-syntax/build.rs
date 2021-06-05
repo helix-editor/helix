@@ -3,14 +3,6 @@ use std::{env, fs};
 
 use std::sync::mpsc::channel;
 
-fn get_opt_level() -> u32 {
-    env::var("OPT_LEVEL").unwrap().parse::<u32>().unwrap()
-}
-
-fn get_debug() -> bool {
-    env::var("DEBUG").unwrap() == "true"
-}
-
 fn collect_tree_sitter_dirs(ignore: &[String]) -> Vec<String> {
     let mut dirs = Vec::new();
     for entry in fs::read_dir("languages").unwrap().flatten() {
@@ -58,10 +50,7 @@ fn build_c(files: Vec<String>, language: &str) {
             .file(&file)
             .include(PathBuf::from(file).parent().unwrap())
             .pic(true)
-            .opt_level(get_opt_level())
-            .debug(get_debug())
-            .warnings(false)
-            .flag_if_supported("-std=c99");
+            .warnings(false);
     }
     build.compile(&format!("tree-sitter-{}-c", language));
 }
@@ -73,8 +62,6 @@ fn build_cpp(files: Vec<String>, language: &str) {
             .file(&file)
             .include(PathBuf::from(file).parent().unwrap())
             .pic(true)
-            .opt_level(get_opt_level())
-            .debug(get_debug())
             .warnings(false)
             .cpp(true);
     }
