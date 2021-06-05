@@ -9,7 +9,7 @@ license = "MPL-2.0"
 
 
 [features]
-embed_runtime = []
+embed_runtime = ["rust-embed"]
 
 [dependencies]
 helix-syntax = { path = "../helix-syntax" }
@@ -28,4 +28,4 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 
 etcetera = "0.3"
-rust-embed="5.9.0" 
+rust-embed = { version = "5.9.0", optional = true }
