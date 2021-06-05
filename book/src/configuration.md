@@ -9,15 +9,16 @@ Styles in theme.toml are specified of in the form:
 ```toml
 "key" = { fg = "#ffffff", bg = "#000000", modifiers = ["bold", "italic"] }
 ```
- where name represents what you want to style, fg specifies the foreground colour, bg the background colour, and modifiers is a list of style modifiers. bg or bold can be omitted to defer to the defaults.
 
- If you only want to specify the foreground color, you can do so as:
+where `name` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, and `modifiers` is a list of style modifiers. `bg` and `modifiers` can be omitted to defer to the defaults.
+
+To specify only the foreground color:
 
  ```toml
  "key" = "#ffffff"
  ```
 
- Possible entries for modifiers are:
+ Possible modifiers:
 
 | modifier |
 ------------
@@ -31,7 +32,7 @@ Styles in theme.toml are specified of in the form:
 | hidden |
 | crossed\_out |
 
- Possible entries for key are:
+ Possible keys:
 
 | key | notes |
 ---------------
@@ -75,6 +76,6 @@ Styles in theme.toml are specified of in the form:
 | info | LSP info |
 | hint | LSP hint |
 
-These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We sorta half-follow the common scopes from [here](https://macromates.com/manual/en/language_grammars) with some differences.
+These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We half-follow the common scopes from [macromates language grammars](https://macromates.com/manual/en/language_grammars) with some differences.
 
-For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight function.macro and function.builtin as well, but you can use more specific scopes to highlight specific cases differently.
+For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight `function.macro` and `function.builtin` as well, but you can use more specific scopes to highlight specific cases differently.
