@@ -106,7 +106,7 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self, doc: &Document) -> usize {
-        let height = self.area.height.saturating_sub(1); // - 1 for statusline
+        let height = self.area.height.saturating_sub(2); // - 2 for statusline
         std::cmp::min(
             self.first_line + height as usize,
             doc.text().len_lines() - 1,
