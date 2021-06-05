@@ -82,14 +82,30 @@ fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::
 
 #[cfg(feature = "embed_runtime")]
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
+    use std::fmt;
+
     #[derive(rust_embed::RustEmbed)]
     #[folder = "../runtime/"]
     struct Runtime;
 
+    #[derive(Debug)]
+    struct EmbeddedFileNotFoundError {
+        path: PathBuf,
+    }
+    impl std::error::Error for EmbeddedFileNotFoundError {}
+    impl fmt::Display for EmbeddedFileNotFoundError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "failed to load embedded file {}", self.path.display())
+        }
+    }
+
     let path = PathBuf::from("queries").join(language).join(filename);
 
-    let query_bytes = Runtime::get(&path.display().to_string()).unwrap_or_default();
-    String::from_utf8(query_bytes.to_vec()).map_err(|err| err.into())
+    if let Some(query_bytes) = Runtime::get(&path.display().to_string()) {
+        String::from_utf8(query_bytes.to_vec()).map_err(|err| err.into())
+    } else {
+        Err(Box::new(EmbeddedFileNotFoundError { path }))
+    }
 }
 
 fn read_query(language: &str, filename: &str) -> String {
@@ -1722,5 +1738,8 @@ fn test_input_edits() {
 fn test_load_runtime_file() {
     // Test to make sure we can load some data from the runtime directory.
     let contents = load_runtime_file("rust", "indents.toml").unwrap();
-    assert!(!contents.is_empty())
+    assert!(!contents.is_empty());
+
+    let results = load_runtime_file("rust", "does-not-exist");
+    assert!(results.is_err());
 }
