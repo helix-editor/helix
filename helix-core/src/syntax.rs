@@ -81,18 +81,15 @@ fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::
 }
 
 #[cfg(feature = "embed_runtime")]
-#[derive(rust_embed::RustEmbed)]
-#[folder = "../runtime/"]
-struct Runtime;
-
-#[cfg(feature = "embed_runtime")]
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
+    #[derive(rust_embed::RustEmbed)]
+    #[folder = "../runtime/"]
+    struct Runtime;
+
     let path = PathBuf::from("queries").join(language).join(filename);
 
     let query_bytes = Runtime::get(&path.display().to_string()).unwrap_or_default();
-    std::str::from_utf8(query_bytes.as_ref())
-        .map(|s| s.to_string())
-        .map_err(|err| err.into())
+    String::from_utf8(query_bytes.to_vec()).map_err(|err| err.into())
 }
 
 fn read_query(language: &str, filename: &str) -> String {
