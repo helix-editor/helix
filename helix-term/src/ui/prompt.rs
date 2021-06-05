@@ -28,6 +28,11 @@ pub enum PromptEvent {
     Abort,
 }
 
+pub enum CompletionDirection {
+    Forward,
+    Backward,
+}
+
 impl Prompt {
     pub fn new(
         prompt: String,
@@ -80,11 +85,20 @@ impl Prompt {
         self.exit_selection();
     }
 
-    pub fn change_completion_selection(&mut self) {
+    pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
         if self.completion.is_empty() {
             return;
         }
-        let index = self.selection.map_or(0, |i| i + 1) % self.completion.len();
+
+        let index = match direction {
+            CompletionDirection::Forward => {
+                self.selection.map_or(0, |i| i + 1) % self.completion.len()
+            }
+            CompletionDirection::Backward => {
+                (self.selection.unwrap_or(0) + self.completion.len() - 1) % self.completion.len()
+            }
+        };
+
         self.selection = Some(index);
 
         let (range, item) = &self.completion[index];
@@ -92,8 +106,8 @@ impl Prompt {
         self.line.replace_range(range.clone(), item);
 
         self.move_end();
-        // TODO: recalculate completion when completion item is accepted, (Enter)
     }
+
     pub fn exit_selection(&mut self) {
         self.selection = None;
     }
@@ -263,7 +277,11 @@ impl Component for Prompt {
             }
             KeyEvent {
                 code: KeyCode::Tab, ..
-            } => self.change_completion_selection(),
+            } => self.change_completion_selection(CompletionDirection::Forward),
+            KeyEvent {
+                code: KeyCode::BackTab,
+                ..
+            } => self.change_completion_selection(CompletionDirection::Backward),
             KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::CONTROL,
