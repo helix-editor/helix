@@ -188,7 +188,9 @@ pub(crate) enum Category {
     Eol,
     Word,
     Punctuation,
+    Unknown,
 }
+
 pub(crate) fn categorize(ch: char) -> Category {
     if ch == '\n' {
         Category::Eol
@@ -199,7 +201,7 @@ pub(crate) fn categorize(ch: char) -> Category {
     } else if ch.is_ascii_punctuation() {
         Category::Punctuation
     } else {
-        unreachable!("unknown '{}' character category", ch)
+        Category::Unknown
     }
 }
 
