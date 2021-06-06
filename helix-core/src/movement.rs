@@ -88,8 +88,8 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
 
         if is_word(ch) {
             skip_over_next(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            skip_over_next(slice, &mut end, |ch| is_punctuation(ch));
         }
 
         skip_over_next(slice, &mut end, is_horiz_blank);
@@ -117,7 +117,7 @@ pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
         // return if not skip while?
         skip_over_prev(slice, &mut begin, |ch| ch == '\n');
 
-        end = begin;
+        end = begin - 1;
 
         with_end = skip_over_prev(slice, &mut end, is_horiz_blank);
 
@@ -126,8 +126,8 @@ pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
 
         if is_word(ch) {
             with_end = skip_over_prev(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            with_end = skip_over_prev(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            with_end = skip_over_prev(slice, &mut end, |ch| is_punctuation(ch));
         }
     }
 
@@ -162,8 +162,8 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
         if is_word(ch) {
             skip_over_next(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            skip_over_next(slice, &mut end, |ch| is_punctuation(ch));
         }
     }
 
