@@ -104,6 +104,10 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     ret
 }
 
+// Returns the canonical, absolute form of a path with all intermediate components normalized.
+//
+// This function is used instead of `std::fs::canonicalize` because we don't want to verify
+// here if the path exists, just normalize it's components.
 pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
     std::env::current_dir().map(|current_dir| normalize_path(&current_dir.join(path)))
 }
