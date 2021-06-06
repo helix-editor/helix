@@ -87,8 +87,9 @@ jobs:
           command: test
 
     strategy:
-      os: [ubuntu-latest, macos-latest, windows-latest]
-      rust: [stable, nightly]
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, nightly]
 
   lints:
     name: Lints
