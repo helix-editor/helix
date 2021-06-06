@@ -198,6 +198,7 @@ impl Document {
         async move {
             use tokio::{fs::File, io::AsyncWriteExt};
             if let Some(parent) = path.parent() {
+                // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
                     return Err(Error::msg(
                         "can't save file, parent directory does not exist",
