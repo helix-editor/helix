@@ -85,6 +85,10 @@ use std::collections::HashMap;
 //
 //      gd = goto definition
 //      gr = goto reference
+//      [d = previous diagnostic
+//      d] = next diagnostic
+//      [D = first diagnostic
+//      D] = last diagnostic
 // }
 
 // #[cfg(feature = "term")]
@@ -209,7 +213,9 @@ pub fn default() -> Keymaps {
         // repeat_select
 
         // TODO: figure out what key to use
-        key!('[') => commands::expand_selection,
+        // key!('[') => commands::expand_selection, ??
+        key!('[') => commands::left_bracket_mode,
+        key!(']') => commands::right_bracket_mode,
 
         key!('/') => commands::search,
         // ? for search_reverse

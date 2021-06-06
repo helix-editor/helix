@@ -1536,6 +1536,86 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
+fn goto_pos(editor: &mut Editor, pos: usize) {
+    push_jump(editor);
+
+    let (view, doc) = editor.current();
+
+    doc.set_selection(view.id, Selection::point(pos));
+    align_view(doc, view, Align::Center);
+}
+
+pub fn goto_first_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc.diagnostics().first() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
+pub fn goto_last_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc.diagnostics().last() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
+pub fn goto_next_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc
+        .diagnostics()
+        .iter()
+        .map(|diag| diag.range.start)
+        .find(|&pos| pos > cursor_pos)
+    {
+        diag
+    } else if let Some(diag) = doc.diagnostics().first() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
+pub fn goto_prev_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc
+        .diagnostics()
+        .iter()
+        .rev()
+        .map(|diag| diag.range.start)
+        .find(|&pos| pos < cursor_pos)
+    {
+        diag
+    } else if let Some(diag) = doc.diagnostics().last() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
 pub fn signature_help(cx: &mut Context) {
     let (view, doc) = cx.current();
 
@@ -2419,6 +2499,38 @@ pub fn view_mode(cx: &mut Context) {
                 'j' => scroll(cx, 1, Direction::Forward),
                 'k' => scroll(cx, 1, Direction::Backward),
                 'l' => (),
+                _ => (),
+            }
+        }
+    })
+}
+
+pub fn left_bracket_mode(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            match ch {
+                'd' => goto_prev_diag(cx),
+                'D' => goto_first_diag(cx),
+                _ => (),
+            }
+        }
+    })
+}
+
+pub fn right_bracket_mode(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            match ch {
+                'd' => goto_next_diag(cx),
+                'D' => goto_last_diag(cx),
                 _ => (),
             }
         }

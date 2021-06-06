@@ -217,7 +217,7 @@ impl Application {
                                 })
                                 .collect();
 
-                            doc.diagnostics = diagnostics;
+                            doc.set_diagnostics(diagnostics);
                             // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                             self.render();
                         }
