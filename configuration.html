@@ -167,6 +167,74 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<h2 id="theme"><a class="header" href="#theme">Theme</a></h2>
+<p>Use a custom theme by placing a theme.toml in your config directory (i.e ~/.config/helix/theme.toml). The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/contrib/themes">here</a>.</p>
+<p>Styles in theme.toml are specified of in the form:</p>
+<pre><code class="language-toml">key = { fg = &quot;#ffffff&quot;, bg = &quot;#000000&quot;, modifiers = [&quot;bold&quot;, &quot;italic&quot;] }
+</code></pre>
+<p>where <code>name</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, and <code>modifiers</code> is a list of style modifiers. <code>bg</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
+<p>To specify only the foreground color:</p>
+<pre><code class="language-toml">key = &quot;#ffffff&quot;
+</code></pre>
+<p>if the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
+<pre><code class="language-toml">&quot;key.key&quot; = &quot;#ffffff&quot;
+</code></pre>
+<p>Possible modifiers:</p>
+<table><thead><tr><th>modifier</th></tr></thead><tbody>
+<tr><td>bold</td></tr>
+<tr><td>dim</td></tr>
+<tr><td>italic</td></tr>
+<tr><td>underlined</td></tr>
+<tr><td>slow_blink</td></tr>
+<tr><td>rapid_blink</td></tr>
+<tr><td>reversed</td></tr>
+<tr><td>hidden</td></tr>
+<tr><td>crossed_out</td></tr>
+</tbody></table>
+<p>Possible keys:</p>
+<table><thead><tr><th>key</th><th>notes</th></tr></thead><tbody>
+<tr><td>attribute</td><td></td></tr>
+<tr><td>keyword</td><td></td></tr>
+<tr><td>keyword.directive</td><td>preprocessor directives (#if in C)</td></tr>
+<tr><td>namespace</td><td></td></tr>
+<tr><td>punctuation</td><td></td></tr>
+<tr><td>punctuation.delimiter</td><td></td></tr>
+<tr><td>operator</td><td></td></tr>
+<tr><td>special</td><td></td></tr>
+<tr><td>property</td><td></td></tr>
+<tr><td>variable</td><td></td></tr>
+<tr><td>variable.parameter</td><td></td></tr>
+<tr><td>type</td><td></td></tr>
+<tr><td>type.builtin</td><td></td></tr>
+<tr><td>constructor</td><td></td></tr>
+<tr><td>function</td><td></td></tr>
+<tr><td>function.macro</td><td></td></tr>
+<tr><td>function.builtin</td><td></td></tr>
+<tr><td>comment</td><td></td></tr>
+<tr><td>variable.builtin</td><td></td></tr>
+<tr><td>constant</td><td></td></tr>
+<tr><td>constant.builtin</td><td></td></tr>
+<tr><td>string</td><td></td></tr>
+<tr><td>number</td><td></td></tr>
+<tr><td>escape</td><td>escaped characters</td></tr>
+<tr><td>label</td><td>used for lifetimes</td></tr>
+<tr><td>module</td><td></td></tr>
+<tr><td>ui.background</td><td></td></tr>
+<tr><td>ui.linenr</td><td></td></tr>
+<tr><td>ui.statusline</td><td></td></tr>
+<tr><td>ui.popup</td><td></td></tr>
+<tr><td>ui.window</td><td></td></tr>
+<tr><td>ui.help</td><td></td></tr>
+<tr><td>ui.text</td><td></td></tr>
+<tr><td>ui.text.focus</td><td></td></tr>
+<tr><td>ui.menu.selected</td><td></td></tr>
+<tr><td>warning</td><td>LSP warning</td></tr>
+<tr><td>error</td><td>LSP error</td></tr>
+<tr><td>info</td><td>LSP info</td></tr>
+<tr><td>hint</td><td>LSP hint</td></tr>
+</tbody></table>
+<p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme">tree-sitter scopes</a>. We half-follow the common scopes from <a href="https://macromates.com/manual/en/language_grammars">macromates language grammars</a> with some differences.</p>
+<p>For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight <code>function.macro</code> and <code>function.builtin</code> as well, but you can use more specific scopes to highlight specific cases differently.</p>
 
                     </main>
 
