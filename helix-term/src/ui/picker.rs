@@ -246,13 +246,14 @@ impl<T: 'static> Component for Picker<T> {
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
         let rows = inner.height - 2; // -1 for search bar
+        let offset = self.cursor / (rows as usize) * (rows as usize);
 
-        let files = self.matches.iter().map(|(index, _score)| {
+        let files = self.matches.iter().skip(offset).map(|(index, _score)| {
             (index, self.options.get(*index).unwrap()) // get_unchecked
         });
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
-            if i == self.cursor {
+            if i == (self.cursor - offset) {
                 surface.set_string(inner.x + 1, inner.y + 2 + i as u16, ">", selected);
             }
 
@@ -261,7 +262,11 @@ impl<T: 'static> Component for Picker<T> {
                 inner.y + 2 + i as u16,
                 (self.format_fn)(option),
                 inner.width as usize - 1,
-                if i == self.cursor { selected } else { style },
+                if i == (self.cursor - offset) {
+                    selected
+                } else {
+                    style
+                },
             );
         }
     }
