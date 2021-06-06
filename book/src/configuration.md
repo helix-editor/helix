@@ -7,21 +7,27 @@ Use a custom theme by placing a theme.toml in your config directory (i.e ~/.conf
 Styles in theme.toml are specified of in the form:
 
 ```toml
-"key" = { fg = "#ffffff", bg = "#000000", modifiers = ["bold", "italic"] }
+key = { fg = "#ffffff", bg = "#000000", modifiers = ["bold", "italic"] }
 ```
 
 where `name` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, and `modifiers` is a list of style modifiers. `bg` and `modifiers` can be omitted to defer to the defaults.
 
 To specify only the foreground color:
 
- ```toml
- "key" = "#ffffff"
- ```
+```toml
+key = "#ffffff"
+```
 
- Possible modifiers:
+if the key contains a dot `'.'`, it must be quoted to prevent it being parsed as a [dotted key](https://toml.io/en/v1.0.0#keys).
+
+```toml
+"key.key" = "#ffffff"
+```
+
+Possible modifiers:
 
 | modifier |
-------------
+| --- |
 | bold |
 | dim |
 | italic |
@@ -32,10 +38,10 @@ To specify only the foreground color:
 | hidden |
 | crossed\_out |
 
- Possible keys:
+Possible keys:
 
 | key | notes |
----------------
+| --- | --- |
 | attribute | |
 | keyword | |
 | keyword.directive | preprocessor directives (\#if in C) |
