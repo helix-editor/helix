@@ -144,7 +144,7 @@ impl Document {
         use std::{fs::File, io::BufReader};
 
         let doc = if !path.exists() {
-            Rope::from("\n")
+            Rope::new()
         } else {
             let file = File::open(&path).context(format!("unable to open {:?}", path))?;
             Rope::from_reader(BufReader::new(file))?
