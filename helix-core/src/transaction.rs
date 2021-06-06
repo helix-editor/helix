@@ -15,6 +15,7 @@ pub enum Operation {
     Insert(Tendril),
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Assoc {
     Before,

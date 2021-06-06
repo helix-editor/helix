@@ -31,6 +31,7 @@ enum ServerMessage {
     Call(jsonrpc::Call),
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 pub struct Transport {
     client_tx: UnboundedSender<jsonrpc::Call>,
     client_rx: UnboundedReceiver<Payload>,

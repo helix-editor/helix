@@ -13,6 +13,7 @@ use crate::{DocumentId, ViewId};
 
 use std::collections::HashMap;
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
@@ -50,6 +51,31 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+}
+
+#[cfg(feature = "debug")]
+use std::fmt;
+#[cfg(feature = "debug")]
+impl fmt::Debug for Document {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Document")
+            .field("id", &self.id)
+            .field("text", &self.text)
+            .field("selections", &self.selections)
+            .field("path", &self.path)
+            .field("mode", &self.mode)
+            .field("restore_cursor", &self.restore_cursor)
+            .field("syntax", &self.syntax)
+            .field("language", &self.language)
+            .field("changes", &self.changes)
+            .field("old_state", &self.old_state)
+            // .field("history", &self.history)
+            .field("last_saved_revision", &self.last_saved_revision)
+            .field("version", &self.version)
+            .field("diagnostics", &self.diagnostics)
+            // .field("language_server", &self.language_server)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
