@@ -1,6 +1,8 @@
 use crate::{regex::Regex, Change, Rope, RopeSlice, Transaction};
 pub use helix_syntax::{get_language, get_language_name, Lang};
 
+#[cfg(feature = "debug")]
+use std::fmt;
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -12,12 +14,14 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageConfiguration {
@@ -46,6 +50,7 @@ pub struct LanguageConfiguration {
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -55,6 +60,7 @@ pub struct LanguageServerConfiguration {
     pub args: Vec<String>,
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
@@ -62,6 +68,7 @@ pub struct IndentationConfiguration {
     pub unit: String,
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentQuery {
@@ -189,6 +196,7 @@ impl LanguageConfiguration {
 
 pub static LOADER: OnceCell<Loader> = OnceCell::new();
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
@@ -256,6 +264,13 @@ pub struct TsParser {
     cursors: Vec<QueryCursor>,
 }
 
+#[cfg(feature = "debug")]
+impl fmt::Debug for TsParser {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TsParser").finish_non_exhaustive()
+    }
+}
+
 // could also just use a pool, or a single instance?
 thread_local! {
     pub static PARSER: RefCell<TsParser> = RefCell::new(TsParser {
@@ -264,6 +279,7 @@ thread_local! {
     })
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 pub struct Syntax {
     config: Arc<HighlightConfiguration>,
 
@@ -440,6 +456,7 @@ impl Syntax {
     // buffer_range_for_scope_at_pos
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 pub struct LanguageLayer {
     // mode
     // grammar
@@ -748,6 +765,7 @@ pub enum HighlightEvent {
 /// Contains the data neeeded to higlight code written in a particular language.
 ///
 /// This struct is immutable and can be shared between threads.
+#[cfg_attr(feature = "debug", derive(Debug))]
 pub struct HighlightConfiguration {
     pub language: Grammar,
     pub query: Query,
@@ -778,6 +796,7 @@ struct LocalScope<'a> {
     local_defs: Vec<LocalDef<'a>>,
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 struct HighlightIter<'a, 'tree: 'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
@@ -801,6 +820,13 @@ struct HighlightIterLayer<'a, 'tree: 'a> {
     scope_stack: Vec<LocalScope<'a>>,
     ranges: Vec<Range>,
     depth: usize,
+}
+
+#[cfg(feature = "debug")]
+impl<'a, 'tree: 'a> fmt::Debug for HighlightIterLayer<'a, 'tree> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HighlightIterLayer").finish_non_exhaustive()
+    }
 }
 
 impl HighlightConfiguration {

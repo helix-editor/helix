@@ -10,6 +10,7 @@ license = "MPL-2.0"
 
 [features]
 embed_runtime = ["rust-embed"]
+debug = []
 
 [dependencies]
 helix-syntax = { path = "../helix-syntax" }
@@ -17,7 +18,7 @@ helix-syntax = { path = "../helix-syntax" }
 ropey = "1.2"
 smallvec = "1.4"
 tendril = "0.4.2"
-unicode-segmentation = "1.6"
+unicode-segmentation = { git = "https://github.com/unicode-rs/unicode-segmentation.git" }
 unicode-width = "0.1"
 unicode-general-category = "0.4.0"
 # slab = "0.4.2"

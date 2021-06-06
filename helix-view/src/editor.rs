@@ -9,6 +9,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
@@ -20,6 +21,7 @@ pub struct Editor {
     pub status_msg: Option<(String, Severity)>,
 }
 
+#[cfg_attr(feature = "debug", derive(Debug))]
 #[derive(Copy, Clone)]
 pub enum Action {
     Replace,
