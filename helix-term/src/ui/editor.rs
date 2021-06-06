@@ -272,7 +272,7 @@ impl EditorView {
                             viewport.x + start.col as u16,
                             viewport.y + start.row as u16,
                             // text.line(view.first_line).len_chars() as u16 - start.col as u16,
-                            viewport.width - start.col as u16,
+                            viewport.width.saturating_sub(start.col as u16),
                             1,
                         ),
                         selection_style,

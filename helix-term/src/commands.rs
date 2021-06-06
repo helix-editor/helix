@@ -315,7 +315,7 @@ fn _find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
 where
     // TODO: make an options struct for and abstract this Fn into a searcher type
     // use the definition for w/b/e too
-    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize>,
+    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
 {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
@@ -332,7 +332,7 @@ where
             let text = doc.text().slice(..);
 
             let selection = doc.selection(view.id).transform(|mut range| {
-                search::find_nth_next(text, ch, range.head, count, inclusive).map_or(range, |pos| {
+                search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
                     if extend {
                         Range::new(range.anchor, pos)
                     } else {
@@ -570,6 +570,37 @@ pub fn extend_line_down(cx: &mut Context) {
             true, /* extend */
         )
     });
+    doc.set_selection(view.id, selection);
+}
+
+pub fn extend_line_end(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
+
+        // Line end is pos at the start of next line - 1
+        // subtract another 1 because the line ends with \n
+        let pos = text.line_to_char(line + 1).saturating_sub(2);
+        Range::new(range.anchor, pos)
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
+pub fn extend_line_start(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
+
+        // adjust to start of the line
+        let pos = text.line_to_char(line);
+        Range::new(range.anchor, pos)
+    });
+
     doc.set_selection(view.id, selection);
 }
 
@@ -2209,11 +2240,6 @@ pub fn hover(cx: &mut Context) {
     );
 }
 
-// view movements
-pub fn next_view(cx: &mut Context) {
-    cx.editor.focus_next()
-}
-
 // comments
 pub fn toggle_comments(cx: &mut Context) {
     let (view, doc) = cx.current();
@@ -2277,21 +2303,57 @@ pub fn jump_backward(cx: &mut Context) {
     };
 }
 
-//
+pub fn window_mode(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            match ch {
+                'w' => rotate_view(cx),
+                'h' => hsplit(cx),
+                'v' => vsplit(cx),
+                'q' => wclose(cx),
+                _ => {}
+            }
+        }
+    })
+}
 
-pub fn vsplit(cx: &mut Context) {
+pub fn rotate_view(cx: &mut Context) {
+    cx.editor.focus_next()
+}
+
+// split helper, clear it later
+use helix_view::editor::Action;
+fn split(cx: &mut Context, action: Action) {
     use helix_view::editor::Action;
     let (view, doc) = cx.current();
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
     let first_line = view.first_line;
 
-    cx.editor.switch(id, Action::VerticalSplit);
+    cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = cx.current();
     view.first_line = first_line;
     doc.set_selection(view.id, selection);
+}
+
+pub fn hsplit(cx: &mut Context) {
+    split(cx, Action::HorizontalSplit);
+}
+
+pub fn vsplit(cx: &mut Context) {
+    split(cx, Action::VerticalSplit);
+}
+
+pub fn wclose(cx: &mut Context) {
+    let view_id = cx.view().id;
+    // close current split
+    cx.editor.close(view_id, /* close_buffer */ false);
 }
 
 pub fn space_mode(cx: &mut Context) {
@@ -2305,17 +2367,11 @@ pub fn space_mode(cx: &mut Context) {
             match ch {
                 'f' => file_picker(cx),
                 'b' => buffer_picker(cx),
-                'v' => vsplit(cx),
                 'w' => {
                     // save current buffer
                     let (view, doc) = cx.current();
                     doc.format(view.id); // TODO: merge into save
                     tokio::spawn(doc.save());
-                }
-                'c' => {
-                    let view_id = cx.view().id;
-                    // close current split
-                    cx.editor.close(view_id, /* close_buffer */ false);
                 }
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took it's old key

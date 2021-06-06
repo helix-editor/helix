@@ -45,6 +45,13 @@ the `HELIX_RUNTIME` environment variable.
 > NOTE: You should set this to <path to repository>/runtime in development (if
 > running via cargo).
 
+If you want to embed the `runtime/` directory into the Helix binary you can build
+it with:
+
+```
+cargo install --path helix-term --features "embed_runtime"
+```
+
 ## Arch Linux
 There are two packages available from AUR:
  - `helix-bin`: contains prebuilt binary from GitHub releases
@@ -74,5 +81,4 @@ All shortcuts/keymaps can be found in the documentation on the website:
 
 # Getting help
 
-Discuss the project on the community [Matrix channel](https://matrix.to/#/#helix-community:matrix.org).
-
+Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
