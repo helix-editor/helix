@@ -191,6 +191,10 @@ cargo install --path helix-term
 <p>Now copy the <code>runtime/</code> directory somewhere. Helix will by default look for the
 runtime inside the same folder as the executable, but that can be overriden via
 the <code>HELIX_RUNTIME</code> environment variable.</p>
+<p>If you want to embed the <code>runtime/</code> directory into the Helix binary you can build
+it with:</p>
+<pre><code>cargo install --path helix-term --features &quot;embed_runtime&quot;
+</code></pre>
 
                     </main>
 
