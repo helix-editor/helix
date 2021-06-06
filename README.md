@@ -57,6 +57,14 @@ There are two packages available from AUR:
  - `helix-bin`: contains prebuilt binary from GitHub releases
  - `helix-git`: builds the master branch of this repository
 
+## MacOS
+Helix can be installed on MacOS through homebrew via:
+
+```
+brew tap helix-editor/helix
+brew install helix
+```
+ 
 # Contributing
 
 Contributors are very welcome! **No contribution is too small and all contributions are valued.**
