@@ -182,6 +182,18 @@ fn is_horiz_blank(ch: char) -> bool {
     matches!(ch, ' ' | '\t')
 }
 
+fn is_punctuation(ch: char) -> bool {
+    use unicode_general_category::{get_general_category, GeneralCategory};
+
+    get_general_category(ch) == GeneralCategory::OtherPunctuation
+}
+
+fn is_whitespace(ch: char) -> bool {
+    use unicode_general_category::{get_general_category, GeneralCategory};
+
+    get_general_category(ch) == GeneralCategory::SpaceSeparator
+}
+
 #[derive(Debug, Eq, PartialEq)]
 enum Category {
     Whitespace,
@@ -192,11 +204,11 @@ enum Category {
 fn categorize(ch: char) -> Category {
     if ch == '\n' {
         Category::Eol
-    } else if ch.is_ascii_whitespace() {
+    } else if is_whitespace(ch) {
         Category::Whitespace
     } else if is_word(ch) {
         Category::Word
-    } else if ch.is_ascii_punctuation() {
+    } else if is_punctuation(ch) {
         Category::Punctuation
     } else {
         unreachable!()

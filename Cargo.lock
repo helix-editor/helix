@@ -271,6 +271,7 @@ dependencies = [
  "tendril",
  "toml",
  "tree-sitter",
+ "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
 ]
@@ -949,6 +950,12 @@ checksum = "eeb8be209bb1c96b7c177c7420d26e04eccacb0eeae6b980e35fcb74678107e0"
 dependencies = [
  "matches",
 ]
+
+[[package]]
+name = "unicode-general-category"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07547e3ee45e28326cc23faac56d44f58f16ab23e413db526debce3b0bfd2742"
 
 [[package]]
 name = "unicode-normalization"
