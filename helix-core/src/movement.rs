@@ -188,12 +188,6 @@ fn is_punctuation(ch: char) -> bool {
     get_general_category(ch) == GeneralCategory::OtherPunctuation
 }
 
-fn is_whitespace(ch: char) -> bool {
-    use unicode_general_category::{get_general_category, GeneralCategory};
-
-    get_general_category(ch) == GeneralCategory::SpaceSeparator
-}
-
 #[derive(Debug, Eq, PartialEq)]
 enum Category {
     Whitespace,
@@ -202,16 +196,22 @@ enum Category {
     Punctuation,
 }
 fn categorize(ch: char) -> Category {
+    use unicode_general_category::{get_general_category, GeneralCategory};
+
     if ch == '\n' {
-        Category::Eol
-    } else if is_whitespace(ch) {
-        Category::Whitespace
-    } else if is_word(ch) {
-        Category::Word
-    } else if is_punctuation(ch) {
-        Category::Punctuation
-    } else {
-        unreachable!("unknown '{}' character category", ch)
+        return Category::Eol;
+    }
+
+    match get_general_category(ch) {
+        GeneralCategory::SpaceSeparator => Category::Whitespace,
+        GeneralCategory::OtherPunctuation => Category::Punctuation,
+        _ => {
+            if is_word(ch) {
+                Category::Word
+            } else {
+                unreachable!("unknown '{}' character category", ch)
+            }
+        }
     }
 }
 
