@@ -272,7 +272,7 @@ mod test {
 
     #[test]
     fn test_categorize() {
-        const WORD_TEST_CASE: &'static str = "_hello_world_";
+        const WORD_TEST_CASE: &'static str = "_hello_world_あいうえお";
         const PUNCTUATION_TEST_CASE: &'static str = ".,!?;:。、！？；：{}[]｛｝「」⟪";
         const WHITESPACE_TEST_CASE: &'static str = "  　   ";
 
