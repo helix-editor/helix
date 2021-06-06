@@ -30,7 +30,7 @@
 | g   | Enter goto mode |
 | :   | Enter command mode |
 | z   | Enter view mode |
-| ctrl-w | Enter window mode |
+| ctrl-w | Enter window mode (maybe will be remove for spc w w later) |
 | space   | Enter space mode |
 | K | Show documentation for the item under the cursor |
 
@@ -151,5 +151,5 @@ This layer is a kludge of mappings I had under leader key in neovim.
 |-----|-----------|
 | f   | Open file picker |
 | b   | Open buffer picker |
-| w   | Save changes to file |
+| w   | Enter window mode |
 | space   | Keep primary selection TODO: it's here because space mode replaced it |

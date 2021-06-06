@@ -2367,12 +2367,7 @@ pub fn space_mode(cx: &mut Context) {
             match ch {
                 'f' => file_picker(cx),
                 'b' => buffer_picker(cx),
-                'w' => {
-                    // save current buffer
-                    let (view, doc) = cx.current();
-                    doc.format(view.id); // TODO: merge into save
-                    tokio::spawn(doc.save());
-                }
+                'w' => window_mode(cx),
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took it's old key
                 ' ' => keep_primary_selection(cx),
