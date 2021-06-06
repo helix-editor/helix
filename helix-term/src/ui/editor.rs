@@ -195,7 +195,7 @@ impl EditorView {
                             }
 
                             // ugh,interleave highlight spans with diagnostic spans
-                            let is_diagnostic = doc.diagnostics.iter().any(|diagnostic| {
+                            let is_diagnostic = doc.diagnostics().iter().any(|diagnostic| {
                                 diagnostic.range.start <= char_index
                                     && diagnostic.range.end > char_index
                             });
@@ -343,7 +343,7 @@ impl EditorView {
 
         for (i, line) in (view.first_line..=last_line).enumerate() {
             use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics.iter().find(|d| d.line == line) {
+            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
                     viewport.x - OFFSET,
                     viewport.y + i as u16,
@@ -387,7 +387,7 @@ impl EditorView {
         let cursor = doc.selection(view.id).cursor();
         let line = doc.text().char_to_line(cursor);
 
-        let diagnostics = doc.diagnostics.iter().filter(|diagnostic| {
+        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
@@ -469,7 +469,7 @@ impl EditorView {
         surface.set_stringn(
             viewport.x + viewport.width.saturating_sub(15),
             viewport.y,
-            format!("{}", doc.diagnostics.len()),
+            format!("{}", doc.diagnostics().len()),
             4,
             text_color,
         );

@@ -48,7 +48,7 @@ pub struct Document {
     last_saved_revision: usize,
     version: i32, // should be usize?
 
-    pub diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
@@ -518,6 +518,14 @@ impl Document {
 
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
+    }
+
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
+        self.diagnostics = diagnostics;
     }
 }
 
