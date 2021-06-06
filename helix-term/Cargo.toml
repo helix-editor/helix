@@ -8,6 +8,9 @@ license = "MPL-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+embed_runtime = ["helix-core/embed_runtime"]
+
 [[bin]]
 name = "hx"
 path = "src/main.rs"

@@ -44,6 +44,7 @@ pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -
     None
 }
 
+#[cfg(not(embed_runtime))]
 pub fn runtime_dir() -> std::path::PathBuf {
     // runtime env var || dir where binary is located
     std::env::var("HELIX_RUNTIME")

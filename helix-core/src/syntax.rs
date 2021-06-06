@@ -73,16 +73,46 @@ pub struct IndentQuery {
     pub outdent: HashSet<String>,
 }
 
+#[cfg(not(feature = "embed_runtime"))]
+fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
+    let root = crate::runtime_dir();
+    let path = root.join("queries").join(language).join(filename);
+    std::fs::read_to_string(&path)
+}
+
+#[cfg(feature = "embed_runtime")]
+fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
+    use std::fmt;
+
+    #[derive(rust_embed::RustEmbed)]
+    #[folder = "../runtime/"]
+    struct Runtime;
+
+    #[derive(Debug)]
+    struct EmbeddedFileNotFoundError {
+        path: PathBuf,
+    }
+    impl std::error::Error for EmbeddedFileNotFoundError {}
+    impl fmt::Display for EmbeddedFileNotFoundError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "failed to load embedded file {}", self.path.display())
+        }
+    }
+
+    let path = PathBuf::from("queries").join(language).join(filename);
+
+    if let Some(query_bytes) = Runtime::get(&path.display().to_string()) {
+        String::from_utf8(query_bytes.to_vec()).map_err(|err| err.into())
+    } else {
+        Err(Box::new(EmbeddedFileNotFoundError { path }))
+    }
+}
+
 fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
 
-    let root = crate::runtime_dir();
-    // let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-
-    let path = root.join("queries").join(language).join(filename);
-
-    let query = std::fs::read_to_string(&path).unwrap_or_default();
+    let query = load_runtime_file(language, filename).unwrap_or_default();
 
     // TODO: the collect() is not ideal
     let inherits = INHERITS_REGEX
@@ -146,11 +176,8 @@ impl LanguageConfiguration {
             .get_or_init(|| {
                 let language = get_language_name(self.language_id).to_ascii_lowercase();
 
-                let root = crate::runtime_dir();
-                let path = root.join("queries").join(language).join("indents.toml");
-
-                let toml = std::fs::read(&path).ok()?;
-                toml::from_slice(&toml).ok()
+                let toml = load_runtime_file(&language, "indents.toml").ok()?;
+                toml::from_slice(&toml.as_bytes()).ok()
             })
             .as_ref()
     }
@@ -1705,4 +1732,14 @@ fn test_input_edits() {
             new_end_position: Point { row: 0, column: 14 }
         }]
     );
+}
+
+#[test]
+fn test_load_runtime_file() {
+    // Test to make sure we can load some data from the runtime directory.
+    let contents = load_runtime_file("rust", "indents.toml").unwrap();
+    assert!(!contents.is_empty());
+
+    let results = load_runtime_file("rust", "does-not-exist");
+    assert!(results.is_err());
 }
