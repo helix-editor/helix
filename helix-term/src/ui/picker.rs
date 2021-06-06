@@ -100,8 +100,11 @@ impl<T> Picker<T> {
     }
 
     pub fn move_down(&mut self) {
-        // TODO: len - 1
-        if self.cursor < self.options.len() {
+        if self.matches.is_empty() {
+            return;
+        }
+
+        if self.cursor < self.matches.len() - 1 {
             self.cursor += 1;
         }
     }
