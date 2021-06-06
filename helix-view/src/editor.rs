@@ -137,7 +137,7 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let path = std::fs::canonicalize(path)?;
+        let path = crate::document::canonicalize_path(&path)?;
 
         let id = self
             .documents()
