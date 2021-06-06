@@ -261,7 +261,16 @@ impl EditorView {
                         Rect::new(
                             viewport.x + start.col as u16,
                             viewport.y + start.row as u16,
-                            ((end.col - start.col) as u16 + 1).min(viewport.width),
+                            // .min is important, because set_style does a
+                            // for i in area.left()..area.right() and
+                            // area.right = x + width !!! which shouldn't be > then surface.area.right()
+                            // This is checked by a debug_assert! in Buffer::index_of
+                            ((end.col - start.col) as u16 + 1).min(
+                                surface
+                                    .area
+                                    .width
+                                    .saturating_sub(viewport.x + start.col as u16),
+                            ),
                             1,
                         ),
                         selection_style,
@@ -290,7 +299,12 @@ impl EditorView {
                         );
                     }
                     surface.set_style(
-                        Rect::new(viewport.x, viewport.y + end.row as u16, end.col as u16, 1),
+                        Rect::new(
+                            viewport.x,
+                            viewport.y + end.row as u16,
+                            (end.col as u16).min(viewport.width),
+                            1,
+                        ),
                         selection_style,
                     );
                 }
