@@ -91,13 +91,11 @@ impl Prompt {
         }
 
         let index = match direction {
-            CompletionDirection::Forward => {
-                self.selection.map_or(0, |i| i + 1) % self.completion.len()
-            }
+            CompletionDirection::Forward => self.selection.map_or(0, |i| i + 1),
             CompletionDirection::Backward => {
-                (self.selection.unwrap_or(0) + self.completion.len() - 1) % self.completion.len()
+                self.selection.unwrap_or(0) + self.completion.len() - 1
             }
-        };
+        } % self.completion.len();
 
         self.selection = Some(index);
 
