@@ -200,18 +200,18 @@ fn categorize(ch: char) -> Category {
 
     if ch == '\n' {
         return Category::Eol;
+    } else if is_word(ch) {
+        return Category::Word;
     }
 
     match get_general_category(ch) {
         GeneralCategory::SpaceSeparator => Category::Whitespace,
-        GeneralCategory::OtherPunctuation => Category::Punctuation,
-        _ => {
-            if is_word(ch) {
-                Category::Word
-            } else {
-                unreachable!("unknown '{}' character category", ch)
-            }
-        }
+        GeneralCategory::OtherPunctuation
+        | GeneralCategory::ClosePunctuation
+        | GeneralCategory::OpenPunctuation
+        | GeneralCategory::InitialPunctuation
+        | GeneralCategory::FinalPunctuation => Category::Punctuation,
+        _ => unreachable!("unknown '{}' character category", ch),
     }
 }
 
@@ -268,5 +268,26 @@ mod test {
             ),
             (1, 2).into()
         );
+    }
+
+    #[test]
+    fn test_categorize() {
+        const WORD_TEST_CASE: &'static str = "_hello_world_";
+        const PUNCTUATION_TEST_CASE: &'static str = ".,!?;:。、！？；：{}[]｛｝「」⟪";
+        const WHITESPACE_TEST_CASE: &'static str = "  　   ";
+
+        assert_eq!(Category::Eol, categorize('\n'));
+
+        for ch in WHITESPACE_TEST_CASE.chars() {
+            assert_eq!(Category::Whitespace, categorize(ch));
+        }
+
+        for ch in WORD_TEST_CASE.chars() {
+            assert_eq!(Category::Word, categorize(ch));
+        }
+
+        for ch in PUNCTUATION_TEST_CASE.chars() {
+            assert_eq!(Category::Punctuation, categorize(ch));
+        }
     }
 }
