@@ -7,6 +7,7 @@ pub enum Direction {
     Backward,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum SelectionBehaviour {
     Extend,
     Displace
@@ -264,10 +265,27 @@ mod test {
     const MULTILINE_SAMPLE: &str = "\
         Multiline\n\
         text sample\n\
-        \n\
-        merely alphabetic\n\
-        and whitespaced\
+        which\n\
+        is merely alphabetic\n\
+        and whitespaced\n\
     ";
+    const UNICODE_SUPERSCRIPT_SAMPLE: &str = "\
+        ⁰⁴⁵\n\
+        ₀₁₂\n\
+        ⁰⁴⁵₀₁₂\n\
+        ด้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็ ด้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็ ด้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็\n\
+    ";
+
+    const MULTIBYTE_CHARACTER_SAMPLE: &str = "\
+        パーティーへ行かないか\n\
+        The text above is Japanese\n\
+    ";
+
+    const ZALGO_SAMPLE: &str = "\
+        Ṯ̤͍̥͇͈h̲́e͏͓̼̗̙̼̣͔ ͇̜̱̠͓͍ͅN͕͠e̗̱z̘̝̜̺͙p̤̺̹͍̯͚e̠̻̠͜r̨̤͍̺̖͔̖̖d̠̟̭̬̝͟i̦͖̩͓͔̤a̠̗̬͉̙n͚͜
+        h̵͉i̳̞v̢͇ḙ͎͟-҉̭̩̼͔m̤̭̫i͕͇̝̦n̗͙ḍ̟ ̯̲͕͞ǫ̟̯̰̲͙̻̝f ̪̰̰̗̖̭̘͘c̦͍̲̞͍̩̙ḥ͚a̮͎̟̙͜ơ̩̹͎s̤.̝̝ ҉Z̡̖̜͖̰̣͉̜a͖̰͙̬͡l̲̫̳͍̩g̡̟̼̱͚̞̬ͅo̗͜.̟
+    ";
+
 
     #[test]
     fn test_vertical_move() {
@@ -353,6 +371,90 @@ mod test {
         for (direction, amount) in moves {
             range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Extend);
             assert_eq!(range.anchor, original_anchor);
+        };
+    }
+
+    #[test]
+    fn vertical_moves_in_single_column() {
+        let text = Rope::from(MULTILINE_SAMPLE);
+        let slice = dbg!(&text).slice(..);
+        let position = pos_at_coords(slice, (0, 0).into());
+        let mut range = Range::single(position);
+        let moves_and_expected_coordinates = IntoIter::new([
+            ((Direction::Forward, 1usize), (1, 0)),
+            ((Direction::Forward, 2usize), (3, 0)),
+            ((Direction::Backward, 999usize), (0, 0)),
+            ((Direction::Forward, 3usize), (3, 0)),
+            ((Direction::Forward, 0usize), (3, 0)),
+            ((Direction::Backward, 0usize), (3, 0)),
+            ((Direction::Forward, 5), (4, 0)),
+            ((Direction::Forward, 999usize), (4, 0)),
+        ]);
+
+        for ((direction, amount), coordinates) in moves_and_expected_coordinates {
+            range = move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace);
+            assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
+            assert_eq!(range.head, range.anchor);
+        };
+    }
+
+    #[test]
+    fn vertical_moves_jumping_column() {
+        let text = Rope::from(MULTILINE_SAMPLE);
+        let slice = text.slice(..);
+        let position = pos_at_coords(slice, (0, 0).into());
+        let mut range = Range::single(position);
+
+        enum Axis { H, V };
+        let moves_and_expected_coordinates = IntoIter::new([
+            // Places cursor at the end of line
+            ((Axis::H, Direction::Forward, 8usize), (0, 8)),
+            // First descent preserves column as the target line is wider
+            ((Axis::V, Direction::Forward, 1usize), (1, 8)),
+            // Second descent clamps column as the target line is shorter
+            ((Axis::V, Direction::Forward, 1usize), (2, 4)),
+            // Third descent restores the original column
+            ((Axis::V, Direction::Forward, 1usize), (3, 8)),
+            // Behaviour is preserved even through long jumps
+            ((Axis::V, Direction::Backward, 999usize), (0, 8)),
+            ((Axis::V, Direction::Forward, 999usize), (4, 8)),
+        ]);
+
+        for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
+            range = match axis {
+                Axis::H => move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace),
+                Axis::V => move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace),
+            };
+            assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
+            assert_eq!(range.head, range.anchor);
+        };
+    }
+
+    #[test]
+    fn multibyte_character_column_jumps() {
+        let text = Rope::from(MULTIBYTE_CHARACTER_SAMPLE);
+        let slice = text.slice(..);
+        let position = pos_at_coords(slice, (0, 0).into());
+        let mut range = Range::single(position);
+
+        // FIXME: The behaviour captured in this test diverges from both Kakoune and Vim. These
+        // will attempt to preserve the horizontal position of the cursor, rather than
+        // placing it at the same character index.
+        enum Axis { H, V };
+        let moves_and_expected_coordinates = IntoIter::new([
+            // Places cursor at the fourth kana
+            ((Axis::H, Direction::Forward, 4), (0, 4)),
+            // Descent places cursor at the fourth character.
+            ((Axis::V, Direction::Forward, 1usize), (1, 4)),
+        ]);
+
+        for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
+            range = match axis {
+                Axis::H => move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace),
+                Axis::V => move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace),
+            };
+            assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
+            assert_eq!(range.head, range.anchor);
         };
     }
 }
