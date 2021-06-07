@@ -13,6 +13,8 @@ myself agreeing with most of kakoune's design decisions.
 For more information, see the [website](https://helix-editor.com) or
 [documentation](https://docs.helix-editor.com/).
 
+All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html)
+
 # Features
 
 - Vim-like modal editing
@@ -25,7 +27,8 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 
 # Installation
 
-Note: Only Rust and Golang have indentation definitions at the moment.
+Note: Only certain languages have indentation definitions at the moment. Check
+`runtime/<lang>/` for `indents.toml`.
 
 We provide packaging for various distributions, but here's a quick method to
 build from source.
@@ -44,6 +47,8 @@ the `HELIX_RUNTIME` environment variable.
 
 > NOTE: You should set this to <path to repository>/runtime in development (if
 > running via cargo).
+> 
+> `export HELIX_RUNTIME=$PWD/runtime`
 
 If you want to embed the `runtime/` directory into the Helix binary you can build
 it with:
@@ -79,13 +84,6 @@ Some suggestions to get started:
 
 We provide an [architecture.md](./docs/architecture.md) that should give you
 a good overview of the internals.
-
-## Usage
- 
-### Keyboard shortcuts / Keymap
-
-All shortcuts/keymaps can be found in the documentation on the website:
-- https://docs.helix-editor.com/keymap.html
 
 # Getting help
 
