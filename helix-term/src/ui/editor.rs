@@ -34,6 +34,12 @@ pub struct EditorView {
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
+impl Default for EditorView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EditorView {
     pub fn new() -> Self {
         Self {
