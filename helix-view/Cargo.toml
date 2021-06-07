@@ -10,7 +10,6 @@ license = "MPL-2.0"
 [features]
 term = ["tui", "crossterm"]
 default = ["term"]
-debug = ["helix-core/debug", "helix-lsp/debug"]
 
 [dependencies]
 anyhow = "1"

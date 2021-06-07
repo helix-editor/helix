@@ -10,7 +10,6 @@ license = "MPL-2.0"
 
 [features]
 embed_runtime = ["rust-embed"]
-debug = []
 
 [dependencies]
 helix-syntax = { path = "../helix-syntax" }

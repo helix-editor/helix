@@ -1,8 +1,7 @@
 use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
 use crate::{coords_at_pos, pos_at_coords, ChangeSet, Position, Range, Rope, RopeSlice, Selection};
 
-#[cfg_attr(feature = "debug", derive(Debug))]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Direction {
     Forward,
     Backward,

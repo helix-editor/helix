@@ -10,7 +10,6 @@ license = "MPL-2.0"
 
 [features]
 default = ["crossterm"]
-debug = []
 
 [dependencies]
 bitflags = "1.0"
