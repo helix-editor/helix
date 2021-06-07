@@ -2502,7 +2502,7 @@ pub fn view_mode(cx: &mut Context) {
                     let pos = coords_at_pos(doc.text().slice(..), pos);
 
                     const OFFSET: usize = 7; // gutters
-                    view.first_col = pos.col.saturating_sub((view.area.width as usize - OFFSET) / 2);
+                    view.first_col = pos.col.saturating_sub(((view.area.width as usize).saturating_sub(OFFSET)) / 2);
                 },
                 'h' => (),
                 'j' => scroll(cx, 1, Direction::Forward),
