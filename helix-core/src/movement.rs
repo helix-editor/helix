@@ -281,8 +281,9 @@ mod test {
 
     #[test]
     fn test_categorize() {
-        const WORD_TEST_CASE: &'static str = "_hello_world_あいうえおー";
-        const PUNCTUATION_TEST_CASE: &'static str = "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、＿。：；＜＝＞？＠「」＾｀｛｜｝～";
+        const WORD_TEST_CASE: &'static str =
+            "_hello_world_あいうえおー1234567890１２３４５６７８９０";
+        const PUNCTUATION_TEST_CASE: &'static str = "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、。：；＜＝＞？＠「」＾｀｛｜｝～";
         const WHITESPACE_TEST_CASE: &'static str = "  　   ";
 
         assert_eq!(Category::Eol, categorize('\n'));
