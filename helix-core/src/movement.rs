@@ -92,7 +92,7 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
             skip_over_next(slice, &mut end, is_punctuation);
         }
 
-        skip_over_next(slice, &mut end, is_horiz_blank);
+        skip_over_next(slice, &mut end, char::is_whitespace);
     }
 
     Some(Range::new(begin, end - 1))
@@ -119,7 +119,7 @@ pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
 
         end = begin - 1;
 
-        with_end = skip_over_prev(slice, &mut end, is_horiz_blank);
+        with_end = skip_over_prev(slice, &mut end, char::is_whitespace);
 
         // refetch
         let ch = slice.char(end);
@@ -155,7 +155,7 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
         end = begin;
 
-        skip_over_next(slice, &mut end, is_horiz_blank);
+        skip_over_next(slice, &mut end, char::is_whitespace);
 
         // refetch
         let ch = slice.char(end);
@@ -177,11 +177,6 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 #[inline]
 pub(crate) fn is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
-}
-
-#[inline]
-pub(crate) fn is_horiz_blank(ch: char) -> bool {
-    matches!(ch, ' ' | '\t')
 }
 
 #[inline]
@@ -214,8 +209,6 @@ pub(crate) enum Category {
 
 #[inline]
 pub(crate) fn categorize(ch: char) -> Category {
-    use unicode_general_category::{get_general_category, GeneralCategory};
-
     if ch == '\n' {
         Category::Eol
     } else if ch.is_whitespace() {
