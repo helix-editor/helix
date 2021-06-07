@@ -174,11 +174,11 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
 // used for by-word movement
 
-fn is_word(ch: char) -> bool {
+pub(crate) fn is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
 
-fn is_horiz_blank(ch: char) -> bool {
+pub(crate) fn is_horiz_blank(ch: char) -> bool {
     matches!(ch, ' ' | '\t')
 }
 
@@ -189,13 +189,16 @@ fn is_punctuation(ch: char) -> bool {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-enum Category {
+pub(crate) enum Category {
     Whitespace,
     Eol,
     Word,
     Punctuation,
+    Unknown,
 }
-fn categorize(ch: char) -> Category {
+
+#[inline]
+pub(crate) fn categorize(ch: char) -> Category {
     use unicode_general_category::{get_general_category, GeneralCategory};
 
     if ch == '\n' {

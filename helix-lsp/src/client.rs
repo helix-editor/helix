@@ -3,7 +3,7 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{ChangeSet, Rope};
+use helix_core::{find_root, ChangeSet, Rope};
 
 // use std::collections::HashMap;
 use std::future::Future;
@@ -218,13 +218,14 @@ impl Client {
 
     pub async fn initialize(&mut self) -> Result<()> {
         // TODO: delay any requests that are triggered prior to initialize
+        let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
 
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
+            // root_path is obsolete, use root_uri
             root_path: None,
-            // root_uri: Some(lsp_types::Url::parse("file://localhost/")?),
-            root_uri: None, // set to project root in the future
+            root_uri: root,
             initialization_options: None,
             capabilities: lsp::ClientCapabilities {
                 text_document: Some(lsp::TextDocumentClientCapabilities {

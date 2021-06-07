@@ -1,10 +1,10 @@
 use helix_core::{
-    comment, coords_at_pos, graphemes, indent, match_brackets,
+    comment, coords_at_pos, find_root, graphemes, indent, match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
-    SmallVec, Tendril, Transaction,
+    register, search, selection, words, Change, ChangeSet, Position, Range, Rope, RopeSlice,
+    Selection, SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -35,6 +35,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
+    pub register: helix_view::RegisterSelection,
     pub count: usize,
     pub editor: &'a mut Editor,
 
@@ -777,7 +778,7 @@ pub fn extend_line(cx: &mut Context) {
 
 // heuristic: append changes to history after each command, unless we're in insert mode
 
-fn _delete_selection(doc: &mut Document, view_id: ViewId) {
+fn _delete_selection(reg: char, doc: &mut Document, view_id: ViewId) {
     // first yank the selection
     let values: Vec<String> = doc
         .selection(view_id)
@@ -785,8 +786,6 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
         .map(Cow::into_owned)
         .collect();
 
-    // TODO: allow specifying reg
-    let reg = '"';
     register::set(reg, values);
 
     // then delete
@@ -800,8 +799,9 @@ fn _delete_selection(doc: &mut Document, view_id: ViewId) {
 }
 
 pub fn delete_selection(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
-    _delete_selection(doc, view.id);
+    _delete_selection(reg, doc, view.id);
 
     doc.append_changes_to_history(view.id);
 
@@ -810,8 +810,9 @@ pub fn delete_selection(cx: &mut Context) {
 }
 
 pub fn change_selection(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
-    _delete_selection(doc, view.id);
+    _delete_selection(reg, doc, view.id);
     enter_insert_mode(doc);
 }
 
@@ -1093,30 +1094,6 @@ pub fn command_mode(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-fn find_root(root: Option<&str>) -> Option<PathBuf> {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
-
-    let root = match root {
-        Some(root) => {
-            let root = Path::new(root);
-            if root.is_absolute() {
-                root.to_path_buf()
-            } else {
-                current_dir.join(root)
-            }
-        }
-        None => current_dir,
-    };
-
-    for ancestor in root.ancestors() {
-        // TODO: also use defined roots if git isn't found
-        if ancestor.join(".git").is_dir() {
-            return Some(ancestor.to_path_buf());
-        }
-    }
-    None
-}
-
 pub fn file_picker(cx: &mut Context) {
     let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
     let picker = ui::file_picker(root);
@@ -1220,7 +1197,7 @@ fn open(cx: &mut Context, open: Open) {
             let text = text.repeat(count);
 
             // calculate new selection range
-            let pos = index + text.len();
+            let pos = index + text.chars().count();
             ranges.push(Range::new(pos, pos));
 
             (index, index, Some(text.into()))
@@ -1299,17 +1276,19 @@ pub fn goto_mode(cx: &mut Context) {
         } = event
         {
             // TODO: temporarily show GOTO in the mode list
-            match ch {
-                'g' => move_file_start(cx),
-                'e' => move_file_end(cx),
-                'h' => move_line_start(cx),
-                'l' => move_line_end(cx),
-                'd' => goto_definition(cx),
-                'y' => goto_type_definition(cx),
-                'r' => goto_reference(cx),
-                'i' => goto_implementation(cx),
+            match (cx.doc().mode, ch) {
+                (_, 'g') => move_file_start(cx),
+                (_, 'e') => move_file_end(cx),
+                (Mode::Normal, 'h') => move_line_start(cx),
+                (Mode::Normal, 'l') => move_line_end(cx),
+                (Mode::Select, 'h') => extend_line_start(cx),
+                (Mode::Select, 'l') => extend_line_end(cx),
+                (_, 'd') => goto_definition(cx),
+                (_, 'y') => goto_type_definition(cx),
+                (_, 'r') => goto_reference(cx),
+                (_, 'i') => goto_implementation(cx),
 
-                't' | 'm' | 'b' => {
+                (_, 't') | (_, 'm') | (_, 'b') => {
                     let (view, doc) = cx.current();
 
                     let pos = doc.selection(view.id).cursor();
@@ -1536,6 +1515,86 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
+fn goto_pos(editor: &mut Editor, pos: usize) {
+    push_jump(editor);
+
+    let (view, doc) = editor.current();
+
+    doc.set_selection(view.id, Selection::point(pos));
+    align_view(doc, view, Align::Center);
+}
+
+pub fn goto_first_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc.diagnostics().first() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
+pub fn goto_last_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc.diagnostics().last() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
+pub fn goto_next_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc
+        .diagnostics()
+        .iter()
+        .map(|diag| diag.range.start)
+        .find(|&pos| pos > cursor_pos)
+    {
+        diag
+    } else if let Some(diag) = doc.diagnostics().first() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
+pub fn goto_prev_diag(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let (view, doc) = editor.current();
+
+    let cursor_pos = doc.selection(view.id).cursor();
+    let diag = if let Some(diag) = doc
+        .diagnostics()
+        .iter()
+        .rev()
+        .map(|diag| diag.range.start)
+        .find(|&pos| pos < cursor_pos)
+    {
+        diag
+    } else if let Some(diag) = doc.diagnostics().last() {
+        diag.range.start
+    } else {
+        return;
+    };
+
+    goto_pos(editor, diag);
+}
+
 pub fn signature_help(cx: &mut Context) {
     let (view, doc) = cx.current();
 
@@ -1731,7 +1790,7 @@ pub mod insert {
             text.push('\n');
             text.push_str(&indent);
 
-            let head = pos + offs + text.len();
+            let head = pos + offs + text.chars().count();
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
@@ -1753,7 +1812,7 @@ pub mod insert {
                 text.push_str(&indent);
             }
 
-            offs += text.len();
+            offs += text.chars().count();
 
             (pos, pos, Some(text.into()))
         });
@@ -1782,7 +1841,6 @@ pub mod insert {
 
     pub fn delete_char_forward(cx: &mut Context) {
         let count = cx.count;
-        let doc = cx.doc();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
         let transaction =
@@ -1790,6 +1848,21 @@ pub mod insert {
                 (
                     range.head,
                     graphemes::nth_next_grapheme_boundary(text, range.head, count),
+                    None,
+                )
+            });
+        doc.apply(&transaction, view.id);
+    }
+
+    pub fn delete_word_backward(cx: &mut Context) {
+        let count = cx.count;
+        let (view, doc) = cx.current();
+        let text = doc.text().slice(..);
+        let transaction =
+            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                (
+                    words::nth_prev_word_boundary(text, range.head, count),
+                    range.head,
                     None,
                 )
             });
@@ -1823,11 +1896,13 @@ pub fn yank(cx: &mut Context) {
         .map(Cow::into_owned)
         .collect();
 
-    // TODO: allow specifying reg
-    let reg = '"';
-    let msg = format!("yanked {} selection(s) to register {}", values.len(), reg);
+    let msg = format!(
+        "yanked {} selection(s) to register {}",
+        values.len(),
+        cx.register.name()
+    );
 
-    register::set(reg, values);
+    register::set(cx.register.name(), values);
 
     cx.editor.set_status(msg)
 }
@@ -1838,9 +1913,7 @@ enum Paste {
     After,
 }
 
-fn _paste(doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
-    // TODO: allow specifying reg
-    let reg = '"';
+fn _paste(reg: char, doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
     if let Some(values) = register::get(reg) {
         let repeat = std::iter::repeat(
             values
@@ -1886,18 +1959,20 @@ fn _paste(doc: &mut Document, view: &View, action: Paste) -> Option<Transaction>
 // default insert
 
 pub fn paste_after(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
 
-    if let Some(transaction) = _paste(doc, view, Paste::After) {
+    if let Some(transaction) = _paste(reg, doc, view, Paste::After) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
 }
 
 pub fn paste_before(cx: &mut Context) {
+    let reg = cx.register.name();
     let (view, doc) = cx.current();
 
-    if let Some(transaction) = _paste(doc, view, Paste::Before) {
+    if let Some(transaction) = _paste(reg, doc, view, Paste::Before) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
@@ -2177,7 +2252,9 @@ pub fn completion(cx: &mut Context) {
             }
             use crate::compositor::AnyComponent;
             let size = compositor.size();
-            let ui = compositor.find("hx::ui::editor::EditorView").unwrap();
+            let ui = compositor
+                .find(std::any::type_name::<ui::EditorView>())
+                .unwrap();
             if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
                 ui.set_completion(items, offset_encoding, trigger_offset, size);
             };
@@ -2356,6 +2433,18 @@ pub fn wclose(cx: &mut Context) {
     cx.editor.close(view_id, /* close_buffer */ false);
 }
 
+pub fn select_register(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            cx.editor.register.select(ch);
+        }
+    })
+}
+
 pub fn space_mode(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let KeyEvent {
@@ -2367,14 +2456,9 @@ pub fn space_mode(cx: &mut Context) {
             match ch {
                 'f' => file_picker(cx),
                 'b' => buffer_picker(cx),
-                'w' => {
-                    // save current buffer
-                    let (view, doc) = cx.current();
-                    doc.format(view.id); // TODO: merge into save
-                    tokio::spawn(doc.save());
-                }
+                'w' => window_mode(cx),
                 // ' ' => toggle_alternate_buffer(cx),
-                // TODO: temporary since space mode took it's old key
+                // TODO: temporary since space mode took its old key
                 ' ' => keep_primary_selection(cx),
                 _ => (),
             }
@@ -2413,12 +2497,44 @@ pub fn view_mode(cx: &mut Context) {
                     let pos = coords_at_pos(doc.text().slice(..), pos);
 
                     const OFFSET: usize = 7; // gutters
-                    view.first_col = pos.col.saturating_sub((view.area.width as usize - OFFSET) / 2);
+                    view.first_col = pos.col.saturating_sub(((view.area.width as usize).saturating_sub(OFFSET)) / 2);
                 },
                 'h' => (),
                 'j' => scroll(cx, 1, Direction::Forward),
                 'k' => scroll(cx, 1, Direction::Backward),
                 'l' => (),
+                _ => (),
+            }
+        }
+    })
+}
+
+pub fn left_bracket_mode(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            match ch {
+                'd' => goto_prev_diag(cx),
+                'D' => goto_first_diag(cx),
+                _ => (),
+            }
+        }
+    })
+}
+
+pub fn right_bracket_mode(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            match ch {
+                'd' => goto_next_diag(cx),
+                'D' => goto_last_diag(cx),
                 _ => (),
             }
         }

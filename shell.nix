@@ -1,4 +1,4 @@
-{ stdenv, pkgs }:
+{ lib, stdenv, pkgs }:
 
 pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
@@ -12,7 +12,9 @@ pkgs.mkShell {
   RUSTFLAGS = "-C link-arg=-fuse-ld=lld -C target-cpu=native";
   RUST_BACKTRACE = "1";
   # https://github.com/rust-lang/rust/issues/55979
-  LD_LIBRARY_PATH="${stdenv.cc.cc.lib}/lib64:$LD_LIBRARY_PATH";
+  LD_LIBRARY_PATH = lib.makeLibraryPath (with pkgs; [
+    stdenv.cc.cc.lib
+  ]);
 
   shellHook = ''
     export HELIX_RUNTIME=$PWD/runtime

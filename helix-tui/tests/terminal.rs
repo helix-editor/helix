@@ -1,10 +1,7 @@
 use helix_tui::{
     backend::{Backend, TestBackend},
-    layout::Rect,
-    widgets::Paragraph,
     Terminal,
 };
-use std::error::Error;
 
 #[test]
 fn terminal_buffer_size_should_be_limited() {

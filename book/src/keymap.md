@@ -30,7 +30,7 @@
 | g   | Enter goto mode |
 | :   | Enter command mode |
 | z   | Enter view mode |
-| ctrl-w | Enter window mode |
+| ctrl-w | Enter window mode (maybe will be remove for spc w w later) |
 | space   | Enter space mode |
 | K | Show documentation for the item under the cursor |
 
@@ -85,6 +85,18 @@ in reverse, or searching via smartcase.
 | n   | Select next search match | 
 | N   | Add next search match to selection | 
 | *   | Use current selection as the search pattern | 
+
+### Diagnostics
+
+> NOTE: `[` and `]` will likely contain more pair mappings in the style of
+> [vim-unimpaired](https://github.com/tpope/vim-unimpaired)
+
+| Key | Description |
+|-----|-----------|
+| [d | Go to previous diagnostic |
+| ]d | Go to next diagnostic |
+| [D | Go to first diagnostic in document |
+| ]D | Go to last diagnostic in document |
 
 ## Select / extend mode
 
@@ -151,5 +163,5 @@ This layer is a kludge of mappings I had under leader key in neovim.
 |-----|-----------|
 | f   | Open file picker |
 | b   | Open buffer picker |
-| w   | Save changes to file |
+| w   | Enter window mode |
 | space   | Keep primary selection TODO: it's here because space mode replaced it |

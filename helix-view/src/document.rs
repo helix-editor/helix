@@ -48,7 +48,7 @@ pub struct Document {
     last_saved_revision: usize,
     version: i32, // should be usize?
 
-    pub diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
@@ -104,6 +104,14 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     ret
 }
 
+// Returns the canonical, absolute form of a path with all intermediate components normalized.
+//
+// This function is used instead of `std::fs::canonicalize` because we don't want to verify
+// here if the path exists, just normalize it's components.
+pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
+    std::env::current_dir().map(|current_dir| normalize_path(&current_dir.join(path)))
+}
+
 use helix_lsp::lsp;
 use url::Url;
 
@@ -133,13 +141,14 @@ impl Document {
 
     // TODO: async fn?
     pub fn load(path: PathBuf) -> Result<Self, Error> {
-        use std::{env, fs::File, io::BufReader};
-        let _current_dir = env::current_dir()?;
+        use std::{fs::File, io::BufReader};
 
-        let file = File::open(path.clone()).context(format!("unable to open {:?}", path))?;
-        let doc = Rope::from_reader(BufReader::new(file))?;
-
-        // TODO: create if not found
+        let doc = if !path.exists() {
+            Rope::from("\n")
+        } else {
+            let file = File::open(&path).context(format!("unable to open {:?}", path))?;
+            Rope::from_reader(BufReader::new(file))?
+        };
 
         let mut doc = Self::new(doc);
         // set the path and try detecting the language
@@ -192,6 +201,14 @@ impl Document {
 
         async move {
             use tokio::{fs::File, io::AsyncWriteExt};
+            if let Some(parent) = path.parent() {
+                // TODO: display a prompt asking the user if the directories should be created
+                if !parent.exists() {
+                    return Err(Error::msg(
+                        "can't save file, parent directory does not exist",
+                    ));
+                }
+            }
             let mut file = File::create(path).await?;
 
             // write all the rope chunks to file
@@ -220,16 +237,11 @@ impl Document {
     }
 
     pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        // canonicalize path to absolute value
-        let current_dir = std::env::current_dir()?;
-        let path = normalize_path(&current_dir.join(path));
+        let path = canonicalize_path(path)?;
 
-        if let Some(parent) = path.parent() {
-            // TODO: return error as necessary
-            if parent.exists() {
-                self.path = Some(path);
-            }
-        }
+        // if parent doesn't exist we still want to open the document
+        // and error out when document is saved
+        self.path = Some(path);
 
         // try detecting the language based on filepath
         self.detect_language();
@@ -506,6 +518,14 @@ impl Document {
 
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
+    }
+
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
+        self.diagnostics = diagnostics;
     }
 }
 

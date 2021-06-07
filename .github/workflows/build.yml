@@ -1,11 +1,11 @@
 name: Build
 on:
+  pull_request:
   push:
     branches:
       - master
-  pull_request:
-    branches:
-      - master
+  schedule:
+    - cron: '00 01 * * *'
 
 jobs:
   check:
@@ -49,7 +49,7 @@ jobs:
 
   test:
     name: Test Suite
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -60,7 +60,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ matrix.rust }}
           override: true
 
       - name: Cache cargo registry
@@ -85,6 +85,11 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable]
 
   lints:
     name: Lints

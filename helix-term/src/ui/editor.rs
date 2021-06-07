@@ -34,6 +34,12 @@ pub struct EditorView {
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
+impl Default for EditorView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EditorView {
     pub fn new() -> Self {
         Self {
@@ -195,7 +201,7 @@ impl EditorView {
                             }
 
                             // ugh,interleave highlight spans with diagnostic spans
-                            let is_diagnostic = doc.diagnostics.iter().any(|diagnostic| {
+                            let is_diagnostic = doc.diagnostics().iter().any(|diagnostic| {
                                 diagnostic.range.start <= char_index
                                     && diagnostic.range.end > char_index
                             });
@@ -261,7 +267,16 @@ impl EditorView {
                         Rect::new(
                             viewport.x + start.col as u16,
                             viewport.y + start.row as u16,
-                            ((end.col - start.col) as u16 + 1).min(viewport.width),
+                            // .min is important, because set_style does a
+                            // for i in area.left()..area.right() and
+                            // area.right = x + width !!! which shouldn't be > then surface.area.right()
+                            // This is checked by a debug_assert! in Buffer::index_of
+                            ((end.col - start.col) as u16 + 1).min(
+                                surface
+                                    .area
+                                    .width
+                                    .saturating_sub(viewport.x + start.col as u16),
+                            ),
                             1,
                         ),
                         selection_style,
@@ -290,7 +305,12 @@ impl EditorView {
                         );
                     }
                     surface.set_style(
-                        Rect::new(viewport.x, viewport.y + end.row as u16, end.col as u16, 1),
+                        Rect::new(
+                            viewport.x,
+                            viewport.y + end.row as u16,
+                            (end.col as u16).min(viewport.width),
+                            1,
+                        ),
                         selection_style,
                     );
                 }
@@ -341,9 +361,9 @@ impl EditorView {
         let info: Style = theme.get("info");
         let hint: Style = theme.get("hint");
 
-        for (i, line) in (view.first_line..=last_line).enumerate() {
+        for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics.iter().find(|d| d.line == line) {
+            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
                     viewport.x - OFFSET,
                     viewport.y + i as u16,
@@ -387,7 +407,7 @@ impl EditorView {
         let cursor = doc.selection(view.id).cursor();
         let line = doc.text().char_to_line(cursor);
 
-        let diagnostics = doc.diagnostics.iter().filter(|diagnostic| {
+        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
@@ -469,7 +489,7 @@ impl EditorView {
         surface.set_stringn(
             viewport.x + viewport.width.saturating_sub(15),
             viewport.y,
-            format!("{}", doc.diagnostics.len()),
+            format!("{}", doc.diagnostics().len()),
             4,
             text_color,
         );
@@ -523,6 +543,9 @@ impl EditorView {
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
 
+                // set the register
+                cxt.register = cxt.editor.register.take();
+
                 if let Some(command) = self.keymap[&mode].get(&event) {
                     command(cxt);
                 }
@@ -561,11 +584,12 @@ impl Component for EditorView {
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
-                    editor: &mut cx.editor,
+                    register: helix_view::RegisterSelection::default(),
                     count: 1,
+                    editor: &mut cx.editor,
                     callback: None,
-                    callbacks: cx.callbacks,
                     on_next_key_callback: None,
+                    callbacks: cx.callbacks,
                 };
 
                 if let Some(on_next_key) = self.on_next_key.take() {

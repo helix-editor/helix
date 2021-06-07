@@ -1,6 +1,6 @@
 [package]
 name = "helix-lsp"
-version = "0.1.0"
+version = "0.0.10"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"
 license = "MPL-2.0"
@@ -22,8 +22,7 @@ glob = "0.3"
 anyhow = "1"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-# jsonrpc-core = { version = "17.1", default-features = false } # don't pull in all of futures
-jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc", default-features = false } # don't pull in all of futures
+jsonrpc-core = { version = "17.1", default-features = false } # don't pull in all of futures
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 thiserror = "1.0"
 log = "~0.4"

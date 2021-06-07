@@ -6,16 +6,15 @@ use std::{collections::HashMap, sync::RwLock};
 static REGISTRY: Lazy<RwLock<HashMap<char, Vec<String>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
-pub fn get(register: char) -> Option<Vec<String>> {
+/// Read register values.
+pub fn get(register_name: char) -> Option<Vec<String>> {
     let registry = REGISTRY.read().unwrap();
-
-    // TODO: no cloning
-    registry.get(&register).cloned()
+    registry.get(&register_name).cloned() // TODO: no cloning
 }
 
+/// Read register values.
 // restoring: bool
-pub fn set(register: char, values: Vec<String>) {
+pub fn set(register_name: char, values: Vec<String>) {
     let mut registry = REGISTRY.write().unwrap();
-
-    registry.insert(register, values);
+    registry.insert(register_name, values);
 }
