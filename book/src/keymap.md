@@ -86,6 +86,18 @@ in reverse, or searching via smartcase.
 | N   | Add next search match to selection | 
 | *   | Use current selection as the search pattern | 
 
+### Diagnostics
+
+> NOTE: `[` and `]` will likely contain more pair mappings in the style of
+> [vim-unimpaired](https://github.com/tpope/vim-unimpaired)
+
+| Key | Description |
+|-----|-----------|
+| [d | Go to previous diagnostic |
+| ]d | Go to next diagnostic |
+| [D | Go to first diagnostic in document |
+| ]D | Go to last diagnostic in document |
+
 ## Select / extend mode
 
 I'm still pondering whether to keep this mode or not. It changes movement
