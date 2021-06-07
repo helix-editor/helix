@@ -1220,7 +1220,7 @@ fn open(cx: &mut Context, open: Open) {
             let text = text.repeat(count);
 
             // calculate new selection range
-            let pos = index + text.len();
+            let pos = index + text.chars().count();
             ranges.push(Range::new(pos, pos));
 
             (index, index, Some(text.into()))
@@ -1811,7 +1811,7 @@ pub mod insert {
             text.push('\n');
             text.push_str(&indent);
 
-            let head = pos + offs + text.len();
+            let head = pos + offs + text.chars().count();
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
@@ -1833,7 +1833,7 @@ pub mod insert {
                 text.push_str(&indent);
             }
 
-            offs += text.len();
+            offs += text.chars().count();
 
             (pos, pos, Some(text.into()))
         });
