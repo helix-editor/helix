@@ -45,6 +45,30 @@ pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -
     None
 }
 
+pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+
+    let root = match root {
+        Some(root) => {
+            let root = std::path::Path::new(root);
+            if root.is_absolute() {
+                root.to_path_buf()
+            } else {
+                current_dir.join(root)
+            }
+        }
+        None => current_dir,
+    };
+
+    for ancestor in root.ancestors() {
+        // TODO: also use defined roots if git isn't found
+        if ancestor.join(".git").is_dir() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
+}
+
 #[cfg(not(embed_runtime))]
 pub fn runtime_dir() -> std::path::PathBuf {
     // runtime env var || dir where binary is located

@@ -1,5 +1,5 @@
 use helix_core::{
-    comment, coords_at_pos, graphemes, indent, match_brackets,
+    comment, coords_at_pos, find_root, graphemes, indent, match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -1091,30 +1091,6 @@ pub fn command_mode(cx: &mut Context) {
     });
 
     cx.push_layer(Box::new(prompt));
-}
-
-fn find_root(root: Option<&str>) -> Option<PathBuf> {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
-
-    let root = match root {
-        Some(root) => {
-            let root = Path::new(root);
-            if root.is_absolute() {
-                root.to_path_buf()
-            } else {
-                current_dir.join(root)
-            }
-        }
-        None => current_dir,
-    };
-
-    for ancestor in root.ancestors() {
-        // TODO: also use defined roots if git isn't found
-        if ancestor.join(".git").is_dir() {
-            return Some(ancestor.to_path_buf());
-        }
-    }
-    None
 }
 
 pub fn file_picker(cx: &mut Context) {
