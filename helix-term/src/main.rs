@@ -1,16 +1,9 @@
-#![allow(unused)]
-
-mod application;
-mod commands;
-mod compositor;
-mod keymap;
-mod ui;
-
-use application::Application;
+use helix_term::application::Application;
+use helix_term::args::Args;
 
 use std::path::PathBuf;
 
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
@@ -45,58 +38,11 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     Ok(())
 }
 
-pub struct Args {
-    display_help: bool,
-    display_version: bool,
-    verbosity: u64,
-    files: Vec<PathBuf>,
-}
-
-fn parse_args(mut args: Args) -> Result<Args> {
-    let argv: Vec<String> = std::env::args().collect();
-    let mut iter = argv.iter();
-
-    iter.next(); // skip the program, we don't care about that
-
-    while let Some(arg) = iter.next() {
-        match arg.as_str() {
-            "--" => break, // stop parsing at this point treat the remaining as files
-            "--version" => args.display_version = true,
-            "--help" => args.display_help = true,
-            arg if arg.starts_with("--") => {
-                return Err(Error::msg(format!(
-                    "unexpected double dash argument: {}",
-                    arg
-                )))
-            }
-            arg if arg.starts_with('-') => {
-                let arg = arg.get(1..).unwrap().chars();
-                for chr in arg {
-                    match chr {
-                        'v' => args.verbosity += 1,
-                        'V' => args.display_version = true,
-                        'h' => args.display_help = true,
-                        _ => return Err(Error::msg(format!("unexpected short arg {}", chr))),
-                    }
-                }
-            }
-            arg => args.files.push(PathBuf::from(arg)),
-        }
-    }
-
-    // push the remaining args, if any to the files
-    for filename in iter {
-        args.files.push(PathBuf::from(filename));
-    }
-
-    Ok(args)
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let cache_dir = helix_core::cache_dir();
     if !cache_dir.exists() {
-        std::fs::create_dir(&cache_dir);
+        std::fs::create_dir(&cache_dir).ok();
     }
 
     let logpath = cache_dir.join("helix.log");
@@ -125,14 +71,7 @@ FLAGS:
         logpath.display(),
     );
 
-    let mut args: Args = Args {
-        display_help: false,
-        display_version: false,
-        verbosity: 0,
-        files: [].to_vec(),
-    };
-
-    args = parse_args(args).context("could not parse arguments")?;
+    let args = Args::parse_args().context("could not parse arguments")?;
 
     // Help has a higher priority and should be handled separately.
     if args.display_help {
@@ -147,14 +86,14 @@ FLAGS:
 
     let conf_dir = helix_core::config_dir();
     if !conf_dir.exists() {
-        std::fs::create_dir(&conf_dir);
+        std::fs::create_dir(&conf_dir).ok();
     }
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args).context("unable to create new appliction")?;
-    app.run().await;
+    app.run().await.unwrap();
 
     Ok(())
 }
