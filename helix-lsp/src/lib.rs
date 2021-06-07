@@ -1,17 +1,15 @@
 mod client;
 mod transport;
 
+pub use client::Client;
+pub use futures_executor::block_on;
+pub use jsonrpc::Call;
 pub use jsonrpc_core as jsonrpc;
+pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
-pub use client::Client;
-pub use lsp::{Position, Url};
-
-pub type Result<T> = core::result::Result<T, Error>;
-
+use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::LanguageConfiguration;
-
-use thiserror::Error;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -19,10 +17,11 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-
+use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-pub use futures_executor::block_on;
+pub type Result<T> = core::result::Result<T, Error>;
+type LanguageId = String;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -30,6 +29,8 @@ pub enum Error {
     Rpc(#[from] jsonrpc::Error),
     #[error("failed to parse: {0}")]
     Parse(#[from] serde_json::Error),
+    #[error("IO Error: {0}")]
+    IO(#[from] std::io::Error),
     #[error("request timed out")]
     Timeout,
     #[error("server closed the stream")]
@@ -126,8 +127,6 @@ pub mod util {
             }),
         )
     }
-
-    // apply_insert_replace_edit
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -172,12 +171,6 @@ impl Notification {
         Some(notification)
     }
 }
-
-pub use jsonrpc::Call;
-
-type LanguageId = String;
-
-use futures_util::stream::select_all::SelectAll;
 
 pub struct Registry {
     inner: HashMap<LanguageId, Arc<Client>>,
