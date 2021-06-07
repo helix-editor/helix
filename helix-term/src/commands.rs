@@ -472,7 +472,11 @@ pub fn replace(cx: &mut Context) {
 
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    (range.from(), range.to() + 1, Some(text.clone()))
+                    (
+                        range.from(),
+                        range.to() + 1,
+                        Some(text.repeat(range.to() - range.from() + 1).into()),
+                    )
                 });
 
             doc.apply(&transaction, view.id);
