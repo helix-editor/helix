@@ -2252,7 +2252,9 @@ pub fn completion(cx: &mut Context) {
             }
             use crate::compositor::AnyComponent;
             let size = compositor.size();
-            let ui = compositor.find("hx::ui::editor::EditorView").unwrap();
+            let ui = compositor
+                .find(std::any::type_name::<ui::EditorView>())
+                .unwrap();
             if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
                 ui.set_completion(items, offset_encoding, trigger_offset, size);
             };
