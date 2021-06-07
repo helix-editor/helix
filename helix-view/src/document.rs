@@ -147,7 +147,12 @@ impl Document {
             Rope::from("\n")
         } else {
             let file = File::open(&path).context(format!("unable to open {:?}", path))?;
-            Rope::from_reader(BufReader::new(file))?
+            let mut doc = Rope::from_reader(BufReader::new(file))?;
+            // add missing newline at the end of file
+            if doc.byte(doc.len_bytes() - 1) != b'\n' {
+                doc.insert_char(doc.len_chars(), '\n');
+            }
+            doc
         };
 
         let mut doc = Self::new(doc);
