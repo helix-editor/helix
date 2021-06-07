@@ -466,19 +466,20 @@ pub fn replace(cx: &mut Context) {
             ..
         } = event
         {
-            let text = Tendril::from_char(ch);
-
             let (view, doc) = cx.current();
 
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                     let max_to = doc.text().len_chars().saturating_sub(1);
                     let to = std::cmp::min(max_to, range.to() + 1);
-                    (
-                        range.from(),
-                        to,
-                        Some(text.repeat(to - range.from()).into()),
-                    )
+                    let text: String = doc
+                        .text()
+                        .slice(range.from()..to)
+                        .chars()
+                        .map(|c| if c == '\n' { '\n' } else { ch })
+                        .collect();
+
+                    (range.from(), to, Some(text.as_str().into()))
                 });
 
             doc.apply(&transaction, view.id);
