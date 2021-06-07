@@ -153,7 +153,7 @@ impl Client {
             timeout(Duration::from_secs(2), rx.recv())
                 .await
                 .map_err(|_| Error::Timeout)? // return Timeout
-                .unwrap() // TODO: None if channel closed
+                .ok_or(Error::StreamClosed)?
         }
     }
 

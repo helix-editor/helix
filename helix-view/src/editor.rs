@@ -155,7 +155,7 @@ impl Editor {
             let language_server = doc
                 .language
                 .as_ref()
-                .and_then(|language| self.language_servers.get(language));
+                .and_then(|language| self.language_servers.get(language).ok());
 
             if let Some(language_server) = language_server {
                 doc.set_language_server(Some(language_server.clone()));
@@ -196,7 +196,7 @@ impl Editor {
             let language_server = doc
                 .language
                 .as_ref()
-                .and_then(|language| language_servers.get(language));
+                .and_then(|language| language_servers.get(language).ok());
             if let Some(language_server) = language_server {
                 tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }
