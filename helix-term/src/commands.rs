@@ -435,10 +435,12 @@ pub fn replace(cx: &mut Context) {
 
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let to = std::cmp::min(max_to, range.to() + 1);
                     (
                         range.from(),
-                        range.to() + 1,
-                        Some(text.repeat(range.to() - range.from() + 1).into()),
+                        to,
+                        Some(text.repeat(to - range.from()).into()),
                     )
                 });
 
