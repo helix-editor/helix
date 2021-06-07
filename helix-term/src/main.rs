@@ -96,7 +96,7 @@ fn parse_args(mut args: Args) -> Result<Args> {
 async fn main() -> Result<()> {
     let cache_dir = helix_core::cache_dir();
     if !cache_dir.exists() {
-        std::fs::create_dir(&cache_dir);
+        std::fs::create_dir_all(&cache_dir);
     }
 
     let logpath = cache_dir.join("helix.log");
@@ -147,7 +147,7 @@ FLAGS:
 
     let conf_dir = helix_core::config_dir();
     if !conf_dir.exists() {
-        std::fs::create_dir(&conf_dir);
+        std::fs::create_dir_all(&conf_dir);
     }
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
