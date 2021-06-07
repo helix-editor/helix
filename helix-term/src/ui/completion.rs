@@ -108,20 +108,6 @@ impl Completion {
                     let item = item.unwrap();
 
                     use helix_lsp::{lsp, util};
-                    // determine what to insert: text_edit | insert_text | label
-                    let edit = if let Some(edit) = &item.text_edit {
-                        match edit {
-                            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                            lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                                unimplemented!("completion: insert_and_replace {:?}", item)
-                            }
-                        }
-                    } else {
-                        item.insert_text.as_ref().unwrap_or(&item.label);
-                        unimplemented!();
-                        // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
-                        // and we insert at position.
-                    };
 
                     // if more text was entered, remove it
                     let cursor = doc.selection(view.id).cursor();
@@ -134,11 +120,27 @@ impl Completion {
                     }
 
                     use helix_lsp::OffsetEncoding;
-                    let transaction = util::generate_transaction_from_edits(
-                        doc.text(),
-                        vec![edit],
-                        offset_encoding, // TODO: should probably transcode in Client
-                    );
+                    let transaction = if let Some(edit) = &item.text_edit {
+                        let edit = match edit {
+                            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                            lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                                unimplemented!("completion: insert_and_replace {:?}", item)
+                            }
+                        };
+                        util::generate_transaction_from_edits(
+                            doc.text(),
+                            vec![edit],
+                            offset_encoding, // TODO: should probably transcode in Client
+                        )
+                    } else {
+                        let text = item.insert_text.as_ref().unwrap_or(&item.label);
+                        let cursor = doc.selection(view.id).cursor();
+                        Transaction::change(
+                            doc.text(),
+                            vec![(cursor, cursor, Some(text.as_str().into()))].into_iter(),
+                        )
+                    };
+
                     doc.apply(&transaction, view.id);
 
                     // TODO: merge edit with additional_text_edits
