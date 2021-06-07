@@ -13,7 +13,10 @@ use helix_core::syntax::LanguageConfiguration;
 
 use thiserror::Error;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +32,10 @@ pub enum Error {
     Parse(#[from] serde_json::Error),
     #[error("request timed out")]
     Timeout,
+    #[error("server closed the stream")]
+    StreamClosed,
+    #[error("LSP not defined")]
+    LspNotDefined,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -173,7 +180,7 @@ type LanguageId = String;
 use futures_util::stream::select_all::SelectAll;
 
 pub struct Registry {
-    inner: HashMap<LanguageId, Option<Arc<Client>>>,
+    inner: HashMap<LanguageId, Arc<Client>>,
 
     pub incoming: SelectAll<UnboundedReceiverStream<Call>>,
 }
@@ -192,35 +199,29 @@ impl Registry {
         }
     }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Option<Arc<Client>> {
-        // TODO: propagate the error
+    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
         if let Some(config) = &language_config.language_server {
             // avoid borrow issues
             let inner = &mut self.inner;
             let s_incoming = &mut self.incoming;
 
-            let language_server = inner
-                .entry(language_config.scope.clone()) // can't use entry with Borrow keys: https://github.com/rust-lang/rfcs/pull/1769
-                .or_insert_with(|| {
-                    // TODO: lookup defaults for id (name, args)
-
+            match inner.entry(language_config.scope.clone()) {
+                Entry::Occupied(language_server) => Ok(language_server.get().clone()),
+                Entry::Vacant(entry) => {
                     // initialize a new client
-                    let (mut client, incoming) =
-                        Client::start(&config.command, &config.args).ok()?;
-
+                    let (mut client, incoming) = Client::start(&config.command, &config.args)?;
                     // TODO: run this async without blocking
-                    futures_executor::block_on(client.initialize()).unwrap();
-
+                    futures_executor::block_on(client.initialize())?;
                     s_incoming.push(UnboundedReceiverStream::new(incoming));
+                    let client = Arc::new(client);
 
-                    Some(Arc::new(client))
-                })
-                .clone();
-
-            return language_server;
+                    entry.insert(client.clone());
+                    Ok(client)
+                }
+            }
+        } else {
+            Err(Error::LspNotDefined)
         }
-
-        None
     }
 }
 
