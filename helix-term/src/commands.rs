@@ -1948,6 +1948,26 @@ fn _paste(reg: char, doc: &mut Document, view: &View, action: Paste) -> Option<T
     None
 }
 
+pub fn replace_with_yanked(cx: &mut Context) {
+    let reg = cx.register.name();
+
+    if let Some(values) = register::get(reg) {
+        let (view, doc) = cx.current();
+
+        if let Some(yank) = values.first() {
+            let transaction =
+                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let to = std::cmp::min(max_to, range.to());
+                    (range.from(), to, Some(yank.as_str().into()))
+                });
+
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        }
+    }
+}
+
 // alt-p => paste every yanked selection after selected text
 // alt-P => paste every yanked selection before selected text
 // R => replace selected text with yanked text

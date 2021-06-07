@@ -156,6 +156,7 @@ pub fn default() -> Keymaps {
         // and matching set for select mode (extend)
         //
         key!('r') => commands::replace,
+        key!('R') => commands::replace_with_yanked,
 
         KeyEvent {
             code: KeyCode::Home,
