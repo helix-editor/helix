@@ -1027,7 +1027,7 @@ pub fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".to_owned(),
         |input: &str| {
-            // we use .this over split_ascii_whitespace() because we care about empty segments
+            // we use .this over split_whitespace() because we care about empty segments
             let parts = input.split(' ').collect::<Vec<&str>>();
 
             // simple heuristic: if there's no just one part, complete command name.
@@ -1069,7 +1069,7 @@ pub fn command_mode(cx: &mut Context) {
                 return;
             }
 
-            let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
+            let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
             }

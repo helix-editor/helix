@@ -117,7 +117,7 @@ pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
         // return if not skip while?
         skip_over_prev(slice, &mut begin, |ch| ch == '\n');
 
-        end = begin - 1;
+        end = begin;
 
         with_end = skip_over_prev(slice, &mut end, char::is_whitespace);
 
@@ -180,7 +180,7 @@ pub(crate) fn is_word(ch: char) -> bool {
 }
 
 #[inline]
-fn is_punctuation(ch: char) -> bool {
+pub(crate) fn is_punctuation(ch: char) -> bool {
     use unicode_general_category::{get_general_category, GeneralCategory};
 
     matches!(
