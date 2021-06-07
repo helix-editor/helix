@@ -33,6 +33,8 @@ Note: Only certain languages have indentation definitions at the moment. Check
 We provide packaging for various distributions, but here's a quick method to
 build from source.
 
+`libxcb` is a requirement to build on Linux by default.
+
 ```
 git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
 cd helix

@@ -51,6 +51,10 @@ jobs:
     name: Test Suite
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install libxcb-xfixes0-dev
+
       - name: Checkout sources
         uses: actions/checkout@v2
         with:

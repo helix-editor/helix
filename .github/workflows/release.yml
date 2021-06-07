@@ -64,6 +64,10 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
+      - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install libxcb-xfixes0-dev
+
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
