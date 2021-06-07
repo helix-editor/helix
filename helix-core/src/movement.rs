@@ -7,12 +7,17 @@ pub enum Direction {
     Backward,
 }
 
+pub enum SelectionBehaviour {
+    Extend,
+    Displace
+}
+
 pub fn move_horizontally(
     text: RopeSlice,
     range: Range,
     dir: Direction,
     count: usize,
-    extend: bool,
+    behaviour: SelectionBehaviour,
 ) -> Range {
     let pos = range.head;
     let line = text.char_to_line(pos);
@@ -29,7 +34,11 @@ pub fn move_horizontally(
             nth_next_grapheme_boundary(text, pos, count).min(end)
         }
     };
-    Range::new(if extend { range.anchor } else { pos }, pos)
+    let anchor = match behaviour {
+        SelectionBehaviour::Extend => range.anchor,
+        SelectionBehaviour::Displace => pos,
+    };
+    Range::new(anchor, pos)
 }
 
 pub fn move_vertically(
@@ -37,7 +46,7 @@ pub fn move_vertically(
     range: Range,
     dir: Direction,
     count: usize,
-    extend: bool,
+    behaviour: SelectionBehaviour,
 ) -> Range {
     let Position { row, col } = coords_at_pos(text, range.head);
 
@@ -58,7 +67,12 @@ pub fn move_vertically(
 
     let pos = pos_at_coords(text, Position::new(new_line, new_col));
 
-    let mut range = Range::new(if extend { range.anchor } else { pos }, pos);
+    let anchor = match behaviour {
+        SelectionBehaviour::Extend => range.anchor,
+        SelectionBehaviour::Displace => pos,
+    };
+
+    let mut range = Range::new(anchor, pos);
     range.horiz = Some(horiz);
     range
 }
@@ -242,7 +256,18 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::array::IntoIter;
+
     use super::*;
+
+    const SINGLE_LINE_SAMPLE: &str = "This is a simple alphabetic line";
+    const MULTILINE_SAMPLE: &str = "\
+        Multiline\n\
+        text sample\n\
+        \n\
+        merely alphabetic\n\
+        and whitespaced\
+    ";
 
     #[test]
     fn test_vertical_move() {
@@ -254,9 +279,80 @@ mod test {
         assert_eq!(
             coords_at_pos(
                 slice,
-                move_vertically(slice, range, Direction::Forward, 1, false).head
+                move_vertically(slice, range, Direction::Forward, 1, SelectionBehaviour::Displace).head
             ),
             (1, 2).into()
         );
+    }
+
+    #[test]
+    fn horizontal_moves_through_single_line_in_single_line_text() {
+        let text = Rope::from(SINGLE_LINE_SAMPLE);
+        let slice = text.slice(..);
+        let position = pos_at_coords(slice, (0, 0).into());
+
+        let mut range = Range::single(position);
+
+        let moves_and_expected_coordinates = [
+            ((Direction::Forward, 1usize), (0, 1)),
+            ((Direction::Forward, 2usize), (0, 3)),
+            ((Direction::Forward, 0usize), (0, 3)),
+            ((Direction::Forward, 999usize), (0, 31)),
+            ((Direction::Forward, 999usize), (0, 31)),
+            ((Direction::Backward, 999usize), (0, 0)),
+        ];
+
+        for ((direction, amount), coordinates) in IntoIter::new(moves_and_expected_coordinates) {
+            range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
+            assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
+        };
+    }
+
+    #[test]
+    fn horizontal_moves_through_single_line_in_multiline_text() {
+        let text = Rope::from(MULTILINE_SAMPLE);
+        let slice = text.slice(..);
+        let position = pos_at_coords(slice, (0, 0).into());
+
+        let mut range = Range::single(position);
+
+        let moves_and_expected_coordinates = IntoIter::new([
+            ((Direction::Forward, 1usize), (0, 1)), // M_ltiline
+            ((Direction::Forward, 2usize), (0, 3)),// Mul_iline
+            ((Direction::Backward, 6usize), (0, 0)), // _ultiline
+            ((Direction::Backward, 999usize), (0, 0)), // _ultiline
+            ((Direction::Forward, 3usize), (0, 3)), // Mul_iline
+            ((Direction::Forward, 0usize), (0, 3)), // Mul_iline
+            ((Direction::Backward, 0usize), (0, 3)), // Mul_iline
+            ((Direction::Forward, 999usize), (0, 9)), // Multilin_
+            ((Direction::Forward, 999usize), (0, 9)), // Multilin_
+        ]);
+
+        for ((direction, amount), coordinates) in moves_and_expected_coordinates {
+            range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
+            assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
+            assert_eq!(range.head, range.anchor);
+        };
+    }
+
+    #[test]
+    fn selection_extending_moves_in_single_line_text() {
+        let text = Rope::from(SINGLE_LINE_SAMPLE);
+        let slice = text.slice(..);
+        let position = pos_at_coords(slice, (0, 0).into());
+
+        let mut range = Range::single(position);
+        let original_anchor = range.anchor;
+
+        let moves = IntoIter::new([
+            (Direction::Forward, 1usize),
+            (Direction::Forward, 5usize),
+            (Direction::Backward, 3usize),
+        ]);
+
+        for (direction, amount) in moves {
+            range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Extend);
+            assert_eq!(range.anchor, original_anchor);
+        };
     }
 }

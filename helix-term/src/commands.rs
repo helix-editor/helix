@@ -131,7 +131,7 @@ pub fn move_char_left(cx: &mut Context) {
             range,
             Direction::Backward,
             count,
-            false, /* extend */
+            movement::SelectionBehaviour::Displace,
         )
     });
     doc.set_selection(view.id, selection);
@@ -147,7 +147,7 @@ pub fn move_char_right(cx: &mut Context) {
             range,
             Direction::Forward,
             count,
-            false, /* extend */
+            movement::SelectionBehaviour::Displace,
         )
     });
     doc.set_selection(view.id, selection);
@@ -163,7 +163,7 @@ pub fn move_line_up(cx: &mut Context) {
             range,
             Direction::Backward,
             count,
-            false, /* extend */
+            movement::SelectionBehaviour::Displace,
         )
     });
     doc.set_selection(view.id, selection);
@@ -179,7 +179,7 @@ pub fn move_line_down(cx: &mut Context) {
             range,
             Direction::Forward,
             count,
-            false, /* extend */
+            movement::SelectionBehaviour::Displace,
         )
     });
     doc.set_selection(view.id, selection);
@@ -520,7 +520,7 @@ pub fn extend_char_left(cx: &mut Context) {
             range,
             Direction::Backward,
             count,
-            true, /* extend */
+            movement::SelectionBehaviour::Extend,
         )
     });
     doc.set_selection(view.id, selection);
@@ -536,7 +536,7 @@ pub fn extend_char_right(cx: &mut Context) {
             range,
             Direction::Forward,
             count,
-            true, /* extend */
+            movement::SelectionBehaviour::Extend,
         )
     });
     doc.set_selection(view.id, selection);
@@ -552,7 +552,7 @@ pub fn extend_line_up(cx: &mut Context) {
             range,
             Direction::Backward,
             count,
-            true, /* extend */
+            movement::SelectionBehaviour::Extend,
         )
     });
     doc.set_selection(view.id, selection);
@@ -568,7 +568,7 @@ pub fn extend_line_down(cx: &mut Context) {
             range,
             Direction::Forward,
             count,
-            true, /* extend */
+            movement::SelectionBehaviour::Extend,
         )
     });
     doc.set_selection(view.id, selection);
