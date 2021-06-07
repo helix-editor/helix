@@ -1276,17 +1276,19 @@ pub fn goto_mode(cx: &mut Context) {
         } = event
         {
             // TODO: temporarily show GOTO in the mode list
-            match ch {
-                'g' => move_file_start(cx),
-                'e' => move_file_end(cx),
-                'h' => move_line_start(cx),
-                'l' => move_line_end(cx),
-                'd' => goto_definition(cx),
-                'y' => goto_type_definition(cx),
-                'r' => goto_reference(cx),
-                'i' => goto_implementation(cx),
+            match (cx.doc().mode, ch) {
+                (_, 'g') => move_file_start(cx),
+                (_, 'e') => move_file_end(cx),
+                (Mode::Normal, 'h') => move_line_start(cx),
+                (Mode::Normal, 'l') => move_line_end(cx),
+                (Mode::Select, 'h') => extend_line_start(cx),
+                (Mode::Select, 'l') => extend_line_end(cx),
+                (_, 'd') => goto_definition(cx),
+                (_, 'y') => goto_type_definition(cx),
+                (_, 'r') => goto_reference(cx),
+                (_, 'i') => goto_implementation(cx),
 
-                't' | 'm' | 'b' => {
+                (_, 't') | (_, 'm') | (_, 'b') => {
                     let (view, doc) = cx.current();
 
                     let pos = doc.selection(view.id).cursor();
