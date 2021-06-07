@@ -178,15 +178,6 @@ pub trait AnyComponent {
     /// Returns a boxed any from a boxed self.
     ///
     /// Can be used before `Box::downcast()`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use cursive_core::views::TextComponent;
-    /// # use cursive_core::view::Component;
-    /// let boxed: Box<Component> = Box::new(TextComponent::new("text"));
-    /// let text: Box<TextComponent> = boxed.as_boxed_any().downcast().unwrap();
-    /// ```
     fn as_boxed_any(self: Box<Self>) -> Box<dyn Any>;
 }
 
