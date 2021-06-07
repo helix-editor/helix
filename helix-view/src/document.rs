@@ -13,8 +13,7 @@ use crate::{DocumentId, ViewId};
 
 use std::collections::HashMap;
 
-#[cfg_attr(feature = "debug", derive(Debug))]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
     Select,
@@ -53,9 +52,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
-#[cfg(feature = "debug")]
 use std::fmt;
-#[cfg(feature = "debug")]
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Document")
@@ -74,7 +71,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
-            .finish_non_exhaustive()
+            .finish()
     }
 }
 

@@ -10,7 +10,6 @@ license = "MPL-2.0"
 
 [features]
 embed_runtime = ["helix-core/embed_runtime"]
-debug = ["helix-core/debug", "helix-view/debug"]
 
 [[bin]]
 name = "hx"

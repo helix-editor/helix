@@ -172,7 +172,7 @@ impl Notification {
     }
 }
 
-#[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(Debug)]
 pub struct Registry {
     inner: HashMap<LanguageId, Arc<Client>>,
 

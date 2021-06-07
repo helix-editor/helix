@@ -2,7 +2,7 @@ use crate::{ChangeSet, Rope, State, Transaction};
 use smallvec::{smallvec, SmallVec};
 
 /// Undo-tree style history store.
-#[cfg_attr(feature = "debug", derive(Debug))]
+#[derive(Debug)]
 pub struct History {
     revisions: Vec<Revision>,
     cursor: usize,

@@ -1,8 +1,7 @@
 use crate::{Rope, Selection};
 
 /// A state represents the current editor state of a single buffer.
-#[cfg_attr(feature = "debug", derive(Debug))]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct State {
     pub doc: Rope,
     pub selection: Selection,
