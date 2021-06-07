@@ -1,6 +1,6 @@
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{compositor::Compositor, ui, Args};
+use crate::{args::Args, compositor::Compositor, ui};
 
 use log::{error, info};
 
