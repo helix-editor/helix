@@ -355,7 +355,7 @@ impl EditorView {
         let info: Style = theme.get("info");
         let hint: Style = theme.get("hint");
 
-        for (i, line) in (view.first_line..=last_line).enumerate() {
+        for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
