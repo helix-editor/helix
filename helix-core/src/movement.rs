@@ -174,18 +174,33 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
 // used for by-word movement
 
+#[inline]
 pub(crate) fn is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
 
+#[inline]
 pub(crate) fn is_horiz_blank(ch: char) -> bool {
     matches!(ch, ' ' | '\t')
 }
 
+#[inline]
 fn is_punctuation(ch: char) -> bool {
     use unicode_general_category::{get_general_category, GeneralCategory};
 
-    get_general_category(ch) == GeneralCategory::OtherPunctuation
+    matches!(
+        get_general_category(ch),
+        GeneralCategory::OtherPunctuation
+            | GeneralCategory::OpenPunctuation
+            | GeneralCategory::ClosePunctuation
+            | GeneralCategory::InitialPunctuation
+            | GeneralCategory::FinalPunctuation
+            | GeneralCategory::ConnectorPunctuation
+            | GeneralCategory::DashPunctuation
+            | GeneralCategory::MathSymbol
+            | GeneralCategory::CurrencySymbol
+            | GeneralCategory::ModifierSymbol
+    )
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -202,19 +217,15 @@ pub(crate) fn categorize(ch: char) -> Category {
     use unicode_general_category::{get_general_category, GeneralCategory};
 
     if ch == '\n' {
-        return Category::Eol;
+        Category::Eol
+    } else if ch.is_whitespace() {
+        Category::Whitespace
     } else if is_word(ch) {
-        return Category::Word;
-    }
-
-    match get_general_category(ch) {
-        GeneralCategory::SpaceSeparator => Category::Whitespace,
-        GeneralCategory::OtherPunctuation
-        | GeneralCategory::ClosePunctuation
-        | GeneralCategory::OpenPunctuation
-        | GeneralCategory::InitialPunctuation
-        | GeneralCategory::FinalPunctuation => Category::Punctuation,
-        _ => unreachable!("unknown '{}' character category", ch),
+        Category::Word
+    } else if is_punctuation(ch) {
+        Category::Punctuation
+    } else {
+        Category::Unknown
     }
 }
 
@@ -226,6 +237,7 @@ where
 {
     let mut chars = slice.chars_at(*pos);
 
+    #[allow(clippy::while_let_on_iterator)]
     while let Some(ch) = chars.next() {
         if !fun(ch) {
             break;
@@ -244,6 +256,7 @@ where
     // need to +1 so that prev() includes current char
     let mut chars = slice.chars_at(*pos + 1);
 
+    #[allow(clippy::while_let_on_iterator)]
     while let Some(ch) = chars.prev() {
         if !fun(ch) {
             break;
@@ -275,22 +288,40 @@ mod test {
 
     #[test]
     fn test_categorize() {
-        const WORD_TEST_CASE: &'static str = "_hello_world_あいうえお";
-        const PUNCTUATION_TEST_CASE: &'static str = ".,!?;:。、！？；：{}[]｛｝「」⟪";
+        const WORD_TEST_CASE: &'static str = "_hello_world_あいうえおー";
+        const PUNCTUATION_TEST_CASE: &'static str = "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、＿。：；＜＝＞？＠「」＾｀｛｜｝～";
         const WHITESPACE_TEST_CASE: &'static str = "  　   ";
 
         assert_eq!(Category::Eol, categorize('\n'));
 
         for ch in WHITESPACE_TEST_CASE.chars() {
-            assert_eq!(Category::Whitespace, categorize(ch));
+            assert_eq!(
+                Category::Whitespace,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Whitespace`",
+                ch,
+                categorize(ch)
+            );
         }
 
         for ch in WORD_TEST_CASE.chars() {
-            assert_eq!(Category::Word, categorize(ch));
+            assert_eq!(
+                Category::Word,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Word`",
+                ch,
+                categorize(ch)
+            );
         }
 
         for ch in PUNCTUATION_TEST_CASE.chars() {
-            assert_eq!(Category::Punctuation, categorize(ch));
+            assert_eq!(
+                Category::Punctuation,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Punctuation`",
+                ch,
+                categorize(ch)
+            );
         }
     }
 }
