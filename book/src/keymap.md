@@ -38,7 +38,8 @@
 
 | Key | Description |
 |-----|-----------|
-| r   | replace (single character change) |
+| r   | replace with a character |
+| R   | replace with yanked text |
 | i   | Insert before selection |
 | a   | Insert after selection (append) |
 | I   | Insert at the start of the line | 
