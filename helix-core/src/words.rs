@@ -1,37 +1,16 @@
-use crate::movement::{backwards_skip_while, categorize, is_punctuation, is_word};
+use crate::movement::{Category, SliceHelpers, backwards_skip_while, categorize, is_end_of_line, is_punctuation, is_word};
 use ropey::RopeSlice;
 
 #[must_use]
-pub fn nth_prev_word_boundary(slice: RopeSlice, mut char_idx: usize, count: usize) -> usize {
-    let mut with_end = false;
-
-    for _ in 0..count {
-        if char_idx == 0 {
-            break;
-        }
-
-        char_idx = backwards_skip_while(slice, char_idx, |ch| ch == '\n').unwrap_or(0);
-        char_idx = backwards_skip_while(slice, char_idx, char::is_whitespace).unwrap_or(0);
-
-        with_end = char_idx == 0;
-
-        // refetch
-        let ch = slice.char(char_idx);
-
-        if is_word(ch) {
-            char_idx = backwards_skip_while(slice, char_idx, is_word).unwrap_or(0);
-            with_end = char_idx == 0;
-        } else if is_punctuation(ch) {
-            char_idx = backwards_skip_while(slice, char_idx, is_punctuation).unwrap_or(0);
-            with_end = char_idx == 0;
-        }
-    }
-
-    if with_end {
-        char_idx
-    } else {
-        char_idx + 1
-    }
+pub fn nth_prev_word_boundary(slice: RopeSlice, index: usize, count: usize) -> usize {
+    (0..count).fold(index, |mut index, _| {
+        index = backwards_skip_while(slice, index, is_end_of_line).unwrap_or(index);
+        index = backwards_skip_while(slice, index, char::is_whitespace).unwrap_or(index);
+        let category = index.category(slice).unwrap_or(Category::Unknown);
+        backwards_skip_while(slice, index, |c| categorize(c) == category)
+            .map(|i| i + 1)
+            .unwrap_or(0)
+    })
 }
 
 #[test]
@@ -39,7 +18,7 @@ fn different_prev_word_boundary() {
     use ropey::Rope;
     let t = |x, y| {
         let text = Rope::from(x);
-        let out = nth_prev_word_boundary(text.slice(..), text.len_chars() - 1, 1);
+        let out = nth_prev_word_boundary(text.slice(..), text.len_chars().saturating_sub(1), 1);
         assert_eq!(text.slice(..out), y, r#"from "{}""#, x);
     };
     t("abcd\nefg\nwrs", "abcd\nefg\n");
@@ -64,4 +43,5 @@ fn different_prev_word_boundary() {
     t("1 + ", "1 ");
     t("1 ", "");
     t("1+1=2", "1+1=");
+    t("", "");
 }

@@ -18,7 +18,7 @@ pub enum SelectionBehaviour {
     Displace,
 }
 
-trait SliceHelpers {
+pub trait SliceHelpers {
     fn outside(&self, text: RopeSlice) -> bool;
     /// The next character after this belongs
     /// to a different `Category`
@@ -229,7 +229,7 @@ pub(crate) fn is_punctuation(ch: char) -> bool {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) enum Category {
+pub enum Category {
     Whitespace,
     Eol,
     Word,
@@ -552,79 +552,77 @@ mod test {
             PrevStart(usize),
         }
 
-        struct TestCase(&'static str, Vec<(Motion, Range, Range)>);
-
         let tests = array::IntoIter::new([
-            TestCase("Basic forward motion stops at the first space",
+            ("Basic forward motion stops at the first space",
                 vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5))]),
-            TestCase("Long       whitespace gap is bridged by the head",
+            ("Long       whitespace gap is bridged by the head",
                 vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 10))]),
-            TestCase("Previous anchor is irrelevant for forward motions",
+            ("Previous anchor is irrelevant for forward motions",
                 vec![(Motion::NextStart(1), Range::new(12, 0), Range::new(0, 8))]),
-            TestCase("    Starting from whitespace moves to last space in sequence",
+            ("    Starting from whitespace moves to last space in sequence",
                 vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 3))]),
-            TestCase("Starting from mid-word leaves anchor at start position and moves head",
+            ("Starting from mid-word leaves anchor at start position and moves head",
                 vec![(Motion::NextStart(1), Range::new(3, 3), Range::new(3, 8))]),
-            TestCase("Identifiers_with_underscores are considered a single word",
+            ("Identifiers_with_underscores are considered a single word",
                 vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 28))]),
-            TestCase("Jumping\n    into starting whitespace spans the spaces before 'into'",
+            ("Jumping\n    into starting whitespace spans the spaces before 'into'",
                 vec![(Motion::NextStart(1), Range::new(0, 6), Range::new(8, 11))]),
-            TestCase("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
+            ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 11)),
                     (Motion::NextStart(1), Range::new(0, 11), Range::new(12, 14)),
                     (Motion::NextStart(1), Range::new(12, 14), Range::new(15, 17))
                 ]),
-            TestCase("...   ... punctuation and spaces behave as expected",
+            ("...   ... punctuation and spaces behave as expected",
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5)),
                     (Motion::NextStart(1), Range::new(0, 5), Range::new(6, 9)),
                 ]),
-            TestCase(".._.._ punctuation is not joined by underscores into a single block",
+            (".._.._ punctuation is not joined by underscores into a single block",
                 vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 1))]),
-            TestCase("Newlines\n\nare bridged seamlessly.",
+            ("Newlines\n\nare bridged seamlessly.",
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 7)),
                     (Motion::NextStart(1), Range::new(0, 7), Range::new(10, 13)),
                 ]),
-            TestCase("A failed motion does not modify the range",
+            ("A failed motion does not modify the range",
                 vec![
                     (Motion::NextStart(3), Range::new(37, 41), Range::new(37, 41)),
                 ]),
-            TestCase("Multiple motions at once resolve correctly",
+            ("Multiple motions at once resolve correctly",
                 vec![
                     (Motion::NextStart(3), Range::new(0, 0), Range::new(17, 19)),
                 ]),
-            TestCase("Excessive motions are performed partially",
+            ("Excessive motions are performed partially",
                 vec![
                     (Motion::NextStart(999), Range::new(0, 0), Range::new(22, 31)),
                 ]),
             // TODO Consider whether this is desirable. Rather than silently failing,
             // it may be worth improving the API so it returns expressive results.
-            TestCase("Attempting to move from outside bounds fails without panic",
+            ("Attempting to move from outside bounds fails without panic",
                 vec![
                     (Motion::NextStart(1), Range::new(9999, 9999), Range::new(9999, 9999)),
                 ]),
-            TestCase("", // Edge case of moving forward in empty string
+            ("", // Edge case of moving forward in empty string
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 0)),
                 ]),
-            TestCase("\n\n\n\n\n", // Edge case of moving forward in all newlines
+            ("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(4, 4)),
                 ]),
-            TestCase("\n   \n   \n Jumping through alternated space blocks and newlines spans the space blocks",
+            ("\n   \n   \n Jumping through alternated space blocks and newlines spans the space blocks",
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(1, 3)),
                     (Motion::NextStart(1), Range::new(1, 3), Range::new(5, 7)),
                 ]),
-            TestCase("ヒーリクス multibyte characters behave as normal characters",
+            ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5)),
                 ]),
         ]);
 
-        for TestCase(sample, scenario) in tests {
+        for (sample, scenario) in tests {
             for (motion, begin, expected_end) in scenario.into_iter() {
                 let range = match motion {
                     Motion::NextStart(count) => {
