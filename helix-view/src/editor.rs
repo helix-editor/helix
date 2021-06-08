@@ -183,6 +183,11 @@ impl Editor {
         Ok(id)
     }
 
+    pub fn reload(&mut self) -> Result<(), Error> {
+        let (_, doc) = self.current();
+        doc.reload()
+    }
+
     pub fn close(&mut self, id: ViewId, close_buffer: bool) {
         let view = self.tree.get(self.tree.focus);
         // remove selection

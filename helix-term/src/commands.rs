@@ -993,6 +993,12 @@ mod cmd {
         };
     }
 
+    fn reload(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        if let Err(err) = editor.reload() {
+            editor.set_error(err.to_string());
+        }
+    }
+
     fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let (view, doc) = editor.current();
         if let Some(path) = args.get(0) {
@@ -1040,6 +1046,13 @@ mod cmd {
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
+        },
+        Command {
+            name: "open!",
+            alias: Some("o!"),
+            doc: "Reload the current file from disk.",
+            fun: reload,
+            completer: None,
         },
         Command {
             name: "write",

@@ -162,6 +162,20 @@ impl Document {
         Ok(doc)
     }
 
+    pub fn reload(&mut self) -> Result<(), anyhow::Error> {
+        use std::{fs::File, io::BufReader};
+
+        let path = self
+            .path()
+            .ok_or(Error::msg("unable to reload document without path"))?;
+        let file = File::open(path).context(format!("unable to open {:?}", path))?;
+        let text = Rope::from_reader(BufReader::new(file))?;
+
+        self.text = text;
+
+        Ok(())
+    }
+
     // TODO: remove view_id dependency here
     pub fn format(&mut self, view_id: ViewId) {
         if let Some(language_server) = self.language_server() {
