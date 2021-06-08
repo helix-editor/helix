@@ -994,7 +994,9 @@ mod cmd {
     }
 
     fn reload(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        if let Err(err) = editor.reload() {
+        let (_, doc) = editor.current();
+
+        if let Err(err) = doc.reload() {
             editor.set_error(err.to_string());
         }
     }
