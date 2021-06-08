@@ -442,7 +442,7 @@ pub fn replace(cx: &mut Context) {
                         .map(|c| if c == '\n' { '\n' } else { ch })
                         .collect();
 
-                    (range.from(), to, Some(text.as_str().into()))
+                    (range.from(), to, Some(text.into()))
                 });
 
             doc.apply(&transaction, view.id);
