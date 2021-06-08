@@ -499,6 +499,10 @@ mod test {
             ((Move::PrevStart, 1), (1, 0)), // _ext sample
             ((Move::NextEnd, 1), (1, 3)), // tex_ sample
             ((Move::NextEnd, 1), (1, 10)), // text sampl_
+            // FIXME
+            ((Move::PrevStart, 2), (1, 0)), // _ext sample
+            ((Move::NextStart, 3), (1, 0)), // _ext sample
+            ((Move::NextStart, 3), (2, 0)), // _hich
         ]);
 
         for ((direction, count), coordinates) in moves_and_expected_coordinates {
