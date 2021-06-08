@@ -266,7 +266,7 @@ dependencies = [
  "toml",
  "tree-sitter",
  "unicode-general-category",
- "unicode-segmentation",
+ "unicode-segmentation 1.7.1 (git+https://github.com/unicode-rs/unicode-segmentation.git)",
  "unicode-width",
 ]
 
@@ -332,7 +332,7 @@ dependencies = [
  "cassowary",
  "crossterm",
  "serde",
- "unicode-segmentation",
+ "unicode-segmentation 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-width",
 ]
 
@@ -990,6 +990,11 @@ name = "unicode-segmentation"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb0d2e7be6ae3a5fa87eed5fb451aff96f2573d2694942e40543ae0bbe19c796"
+
+[[package]]
+name = "unicode-segmentation"
+version = "1.7.1"
+source = "git+https://github.com/unicode-rs/unicode-segmentation.git#58d73acf0e92f9806619fa79c3138dd410bca216"
 
 [[package]]
 name = "unicode-width"
