@@ -37,7 +37,7 @@ use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
     pub register: helix_view::RegisterSelection,
-    pub count: usize,
+    pub _count: Option<std::num::NonZeroUsize>,
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
@@ -97,6 +97,11 @@ impl<'a> Context<'a> {
         });
         self.callbacks.push(callback);
     }
+
+    #[inline]
+    pub fn count(&self) -> usize {
+        self._count.map_or(1, |v| v.get())
+    }
 }
 
 enum Align {
@@ -123,7 +128,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
 pub type Command = fn(cx: &mut Context);
 
 pub fn move_char_left(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -139,7 +144,7 @@ pub fn move_char_left(cx: &mut Context) {
 }
 
 pub fn move_char_right(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -155,7 +160,7 @@ pub fn move_char_right(cx: &mut Context) {
 }
 
 pub fn move_line_up(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -171,7 +176,7 @@ pub fn move_line_up(cx: &mut Context) {
 }
 
 pub fn move_line_down(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -240,7 +245,7 @@ pub fn move_first_nonwhitespace(cx: &mut Context) {
 // since these all really do the same thing
 
 pub fn move_next_word_start(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
@@ -252,7 +257,7 @@ pub fn move_next_word_start(cx: &mut Context) {
 }
 
 pub fn move_prev_word_start(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
@@ -264,7 +269,7 @@ pub fn move_prev_word_start(cx: &mut Context) {
 }
 
 pub fn move_next_word_end(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
@@ -290,7 +295,7 @@ pub fn move_file_end(cx: &mut Context) {
 }
 
 pub fn extend_next_word_start(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
@@ -304,7 +309,7 @@ pub fn extend_next_word_start(cx: &mut Context) {
 }
 
 pub fn extend_prev_word_start(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
@@ -317,7 +322,7 @@ pub fn extend_prev_word_start(cx: &mut Context) {
 }
 
 pub fn extend_next_word_end(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
@@ -339,7 +344,7 @@ where
 {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
-    let count = cx.count;
+    let count = cx.count();
 
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
@@ -563,7 +568,7 @@ pub fn half_page_down(cx: &mut Context) {
 }
 
 pub fn extend_char_left(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -579,7 +584,7 @@ pub fn extend_char_left(cx: &mut Context) {
 }
 
 pub fn extend_char_right(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -595,7 +600,7 @@ pub fn extend_char_right(cx: &mut Context) {
 }
 
 pub fn extend_line_up(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -611,7 +616,7 @@ pub fn extend_line_up(cx: &mut Context) {
 }
 
 pub fn extend_line_down(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
@@ -795,7 +800,7 @@ pub fn search_selection(cx: &mut Context) {
 //
 
 pub fn select_line(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
     let pos = doc.selection(view.id).primary();
@@ -810,7 +815,7 @@ pub fn select_line(cx: &mut Context) {
     doc.set_selection(view.id, Selection::single(start, end));
 }
 pub fn extend_line(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
     let pos = doc.selection(view.id).primary();
@@ -1212,7 +1217,7 @@ enum Open {
 }
 
 fn open(cx: &mut Context, open: Open) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     enter_insert_mode(doc);
 
@@ -1308,15 +1313,11 @@ fn push_jump(editor: &mut Editor) {
 }
 
 pub fn goto_mode(cx: &mut Context) {
-    let count = cx.count;
-
-    if count > 1 {
+    if let Some(count) = cx._count {
         push_jump(cx.editor);
 
-        // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
-        // to 1g
         let (view, doc) = cx.current();
-        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(2));
+        let line_idx = std::cmp::min(count.get() - 1, doc.text().len_lines().saturating_sub(2));
         let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
         return;
@@ -1880,7 +1881,7 @@ pub mod insert {
 
     // TODO: handle indent-aware delete
     pub fn delete_char_backward(cx: &mut Context) {
-        let count = cx.count;
+        let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
         let transaction =
@@ -1895,7 +1896,7 @@ pub mod insert {
     }
 
     pub fn delete_char_forward(cx: &mut Context) {
-        let count = cx.count;
+        let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
         let transaction =
@@ -1910,7 +1911,7 @@ pub mod insert {
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
-        let count = cx.count;
+        let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
         let transaction =
@@ -2071,7 +2072,7 @@ fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
 }
 
 pub fn indent(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let lines = get_lines(doc, view.id);
 
@@ -2090,7 +2091,7 @@ pub fn indent(cx: &mut Context) {
 }
 
 pub fn unindent(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let lines = get_lines(doc, view.id);
     let mut changes = Vec::with_capacity(lines.len());
@@ -2428,7 +2429,7 @@ pub fn match_brackets(cx: &mut Context) {
 //
 
 pub fn jump_forward(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
     if let Some((id, selection)) = view.jumps.forward(count) {
@@ -2442,7 +2443,7 @@ pub fn jump_forward(cx: &mut Context) {
 }
 
 pub fn jump_backward(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
     if let Some((id, selection)) = view.jumps.backward(count) {
