@@ -654,9 +654,10 @@ pub fn split_selection_on_newline(cx: &mut Context) {
 fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
     let selection = doc.selection(view.id);
-    let start = selection.cursor();
+    let start = text.char_to_byte(selection.cursor());
 
     // use find_at to find the next match after the cursor, loop around the end
+    // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mat = regex
         .find_at(contents, start)
         .or_else(|| regex.find(contents));
