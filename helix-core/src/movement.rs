@@ -123,20 +123,16 @@ fn skip_word_or_punctuation(slice: RopeSlice, begin: usize) -> usize {
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     let last_index = slice.len_chars().saturating_sub(1);
+    let grouped_categories = [Category::Punctuation, Category::Word, Category::Whitespace];
+
     let movement = |mut range: Range| -> Option<Range> {
-        range.anchor =
-            if range.head.is_category_boundary(slice) { range.head + 1 } else { range.head };
+        range.anchor = if range.head.is_category_boundary(slice) { range.head + 1 } else { range.head };
         range.anchor = skip_while(slice, range.anchor, is_end_of_line).unwrap_or(last_index);
-        range.head = skip_while(slice, range.anchor, char::is_whitespace).unwrap_or(range.anchor);
+        range.head = skip_while(slice, range.anchor, is_strict_whitespace).unwrap_or(range.anchor);
         let category = range.anchor.category(slice)?;
-        if category == Category::Punctuation
-            || category == Category::Word
-            || category == Category::Whitespace
-        {
+        if grouped_categories.contains(&category) {
             range.head = skip_while(slice, range.head, |c| categorize(c) == category)?;
-            range.head =
-                skip_while(slice, range.head, |c| !is_end_of_line(c) && c.is_whitespace())?
-                    .saturating_sub(1);
+            range.head = skip_while(slice, range.head, is_strict_whitespace)?.saturating_sub(1);
         }
         Some(range)
     };
@@ -205,6 +201,10 @@ pub(crate) fn is_word(ch: char) -> bool { ch.is_alphanumeric() || ch == '_' }
 
 #[inline]
 pub(crate) fn is_end_of_line(ch: char) -> bool { ch == '\n' }
+
+#[inline]
+// Whitespace, but not end of line
+pub(crate) fn is_strict_whitespace(ch: char) -> bool { ch.is_whitespace() && !is_end_of_line(ch) }
 
 #[inline]
 pub(crate) fn is_punctuation(ch: char) -> bool {
@@ -552,6 +552,8 @@ mod test {
                 vec![
                     (Motion::NextStart(999), Range::new(0, 0), Range::new(22, 31)),
                 ]),
+            // TODO Consider whether this is desirable. Rather than silently failing,
+            // it may be worth improving the API so it returns expressive results.
             TestCase("Attempting to move from outside bounds fails without panic",
                 vec![
                     (Motion::NextStart(1), Range::new(9999, 9999), Range::new(9999, 9999)),
@@ -563,6 +565,15 @@ mod test {
             TestCase("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(4, 4)),
+                ]),
+            TestCase("\n   \n   \n Jumping through alternated space blocks and newlines spans the space blocks",
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(1, 3)),
+                    (Motion::NextStart(1), Range::new(1, 3), Range::new(5, 7)),
+                ]),
+            TestCase("ヒーリクス multibyte characters behave as normal characters",
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5)),
                 ]),
         ]);
 
