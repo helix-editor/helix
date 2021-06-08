@@ -12,7 +12,7 @@ pub use helix_core::diagnostic::Severity;
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
-    pub count: Option<usize>,
+    pub count: Option<std::num::NonZeroUsize>,
     pub register: RegisterSelection,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,

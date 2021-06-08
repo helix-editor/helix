@@ -525,7 +525,8 @@ impl EditorView {
             // count handling
             key!(i @ '0'..='9') => {
                 let i = i.to_digit(10).unwrap() as usize;
-                cxt.editor.count = Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
+                cxt.editor.count =
+                    std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
             key!('.') => {
@@ -538,7 +539,7 @@ impl EditorView {
             }
             _ => {
                 // set the count
-                cxt.count = cxt.editor.count.take().unwrap_or(1);
+                cxt._count = cxt.editor.count.take();
                 // TODO: edge case: 0j -> reset to 1
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
@@ -585,8 +586,8 @@ impl Component for EditorView {
 
                 let mut cxt = commands::Context {
                     register: helix_view::RegisterSelection::default(),
-                    count: 1,
                     editor: &mut cx.editor,
+                    _count: None,
                     callback: None,
                     on_next_key_callback: None,
                     callbacks: cx.callbacks,
