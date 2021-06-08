@@ -424,11 +424,19 @@ pub fn extend_prev_char(cx: &mut Context) {
 pub fn replace(cx: &mut Context) {
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => Some(ch),
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => Some('\n'),
+            _ => None,
+        };
+
+        if let Some(ch) = ch {
             let (view, doc) = cx.current();
 
             let transaction =
