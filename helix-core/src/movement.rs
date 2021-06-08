@@ -144,10 +144,9 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
             range.head
         };
 
-        range.anchor = backwards_skip_while(slice, range.anchor, is_end_of_line)?;
-        range.head = backwards_skip_while(slice, range.anchor, char::is_whitespace).unwrap_or(0);
-        let category = range.head.category(slice)?;
-        range.head = backwards_skip_while(slice, range.head, |c| categorize(c) == category)
+        range.anchor = backwards_skip_while(slice, range.anchor, is_end_of_line).unwrap_or(0);
+        let category = range.anchor.category(slice)?;
+        range.head = backwards_skip_while(slice, range.anchor, |c| categorize(c) == category)
             .map(|h| h + 1)
             .unwrap_or(0);
         Some(range)
@@ -271,9 +270,8 @@ where
 
 #[inline]
 /// Returns first index that doesn't satisfy a given predicate when
-/// retreating the character index.
-///
-/// Returns none if all characters satisfy the predicate.
+/// retreating the character index, saturating if all elements satisfy
+/// the condition.
 pub fn backwards_skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<usize>
 where
     F: Fn(char) -> bool,
@@ -544,14 +542,14 @@ mod test {
         }
     }
 
+    enum Motion {
+        NextStart(usize),
+        NextEnd(usize),
+        PrevStart(usize),
+    }
+
     #[test]
     fn test_behaviour_when_moving_to_start_of_next_words() {
-        enum Motion {
-            NextStart(usize),
-            NextEnd(usize),
-            PrevStart(usize),
-        }
-
         let tests = array::IntoIter::new([
             ("Basic forward motion stops at the first space",
                 vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5))]),
@@ -565,7 +563,7 @@ mod test {
                 vec![(Motion::NextStart(1), Range::new(3, 3), Range::new(3, 8))]),
             ("Identifiers_with_underscores are considered a single word",
                 vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 28))]),
-            ("Jumping\n    into starting whitespace spans the spaces before 'into'",
+            ("Jumping\n    into starting whitespace selects the spaces before 'into'",
                 vec![(Motion::NextStart(1), Range::new(0, 6), Range::new(8, 11))]),
             ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
                 vec![
@@ -611,7 +609,7 @@ mod test {
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(4, 4)),
                 ]),
-            ("\n   \n   \n Jumping through alternated space blocks and newlines spans the space blocks",
+            ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(1, 3)),
                     (Motion::NextStart(1), Range::new(1, 3), Range::new(5, 7)),
@@ -619,6 +617,50 @@ mod test {
             ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5)),
+                ]),
+        ]);
+
+        for (sample, scenario) in tests {
+            for (motion, begin, expected_end) in scenario.into_iter() {
+                let range = match motion {
+                    Motion::NextStart(count) => {
+                        move_next_word_start(Rope::from(sample).slice(..), begin, count)
+                    }
+                    Motion::NextEnd(count) => todo!(), //move_next_word_end(Rope::from(sample).slice(..), begin, count),
+                    Motion::PrevStart(count) => {
+                        move_prev_word_start(Rope::from(sample).slice(..), begin, count)
+                    }
+                };
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_start_of_previous_words() {
+        let tests = array::IntoIter::new([
+            ("Basic backward motion from the middle of a word",
+                vec![(Motion::PrevStart(1), Range::new(3, 3), Range::new(3, 0))]),
+            ("    Jump to start of a word preceded by whitespace",
+                vec![(Motion::PrevStart(1), Range::new(5, 5), Range::new(5, 4))]),
+            ("    Jump to start of line from start of word preceded by whitespace",
+                vec![(Motion::PrevStart(1), Range::new(4, 4), Range::new(3, 0))]),
+            ("Previous anchor is irrelevant for backward motions",
+                vec![(Motion::PrevStart(1), Range::new(12, 5), Range::new(5, 0))]),
+            ("    Starting from whitespace moves to first space in sequence",
+                vec![(Motion::PrevStart(1), Range::new(0, 3), Range::new(3, 0))]),
+            ("Identifiers_with_underscores are considered a single word",
+                vec![(Motion::PrevStart(1), Range::new(0, 20), Range::new(20, 0))]),
+            ("Jumping\n    \nback through a newline selects whitespace",
+                vec![(Motion::PrevStart(1), Range::new(0, 13), Range::new(11, 8))]),
+            ("Jumping to start of word from the end selects the word",
+                vec![(Motion::PrevStart(1), Range::new(6, 6), Range::new(6, 0))]),
+
+            ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
+                vec![
+                    (Motion::PrevStart(1), Range::new(30, 30), Range::new(30, 21)),
+                    (Motion::PrevStart(1), Range::new(30, 21), Range::new(20, 18)),
+                    (Motion::PrevStart(1), Range::new(20, 18), Range::new(17, 15))
                 ]),
         ]);
 
