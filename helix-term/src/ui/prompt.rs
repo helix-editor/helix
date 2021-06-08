@@ -127,7 +127,10 @@ impl Prompt {
         // completion
 
         let max_col = std::cmp::max(1, area.width / BASE_WIDTH);
-        let height = ((self.completion.len() as u16 + max_col - 1) / max_col);
+        let height = ((self.completion.len() as u16 + max_col - 1) / max_col)
+            .min(10) // at most 10 rows (or less)
+            .min(area.height);
+
         let completion_area = Rect::new(
             area.x,
             (area.height - height).saturating_sub(1),
