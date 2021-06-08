@@ -1,4 +1,4 @@
-use crate::movement::{categorize, is_punctuation, is_word, skip_over_prev};
+use crate::movement::{backwards_skip_while, categorize, is_punctuation, is_word};
 use ropey::RopeSlice;
 
 #[must_use]
@@ -10,18 +10,20 @@ pub fn nth_prev_word_boundary(slice: RopeSlice, mut char_idx: usize, count: usiz
             break;
         }
 
-        // return if not skip while?
-        skip_over_prev(slice, &mut char_idx, |ch| ch == '\n');
+        char_idx = backwards_skip_while(slice, char_idx, |ch| ch == '\n').unwrap_or(0);
+        char_idx = backwards_skip_while(slice, char_idx, char::is_whitespace).unwrap_or(0);
 
-        with_end = skip_over_prev(slice, &mut char_idx, char::is_whitespace);
+        with_end = char_idx == 0;
 
         // refetch
         let ch = slice.char(char_idx);
 
         if is_word(ch) {
-            with_end = skip_over_prev(slice, &mut char_idx, is_word);
+            char_idx = backwards_skip_while(slice, char_idx, is_word).unwrap_or(0);
+            with_end = char_idx == 0;
         } else if is_punctuation(ch) {
-            with_end = skip_over_prev(slice, &mut char_idx, is_punctuation);
+            char_idx = backwards_skip_while(slice, char_idx, is_punctuation).unwrap_or(0);
+            with_end = char_idx == 0;
         }
     }
 

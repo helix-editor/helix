@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::{
     coords_at_pos,
     graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes},
@@ -14,6 +16,35 @@ pub enum Direction {
 pub enum SelectionBehaviour {
     Extend,
     Displace,
+}
+
+trait SliceHelpers {
+    fn outside(&self, text: RopeSlice) -> bool;
+    /// The next character after this belongs
+    /// to a different `Category`
+    fn is_category_boundary(&self, text: RopeSlice) -> bool;
+    fn is(&self, category: Category, text: RopeSlice) -> bool;
+    fn category(&self, text: RopeSlice) -> Option<Category>;
+}
+
+impl SliceHelpers for usize {
+    fn outside(&self, text: RopeSlice) -> bool { *self >= text.len_chars() }
+
+    fn is_category_boundary(&self, text: RopeSlice) -> bool {
+        !(self + 1).outside(text) && categorize(text.char(*self)) != categorize(text.char(self + 1))
+    }
+
+    fn is(&self, category: Category, text: RopeSlice) -> bool {
+        !self.outside(text) && categorize(text.char(*self)) == category
+    }
+
+    fn category(&self, text: RopeSlice) -> Option<Category> {
+        if self.outside(text) {
+            None
+        } else {
+            Some(categorize(text.char(*self)))
+        }
+    }
 }
 
 pub fn move_horizontally(
@@ -80,73 +111,55 @@ pub fn move_vertically(
     range
 }
 
-pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {
-    let mut end = begin;
-
-    for _ in 0..count {
-        if begin + 1 == slice.len_chars() {
-            return None;
-        }
-
-        let mut ch = slice.char(begin);
-        let next = slice.char(begin + 1);
-
-        // if we're at the end of a word, or on whitespce right before new one
-        if categorize(ch) != categorize(next) {
-            begin += 1;
-        }
-
-        begin = skip_while(slice, begin, |ch| ch == '\n')?;
-        ch = slice.char(begin);
-
-        end = begin + 1;
-
-        if is_word(ch) {
-            end = skip_while(slice, end, is_word)?;
-        } else if is_punctuation(ch) {
-            end = skip_while(slice, end, is_punctuation)?;
-        }
-
-        end = skip_while(slice, end, char::is_whitespace)?;
+fn skip_word_or_punctuation(slice: RopeSlice, begin: usize) -> usize {
+    if begin.is(Category::Word, slice) {
+        skip_while(slice, begin, is_word).unwrap_or(slice.len_chars().saturating_sub(1))
+    } else if begin.is(Category::Punctuation, slice) {
+        skip_while(slice, begin, is_punctuation).unwrap_or(slice.len_chars().saturating_sub(1))
+    } else {
+        begin
     }
-
-    Some(Range::new(begin, end - 1))
 }
 
-pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {
-    let mut with_end = false;
-    let mut end = begin;
-
-    for _ in 0..count {
-        if begin == 0 {
-            return None;
+pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    let last_index = slice.len_chars().saturating_sub(1);
+    let movement = |mut range: Range| -> Option<Range> {
+        range.anchor =
+            if range.head.is_category_boundary(slice) { range.head + 1 } else { range.head };
+        range.anchor = skip_while(slice, range.anchor, is_end_of_line).unwrap_or(last_index);
+        range.head = skip_while(slice, range.anchor, char::is_whitespace).unwrap_or(range.anchor);
+        let category = range.anchor.category(slice)?;
+        if category == Category::Punctuation
+            || category == Category::Word
+            || category == Category::Whitespace
+        {
+            range.head = skip_while(slice, range.head, |c| categorize(c) == category)?;
+            range.head =
+                skip_while(slice, range.head, |c| !is_end_of_line(c) && c.is_whitespace())?
+                    .saturating_sub(1);
         }
+        Some(range)
+    };
+    (0..count).fold(range, |range, _| movement(range).unwrap_or(range))
+}
 
-        let ch = slice.char(begin);
-        let prev = slice.char(begin - 1);
+pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    let movement = |mut range: Range| -> Option<Range> {
+        range.anchor = if range.head.saturating_sub(1).is_category_boundary(slice) {
+            range.head.saturating_sub(1)
+        } else {
+            range.head
+        };
 
-        if categorize(ch) != categorize(prev) {
-            begin -= 1;
-        }
-
-        // return if not skip while?
-        skip_over_prev(slice, &mut begin, |ch| ch == '\n');
-
-        end = begin;
-
-        with_end = skip_over_prev(slice, &mut end, char::is_whitespace);
-
-        // refetch
-        let ch = slice.char(end);
-
-        if is_word(ch) {
-            with_end = skip_over_prev(slice, &mut end, is_word);
-        } else if is_punctuation(ch) {
-            with_end = skip_over_prev(slice, &mut end, is_punctuation);
-        }
-    }
-
-    Some(Range::new(begin, if with_end { end } else { end + 1 }))
+        range.anchor = backwards_skip_while(slice, range.anchor, is_end_of_line)?;
+        range.head = backwards_skip_while(slice, range.anchor, char::is_whitespace).unwrap_or(0);
+        let category = range.head.category(slice)?;
+        range.head = backwards_skip_while(slice, range.head, |c| categorize(c) == category)
+            .map(|h| h + 1)
+            .unwrap_or(0);
+        Some(range)
+    };
+    (0..count).fold(range, |range, _| movement(range).unwrap_or(range))
 }
 
 pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> Option<Range> {
@@ -191,6 +204,9 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 pub(crate) fn is_word(ch: char) -> bool { ch.is_alphanumeric() || ch == '_' }
 
 #[inline]
+pub(crate) fn is_end_of_line(ch: char) -> bool { ch == '\n' }
+
+#[inline]
 pub(crate) fn is_punctuation(ch: char) -> bool {
     use unicode_general_category::{get_general_category, GeneralCategory};
 
@@ -220,7 +236,7 @@ pub(crate) enum Category {
 
 #[inline]
 pub(crate) fn categorize(ch: char) -> Category {
-    if ch == '\n' {
+    if is_end_of_line(ch) {
         Category::Eol
     } else if ch.is_whitespace() {
         Category::Whitespace
@@ -235,39 +251,42 @@ pub(crate) fn categorize(ch: char) -> Category {
 
 #[inline]
 /// Returns first index that doesn't satisfy a given predicate when
-/// advancing the position
+/// advancing the character index.
 ///
 /// Returns none if all characters satisfy the predicate.
 pub fn skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<usize>
 where
     F: Fn(char) -> bool,
 {
-    let mut chars = slice.chars_at(pos).enumerate();
-    chars.find_map(|(i, c)| if !fun(c) { Some(pos + i) } else { None })
+    if pos.outside(slice) {
+        None
+    } else {
+        let mut chars = slice.chars_at(pos).enumerate();
+        chars.find_map(|(i, c)| if !fun(c) { Some(pos + i) } else { None })
+    }
 }
 
 #[inline]
-/// Returns true if the final pos matches the predicate.
-pub fn skip_over_prev<F>(slice: RopeSlice, pos: &mut usize, fun: F) -> bool
+/// Returns first index that doesn't satisfy a given predicate when
+/// retreating the character index.
+///
+/// Returns none if all characters satisfy the predicate.
+pub fn backwards_skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<usize>
 where
     F: Fn(char) -> bool,
 {
-    // need to +1 so that prev() includes current char
-    let mut chars = slice.chars_at(*pos + 1);
-
-    #[allow(clippy::while_let_on_iterator)]
-    while let Some(ch) = chars.prev() {
-        if !fun(ch) {
-            break;
-        }
-        *pos = pos.saturating_sub(1);
+    if pos.outside(slice) {
+        None
+    } else {
+        let mut chars_starting_from_next = slice.chars_at(pos + 1);
+        let mut backwards = iter::from_fn(|| chars_starting_from_next.prev()).enumerate();
+        backwards.find_map(|(i, c)| if !fun(c) { Some(pos.saturating_sub(i)) } else { None })
     }
-    fun(slice.char(*pos))
 }
 
 #[cfg(test)]
 mod test {
-    use std::array::IntoIter;
+    use std::array::{self, IntoIter};
 
     use super::*;
 
@@ -278,6 +297,11 @@ mod test {
         which\n\
         is merely alphabetic\n\
         and whitespaced\n\
+    ";
+
+    const PUNCTUATION_SAMPLE: &str = "\
+        Multiline, example    with,, some;
+        ... punctuation!    \n
     ";
 
     const MULTIBYTE_CHARACTER_SAMPLE: &str = "\
@@ -474,35 +498,87 @@ mod test {
     }
 
     #[test]
-    fn word_moves_through_multiline_text() {
-        let text = Rope::from(MULTILINE_SAMPLE);
-        let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into());
-        let mut range = Range::single(position);
+    fn test_behaviour_when_moving_to_start_of_next_words() {
+        enum Motion {
+            NextStart(usize),
+            NextEnd(usize),
+            PrevStart(usize),
+        }
 
-        enum Move { NextStart, NextEnd, PrevStart }
+        struct TestCase(&'static str, Vec<(Motion, Range, Range)>);
 
-        let moves_and_expected_coordinates = IntoIter::new([
-            ((Move::NextStart, 1), (0, 9)), // Multilin_
-            ((Move::NextStart, 1), (1, 4)), // text_sample
-            ((Move::NextStart, 1), (1, 11)), // text sampl_
-            ((Move::PrevStart, 1), (1, 5)), // text _ample
-            ((Move::PrevStart, 1), (1, 0)), // _ext sample
-            ((Move::NextEnd, 1), (1, 3)), // tex_ sample
-            ((Move::NextEnd, 1), (1, 10)), // text sampl_
-            // FIXME
-            ((Move::PrevStart, 2), (1, 0)), // _ext sample
-            ((Move::NextStart, 3), (1, 0)), // _ext sample
-            ((Move::NextStart, 3), (2, 0)), // _hich
+        let tests = array::IntoIter::new([
+            TestCase("Basic forward motion stops at the first space",
+                vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5))]),
+            TestCase("Long       whitespace gap is bridged by the head",
+                vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 10))]),
+            TestCase("Previous anchor is irrelevant for forward motions",
+                vec![(Motion::NextStart(1), Range::new(12, 0), Range::new(0, 8))]),
+            TestCase("    Starting from whitespace moves to last space in sequence",
+                vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 3))]),
+            TestCase("Starting from mid-word leaves anchor at start position and moves head",
+                vec![(Motion::NextStart(1), Range::new(3, 3), Range::new(3, 8))]),
+            TestCase("Identifiers_with_underscores are considered a single word",
+                vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 28))]),
+            TestCase("Jumping\n    into starting whitespace spans the spaces before 'into'",
+                vec![(Motion::NextStart(1), Range::new(0, 6), Range::new(8, 11))]),
+            TestCase("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 11)),
+                    (Motion::NextStart(1), Range::new(0, 11), Range::new(12, 14)),
+                    (Motion::NextStart(1), Range::new(12, 14), Range::new(15, 17))
+                ]),
+            TestCase("...   ... punctuation and spaces behave as expected",
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 5)),
+                    (Motion::NextStart(1), Range::new(0, 5), Range::new(6, 9)),
+                ]),
+            TestCase(".._.._ punctuation is not joined by underscores into a single block",
+                vec![(Motion::NextStart(1), Range::new(0, 0), Range::new(0, 1))]),
+            TestCase("Newlines\n\nare bridged seamlessly.",
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 7)),
+                    (Motion::NextStart(1), Range::new(0, 7), Range::new(10, 13)),
+                ]),
+            TestCase("A failed motion does not modify the range",
+                vec![
+                    (Motion::NextStart(3), Range::new(37, 41), Range::new(37, 41)),
+                ]),
+            TestCase("Multiple motions at once resolve correctly",
+                vec![
+                    (Motion::NextStart(3), Range::new(0, 0), Range::new(17, 19)),
+                ]),
+            TestCase("Excessive motions are performed partially",
+                vec![
+                    (Motion::NextStart(999), Range::new(0, 0), Range::new(22, 31)),
+                ]),
+            TestCase("Attempting to move from outside bounds fails without panic",
+                vec![
+                    (Motion::NextStart(1), Range::new(9999, 9999), Range::new(9999, 9999)),
+                ]),
+            TestCase("", // Edge case of moving forward in empty string
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 0)),
+                ]),
+            TestCase("\n\n\n\n\n", // Edge case of moving forward in all newlines
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(4, 4)),
+                ]),
         ]);
 
-        for ((direction, count), coordinates) in moves_and_expected_coordinates {
-            range = match direction {
-                Move::NextStart => move_next_word_start(slice, range.head, count).unwrap(),
-                Move::NextEnd => move_next_word_end(slice, range.head, count).unwrap(),
-                Move::PrevStart => move_prev_word_start(slice, range.head, count).unwrap(),
-            };
-            assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
+        for TestCase(sample, scenario) in tests {
+            for (motion, begin, expected_end) in scenario.into_iter() {
+                let range = match motion {
+                    Motion::NextStart(count) => {
+                        move_next_word_start(Rope::from(sample).slice(..), begin, count)
+                    }
+                    Motion::NextEnd(count) => todo!(), //move_next_word_end(Rope::from(sample).slice(..), begin, count),
+                    Motion::PrevStart(count) => {
+                        move_prev_word_start(Rope::from(sample).slice(..), begin, count)
+                    }
+                };
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
         }
     }
 
