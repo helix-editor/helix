@@ -23,10 +23,7 @@ impl Args {
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 arg if arg.starts_with("--") => {
-                    return Err(Error::msg(format!(
-                        "unexpected double dash argument: {}",
-                        arg
-                    )))
+                    return Err(Error::msg(format!("unexpected double dash argument: {}", arg)))
                 }
                 arg if arg.starts_with('-') => {
                     let arg = arg.get(1..).unwrap().chars();

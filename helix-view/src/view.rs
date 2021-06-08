@@ -18,12 +18,7 @@ pub struct JumpList {
 }
 
 impl JumpList {
-    pub fn new(initial: Jump) -> Self {
-        Self {
-            jumps: vec![initial],
-            current: 0,
-        }
-    }
+    pub fn new(initial: Jump) -> Self { Self { jumps: vec![initial], current: 0 } }
 
     pub fn push(&mut self, jump: Jump) {
         self.jumps.truncate(self.current);
@@ -106,11 +101,8 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self, doc: &Document) -> usize {
-        let height = self.area.height.saturating_sub(2); // - 2 for statusline
-        std::cmp::min(
-            self.first_line + height as usize,
-            doc.text().len_lines() - 1,
-        )
+        let height = self.area.height.saturating_sub(1); // - 1 for statusline
+        std::cmp::min(self.first_line + height as usize, doc.text().len_lines() - 1)
     }
 
     /// Translates a document position to an absolute position in the terminal.

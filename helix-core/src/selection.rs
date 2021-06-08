@@ -27,37 +27,23 @@ pub struct Range {
 } // TODO: might be cheaper to store normalized as from/to and an inverted flag
 
 impl Range {
-    pub fn new(anchor: usize, head: usize) -> Self {
-        Self {
-            anchor,
-            head,
-            horiz: None,
-        }
-    }
+    pub fn new(anchor: usize, head: usize) -> Self { Self { anchor, head, horiz: None } }
 
-    pub fn single(head: usize) -> Self {
-        Self::new(head, head)
-    }
+    pub fn single(head: usize) -> Self { Self::new(head, head) }
 
     /// Start of the range.
     #[inline]
     #[must_use]
-    pub fn from(&self) -> usize {
-        std::cmp::min(self.anchor, self.head)
-    }
+    pub fn from(&self) -> usize { std::cmp::min(self.anchor, self.head) }
 
     /// End of the range.
     #[inline]
     #[must_use]
-    pub fn to(&self) -> usize {
-        std::cmp::max(self.anchor, self.head)
-    }
+    pub fn to(&self) -> usize { std::cmp::max(self.anchor, self.head) }
 
     /// `true` when head and anchor are at the same position.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.anchor == self.head
-    }
+    pub fn is_empty(&self) -> bool { self.anchor == self.head }
 
     /// Check two ranges for overlap.
     #[must_use]
@@ -93,22 +79,14 @@ impl Range {
         if self.anchor == anchor && self.head == head {
             return self;
         }
-        Self {
-            anchor,
-            head,
-            horiz: None,
-        }
+        Self { anchor, head, horiz: None }
     }
 
     /// Extend the range to cover at least `from` `to`.
     #[must_use]
     pub fn extend(&self, from: usize, to: usize) -> Self {
         if from <= self.anchor && to >= self.anchor {
-            return Self {
-                anchor: from,
-                head: to,
-                horiz: None,
-            };
+            return Self { anchor: from, head: to, horiz: None };
         }
 
         Self {
@@ -143,24 +121,17 @@ impl Selection {
     // eq
 
     #[must_use]
-    pub fn primary(&self) -> Range {
-        self.ranges[self.primary_index]
-    }
+    pub fn primary(&self) -> Range { self.ranges[self.primary_index] }
 
     #[must_use]
-    pub fn cursor(&self) -> usize {
-        self.primary().head
-    }
+    pub fn cursor(&self) -> usize { self.primary().head }
 
     /// Ensure selection containing only the primary selection.
     pub fn into_single(self) -> Self {
         if self.ranges.len() == 1 {
             self
         } else {
-            Self {
-                ranges: smallvec![self.ranges[self.primary_index]],
-                primary_index: 0,
-            }
+            Self { ranges: smallvec![self.ranges[self.primary_index]], primary_index: 0 }
         }
     }
 
@@ -180,39 +151,23 @@ impl Selection {
         }
 
         Self::new(
-            self.ranges
-                .into_iter()
-                .map(|range| range.map(changes))
-                .collect(),
+            self.ranges.into_iter().map(|range| range.map(changes)).collect(),
             self.primary_index,
         )
     }
 
-    pub fn ranges(&self) -> &[Range] {
-        &self.ranges
-    }
+    pub fn ranges(&self) -> &[Range] { &self.ranges }
 
-    pub fn primary_index(&self) -> usize {
-        self.primary_index
-    }
+    pub fn primary_index(&self) -> usize { self.primary_index }
 
     #[must_use]
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {
-        Self {
-            ranges: smallvec![Range {
-                anchor,
-                head,
-                horiz: None
-            }],
-            primary_index: 0,
-        }
+        Self { ranges: smallvec![Range { anchor, head, horiz: None }], primary_index: 0 }
     }
 
     /// Constructs a selection holding a single cursor.
-    pub fn point(pos: usize) -> Self {
-        Self::single(pos, pos)
-    }
+    pub fn point(pos: usize) -> Self { Self::single(pos, pos) }
 
     fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Self {
         let primary = ranges[primary_index];
@@ -253,10 +208,7 @@ impl Selection {
             result.push(range)
         }
 
-        Self {
-            ranges: result,
-            primary_index,
-        }
+        Self { ranges: result, primary_index }
     }
 
     // TODO: consume an iterator or a vec to reduce allocations?
@@ -266,10 +218,7 @@ impl Selection {
 
         // fast path for a single selection (cursor)
         if ranges.len() == 1 {
-            return Self {
-                ranges,
-                primary_index: 0,
-            };
+            return Self { ranges, primary_index: 0 };
         }
 
         // TODO: only normalize if needed (any ranges out of order)
@@ -281,10 +230,7 @@ impl Selection {
     where
         F: Fn(Range) -> Range,
     {
-        Self::new(
-            self.ranges.iter().copied().map(f).collect(),
-            self.primary_index,
-        )
+        Self::new(self.ranges.iter().copied().map(f).collect(), self.primary_index)
     }
 
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
@@ -292,23 +238,17 @@ impl Selection {
     }
 
     #[inline(always)]
-    pub fn iter(&self) -> std::slice::Iter<'_, Range> {
-        self.ranges.iter()
-    }
+    pub fn iter(&self) -> std::slice::Iter<'_, Range> { self.ranges.iter() }
 
     #[inline(always)]
-    pub fn len(&self) -> usize {
-        self.ranges.len()
-    }
+    pub fn len(&self) -> usize { self.ranges.len() }
 }
 
 impl<'a> IntoIterator for &'a Selection {
     type Item = &'a Range;
     type IntoIter = std::slice::Iter<'a, Range>;
 
-    fn into_iter(self) -> std::slice::Iter<'a, Range> {
-        self.ranges().iter()
-    }
+    fn into_iter(self) -> std::slice::Iter<'a, Range> { self.ranges().iter() }
 }
 
 // TODO: checkSelection -> check if valid for doc length && sorted
@@ -318,11 +258,8 @@ pub fn keep_matches(
     selection: &Selection,
     regex: &crate::regex::Regex,
 ) -> Option<Selection> {
-    let result: SmallVec<_> = selection
-        .iter()
-        .filter(|range| regex.is_match(&range.fragment(text)))
-        .copied()
-        .collect();
+    let result: SmallVec<_> =
+        selection.iter().filter(|range| regex.is_match(&range.fragment(text))).copied().collect();
 
     // TODO: figure out a new primary index
     if !result.is_empty() {
@@ -406,9 +343,7 @@ mod test {
 
     #[test]
     #[should_panic]
-    fn test_new_empty() {
-        let sel = Selection::new(smallvec![], 0);
-    }
+    fn test_new_empty() { let sel = Selection::new(smallvec![], 0); }
 
     #[test]
     fn test_create_normalizes_and_merges() {
@@ -485,20 +420,16 @@ mod test {
 
         let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
 
-        assert_eq!(
-            result.ranges(),
-            &[
-                Range::new(0, 3),
-                Range::new(5, 7),
-                Range::new(10, 11),
-                Range::new(15, 17),
-                Range::new(19, 19),
-            ]
-        );
+        assert_eq!(result.ranges(), &[
+            Range::new(0, 3),
+            Range::new(5, 7),
+            Range::new(10, 11),
+            Range::new(15, 17),
+            Range::new(19, 19),
+        ]);
 
-        assert_eq!(
-            result.fragments(text.slice(..)).collect::<Vec<_>>(),
-            &["abcd", "efg", "rs", "xyz", "1"]
-        );
+        assert_eq!(result.fragments(text.slice(..)).collect::<Vec<_>>(), &[
+            "abcd", "efg", "rs", "xyz", "1"
+        ]);
     }
 }

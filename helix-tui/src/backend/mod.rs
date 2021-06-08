@@ -1,7 +1,6 @@
 use std::io;
 
-use crate::buffer::Cell;
-use crate::layout::Rect;
+use crate::{buffer::Cell, layout::Rect};
 
 #[cfg(feature = "crossterm")]
 mod crossterm;

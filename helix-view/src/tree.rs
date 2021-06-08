@@ -36,10 +36,7 @@ impl Node {
     }
 
     pub fn view(view: View) -> Self {
-        Self {
-            parent: ViewId::default(),
-            content: Content::View(Box::new(view)),
-        }
+        Self { parent: ViewId::default(), content: Content::View(Box::new(view)) }
     }
 }
 
@@ -60,18 +57,12 @@ pub struct Container {
 
 impl Container {
     pub fn new(layout: Layout) -> Self {
-        Self {
-            layout,
-            children: Vec::new(),
-            area: Rect::default(),
-        }
+        Self { layout, children: Vec::new(), area: Rect::default() }
     }
 }
 
 impl Default for Container {
-    fn default() -> Self {
-        Self::new(Layout::Vertical)
-    }
+    fn default() -> Self { Self::new(Layout::Vertical) }
 }
 
 impl Tree {
@@ -103,10 +94,7 @@ impl Tree {
         self.get_mut(node).id = node;
 
         let container = match &mut self.nodes[parent] {
-            Node {
-                content: Content::Container(container),
-                ..
-            } => container,
+            Node { content: Content::Container(container), .. } => container,
             _ => unreachable!(),
         };
 
@@ -114,11 +102,7 @@ impl Tree {
         let pos = if container.children.is_empty() {
             0
         } else {
-            let pos = container
-                .children
-                .iter()
-                .position(|&child| child == focus)
-                .unwrap();
+            let pos = container.children.iter().position(|&child| child == focus).unwrap();
             pos + 1
         };
 
@@ -141,10 +125,7 @@ impl Tree {
         self.get_mut(node).id = node;
 
         let container = match &mut self.nodes[parent] {
-            Node {
-                content: Content::Container(container),
-                ..
-            } => container,
+            Node { content: Content::Container(container), .. } => container,
             _ => unreachable!(),
         };
 
@@ -153,11 +134,7 @@ impl Tree {
             let pos = if container.children.is_empty() {
                 0
             } else {
-                let pos = container
-                    .children
-                    .iter()
-                    .position(|&child| child == focus)
-                    .unwrap();
+                let pos = container.children.iter().position(|&child| child == focus).unwrap();
                 pos + 1
             };
             container.children.insert(pos, node);
@@ -168,10 +145,7 @@ impl Tree {
             let split = self.nodes.insert(split);
 
             let container = match &mut self.nodes[split] {
-                Node {
-                    content: Content::Container(container),
-                    ..
-                } => container,
+                Node { content: Content::Container(container), .. } => container,
                 _ => unreachable!(),
             };
             container.children.push(focus);
@@ -180,18 +154,11 @@ impl Tree {
             self.nodes[node].parent = split;
 
             let container = match &mut self.nodes[parent] {
-                Node {
-                    content: Content::Container(container),
-                    ..
-                } => container,
+                Node { content: Content::Container(container), .. } => container,
                 _ => unreachable!(),
             };
 
-            let pos = container
-                .children
-                .iter()
-                .position(|&child| child == focus)
-                .unwrap();
+            let pos = container.children.iter().position(|&child| child == focus).unwrap();
 
             // replace focus on parent with split
             container.children[pos] = split;
@@ -218,10 +185,7 @@ impl Tree {
 
         while let Some(index) = stack.pop() {
             let parent_id = self.nodes[index].parent;
-            if let Node {
-                content: Content::Container(container),
-                ..
-            } = &mut self.nodes[parent_id]
+            if let Node { content: Content::Container(container), .. } = &mut self.nodes[parent_id]
             {
                 if let Some(pos) = container.children.iter().position(|&child| child == index) {
                     container.children.remove(pos);
@@ -242,53 +206,36 @@ impl Tree {
     pub fn views(&self) -> impl Iterator<Item = (&View, bool)> {
         let focus = self.focus;
         self.nodes.iter().filter_map(move |(key, node)| match node {
-            Node {
-                content: Content::View(view),
-                ..
-            } => Some((view.as_ref(), focus == key)),
+            Node { content: Content::View(view), .. } => Some((view.as_ref(), focus == key)),
             _ => None,
         })
     }
 
     pub fn views_mut(&mut self) -> impl Iterator<Item = (&mut View, bool)> {
         let focus = self.focus;
-        self.nodes
-            .iter_mut()
-            .filter_map(move |(key, node)| match node {
-                Node {
-                    content: Content::View(view),
-                    ..
-                } => Some((view.as_mut(), focus == key)),
-                _ => None,
-            })
+        self.nodes.iter_mut().filter_map(move |(key, node)| match node {
+            Node { content: Content::View(view), .. } => Some((view.as_mut(), focus == key)),
+            _ => None,
+        })
     }
 
     pub fn get(&self, index: ViewId) -> &View {
         match &self.nodes[index] {
-            Node {
-                content: Content::View(view),
-                ..
-            } => view,
+            Node { content: Content::View(view), .. } => view,
             _ => unreachable!(),
         }
     }
 
     pub fn get_mut(&mut self, index: ViewId) -> &mut View {
         match &mut self.nodes[index] {
-            Node {
-                content: Content::View(view),
-                ..
-            } => view,
+            Node { content: Content::View(view), .. } => view,
             _ => unreachable!(),
         }
     }
 
     pub fn is_empty(&self) -> bool {
         match &self.nodes[self.root] {
-            Node {
-                content: Content::Container(container),
-                ..
-            } => container.children.is_empty(),
+            Node { content: Content::Container(container), .. } => container.children.is_empty(),
             _ => unreachable!(),
         }
     }
@@ -386,9 +333,7 @@ impl Tree {
         }
     }
 
-    pub fn traverse(&self) -> Traverse {
-        Traverse::new(self)
-    }
+    pub fn traverse(&self) -> Traverse { Traverse::new(self) }
 
     pub fn focus_next(&mut self) {
         // This function is very dumb, but that's because we don't store any parent links.
@@ -438,12 +383,7 @@ pub struct Traverse<'a> {
 }
 
 impl<'a> Traverse<'a> {
-    fn new(tree: &'a Tree) -> Self {
-        Self {
-            tree,
-            stack: vec![tree.root],
-        }
-    }
+    fn new(tree: &'a Tree) -> Self { Self { tree, stack: vec![tree.root] } }
 }
 
 impl<'a> Iterator for Traverse<'a> {

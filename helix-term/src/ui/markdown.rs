@@ -20,9 +20,7 @@ pub struct Markdown {
 // better yet, just use Tendril + subtendril for references
 
 impl Markdown {
-    pub fn new(contents: String) -> Self {
-        Self { contents }
-    }
+    pub fn new(contents: String) -> Self { Self { contents } }
 }
 
 fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
@@ -75,8 +73,10 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                 // TODO: temp workaround
                 if let Some(Tag::CodeBlock(CodeBlockKind::Fenced(language))) = tags.last() {
                     if let Some(theme) = theme {
-                        use helix_core::syntax::{self, HighlightEvent, Syntax};
-                        use helix_core::Rope;
+                        use helix_core::{
+                            syntax::{self, HighlightEvent, Syntax},
+                            Rope,
+                        };
 
                         let rope = Rope::from(text.as_ref());
                         let syntax = syntax::LOADER

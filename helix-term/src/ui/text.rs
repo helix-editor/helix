@@ -16,9 +16,7 @@ pub struct Text {
 }
 
 impl Text {
-    pub fn new(contents: String) -> Self {
-        Self { contents }
-    }
+    pub fn new(contents: String) -> Self { Self { contents } }
 }
 impl Component for Text {
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {

@@ -1,5 +1,8 @@
-use crate::graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes};
-use crate::{coords_at_pos, pos_at_coords, ChangeSet, Position, Range, Rope, RopeSlice, Selection};
+use crate::{
+    coords_at_pos,
+    graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary, RopeGraphemes},
+    pos_at_coords, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
+};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Direction {
@@ -10,7 +13,7 @@ pub enum Direction {
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum SelectionBehaviour {
     Extend,
-    Displace
+    Displace,
 }
 
 pub fn move_horizontally(
@@ -55,10 +58,9 @@ pub fn move_vertically(
 
     let new_line = match dir {
         Direction::Backward => row.saturating_sub(count),
-        Direction::Forward => std::cmp::min(
-            row.saturating_add(count),
-            text.len_lines().saturating_sub(2),
-        ),
+        Direction::Forward => {
+            std::cmp::min(row.saturating_add(count), text.len_lines().saturating_sub(2))
+        }
     };
 
     // convert to 0-indexed, subtract another 1 because len_chars() counts \n
@@ -103,11 +105,11 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
 
         if is_word(ch) {
             skip_over_next(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            skip_over_next(slice, &mut end, is_punctuation);
         }
 
-        skip_over_next(slice, &mut end, is_horiz_blank);
+        skip_over_next(slice, &mut end, char::is_whitespace);
     }
 
     Some(Range::new(begin, end - 1))
@@ -134,15 +136,15 @@ pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
 
         end = begin;
 
-        with_end = skip_over_prev(slice, &mut end, is_horiz_blank);
+        with_end = skip_over_prev(slice, &mut end, char::is_whitespace);
 
         // refetch
         let ch = slice.char(end);
 
         if is_word(ch) {
             with_end = skip_over_prev(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            with_end = skip_over_prev(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            with_end = skip_over_prev(slice, &mut end, is_punctuation);
         }
     }
 
@@ -170,15 +172,15 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
         end = begin;
 
-        skip_over_next(slice, &mut end, is_horiz_blank);
+        skip_over_next(slice, &mut end, char::is_whitespace);
 
         // refetch
         let ch = slice.char(end);
 
         if is_word(ch) {
             skip_over_next(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            skip_over_next(slice, &mut end, is_punctuation);
         }
     }
 
@@ -189,12 +191,26 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
 // used for by-word movement
 
-pub(crate) fn is_word(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
-}
+#[inline]
+pub(crate) fn is_word(ch: char) -> bool { ch.is_alphanumeric() || ch == '_' }
 
-pub(crate) fn is_horiz_blank(ch: char) -> bool {
-    matches!(ch, ' ' | '\t')
+#[inline]
+pub(crate) fn is_punctuation(ch: char) -> bool {
+    use unicode_general_category::{get_general_category, GeneralCategory};
+
+    matches!(
+        get_general_category(ch),
+        GeneralCategory::OtherPunctuation
+            | GeneralCategory::OpenPunctuation
+            | GeneralCategory::ClosePunctuation
+            | GeneralCategory::InitialPunctuation
+            | GeneralCategory::FinalPunctuation
+            | GeneralCategory::ConnectorPunctuation
+            | GeneralCategory::DashPunctuation
+            | GeneralCategory::MathSymbol
+            | GeneralCategory::CurrencySymbol
+            | GeneralCategory::ModifierSymbol
+    )
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -206,14 +222,15 @@ pub(crate) enum Category {
     Unknown,
 }
 
+#[inline]
 pub(crate) fn categorize(ch: char) -> Category {
     if ch == '\n' {
         Category::Eol
-    } else if ch.is_ascii_whitespace() {
+    } else if ch.is_whitespace() {
         Category::Whitespace
     } else if is_word(ch) {
         Category::Word
-    } else if ch.is_ascii_punctuation() {
+    } else if is_punctuation(ch) {
         Category::Punctuation
     } else {
         Category::Unknown
@@ -228,6 +245,7 @@ where
 {
     let mut chars = slice.chars_at(*pos);
 
+    #[allow(clippy::while_let_on_iterator)]
     while let Some(ch) = chars.next() {
         if !fun(ch) {
             break;
@@ -246,6 +264,7 @@ where
     // need to +1 so that prev() includes current char
     let mut chars = slice.chars_at(*pos + 1);
 
+    #[allow(clippy::while_let_on_iterator)]
     while let Some(ch) = chars.prev() {
         if !fun(ch) {
             break;
@@ -269,23 +288,11 @@ mod test {
         is merely alphabetic\n\
         and whitespaced\n\
     ";
-    const UNICODE_SUPERSCRIPT_SAMPLE: &str = "\
-        ⁰⁴⁵\n\
-        ₀₁₂\n\
-        ⁰⁴⁵₀₁₂\n\
-        ด้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็ ด้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็ ด้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็็้้้้้้้้็็็็็้้้้้็็็็\n\
-    ";
 
     const MULTIBYTE_CHARACTER_SAMPLE: &str = "\
         パーティーへ行かないか\n\
         The text above is Japanese\n\
     ";
-
-    const ZALGO_SAMPLE: &str = "\
-        Ṯ̤͍̥͇͈h̲́e͏͓̼̗̙̼̣͔ ͇̜̱̠͓͍ͅN͕͠e̗̱z̘̝̜̺͙p̤̺̹͍̯͚e̠̻̠͜r̨̤͍̺̖͔̖̖d̠̟̭̬̝͟i̦͖̩͓͔̤a̠̗̬͉̙n͚͜
-        h̵͉i̳̞v̢͇ḙ͎͟-҉̭̩̼͔m̤̭̫i͕͇̝̦n̗͙ḍ̟ ̯̲͕͞ǫ̟̯̰̲͙̻̝f ̪̰̰̗̖̭̘͘c̦͍̲̞͍̩̙ḥ͚a̮͎̟̙͜ơ̩̹͎s̤.̝̝ ҉Z̡̖̜͖̰̣͉̜a͖̰͙̬͡l̲̫̳͍̩g̡̟̼̱͚̞̬ͅo̗͜.̟
-    ";
-
 
     #[test]
     fn test_vertical_move() {
@@ -297,7 +304,8 @@ mod test {
         assert_eq!(
             coords_at_pos(
                 slice,
-                move_vertically(slice, range, Direction::Forward, 1, SelectionBehaviour::Displace).head
+                move_vertically(slice, range, Direction::Forward, 1, SelectionBehaviour::Displace)
+                    .head
             ),
             (1, 2).into()
         );
@@ -321,9 +329,10 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in IntoIter::new(moves_and_expected_coordinates) {
-            range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
+            range =
+                move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
-        };
+        }
     }
 
     #[test]
@@ -335,22 +344,23 @@ mod test {
         let mut range = Range::single(position);
 
         let moves_and_expected_coordinates = IntoIter::new([
-            ((Direction::Forward, 1usize), (0, 1)), // M_ltiline
-            ((Direction::Forward, 2usize), (0, 3)),// Mul_iline
-            ((Direction::Backward, 6usize), (0, 0)), // _ultiline
+            ((Direction::Forward, 1usize), (0, 1)),    // M_ltiline
+            ((Direction::Forward, 2usize), (0, 3)),    // Mul_iline
+            ((Direction::Backward, 6usize), (0, 0)),   // _ultiline
             ((Direction::Backward, 999usize), (0, 0)), // _ultiline
-            ((Direction::Forward, 3usize), (0, 3)), // Mul_iline
-            ((Direction::Forward, 0usize), (0, 3)), // Mul_iline
-            ((Direction::Backward, 0usize), (0, 3)), // Mul_iline
-            ((Direction::Forward, 999usize), (0, 9)), // Multilin_
-            ((Direction::Forward, 999usize), (0, 9)), // Multilin_
+            ((Direction::Forward, 3usize), (0, 3)),    // Mul_iline
+            ((Direction::Forward, 0usize), (0, 3)),    // Mul_iline
+            ((Direction::Backward, 0usize), (0, 3)),   // Mul_iline
+            ((Direction::Forward, 999usize), (0, 9)),  // Multilin_
+            ((Direction::Forward, 999usize), (0, 9)),  // Multilin_
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
+            range =
+                move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
-        };
+        }
     }
 
     #[test]
@@ -371,7 +381,7 @@ mod test {
         for (direction, amount) in moves {
             range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Extend);
             assert_eq!(range.anchor, original_anchor);
-        };
+        }
     }
 
     #[test]
@@ -395,7 +405,7 @@ mod test {
             range = move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
-        };
+        }
     }
 
     #[test]
@@ -405,7 +415,10 @@ mod test {
         let position = pos_at_coords(slice, (0, 0).into());
         let mut range = Range::single(position);
 
-        enum Axis { H, V };
+        enum Axis {
+            H,
+            V,
+        };
         let moves_and_expected_coordinates = IntoIter::new([
             // Places cursor at the end of line
             ((Axis::H, Direction::Forward, 8usize), (0, 8)),
@@ -422,12 +435,16 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace),
-                Axis::V => move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace),
+                Axis::H => {
+                    move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace)
+                }
+                Axis::V => {
+                    move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace)
+                }
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
-        };
+        }
     }
 
     #[test]
@@ -440,7 +457,10 @@ mod test {
         // FIXME: The behaviour captured in this test diverges from both Kakoune and Vim. These
         // will attempt to preserve the horizontal position of the cursor, rather than
         // placing it at the same character index.
-        enum Axis { H, V };
+        enum Axis {
+            H,
+            V,
+        };
         let moves_and_expected_coordinates = IntoIter::new([
             // Places cursor at the fourth kana
             ((Axis::H, Direction::Forward, 4), (0, 4)),
@@ -450,11 +470,84 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace),
-                Axis::V => move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace),
+                Axis::H => {
+                    move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace)
+                }
+                Axis::V => {
+                    move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace)
+                }
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
-        };
+        }
+    }
+
+    #[test]
+    fn word_moves_through_multiline_text() {
+        let text = Rope::from(MULTILINE_SAMPLE);
+        let slice = text.slice(..);
+        let position = pos_at_coords(slice, (0, 0).into());
+        let mut range = Range::single(position);
+
+        enum Move { NextStart, NextEnd, PrevStart }
+
+        let moves_and_expected_coordinates = IntoIter::new([
+            ((Move::NextStart, 1), (0, 9)), // Multilin_
+            ((Move::NextStart, 1), (1, 4)), // text_sample
+            ((Move::NextStart, 1), (1, 11)), // text sampl_
+            ((Move::PrevStart, 1), (1, 5)), // text _ample
+            ((Move::PrevStart, 1), (1, 0)), // _ext sample
+            ((Move::NextEnd, 1), (1, 3)), // tex_ sample
+            ((Move::NextEnd, 1), (1, 10)), // text sampl_
+        ]);
+
+        for ((direction, count), coordinates) in moves_and_expected_coordinates {
+            range = match direction {
+                Move::NextStart => move_next_word_start(slice, range.head, count).unwrap(),
+                Move::NextEnd => move_next_word_end(slice, range.head, count).unwrap(),
+                Move::PrevStart => move_prev_word_start(slice, range.head, count).unwrap(),
+            };
+            assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
+        }
+    }
+
+    #[test]
+    fn test_categorize() {
+        const WORD_TEST_CASE: &'static str =
+            "_hello_world_あいうえおー1234567890１２３４５６７８９０";
+        const PUNCTUATION_TEST_CASE: &'static str = "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、。：；＜＝＞？＠「」＾｀｛｜｝～";
+        const WHITESPACE_TEST_CASE: &'static str = "  　   ";
+
+        assert_eq!(Category::Eol, categorize('\n'));
+
+        for ch in WHITESPACE_TEST_CASE.chars() {
+            assert_eq!(
+                Category::Whitespace,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Whitespace`",
+                ch,
+                categorize(ch)
+            );
+        }
+
+        for ch in WORD_TEST_CASE.chars() {
+            assert_eq!(
+                Category::Word,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Word`",
+                ch,
+                categorize(ch)
+            );
+        }
+
+        for ch in PUNCTUATION_TEST_CASE.chars() {
+            assert_eq!(
+                Category::Punctuation,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Punctuation`",
+                ch,
+                categorize(ch)
+            );
+        }
     }
 }

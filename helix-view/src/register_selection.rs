@@ -9,16 +9,9 @@ pub struct RegisterSelection {
 }
 
 impl RegisterSelection {
-    pub fn new(default_name: char) -> Self {
-        Self {
-            selected: default_name,
-            default_name,
-        }
-    }
+    pub fn new(default_name: char) -> Self { Self { selected: default_name, default_name } }
 
-    pub fn select(&mut self, name: char) {
-        self.selected = name;
-    }
+    pub fn select(&mut self, name: char) { self.selected = name; }
 
     pub fn take(&mut self) -> Self {
         Self {
@@ -27,21 +20,14 @@ impl RegisterSelection {
         }
     }
 
-    pub fn is_default(&self) -> bool {
-        self.selected == self.default_name
-    }
+    pub fn is_default(&self) -> bool { self.selected == self.default_name }
 
-    pub fn name(&self) -> char {
-        self.selected
-    }
+    pub fn name(&self) -> char { self.selected }
 }
 
 impl Default for RegisterSelection {
     fn default() -> Self {
         let default_name = '"';
-        Self {
-            selected: default_name,
-            default_name,
-        }
+        Self { selected: default_name, default_name }
     }
 }

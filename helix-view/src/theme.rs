@@ -207,9 +207,7 @@ impl Theme {
     }
 
     #[inline]
-    pub fn scopes(&self) -> &[String] {
-        &self.scopes
-    }
+    pub fn scopes(&self) -> &[String] { &self.scopes }
 }
 
 #[test]

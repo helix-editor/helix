@@ -52,10 +52,7 @@ impl Cell {
     }
 
     pub fn style(&self) -> Style {
-        Style::default()
-            .fg(self.fg)
-            .bg(self.bg)
-            .add_modifier(self.modifier)
+        Style::default().fg(self.fg).bg(self.bg).add_modifier(self.modifier)
     }
 
     pub fn reset(&mut self) {
@@ -69,12 +66,7 @@ impl Cell {
 
 impl Default for Cell {
     fn default() -> Cell {
-        Cell {
-            symbol: " ".into(),
-            fg: Color::Reset,
-            bg: Color::Reset,
-            modifier: Modifier::empty(),
-        }
+        Cell { symbol: " ".into(), fg: Color::Reset, bg: Color::Reset, modifier: Modifier::empty() }
     }
 }
 
@@ -115,12 +107,7 @@ pub struct Buffer {
 }
 
 impl Default for Buffer {
-    fn default() -> Buffer {
-        Buffer {
-            area: Default::default(),
-            content: Vec::new(),
-        }
-    }
+    fn default() -> Buffer { Buffer { area: Default::default(), content: Vec::new() } }
 }
 
 impl Buffer {
@@ -146,17 +133,8 @@ impl Buffer {
         S: AsRef<str>,
     {
         let height = lines.len() as u16;
-        let width = lines
-            .iter()
-            .map(|i| i.as_ref().width() as u16)
-            .max()
-            .unwrap_or_default();
-        let mut buffer = Buffer::empty(Rect {
-            x: 0,
-            y: 0,
-            width,
-            height,
-        });
+        let width = lines.iter().map(|i| i.as_ref().width() as u16).max().unwrap_or_default();
+        let mut buffer = Buffer::empty(Rect { x: 0, y: 0, width, height });
         for (y, line) in lines.iter().enumerate() {
             buffer.set_string(0, y as u16, line, Style::default());
         }
@@ -164,14 +142,10 @@ impl Buffer {
     }
 
     /// Returns the content of the buffer as a slice
-    pub fn content(&self) -> &[Cell] {
-        &self.content
-    }
+    pub fn content(&self) -> &[Cell] { &self.content }
 
     /// Returns the area covered by this buffer
-    pub fn area(&self) -> &Rect {
-        &self.area
-    }
+    pub fn area(&self) -> &Rect { &self.area }
 
     /// Returns a reference to Cell at the given coordinates
     pub fn get(&self, x: u16, y: u16) -> &Cell {
@@ -261,10 +235,7 @@ impl Buffer {
             i,
             self.content.len()
         );
-        (
-            self.area.x + i as u16 % self.area.width,
-            self.area.y + i as u16 / self.area.width,
-        )
+        (self.area.x + i as u16 % self.area.width, self.area.y + i as u16 / self.area.width)
     }
 
     /// Print a string, starting at the position (x, y)
@@ -322,13 +293,8 @@ impl Buffer {
             if remaining_width == 0 {
                 break;
             }
-            let pos = self.set_stringn(
-                x,
-                y,
-                span.content.as_ref(),
-                remaining_width as usize,
-                span.style,
-            );
+            let pos =
+                self.set_stringn(x, y, span.content.as_ref(), remaining_width as usize, span.style);
             let w = pos.0.saturating_sub(x);
             x = pos.0;
             remaining_width = remaining_width.saturating_sub(w);
@@ -634,15 +600,12 @@ mod tests {
             "└──────┘  ",
         ]);
         let diff = prev.diff(&next);
-        assert_eq!(
-            diff,
-            vec![
-                (2, 1, &cell("I")),
-                (3, 1, &cell("T")),
-                (4, 1, &cell("L")),
-                (5, 1, &cell("E")),
-            ]
-        );
+        assert_eq!(diff, vec![
+            (2, 1, &cell("I")),
+            (3, 1, &cell("T")),
+            (4, 1, &cell("L")),
+            (5, 1, &cell("E")),
+        ]);
     }
 
     #[test]
@@ -675,30 +638,17 @@ mod tests {
         let next = Buffer::with_lines(vec!["┌─称号─┐"]);
 
         let diff = prev.diff(&next);
-        assert_eq!(
-            diff,
-            vec![(1, 0, &cell("─")), (2, 0, &cell("称")), (4, 0, &cell("号")),]
-        );
+        assert_eq!(diff, vec![(1, 0, &cell("─")), (2, 0, &cell("称")), (4, 0, &cell("号")),]);
     }
 
     #[test]
     fn buffer_merge() {
         let mut one = Buffer::filled(
-            Rect {
-                x: 0,
-                y: 0,
-                width: 2,
-                height: 2,
-            },
+            Rect { x: 0, y: 0, width: 2, height: 2 },
             Cell::default().set_symbol("1"),
         );
         let two = Buffer::filled(
-            Rect {
-                x: 0,
-                y: 2,
-                width: 2,
-                height: 2,
-            },
+            Rect { x: 0, y: 2, width: 2, height: 2 },
             Cell::default().set_symbol("2"),
         );
         one.merge(&two);
@@ -708,58 +658,30 @@ mod tests {
     #[test]
     fn buffer_merge2() {
         let mut one = Buffer::filled(
-            Rect {
-                x: 2,
-                y: 2,
-                width: 2,
-                height: 2,
-            },
+            Rect { x: 2, y: 2, width: 2, height: 2 },
             Cell::default().set_symbol("1"),
         );
         let two = Buffer::filled(
-            Rect {
-                x: 0,
-                y: 0,
-                width: 2,
-                height: 2,
-            },
+            Rect { x: 0, y: 0, width: 2, height: 2 },
             Cell::default().set_symbol("2"),
         );
         one.merge(&two);
-        assert_eq!(
-            one,
-            Buffer::with_lines(vec!["22  ", "22  ", "  11", "  11"])
-        );
+        assert_eq!(one, Buffer::with_lines(vec!["22  ", "22  ", "  11", "  11"]));
     }
 
     #[test]
     fn buffer_merge3() {
         let mut one = Buffer::filled(
-            Rect {
-                x: 3,
-                y: 3,
-                width: 2,
-                height: 2,
-            },
+            Rect { x: 3, y: 3, width: 2, height: 2 },
             Cell::default().set_symbol("1"),
         );
         let two = Buffer::filled(
-            Rect {
-                x: 1,
-                y: 1,
-                width: 3,
-                height: 4,
-            },
+            Rect { x: 1, y: 1, width: 3, height: 4 },
             Cell::default().set_symbol("2"),
         );
         one.merge(&two);
         let mut merged = Buffer::with_lines(vec!["222 ", "222 ", "2221", "2221"]);
-        merged.area = Rect {
-            x: 1,
-            y: 1,
-            width: 4,
-            height: 4,
-        };
+        merged.area = Rect { x: 1, y: 1, width: 4, height: 4 };
         assert_eq!(one, merged);
     }
 }

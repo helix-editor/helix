@@ -31,41 +31,25 @@ pub struct ChangeSet {
 }
 
 impl Default for ChangeSet {
-    fn default() -> Self {
-        Self {
-            changes: Vec::new(),
-            len: 0,
-            len_after: 0,
-        }
-    }
+    fn default() -> Self { Self { changes: Vec::new(), len: 0, len_after: 0 } }
 }
 
 impl ChangeSet {
     pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            changes: Vec::with_capacity(capacity),
-            len: 0,
-            len_after: 0,
-        }
+        Self { changes: Vec::with_capacity(capacity), len: 0, len_after: 0 }
     }
 
     #[must_use]
     pub fn new(doc: &Rope) -> Self {
         let len = doc.len_chars();
-        Self {
-            changes: Vec::new(),
-            len,
-            len_after: len,
-        }
+        Self { changes: Vec::new(), len, len_after: len }
     }
 
     // TODO: from iter
     //
 
     #[doc(hidden)] // used by lsp to convert to LSP changes
-    pub fn changes(&self) -> &[Operation] {
-        &self.changes
-    }
+    pub fn changes(&self) -> &[Operation] { &self.changes }
 
     // Changeset builder operations: delete/insert/retain
     fn delete(&mut self, n: usize) {
@@ -261,9 +245,7 @@ impl ChangeSet {
     /// provides a basic form of [operational
     /// transformation](https://en.wikipedia.org/wiki/Operational_transformation),
     /// and can be used for collaborative editing.
-    pub fn map(self, _other: Self) -> Self {
-        unimplemented!()
-    }
+    pub fn map(self, _other: Self) -> Self { unimplemented!() }
 
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
     /// The document parameter expects the original document before this change was applied.
@@ -326,9 +308,7 @@ impl ChangeSet {
 
     /// `true` when the set is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.changes.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.changes.is_empty() }
 
     /// Map a position through the changes.
     ///
@@ -401,17 +381,12 @@ impl ChangeSet {
         }
 
         if pos > old_pos {
-            panic!(
-                "Position {} is out of range for changeset len {}!",
-                pos, old_pos
-            )
+            panic!("Position {} is out of range for changeset len {}!", pos, old_pos)
         }
         new_pos
     }
 
-    pub fn changes_iter(&self) -> ChangeIterator {
-        ChangeIterator::new(self)
-    }
+    pub fn changes_iter(&self) -> ChangeIterator { ChangeIterator::new(self) }
 }
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
@@ -426,22 +401,13 @@ pub struct Transaction {
 
 impl Transaction {
     /// Create a new, empty transaction.
-    pub fn new(doc: &Rope) -> Self {
-        Self {
-            changes: ChangeSet::new(doc),
-            selection: None,
-        }
-    }
+    pub fn new(doc: &Rope) -> Self { Self { changes: ChangeSet::new(doc), selection: None } }
 
     /// Changes made to the buffer.
-    pub fn changes(&self) -> &ChangeSet {
-        &self.changes
-    }
+    pub fn changes(&self) -> &ChangeSet { &self.changes }
 
     /// When set, explicitly updates the selection.
-    pub fn selection(&self) -> Option<&Selection> {
-        self.selection.as_ref()
-    }
+    pub fn selection(&self) -> Option<&Selection> { self.selection.as_ref() }
 
     /// Returns true if applied successfully.
     pub fn apply(&self, doc: &mut Rope) -> bool {
@@ -459,10 +425,7 @@ impl Transaction {
     pub fn invert(&self, original: &Rope) -> Self {
         let changes = self.changes.invert(original);
 
-        Self {
-            changes,
-            selection: None,
-        }
+        Self { changes, selection: None }
     }
 
     pub fn with_selection(mut self, selection: Selection) -> Self {
@@ -518,18 +481,11 @@ impl Transaction {
         })
     }
 
-    pub fn changes_iter(&self) -> ChangeIterator {
-        self.changes.changes_iter()
-    }
+    pub fn changes_iter(&self) -> ChangeIterator { self.changes.changes_iter() }
 }
 
 impl From<ChangeSet> for Transaction {
-    fn from(changes: ChangeSet) -> Self {
-        Self {
-            changes,
-            selection: None,
-        }
-    }
+    fn from(changes: ChangeSet) -> Self { Self { changes, selection: None } }
 }
 
 pub struct ChangeIterator<'a> {
@@ -657,11 +613,8 @@ mod test {
         assert_eq!(cs.map_pos(5, Assoc::Before), 7); // after insert region
 
         // maps deletes
-        let cs = ChangeSet {
-            changes: vec![Retain(4), Delete(4), Retain(4)],
-            len: 12,
-            len_after: 8,
-        };
+        let cs =
+            ChangeSet { changes: vec![Retain(4), Delete(4), Retain(4)], len: 12, len_after: 8 };
         assert_eq!(cs.map_pos(0, Assoc::Before), 0); // at start
         assert_eq!(cs.map_pos(4, Assoc::Before), 4); // before a delete
         assert_eq!(cs.map_pos(5, Assoc::Before), 4); // inside a delete
@@ -671,12 +624,7 @@ mod test {
 
         // stays inbetween replacements
         let cs = ChangeSet {
-            changes: vec![
-                Insert("ab".into()),
-                Delete(2),
-                Insert("cd".into()),
-                Delete(2),
-            ],
+            changes: vec![Insert("ab".into()), Delete(2), Insert("cd".into()), Delete(2)],
             len: 4,
             len_after: 4,
         };
@@ -758,7 +706,7 @@ mod test {
 
     #[test]
     fn combine_with_utf8() {
-        const TEST_CASE: &'static str = "Hello, これはヒレクスエディターです！";
+        const TEST_CASE: &'static str = "Hello, これはヘリックスエディターです！";
 
         let empty = Rope::from("");
         let mut a = ChangeSet::new(&empty);

@@ -3,14 +3,8 @@ use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
 
-pub const PAIRS: &[(char, char)] = &[
-    ('(', ')'),
-    ('{', '}'),
-    ('[', ']'),
-    ('\'', '\''),
-    ('"', '"'),
-    ('`', '`'),
-];
+pub const PAIRS: &[(char, char)] =
+    &[('(', ')'), ('{', '}'), ('[', ']'), ('\'', '\''), ('"', '"'), ('`', '`')];
 
 const CLOSE_BEFORE: &str = ")]}'\":;> \n"; // includes space and newline
 
@@ -73,14 +67,7 @@ fn handle_open(
 
         let head = pos + offs + open.len_utf8();
         // if selection, retain anchor, if cursor, move over
-        ranges.push(Range::new(
-            if range.is_empty() {
-                head
-            } else {
-                range.anchor + offs
-            },
-            head,
-        ));
+        ranges.push(Range::new(if range.is_empty() { head } else { range.anchor + offs }, head));
 
         match next {
             Some(ch) if !close_before.contains(ch) => {
@@ -115,14 +102,7 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
 
         let head = pos + offs + close.len_utf8();
         // if selection, retain anchor, if cursor, move over
-        ranges.push(Range::new(
-            if range.is_empty() {
-                head
-            } else {
-                range.anchor + offs
-            },
-            head,
-        ));
+        ranges.push(Range::new(if range.is_empty() { head } else { range.anchor + offs }, head));
 
         if next == Some(close) {
             //  return transaction that moves past close

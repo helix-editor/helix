@@ -11,8 +11,7 @@ pub use tui::widgets::{Cell, Row};
 
 use std::borrow::Cow;
 
-use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::{skim::SkimMatcherV2 as Matcher, FuzzyMatcher};
 
 use helix_core::Position;
 use helix_view::Editor;
@@ -65,27 +64,15 @@ impl<T: Item> Menu<T> {
 
     pub fn score(&mut self, pattern: &str) {
         // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self {
-            ref mut options,
-            ref mut matcher,
-            ref mut matches,
-            ..
-        } = *self;
+        let Self { ref mut options, ref mut matcher, ref mut matches, .. } = *self;
 
         // reuse the matches allocation
         matches.clear();
-        matches.extend(
-            self.options
-                .iter()
-                .enumerate()
-                .filter_map(|(index, option)| {
-                    let text = option.filter_text();
-                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    matcher
-                        .fuzzy_match(&text, pattern)
-                        .map(|score| (index, score))
-                }),
-        );
+        matches.extend(self.options.iter().enumerate().filter_map(|(index, option)| {
+            let text = option.filter_text();
+            // TODO: using fuzzy_indices could give us the char idx for match highlighting
+            matcher.fuzzy_match(&text, pattern).map(|score| (index, score))
+        }));
         matches.sort_unstable_by_key(|(_, score)| -score);
 
         // reset cursor position
@@ -123,19 +110,13 @@ impl<T: Item> Menu<T> {
 
     pub fn selection(&self) -> Option<&T> {
         self.cursor.and_then(|cursor| {
-            self.matches
-                .get(cursor)
-                .map(|(index, _score)| &self.options[*index])
+            self.matches.get(cursor).map(|(index, _score)| &self.options[*index])
         })
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.matches.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.matches.is_empty() }
 
-    pub fn len(&self) -> usize {
-        self.matches.len()
-    }
+    pub fn len(&self) -> usize { self.matches.len() }
 }
 
 use super::PromptEvent as MenuEvent;
@@ -154,53 +135,28 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         match event {
             // esc or ctrl-c aborts the completion and closes the menu
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            KeyEvent { code: KeyCode::Esc, .. }
+            | KeyEvent { code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL } => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
                 return close_fn;
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::SHIFT,
-            }
-            | KeyEvent {
-                code: KeyCode::Up, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            KeyEvent { code: KeyCode::Tab, modifiers: KeyModifiers::SHIFT }
+            | KeyEvent { code: KeyCode::Up, .. }
+            | KeyEvent { code: KeyCode::Char('p'), modifiers: KeyModifiers::CONTROL } => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
             // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Down,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            KeyEvent { code: KeyCode::Tab, modifiers: KeyModifiers::NONE }
+            | KeyEvent { code: KeyCode::Down, .. }
+            | KeyEvent { code: KeyCode::Char('n'), modifiers: KeyModifiers::CONTROL } => {
                 self.move_down();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
+            KeyEvent { code: KeyCode::Enter, .. } => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
                 }
@@ -263,9 +219,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         let win_height = area.height as usize;
 
-        const fn div_ceil(a: usize, b: usize) -> usize {
-            (a + b - 1) / a
-        }
+        const fn div_ceil(a: usize, b: usize) -> usize { (a + b - 1) / a }
 
         let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
 
@@ -282,14 +236,8 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         use tui::widgets::TableState;
 
-        table.render_table(
-            area,
-            surface,
-            &mut TableState {
-                offset: scroll,
-                selected: self.cursor,
-            },
-        );
+        table
+            .render_table(area, surface, &mut TableState { offset: scroll, selected: self.cursor });
 
         // // TODO: set bg for the whole row if selected
         // if line == self.cursor {

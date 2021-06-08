@@ -16,8 +16,10 @@ pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use text::Text;
 
-pub use tui::layout::Rect;
-pub use tui::style::{Color, Modifier, Style};
+pub use tui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+};
 
 use helix_core::regex::Regex;
 use helix_view::{Document, Editor, View};
@@ -85,22 +87,16 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         Err(_err) => None,
     });
 
-    const MAX: usize = 2048;
+    const MAX: usize = 8192;
 
     Picker::new(
         files.take(MAX).collect(),
         move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix(&root)
-                .unwrap_or(path)
-                .to_str()
-                .unwrap()
-                .into()
+            path.strip_prefix(&root).unwrap_or(path).to_str().unwrap().into()
         },
         move |editor: &mut Editor, path: &PathBuf, action| {
-            let document_id = editor
-                .open(path.into(), action)
-                .expect("editor.open failed");
+            let document_id = editor.open(path.into(), action).expect("editor.open failed");
         },
     )
 }
@@ -123,9 +119,7 @@ pub mod completers {
         let (dir, file_name) = if input.ends_with('/') {
             (path.into(), None)
         } else {
-            let file_name = path
-                .file_name()
-                .map(|file| file.to_str().unwrap().to_owned());
+            let file_name = path.file_name().map(|file| file.to_str().unwrap().to_owned());
 
             let path = match path.parent() {
                 Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
@@ -160,8 +154,7 @@ pub mod completers {
 
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
-            use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-            use fuzzy_matcher::FuzzyMatcher;
+            use fuzzy_matcher::{skim::SkimMatcherV2 as Matcher, FuzzyMatcher};
             use std::cmp::Reverse;
 
             let matcher = Matcher::default();
@@ -170,19 +163,14 @@ pub mod completers {
             let mut matches: Vec<_> = files
                 .into_iter()
                 .filter_map(|(range, file)| {
-                    matcher
-                        .fuzzy_match(&file, &file_name)
-                        .map(|score| (file, score))
+                    matcher.fuzzy_match(&file, &file_name).map(|score| (file, score))
                 })
                 .collect();
 
             let range = ((input.len() - file_name.len())..);
 
             matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
-            files = matches
-                .into_iter()
-                .map(|(file, _)| (range.clone(), file))
-                .collect();
+            files = matches.into_iter().map(|(file, _)| (range.clone(), file)).collect();
 
             // TODO: complete to longest common match
         }

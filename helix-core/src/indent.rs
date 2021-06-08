@@ -126,10 +126,9 @@ pub fn suggested_indent_for_pos(
     pos: usize,
     new_line: bool,
 ) -> usize {
-    if let (Some(query), Some(syntax)) = (
-        language_config.and_then(|config| config.indent_query()),
-        syntax,
-    ) {
+    if let (Some(query), Some(syntax)) =
+        (language_config.and_then(|config| config.indent_query()), syntax)
+    {
         let byte_start = text.char_to_byte(pos);
         let node = get_highest_syntax_node_at_bytepos(syntax, byte_start);
 

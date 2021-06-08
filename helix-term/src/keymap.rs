@@ -11,7 +11,8 @@ use std::collections::HashMap;
 //          W = next WORD
 //          e = end of word
 //          E = end of WORD
-//          r =
+//          r = replace
+//          R = replace with yanked
 //          t = 'till char
 //          y = yank
 //          u = undo
@@ -156,6 +157,7 @@ pub fn default() -> Keymaps {
         // and matching set for select mode (extend)
         //
         key!('r') => commands::replace,
+        key!('R') => commands::replace_with_yanked,
 
         KeyEvent {
             code: KeyCode::Home,

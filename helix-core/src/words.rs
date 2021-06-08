@@ -1,4 +1,4 @@
-use crate::movement::{categorize, is_horiz_blank, is_word, skip_over_prev};
+use crate::movement::{categorize, is_punctuation, is_word, skip_over_prev};
 use ropey::RopeSlice;
 
 #[must_use]
@@ -13,15 +13,15 @@ pub fn nth_prev_word_boundary(slice: RopeSlice, mut char_idx: usize, count: usiz
         // return if not skip while?
         skip_over_prev(slice, &mut char_idx, |ch| ch == '\n');
 
-        with_end = skip_over_prev(slice, &mut char_idx, is_horiz_blank);
+        with_end = skip_over_prev(slice, &mut char_idx, char::is_whitespace);
 
         // refetch
         let ch = slice.char(char_idx);
 
         if is_word(ch) {
             with_end = skip_over_prev(slice, &mut char_idx, is_word);
-        } else if ch.is_ascii_punctuation() {
-            with_end = skip_over_prev(slice, &mut char_idx, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            with_end = skip_over_prev(slice, &mut char_idx, is_punctuation);
         }
     }
 
@@ -47,11 +47,11 @@ fn different_prev_word_boundary() {
     t("hello, world", "hello, ");
     t("hello, ", "hello");
     t("hello", "");
-    t("こんにちは、世界！", "こんにちは、世界！"); // TODO: punctuation
+    t("こんにちは、世界！", "こんにちは、世界");
     t("こんにちは、世界", "こんにちは、");
-    t("こんにちは、", "こんにちは、"); // what?
+    t("こんにちは、", "こんにちは");
     t("こんにちは", "");
-    t("この世界。", "この世界。"); // what?
+    t("この世界。", "この世界");
     t("この世界", "");
     t("お前はもう死んでいる", "");
     t("その300円です", ""); // TODO: should stop at 300

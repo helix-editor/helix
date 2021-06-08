@@ -117,22 +117,15 @@ fn read_query(language: &str, filename: &str) -> String {
     // TODO: the collect() is not ideal
     let inherits = INHERITS_REGEX
         .captures_iter(&query)
-        .flat_map(|captures| {
-            captures[1]
-                .split(',')
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        })
+        .flat_map(|captures| captures[1].split(',').map(str::to_owned).collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
     if inherits.is_empty() {
         return query;
     }
 
-    let mut queries = inherits
-        .iter()
-        .map(|language| read_query(language, filename))
-        .collect::<Vec<_>>();
+    let mut queries =
+        inherits.iter().map(|language| read_query(language, filename)).collect::<Vec<_>>();
 
     queries.push(query);
 
@@ -182,9 +175,7 @@ impl LanguageConfiguration {
             .as_ref()
     }
 
-    pub fn scope(&self) -> &str {
-        &self.scope
-    }
+    pub fn scope(&self) -> &str { &self.scope }
 }
 
 pub static LOADER: OnceCell<Loader> = OnceCell::new();
@@ -210,9 +201,7 @@ impl Loader {
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
-                loader
-                    .language_config_ids_by_file_type
-                    .insert(file_type.clone(), language_id);
+                loader.language_config_ids_by_file_type.insert(file_type.clone(), language_id);
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -221,9 +210,7 @@ impl Loader {
         loader
     }
 
-    pub fn scopes(&self) -> &[String] {
-        &self.scopes
-    }
+    pub fn scopes(&self) -> &[String] { &self.scopes }
 
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
         // Find all the language configurations that match this file name
@@ -244,10 +231,7 @@ impl Loader {
     }
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
-        self.language_configs
-            .iter()
-            .find(|config| config.scope == scope)
-            .cloned()
+        self.language_configs.iter().find(|config| config.scope == scope).cloned()
     }
 }
 
@@ -305,18 +289,14 @@ impl Syntax {
 
         // update root layer
         PARSER.with(|ts_parser| {
-            syntax.root_layer.parse(
-                &mut ts_parser.borrow_mut(),
-                &syntax.config,
-                source,
-                0,
-                vec![Range {
+            syntax.root_layer.parse(&mut ts_parser.borrow_mut(), &syntax.config, source, 0, vec![
+                Range {
                     start_byte: 0,
                     end_byte: usize::MAX,
                     start_point: Point::new(0, 0),
                     end_point: Point::new(usize::MAX, usize::MAX),
-                }],
-            );
+                },
+            ]);
         });
         syntax
     }
@@ -346,9 +326,7 @@ impl Syntax {
     //
     // fn parse(language, old_tree, ranges)
     //
-    pub fn tree(&self) -> &Tree {
-        self.root_layer.tree()
-    }
+    pub fn tree(&self) -> &Tree { self.root_layer.tree() }
     //
     // <!--update_for_injection(grammar)-->
 
@@ -472,10 +450,7 @@ impl LanguageLayer {
         mut ranges: Vec<Range>,
     ) -> Result<(), Error> {
         if ts_parser.parser.set_included_ranges(&ranges).is_ok() {
-            ts_parser
-                .parser
-                .set_language(config.language)
-                .map_err(|_| Error::InvalidLanguage)?;
+            ts_parser.parser.set_language(config.language).map_err(|_| Error::InvalidLanguage)?;
 
             // unsafe { syntax.parser.set_cancellation_flag(cancellation_flag) };
             let tree = ts_parser
@@ -558,10 +533,7 @@ impl LanguageLayer {
         }
 
         fn traverse(point: Point, text: &Tendril) -> Point {
-            let Point {
-                mut row,
-                mut column,
-            } = point;
+            let Point { mut row, mut column } = point;
 
             // TODO: there should be a better way here
             for ch in text.bytes() {
@@ -716,8 +688,11 @@ impl LanguageLayer {
 // For now cheat and just throw out non-root layers if they exist. This should still improve
 // parsing in majority of cases.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{iter, mem, ops, str, usize};
+use std::{
+    iter, mem, ops, str,
+    sync::atomic::{AtomicUsize, Ordering},
+    usize,
+};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
     QueryMatch, Range, Tree,
@@ -862,11 +837,8 @@ impl HighlightConfiguration {
                 combined_injections_query.disable_pattern(pattern_index);
             }
         }
-        let combined_injections_query = if has_combined_queries {
-            Some(combined_injections_query)
-        } else {
-            None
-        };
+        let combined_injections_query =
+            if has_combined_queries { Some(combined_injections_query) } else { None };
 
         // Find all of the highlighting patterns that are disabled for nodes that
         // have been identified as local variables.
@@ -918,9 +890,7 @@ impl HighlightConfiguration {
     }
 
     /// Get a slice containing all of the highlight names used in the configuration.
-    pub fn names(&self) -> &[String] {
-        self.query.capture_names()
-    }
+    pub fn names(&self) -> &[String] { self.query.capture_names() }
 
     /// Set the list of recognized highlight names.
     ///
@@ -935,30 +905,29 @@ impl HighlightConfiguration {
     pub fn configure(&mut self, recognized_names: &[String]) {
         let mut capture_parts = Vec::new();
         self.highlight_indices.clear();
-        self.highlight_indices
-            .extend(self.query.capture_names().iter().map(move |capture_name| {
-                capture_parts.clear();
-                capture_parts.extend(capture_name.split('.'));
+        self.highlight_indices.extend(self.query.capture_names().iter().map(move |capture_name| {
+            capture_parts.clear();
+            capture_parts.extend(capture_name.split('.'));
 
-                let mut best_index = None;
-                let mut best_match_len = 0;
-                for (i, recognized_name) in recognized_names.iter().enumerate() {
-                    let mut len = 0;
-                    let mut matches = true;
-                    for part in recognized_name.split('.') {
-                        len += 1;
-                        if !capture_parts.contains(&part) {
-                            matches = false;
-                            break;
-                        }
-                    }
-                    if matches && len > best_match_len {
-                        best_index = Some(i);
-                        best_match_len = len;
+            let mut best_index = None;
+            let mut best_match_len = 0;
+            for (i, recognized_name) in recognized_names.iter().enumerate() {
+                let mut len = 0;
+                let mut matches = true;
+                for part in recognized_name.split('.') {
+                    len += 1;
+                    if !capture_parts.contains(&part) {
+                        matches = false;
+                        break;
                     }
                 }
-                best_index.map(Highlight)
-            }));
+                if matches && len > best_match_len {
+                    best_index = Some(i);
+                    best_match_len = len;
+                }
+            }
+            best_index.map(Highlight)
+        }));
     }
 }
 
@@ -1143,13 +1112,7 @@ impl<'a, 'tree: 'a> HighlightIterLayer<'a, 'tree> {
 
             for excluded_range in node
                 .children(&mut cursor)
-                .filter_map(|child| {
-                    if includes_children {
-                        None
-                    } else {
-                        Some(child.range())
-                    }
-                })
+                .filter_map(|child| if includes_children { None } else { Some(child.range()) })
                 .chain([following_range].iter().cloned())
             {
                 let mut range = Range {
@@ -1206,10 +1169,7 @@ impl<'a, 'tree: 'a> HighlightIterLayer<'a, 'tree> {
     // scope boundaries from deeper layers first.
     fn sort_key(&mut self) -> Option<(usize, bool, isize)> {
         let depth = -(self.depth as isize);
-        let next_start = self
-            .captures
-            .peek()
-            .map(|(m, i)| m.captures[*i].node.start_byte());
+        let next_start = self.captures.peek().map(|(m, i)| m.captures[*i].node.start_byte());
         let next_end = self.highlight_end_stack.last().cloned();
         match (next_start, next_end) {
             (Some(start), Some(end)) => {
@@ -1237,10 +1197,7 @@ where
     ) -> Option<Result<HighlightEvent, Error>> {
         let result;
         if self.byte_offset < offset {
-            result = Some(Ok(HighlightEvent::Source {
-                start: self.byte_offset,
-                end: offset,
-            }));
+            result = Some(Ok(HighlightEvent::Source { start: self.byte_offset, end: offset }));
             self.byte_offset = offset;
             self.next_event = event;
         } else {
@@ -1325,10 +1282,8 @@ where
             if self.layers.is_empty() {
                 let len = self.source.len_bytes();
                 return if self.byte_offset < len {
-                    let result = Some(Ok(HighlightEvent::Source {
-                        start: self.byte_offset,
-                        end: len,
-                    }));
+                    let result =
+                        Some(Ok(HighlightEvent::Source { start: self.byte_offset, end: len }));
                     self.byte_offset = len;
                     result
                 } else {
@@ -1422,11 +1377,8 @@ where
                 // the scope stack.
                 if Some(capture.index) == layer.config.local_scope_capture_index {
                     definition_highlight = None;
-                    let mut scope = LocalScope {
-                        inherits: true,
-                        range: range.clone(),
-                        local_defs: Vec::new(),
-                    };
+                    let mut scope =
+                        LocalScope { inherits: true, range: range.clone(), local_defs: Vec::new() };
                     for prop in layer.config.query.property_settings(match_.pattern_index) {
                         if let "local.scope-inherits" = prop.key.as_ref() {
                             scope.inherits =
@@ -1450,11 +1402,7 @@ where
                     }
 
                     let name = byte_range_to_str(range.clone(), self.source);
-                    scope.local_defs.push(LocalDef {
-                        name,
-                        value_range,
-                        highlight: None,
-                    });
+                    scope.local_defs.push(LocalDef { name, value_range, highlight: None });
                     definition_highlight = scope.local_defs.last_mut().map(|s| &mut s.highlight);
                 }
                 // If the node represents a reference, then try to find the corresponding
@@ -1691,27 +1639,24 @@ fn test_input_edits() {
     let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
     // transaction.apply(&mut state);
 
-    assert_eq!(
-        edits,
-        &[
-            InputEdit {
-                start_byte: 6,
-                old_end_byte: 11,
-                new_end_byte: 10,
-                start_position: Point { row: 0, column: 6 },
-                old_end_position: Point { row: 0, column: 11 },
-                new_end_position: Point { row: 0, column: 10 }
-            },
-            InputEdit {
-                start_byte: 12,
-                old_end_byte: 17,
-                new_end_byte: 12,
-                start_position: Point { row: 0, column: 12 },
-                old_end_position: Point { row: 1, column: 4 },
-                new_end_position: Point { row: 0, column: 12 }
-            }
-        ]
-    );
+    assert_eq!(edits, &[
+        InputEdit {
+            start_byte: 6,
+            old_end_byte: 11,
+            new_end_byte: 10,
+            start_position: Point { row: 0, column: 6 },
+            old_end_position: Point { row: 0, column: 11 },
+            new_end_position: Point { row: 0, column: 10 }
+        },
+        InputEdit {
+            start_byte: 12,
+            old_end_byte: 17,
+            new_end_byte: 12,
+            start_position: Point { row: 0, column: 12 },
+            old_end_position: Point { row: 1, column: 4 },
+            new_end_position: Point { row: 0, column: 12 }
+        }
+    ]);
 
     // Testing with the official example from tree-sitter
     let mut state = State::new("fn test() {}".into());
@@ -1721,17 +1666,14 @@ fn test_input_edits() {
     transaction.apply(&mut state.doc);
 
     assert_eq!(state.doc, "fn test(a: u32) {}");
-    assert_eq!(
-        edits,
-        &[InputEdit {
-            start_byte: 8,
-            old_end_byte: 8,
-            new_end_byte: 14,
-            start_position: Point { row: 0, column: 8 },
-            old_end_position: Point { row: 0, column: 8 },
-            new_end_position: Point { row: 0, column: 14 }
-        }]
-    );
+    assert_eq!(edits, &[InputEdit {
+        start_byte: 8,
+        old_end_byte: 8,
+        new_end_byte: 14,
+        start_position: Point { row: 0, column: 8 },
+        old_end_position: Point { row: 0, column: 8 },
+        new_end_position: Point { row: 0, column: 14 }
+    }]);
 }
 
 #[test]

@@ -1,25 +1,27 @@
 mod client;
 mod transport;
 
+pub use client::Client;
+pub use futures_executor::block_on;
+pub use jsonrpc::Call;
 pub use jsonrpc_core as jsonrpc;
+pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
-pub use client::Client;
-pub use lsp::{Position, Url};
-
-pub type Result<T> = core::result::Result<T, Error>;
-
+use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::LanguageConfiguration;
 
-use thiserror::Error;
-
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
-
+use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-pub use futures_executor::block_on;
+pub type Result<T> = core::result::Result<T, Error>;
+type LanguageId = String;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -27,8 +29,14 @@ pub enum Error {
     Rpc(#[from] jsonrpc::Error),
     #[error("failed to parse: {0}")]
     Parse(#[from] serde_json::Error),
+    #[error("IO Error: {0}")]
+    IO(#[from] std::io::Error),
     #[error("request timed out")]
     Timeout,
+    #[error("server closed the stream")]
+    StreamClosed,
+    #[error("LSP not defined")]
+    LspNotDefined,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -107,11 +115,8 @@ pub mod util {
             doc,
             edits.into_iter().map(|edit| {
                 // simplify "" into None for cleaner changesets
-                let replacement = if !edit.new_text.is_empty() {
-                    Some(edit.new_text.into())
-                } else {
-                    None
-                };
+                let replacement =
+                    if !edit.new_text.is_empty() { Some(edit.new_text.into()) } else { None };
 
                 let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding);
                 let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding);
@@ -119,8 +124,6 @@ pub mod util {
             }),
         )
     }
-
-    // apply_insert_replace_edit
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -136,9 +139,8 @@ impl Notification {
 
         let notification = match method {
             lsp::notification::PublishDiagnostics::METHOD => {
-                let params: lsp::PublishDiagnosticsParams = params
-                    .parse()
-                    .expect("Failed to parse PublishDiagnostics params");
+                let params: lsp::PublishDiagnosticsParams =
+                    params.parse().expect("Failed to parse PublishDiagnostics params");
 
                 // TODO: need to loop over diagnostics and distinguish them by URI
                 Self::PublishDiagnostics(params)
@@ -166,61 +168,42 @@ impl Notification {
     }
 }
 
-pub use jsonrpc::Call;
-
-type LanguageId = String;
-
-use futures_util::stream::select_all::SelectAll;
-
 pub struct Registry {
-    inner: HashMap<LanguageId, Option<Arc<Client>>>,
+    inner: HashMap<LanguageId, Arc<Client>>,
 
     pub incoming: SelectAll<UnboundedReceiverStream<Call>>,
 }
 
 impl Default for Registry {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl Registry {
-    pub fn new() -> Self {
-        Self {
-            inner: HashMap::new(),
-            incoming: SelectAll::new(),
-        }
-    }
+    pub fn new() -> Self { Self { inner: HashMap::new(), incoming: SelectAll::new() } }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Option<Arc<Client>> {
-        // TODO: propagate the error
+    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
         if let Some(config) = &language_config.language_server {
             // avoid borrow issues
             let inner = &mut self.inner;
             let s_incoming = &mut self.incoming;
 
-            let language_server = inner
-                .entry(language_config.scope.clone()) // can't use entry with Borrow keys: https://github.com/rust-lang/rfcs/pull/1769
-                .or_insert_with(|| {
-                    // TODO: lookup defaults for id (name, args)
-
+            match inner.entry(language_config.scope.clone()) {
+                Entry::Occupied(language_server) => Ok(language_server.get().clone()),
+                Entry::Vacant(entry) => {
                     // initialize a new client
-                    let (mut client, incoming) =
-                        Client::start(&config.command, &config.args).ok()?;
-
+                    let (mut client, incoming) = Client::start(&config.command, &config.args)?;
                     // TODO: run this async without blocking
-                    futures_executor::block_on(client.initialize()).unwrap();
-
+                    futures_executor::block_on(client.initialize())?;
                     s_incoming.push(UnboundedReceiverStream::new(incoming));
+                    let client = Arc::new(client);
 
-                    Some(Arc::new(client))
-                })
-                .clone();
-
-            return language_server;
+                    entry.insert(client.clone());
+                    Ok(client)
+                }
+            }
+        } else {
+            Err(Error::LspNotDefined)
         }
-
-        None
     }
 }
 

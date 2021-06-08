@@ -1,10 +1,14 @@
-use std::cell::RefCell;
-use std::cmp::{max, min};
-use std::collections::HashMap;
+use std::{
+    cell::RefCell,
+    cmp::{max, min},
+    collections::HashMap,
+};
 
-use cassowary::strength::{REQUIRED, WEAK};
-use cassowary::WeightedRelation::*;
-use cassowary::{Constraint as CassowaryConstraint, Expression, Solver, Variable};
+use cassowary::{
+    strength::{REQUIRED, WEAK},
+    Constraint as CassowaryConstraint, Expression, Solver, Variable,
+    WeightedRelation::*,
+};
 
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum Corner {
@@ -73,10 +77,7 @@ impl Default for Layout {
     fn default() -> Layout {
         Layout {
             direction: Direction::Vertical,
-            margin: Margin {
-                horizontal: 0,
-                vertical: 0,
-            },
+            margin: Margin { horizontal: 0, vertical: 0 },
             constraints: Vec::new(),
         }
     }
@@ -92,10 +93,7 @@ impl Layout {
     }
 
     pub fn margin(mut self, margin: u16) -> Layout {
-        self.margin = Margin {
-            horizontal: margin,
-            vertical: margin,
-        };
+        self.margin = Margin { horizontal: margin, vertical: margin };
         self
     }
 
@@ -177,10 +175,7 @@ impl Layout {
     pub fn split(&self, area: Rect) -> Vec<Rect> {
         // TODO: Maybe use a fixed size cache ?
         LAYOUT_CACHE.with(|c| {
-            c.borrow_mut()
-                .entry((area, self.clone()))
-                .or_insert_with(|| split(area, self))
-                .clone()
+            c.borrow_mut().entry((area, self.clone())).or_insert_with(|| split(area, self)).clone()
         })
     }
 }
@@ -188,16 +183,8 @@ impl Layout {
 fn split(area: Rect, layout: &Layout) -> Vec<Rect> {
     let mut solver = Solver::new();
     let mut vars: HashMap<Variable, (usize, usize)> = HashMap::new();
-    let elements = layout
-        .constraints
-        .iter()
-        .map(|_| Element::new())
-        .collect::<Vec<Element>>();
-    let mut results = layout
-        .constraints
-        .iter()
-        .map(|_| Rect::default())
-        .collect::<Vec<Rect>>();
+    let elements = layout.constraints.iter().map(|_| Element::new()).collect::<Vec<Element>>();
+    let mut results = layout.constraints.iter().map(|_| Rect::default()).collect::<Vec<Rect>>();
 
     let dest_area = area.inner(&layout.margin);
     for (i, e) in elements.iter().enumerate() {
@@ -277,11 +264,7 @@ fn split(area: Rect, layout: &Layout) -> Vec<Rect> {
     solver.add_constraints(&ccs).unwrap();
     for &(var, value) in solver.fetch_changes() {
         let (index, attr) = vars[&var];
-        let value = if value.is_sign_negative() {
-            0
-        } else {
-            value as u16
-        };
+        let value = if value.is_sign_negative() { 0 } else { value as u16 };
         match attr {
             0 => {
                 results[index].x = value;
@@ -331,21 +314,13 @@ impl Element {
         }
     }
 
-    fn left(&self) -> Variable {
-        self.x
-    }
+    fn left(&self) -> Variable { self.x }
 
-    fn top(&self) -> Variable {
-        self.y
-    }
+    fn top(&self) -> Variable { self.y }
 
-    fn right(&self) -> Expression {
-        self.x + self.width
-    }
+    fn right(&self) -> Expression { self.x + self.width }
 
-    fn bottom(&self) -> Expression {
-        self.y + self.height
-    }
+    fn bottom(&self) -> Expression { self.y + self.height }
 }
 
 /// A simple rectangle used in the computation of the layout and to give widgets an hint about the
@@ -359,14 +334,7 @@ pub struct Rect {
 }
 
 impl Default for Rect {
-    fn default() -> Rect {
-        Rect {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-        }
-    }
+    fn default() -> Rect { Rect { x: 0, y: 0, width: 0, height: 0 } }
 }
 
 impl Rect {
@@ -384,33 +352,18 @@ impl Rect {
             } else {
                 (width, height)
             };
-        Rect {
-            x,
-            y,
-            width: clipped_width,
-            height: clipped_height,
-        }
+        Rect { x, y, width: clipped_width, height: clipped_height }
     }
 
-    pub fn area(self) -> u16 {
-        self.width * self.height
-    }
+    pub fn area(self) -> u16 { self.width * self.height }
 
-    pub fn left(self) -> u16 {
-        self.x
-    }
+    pub fn left(self) -> u16 { self.x }
 
-    pub fn right(self) -> u16 {
-        self.x.saturating_add(self.width)
-    }
+    pub fn right(self) -> u16 { self.x.saturating_add(self.width) }
 
-    pub fn top(self) -> u16 {
-        self.y
-    }
+    pub fn top(self) -> u16 { self.y }
 
-    pub fn bottom(self) -> u16 {
-        self.y.saturating_add(self.height)
-    }
+    pub fn bottom(self) -> u16 { self.y.saturating_add(self.height) }
 
     pub fn inner(self, margin: &Margin) -> Rect {
         if self.width < 2 * margin.horizontal || self.height < 2 * margin.vertical {
@@ -430,12 +383,7 @@ impl Rect {
         let y1 = min(self.y, other.y);
         let x2 = max(self.x + self.width, other.x + other.width);
         let y2 = max(self.y + self.height, other.y + other.height);
-        Rect {
-            x: x1,
-            y: y1,
-            width: x2 - x1,
-            height: y2 - y1,
-        }
+        Rect { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
     }
 
     pub fn intersection(self, other: Rect) -> Rect {
@@ -443,12 +391,7 @@ impl Rect {
         let y1 = max(self.y, other.y);
         let x2 = min(self.x + self.width, other.x + other.width);
         let y2 = min(self.y + self.height, other.y + other.height);
-        Rect {
-            x: x1,
-            y: y1,
-            width: x2 - x1,
-            height: y2 - y1,
-        }
+        Rect { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
     }
 
     pub fn intersects(self, other: Rect) -> bool {
@@ -465,22 +408,12 @@ mod tests {
 
     #[test]
     fn test_vertical_split_by_height() {
-        let target = Rect {
-            x: 2,
-            y: 2,
-            width: 10,
-            height: 10,
-        };
+        let target = Rect { x: 2, y: 2, width: 10, height: 10 };
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(
-                [
-                    Constraint::Percentage(10),
-                    Constraint::Max(5),
-                    Constraint::Min(1),
-                ]
-                .as_ref(),
+                [Constraint::Percentage(10), Constraint::Max(5), Constraint::Min(1)].as_ref(),
             )
             .split(target);
 

@@ -32,9 +32,7 @@ impl Editor {
         use helix_core::config_dir;
         let config = std::fs::read(config_dir().join("theme.toml"));
         // load $HOME/.config/helix/theme.toml, fallback to default config
-        let toml = config
-            .as_deref()
-            .unwrap_or(include_bytes!("../../theme.toml"));
+        let toml = config.as_deref().unwrap_or(include_bytes!("../../theme.toml"));
         let theme: Theme = toml::from_slice(toml).expect("failed to parse theme.toml");
 
         // initialize language registry
@@ -42,9 +40,7 @@ impl Editor {
 
         // load $HOME/.config/helix/languages.toml, fallback to default config
         let config = std::fs::read(helix_core::config_dir().join("languages.toml"));
-        let toml = config
-            .as_deref()
-            .unwrap_or(include_bytes!("../../languages.toml"));
+        let toml = config.as_deref().unwrap_or(include_bytes!("../../languages.toml"));
 
         let config = toml::from_slice(toml).expect("Could not parse languages.toml");
         LOADER.get_or_init(|| Loader::new(config, theme.scopes().to_vec()));
@@ -69,9 +65,7 @@ impl Editor {
         self.status_msg = Some((status, Severity::Info));
     }
 
-    pub fn set_error(&mut self, error: String) {
-        self.status_msg = Some((error, Severity::Error));
-    }
+    pub fn set_error(&mut self, error: String) { self.status_msg = Some((error, Severity::Error)); }
 
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
@@ -86,10 +80,7 @@ impl Editor {
         match action {
             Action::Replace => {
                 let view = self.view();
-                let jump = (
-                    view.doc,
-                    self.documents[view.doc].selection(view.id).clone(),
-                );
+                let jump = (view.doc, self.documents[view.doc].selection(view.id).clone());
 
                 let view = self.view_mut();
                 view.jumps.push(jump);
@@ -99,10 +90,8 @@ impl Editor {
                 let (view, doc) = self.current();
 
                 // initialize selection for view
-                let selection = doc
-                    .selections
-                    .entry(view.id)
-                    .or_insert_with(|| Selection::point(0));
+                let selection =
+                    doc.selections.entry(view.id).or_insert_with(|| Selection::point(0));
                 // TODO: reuse align_view
                 let pos = selection.cursor();
                 let line = doc.text().char_to_line(pos);
@@ -141,10 +130,7 @@ impl Editor {
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
         let path = crate::document::canonicalize_path(&path)?;
 
-        let id = self
-            .documents()
-            .find(|doc| doc.path() == Some(&path))
-            .map(|doc| doc.id);
+        let id = self.documents().find(|doc| doc.path() == Some(&path)).map(|doc| doc.id);
 
         let id = if let Some(id) = id {
             id
@@ -152,10 +138,8 @@ impl Editor {
             let mut doc = Document::load(path)?;
 
             // try to find a language server based on the language name
-            let language_server = doc
-                .language
-                .as_ref()
-                .and_then(|language| self.language_servers.get(language));
+            let language_server =
+                doc.language.as_ref().and_then(|language| self.language_servers.get(language).ok());
 
             if let Some(language_server) = language_server {
                 doc.set_language_server(Some(language_server.clone()));
@@ -193,10 +177,8 @@ impl Editor {
             let language_servers = &mut self.language_servers;
             let doc = &self.documents[view.doc];
 
-            let language_server = doc
-                .language
-                .as_ref()
-                .and_then(|language| language_servers.get(language));
+            let language_server =
+                doc.language.as_ref().and_then(|language| language_servers.get(language).ok());
             if let Some(language_server) = language_server {
                 tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }
@@ -213,13 +195,9 @@ impl Editor {
         };
     }
 
-    pub fn focus_next(&mut self) {
-        self.tree.focus_next();
-    }
+    pub fn focus_next(&mut self) { self.tree.focus_next(); }
 
-    pub fn should_close(&self) -> bool {
-        self.tree.is_empty()
-    }
+    pub fn should_close(&self) -> bool { self.tree.is_empty() }
 
     pub fn current(&mut self) -> (&mut View, &mut Document) {
         let view = self.tree.get_mut(self.tree.focus);
@@ -227,13 +205,9 @@ impl Editor {
         (view, doc)
     }
 
-    pub fn view(&self) -> &View {
-        self.tree.get(self.tree.focus)
-    }
+    pub fn view(&self) -> &View { self.tree.get(self.tree.focus) }
 
-    pub fn view_mut(&mut self) -> &mut View {
-        self.tree.get_mut(self.tree.focus)
-    }
+    pub fn view_mut(&mut self) -> &mut View { self.tree.get_mut(self.tree.focus) }
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
@@ -241,9 +215,7 @@ impl Editor {
         view.ensure_cursor_in_view(doc)
     }
 
-    pub fn document(&self, id: DocumentId) -> Option<&Document> {
-        self.documents.get(id)
-    }
+    pub fn document(&self, id: DocumentId) -> Option<&Document> { self.documents.get(id) }
 
     pub fn documents(&self) -> impl Iterator<Item = &Document> {
         self.documents.iter().map(|(_id, doc)| doc)

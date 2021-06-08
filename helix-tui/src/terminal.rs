@@ -18,10 +18,7 @@ pub struct Viewport {
 impl Viewport {
     /// UNSTABLE
     pub fn fixed(area: Rect) -> Viewport {
-        Viewport {
-            area,
-            resize_behavior: ResizeBehavior::Fixed,
-        }
+        Viewport { area, resize_behavior: ResizeBehavior::Fixed }
     }
 }
 
@@ -72,25 +69,16 @@ where
     /// default colors for the foreground and the background
     pub fn new(backend: B) -> io::Result<Terminal<B>> {
         let size = backend.size()?;
-        Terminal::with_options(
-            backend,
-            TerminalOptions {
-                viewport: Viewport {
-                    area: size,
-                    resize_behavior: ResizeBehavior::Auto,
-                },
-            },
-        )
+        Terminal::with_options(backend, TerminalOptions {
+            viewport: Viewport { area: size, resize_behavior: ResizeBehavior::Auto },
+        })
     }
 
     /// UNSTABLE
     pub fn with_options(backend: B, options: TerminalOptions) -> io::Result<Terminal<B>> {
         Ok(Terminal {
             backend,
-            buffers: [
-                Buffer::empty(options.viewport.area),
-                Buffer::empty(options.viewport.area),
-            ],
+            buffers: [Buffer::empty(options.viewport.area), Buffer::empty(options.viewport.area)],
             current: 0,
             hidden_cursor: false,
             viewport: options.viewport,
@@ -105,17 +93,11 @@ where
     //     }
     // }
 
-    pub fn current_buffer_mut(&mut self) -> &mut Buffer {
-        &mut self.buffers[self.current]
-    }
+    pub fn current_buffer_mut(&mut self) -> &mut Buffer { &mut self.buffers[self.current] }
 
-    pub fn backend(&self) -> &B {
-        &self.backend
-    }
+    pub fn backend(&self) -> &B { &self.backend }
 
-    pub fn backend_mut(&mut self) -> &mut B {
-        &mut self.backend
-    }
+    pub fn backend_mut(&mut self) -> &mut B { &mut self.backend }
 
     /// Obtains a difference between the previous and the current buffer and passes it to the
     /// current backend for drawing.
@@ -191,13 +173,9 @@ where
         Ok(())
     }
 
-    pub fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
-        self.backend.get_cursor()
-    }
+    pub fn get_cursor(&mut self) -> io::Result<(u16, u16)> { self.backend.get_cursor() }
 
-    pub fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
-        self.backend.set_cursor(x, y)
-    }
+    pub fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> { self.backend.set_cursor(x, y) }
 
     /// Clear the terminal and force a full redraw on the next draw call.
     pub fn clear(&mut self) -> io::Result<()> {
@@ -208,7 +186,5 @@ where
     }
 
     /// Queries the real size of the backend.
-    pub fn size(&self) -> io::Result<Rect> {
-        self.backend.size()
-    }
+    pub fn size(&self) -> io::Result<Rect> { self.backend.size() }
 }

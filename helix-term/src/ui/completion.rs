@@ -11,20 +11,18 @@ use std::borrow::Cow;
 use helix_core::{Position, Transaction};
 use helix_view::Editor;
 
-use crate::commands;
-use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
+use crate::{
+    commands,
+    ui::{menu, Markdown, Menu, Popup, PromptEvent},
+};
 
 use helix_lsp::lsp;
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
-    fn filter_text(&self) -> &str {
-        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
-    }
+    fn filter_text(&self) -> &str { self.filter_text.as_ref().unwrap_or(&self.label).as_str() }
 
-    fn label(&self) -> &str {
-        self.label.as_str()
-    }
+    fn label(&self) -> &str { self.label.as_str() }
 
     fn row(&self) -> menu::Row {
         menu::Row::new(vec![
@@ -108,20 +106,6 @@ impl Completion {
                     let item = item.unwrap();
 
                     use helix_lsp::{lsp, util};
-                    // determine what to insert: text_edit | insert_text | label
-                    let edit = if let Some(edit) = &item.text_edit {
-                        match edit {
-                            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                            lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                                unimplemented!("completion: insert_and_replace {:?}", item)
-                            }
-                        }
-                    } else {
-                        item.insert_text.as_ref().unwrap_or(&item.label);
-                        unimplemented!();
-                        // lsp::TextEdit::new(); TODO: calculate a TextEdit from insert_text
-                        // and we insert at position.
-                    };
 
                     // if more text was entered, remove it
                     let cursor = doc.selection(view.id).cursor();
@@ -134,11 +118,27 @@ impl Completion {
                     }
 
                     use helix_lsp::OffsetEncoding;
-                    let transaction = util::generate_transaction_from_edits(
-                        doc.text(),
-                        vec![edit],
-                        offset_encoding, // TODO: should probably transcode in Client
-                    );
+                    let transaction = if let Some(edit) = &item.text_edit {
+                        let edit = match edit {
+                            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                            lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                                unimplemented!("completion: insert_and_replace {:?}", item)
+                            }
+                        };
+                        util::generate_transaction_from_edits(
+                            doc.text(),
+                            vec![edit],
+                            offset_encoding, // TODO: should probably transcode in Client
+                        )
+                    } else {
+                        let text = item.insert_text.as_ref().unwrap_or(&item.label);
+                        let cursor = doc.selection(view.id).cursor();
+                        Transaction::change(
+                            doc.text(),
+                            vec![(cursor, cursor, Some(text.as_str().into()))].into_iter(),
+                        )
+                    };
+
                     doc.apply(&transaction, view.id);
 
                     // TODO: merge edit with additional_text_edits
@@ -158,10 +158,7 @@ impl Completion {
             };
         });
         let popup = Popup::new(menu);
-        Self {
-            popup,
-            trigger_offset,
-        }
+        Self { popup, trigger_offset }
     }
 
     pub fn update(&mut self, cx: &mut commands::Context) {
@@ -188,9 +185,7 @@ impl Completion {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.popup.contents().is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.popup.contents().is_empty() }
 }
 
 // need to:
@@ -208,10 +203,7 @@ impl Completion {
 impl Component for Completion {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         // let the Editor handle Esc instead
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Esc, ..
-        }) = event
-        {
+        if let Event::Key(KeyEvent { code: KeyCode::Esc, .. }) = event {
             return EventResult::Ignored;
         }
         self.popup.handle_event(event, cx)
@@ -232,10 +224,8 @@ impl Component for Completion {
             // option.documentation
 
             let (view, doc) = cx.editor.current();
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language =
+                doc.language().and_then(|scope| scope.strip_prefix("source.")).unwrap_or("");
 
             let doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))

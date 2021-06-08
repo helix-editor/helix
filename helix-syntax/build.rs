@@ -1,5 +1,4 @@
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use std::sync::mpsc::channel;
 
@@ -23,13 +22,7 @@ fn collect_src_files(dir: &str) -> (Vec<String>, Vec<String>) {
     let path = PathBuf::from("languages").join(&dir).join("src");
     for entry in fs::read_dir(path).unwrap().flatten() {
         let path = entry.path();
-        if path
-            .file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .starts_with("binding")
-        {
+        if path.file_stem().unwrap().to_str().unwrap().starts_with("binding") {
             continue;
         }
         if let Some(ext) = path.extension() {
@@ -46,11 +39,7 @@ fn collect_src_files(dir: &str) -> (Vec<String>, Vec<String>) {
 fn build_c(files: Vec<String>, language: &str) {
     let mut build = cc::Build::new();
     for file in files {
-        build
-            .file(&file)
-            .include(PathBuf::from(file).parent().unwrap())
-            .pic(true)
-            .warnings(false);
+        build.file(&file).include(PathBuf::from(file).parent().unwrap()).pic(true).warnings(false);
     }
     build.compile(&format!("tree-sitter-{}-c", language));
 }
@@ -58,11 +47,7 @@ fn build_c(files: Vec<String>, language: &str) {
 fn build_cpp(files: Vec<String>, language: &str) {
     let mut build = cc::Build::new();
 
-    let flag = if build.get_compiler().is_like_msvc() {
-        "/std:c++17"
-    } else {
-        "-std=c++14"
-    };
+    let flag = if build.get_compiler().is_like_msvc() { "/std:c++17" } else { "-std=c++14" };
 
     for file in files {
         build
@@ -78,17 +63,8 @@ fn build_cpp(files: Vec<String>, language: &str) {
 
 fn build_dir(dir: &str, language: &str) {
     println!("Build language {}", language);
-    if PathBuf::from("languages")
-        .join(dir)
-        .read_dir()
-        .unwrap()
-        .next()
-        .is_none()
-    {
-        eprintln!(
-            "The directory {} is empty, did you use 'git clone --recursive'?",
-            dir
-        );
+    if PathBuf::from("languages").join(dir).read_dir().unwrap().next().is_none() {
+        eprintln!("The directory {} is empty, did you use 'git clone --recursive'?", dir);
         eprintln!("You can fix in using 'git submodule init && git submodule update --recursive'.");
         std::process::exit(1);
     }

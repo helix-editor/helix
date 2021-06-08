@@ -9,12 +9,7 @@ pub struct State {
 
 impl State {
     #[must_use]
-    pub fn new(doc: Rope) -> Self {
-        Self {
-            doc,
-            selection: Selection::point(0),
-        }
-    }
+    pub fn new(doc: Rope) -> Self { Self { doc, selection: Selection::point(0) } }
 
     // update/transact:
     // update(desc) => transaction ?  transaction.doc() for applied doc

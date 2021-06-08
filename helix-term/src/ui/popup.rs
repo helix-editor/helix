@@ -24,18 +24,9 @@ pub struct Popup<T: Component> {
 impl<T: Component> Popup<T> {
     // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
     // rendering)
-    pub fn new(contents: T) -> Self {
-        Self {
-            contents,
-            position: None,
-            size: (0, 0),
-            scroll: 0,
-        }
-    }
+    pub fn new(contents: T) -> Self { Self { contents, position: None, size: (0, 0), scroll: 0 } }
 
-    pub fn set_position(&mut self, pos: Option<Position>) {
-        self.position = pos;
-    }
+    pub fn set_position(&mut self, pos: Option<Position>) { self.position = pos; }
 
     pub fn scroll(&mut self, offset: usize, direction: bool) {
         if direction {
@@ -45,13 +36,9 @@ impl<T: Component> Popup<T> {
         }
     }
 
-    pub fn contents(&self) -> &T {
-        &self.contents
-    }
+    pub fn contents(&self) -> &T { &self.contents }
 
-    pub fn contents_mut(&mut self) -> &mut T {
-        &mut self.contents
-    }
+    pub fn contents_mut(&mut self) -> &mut T { &mut self.contents }
 }
 
 impl<T: Component> Component for Popup<T> {
@@ -72,25 +59,14 @@ impl<T: Component> Component for Popup<T> {
 
         match key {
             // esc or ctrl-c aborts the completion and closes the menu
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => close_fn,
+            KeyEvent { code: KeyCode::Esc, .. }
+            | KeyEvent { code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL } => close_fn,
 
-            KeyEvent {
-                code: KeyCode::Char('d'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            KeyEvent { code: KeyCode::Char('d'), modifiers: KeyModifiers::CONTROL } => {
                 self.scroll(self.size.1 as usize / 2, true);
                 EventResult::Consumed(None)
             }
-            KeyEvent {
-                code: KeyCode::Char('u'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            KeyEvent { code: KeyCode::Char('u'), modifiers: KeyModifiers::CONTROL } => {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
             }
@@ -114,10 +90,7 @@ impl<T: Component> Component for Popup<T> {
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         cx.scroll = Some(self.scroll);
 
-        let position = self
-            .position
-            .or_else(|| cx.editor.cursor_position())
-            .unwrap_or_default();
+        let position = self.position.or_else(|| cx.editor.cursor_position()).unwrap_or_default();
 
         let (width, height) = self.size;
 
