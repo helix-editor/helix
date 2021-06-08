@@ -178,7 +178,10 @@ impl<'a> Iterator for RopeGraphemes<'a> {
         let a = self.cursor.cur_cursor();
         let b;
         loop {
-            match self.cursor.next_boundary(self.cur_chunk, self.cur_chunk_start) {
+            match self
+                .cursor
+                .next_boundary(self.cur_chunk, self.cur_chunk_start)
+            {
                 Ok(None) => {
                     return None;
                 }

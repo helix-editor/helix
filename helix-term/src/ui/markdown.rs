@@ -20,7 +20,9 @@ pub struct Markdown {
 // better yet, just use Tendril + subtendril for references
 
 impl Markdown {
-    pub fn new(contents: String) -> Self { Self { contents } }
+    pub fn new(contents: String) -> Self {
+        Self { contents }
+    }
 }
 
 fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {

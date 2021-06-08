@@ -93,10 +93,16 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         files.take(MAX).collect(),
         move |path: &PathBuf| {
             // format_fn
-            path.strip_prefix(&root).unwrap_or(path).to_str().unwrap().into()
+            path.strip_prefix(&root)
+                .unwrap_or(path)
+                .to_str()
+                .unwrap()
+                .into()
         },
         move |editor: &mut Editor, path: &PathBuf, action| {
-            let document_id = editor.open(path.into(), action).expect("editor.open failed");
+            let document_id = editor
+                .open(path.into(), action)
+                .expect("editor.open failed");
         },
     )
 }
@@ -119,7 +125,9 @@ pub mod completers {
         let (dir, file_name) = if input.ends_with('/') {
             (path.into(), None)
         } else {
-            let file_name = path.file_name().map(|file| file.to_str().unwrap().to_owned());
+            let file_name = path
+                .file_name()
+                .map(|file| file.to_str().unwrap().to_owned());
 
             let path = match path.parent() {
                 Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
@@ -163,14 +171,19 @@ pub mod completers {
             let mut matches: Vec<_> = files
                 .into_iter()
                 .filter_map(|(range, file)| {
-                    matcher.fuzzy_match(&file, &file_name).map(|score| (file, score))
+                    matcher
+                        .fuzzy_match(&file, &file_name)
+                        .map(|score| (file, score))
                 })
                 .collect();
 
             let range = ((input.len() - file_name.len())..);
 
             matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
-            files = matches.into_iter().map(|(file, _)| (range.clone(), file)).collect();
+            files = matches
+                .into_iter()
+                .map(|(file, _)| (range.clone(), file))
+                .collect();
 
             // TODO: complete to longest common match
         }

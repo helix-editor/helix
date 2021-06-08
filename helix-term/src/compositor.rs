@@ -40,12 +40,16 @@ pub trait Component: Any + AnyComponent {
     // , args: ()
 
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
-    fn should_update(&self) -> bool { true }
+    fn should_update(&self) -> bool {
+        true
+    }
 
     /// Render the component onto the provided surface.
     fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
-    fn cursor_position(&self, area: Rect, ctx: &Editor) -> Option<Position> { None }
+    fn cursor_position(&self, area: Rect, ctx: &Editor) -> Option<Position> {
+        None
+    }
 
     /// May be used by the parent component to compute the child area.
     /// viewport is the maximum allowed area, and the child should stay within those bounds.
@@ -55,7 +59,9 @@ pub trait Component: Any + AnyComponent {
         None
     }
 
-    fn type_name(&self) -> &'static str { std::any::type_name::<Self>() }
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
 }
 
 use anyhow::Error;
@@ -72,13 +78,20 @@ impl Compositor {
     pub fn new() -> Result<Self, Error> {
         let backend = CrosstermBackend::new(stdout());
         let mut terminal = Terminal::new(backend)?;
-        Ok(Self { layers: Vec::new(), terminal })
+        Ok(Self {
+            layers: Vec::new(),
+            terminal,
+        })
     }
 
-    pub fn size(&self) -> Rect { self.terminal.size().expect("couldn't get terminal size") }
+    pub fn size(&self) -> Rect {
+        self.terminal.size().expect("couldn't get terminal size")
+    }
 
     pub fn resize(&mut self, width: u16, height: u16) {
-        self.terminal.resize(Rect::new(0, 0, width, height)).expect("Unable to resize terminal")
+        self.terminal
+            .resize(Rect::new(0, 0, width, height))
+            .expect("Unable to resize terminal")
     }
 
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
@@ -88,7 +101,9 @@ impl Compositor {
         self.layers.push(layer);
     }
 
-    pub fn pop(&mut self) { self.layers.pop(); }
+    pub fn pop(&mut self) {
+        self.layers.pop();
+    }
 
     pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
         // propagate events through the layers until we either find a layer that consumes it or we
@@ -107,7 +122,10 @@ impl Compositor {
     }
 
     pub fn render(&mut self, cx: &mut Context) {
-        let area = self.terminal.autoresize().expect("Unable to determine terminal size");
+        let area = self
+            .terminal
+            .autoresize()
+            .expect("Unable to determine terminal size");
 
         // TODO: need to recalculate view tree if necessary
 
@@ -119,7 +137,9 @@ impl Compositor {
             layer.render(area, surface, cx)
         }
 
-        let pos = self.cursor_position(area, cx.editor).map(|pos| (pos.col as u16, pos.row as u16));
+        let pos = self
+            .cursor_position(area, cx.editor)
+            .map(|pos| (pos.col as u16, pos.row as u16));
 
         self.terminal.draw(pos);
     }
@@ -170,20 +190,30 @@ pub trait AnyComponent {
 
 impl<T: Component> AnyComponent for T {
     /// Downcast self to a `Any`.
-    fn as_any(&self) -> &dyn Any { self }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 
     /// Downcast self to a mutable `Any`.
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 
-    fn as_boxed_any(self: Box<Self>) -> Box<dyn Any> { self }
+    fn as_boxed_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 impl dyn AnyComponent {
     /// Attempts to downcast `self` to a concrete type.
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> { self.as_any().downcast_ref() }
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
 
     /// Attempts to downcast `self` to a concrete type.
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> { self.as_any_mut().downcast_mut() }
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+        self.as_any_mut().downcast_mut()
+    }
 
     /// Attempts to downcast `Box<Self>` to a concrete type.
     pub fn downcast<T: Any>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
@@ -197,5 +227,7 @@ impl dyn AnyComponent {
     }
 
     /// Checks if this view is of type `T`.
-    pub fn is<T: Any>(&mut self) -> bool { self.as_any().is::<T>() }
+    pub fn is<T: Any>(&mut self) -> bool {
+        self.as_any().is::<T>()
+    }
 }

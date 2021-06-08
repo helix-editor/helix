@@ -27,7 +27,13 @@ impl<'a, 'b> WordWrapper<'a, 'b> {
         max_line_width: u16,
         trim: bool,
     ) -> WordWrapper<'a, 'b> {
-        WordWrapper { symbols, max_line_width, current_line: vec![], next_line: vec![], trim }
+        WordWrapper {
+            symbols,
+            max_line_width,
+            current_line: vec![],
+            next_line: vec![],
+            trim,
+        }
     }
 }
 
@@ -95,7 +101,8 @@ impl<'a, 'b> LineComposer<'a> for WordWrapper<'a, 'b> {
                             !symbol.chars().all(&char::is_whitespace)
                         })
                     {
-                        self.next_line.extend_from_slice(&remainder[remainder_nonwhite..]);
+                        self.next_line
+                            .extend_from_slice(&remainder[remainder_nonwhite..]);
                     }
                 }
                 self.current_line.truncate(truncate_at);
@@ -129,7 +136,12 @@ impl<'a, 'b> LineTruncator<'a, 'b> {
         symbols: &'b mut dyn Iterator<Item = StyledGrapheme<'a>>,
         max_line_width: u16,
     ) -> LineTruncator<'a, 'b> {
-        LineTruncator { symbols, max_line_width, horizontal_offset: 0, current_line: vec![] }
+        LineTruncator {
+            symbols,
+            max_line_width,
+            horizontal_offset: 0,
+            current_line: vec![],
+        }
     }
 
     pub fn set_horizontal_offset(&mut self, horizontal_offset: u16) {
@@ -240,8 +252,10 @@ mod test {
         let mut lines = vec![];
         let mut widths = vec![];
         while let Some((styled, width)) = composer.next_line() {
-            let line =
-                styled.iter().map(|StyledGrapheme { symbol, .. }| *symbol).collect::<String>();
+            let line = styled
+                .iter()
+                .map(|StyledGrapheme { symbol, .. }| *symbol)
+                .collect::<String>();
             assert!(width <= text_area_width);
             lines.push(line);
             widths.push(width);
@@ -308,8 +322,11 @@ mod test {
              m n o";
         let (word_wrapper_single_space, _) =
             run_composer(Composer::WordWrapper { trim: true }, text, width as u16);
-        let (word_wrapper_multi_space, _) =
-            run_composer(Composer::WordWrapper { trim: true }, text_multi_space, width as u16);
+        let (word_wrapper_multi_space, _) = run_composer(
+            Composer::WordWrapper { trim: true },
+            text_multi_space,
+            width as u16,
+        );
         let (line_truncator, _) = run_composer(Composer::LineTruncator, text, width as u16);
 
         let word_wrapped = vec![
@@ -368,13 +385,16 @@ mod test {
         let width = 20;
         let text = "abcd efghij klmnopabcdefghijklmnopabcdefghijkl mnopab cdefghi j klmno";
         let (word_wrapper, _) = run_composer(Composer::WordWrapper { trim: true }, text, width);
-        assert_eq!(word_wrapper, vec![
-            "abcd efghij",
-            "klmnopabcdefghijklmn",
-            "opabcdefghijkl",
-            "mnopab cdefghi j",
-            "klmno",
-        ])
+        assert_eq!(
+            word_wrapper,
+            vec![
+                "abcd efghij",
+                "klmnopabcdefghijklmn",
+                "opabcdefghijkl",
+                "mnopab cdefghi j",
+                "klmno",
+            ]
+        )
     }
 
     #[test]
@@ -445,14 +465,17 @@ mod test {
         let text = "コンピュ ータ上で文字を扱う場合、 典型的には文 字による 通信を行 う場合にその両端点では、";
         let (word_wrapper, word_wrapper_width) =
             run_composer(Composer::WordWrapper { trim: true }, text, width);
-        assert_eq!(word_wrapper, vec![
-            "コンピュ",
-            "ータ上で文字を扱う場",
-            "合、 典型的には文",
-            "字による 通信を行",
-            "う場合にその両端点で",
-            "は、",
-        ]);
+        assert_eq!(
+            word_wrapper,
+            vec![
+                "コンピュ",
+                "ータ上で文字を扱う場",
+                "合、 典型的には文",
+                "字による 通信を行",
+                "う場合にその両端点で",
+                "は、",
+            ]
+        );
         // Odd-sized lines have a space in them.
         assert_eq!(word_wrapper_width, vec![8, 20, 17, 17, 20, 4]);
     }
@@ -485,7 +508,10 @@ mod test {
         let width = 10;
         let text = "AAA AAA AAAAA AA AAAAAA\n B\n  C\n   D";
         let (word_wrapper, _) = run_composer(Composer::WordWrapper { trim: false }, text, width);
-        assert_eq!(word_wrapper, vec!["AAA AAA", "AAAAA AA", "AAAAAA", " B", "  C", "   D"]);
+        assert_eq!(
+            word_wrapper,
+            vec!["AAA AAA", "AAAAA AA", "AAAAAA", " B", "  C", "   D"]
+        );
     }
 
     #[test]
@@ -493,13 +519,16 @@ mod test {
         let width = 10;
         let text = "               4 Indent\n                 must wrap!";
         let (word_wrapper, _) = run_composer(Composer::WordWrapper { trim: false }, text, width);
-        assert_eq!(word_wrapper, vec![
-            "          ",
-            "    4",
-            "Indent",
-            "          ",
-            "      must",
-            "wrap!"
-        ]);
+        assert_eq!(
+            word_wrapper,
+            vec![
+                "          ",
+                "    4",
+                "Indent",
+                "          ",
+                "      must",
+                "wrap!"
+            ]
+        );
     }
 }

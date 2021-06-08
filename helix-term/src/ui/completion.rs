@@ -20,9 +20,13 @@ use helix_lsp::lsp;
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
-    fn filter_text(&self) -> &str { self.filter_text.as_ref().unwrap_or(&self.label).as_str() }
+    fn filter_text(&self) -> &str {
+        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    }
 
-    fn label(&self) -> &str { self.label.as_str() }
+    fn label(&self) -> &str {
+        self.label.as_str()
+    }
 
     fn row(&self) -> menu::Row {
         menu::Row::new(vec![
@@ -158,7 +162,10 @@ impl Completion {
             };
         });
         let popup = Popup::new(menu);
-        Self { popup, trigger_offset }
+        Self {
+            popup,
+            trigger_offset,
+        }
     }
 
     pub fn update(&mut self, cx: &mut commands::Context) {
@@ -185,7 +192,9 @@ impl Completion {
         }
     }
 
-    pub fn is_empty(&self) -> bool { self.popup.contents().is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.popup.contents().is_empty()
+    }
 }
 
 // need to:
@@ -203,7 +212,10 @@ impl Completion {
 impl Component for Completion {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         // let the Editor handle Esc instead
-        if let Event::Key(KeyEvent { code: KeyCode::Esc, .. }) = event {
+        if let Event::Key(KeyEvent {
+            code: KeyCode::Esc, ..
+        }) = event
+        {
             return EventResult::Ignored;
         }
         self.popup.handle_event(event, cx)
@@ -224,8 +236,10 @@ impl Component for Completion {
             // option.documentation
 
             let (view, doc) = cx.editor.current();
-            let language =
-                doc.language().and_then(|scope| scope.strip_prefix("source.")).unwrap_or("");
+            let language = doc
+                .language()
+                .and_then(|scope| scope.strip_prefix("source."))
+                .unwrap_or("");
 
             let doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))

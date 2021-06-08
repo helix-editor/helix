@@ -67,7 +67,11 @@ impl Application {
             editor.new_file(Action::VerticalSplit);
         }
 
-        let mut app = Self { compositor, editor, callbacks: FuturesUnordered::new() };
+        let mut app = Self {
+            compositor,
+            editor,
+            callbacks: FuturesUnordered::new(),
+        };
 
         Ok(app)
     }
@@ -77,7 +81,11 @@ impl Application {
         let compositor = &mut self.compositor;
         let callbacks = &mut self.callbacks;
 
-        let mut cx = crate::compositor::Context { editor, callbacks, scroll: None };
+        let mut cx = crate::compositor::Context {
+            editor,
+            callbacks,
+            scroll: None,
+        };
 
         compositor.render(&mut cx);
     }
@@ -129,7 +137,8 @@ impl Application {
             Some(Ok(Event::Resize(width, height))) => {
                 self.compositor.resize(width, height);
 
-                self.compositor.handle_event(Event::Resize(width, height), &mut cx)
+                self.compositor
+                    .handle_event(Event::Resize(width, height), &mut cx)
             }
             Some(Ok(event)) => self.compositor.handle_event(event, &mut cx),
             Some(Err(x)) => panic!("{}", x),

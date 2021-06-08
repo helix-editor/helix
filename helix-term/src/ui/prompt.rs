@@ -60,7 +60,9 @@ impl Prompt {
         self.exit_selection();
     }
 
-    pub fn move_char_left(&mut self) { self.cursor = self.cursor.saturating_sub(1) }
+    pub fn move_char_left(&mut self) {
+        self.cursor = self.cursor.saturating_sub(1)
+    }
 
     pub fn move_char_right(&mut self) {
         if self.cursor < self.line.len() {
@@ -68,9 +70,13 @@ impl Prompt {
         }
     }
 
-    pub fn move_start(&mut self) { self.cursor = 0; }
+    pub fn move_start(&mut self) {
+        self.cursor = 0;
+    }
 
-    pub fn move_end(&mut self) { self.cursor = self.line.len(); }
+    pub fn move_end(&mut self) {
+        self.cursor = self.line.len();
+    }
 
     pub fn delete_char_backwards(&mut self) {
         if self.cursor > 0 {
@@ -102,7 +108,9 @@ impl Prompt {
         self.move_end();
     }
 
-    pub fn exit_selection(&mut self) { self.selection = None; }
+    pub fn exit_selection(&mut self) {
+        self.selection = None;
+    }
 }
 
 use tui::{
@@ -122,8 +130,12 @@ impl Prompt {
 
         let max_col = std::cmp::max(1, area.width / BASE_WIDTH);
         let height = ((self.completion.len() as u16 + max_col - 1) / max_col);
-        let completion_area =
-            Rect::new(area.x, (area.height - height).saturating_sub(1), area.width, height);
+        let completion_area = Rect::new(
+            area.x,
+            (area.height - height).saturating_sub(1),
+            area.width,
+            height,
+        );
 
         if !self.completion.is_empty() {
             let area = completion_area;
@@ -174,7 +186,14 @@ impl Prompt {
             surface.clear_with(area, background);
 
             use tui::layout::Margin;
-            text.render(area.inner(&Margin { vertical: 1, horizontal: 1 }), surface, cx);
+            text.render(
+                area.inner(&Margin {
+                    vertical: 1,
+                    horizontal: 1,
+                }),
+                surface,
+                cx,
+            );
         }
 
         let line = area.height - 1;
@@ -204,28 +223,50 @@ impl Component for Prompt {
 
         match event {
             // char or shift char
-            KeyEvent { code: KeyCode::Char(c), modifiers: KeyModifiers::NONE }
-            | KeyEvent { code: KeyCode::Char(c), modifiers: KeyModifiers::SHIFT } => {
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: KeyModifiers::NONE,
+            }
+            | KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: KeyModifiers::SHIFT,
+            } => {
                 self.insert_char(c);
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
             }
-            KeyEvent { code: KeyCode::Esc, .. } => {
+            KeyEvent {
+                code: KeyCode::Esc, ..
+            } => {
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
-            KeyEvent { code: KeyCode::Right, .. } => self.move_char_right(),
-            KeyEvent { code: KeyCode::Left, .. } => self.move_char_left(),
-            KeyEvent { code: KeyCode::Char('e'), modifiers: KeyModifiers::CONTROL } => {
-                self.move_end()
-            }
-            KeyEvent { code: KeyCode::Char('a'), modifiers: KeyModifiers::CONTROL } => {
-                self.move_start()
-            }
-            KeyEvent { code: KeyCode::Backspace, modifiers: KeyModifiers::NONE } => {
+            KeyEvent {
+                code: KeyCode::Right,
+                ..
+            } => self.move_char_right(),
+            KeyEvent {
+                code: KeyCode::Left,
+                ..
+            } => self.move_char_left(),
+            KeyEvent {
+                code: KeyCode::Char('e'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.move_end(),
+            KeyEvent {
+                code: KeyCode::Char('a'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.move_start(),
+            KeyEvent {
+                code: KeyCode::Backspace,
+                modifiers: KeyModifiers::NONE,
+            } => {
                 self.delete_char_backwards();
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
             }
-            KeyEvent { code: KeyCode::Enter, .. } => {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
                 if self.line.ends_with('/') {
                     self.completion = (self.completion_fn)(&self.line);
                     self.exit_selection();
@@ -234,15 +275,17 @@ impl Component for Prompt {
                     return close_fn;
                 }
             }
-            KeyEvent { code: KeyCode::Tab, .. } => {
-                self.change_completion_selection(CompletionDirection::Forward)
-            }
-            KeyEvent { code: KeyCode::BackTab, .. } => {
-                self.change_completion_selection(CompletionDirection::Backward)
-            }
-            KeyEvent { code: KeyCode::Char('q'), modifiers: KeyModifiers::CONTROL } => {
-                self.exit_selection()
-            }
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => self.change_completion_selection(CompletionDirection::Forward),
+            KeyEvent {
+                code: KeyCode::BackTab,
+                ..
+            } => self.change_completion_selection(CompletionDirection::Backward),
+            KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.exit_selection(),
             _ => (),
         };
 

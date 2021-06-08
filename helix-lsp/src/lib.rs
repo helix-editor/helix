@@ -115,8 +115,11 @@ pub mod util {
             doc,
             edits.into_iter().map(|edit| {
                 // simplify "" into None for cleaner changesets
-                let replacement =
-                    if !edit.new_text.is_empty() { Some(edit.new_text.into()) } else { None };
+                let replacement = if !edit.new_text.is_empty() {
+                    Some(edit.new_text.into())
+                } else {
+                    None
+                };
 
                 let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding);
                 let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding);
@@ -139,8 +142,9 @@ impl Notification {
 
         let notification = match method {
             lsp::notification::PublishDiagnostics::METHOD => {
-                let params: lsp::PublishDiagnosticsParams =
-                    params.parse().expect("Failed to parse PublishDiagnostics params");
+                let params: lsp::PublishDiagnosticsParams = params
+                    .parse()
+                    .expect("Failed to parse PublishDiagnostics params");
 
                 // TODO: need to loop over diagnostics and distinguish them by URI
                 Self::PublishDiagnostics(params)
@@ -175,11 +179,18 @@ pub struct Registry {
 }
 
 impl Default for Registry {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Registry {
-    pub fn new() -> Self { Self { inner: HashMap::new(), incoming: SelectAll::new() } }
+    pub fn new() -> Self {
+        Self {
+            inner: HashMap::new(),
+            incoming: SelectAll::new(),
+        }
+    }
 
     pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
         if let Some(config) = &language_config.language_server {

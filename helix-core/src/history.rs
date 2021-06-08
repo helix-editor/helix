@@ -39,7 +39,11 @@ impl History {
             .with_selection(original.selection.clone());
 
         let new_cursor = self.revisions.len();
-        self.revisions.push(Revision { parent: self.cursor, children: SmallVec::new(), revert });
+        self.revisions.push(Revision {
+            parent: self.cursor,
+            children: SmallVec::new(),
+            revert,
+        });
 
         // add a reference to the parent
         self.revisions
@@ -52,10 +56,14 @@ impl History {
     }
 
     #[inline]
-    pub fn current_revision(&self) -> usize { self.cursor }
+    pub fn current_revision(&self) -> usize {
+        self.cursor
+    }
 
     #[inline]
-    pub const fn at_root(&self) -> bool { self.cursor == 0 }
+    pub const fn at_root(&self) -> bool {
+        self.cursor == 0
+    }
 
     pub fn undo(&mut self) -> Option<&Transaction> {
         if self.at_root() {

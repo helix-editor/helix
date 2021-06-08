@@ -55,7 +55,12 @@ impl<'a, T> From<T> for Cell<'a>
 where
     T: Into<Text<'a>>,
 {
-    fn from(content: T) -> Cell<'a> { Cell { content: content.into(), style: Style::default() } }
+    fn from(content: T) -> Cell<'a> {
+        Cell {
+            content: content.into(),
+            style: Style::default(),
+        }
+    }
 }
 
 /// Holds data to be displayed in a [`Table`] widget.
@@ -121,7 +126,9 @@ impl<'a> Row<'a> {
     }
 
     /// Returns the total height of the row.
-    fn total_height(&self) -> u16 { self.height.saturating_add(self.bottom_margin) }
+    fn total_height(&self) -> u16 {
+        self.height.saturating_add(self.bottom_margin)
+    }
 }
 
 /// A widget to display data in formatted columns.
@@ -290,7 +297,9 @@ impl<'a> Table<'a> {
         }
         solver
             .add_constraint(
-                variables.iter().fold(Expression::from_constant(0.), |acc, v| acc + *v)
+                variables
+                    .iter()
+                    .fold(Expression::from_constant(0.), |acc, v| acc + *v)
                     | LE(REQUIRED)
                     | f64::from(available_width),
             )
@@ -299,7 +308,11 @@ impl<'a> Table<'a> {
         let mut widths = vec![0; variables.len()];
         for &(var, value) in solver.fetch_changes() {
             let index = var_indices[&var];
-            let value = if value.is_sign_negative() { 0 } else { value.round() as u16 };
+            let value = if value.is_sign_negative() {
+                0
+            } else {
+                value.round() as u16
+            };
             widths[index] = value;
         }
         // Cassowary could still return columns widths greater than the max width when there are
@@ -308,8 +321,9 @@ impl<'a> Table<'a> {
         let mut available_width = max_width;
         for w in &mut widths {
             *w = available_width.min(*w);
-            available_width =
-                available_width.saturating_sub(*w).saturating_sub(self.column_spacing);
+            available_width = available_width
+                .saturating_sub(*w)
+                .saturating_sub(self.column_spacing);
         }
         widths
     }
@@ -359,11 +373,18 @@ pub struct TableState {
 }
 
 impl Default for TableState {
-    fn default() -> TableState { TableState { offset: 0, selected: None } }
+    fn default() -> TableState {
+        TableState {
+            offset: 0,
+            selected: None,
+        }
+    }
 }
 
 impl TableState {
-    pub fn selected(&self) -> Option<usize> { self.selected }
+    pub fn selected(&self) -> Option<usize> {
+        self.selected
+    }
 
     pub fn select(&mut self, index: Option<usize>) {
         self.selected = index;
@@ -394,7 +415,9 @@ impl<'a> Table<'a> {
         let has_selection = state.selected.is_some();
         let columns_widths = self.get_columns_widths(table_area.width, has_selection);
         let highlight_symbol = self.highlight_symbol.unwrap_or("");
-        let blank_symbol = iter::repeat(" ").take(highlight_symbol.width()).collect::<String>();
+        let blank_symbol = iter::repeat(" ")
+            .take(highlight_symbol.width())
+            .collect::<String>();
         let mut current_height = 0;
         let mut rows_height = table_area.height;
 
@@ -415,12 +438,16 @@ impl<'a> Table<'a> {
                 col += (highlight_symbol.width() as u16).min(table_area.width);
             }
             for (width, cell) in columns_widths.iter().zip(header.cells.iter()) {
-                render_cell(buf, cell, Rect {
-                    x: col,
-                    y: table_area.top(),
-                    width: *width,
-                    height: max_header_height,
-                });
+                render_cell(
+                    buf,
+                    cell,
+                    Rect {
+                        x: col,
+                        y: table_area.top(),
+                        width: *width,
+                        height: max_header_height,
+                    },
+                );
                 col += *width + self.column_spacing;
             }
             current_height += max_header_height;
@@ -433,16 +460,29 @@ impl<'a> Table<'a> {
         }
         let (start, end) = self.get_row_bounds(state.selected, state.offset, rows_height);
         state.offset = start;
-        for (i, table_row) in self.rows.iter_mut().enumerate().skip(state.offset).take(end - start)
+        for (i, table_row) in self
+            .rows
+            .iter_mut()
+            .enumerate()
+            .skip(state.offset)
+            .take(end - start)
         {
             let (row, col) = (table_area.top() + current_height, table_area.left());
             current_height += table_row.total_height();
-            let table_row_area =
-                Rect { x: col, y: row, width: table_area.width, height: table_row.height };
+            let table_row_area = Rect {
+                x: col,
+                y: row,
+                width: table_area.width,
+                height: table_row.height,
+            };
             buf.set_style(table_row_area, table_row.style);
             let is_selected = state.selected.map(|s| s == i).unwrap_or(false);
             let table_row_start_col = if has_selection {
-                let symbol = if is_selected { highlight_symbol } else { &blank_symbol };
+                let symbol = if is_selected {
+                    highlight_symbol
+                } else {
+                    &blank_symbol
+                };
                 let (col, _) =
                     buf.set_stringn(col, row, symbol, table_area.width as usize, table_row.style);
                 col
@@ -451,12 +491,16 @@ impl<'a> Table<'a> {
             };
             let mut col = table_row_start_col;
             for (width, cell) in columns_widths.iter().zip(table_row.cells.iter()) {
-                render_cell(buf, cell, Rect {
-                    x: col,
-                    y: row,
-                    width: *width,
-                    height: table_row.height,
-                });
+                render_cell(
+                    buf,
+                    cell,
+                    Rect {
+                        x: col,
+                        y: row,
+                        width: *width,
+                        height: table_row.height,
+                    },
+                );
                 col += *width + self.column_spacing;
             }
             if is_selected {
@@ -489,5 +533,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn table_invalid_percentages() { Table::new(vec![]).widths(&[Constraint::Percentage(110)]); }
+    fn table_invalid_percentages() {
+        Table::new(vec![]).widths(&[Constraint::Percentage(110)]);
+    }
 }

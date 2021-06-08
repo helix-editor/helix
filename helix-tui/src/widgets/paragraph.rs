@@ -156,7 +156,10 @@ impl<'a> Widget for Paragraph<'a> {
                 .flat_map(|span| span.styled_graphemes(style))
                 // Required given the way composers work but might be refactored out if we change
                 // composers to operate on lines instead of a stream of graphemes.
-                .chain(iter::once(StyledGrapheme { symbol: "\n", style: self.style }))
+                .chain(iter::once(StyledGrapheme {
+                    symbol: "\n",
+                    style: self.style,
+                }))
         });
 
         let mut line_composer: Box<dyn LineComposer> = if let Some(Wrap { trim }) = self.wrap {

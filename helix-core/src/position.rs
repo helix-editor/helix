@@ -11,9 +11,13 @@ pub struct Position {
 }
 
 impl Position {
-    pub const fn new(row: usize, col: usize) -> Self { Self { row, col } }
+    pub const fn new(row: usize, col: usize) -> Self {
+        Self { row, col }
+    }
 
-    pub const fn is_zero(self) -> bool { self.row == 0 && self.col == 0 }
+    pub const fn is_zero(self) -> bool {
+        self.row == 0 && self.col == 0
+    }
 
     // TODO: generalize
     pub fn traverse(self, text: &crate::Tendril) -> Self {
@@ -32,11 +36,18 @@ impl Position {
 }
 
 impl From<(usize, usize)> for Position {
-    fn from(tuple: (usize, usize)) -> Self { Self { row: tuple.0, col: tuple.1 } }
+    fn from(tuple: (usize, usize)) -> Self {
+        Self {
+            row: tuple.0,
+            col: tuple.1,
+        }
+    }
 }
 
 impl From<Position> for tree_sitter::Point {
-    fn from(pos: Position) -> Self { Self::new(pos.row, pos.col) }
+    fn from(pos: Position) -> Self {
+        Self::new(pos.row, pos.col)
+    }
 }
 /// Convert a character index to (line, column) coordinates.
 pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {

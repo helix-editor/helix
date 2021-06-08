@@ -62,25 +62,40 @@ impl<T> Picker<T> {
 
     pub fn score(&mut self) {
         // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self { ref mut options, ref mut matcher, ref mut matches, ref format_fn, .. } = *self;
+        let Self {
+            ref mut options,
+            ref mut matcher,
+            ref mut matches,
+            ref format_fn,
+            ..
+        } = *self;
 
         let pattern = &self.prompt.line;
 
         // reuse the matches allocation
         matches.clear();
-        matches.extend(self.options.iter().enumerate().filter_map(|(index, option)| {
-            // TODO: maybe using format_fn isn't the best idea here
-            let text = (format_fn)(option);
-            // TODO: using fuzzy_indices could give us the char idx for match highlighting
-            matcher.fuzzy_match(&text, pattern).map(|score| (index, score))
-        }));
+        matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    // TODO: maybe using format_fn isn't the best idea here
+                    let text = (format_fn)(option);
+                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    matcher
+                        .fuzzy_match(&text, pattern)
+                        .map(|score| (index, score))
+                }),
+        );
         matches.sort_unstable_by_key(|(_, score)| -score);
 
         // reset cursor position
         self.cursor = 0;
     }
 
-    pub fn move_up(&mut self) { self.cursor = self.cursor.saturating_sub(1); }
+    pub fn move_up(&mut self) {
+        self.cursor = self.cursor.saturating_sub(1);
+    }
 
     pub fn move_down(&mut self) {
         if self.matches.is_empty() {
@@ -93,7 +108,9 @@ impl<T> Picker<T> {
     }
 
     pub fn selection(&self) -> Option<&T> {
-        self.matches.get(self.cursor).map(|(index, _score)| &self.options[*index])
+        self.matches
+            .get(self.cursor)
+            .map(|(index, _score)| &self.options[*index])
     }
 }
 
@@ -128,30 +145,48 @@ impl<T: 'static> Component for Picker<T> {
         })));
 
         match key_event {
-            KeyEvent { code: KeyCode::Up, .. }
-            | KeyEvent { code: KeyCode::Char('k'), modifiers: KeyModifiers::CONTROL } => {
-                self.move_up()
+            KeyEvent {
+                code: KeyCode::Up, ..
             }
-            KeyEvent { code: KeyCode::Down, .. }
-            | KeyEvent { code: KeyCode::Char('j'), modifiers: KeyModifiers::CONTROL } => {
-                self.move_down()
+            | KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.move_up(),
+            KeyEvent {
+                code: KeyCode::Down,
+                ..
             }
-            KeyEvent { code: KeyCode::Esc, .. } => {
+            | KeyEvent {
+                code: KeyCode::Char('j'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.move_down(),
+            KeyEvent {
+                code: KeyCode::Esc, ..
+            } => {
                 return close_fn;
             }
-            KeyEvent { code: KeyCode::Enter, .. } => {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::Replace);
                 }
                 return close_fn;
             }
-            KeyEvent { code: KeyCode::Char('x'), modifiers: KeyModifiers::CONTROL } => {
+            KeyEvent {
+                code: KeyCode::Char('x'),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
-            KeyEvent { code: KeyCode::Char('v'), modifiers: KeyModifiers::CONTROL } => {
+            KeyEvent {
+                code: KeyCode::Char('v'),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
                 }
@@ -197,7 +232,10 @@ impl<T: 'static> Component for Picker<T> {
         let style = Style::default().fg(Color::Rgb(90, 89, 119));
         let symbols = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
-            surface.get_mut(x, inner.y + 1).set_symbol(symbols.horizontal).set_style(style);
+            surface
+                .get_mut(x, inner.y + 1)
+                .set_symbol(symbols.horizontal)
+                .set_style(style);
         }
 
         // -- Render the contents:
@@ -222,7 +260,11 @@ impl<T: 'static> Component for Picker<T> {
                 inner.y + 2 + i as u16,
                 (self.format_fn)(option),
                 inner.width as usize - 1,
-                if i == (self.cursor - offset) { selected } else { style },
+                if i == (self.cursor - offset) {
+                    selected
+                } else {
+                    style
+                },
             );
         }
     }

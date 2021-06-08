@@ -12,7 +12,10 @@ use tokio::{
 
 #[derive(Debug)]
 pub enum Payload {
-    Request { chan: Sender<Result<Value>>, value: jsonrpc::MethodCall },
+    Request {
+        chan: Sender<Result<Value>>,
+        value: jsonrpc::MethodCall,
+    },
     Notification(jsonrpc::Notification),
     Response(jsonrpc::Output),
 }
@@ -171,7 +174,10 @@ impl Transport {
             }
         };
 
-        let tx = self.pending_requests.remove(&id).expect("pending_request with id not found!");
+        let tx = self
+            .pending_requests
+            .remove(&id)
+            .expect("pending_request with id not found!");
 
         match tx.send(result).await {
             Ok(_) => (),

@@ -77,10 +77,14 @@ impl Client {
     }
 
     pub fn capabilities(&self) -> &lsp::ServerCapabilities {
-        self.capabilities.as_ref().expect("language server not yet initialized!")
+        self.capabilities
+            .as_ref()
+            .expect("language server not yet initialized!")
     }
 
-    pub fn offset_encoding(&self) -> OffsetEncoding { self.offset_encoding }
+    pub fn offset_encoding(&self) -> OffsetEncoding {
+        self.offset_encoding
+    }
 
     /// Execute a RPC request on the language server.
     async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
@@ -121,7 +125,10 @@ impl Client {
             let (tx, mut rx) = channel::<Result<Value>>(1);
 
             server_tx
-                .send(Payload::Request { chan: tx, value: request })
+                .send(Payload::Request {
+                    chan: tx,
+                    value: request,
+                })
                 .map_err(|e| Error::Other(e.into()))?;
 
             timeout(Duration::from_secs(2), rx.recv())
@@ -167,11 +174,21 @@ impl Client {
         use jsonrpc::{Failure, Output, Success, Version};
 
         let output = match result {
-            Ok(result) => Output::Success(Success { jsonrpc: Some(Version::V2), id, result }),
-            Err(error) => Output::Failure(Failure { jsonrpc: Some(Version::V2), id, error }),
+            Ok(result) => Output::Success(Success {
+                jsonrpc: Some(Version::V2),
+                id,
+                result,
+            }),
+            Err(error) => Output::Failure(Failure {
+                jsonrpc: Some(Version::V2),
+                id,
+                error,
+            }),
         };
 
-        self.server_tx.send(Payload::Response(output)).map_err(|e| Error::Other(e.into()))?;
+        self.server_tx
+            .send(Payload::Response(output))
+            .map_err(|e| Error::Other(e.into()))?;
 
         Ok(())
     }
@@ -224,12 +241,15 @@ impl Client {
         self.capabilities = Some(response.capabilities);
 
         // next up, notify<initialized>
-        self.notify::<lsp::notification::Initialized>(lsp::InitializedParams {}).await?;
+        self.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+            .await?;
 
         Ok(())
     }
 
-    pub async fn shutdown(&self) -> Result<()> { self.request::<lsp::request::Shutdown>(()).await }
+    pub async fn shutdown(&self) -> Result<()> {
+        self.request::<lsp::request::Shutdown>(()).await
+    }
 
     pub fn exit(&self) -> impl Future<Output = Result<()>> {
         self.notify::<lsp::notification::Exit>(())
@@ -280,7 +300,10 @@ impl Client {
         // TODO: stolen from syntax.rs, share
         use helix_core::RopeSlice;
         fn traverse(pos: lsp::Position, text: RopeSlice) -> lsp::Position {
-            let lsp::Position { mut line, mut character } = pos;
+            let lsp::Position {
+                mut line,
+                mut character,
+            } = pos;
 
             for ch in text.chars() {
                 if ch == '\n' {
@@ -386,7 +409,10 @@ impl Client {
         };
 
         Some(self.notify::<lsp::notification::DidChangeTextDocument>(
-            lsp::DidChangeTextDocumentParams { text_document, content_changes: changes },
+            lsp::DidChangeTextDocumentParams {
+                text_document,
+                content_changes: changes,
+            },
         ))
     }
 
@@ -438,10 +464,17 @@ impl Client {
     ) -> impl Future<Output = Result<Value>> {
         // ) -> Result<Vec<lsp::CompletionItem>> {
         let params = lsp::CompletionParams {
-            text_document_position: lsp::TextDocumentPositionParams { text_document, position },
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
             // TODO: support these tokens by async receiving and updating the choice list
-            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token: None },
-            partial_result_params: lsp::PartialResultParams { partial_result_token: None },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
             context: None,
             // lsp::CompletionContext { trigger_kind: , trigger_character: Some(), }
         };
@@ -459,7 +492,9 @@ impl Client {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token: None },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
             context: None,
             // lsp::SignatureHelpContext
         };
@@ -477,7 +512,9 @@ impl Client {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token: None },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
             // lsp::SignatureHelpContext
         };
 
@@ -504,7 +541,9 @@ impl Client {
         let params = lsp::DocumentFormattingParams {
             text_document,
             options,
-            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token: None },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
         };
 
         let response = self.request::<lsp::request::Formatting>(params).await?;
@@ -532,10 +571,14 @@ impl Client {
             text_document,
             range,
             options,
-            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token: None },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
         };
 
-        let response = self.request::<lsp::request::RangeFormatting>(params).await?;
+        let response = self
+            .request::<lsp::request::RangeFormatting>(params)
+            .await?;
 
         Ok(response.unwrap_or_default())
     }
@@ -555,8 +598,12 @@ impl Client {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token: None },
-            partial_result_params: lsp::PartialResultParams { partial_result_token: None },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
         };
 
         self.call::<T>(params)
@@ -592,10 +639,19 @@ impl Client {
         position: lsp::Position,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::ReferenceParams {
-            text_document_position: lsp::TextDocumentPositionParams { text_document, position },
-            context: lsp::ReferenceContext { include_declaration: true },
-            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token: None },
-            partial_result_params: lsp::PartialResultParams { partial_result_token: None },
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            context: lsp::ReferenceContext {
+                include_declaration: true,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
         };
 
         self.call::<lsp::request::References>(params)

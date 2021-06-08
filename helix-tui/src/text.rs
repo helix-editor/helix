@@ -79,7 +79,10 @@ impl<'a> Span<'a> {
     where
         T: Into<Cow<'a, str>>,
     {
-        Span { content: content.into(), style: Style::default() }
+        Span {
+            content: content.into(),
+            style: Style::default(),
+        }
     }
 
     /// Create a span with a style.
@@ -97,11 +100,16 @@ impl<'a> Span<'a> {
     where
         T: Into<Cow<'a, str>>,
     {
-        Span { content: content.into(), style }
+        Span {
+            content: content.into(),
+            style,
+        }
     }
 
     /// Returns the width of the content held by this span.
-    pub fn width(&self) -> usize { self.content.width() }
+    pub fn width(&self) -> usize {
+        self.content.width()
+    }
 
     /// Returns an iterator over the graphemes held by this span.
     ///
@@ -165,17 +173,24 @@ impl<'a> Span<'a> {
         base_style: Style,
     ) -> impl Iterator<Item = StyledGrapheme<'a>> {
         UnicodeSegmentation::graphemes(self.content.as_ref(), true)
-            .map(move |g| StyledGrapheme { symbol: g, style: base_style.patch(self.style) })
+            .map(move |g| StyledGrapheme {
+                symbol: g,
+                style: base_style.patch(self.style),
+            })
             .filter(|s| s.symbol != "\n")
     }
 }
 
 impl<'a> From<String> for Span<'a> {
-    fn from(s: String) -> Span<'a> { Span::raw(s) }
+    fn from(s: String) -> Span<'a> {
+        Span::raw(s)
+    }
 }
 
 impl<'a> From<&'a str> for Span<'a> {
-    fn from(s: &'a str) -> Span<'a> { Span::raw(s) }
+    fn from(s: &'a str) -> Span<'a> {
+        Span::raw(s)
+    }
 }
 
 /// A string composed of clusters of graphemes, each with their own style.
@@ -183,7 +198,9 @@ impl<'a> From<&'a str> for Span<'a> {
 pub struct Spans<'a>(pub Vec<Span<'a>>);
 
 impl<'a> Default for Spans<'a> {
-    fn default() -> Spans<'a> { Spans(Vec::new()) }
+    fn default() -> Spans<'a> {
+        Spans(Vec::new())
+    }
 }
 
 impl<'a> Spans<'a> {
@@ -200,23 +217,33 @@ impl<'a> Spans<'a> {
     /// ]);
     /// assert_eq!(7, spans.width());
     /// ```
-    pub fn width(&self) -> usize { self.0.iter().map(Span::width).sum() }
+    pub fn width(&self) -> usize {
+        self.0.iter().map(Span::width).sum()
+    }
 }
 
 impl<'a> From<String> for Spans<'a> {
-    fn from(s: String) -> Spans<'a> { Spans(vec![Span::from(s)]) }
+    fn from(s: String) -> Spans<'a> {
+        Spans(vec![Span::from(s)])
+    }
 }
 
 impl<'a> From<&'a str> for Spans<'a> {
-    fn from(s: &'a str) -> Spans<'a> { Spans(vec![Span::from(s)]) }
+    fn from(s: &'a str) -> Spans<'a> {
+        Spans(vec![Span::from(s)])
+    }
 }
 
 impl<'a> From<Vec<Span<'a>>> for Spans<'a> {
-    fn from(spans: Vec<Span<'a>>) -> Spans<'a> { Spans(spans) }
+    fn from(spans: Vec<Span<'a>>) -> Spans<'a> {
+        Spans(spans)
+    }
 }
 
 impl<'a> From<Span<'a>> for Spans<'a> {
-    fn from(span: Span<'a>) -> Spans<'a> { Spans(vec![span]) }
+    fn from(span: Span<'a>) -> Spans<'a> {
+        Spans(vec![span])
+    }
 }
 
 impl<'a> From<Spans<'a>> for String {
@@ -258,7 +285,9 @@ pub struct Text<'a> {
 }
 
 impl<'a> Default for Text<'a> {
-    fn default() -> Text<'a> { Text { lines: Vec::new() } }
+    fn default() -> Text<'a> {
+        Text { lines: Vec::new() }
+    }
 }
 
 impl<'a> Text<'a> {
@@ -312,7 +341,13 @@ impl<'a> Text<'a> {
     /// let text = Text::from("The first line\nThe second line");
     /// assert_eq!(15, text.width());
     /// ```
-    pub fn width(&self) -> usize { self.lines.iter().map(Spans::width).max().unwrap_or_default() }
+    pub fn width(&self) -> usize {
+        self.lines
+            .iter()
+            .map(Spans::width)
+            .max()
+            .unwrap_or_default()
+    }
 
     /// Returns the height.
     ///
@@ -323,7 +358,9 @@ impl<'a> Text<'a> {
     /// let text = Text::from("The first line\nThe second line");
     /// assert_eq!(2, text.height());
     /// ```
-    pub fn height(&self) -> usize { self.lines.len() }
+    pub fn height(&self) -> usize {
+        self.lines.len()
+    }
 
     /// Apply a new style to existing text.
     ///
@@ -350,32 +387,48 @@ impl<'a> Text<'a> {
 }
 
 impl<'a> From<String> for Text<'a> {
-    fn from(s: String) -> Text<'a> { Text::raw(s) }
+    fn from(s: String) -> Text<'a> {
+        Text::raw(s)
+    }
 }
 
 impl<'a> From<&'a str> for Text<'a> {
-    fn from(s: &'a str) -> Text<'a> { Text::raw(s) }
+    fn from(s: &'a str) -> Text<'a> {
+        Text::raw(s)
+    }
 }
 
 impl<'a> From<Span<'a>> for Text<'a> {
-    fn from(span: Span<'a>) -> Text<'a> { Text { lines: vec![Spans::from(span)] } }
+    fn from(span: Span<'a>) -> Text<'a> {
+        Text {
+            lines: vec![Spans::from(span)],
+        }
+    }
 }
 
 impl<'a> From<Spans<'a>> for Text<'a> {
-    fn from(spans: Spans<'a>) -> Text<'a> { Text { lines: vec![spans] } }
+    fn from(spans: Spans<'a>) -> Text<'a> {
+        Text { lines: vec![spans] }
+    }
 }
 
 impl<'a> From<Vec<Spans<'a>>> for Text<'a> {
-    fn from(lines: Vec<Spans<'a>>) -> Text<'a> { Text { lines } }
+    fn from(lines: Vec<Spans<'a>>) -> Text<'a> {
+        Text { lines }
+    }
 }
 
 impl<'a> IntoIterator for Text<'a> {
     type Item = Spans<'a>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
-    fn into_iter(self) -> Self::IntoIter { self.lines.into_iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.lines.into_iter()
+    }
 }
 
 impl<'a> Extend<Spans<'a>> for Text<'a> {
-    fn extend<T: IntoIterator<Item = Spans<'a>>>(&mut self, iter: T) { self.lines.extend(iter); }
+    fn extend<T: IntoIterator<Item = Spans<'a>>>(&mut self, iter: T) {
+        self.lines.extend(iter);
+    }
 }

@@ -33,7 +33,12 @@ fn buffer_view(buffer: &Buffer) -> String {
         }
         view.push('"');
         if !overwritten.is_empty() {
-            write!(&mut view, " Hidden by multi-width symbols: {:?}", overwritten).unwrap();
+            write!(
+                &mut view,
+                " Hidden by multi-width symbols: {:?}",
+                overwritten
+            )
+            .unwrap();
         }
         view.push('\n');
     }
@@ -51,7 +56,9 @@ impl TestBackend {
         }
     }
 
-    pub fn buffer(&self) -> &Buffer { &self.buffer }
+    pub fn buffer(&self) -> &Buffer {
+        &self.buffer
+    }
 
     pub fn resize(&mut self, width: u16, height: u16) {
         self.buffer.resize(Rect::new(0, 0, width, height));
@@ -86,7 +93,10 @@ impl TestBackend {
             .enumerate()
             .map(|(i, (x, y, cell))| {
                 let expected_cell = expected.get(*x, *y);
-                format!("{}: at ({}, {}) expected {:?} got {:?}", i, x, y, expected_cell, cell)
+                format!(
+                    "{}: at ({}, {}) expected {:?} got {:?}",
+                    i, x, y, expected_cell, cell
+                )
             })
             .collect::<Vec<String>>()
             .join("\n");
@@ -117,7 +127,9 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> { Ok(self.pos) }
+    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> {
+        Ok(self.pos)
+    }
 
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         self.pos = (x, y);
@@ -129,7 +141,11 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn size(&self) -> Result<Rect, io::Error> { Ok(Rect::new(0, 0, self.width, self.height)) }
+    fn size(&self) -> Result<Rect, io::Error> {
+        Ok(Rect::new(0, 0, self.width, self.height))
+    }
 
-    fn flush(&mut self) -> Result<(), io::Error> { Ok(()) }
+    fn flush(&mut self) -> Result<(), io::Error> {
+        Ok(())
+    }
 }

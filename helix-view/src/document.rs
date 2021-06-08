@@ -211,7 +211,9 @@ impl Document {
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
-                    return Err(Error::msg("can't save file, parent directory does not exist"));
+                    return Err(Error::msg(
+                        "can't save file, parent directory does not exist",
+                    ));
                 }
             }
             let mut file = File::create(path).await?;
@@ -223,7 +225,9 @@ impl Document {
             // TODO: flush?
 
             if let Some(language_server) = language_server {
-                language_server.text_document_did_save(identifier, &text).await?;
+                language_server
+                    .text_document_did_save(identifier, &text)
+                    .await?;
             }
 
             Ok(())
@@ -309,7 +313,9 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
-                syntax.update(&old_doc, &self.text, transaction.changes()).unwrap();
+                syntax
+                    .update(&old_doc, &self.text, transaction.changes())
+                    .unwrap();
             }
 
             // map state.diagnostics over changes::map_pos too
@@ -343,15 +349,19 @@ impl Document {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
         if self.changes.is_empty() && !transaction.changes().is_empty() {
-            self.old_state =
-                Some(State { doc: self.text.clone(), selection: self.selection(view_id).clone() });
+            self.old_state = Some(State {
+                doc: self.text.clone(),
+                selection: self.selection(view_id).clone(),
+            });
         }
 
         let success = self._apply(transaction, view_id);
 
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
-            take_with(&mut self.changes, |changes| changes.compose(transaction.changes().clone()));
+            take_with(&mut self.changes, |changes| {
+                changes.compose(transaction.changes().clone())
+            });
         }
         success
     }
@@ -411,7 +421,9 @@ impl Document {
     }
 
     #[inline]
-    pub fn id(&self) -> DocumentId { self.id }
+    pub fn id(&self) -> DocumentId {
+        self.id
+    }
 
     #[inline]
     pub fn is_modified(&self) -> bool {
@@ -423,25 +435,37 @@ impl Document {
     }
 
     #[inline]
-    pub fn mode(&self) -> Mode { self.mode }
+    pub fn mode(&self) -> Mode {
+        self.mode
+    }
 
     #[inline]
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub fn language(&self) -> Option<&str> {
-        self.language.as_ref().map(|language| language.scope.as_str())
+        self.language
+            .as_ref()
+            .map(|language| language.scope.as_str())
     }
 
     #[inline]
-    pub fn language_config(&self) -> Option<&LanguageConfiguration> { self.language.as_deref() }
+    pub fn language_config(&self) -> Option<&LanguageConfiguration> {
+        self.language.as_deref()
+    }
 
     #[inline]
     /// Current document version, incremented at each change.
-    pub fn version(&self) -> i32 { self.version }
+    pub fn version(&self) -> i32 {
+        self.version
+    }
 
-    pub fn language_server(&self) -> Option<&helix_lsp::Client> { self.language_server.as_deref() }
+    pub fn language_server(&self) -> Option<&helix_lsp::Client> {
+        self.language_server.as_deref()
+    }
 
     /// Tree-sitter AST tree
-    pub fn syntax(&self) -> Option<&Syntax> { self.syntax.as_ref() }
+    pub fn syntax(&self) -> Option<&Syntax> {
+        self.syntax.as_ref()
+    }
 
     /// Tab size in columns.
     pub fn tab_width(&self) -> usize {
@@ -463,18 +487,28 @@ impl Document {
 
     #[inline]
     /// File path on disk.
-    pub fn path(&self) -> Option<&PathBuf> { self.path.as_ref() }
+    pub fn path(&self) -> Option<&PathBuf> {
+        self.path.as_ref()
+    }
 
-    pub fn url(&self) -> Option<Url> { self.path().map(|path| Url::from_file_path(path).unwrap()) }
+    pub fn url(&self) -> Option<Url> {
+        self.path().map(|path| Url::from_file_path(path).unwrap())
+    }
 
-    pub fn text(&self) -> &Rope { &self.text }
+    pub fn text(&self) -> &Rope {
+        &self.text
+    }
 
-    pub fn selection(&self, view_id: ViewId) -> &Selection { &self.selections[&view_id] }
+    pub fn selection(&self, view_id: ViewId) -> &Selection {
+        &self.selections[&view_id]
+    }
 
     pub fn relative_path(&self) -> Option<&Path> {
         let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
-        self.path.as_ref().map(|path| path.strip_prefix(cwdir).unwrap_or(path))
+        self.path
+            .as_ref()
+            .map(|path| path.strip_prefix(cwdir).unwrap_or(path))
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {
@@ -493,7 +527,9 @@ impl Document {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
 
-    pub fn diagnostics(&self) -> &[Diagnostic] { &self.diagnostics }
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
@@ -524,11 +560,17 @@ mod test {
             OffsetEncoding::Utf8,
         );
 
-        assert_eq!(changes, &[lsp::TextDocumentContentChangeEvent {
-            range: Some(lsp::Range::new(lsp::Position::new(0, 5), lsp::Position::new(0, 5))),
-            text: " world".into(),
-            range_length: None,
-        }]);
+        assert_eq!(
+            changes,
+            &[lsp::TextDocumentContentChangeEvent {
+                range: Some(lsp::Range::new(
+                    lsp::Position::new(0, 5),
+                    lsp::Position::new(0, 5)
+                )),
+                text: " world".into(),
+                range_length: None,
+            }]
+        );
 
         // delete
 
@@ -548,11 +590,17 @@ mod test {
         // |h|e|l|l|o| |w|o|r|l|d|
         //           -------------
         // (0, 5)-(0, 11)
-        assert_eq!(changes, &[lsp::TextDocumentContentChangeEvent {
-            range: Some(lsp::Range::new(lsp::Position::new(0, 5), lsp::Position::new(0, 11))),
-            text: "".into(),
-            range_length: None,
-        }]);
+        assert_eq!(
+            changes,
+            &[lsp::TextDocumentContentChangeEvent {
+                range: Some(lsp::Range::new(
+                    lsp::Position::new(0, 5),
+                    lsp::Position::new(0, 11)
+                )),
+                text: "".into(),
+                range_length: None,
+            }]
+        );
 
         // replace
 
@@ -573,27 +621,36 @@ mod test {
             OffsetEncoding::Utf8,
         );
 
-        assert_eq!(changes, &[
-            // 0 1 2 3 4 5
-            // |h|e|l|l|o|
-            // ----
-            //
-            // aeillo
-            lsp::TextDocumentContentChangeEvent {
-                range: Some(lsp::Range::new(lsp::Position::new(0, 0), lsp::Position::new(0, 2))),
-                text: "aei".into(),
-                range_length: None,
-            },
-            // 0 1 2 3 4 5 6
-            // |a|e|i|l|l|o|
-            //         -----
-            //
-            // aeilou
-            lsp::TextDocumentContentChangeEvent {
-                range: Some(lsp::Range::new(lsp::Position::new(0, 4), lsp::Position::new(0, 6))),
-                text: "ou".into(),
-                range_length: None,
-            }
-        ]);
+        assert_eq!(
+            changes,
+            &[
+                // 0 1 2 3 4 5
+                // |h|e|l|l|o|
+                // ----
+                //
+                // aeillo
+                lsp::TextDocumentContentChangeEvent {
+                    range: Some(lsp::Range::new(
+                        lsp::Position::new(0, 0),
+                        lsp::Position::new(0, 2)
+                    )),
+                    text: "aei".into(),
+                    range_length: None,
+                },
+                // 0 1 2 3 4 5 6
+                // |a|e|i|l|l|o|
+                //         -----
+                //
+                // aeilou
+                lsp::TextDocumentContentChangeEvent {
+                    range: Some(lsp::Range::new(
+                        lsp::Position::new(0, 4),
+                        lsp::Position::new(0, 6)
+                    )),
+                    text: "ou".into(),
+                    range_length: None,
+                }
+            ]
+        );
     }
 }

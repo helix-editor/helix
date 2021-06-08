@@ -28,7 +28,9 @@ trait SliceHelpers {
 }
 
 impl SliceHelpers for usize {
-    fn outside(&self, text: RopeSlice) -> bool { *self >= text.len_chars() }
+    fn outside(&self, text: RopeSlice) -> bool {
+        *self >= text.len_chars()
+    }
 
     fn is_category_boundary(&self, text: RopeSlice) -> bool {
         !(self + 1).outside(text) && categorize(text.char(*self)) != categorize(text.char(self + 1))
@@ -89,9 +91,10 @@ pub fn move_vertically(
 
     let new_line = match dir {
         Direction::Backward => row.saturating_sub(count),
-        Direction::Forward => {
-            std::cmp::min(row.saturating_add(count), text.len_lines().saturating_sub(2))
-        }
+        Direction::Forward => std::cmp::min(
+            row.saturating_add(count),
+            text.len_lines().saturating_sub(2),
+        ),
     };
 
     // convert to 0-indexed, subtract another 1 because len_chars() counts \n
@@ -126,7 +129,11 @@ pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     let grouped_categories = [Category::Punctuation, Category::Word, Category::Whitespace];
 
     let movement = |mut range: Range| -> Option<Range> {
-        range.anchor = if range.head.is_category_boundary(slice) { range.head + 1 } else { range.head };
+        range.anchor = if range.head.is_category_boundary(slice) {
+            range.head + 1
+        } else {
+            range.head
+        };
         range.anchor = skip_while(slice, range.anchor, is_end_of_line).unwrap_or(last_index);
         range.head = skip_while(slice, range.anchor, is_strict_whitespace).unwrap_or(range.anchor);
         let category = range.anchor.category(slice)?;
@@ -197,14 +204,20 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 // used for by-word movement
 
 #[inline]
-pub(crate) fn is_word(ch: char) -> bool { ch.is_alphanumeric() || ch == '_' }
+pub(crate) fn is_word(ch: char) -> bool {
+    ch.is_alphanumeric() || ch == '_'
+}
 
 #[inline]
-pub(crate) fn is_end_of_line(ch: char) -> bool { ch == '\n' }
+pub(crate) fn is_end_of_line(ch: char) -> bool {
+    ch == '\n'
+}
 
 #[inline]
 // Whitespace, but not end of line
-pub(crate) fn is_strict_whitespace(ch: char) -> bool { ch.is_whitespace() && !is_end_of_line(ch) }
+pub(crate) fn is_strict_whitespace(ch: char) -> bool {
+    ch.is_whitespace() && !is_end_of_line(ch)
+}
 
 #[inline]
 pub(crate) fn is_punctuation(ch: char) -> bool {
@@ -280,7 +293,13 @@ where
     } else {
         let mut chars_starting_from_next = slice.chars_at(pos + 1);
         let mut backwards = iter::from_fn(|| chars_starting_from_next.prev()).enumerate();
-        backwards.find_map(|(i, c)| if !fun(c) { Some(pos.saturating_sub(i)) } else { None })
+        backwards.find_map(|(i, c)| {
+            if !fun(c) {
+                Some(pos.saturating_sub(i))
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -319,8 +338,14 @@ mod test {
         assert_eq!(
             coords_at_pos(
                 slice,
-                move_vertically(slice, range, Direction::Forward, 1, SelectionBehaviour::Displace)
-                    .head
+                move_vertically(
+                    slice,
+                    range,
+                    Direction::Forward,
+                    1,
+                    SelectionBehaviour::Displace
+                )
+                .head
             ),
             (1, 2).into()
         );
@@ -344,8 +369,13 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in IntoIter::new(moves_and_expected_coordinates) {
-            range =
-                move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
+            range = move_horizontally(
+                slice,
+                range,
+                direction,
+                amount,
+                SelectionBehaviour::Displace,
+            );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
         }
     }
@@ -371,8 +401,13 @@ mod test {
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range =
-                move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace);
+            range = move_horizontally(
+                slice,
+                range,
+                direction,
+                amount,
+                SelectionBehaviour::Displace,
+            );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -417,7 +452,13 @@ mod test {
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace);
+            range = move_vertically(
+                slice,
+                range,
+                direction,
+                amount,
+                SelectionBehaviour::Displace,
+            );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -450,12 +491,20 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => {
-                    move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace)
-                }
-                Axis::V => {
-                    move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace)
-                }
+                Axis::H => move_horizontally(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    SelectionBehaviour::Displace,
+                ),
+                Axis::V => move_vertically(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    SelectionBehaviour::Displace,
+                ),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
@@ -485,12 +534,20 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => {
-                    move_horizontally(slice, range, direction, amount, SelectionBehaviour::Displace)
-                }
-                Axis::V => {
-                    move_vertically(slice, range, direction, amount, SelectionBehaviour::Displace)
-                }
+                Axis::H => move_horizontally(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    SelectionBehaviour::Displace,
+                ),
+                Axis::V => move_vertically(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    SelectionBehaviour::Displace,
+                ),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);

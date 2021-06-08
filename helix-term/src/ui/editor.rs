@@ -35,7 +35,9 @@ pub struct EditorView {
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EditorView {
@@ -116,10 +118,15 @@ impl EditorView {
         // TODO: only recalculate when state.doc is actually modified
         let highlights: Vec<_> = match doc.syntax() {
             Some(syntax) => {
-                syntax.highlight_iter(text.slice(..), Some(range), None, |_| None).collect()
+                syntax
+                    .highlight_iter(text.slice(..), Some(range), None, |_| None)
+                    .collect()
                 // TODO: we collect here to avoid holding the lock, fix later
             }
-            None => vec![Ok(HighlightEvent::Source { start: range.start, end: range.end })],
+            None => vec![Ok(HighlightEvent::Source {
+                start: range.start,
+                end: range.end,
+            })],
         };
         let mut spans = Vec::new();
         let mut visual_x = 0;
@@ -237,7 +244,11 @@ impl EditorView {
             // let selection_style = Style::default().bg(Color::Rgb(94, 0, 128));
             let selection_style = Style::default().bg(Color::Rgb(84, 0, 153));
 
-            for selection in doc.selection(view.id).iter().filter(|range| range.overlaps(&screen)) {
+            for selection in doc
+                .selection(view.id)
+                .iter()
+                .filter(|range| range.overlaps(&screen))
+            {
                 // TODO: render also if only one of the ranges is in viewport
                 let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
                 let mut end = view.screen_coords_at_pos(doc, text, selection.head);
@@ -262,7 +273,10 @@ impl EditorView {
                             // area.right = x + width !!! which shouldn't be > then surface.area.right()
                             // This is checked by a debug_assert! in Buffer::index_of
                             ((end.col - start.col) as u16 + 1).min(
-                                surface.area.width.saturating_sub(viewport.x + start.col as u16),
+                                surface
+                                    .area
+                                    .width
+                                    .saturating_sub(viewport.x + start.col as u16),
                             ),
                             1,
                         ),
@@ -305,7 +319,12 @@ impl EditorView {
                 // cursor
                 if let Some(head) = head {
                     surface.set_style(
-                        Rect::new(viewport.x + head.col as u16, viewport.y + head.row as u16, 1, 1),
+                        Rect::new(
+                            viewport.x + head.col as u16,
+                            viewport.y + head.row as u16,
+                            1,
+                            1,
+                        ),
                         cursor_style,
                     );
                     // TODO: set cursor position for IME
@@ -401,12 +420,15 @@ impl EditorView {
         // Vec::with_capacity(diagnostics.len()); // rough estimate
         let mut lines = Vec::new();
         for diagnostic in diagnostics {
-            let text = Text::styled(&diagnostic.message, match diagnostic.severity {
-                Some(Severity::Error) => error,
-                Some(Severity::Warning) | None => warning,
-                Some(Severity::Info) => info,
-                Some(Severity::Hint) => hint,
-            });
+            let text = Text::styled(
+                &diagnostic.message,
+                match diagnostic.severity {
+                    Some(Severity::Error) => error,
+                    Some(Severity::Warning) | None => warning,
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
+                },
+            );
             lines.extend(text.lines);
         }
 
@@ -414,7 +436,12 @@ impl EditorView {
         let width = 80.min(viewport.width);
         let height = 15.min(viewport.height);
         paragraph.render(
-            Rect::new(viewport.right() - width, viewport.y as u16 + 1, width, height),
+            Rect::new(
+                viewport.right() - width,
+                viewport.y as u16 + 1,
+                width,
+                height,
+            ),
             surface,
         );
     }
@@ -433,7 +460,11 @@ impl EditorView {
             Mode::Select => "SEL",
             Mode::Normal => "NOR",
         };
-        let text_color = if is_focused { theme.get("ui.text.focus") } else { theme.get("ui.text") };
+        let text_color = if is_focused {
+            theme.get("ui.text.focus")
+        } else {
+            theme.get("ui.text")
+        };
         // statusline
         surface.set_style(
             Rect::new(viewport.x, viewport.y, viewport.width, 1),
@@ -481,7 +512,11 @@ impl EditorView {
     fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
         if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
             command(cx);
-        } else if let KeyEvent { code: KeyCode::Char(ch), .. } = event {
+        } else if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
             commands::insert::insert_char(cx, ch);
         }
     }
@@ -648,7 +683,8 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
 
         // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor.resize(Rect::new(area.x, area.y, area.width, area.height - 1)); // - 1 to account for commandline
+        cx.editor
+            .resize(Rect::new(area.x, area.y, area.width, area.height - 1)); // - 1 to account for commandline
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
@@ -664,7 +700,12 @@ impl Component for EditorView {
                 cx.editor.theme.get("ui.text")
             };
 
-            surface.set_string(area.x, area.y + area.height.saturating_sub(1), status_msg, style);
+            surface.set_string(
+                area.x,
+                area.y + area.height.saturating_sub(1),
+                status_msg,
+                style,
+            );
         }
 
         if let Some(completion) = &self.completion {
@@ -686,7 +727,11 @@ impl Component for EditorView {
 }
 
 fn canonicalize_key(key: &mut KeyEvent) {
-    if let KeyEvent { code: KeyCode::Char(_), modifiers: _ } = key {
+    if let KeyEvent {
+        code: KeyCode::Char(_),
+        modifiers: _,
+    } = key
+    {
         key.modifiers.remove(KeyModifiers::SHIFT)
     }
 }

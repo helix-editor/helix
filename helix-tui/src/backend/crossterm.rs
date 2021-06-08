@@ -23,16 +23,22 @@ impl<W> CrosstermBackend<W>
 where
     W: Write,
 {
-    pub fn new(buffer: W) -> CrosstermBackend<W> { CrosstermBackend { buffer } }
+    pub fn new(buffer: W) -> CrosstermBackend<W> {
+        CrosstermBackend { buffer }
+    }
 }
 
 impl<W> Write for CrosstermBackend<W>
 where
     W: Write,
 {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.buffer.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.buffer.write(buf)
+    }
 
-    fn flush(&mut self) -> io::Result<()> { self.buffer.flush() }
+    fn flush(&mut self) -> io::Result<()> {
+        self.buffer.flush()
+    }
 }
 
 impl<W> Backend for CrosstermBackend<W>
@@ -54,7 +60,10 @@ where
             }
             last_pos = Some((x, y));
             if cell.modifier != modifier {
-                let diff = ModifierDiff { from: modifier, to: cell.modifier };
+                let diff = ModifierDiff {
+                    from: modifier,
+                    to: cell.modifier,
+                };
                 diff.queue(&mut self.buffer)?;
                 modifier = cell.modifier;
             }
@@ -80,9 +89,13 @@ where
         ))
     }
 
-    fn hide_cursor(&mut self) -> io::Result<()> { map_error(execute!(self.buffer, Hide)) }
+    fn hide_cursor(&mut self) -> io::Result<()> {
+        map_error(execute!(self.buffer, Hide))
+    }
 
-    fn show_cursor(&mut self) -> io::Result<()> { map_error(execute!(self.buffer, Show)) }
+    fn show_cursor(&mut self) -> io::Result<()> {
+        map_error(execute!(self.buffer, Show))
+    }
 
     fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
         crossterm::cursor::position()
@@ -104,7 +117,9 @@ where
         Ok(Rect::new(0, 0, width, height))
     }
 
-    fn flush(&mut self) -> io::Result<()> { self.buffer.flush() }
+    fn flush(&mut self) -> io::Result<()> {
+        self.buffer.flush()
+    }
 }
 
 fn map_error(error: crossterm::Result<()>) -> io::Result<()> {
