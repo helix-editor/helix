@@ -96,20 +96,18 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
             begin += 1;
         }
 
-        if !skip_over_next(slice, &mut begin, |ch| ch == '\n') {
-            return None;
-        };
+        begin = skip_while(slice, begin, |ch| ch == '\n')?;
         ch = slice.char(begin);
 
         end = begin + 1;
 
         if is_word(ch) {
-            skip_over_next(slice, &mut end, is_word);
+            end = skip_while(slice, end, is_word)?;
         } else if is_punctuation(ch) {
-            skip_over_next(slice, &mut end, is_punctuation);
+            end = skip_while(slice, end, is_punctuation)?;
         }
 
-        skip_over_next(slice, &mut end, char::is_whitespace);
+        end = skip_while(slice, end, char::is_whitespace)?;
     }
 
     Some(Range::new(begin, end - 1))
@@ -166,21 +164,19 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
             begin += 1;
         }
 
-        if !skip_over_next(slice, &mut begin, |ch| ch == '\n') {
-            return None;
-        };
+        begin = skip_while(slice, begin, |ch| ch == '\n')?;
 
         end = begin;
 
-        skip_over_next(slice, &mut end, char::is_whitespace);
+        end = skip_while(slice, end, char::is_whitespace)?;
 
         // refetch
         let ch = slice.char(end);
 
         if is_word(ch) {
-            skip_over_next(slice, &mut end, is_word);
+            end = skip_while(slice, end, is_word)?;
         } else if is_punctuation(ch) {
-            skip_over_next(slice, &mut end, is_punctuation);
+            end = skip_while(slice, end, is_punctuation)?;
         }
     }
 
@@ -238,21 +234,16 @@ pub(crate) fn categorize(ch: char) -> Category {
 }
 
 #[inline]
-/// Returns true if there are more characters left after the new position.
-pub fn skip_over_next<F>(slice: RopeSlice, pos: &mut usize, fun: F) -> bool
+/// Returns first index that doesn't satisfy a given predicate when
+/// advancing the position
+///
+/// Returns none if all characters satisfy the predicate.
+pub fn skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<usize>
 where
     F: Fn(char) -> bool,
 {
-    let mut chars = slice.chars_at(*pos);
-
-    #[allow(clippy::while_let_on_iterator)]
-    while let Some(ch) = chars.next() {
-        if !fun(ch) {
-            break;
-        }
-        *pos += 1;
-    }
-    chars.next().is_some()
+    let mut chars = slice.chars_at(pos).enumerate();
+    chars.find_map(|(i, c)| if !fun(c) { Some(pos + i) } else { None })
 }
 
 #[inline]

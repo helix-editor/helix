@@ -1977,7 +1977,7 @@ pub fn format_selections(cx: &mut Context) {
 }
 
 pub fn join_selections(cx: &mut Context) {
-    use movement::skip_over_next;
+    use movement::skip_while;
     let (view, doc) = cx.current();
     let text = doc.text();
     let slice = doc.text().slice(..);
@@ -1998,7 +1998,7 @@ pub fn join_selections(cx: &mut Context) {
         for line in lines {
             let mut start = text.line_to_char(line + 1).saturating_sub(1);
             let mut end = start + 1;
-            skip_over_next(slice, &mut end, |ch| matches!(ch, ' ' | '\t'));
+            end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
             // need to skip from start, not end
             let change = (start, end, Some(fragment.clone()));
