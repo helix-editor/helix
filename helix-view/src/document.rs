@@ -141,21 +141,13 @@ impl Document {
 
     // TODO: async fn?
     pub fn load(path: PathBuf) -> Result<Self, Error> {
-        use std::{fs::File, io::BufReader};
-
-        let doc = if !path.exists() {
+        let text = if !path.exists() {
             Rope::from("\n")
         } else {
-            let file = File::open(&path).context(format!("unable to open {:?}", path))?;
-            let mut doc = Rope::from_reader(BufReader::new(file))?;
-            // add missing newline at the end of file
-            if doc.byte(doc.len_bytes() - 1) != b'\n' {
-                doc.insert_char(doc.len_chars(), '\n');
-            }
-            doc
+            read_file(&path)?
         };
 
-        let mut doc = Self::new(doc);
+        let mut doc = Self::new(text);
         // set the path and try detecting the language
         doc.set_path(&path)?;
 
@@ -163,13 +155,10 @@ impl Document {
     }
 
     pub fn reload(&mut self) -> Result<(), anyhow::Error> {
-        use std::{fs::File, io::BufReader};
-
         let path = self
             .path()
             .ok_or_else(|| Error::msg("unable to reload document without path"))?;
-        let file = File::open(path).context(format!("unable to open {:?}", path))?;
-        let text = Rope::from_reader(BufReader::new(file))?;
+        let text = read_file(path)?;
 
         self.changes = ChangeSet::new(&text);
         self.history = Cell::new(History::default());
@@ -553,6 +542,19 @@ impl Document {
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
     }
+}
+
+fn read_file(path: &Path) -> Result<Rope, Error> {
+    use std::{fs::File, io::BufReader};
+
+    let file = File::open(&path).context(format!("unable to open {:?}", path))?;
+    let mut text = Rope::from_reader(BufReader::new(file))?;
+
+    if text.byte(text.len_bytes() - 1) != b'\n' {
+        text.insert_char(text.len_chars(), '\n');
+    }
+
+    Ok(text)
 }
 
 #[cfg(test)]
