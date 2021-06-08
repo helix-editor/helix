@@ -167,11 +167,18 @@ impl Document {
 
         let path = self
             .path()
-            .ok_or(Error::msg("unable to reload document without path"))?;
+            .ok_or_else(|| Error::msg("unable to reload document without path"))?;
         let file = File::open(path).context(format!("unable to open {:?}", path))?;
         let text = Rope::from_reader(BufReader::new(file))?;
 
+        self.changes = ChangeSet::new(&text);
+        self.history = Cell::new(History::default());
+        self.last_saved_revision = 0;
+        self.old_state = None;
         self.text = text;
+        self.version = 0;
+
+        self.detect_language();
 
         Ok(())
     }
