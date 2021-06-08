@@ -114,16 +114,6 @@ pub fn move_vertically(
     range
 }
 
-fn skip_word_or_punctuation(slice: RopeSlice, begin: usize) -> usize {
-    if begin.is(Category::Word, slice) {
-        skip_while(slice, begin, is_word).unwrap_or(slice.len_chars().saturating_sub(1))
-    } else if begin.is(Category::Punctuation, slice) {
-        skip_while(slice, begin, is_punctuation).unwrap_or(slice.len_chars().saturating_sub(1))
-    } else {
-        begin
-    }
-}
-
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     let last_index = slice.len_chars().saturating_sub(1);
     let grouped_categories = [Category::Punctuation, Category::Word, Category::Whitespace];
