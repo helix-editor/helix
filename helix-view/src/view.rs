@@ -37,17 +37,24 @@ impl JumpList {
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {
         if self.current + count < self.jumps.len() {
             self.current += count;
-            return self.jumps.get(self.current);
+            self.jumps.get(self.current)
+        } else {
+            None
         }
-        None
     }
 
-    pub fn backward(&mut self, count: usize) -> Option<&Jump> {
-        if self.current.checked_sub(count).is_some() {
-            self.current -= count;
-            return self.jumps.get(self.current);
+    // Taking view and doc to prevent unnecessary cloning when jump is not required.
+    pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
+        if let Some(current) = self.current.checked_sub(count) {
+            if self.current == self.jumps.len() {
+                let jump = (doc.id(), doc.selection(view_id).clone());
+                self.push(jump);
+            }
+            self.current = current;
+            self.jumps.get(self.current)
+        } else {
+            None
         }
-        None
     }
 }
 

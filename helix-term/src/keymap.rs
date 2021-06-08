@@ -280,7 +280,10 @@ pub fn default() -> Keymaps {
 
         // z family for save/restore/combine from/to sels from register
 
-        ctrl!('i') => commands::jump_forward, // TODO: ctrl-i conflicts tab
+        KeyEvent { // supposedly ctrl!('i') but did not work
+            code: KeyCode::Tab,
+            modifiers: KeyModifiers::NONE,
+        } => commands::jump_forward,
         ctrl!('o') => commands::jump_backward,
         // ctrl!('s') => commands::save_selection,
 
