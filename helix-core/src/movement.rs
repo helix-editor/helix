@@ -88,11 +88,11 @@ pub fn move_next_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
 
         if is_word(ch) {
             skip_over_next(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            skip_over_next(slice, &mut end, is_punctuation);
         }
 
-        skip_over_next(slice, &mut end, is_horiz_blank);
+        skip_over_next(slice, &mut end, char::is_whitespace);
     }
 
     Some(Range::new(begin, end - 1))
@@ -119,15 +119,15 @@ pub fn move_prev_word_start(slice: RopeSlice, mut begin: usize, count: usize) ->
 
         end = begin;
 
-        with_end = skip_over_prev(slice, &mut end, is_horiz_blank);
+        with_end = skip_over_prev(slice, &mut end, char::is_whitespace);
 
         // refetch
         let ch = slice.char(end);
 
         if is_word(ch) {
             with_end = skip_over_prev(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            with_end = skip_over_prev(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            with_end = skip_over_prev(slice, &mut end, is_punctuation);
         }
     }
 
@@ -155,15 +155,15 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
         end = begin;
 
-        skip_over_next(slice, &mut end, is_horiz_blank);
+        skip_over_next(slice, &mut end, char::is_whitespace);
 
         // refetch
         let ch = slice.char(end);
 
         if is_word(ch) {
             skip_over_next(slice, &mut end, is_word);
-        } else if ch.is_ascii_punctuation() {
-            skip_over_next(slice, &mut end, |ch| ch.is_ascii_punctuation());
+        } else if is_punctuation(ch) {
+            skip_over_next(slice, &mut end, is_punctuation);
         }
     }
 
@@ -174,12 +174,28 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
 // used for by-word movement
 
+#[inline]
 pub(crate) fn is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
 
-pub(crate) fn is_horiz_blank(ch: char) -> bool {
-    matches!(ch, ' ' | '\t')
+#[inline]
+pub(crate) fn is_punctuation(ch: char) -> bool {
+    use unicode_general_category::{get_general_category, GeneralCategory};
+
+    matches!(
+        get_general_category(ch),
+        GeneralCategory::OtherPunctuation
+            | GeneralCategory::OpenPunctuation
+            | GeneralCategory::ClosePunctuation
+            | GeneralCategory::InitialPunctuation
+            | GeneralCategory::FinalPunctuation
+            | GeneralCategory::ConnectorPunctuation
+            | GeneralCategory::DashPunctuation
+            | GeneralCategory::MathSymbol
+            | GeneralCategory::CurrencySymbol
+            | GeneralCategory::ModifierSymbol
+    )
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -191,14 +207,15 @@ pub(crate) enum Category {
     Unknown,
 }
 
+#[inline]
 pub(crate) fn categorize(ch: char) -> Category {
     if ch == '\n' {
         Category::Eol
-    } else if ch.is_ascii_whitespace() {
+    } else if ch.is_whitespace() {
         Category::Whitespace
     } else if is_word(ch) {
         Category::Word
-    } else if ch.is_ascii_punctuation() {
+    } else if is_punctuation(ch) {
         Category::Punctuation
     } else {
         Category::Unknown
@@ -213,6 +230,7 @@ where
 {
     let mut chars = slice.chars_at(*pos);
 
+    #[allow(clippy::while_let_on_iterator)]
     while let Some(ch) = chars.next() {
         if !fun(ch) {
             break;
@@ -231,6 +249,7 @@ where
     // need to +1 so that prev() includes current char
     let mut chars = slice.chars_at(*pos + 1);
 
+    #[allow(clippy::while_let_on_iterator)]
     while let Some(ch) = chars.prev() {
         if !fun(ch) {
             break;
@@ -258,5 +277,45 @@ mod test {
             ),
             (1, 2).into()
         );
+    }
+
+    #[test]
+    fn test_categorize() {
+        const WORD_TEST_CASE: &'static str =
+            "_hello_world_あいうえおー1234567890１２３４５６７８９０";
+        const PUNCTUATION_TEST_CASE: &'static str = "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、。：；＜＝＞？＠「」＾｀｛｜｝～";
+        const WHITESPACE_TEST_CASE: &'static str = "  　   ";
+
+        assert_eq!(Category::Eol, categorize('\n'));
+
+        for ch in WHITESPACE_TEST_CASE.chars() {
+            assert_eq!(
+                Category::Whitespace,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Whitespace`",
+                ch,
+                categorize(ch)
+            );
+        }
+
+        for ch in WORD_TEST_CASE.chars() {
+            assert_eq!(
+                Category::Word,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Word`",
+                ch,
+                categorize(ch)
+            );
+        }
+
+        for ch in PUNCTUATION_TEST_CASE.chars() {
+            assert_eq!(
+                Category::Punctuation,
+                categorize(ch),
+                "Testing '{}', but got `{:?}` instead of `Category::Punctuation`",
+                ch,
+                categorize(ch)
+            );
+        }
     }
 }

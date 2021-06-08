@@ -758,7 +758,7 @@ mod test {
 
     #[test]
     fn combine_with_utf8() {
-        const TEST_CASE: &'static str = "Hello, これはヒレクスエディターです！";
+        const TEST_CASE: &'static str = "Hello, これはヘリックスエディターです！";
 
         let empty = Rope::from("");
         let mut a = ChangeSet::new(&empty);

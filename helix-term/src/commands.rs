@@ -654,9 +654,10 @@ pub fn split_selection_on_newline(cx: &mut Context) {
 fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
     let selection = doc.selection(view.id);
-    let start = selection.cursor();
+    let start = text.char_to_byte(selection.cursor());
 
     // use find_at to find the next match after the cursor, loop around the end
+    // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mat = regex
         .find_at(contents, start)
         .or_else(|| regex.find(contents));
@@ -670,7 +671,7 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
             return;
         }
 
-        let head = end;
+        let head = end - 1;
 
         let selection = if extend {
             selection.clone().push(Range::new(start, head))
@@ -1027,7 +1028,7 @@ pub fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".to_owned(),
         |input: &str| {
-            // we use .this over split_ascii_whitespace() because we care about empty segments
+            // we use .this over split_whitespace() because we care about empty segments
             let parts = input.split(' ').collect::<Vec<&str>>();
 
             // simple heuristic: if there's no just one part, complete command name.
@@ -1069,7 +1070,7 @@ pub fn command_mode(cx: &mut Context) {
                 return;
             }
 
-            let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
+            let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
             }
