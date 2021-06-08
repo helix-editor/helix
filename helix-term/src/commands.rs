@@ -1308,7 +1308,7 @@ pub fn normal_mode(cx: &mut Context) {
 // Store a jump on the jumplist.
 fn push_jump(editor: &mut Editor) {
     let (view, doc) = editor.current();
-    let jump = { (doc.id(), doc.selection(view.id).clone()) };
+    let jump = (doc.id(), doc.selection(view.id).clone());
     view.jumps.push(jump);
 }
 
@@ -2446,7 +2446,7 @@ pub fn jump_backward(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = cx.current();
 
-    if let Some((id, selection)) = view.jumps.backward(count) {
+    if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         view.doc = *id;
         let selection = selection.clone();
         let (view, doc) = cx.current(); // refetch doc
