@@ -1,5 +1,5 @@
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char2, find_root, graphemes, indent,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
@@ -224,7 +224,7 @@ pub fn move_first_nonwhitespace(cx: &mut Context) {
         let text = doc.text();
         let line_idx = text.char_to_line(range.head);
 
-        if let Some(pos) = find_first_non_whitespace_char2(text.line(line_idx)) {
+        if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
             let pos = pos + text.line_to_char(line_idx);
             Range::new(pos, pos)
         } else {
@@ -447,7 +447,7 @@ pub fn extend_first_nonwhitespace(cx: &mut Context) {
         let text = doc.text();
         let line_idx = text.char_to_line(range.head);
 
-        if let Some(pos) = find_first_non_whitespace_char2(text.line(line_idx)) {
+        if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
             let pos = pos + text.line_to_char(line_idx);
             Range::new(range.anchor, pos)
         } else {
