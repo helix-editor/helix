@@ -6,6 +6,12 @@
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
     naersk.url = "github:nmattia/naersk";
+    helix = {
+      flake = false;
+      url = "https://github.com/helix-editor/helix";
+      type = "git";
+      submodules = true;
+    };
   };
 
   outputs = inputs@{ self, nixpkgs, naersk, rust-overlay, flake-utils, ... }:
@@ -25,7 +31,7 @@
       in rec {
         packages.helix = naerskLib.buildPackage {
           pname = "helix";
-          root = ./.;
+          root = inputs.helix;
         };
         defaultPackage = packages.helix;
         devShell = pkgs.callPackage ./shell.nix {};
