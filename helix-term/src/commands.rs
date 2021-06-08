@@ -1,5 +1,6 @@
 use helix_core::{
-    comment, coords_at_pos, find_root, graphemes, indent, match_brackets,
+    comment, coords_at_pos, find_first_non_whitespace_char2, find_root, graphemes, indent,
+    match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -216,6 +217,24 @@ pub fn move_line_start(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+pub fn move_first_nonwhitespace(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line_idx = text.char_to_line(range.head);
+
+        if let Some(pos) = find_first_non_whitespace_char2(text.line(line_idx)) {
+            let pos = pos + text.line_to_char(line_idx);
+            Range::new(pos, pos)
+        } else {
+            range
+        }
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
 // TODO: move vs extend could take an extra type Extend/Move that would
 // Range::new(if Move { pos } if Extend { range.anchor }, pos)
 // since these all really do the same thing
@@ -419,6 +438,24 @@ pub fn extend_prev_char(cx: &mut Context) {
         true, /* inclusive */
         true, /* extend */
     )
+}
+
+pub fn extend_first_nonwhitespace(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line_idx = text.char_to_line(range.head);
+
+        if let Some(pos) = find_first_non_whitespace_char2(text.line(line_idx)) {
+            let pos = pos + text.line_to_char(line_idx);
+            Range::new(range.anchor, pos)
+        } else {
+            range
+        }
+    });
+
+    doc.set_selection(view.id, selection);
 }
 
 pub fn replace(cx: &mut Context) {
@@ -1287,6 +1324,8 @@ pub fn goto_mode(cx: &mut Context) {
                 (_, 'y') => goto_type_definition(cx),
                 (_, 'r') => goto_reference(cx),
                 (_, 'i') => goto_implementation(cx),
+                (Mode::Normal, 's') => move_first_nonwhitespace(cx),
+                (Mode::Select, 's') => extend_first_nonwhitespace(cx),
 
                 (_, 't') | (_, 'm') | (_, 'b') => {
                     let (view, doc) = cx.current();
