@@ -698,9 +698,8 @@ impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         match event {
             Event::Resize(width, height) => {
-                // HAXX: offset the render area height by 1 to account for prompt/commandline
-                cx.editor
-                    .resize(Rect::new(0, 0, width, height.saturating_sub(1)));
+                // Ignore this event, we handle resizing just before rendering to screen.
+                // Handling it here but not re-rendering will cause flashing
                 EventResult::Consumed(None)
             }
             Event::Key(key) => {
