@@ -15,6 +15,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
+use helix_core::search::Searcher;
 use helix_core::syntax;
 use helix_core::Position;
 
@@ -31,6 +32,7 @@ pub struct Editor {
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
+    pub search: Option<Searcher>,
 
     pub status_msg: Option<(String, Severity)>,
 }
@@ -65,6 +67,7 @@ impl Editor {
             theme_loader: themes,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
+            search: None,
             status_msg: None,
         }
     }

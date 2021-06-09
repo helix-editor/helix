@@ -697,7 +697,7 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         match event {
-            Event::Resize(width, height) => {
+            Event::Resize(_width, _height) => {
                 // Ignore this event, we handle resizing just before rendering to screen.
                 // Handling it here but not re-rendering will cause flashing
                 EventResult::Consumed(None)

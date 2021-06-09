@@ -44,10 +44,10 @@ pub fn find_nth_prev(text: RopeSlice, ch: char, mut pos: usize, n: usize) -> Opt
     Some(pos)
 }
 
-use crate::movement::Direction;
 use regex_automata::{dense, DenseDFA, Error as RegexError, DFA};
 use std::ops::Range;
 
+#[derive(Debug)]
 pub struct Searcher {
     /// Locate end of match searching right.
     right_fdfa: DenseDFA<Vec<usize>, usize>,

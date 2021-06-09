@@ -417,8 +417,7 @@ impl Default for Keymaps {
             "/" => search,
             // ? for search_reverse
             "n" => search_next,
-            "N" => extend_search_next,
-            // N for search_prev
+            "N" => search_prev,
             "*" => search_selection,
 
             "u" => undo,
@@ -521,6 +520,9 @@ impl Default for Keymaps {
             "f" => extend_next_char,
             "T" => extend_till_prev_char,
             "F" => extend_prev_char,
+
+            "n" => extend_search_next,
+            "N" => extend_search_prev,
 
             "home" => goto_line_start,
             "end" => goto_line_end,
