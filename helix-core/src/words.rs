@@ -1,19 +1,14 @@
-use crate::movement::{
-    backwards_skip_while, categorize, is_end_of_line, is_punctuation, is_word, Category,
-    SliceIndexHelpers,
-};
+use crate::movement::{enumerated_chars, EnumeratedCharHelpers};
 use ropey::RopeSlice;
 
 #[must_use]
 pub fn nth_prev_word_boundary(slice: RopeSlice, index: usize, count: usize) -> usize {
-    (0..count).fold(index, |mut index, _| {
-        index = backwards_skip_while(slice, index, is_end_of_line).unwrap_or(index);
-        index = backwards_skip_while(slice, index, char::is_whitespace).unwrap_or(index);
-        let category = index.category(slice).unwrap_or(Category::Unknown);
-        backwards_skip_while(slice, index, |c| categorize(c) == category)
-            .map(|i| i + 1)
-            .unwrap_or(0)
-    })
+    (0..count)
+        .try_fold(index, |index, _| {
+            let (_, backwards) = enumerated_chars(&slice, index);
+            backwards.skip_newlines().end_of_word()
+        })
+        .unwrap_or(0)
 }
 
 #[test]
