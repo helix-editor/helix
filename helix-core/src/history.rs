@@ -117,7 +117,7 @@ impl History {
         self.current = last_child;
 
         let last_child_revision = &self.revisions[last_child];
-        return Some(&self.revisions[last_child].transaction);
+        Some(&self.revisions[last_child].transaction)
     }
 
     fn lowest_common_ancestor(&self, mut a: usize, mut b: usize) -> usize {
