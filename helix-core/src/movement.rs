@@ -18,34 +18,55 @@ pub enum SelectionBehaviour {
     Displace,
 }
 
-pub trait SliceHelpers {
+pub trait SliceIndexHelpers {
     fn outside(&self, text: RopeSlice) -> bool;
+    fn inside(&self, text: RopeSlice) -> bool;
     /// The next character after this belongs
     /// to a different `Category`
-    fn is_category_boundary(&self, text: RopeSlice) -> bool;
+    fn is_boundary(&self, text: RopeSlice) -> bool;
     fn is(&self, category: Category, text: RopeSlice) -> bool;
     fn category(&self, text: RopeSlice) -> Option<Category>;
+    fn end_of_block(&self, text: RopeSlice) -> Self;
+    fn skip_newlines(&self, text: RopeSlice) -> Self;
 }
 
-impl SliceHelpers for usize {
-    fn outside(&self, text: RopeSlice) -> bool {
-        *self >= text.len_chars()
+impl SliceIndexHelpers for usize {
+    fn inside(&self, text: RopeSlice) -> bool {
+        *self < text.len_chars()
     }
 
-    fn is_category_boundary(&self, text: RopeSlice) -> bool {
-        !(self + 1).outside(text) && categorize(text.char(*self)) != categorize(text.char(self + 1))
+    fn outside(&self, text: RopeSlice) -> bool {
+        !self.inside(text)
+    }
+
+    fn is_boundary(&self, text: RopeSlice) -> bool {
+        (self + 1).inside(text)
+            && (categorize(text.char(*self)) != categorize(text.char(self + 1)))
     }
 
     fn is(&self, category: Category, text: RopeSlice) -> bool {
-        !self.outside(text) && categorize(text.char(*self)) == category
+        self.inside(text) && categorize(text.char(*self)) == category
     }
 
     fn category(&self, text: RopeSlice) -> Option<Category> {
-        if self.outside(text) {
-            None
-        } else {
-            Some(categorize(text.char(*self)))
-        }
+        self.inside(text).then(||categorize(text.char(*self)))
+    }
+
+    // End of a word/punctuation group followed by any amount of whitespace.
+    fn end_of_block(&self, slice: RopeSlice) -> Self {
+        (*self..slice.len_chars().saturating_sub(1))
+            .skip_while(|i| is_end_of_line(slice.char(*i)))
+            .find(|pos| pos.is_boundary(slice)
+                  && !(slice.char(*pos + 1).is_whitespace()
+                       && !is_end_of_line(slice.char(*pos + 1)))
+            )
+            .unwrap_or(slice.len_chars().saturating_sub(1))
+    }
+
+    fn skip_newlines(&self, text: RopeSlice) -> Self {
+        (*self..text.len_chars().saturating_sub(1))
+            .find(|i| !is_end_of_line(text.char(*i)))
+            .unwrap_or(text.len_chars().saturating_sub(1))
     }
 }
 
@@ -115,30 +136,21 @@ pub fn move_vertically(
 }
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let last_index = slice.len_chars().saturating_sub(1);
-    let grouped_categories = [Category::Punctuation, Category::Word, Category::Whitespace];
-
-    let movement = |mut range: Range| -> Option<Range> {
-        range.anchor = if range.head.is_category_boundary(slice) {
-            range.head + 1
-        } else {
-            range.head
-        };
-        range.anchor = skip_while(slice, range.anchor, is_end_of_line).unwrap_or(last_index);
-        range.head = skip_while(slice, range.anchor, is_strict_whitespace).unwrap_or(range.anchor);
-        let category = range.anchor.category(slice)?;
-        if grouped_categories.contains(&category) {
-            range.head = skip_while(slice, range.head, |c| categorize(c) == category)?;
-            range.head = skip_while(slice, range.head, is_strict_whitespace)?.saturating_sub(1);
-        }
-        Some(range)
+    let movement = |range: Range| -> Option<Range> {
+        let after_head = (range.head + 1).skip_newlines(slice);
+        (after_head + 1).inside(slice).then(|| {
+            let boundary = range.head.is_boundary(slice);
+            let new_anchor = if boundary { after_head } else { range.head };
+            let new_head = (range.head + 1).end_of_block(slice);
+            Some(Range::new(new_anchor, new_head))
+        })?
     };
     (0..count).fold(range, |range, _| movement(range).unwrap_or(range))
 }
 
 pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     let movement = |mut range: Range| -> Option<Range> {
-        range.anchor = if range.head.saturating_sub(1).is_category_boundary(slice) {
+        range.anchor = if range.head.saturating_sub(1).is_boundary(slice) {
             range.head.saturating_sub(1)
         } else {
             range.head
@@ -593,7 +605,7 @@ mod test {
                 ]),
             ("Excessive motions are performed partially",
                 vec![
-                    (Motion::NextStart(999), Range::new(0, 0), Range::new(22, 31)),
+                    (Motion::NextStart(999), Range::new(0, 0), Range::new(32, 40)),
                 ]),
             // TODO Consider whether this is desirable. Rather than silently failing,
             // it may be worth improving the API so it returns expressive results.
@@ -607,7 +619,7 @@ mod test {
                 ]),
             ("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
-                    (Motion::NextStart(1), Range::new(0, 0), Range::new(4, 4)),
+                    (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 0)),
                 ]),
             ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
                 vec![

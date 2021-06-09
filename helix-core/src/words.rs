@@ -1,6 +1,6 @@
 use crate::movement::{
     backwards_skip_while, categorize, is_end_of_line, is_punctuation, is_word, Category,
-    SliceHelpers,
+    SliceIndexHelpers,
 };
 use ropey::RopeSlice;
 
