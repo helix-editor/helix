@@ -13,10 +13,14 @@ use helix_core::{
 };
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 use std::borrow::Cow;
+use std::num::NonZeroUsize;
 
 use crossterm::{
     cursor,
-    event::{read, Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
+    event::{
+        read, Event, EventStream, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
+        MouseEventKind,
+    },
 };
 use tui::{
     backend::CrosstermBackend,
@@ -576,6 +580,40 @@ impl Component for EditorView {
             Event::Resize(width, height) => {
                 // HAXX: offset the render area height by 1 to account for prompt/commandline
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
+                EventResult::Consumed(None)
+            }
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                ..
+            }) => {
+                let mut cxt = commands::Context {
+                    register: helix_view::RegisterSelection::default(),
+                    editor: &mut cx.editor,
+                    _count: Some(NonZeroUsize::new(1).unwrap()),
+                    callback: None,
+                    on_next_key_callback: None,
+                    callbacks: cx.callbacks,
+                };
+
+                commands::move_line_down(&mut cxt);
+
+                EventResult::Consumed(None)
+            }
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                ..
+            }) => {
+                let mut cxt = commands::Context {
+                    register: helix_view::RegisterSelection::default(),
+                    editor: &mut cx.editor,
+                    _count: Some(NonZeroUsize::new(1).unwrap()),
+                    callback: None,
+                    on_next_key_callback: None,
+                    callbacks: cx.callbacks,
+                };
+
+                commands::move_line_up(&mut cxt);
+
                 EventResult::Consumed(None)
             }
             Event::Key(mut key) => {
