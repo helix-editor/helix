@@ -182,7 +182,7 @@ impl SliceIndexHelpers for usize {
                     && (!pos.is_whitespace(slice) || (pos + 1).is_end_of_line(slice))
             })
             // If not found, return the end of the range
-            .unwrap_or(slice.len_chars().saturating_sub(1))
+            .unwrap_or_else(|| slice.len_chars().saturating_sub(1))
     }
 
     fn end_of_block(&self, slice: RopeSlice) -> Self {
@@ -194,10 +194,10 @@ impl SliceIndexHelpers for usize {
             // Find the first boundary that doesn't go into whitespace or EOL
             .find(|pos| {
                 pos.is_boundary(slice)
-                    && !(slice.char(*pos + 1).is_whitespace() && !(pos + 1).is_end_of_line(slice))
+                    &&((pos + 1).is_end_of_line(slice) || !slice.char(*pos + 1).is_whitespace())
             })
             // If not found, return the end of the range
-            .unwrap_or(slice.len_chars().saturating_sub(1))
+            .unwrap_or_else(|| slice.len_chars().saturating_sub(1))
     }
 
     fn start_of_block(&self, slice: RopeSlice) -> Self {
@@ -217,7 +217,7 @@ impl SliceIndexHelpers for usize {
     }
 
     fn skip_newlines(&self, slice: RopeSlice) -> Self {
-        skip_while(slice, *self, is_end_of_line).unwrap_or(slice.len_chars().saturating_sub(1))
+        skip_while(slice, *self, is_end_of_line).unwrap_or_else(|| slice.len_chars().saturating_sub(1))
     }
 
     fn backwards_skip_newlines(&self, slice: RopeSlice) -> Self {
