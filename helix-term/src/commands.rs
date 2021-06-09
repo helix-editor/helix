@@ -230,7 +230,7 @@ pub fn move_next_word_end(cx: &mut Context) {
 
     let selection = doc
         .selection(view.id)
-        .transform(|range| movement::move_next_word_end(text, range.head, count).unwrap_or(range));
+        .transform(|range| movement::move_next_word_end(text, range, count));
 
     doc.set_selection(view.id, selection);
 }
@@ -282,7 +282,7 @@ pub fn extend_next_word_end(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let word = movement::move_next_word_end(text, range.head, count).unwrap_or(range);
+        let word = movement::move_next_word_end(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
     });
