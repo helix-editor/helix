@@ -13,21 +13,25 @@ pub enum Direction {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub enum SelectionBehaviour {
+pub enum Movement {
     Extend,
-    Displace,
+    Move,
 }
 
+/// Private helpers to help manipulate slice indices
 pub trait SliceIndexHelpers {
     fn outside(&self, text: RopeSlice) -> bool;
     fn inside(&self, text: RopeSlice) -> bool;
     /// The next character after this belongs
     /// to a different `Category`
     fn is_boundary(&self, text: RopeSlice) -> bool;
-    fn is(&self, category: Category, text: RopeSlice) -> bool;
     fn category(&self, text: RopeSlice) -> Option<Category>;
+    /// Returns the start of a word/punctuation group followed by any amount of whitespace.
+    fn start_of_block(&self, text: RopeSlice) -> Self;
+    /// Returns the of a word/punctuation group followed by any amount of whitespace.
     fn end_of_block(&self, text: RopeSlice) -> Self;
     fn skip_newlines(&self, text: RopeSlice) -> Self;
+    fn backwards_skip_newlines(&self, text: RopeSlice) -> Self;
 }
 
 impl SliceIndexHelpers for usize {
@@ -40,33 +44,51 @@ impl SliceIndexHelpers for usize {
     }
 
     fn is_boundary(&self, text: RopeSlice) -> bool {
-        (self + 1).inside(text)
-            && (categorize(text.char(*self)) != categorize(text.char(self + 1)))
-    }
-
-    fn is(&self, category: Category, text: RopeSlice) -> bool {
-        self.inside(text) && categorize(text.char(*self)) == category
+        (self + 1).inside(text) && (categorize(text.char(*self)) != categorize(text.char(self + 1)))
     }
 
     fn category(&self, text: RopeSlice) -> Option<Category> {
-        self.inside(text).then(||categorize(text.char(*self)))
+        self.inside(text).then(|| categorize(text.char(*self)))
     }
 
-    // End of a word/punctuation group followed by any amount of whitespace.
     fn end_of_block(&self, slice: RopeSlice) -> Self {
-        (*self..slice.len_chars().saturating_sub(1))
+        // Scan the entire slice
+        (*self..slice.len_chars())
+            // Skip any initial newlines, as they must be skipped over for
+            // the purposes of word movement
             .skip_while(|i| is_end_of_line(slice.char(*i)))
-            .find(|pos| pos.is_boundary(slice)
-                  && !(slice.char(*pos + 1).is_whitespace()
-                       && !is_end_of_line(slice.char(*pos + 1)))
-            )
+            // Find the first boundary that doesn't go into whitespace or EOL
+            .find(|pos| {
+                pos.is_boundary(slice)
+                    && !(slice.char(*pos + 1).is_whitespace()
+                        && !is_end_of_line(slice.char(*pos + 1)))
+            })
+            // If not found, return the end of the range
             .unwrap_or(slice.len_chars().saturating_sub(1))
     }
 
+    fn start_of_block(&self, slice: RopeSlice) -> Self {
+        // Scan the entire slice backwards, skipping any initial newlines,
+        // as they must be skipped over for the purposes of word movement
+        (0..=self.backwards_skip_newlines(slice))
+            .rev()
+            // Skip any and all whitespace that isn't preceded by newlines
+            // (Whitespace preceded by a newline forms a block)
+            .skip_while(|pos| {
+                is_strict_whitespace(slice.char(*pos))
+                    && !is_end_of_line(slice.char(pos.saturating_sub(1)))
+            })
+            // Find the first boundary
+            .find(|pos| pos.saturating_sub(1).is_boundary(slice))
+            .unwrap_or(0)
+    }
+
     fn skip_newlines(&self, text: RopeSlice) -> Self {
-        (*self..text.len_chars().saturating_sub(1))
-            .find(|i| !is_end_of_line(text.char(*i)))
-            .unwrap_or(text.len_chars().saturating_sub(1))
+        skip_while(text, *self, is_end_of_line).unwrap_or(text.len_chars().saturating_sub(1))
+    }
+
+    fn backwards_skip_newlines(&self, text: RopeSlice) -> Self {
+        backwards_skip_while(text, *self, is_end_of_line).unwrap_or(0)
     }
 }
 
@@ -75,7 +97,7 @@ pub fn move_horizontally(
     range: Range,
     dir: Direction,
     count: usize,
-    behaviour: SelectionBehaviour,
+    behaviour: Movement,
 ) -> Range {
     let pos = range.head;
     let line = text.char_to_line(pos);
@@ -93,8 +115,8 @@ pub fn move_horizontally(
         }
     };
     let anchor = match behaviour {
-        SelectionBehaviour::Extend => range.anchor,
-        SelectionBehaviour::Displace => pos,
+        Movement::Extend => range.anchor,
+        Movement::Move => pos,
     };
     Range::new(anchor, pos)
 }
@@ -104,7 +126,7 @@ pub fn move_vertically(
     range: Range,
     dir: Direction,
     count: usize,
-    behaviour: SelectionBehaviour,
+    behaviour: Movement,
 ) -> Range {
     let Position { row, col } = coords_at_pos(text, range.head);
 
@@ -126,8 +148,8 @@ pub fn move_vertically(
     let pos = pos_at_coords(text, Position::new(new_line, new_col));
 
     let anchor = match behaviour {
-        SelectionBehaviour::Extend => range.anchor,
-        SelectionBehaviour::Displace => pos,
+        Movement::Extend => range.anchor,
+        Movement::Move => pos,
     };
 
     let mut range = Range::new(anchor, pos);
@@ -139,8 +161,11 @@ pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     let movement = |range: Range| -> Option<Range> {
         let after_head = (range.head + 1).skip_newlines(slice);
         (after_head + 1).inside(slice).then(|| {
-            let boundary = range.head.is_boundary(slice);
-            let new_anchor = if boundary { after_head } else { range.head };
+            let new_anchor = if range.head.is_boundary(slice) {
+                after_head
+            } else {
+                range.head.skip_newlines(slice)
+            };
             let new_head = (range.head + 1).end_of_block(slice);
             Some(Range::new(new_anchor, new_head))
         })?
@@ -149,19 +174,16 @@ pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 }
 
 pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let movement = |mut range: Range| -> Option<Range> {
-        range.anchor = if range.head.saturating_sub(1).is_boundary(slice) {
-            range.head.saturating_sub(1)
-        } else {
-            range.head
-        };
-
-        range.anchor = backwards_skip_while(slice, range.anchor, is_end_of_line).unwrap_or(0);
-        let category = range.anchor.category(slice)?;
-        range.head = backwards_skip_while(slice, range.anchor, |c| categorize(c) == category)
-            .map(|h| h + 1)
-            .unwrap_or(0);
-        Some(range)
+    let movement = |range: Range| -> Option<Range> {
+        (range.head > 0 && range.head.inside(slice)).then(|| {
+            let new_anchor = if range.head.saturating_sub(1).is_boundary(slice) {
+                (range.head.saturating_sub(1)).backwards_skip_newlines(slice)
+            } else {
+                range.head.backwards_skip_newlines(slice)
+            };
+            let new_head = range.head.saturating_sub(1).start_of_block(slice);
+            Some(Range::new(new_anchor, new_head))
+        })?
     };
     (0..count).fold(range, |range, _| movement(range).unwrap_or(range))
 }
@@ -338,14 +360,7 @@ mod test {
         assert_eq!(
             coords_at_pos(
                 slice,
-                move_vertically(
-                    slice,
-                    range,
-                    Direction::Forward,
-                    1,
-                    SelectionBehaviour::Displace
-                )
-                .head
+                move_vertically(slice, range, Direction::Forward, 1, Movement::Move).head
             ),
             (1, 2).into()
         );
@@ -357,7 +372,7 @@ mod test {
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
 
-        let mut range = Range::single(position);
+        let mut range = Range::point(position);
 
         let moves_and_expected_coordinates = [
             ((Direction::Forward, 1usize), (0, 1)),
@@ -369,13 +384,7 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in IntoIter::new(moves_and_expected_coordinates) {
-            range = move_horizontally(
-                slice,
-                range,
-                direction,
-                amount,
-                SelectionBehaviour::Displace,
-            );
+            range = move_horizontally(slice, range, direction, amount, Movement::Move);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
         }
     }
@@ -386,7 +395,7 @@ mod test {
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
 
-        let mut range = Range::single(position);
+        let mut range = Range::point(position);
 
         let moves_and_expected_coordinates = IntoIter::new([
             ((Direction::Forward, 1usize), (0, 1)),    // M_ltiline
@@ -401,13 +410,7 @@ mod test {
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(
-                slice,
-                range,
-                direction,
-                amount,
-                SelectionBehaviour::Displace,
-            );
+            range = move_horizontally(slice, range, direction, amount, Movement::Move);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -419,7 +422,7 @@ mod test {
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
 
-        let mut range = Range::single(position);
+        let mut range = Range::point(position);
         let original_anchor = range.anchor;
 
         let moves = IntoIter::new([
@@ -429,7 +432,7 @@ mod test {
         ]);
 
         for (direction, amount) in moves {
-            range = move_horizontally(slice, range, direction, amount, SelectionBehaviour::Extend);
+            range = move_horizontally(slice, range, direction, amount, Movement::Extend);
             assert_eq!(range.anchor, original_anchor);
         }
     }
@@ -439,7 +442,7 @@ mod test {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = dbg!(&text).slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
-        let mut range = Range::single(position);
+        let mut range = Range::point(position);
         let moves_and_expected_coordinates = IntoIter::new([
             ((Direction::Forward, 1usize), (1, 0)),
             ((Direction::Forward, 2usize), (3, 0)),
@@ -452,13 +455,7 @@ mod test {
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_vertically(
-                slice,
-                range,
-                direction,
-                amount,
-                SelectionBehaviour::Displace,
-            );
+            range = move_vertically(slice, range, direction, amount, Movement::Move);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -469,7 +466,7 @@ mod test {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
-        let mut range = Range::single(position);
+        let mut range = Range::point(position);
 
         enum Axis {
             H,
@@ -491,20 +488,8 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(
-                    slice,
-                    range,
-                    direction,
-                    amount,
-                    SelectionBehaviour::Displace,
-                ),
-                Axis::V => move_vertically(
-                    slice,
-                    range,
-                    direction,
-                    amount,
-                    SelectionBehaviour::Displace,
-                ),
+                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move),
+                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
@@ -516,7 +501,7 @@ mod test {
         let text = Rope::from(MULTIBYTE_CHARACTER_SAMPLE);
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
-        let mut range = Range::single(position);
+        let mut range = Range::point(position);
 
         // FIXME: The behaviour captured in this test diverges from both Kakoune and Vim. These
         // will attempt to preserve the horizontal position of the cursor, rather than
@@ -534,20 +519,8 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(
-                    slice,
-                    range,
-                    direction,
-                    amount,
-                    SelectionBehaviour::Displace,
-                ),
-                Axis::V => move_vertically(
-                    slice,
-                    range,
-                    direction,
-                    amount,
-                    SelectionBehaviour::Displace,
-                ),
+                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move),
+                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
@@ -594,6 +567,10 @@ mod test {
                 vec![
                     (Motion::NextStart(1), Range::new(0, 0), Range::new(0, 7)),
                     (Motion::NextStart(1), Range::new(0, 7), Range::new(10, 13)),
+                ]),
+            ("Jumping\n\n\n\n\n\n   from newlines to whitespace selects whitespace.",
+                vec![
+                    (Motion::NextStart(1), Range::new(0, 8), Range::new(13, 15)),
                 ]),
             ("A failed motion does not modify the range",
                 vec![
@@ -667,12 +644,62 @@ mod test {
                 vec![(Motion::PrevStart(1), Range::new(0, 13), Range::new(11, 8))]),
             ("Jumping to start of word from the end selects the word",
                 vec![(Motion::PrevStart(1), Range::new(6, 6), Range::new(6, 0))]),
-
             ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
                 vec![
                     (Motion::PrevStart(1), Range::new(30, 30), Range::new(30, 21)),
                     (Motion::PrevStart(1), Range::new(30, 21), Range::new(20, 18)),
                     (Motion::PrevStart(1), Range::new(20, 18), Range::new(17, 15))
+                ]),
+
+            ("...   ... punctuation and spaces behave as expected",
+                vec![
+                    (Motion::PrevStart(1), Range::new(0, 10), Range::new(9, 6)),
+                    (Motion::PrevStart(1), Range::new(9, 6), Range::new(5, 0)),
+                ]),
+            (".._.._ punctuation is not joined by underscores into a single block",
+                vec![(Motion::PrevStart(1), Range::new(0, 5), Range::new(4, 3))]),
+            ("Newlines\n\nare bridged seamlessly.",
+                vec![
+                    (Motion::PrevStart(1), Range::new(0, 10), Range::new(7, 0)),
+                ]),
+            ("Jumping    \n\n\n\n\nback from within a newline group selects previous block",
+                vec![
+                    (Motion::PrevStart(1), Range::new(0, 13), Range::new(10, 0)),
+                ]),
+            ("Failed motions do not modify the range",
+                vec![
+                    (Motion::PrevStart(0), Range::new(3, 0), Range::new(3, 0)),
+                ]),
+            ("Multiple motions at once resolve correctly",
+                vec![
+                    (Motion::PrevStart(3), Range::new(18, 18), Range::new(8, 0)),
+                ]),
+            ("Excessive motions are performed partially",
+                vec![
+                    (Motion::PrevStart(999), Range::new(40, 40), Range::new(9, 0)),
+                ]),
+            // TODO Consider whether this is desirable. Rather than silently failing,
+            // it may be worth improving the API so it returns expressive results.
+            ("Attempting to move from outside bounds fails without panic",
+                vec![
+                    (Motion::PrevStart(1), Range::new(9999, 9999), Range::new(9999, 9999)),
+                ]),
+            ("", // Edge case of moving backwards in empty string
+                vec![
+                    (Motion::PrevStart(1), Range::new(0, 0), Range::new(0, 0)),
+                ]),
+            ("\n\n\n\n\n", // Edge case of moving backwards in all newlines
+                vec![
+                    (Motion::PrevStart(1), Range::new(0, 3), Range::new(0, 0)),
+                ]),
+            ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
+                vec![
+                    (Motion::PrevStart(1), Range::new(0, 7), Range::new(6, 4)),
+                    (Motion::PrevStart(1), Range::new(6, 4), Range::new(2, 0)),
+                ]),
+            ("ヒーリクス multibyte characters behave as normal characters",
+                vec![
+                    (Motion::PrevStart(1), Range::new(0, 5), Range::new(4, 0)),
                 ]),
         ]);
 

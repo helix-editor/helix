@@ -18,6 +18,7 @@ use helix_lsp::{
     util::{lsp_pos_to_pos, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
+use movement::Movement;
 
 use crate::{
     compositor::{Callback, Component, Compositor},
@@ -128,13 +129,7 @@ pub fn move_char_left(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            movement::SelectionBehaviour::Displace,
-        )
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -144,13 +139,7 @@ pub fn move_char_right(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            movement::SelectionBehaviour::Displace,
-        )
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -160,13 +149,7 @@ pub fn move_line_up(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            movement::SelectionBehaviour::Displace,
-        )
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -176,13 +159,7 @@ pub fn move_line_down(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            movement::SelectionBehaviour::Displace,
-        )
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -517,13 +494,7 @@ pub fn extend_char_left(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            movement::SelectionBehaviour::Extend,
-        )
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -533,13 +504,7 @@ pub fn extend_char_right(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            movement::SelectionBehaviour::Extend,
-        )
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -549,13 +514,7 @@ pub fn extend_line_up(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            movement::SelectionBehaviour::Extend,
-        )
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -565,13 +524,7 @@ pub fn extend_line_down(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            movement::SelectionBehaviour::Extend,
-        )
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
