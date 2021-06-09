@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use log::warn;
 use serde::{Deserialize, Deserializer};
 use toml::Value;
 
 #[cfg(feature = "term")]
-pub use tui::style::{Color, Style};
+pub use tui::style::{Color, Modifier, Style};
 
 // #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 // pub struct Color {
@@ -115,6 +116,7 @@ impl<'de> Deserialize<'de> for Theme {
 }
 
 fn parse_style(style: &mut Style, value: Value) {
+    //TODO: alert user of parsing failures
     if let Value::Table(entries) = value {
         for (name, value) in entries {
             match name.as_str() {
@@ -126,6 +128,13 @@ fn parse_style(style: &mut Style, value: Value) {
                 "bg" => {
                     if let Some(color) = parse_color(value) {
                         *style = style.bg(color);
+                    }
+                }
+                "modifiers" => {
+                    if let Value::Array(arr) = value {
+                        for modifier in arr.iter().filter_map(parse_modifier) {
+                            *style = style.add_modifier(modifier);
+                        }
                     }
                 }
                 _ => (),
@@ -157,9 +166,34 @@ fn parse_color(value: Value) -> Option<Color> {
         if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
             Some(Color::Rgb(red, green, blue))
         } else {
+            warn!("malformed hexcode in theme: {}", s);
             None
         }
     } else {
+        warn!("unrecognized value in theme: {}", value);
+        None
+    }
+}
+
+fn parse_modifier(value: &Value) -> Option<Modifier> {
+    if let Value::String(s) = value {
+        match s.as_str() {
+            "bold" => Some(Modifier::BOLD),
+            "dim" => Some(Modifier::DIM),
+            "italic" => Some(Modifier::ITALIC),
+            "underlined" => Some(Modifier::UNDERLINED),
+            "slow_blink" => Some(Modifier::SLOW_BLINK),
+            "rapid_blink" => Some(Modifier::RAPID_BLINK),
+            "reversed" => Some(Modifier::REVERSED),
+            "hidden" => Some(Modifier::HIDDEN),
+            "crossed_out" => Some(Modifier::CROSSED_OUT),
+            _ => {
+                warn!("unrecognized modifier in theme: {}", s);
+                None
+            }
+        }
+    } else {
+        warn!("unrecognized modifier in theme: {}", value);
         None
     }
 }
@@ -176,4 +210,40 @@ impl Theme {
     pub fn scopes(&self) -> &[String] {
         &self.scopes
     }
+}
+
+#[test]
+fn test_parse_style_string() {
+    let fg = Value::String("#ffffff".to_string());
+
+    let mut style = Style::default();
+    parse_style(&mut style, fg);
+
+    assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
+}
+
+#[test]
+fn test_parse_style_table() {
+    let table = toml::toml! {
+        "keyword" = {
+            fg = "#ffffff",
+            bg = "#000000",
+            modifiers = ["bold"],
+        }
+    };
+
+    let mut style = Style::default();
+    if let Value::Table(entries) = table {
+        for (_name, value) in entries {
+            parse_style(&mut style, value);
+        }
+    }
+
+    assert_eq!(
+        style,
+        Style::default()
+            .fg(Color::Rgb(255, 255, 255))
+            .bg(Color::Rgb(0, 0, 0))
+            .add_modifier(Modifier::BOLD)
+    );
 }

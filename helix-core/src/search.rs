@@ -41,7 +41,7 @@ pub fn find_nth_prev(
     inclusive: bool,
 ) -> Option<usize> {
     // start searching right before pos
-    let mut chars = text.chars_at(pos.saturating_sub(1));
+    let mut chars = text.chars_at(pos);
 
     for _ in 0..n {
         loop {
@@ -56,7 +56,7 @@ pub fn find_nth_prev(
     }
 
     if !inclusive {
-        pos -= 1;
+        pos += 1;
     }
 
     Some(pos)

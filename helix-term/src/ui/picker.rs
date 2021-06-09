@@ -100,8 +100,11 @@ impl<T> Picker<T> {
     }
 
     pub fn move_down(&mut self) {
-        // TODO: len - 1
-        if self.cursor < self.options.len() {
+        if self.matches.is_empty() {
+            return;
+        }
+
+        if self.cursor < self.matches.len() - 1 {
             self.cursor += 1;
         }
     }
@@ -148,7 +151,11 @@ impl<T: 'static> Component for Picker<T> {
                 code: KeyCode::Up, ..
             }
             | KeyEvent {
-                code: KeyCode::Char('k'),
+                code: KeyCode::BackTab,
+                ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('p'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_up(),
             KeyEvent {
@@ -156,11 +163,18 @@ impl<T: 'static> Component for Picker<T> {
                 ..
             }
             | KeyEvent {
-                code: KeyCode::Char('j'),
+                code: KeyCode::Tab, ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('n'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_down(),
             KeyEvent {
                 code: KeyCode::Esc, ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::CONTROL,
             } => {
                 return close_fn;
             }
@@ -243,13 +257,14 @@ impl<T: 'static> Component for Picker<T> {
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
         let rows = inner.height - 2; // -1 for search bar
+        let offset = self.cursor / (rows as usize) * (rows as usize);
 
-        let files = self.matches.iter().map(|(index, _score)| {
+        let files = self.matches.iter().skip(offset).map(|(index, _score)| {
             (index, self.options.get(*index).unwrap()) // get_unchecked
         });
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
-            if i == self.cursor {
+            if i == (self.cursor - offset) {
                 surface.set_string(inner.x + 1, inner.y + 2 + i as u16, ">", selected);
             }
 
@@ -258,7 +273,11 @@ impl<T: 'static> Component for Picker<T> {
                 inner.y + 2 + i as u16,
                 (self.format_fn)(option),
                 inner.width as usize - 1,
-                if i == self.cursor { selected } else { style },
+                if i == (self.cursor - offset) {
+                    selected
+                } else {
+                    style
+                },
             );
         }
     }

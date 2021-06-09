@@ -85,10 +85,15 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         Err(_err) => None,
     });
 
-    const MAX: usize = 2048;
+    let files = if root.join(".git").is_dir() {
+        files.collect()
+    } else {
+        const MAX: usize = 8192;
+        files.take(MAX).collect()
+    };
 
     Picker::new(
-        files.take(MAX).collect(),
+        files,
         move |path: &PathBuf| {
             // format_fn
             path.strip_prefix(&root)

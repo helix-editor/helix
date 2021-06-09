@@ -1,6 +1,6 @@
 [package]
 name = "helix-view"
-version = "0.1.0"
+version = "0.0.10"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"
 license = "MPL-2.0"
@@ -28,3 +28,4 @@ slotmap = "1"
 
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
+log = "~0.4"

@@ -16,35 +16,37 @@ pub mod selection;
 mod state;
 pub mod syntax;
 mod transaction;
+pub mod words;
 
-pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> {
-    // find first non-whitespace char
-    for (start, ch) in line.chars().enumerate() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
+pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
+    line.chars().position(|ch| !ch.is_whitespace())
+}
+
+pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+
+    let root = match root {
+        Some(root) => {
+            let root = std::path::Path::new(root);
+            if root.is_absolute() {
+                root.to_path_buf()
+            } else {
+                current_dir.join(root)
+            }
+        }
+        None => current_dir,
+    };
+
+    for ancestor in root.ancestors() {
+        // TODO: also use defined roots if git isn't found
+        if ancestor.join(".git").is_dir() {
+            return Some(ancestor.to_path_buf());
         }
     }
-
     None
 }
 
-pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -> Option<usize> {
-    let line = text.line(line_num);
-    let mut start = text.line_to_char(line_num);
-
-    // find first non-whitespace char
-    for ch in line.chars() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-        start += 1;
-    }
-
-    None
-}
-
+#[cfg(not(embed_runtime))]
 pub fn runtime_dir() -> std::path::PathBuf {
     // runtime env var || dir where binary is located
     std::env::var("HELIX_RUNTIME")

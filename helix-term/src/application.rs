@@ -1,6 +1,6 @@
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{compositor::Compositor, ui, Args};
+use crate::{args::Args, compositor::Compositor, ui};
 
 use log::{error, info};
 
@@ -217,7 +217,7 @@ impl Application {
                                 })
                                 .collect();
 
-                            doc.diagnostics = diagnostics;
+                            doc.set_diagnostics(diagnostics);
                             // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                             self.render();
                         }

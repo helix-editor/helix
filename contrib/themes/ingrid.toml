@@ -1,0 +1,46 @@
+# Author : Ingrid Rebecca Abraham <git@ingrids.email>
+
+"attribute" = "#839A53"
+"keyword" = { fg = "#D74E50", modifiers = ["bold"] }
+"keyword.directive" = "#6F873E"
+"namespace" = "#839A53"
+"punctuation" = "#C97270"
+"punctuation.delimiter" = "#C97270"
+"operator" = { fg = "#D74E50", modifiers = ["bold"] }
+"special" = "#D68482"
+"property" = "#89BEB7"
+"variable" = "#A6B6CE"
+"variable.parameter" = "#89BEB7"
+"type" = { fg = "#A6B6CE", modifiers = ["bold"] }
+"type.builtin" = "#839A53"
+"constructor" = { fg = "#839A53", modifiers = ["bold"] }
+"function" = { fg = "#89BEB7", modifiers = ["bold"] }
+"function.macro" = { fg = "#D4A520", modifiers = ["bold"] }
+"function.builtin" = "#89BEB7"
+"comment" = "#A6B6CE"
+"variable.builtin" = "#D4A520"
+"constant" = "#D4A520"
+"constant.builtin" = "#D4A520"
+"string" = "#D74E50"
+"number" = "#D74E50"
+"escape" = { fg = "#D74E50", modifiers = ["bold"] }
+"label" = "#D68482"
+
+"module" = "#839A53"
+
+"ui.background" = { bg = "#FFFCFD" }
+"ui.linenr" = { fg = "#bbbbbb" }
+"ui.statusline" = { bg = "#F3EAE9" }
+"ui.popup" = { bg = "#F3EAE9" }
+"ui.window" = { bg = "#D8B8B3" }
+"ui.help" = { bg = "#D8B8B3", fg = "#250E07" }
+
+"ui.text" = { fg = "#7B91B3" }
+"ui.text.focus" = { fg = "#250E07", modifiers= ["bold"] }
+
+"ui.menu.selected" = { fg = "#D74E50", bg = "#F3EAE9" }
+
+"warning" = "#D4A520"
+"error" = "#D74E50"
+"info" = "#839A53"
+"hint" = "#A6B6CE"

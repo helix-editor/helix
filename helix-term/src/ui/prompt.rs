@@ -28,6 +28,11 @@ pub enum PromptEvent {
     Abort,
 }
 
+pub enum CompletionDirection {
+    Forward,
+    Backward,
+}
+
 impl Prompt {
     pub fn new(
         prompt: String,
@@ -80,11 +85,18 @@ impl Prompt {
         self.exit_selection();
     }
 
-    pub fn change_completion_selection(&mut self) {
+    pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
         if self.completion.is_empty() {
             return;
         }
-        let index = self.selection.map_or(0, |i| i + 1) % self.completion.len();
+
+        let index = match direction {
+            CompletionDirection::Forward => self.selection.map_or(0, |i| i + 1),
+            CompletionDirection::Backward => {
+                self.selection.unwrap_or(0) + self.completion.len() - 1
+            }
+        } % self.completion.len();
+
         self.selection = Some(index);
 
         let (range, item) = &self.completion[index];
@@ -92,8 +104,8 @@ impl Prompt {
         self.line.replace_range(range.clone(), item);
 
         self.move_end();
-        // TODO: recalculate completion when completion item is accepted, (Enter)
     }
+
     pub fn exit_selection(&mut self) {
         self.selection = None;
     }
@@ -114,8 +126,11 @@ impl Prompt {
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
-        let max_col = area.width / BASE_WIDTH;
-        let height = ((self.completion.len() as u16 + max_col - 1) / max_col);
+        let max_col = std::cmp::max(1, area.width / BASE_WIDTH);
+        let height = ((self.completion.len() as u16 + max_col - 1) / max_col)
+            .min(10) // at most 10 rows (or less)
+            .min(area.height);
+
         let completion_area = Rect::new(
             area.x,
             (area.height - height).saturating_sub(1),
@@ -253,12 +268,21 @@ impl Component for Prompt {
                 code: KeyCode::Enter,
                 ..
             } => {
-                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
-                return close_fn;
+                if self.line.ends_with('/') {
+                    self.completion = (self.completion_fn)(&self.line);
+                    self.exit_selection();
+                } else {
+                    (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
+                    return close_fn;
+                }
             }
             KeyEvent {
                 code: KeyCode::Tab, ..
-            } => self.change_completion_selection(),
+            } => self.change_completion_selection(CompletionDirection::Forward),
+            KeyEvent {
+                code: KeyCode::BackTab,
+                ..
+            } => self.change_completion_selection(CompletionDirection::Backward),
             KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::CONTROL,

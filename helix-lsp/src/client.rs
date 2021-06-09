@@ -3,31 +3,23 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{ChangeSet, Rope};
-
-// use std::collections::HashMap;
-use std::future::Future;
-use std::sync::atomic::{AtomicU64, Ordering};
-
+use helix_core::{find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
 use serde_json::Value;
-
+use std::future::Future;
 use std::process::Stdio;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::{
     io::{BufReader, BufWriter},
-    // prelude::*,
     process::{Child, Command},
     sync::mpsc::{channel, UnboundedReceiver, UnboundedSender},
 };
 
 pub struct Client {
     _process: Child,
-
-    outgoing: UnboundedSender<Payload>,
-    // pub incoming: Receiver<Call>,
-    pub request_counter: AtomicU64,
-
+    server_tx: UnboundedSender<Payload>,
+    request_counter: AtomicU64,
     capabilities: Option<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
 }
@@ -43,40 +35,27 @@ impl Client {
             .kill_on_drop(true)
             .spawn();
 
-        // use std::io::ErrorKind;
-        let mut process = match process {
-            Ok(process) => process,
-            Err(err) => match err.kind() {
-                // ErrorKind::NotFound | ErrorKind::PermissionDenied => {
-                //     return Err(Error::Other(err.into()))
-                // }
-                _kind => return Err(Error::Other(err.into())),
-            },
-        };
+        let mut process = process?;
 
         // TODO: do we need bufreader/writer here? or do we use async wrappers on unblock?
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (incoming, outgoing) = Transport::start(reader, writer, stderr);
+        let (server_rx, server_tx) = Transport::start(reader, writer, stderr);
 
         let client = Self {
             _process: process,
-
-            outgoing,
-            // incoming,
+            server_tx,
             request_counter: AtomicU64::new(0),
-
             capabilities: None,
-            // diagnostics: HashMap::new(),
             offset_encoding: OffsetEncoding::Utf8,
         };
 
         // TODO: async client.initialize()
         // maybe use an arc<atomic> flag
 
-        Ok((client, incoming))
+        Ok((client, server_rx))
     }
 
     fn next_request_id(&self) -> jsonrpc::Id {
@@ -106,7 +85,7 @@ impl Client {
     }
 
     /// Execute a RPC request on the language server.
-    pub async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
+    async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
     where
         R::Params: serde::Serialize,
         R::Result: core::fmt::Debug, // TODO: temporary
@@ -118,17 +97,20 @@ impl Client {
     }
 
     /// Execute a RPC request on the language server.
-    pub fn call<R: lsp::request::Request>(
+    fn call<R: lsp::request::Request>(
         &self,
         params: R::Params,
     ) -> impl Future<Output = Result<Value>>
     where
         R::Params: serde::Serialize,
     {
-        let outgoing = self.outgoing.clone();
+        let server_tx = self.server_tx.clone();
         let id = self.next_request_id();
 
         async move {
+            use std::time::Duration;
+            use tokio::time::timeout;
+
             let params = serde_json::to_value(params)?;
 
             let request = jsonrpc::MethodCall {
@@ -140,32 +122,29 @@ impl Client {
 
             let (tx, mut rx) = channel::<Result<Value>>(1);
 
-            outgoing
+            server_tx
                 .send(Payload::Request {
                     chan: tx,
                     value: request,
                 })
                 .map_err(|e| Error::Other(e.into()))?;
 
-            use std::time::Duration;
-            use tokio::time::timeout;
-
             timeout(Duration::from_secs(2), rx.recv())
                 .await
                 .map_err(|_| Error::Timeout)? // return Timeout
-                .unwrap() // TODO: None if channel closed
+                .ok_or(Error::StreamClosed)?
         }
     }
 
     /// Send a RPC notification to the language server.
-    pub fn notify<R: lsp::notification::Notification>(
+    fn notify<R: lsp::notification::Notification>(
         &self,
         params: R::Params,
     ) -> impl Future<Output = Result<()>>
     where
         R::Params: serde::Serialize,
     {
-        let outgoing = self.outgoing.clone();
+        let server_tx = self.server_tx.clone();
 
         async move {
             let params = serde_json::to_value(params)?;
@@ -176,7 +155,7 @@ impl Client {
                 params: Self::value_into_params(params),
             };
 
-            outgoing
+            server_tx
                 .send(Payload::Notification(notification))
                 .map_err(|e| Error::Other(e.into()))?;
 
@@ -205,7 +184,7 @@ impl Client {
             }),
         };
 
-        self.outgoing
+        self.server_tx
             .send(Payload::Response(output))
             .map_err(|e| Error::Other(e.into()))?;
 
@@ -216,15 +195,16 @@ impl Client {
     // General messages
     // -------------------------------------------------------------------------------------------
 
-    pub async fn initialize(&mut self) -> Result<()> {
+    pub(crate) async fn initialize(&mut self) -> Result<()> {
         // TODO: delay any requests that are triggered prior to initialize
+        let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
 
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
+            // root_path is obsolete, use root_uri
             root_path: None,
-            // root_uri: Some(lsp_types::Url::parse("file://localhost/")?),
-            root_uri: None, // set to project root in the future
+            root_uri: root,
             initialization_options: None,
             capabilities: lsp::ClientCapabilities {
                 text_document: Some(lsp::TextDocumentClientCapabilities {

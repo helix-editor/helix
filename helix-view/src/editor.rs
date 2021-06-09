@@ -1,4 +1,4 @@
-use crate::{theme::Theme, tree::Tree, Document, DocumentId, View, ViewId};
+use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId};
 use tui::layout::Rect;
 
 use std::path::PathBuf;
@@ -12,7 +12,8 @@ pub use helix_core::diagnostic::Severity;
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
-    pub count: Option<usize>,
+    pub count: Option<std::num::NonZeroUsize>,
+    pub register: RegisterSelection,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
@@ -57,6 +58,7 @@ impl Editor {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
             count: None,
+            register: RegisterSelection::default(),
             theme,
             language_servers,
             status_msg: None,
@@ -137,7 +139,7 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let path = std::fs::canonicalize(path)?;
+        let path = crate::document::canonicalize_path(&path)?;
 
         let id = self
             .documents()
@@ -153,7 +155,7 @@ impl Editor {
             let language_server = doc
                 .language
                 .as_ref()
-                .and_then(|language| self.language_servers.get(language));
+                .and_then(|language| self.language_servers.get(language).ok());
 
             if let Some(language_server) = language_server {
                 doc.set_language_server(Some(language_server.clone()));
@@ -194,7 +196,7 @@ impl Editor {
             let language_server = doc
                 .language
                 .as_ref()
-                .and_then(|language| language_servers.get(language));
+                .and_then(|language| language_servers.get(language).ok());
             if let Some(language_server) = language_server {
                 tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }

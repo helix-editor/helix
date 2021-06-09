@@ -11,7 +11,8 @@ use std::collections::HashMap;
 //          W = next WORD
 //          e = end of word
 //          E = end of WORD
-//          r =
+//          r = replace
+//          R = replace with yanked
 //          t = 'till char
 //          y = yank
 //          u = undo
@@ -61,8 +62,8 @@ use std::collections::HashMap;
 //          in kakoune these are alt-h alt-l / gh gl
 //                              select from curs to begin end / move curs to begin end
 //          0 = start of line
-//          ^ = start of line (first non blank char)
-//          $ = end of line
+//          ^ = start of line(first non blank char) || Home  = start of line(first non blank char)
+//          $ = end of line                         || End   = end of line
 //
 //          z = save selections
 //          Z = restore selections
@@ -85,6 +86,10 @@ use std::collections::HashMap;
 //
 //      gd = goto definition
 //      gr = goto reference
+//      [d = previous diagnostic
+//      d] = next diagnostic
+//      [D = first diagnostic
+//      D] = last diagnostic
 // }
 
 // #[cfg(feature = "term")]
@@ -152,6 +157,17 @@ pub fn default() -> Keymaps {
         // and matching set for select mode (extend)
         //
         key!('r') => commands::replace,
+        key!('R') => commands::replace_with_yanked,
+
+        KeyEvent {
+            code: KeyCode::Home,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_line_start,
+
+        KeyEvent {
+            code: KeyCode::End,
+            modifiers: KeyModifiers::NONE
+        } => commands::move_line_end,
 
         key!('w') => commands::move_next_word_start,
         key!('b') => commands::move_prev_word_start,
@@ -199,7 +215,9 @@ pub fn default() -> Keymaps {
         // repeat_select
 
         // TODO: figure out what key to use
-        key!('[') => commands::expand_selection,
+        // key!('[') => commands::expand_selection, ??
+        key!('[') => commands::left_bracket_mode,
+        key!(']') => commands::right_bracket_mode,
 
         key!('/') => commands::search,
         // ? for search_reverse
@@ -254,10 +272,7 @@ pub fn default() -> Keymaps {
         ctrl!('u') => commands::half_page_up,
         ctrl!('d') => commands::half_page_down,
 
-        KeyEvent {
-            code: KeyCode::Tab,
-            modifiers: KeyModifiers::NONE
-        } => commands::next_view,
+        ctrl!('w') => commands::window_mode,
 
         // move under <space>c
         ctrl!('c') => commands::toggle_comments,
@@ -271,6 +286,8 @@ pub fn default() -> Keymaps {
 
         key!(' ') => commands::space_mode,
         key!('z') => commands::view_mode,
+
+        key!('"') => commands::select_register,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
     // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
@@ -306,13 +323,21 @@ pub fn default() -> Keymaps {
 
             key!('t') => commands::extend_till_char,
             key!('f') => commands::extend_next_char,
+
             key!('T') => commands::extend_till_prev_char,
             key!('F') => commands::extend_prev_char,
-
+            KeyEvent {
+                code: KeyCode::Home,
+                modifiers: KeyModifiers::NONE
+            } => commands::extend_line_start,
+            KeyEvent {
+                code: KeyCode::End,
+                modifiers: KeyModifiers::NONE
+            } => commands::extend_line_end,
             KeyEvent {
                 code: KeyCode::Esc,
                 modifiers: KeyModifiers::NONE
-            } => commands::exit_select_mode as Command,
+            } => commands::exit_select_mode,
         )
         .into_iter(),
     );
@@ -345,6 +370,7 @@ pub fn default() -> Keymaps {
             } => commands::insert::insert_tab,
 
             ctrl!('x') => commands::completion,
+            ctrl!('w') => commands::insert::delete_word_backward,
         ),
     )
 }
