@@ -928,24 +928,31 @@ mod cmd {
     }
 
     fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        use parse_duration::parse;
-        use std::time::Duration;
-
-        let (view, doc) = editor.current();
-        let duration = match parse(&args.join(" ")) {
-            Ok(v) => v,
-            Err(e) => {
-                editor.set_error(e.to_string());
+        let sotp = match args.join(" ").parse::<helix_core::StepsOrTimePeriod>() {
+            Ok(sotp) => sotp,
+            Err(msg) => {
+                editor.set_error(msg);
                 return;
             }
         };
+        let view_id = editor.view().id;
+        let doc_id = editor.view().doc;
+        let doc = &mut editor.documents[doc_id];
+        doc.earlier(view_id, sotp)
+    }
 
-        let transaction = Transaction::insert(
-            doc.text(),
-            doc.selection(view.id),
-            Tendril::from(format!("{:?}", duration)),
-        );
-        doc.apply(&transaction, view.id);
+    fn later(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let sotp = match args.join(" ").parse::<helix_core::StepsOrTimePeriod>() {
+            Ok(sotp) => sotp,
+            Err(msg) => {
+                editor.set_error(msg);
+                return;
+            }
+        };
+        let view_id = editor.view().id;
+        let doc_id = editor.view().doc;
+        let doc = &mut editor.documents[doc_id];
+        doc.later(view_id, sotp)
     }
 
     pub const COMMAND_LIST: &[Command] = &[
@@ -996,6 +1003,13 @@ mod cmd {
             alias: None,
             doc: "Jump back to an earlier point in edit history.",
             fun: earlier,
+            completer: None,
+        },
+        Command {
+            name: "later",
+            alias: None,
+            doc: "Jump to a later point in edit history.",
+            fun: later,
             completer: None,
         },
     ];

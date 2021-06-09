@@ -24,3 +24,6 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 
 etcetera = "0.3"
+
+# Parsing of the arguments to :earlier and :later.
+parse_duration = "2.1.1"

@@ -28,6 +28,7 @@ pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> 
 
     None
 }
+
 pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -> Option<usize> {
     let line = text.line(line_num);
     let mut start = text.line_to_char(line_num);
@@ -88,6 +89,7 @@ pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
 pub use history::History;
+pub use history::StepsOrTimePeriod;
 pub use state::State;
 
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};
