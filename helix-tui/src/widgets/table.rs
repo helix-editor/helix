@@ -7,8 +7,8 @@ use crate::{
 };
 use cassowary::{
     strength::{MEDIUM, REQUIRED, WEAK},
-    Expression, Solver,
     WeightedRelation::*,
+    {Expression, Solver},
 };
 use std::{
     collections::HashMap,

@@ -455,7 +455,7 @@ mod tests {
                 x: 1,
                 y: 1,
                 width: 0,
-                height: 0
+                height: 0,
             },
             "all borders, width=1, height=1"
         );
@@ -464,13 +464,13 @@ mod tests {
                 x: 0,
                 y: 0,
                 width: 2,
-                height: 2
+                height: 2,
             }),
             Rect {
                 x: 1,
                 y: 1,
                 width: 0,
-                height: 0
+                height: 0,
             },
             "all borders, width=2, height=2"
         );
@@ -479,13 +479,13 @@ mod tests {
                 x: 0,
                 y: 0,
                 width: 3,
-                height: 3
+                height: 3,
             }),
             Rect {
                 x: 1,
                 y: 1,
                 width: 1,
-                height: 1
+                height: 1,
             },
             "all borders, width=3, height=3"
         );
@@ -498,13 +498,13 @@ mod tests {
                 x: 0,
                 y: 0,
                 width: 0,
-                height: 1
+                height: 1,
             }),
             Rect {
                 x: 0,
                 y: 1,
                 width: 0,
-                height: 0
+                height: 0,
             },
         );
     }

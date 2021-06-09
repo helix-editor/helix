@@ -75,10 +75,8 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                 // TODO: temp workaround
                 if let Some(Tag::CodeBlock(CodeBlockKind::Fenced(language))) = tags.last() {
                     if let Some(theme) = theme {
-                        use helix_core::{
-                            syntax::{self, HighlightEvent, Syntax},
-                            Rope,
-                        };
+                        use helix_core::syntax::{self, HighlightEvent, Syntax};
+                        use helix_core::Rope;
 
                         let rope = Rope::from(text.as_ref());
                         let syntax = syntax::LOADER

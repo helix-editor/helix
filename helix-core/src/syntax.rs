@@ -716,11 +716,8 @@ impl LanguageLayer {
 // For now cheat and just throw out non-root layers if they exist. This should still improve
 // parsing in majority of cases.
 
-use std::{
-    iter, mem, ops, str,
-    sync::atomic::{AtomicUsize, Ordering},
-    usize,
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
     QueryMatch, Range, Tree,

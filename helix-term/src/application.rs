@@ -70,6 +70,7 @@ impl Application {
         let mut app = Self {
             compositor,
             editor,
+
             callbacks: FuturesUnordered::new(),
         };
 

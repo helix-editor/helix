@@ -11,10 +11,8 @@ use std::borrow::Cow;
 use helix_core::{Position, Transaction};
 use helix_view::Editor;
 
-use crate::{
-    commands,
-    ui::{menu, Markdown, Menu, Popup, PromptEvent},
-};
+use crate::commands;
+use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
 use helix_lsp::lsp;
 use lsp::CompletionItem;

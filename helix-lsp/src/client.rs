@@ -7,11 +7,9 @@ use helix_core::{find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
 use serde_json::Value;
-use std::{
-    future::Future,
-    process::Stdio,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::future::Future;
+use std::process::Stdio;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},

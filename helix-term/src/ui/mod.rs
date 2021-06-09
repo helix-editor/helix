@@ -16,10 +16,8 @@ pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use text::Text;
 
-pub use tui::{
-    layout::Rect,
-    style::{Color, Modifier, Style},
-};
+pub use tui::layout::Rect;
+pub use tui::style::{Color, Modifier, Style};
 
 use helix_core::regex::Regex;
 use helix_view::{Document, Editor, View};
@@ -167,7 +165,8 @@ pub mod completers {
 
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
-            use fuzzy_matcher::{skim::SkimMatcherV2 as Matcher, FuzzyMatcher};
+            use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
+            use fuzzy_matcher::FuzzyMatcher;
             use std::cmp::Reverse;
 
             let matcher = Matcher::default();

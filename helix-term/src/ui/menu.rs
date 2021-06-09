@@ -11,7 +11,8 @@ pub use tui::widgets::{Cell, Row};
 
 use std::borrow::Cow;
 
-use fuzzy_matcher::{skim::SkimMatcherV2 as Matcher, FuzzyMatcher};
+use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
+use fuzzy_matcher::FuzzyMatcher;
 
 use helix_core::Position;
 use helix_view::Editor;

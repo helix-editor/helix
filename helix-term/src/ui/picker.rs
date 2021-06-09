@@ -7,13 +7,15 @@ use tui::{
     widgets::{Block, BorderType, Borders},
 };
 
-use fuzzy_matcher::{skim::SkimMatcherV2 as Matcher, FuzzyMatcher};
+use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
+use fuzzy_matcher::FuzzyMatcher;
 
 use std::borrow::Cow;
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
-use helix_view::{editor::Action, Editor};
+use helix_view::editor::Action;
+use helix_view::Editor;
 
 pub struct Picker<T> {
     options: Vec<T>,

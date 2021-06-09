@@ -1,7 +1,5 @@
-use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
-    ui,
-};
+use crate::compositor::{Component, Compositor, Context, EventResult};
+use crate::ui;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use helix_core::Position;
 use helix_view::{Editor, Theme};

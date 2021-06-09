@@ -120,8 +120,7 @@ impl EditorView {
             Some(syntax) => {
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |_| None)
-                    .collect()
-                // TODO: we collect here to avoid holding the lock, fix later
+                    .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
             None => vec![Ok(HighlightEvent::Source {
                 start: range.start,

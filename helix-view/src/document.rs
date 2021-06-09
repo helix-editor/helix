@@ -1,10 +1,8 @@
 use anyhow::{Context, Error};
-use std::{
-    cell::Cell,
-    future::Future,
-    path::{Component, Path, PathBuf},
-    sync::Arc,
-};
+use std::cell::Cell;
+use std::future::Future;
+use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 
 use helix_core::{
     syntax::{LanguageConfiguration, LOADER},

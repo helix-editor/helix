@@ -1,4 +1,5 @@
-use helix_term::{application::Application, args::Args};
+use helix_term::application::Application;
+use helix_term::args::Args;
 
 use std::path::PathBuf;
 
