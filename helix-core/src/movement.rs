@@ -162,7 +162,8 @@ impl SliceIndexHelpers for usize {
     }
 
     fn is_boundary(&self, slice: RopeSlice) -> bool {
-        (self + 1).inside(slice) && (categorize(slice.char(*self)) != categorize(slice.char(self + 1)))
+        (self + 1).inside(slice)
+            && (categorize(slice.char(*self)) != categorize(slice.char(self + 1)))
     }
 
     fn category(&self, slice: RopeSlice) -> Option<Category> {
@@ -176,9 +177,10 @@ impl SliceIndexHelpers for usize {
             // the purposes of word movement
             .skip_while(|i| is_end_of_line(slice.char(*i)))
             // Find the first boundary that doesn't start from whitespace
-            .find(|pos|
-                  pos.is_boundary(slice)
-                  && (!pos.is_whitespace(slice) || (pos +1).is_end_of_line(slice)))
+            .find(|pos| {
+                pos.is_boundary(slice)
+                    && (!pos.is_whitespace(slice) || (pos + 1).is_end_of_line(slice))
+            })
             // If not found, return the end of the range
             .unwrap_or(slice.len_chars().saturating_sub(1))
     }
@@ -192,8 +194,7 @@ impl SliceIndexHelpers for usize {
             // Find the first boundary that doesn't go into whitespace or EOL
             .find(|pos| {
                 pos.is_boundary(slice)
-                    && !(slice.char(*pos + 1).is_whitespace()
-                        && !(pos + 1).is_end_of_line(slice))
+                    && !(slice.char(*pos + 1).is_whitespace() && !(pos + 1).is_end_of_line(slice))
             })
             // If not found, return the end of the range
             .unwrap_or(slice.len_chars().saturating_sub(1))
@@ -621,7 +622,7 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range =  move_next_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_next_word_start(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -709,7 +710,7 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range =  move_prev_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_word_start(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
