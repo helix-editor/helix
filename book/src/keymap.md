@@ -133,6 +133,7 @@ Jumps to various locations.
 | e   | Go to the end of the file |
 | h   | Go to the start of the line |
 | l   | Go to the end of the line |
+| s   | Go to first non-whitespace character of the line |
 | t   | Go to the top of the screen |
 | m   | Go to the middle of the screen |
 | b   | Go to the bottom of the screen |

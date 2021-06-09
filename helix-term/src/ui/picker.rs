@@ -149,7 +149,11 @@ impl<T: 'static> Component for Picker<T> {
                 code: KeyCode::Up, ..
             }
             | KeyEvent {
-                code: KeyCode::Char('k'),
+                code: KeyCode::BackTab,
+                ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('p'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_up(),
             KeyEvent {
@@ -157,11 +161,18 @@ impl<T: 'static> Component for Picker<T> {
                 ..
             }
             | KeyEvent {
-                code: KeyCode::Char('j'),
+                code: KeyCode::Tab, ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('n'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_down(),
             KeyEvent {
                 code: KeyCode::Esc, ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::CONTROL,
             } => {
                 return close_fn;
             }

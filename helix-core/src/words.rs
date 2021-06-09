@@ -31,6 +31,7 @@ fn different_prev_word_boundary() {
     t("hello, world", "hello, ");
     t("hello, ", "hello");
     t("hello", "");
+    t(",", "");
     t("こんにちは、世界！", "こんにちは、世界");
     t("こんにちは、世界", "こんにちは、");
     t("こんにちは、", "こんにちは");
@@ -40,6 +41,7 @@ fn different_prev_word_boundary() {
     t("お前はもう死んでいる", "");
     t("その300円です", ""); // TODO: should stop at 300
     t("唱k", ""); // TODO: should stop at 唱
+    t("，", "");
     t("1 + 1 = 2", "1 + 1 = ");
     t("1 + 1 =", "1 + 1 ");
     t("1 + 1", "1 + ");

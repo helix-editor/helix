@@ -18,31 +18,8 @@ pub mod syntax;
 mod transaction;
 pub mod words;
 
-pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> {
-    // find first non-whitespace char
-    for (start, ch) in line.chars().enumerate() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-    }
-
-    None
-}
-pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -> Option<usize> {
-    let line = text.line(line_num);
-    let mut start = text.line_to_char(line_num);
-
-    // find first non-whitespace char
-    for ch in line.chars() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-        start += 1;
-    }
-
-    None
+pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
+    line.chars().position(|ch| !ch.is_whitespace())
 }
 
 pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {

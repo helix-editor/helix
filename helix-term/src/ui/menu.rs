@@ -165,8 +165,8 @@ impl<T: Item + 'static> Component for Menu<T> {
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
             KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::SHIFT,
+                code: KeyCode::BackTab,
+                ..
             }
             | KeyEvent {
                 code: KeyCode::Up, ..
