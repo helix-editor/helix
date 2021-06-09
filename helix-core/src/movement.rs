@@ -155,7 +155,12 @@ pub fn move_next_word_end(slice: RopeSlice, mut begin: usize, count: usize) -> O
 
         end = begin;
 
-        skip_over_next(slice, &mut end, char::is_whitespace);
+        // skip_over_next can result in end == slice.len_chars()
+        // If end is used for indexing and end == slice.len_chars() -> panic!
+        // Test for remaining characters, if none left, -1
+        if !skip_over_next(slice, &mut end, char::is_whitespace) {
+            end -= 1;
+        }
 
         // refetch
         let ch = slice.char(end);
@@ -235,6 +240,9 @@ where
         if !fun(ch) {
             break;
         }
+        // After incrementing, 'pos' is one position after the character that was tested
+        // Beware: This can result in pos == slice.len_chars() and a panic!
+        // if pos is used for indexing
         *pos += 1;
     }
     chars.next().is_some()
