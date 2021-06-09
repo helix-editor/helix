@@ -109,7 +109,6 @@ impl Searcher {
     /// Returns the end offset of the longest match. If no match exists, then None is returned.
     /// NOTE: based on DFA::find_at
     fn find(&self, text: RopeSlice, dfa: &impl DFA) -> Option<usize> {
-        // TOOD: needs to change to rfind condition if searching reverse
         // TODO: check this inside main search
         // if dfa.is_anchored() && start > 0 {
         //     return None;
@@ -124,6 +123,8 @@ impl Searcher {
             None
         };
 
+        let mut chunk_byte_offset = 0;
+
         for chunk in text.chunks() {
             for (i, &b) in chunk.as_bytes().iter().enumerate() {
                 state = unsafe { dfa.next_state_unchecked(state, b) };
@@ -131,9 +132,10 @@ impl Searcher {
                     if dfa.is_dead_state(state) {
                         return last_match;
                     }
-                    last_match = Some(i + 1);
+                    last_match = Some(chunk_byte_offset + i + 1);
                 }
             }
+            chunk_byte_offset += chunk.len();
         }
 
         last_match
@@ -159,18 +161,19 @@ impl Searcher {
         };
 
         // This is basically chunks().rev()
-        let (mut chunks, _, _, _) = text.chunks_at_byte(text.len_bytes());
+        let (mut chunks, mut chunk_byte_offset, _, _) = text.chunks_at_byte(text.len_bytes());
 
         while let Some(chunk) = chunks.prev() {
-            for (i, &b) in chunk.as_bytes().iter().enumerate().rev() {
+            for (i, &b) in chunk.as_bytes().iter().rev().enumerate() {
                 state = unsafe { dfa.next_state_unchecked(state, b) };
                 if dfa.is_match_or_dead_state(state) {
                     if dfa.is_dead_state(state) {
                         return last_match;
                     }
-                    last_match = Some(i);
+                    last_match = Some(chunk_byte_offset - i - 1);
                 }
             }
+            chunk_byte_offset -= chunk.len();
         }
         last_match
     }
