@@ -86,30 +86,35 @@ pub fn move_vertically(
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     let movement = |range: Range| -> Range {
         let after_head = (range.head + 1).skip_newlines(slice);
-        (after_head + 1).inside(slice).then(|| {
-            let new_anchor = if range.head.is_boundary(slice) {
-                after_head
-            } else {
-                range.head.skip_newlines(slice)
-            };
-            let new_head = (range.head + 1).end_of_block(slice);
-            Range::new(new_anchor, new_head)
-        }).unwrap_or(range)
+        (after_head + 1)
+            .inside(slice)
+            .then(|| {
+                let new_anchor = if range.head.is_boundary(slice) {
+                    after_head
+                } else {
+                    range.head.skip_newlines(slice)
+                };
+                let new_head = (range.head + 1).end_of_block(slice);
+                Range::new(new_anchor, new_head)
+            })
+            .unwrap_or(range)
     };
     (0..count).fold(range, |range, _| movement(range))
 }
 
 pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     let movement = |range: Range| -> Range {
-        (range.head > 0 && range.head.inside(slice)).then(|| {
-            let new_anchor = if range.head.saturating_sub(1).is_boundary(slice) {
-                (range.head.saturating_sub(1)).backwards_skip_newlines(slice)
-            } else {
-                range.head.backwards_skip_newlines(slice)
-            };
-            let new_head = range.head.saturating_sub(1).start_of_block(slice);
-            Range::new(new_anchor, new_head)
-        }).unwrap_or(range)
+        (range.head > 0 && range.head.inside(slice))
+            .then(|| {
+                let new_anchor = if range.head.saturating_sub(1).is_boundary(slice) {
+                    (range.head.saturating_sub(1)).backwards_skip_newlines(slice)
+                } else {
+                    range.head.backwards_skip_newlines(slice)
+                };
+                let new_head = range.head.saturating_sub(1).start_of_block(slice);
+                Range::new(new_anchor, new_head)
+            })
+            .unwrap_or(range)
     };
     (0..count).fold(range, |range, _| movement(range))
 }
@@ -117,15 +122,18 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
     let movement = |range: Range| -> Range {
         let after_head = (range.head + 1).skip_newlines(slice);
-        (after_head + 1).inside(slice).then(|| {
-            let new_anchor = if range.head.is_boundary(slice) {
-                after_head
-            } else {
-                range.head.skip_newlines(slice)
-            };
-            let new_head = (range.head + 1).end_of_word(slice);
-            Range::new(new_anchor, new_head)
-        }).unwrap_or(range)
+        (after_head + 1)
+            .inside(slice)
+            .then(|| {
+                let new_anchor = if range.head.is_boundary(slice) {
+                    after_head
+                } else {
+                    range.head.skip_newlines(slice)
+                };
+                let new_head = (range.head + 1).end_of_word(slice);
+                Range::new(new_anchor, new_head)
+            })
+            .unwrap_or(range)
     };
     (0..count).fold(range, |range, _| movement(range))
 }
@@ -194,7 +202,7 @@ impl SliceIndexHelpers for usize {
             // Find the first boundary that doesn't go into whitespace or EOL
             .find(|pos| {
                 pos.is_boundary(slice)
-                    &&((pos + 1).is_end_of_line(slice) || !slice.char(*pos + 1).is_whitespace())
+                    && ((pos + 1).is_end_of_line(slice) || !slice.char(*pos + 1).is_whitespace())
             })
             // If not found, return the end of the range
             .unwrap_or_else(|| slice.len_chars().saturating_sub(1))
@@ -217,7 +225,8 @@ impl SliceIndexHelpers for usize {
     }
 
     fn skip_newlines(&self, slice: RopeSlice) -> Self {
-        skip_while(slice, *self, is_end_of_line).unwrap_or_else(|| slice.len_chars().saturating_sub(1))
+        skip_while(slice, *self, is_end_of_line)
+            .unwrap_or_else(|| slice.len_chars().saturating_sub(1))
     }
 
     fn backwards_skip_newlines(&self, slice: RopeSlice) -> Self {
