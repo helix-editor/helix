@@ -15,25 +15,41 @@
   };
 
   outputs = inputs@{ self, nixpkgs, naersk, rust-overlay, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlay ]; };
-        rust = (pkgs.rustChannelOf {
-            date = "2021-05-01";
-            channel = "nightly";
+    let
+      rust = pkgs:
+        (pkgs.rustChannelOf {
+          date = "2021-05-01";
+          channel = "nightly";
         }).minimal; # cargo, rustc and rust-std
-        naerskLib = naersk.lib."${system}".override {
+
+      mkNaerskLib = system: pkgs:
+        naersk.lib."${system}".override {
           # naersk can't build with stable?!
           # inherit (pkgs.rust-bin.stable.latest) rustc cargo;
-          rustc = rust;
-          cargo = rust;
+          rustc = rust pkgs;
+          cargo = rust pkgs;
         };
-      in rec {
-        packages.helix = naerskLib.buildPackage {
+
+      pkg = naerskLib:
+        naerskLib.buildPackage {
           pname = "helix";
           root = inputs.helix;
         };
+
+    in flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ rust-overlay.overlay ];
+        };
+        naerskLib = mkNaerskLib system pkgs;
+      in rec {
+        packages.helix = pkg naerskLib;
         defaultPackage = packages.helix;
-        devShell = pkgs.callPackage ./shell.nix {};
-      });
+        devShell = pkgs.callPackage ./shell.nix { };
+      }) // {
+        overlay = final: prev:
+          let naerskLib = mkNaerskLib prev.system final;
+          in (rust-overlay.overlay final prev) // { helix = pkg naerskLib; };
+      };
 }
