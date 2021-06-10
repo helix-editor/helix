@@ -86,3 +86,6 @@
 	path = helix-syntax/languages/tree-sitter-elixir
 	url = https://github.com/IceDragon200/tree-sitter-elixir
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-nix"]
+	path = helix-syntax/languages/tree-sitter-nix
+	url = https://github.com/cstrahan/tree-sitter-nix

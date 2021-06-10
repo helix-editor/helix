@@ -3,6 +3,7 @@
 /// This is a kind a of specialized `Option<char>` for register selection.
 /// Point is to keep whether the register selection has been explicitely
 /// set or not while being convenient by knowing the default register name.
+#[derive(Debug)]
 pub struct RegisterSelection {
     selected: char,
     default_name: char,

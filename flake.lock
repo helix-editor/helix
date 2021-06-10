@@ -30,6 +30,24 @@
         "type": "github"
       }
     },
+    "helix": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1623200791,
+        "narHash": "sha256-kZKThNh1dBSCnISk9vwbqctk1+U0s8Lzasz/CVytJps=",
+        "ref": "master",
+        "rev": "b20e4a108cd890afa6cdf83656856fc2157a8e84",
+        "revCount": 789,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/helix-editor/helix"
+      },
+      "original": {
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/helix-editor/helix"
+      }
+    },
     "naersk": {
       "inputs": {
         "nixpkgs": "nixpkgs"
@@ -95,6 +113,7 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "helix": "helix",
         "naersk": "naersk",
         "nixpkgs": "nixpkgs_2",
         "rust-overlay": "rust-overlay"

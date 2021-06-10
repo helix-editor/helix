@@ -1,0 +1,9 @@
+indent = [
+ "if",
+ "let",
+ "function",
+ "attrset",
+ "list",
+ "indented_string",
+ "parenthesized"
+]

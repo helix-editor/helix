@@ -40,6 +40,7 @@ use std::time::{Duration, Instant};
 //    editing sessions.
 //  * Because delete transactions currently don't store the text that they
 //    delete, we also store an inversion of the transaction.
+#[derive(Debug)]
 pub struct History {
     revisions: Vec<Revision>,
     current: usize,

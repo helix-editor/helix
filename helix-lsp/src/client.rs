@@ -16,6 +16,7 @@ use tokio::{
     sync::mpsc::{channel, UnboundedReceiver, UnboundedSender},
 };
 
+#[derive(Debug)]
 pub struct Client {
     _process: Child,
     server_tx: UnboundedSender<Payload>,

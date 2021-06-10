@@ -4,6 +4,7 @@ use tui::layout::Rect;
 
 // the dimensions are recomputed on windo resize/tree change.
 //
+#[derive(Debug)]
 pub struct Tree {
     root: ViewId,
     // (container, index inside the container)
@@ -17,11 +18,13 @@ pub struct Tree {
     stack: Vec<(ViewId, Rect)>,
 }
 
+#[derive(Debug)]
 pub struct Node {
     parent: ViewId,
     content: Content,
 }
 
+#[derive(Debug)]
 pub enum Content {
     View(Box<View>),
     Container(Box<Container>),
@@ -45,13 +48,14 @@ impl Node {
 
 // TODO: screen coord to container + container coordinate helpers
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Layout {
     Horizontal,
     Vertical,
     // could explore stacked/tabbed
 }
 
+#[derive(Debug)]
 pub struct Container {
     layout: Layout,
     children: Vec<ViewId>,
@@ -432,6 +436,7 @@ impl Tree {
     }
 }
 
+#[derive(Debug)]
 pub struct Traverse<'a> {
     tree: &'a Tree,
     stack: Vec<ViewId>, // TODO: reuse the one we use on update

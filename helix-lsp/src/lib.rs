@@ -172,6 +172,7 @@ impl Notification {
     }
 }
 
+#[derive(Debug)]
 pub struct Registry {
     inner: HashMap<LanguageId, Arc<Client>>,
 
