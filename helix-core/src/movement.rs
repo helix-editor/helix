@@ -1,6 +1,10 @@
-use std::iter::{self, SkipWhile};
+use std::iter::{self, Peekable, SkipWhile, from_fn};
 
-use crate::{Position, Range, RopeSlice, coords_at_pos, graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary}, iterator::{SpanHelpers, backwards_enumerated_chars, distance, enumerated_chars}, pos_at_coords};
+use crate::{
+    coords_at_pos,
+    graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary},
+    pos_at_coords, Position, Range, RopeSlice,
+};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Direction {
@@ -79,26 +83,47 @@ pub fn move_vertically(
     range
 }
 
-// Generic word motion
-fn word_move<C: SpanHelpers + Clone>(
-    characters: &mut C,
-    range: Range,
-    count: usize,
-    span: fn(&mut dyn SpanHelpers,) -> Vec<char> ,
-) -> Range {
+pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextWordStart)
+}
+
+pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextWordEnd)
+}
+
+pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevWordStart)
+}
+
+fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
+    //let mut characters: Box<dyn Iterator<Item = char>> = match target {
+    //    WordMotionTarget::NextWordStart | WordMotionTarget::NextWordEnd => {
+    //        Box::new(slice.chars_at(range.head))
+    //    }
+    //    WordMotionTarget::PrevWordStart => {
+    //        let mut backwards = slice.chars_at(range.head + 1);
+    //        Box::new(from_fn(move || backwards.prev()))
+    //    }
+    //};
+    //
+    let mut characters = slice.chars_at(range.head).peekable();
+
     let mut movement = |range: Range| -> Result<Range, Range> {
-        let span = characters.to_end_of_block();
+        let span = characters.to_target(target);
         let new_head = (range.head + span.len()).saturating_sub(1);
         let indexed_span = || (range.head..).zip(span.iter().copied());
 
-        //print!("Span from {:?} to {:?}: ", span_iter().next(), span_iter().last());
-        //for (_, character) in span_iter() {
-        //    print!("{}", character);
-        //}
-        //println!("");
+        print!("Span from {:?} to {:?}: ", indexed_span().next(), indexed_span().last());
+        for (_, character) in indexed_span() {
+            print!("{}", character);
+        }
+        println!("");
 
-        // Calculate the new anchor from the span
-        let new_anchor = if span.iter().copied().at_boundary() {
+        let at_boundary = matches!(
+            (span.get(0), span.get(1)),
+            (Some(a), Some(b)) if categorize(*a) != categorize(*b)
+        );
+        let new_anchor = if at_boundary {
             indexed_span()
                 .skip(1)
                 .skip_while(|(pos, c)| is_end_of_line(*c))
@@ -106,32 +131,23 @@ fn word_move<C: SpanHelpers + Clone>(
                 .next()
                 .ok_or(range)?
         } else {
-            indexed_span().skip_while(|(pos, c)| is_end_of_line(*c)).map(|(pos, _)| pos)
-                .next().ok_or(range)?
+            indexed_span()
+                .skip_while(|(pos, c)| is_end_of_line(*c))
+                .map(|(pos, _)| pos)
+                .next()
+                .ok_or(range)?
         };
         (range.head != new_head)
             .then(|| Range::new(new_anchor, new_head))
             .ok_or(range)
     };
-    (0..count).fold(range, |range, _| {
-        movement(range).unwrap_or_else(|last_range| last_range)
-    })
-}
-
-pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let mut characters = slice.chars_at(range.head);
-    word_move(&mut characters, range, count, |c| c.to_end_of_block())
-}
-
-pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let mut characters = slice.chars_at(range.head);
-    word_move(&mut characters, range, count, |c| c.to_end_of_word())
-}
-
-pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let mut chars = slice.chars_at(range.head + 1);
-    let mut backwards = std::iter::from_fn(move || chars.prev());
-    word_move(&mut backwards, range, count, |c| c.to_end_of_word())
+    for _ in 0..count {
+        range = match movement(range) {
+            Ok(new_range) => new_range,
+            Err(last_valid_range) => return last_valid_range,
+        }
+    }
+    range
 }
 
 // ---- util ------------
@@ -224,6 +240,68 @@ where
             None
         }
     })
+}
+
+/// Possible targets of a word motion
+#[derive(Copy, Clone, Debug)]
+pub enum WordMotionTarget {
+    NextWordStart,
+    NextWordEnd,
+    PrevWordStart,
+}
+
+// Helper functions for iterators over characters
+pub trait SpanHelpers: Iterator<Item = char> {
+    // Advances until a target and returns the
+    fn to_target(&mut self, target: WordMotionTarget) -> Vec<char>;
+}
+
+impl<I: Iterator<Item = char>> SpanHelpers for Peekable<I> {
+    fn to_target(&mut self, target: WordMotionTarget) -> Vec<char> {
+        // We first extract the head and any newlines, then proceed until a category boundary
+        enum Phase {
+            HeadAndNewlines,
+            StartOfBlock,
+            FindBoundary,
+        };
+        let mut vec = Vec::<char>::new();
+        let mut phase = Phase::HeadAndNewlines;
+
+        while let Some(peek) = self.peek() {
+            match phase {
+                Phase::HeadAndNewlines => {
+                    vec.push(self.next().unwrap());
+                    if !matches!(self.peek(), Some('\n')) {
+                        phase = Phase::StartOfBlock
+                    }
+                }
+                Phase::StartOfBlock => {
+                    vec.push(self.next().unwrap());
+                    phase = Phase::FindBoundary;
+                }
+                Phase::FindBoundary => {
+                    let last = vec.last().unwrap();
+                    let reached_target = match target {
+                        WordMotionTarget::NextWordStart => {
+                            ((categorize(*last) != categorize(*peek))
+                                && (is_end_of_line(*peek) || !peek.is_whitespace()))
+                        }
+                        WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
+                            ((categorize(*last) != categorize(*peek))
+                                && (!last.is_whitespace() || is_end_of_line(*peek)))
+                        }
+                    };
+
+                    if reached_target {
+                        break;
+                    } else {
+                        vec.push(self.next().unwrap());
+                    }
+                }
+            }
+        }
+        vec
+    }
 }
 
 #[cfg(test)]

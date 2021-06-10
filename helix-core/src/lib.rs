@@ -10,7 +10,6 @@ pub mod match_brackets;
 pub mod movement;
 pub mod object;
 mod position;
-mod iterator;
 pub mod register;
 pub mod search;
 pub mod selection;
