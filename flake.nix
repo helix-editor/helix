@@ -34,6 +34,7 @@
         naerskLib.buildPackage {
           pname = "helix";
           root = inputs.helix;
+          cargoBuildOptions = self: self ++ [ ''--features "embed_runtime"'' ];
         };
 
     in flake-utils.lib.eachDefaultSystem (system:
