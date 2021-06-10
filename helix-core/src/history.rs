@@ -1,4 +1,6 @@
 use crate::{ChangeSet, Rope, State, Transaction};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use smallvec::{smallvec, SmallVec};
 use std::time::{Duration, Instant};
 
@@ -231,22 +233,81 @@ impl History {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum StepsOrTimePeriod {
     Steps(usize),
     TimePeriod(std::time::Duration),
+}
+
+const TIME_UNITS: &'static [&'static str] = &["seconds", "minutes", "hours", "days"];
+
+fn find_time_unit(s: &str) -> Result<&'static str, String> {
+    for unit in TIME_UNITS {
+        if unit.starts_with(&s.to_lowercase()) {
+            return Ok(unit);
+        }
+    }
+    Err(format!("incorrect time unit: {}", s))
+}
+
+const DURATION_VALIDATION_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(?:\d+\s*[a-zA-Z]+\s*)+$").unwrap());
+
+const NUMBER_UNIT_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)\s*([a-zA-Z]+)").unwrap());
+
+fn parse_human_duration(s: &str) -> Result<Duration, String> {
+    if !DURATION_VALIDATION_REGEX.is_match(s) {
+        return Err("duration should be composed \
+        of positive integers followed by time units"
+            .to_string());
+    }
+
+    let mut units = std::collections::HashMap::new();
+    for cap in NUMBER_UNIT_REGEX.captures_iter(s) {
+        let (n_str, short_unit) = (&cap[1], &cap[2]);
+
+        let n = match n_str.parse::<u64>() {
+            Err(_) => return Err(format!("integer too large: {}", n_str)),
+            Ok(n) => n,
+        };
+
+        let unit = find_time_unit(short_unit)?;
+        if units.contains_key(unit) {
+            return Err(format!("{} specified more than once", unit));
+        }
+        units.insert(unit, n);
+    }
+
+    let units_in_seconds = [
+        Some(*units.get("seconds").unwrap_or(&0)),
+        units.get("minutes").unwrap_or(&0).checked_mul(60),
+        units.get("hours").unwrap_or(&0).checked_mul(60 * 60),
+        units.get("days").unwrap_or(&0).checked_mul(60 * 60 * 24),
+    ];
+    // A checked sum.
+    let seconds = units_in_seconds
+        .iter()
+        .try_fold(0u64, |acc, x| x.and_then(|x| acc.checked_add(x)));
+
+    match seconds {
+        Some(seconds) => Ok(Duration::new(seconds, 0)),
+        None => Err("duration too large".to_string()),
+    }
 }
 
 impl std::str::FromStr for StepsOrTimePeriod {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim();
+        if s.is_empty() {
+            return Ok(Self::Steps(1usize));
+        }
         if let Ok(n) = s.parse::<usize>() {
             return Ok(StepsOrTimePeriod::Steps(n));
         }
-        if let Ok(d) = parse_duration::parse(s) {
-            return Ok(StepsOrTimePeriod::TimePeriod(d));
-        }
-        Err("couldn't parse the argument as a number of steps or a duration".to_string())
+        let d = parse_human_duration(s)?;
+        Ok(Self::TimePeriod(d))
     }
 }
 
@@ -301,5 +362,94 @@ mod test {
         // undo at root is a no-op
         undo(&mut history, &mut state);
         assert_eq!("hello", state.doc);
+    }
+
+    #[test]
+    fn test_parse_steps_or_time_period() {
+        use StepsOrTimePeriod::*;
+
+        // Default is one step.
+        assert_eq!("".parse(), Ok(Steps(1)));
+
+        // An integer means the number of steps.
+        assert_eq!("1".parse(), Ok(Steps(1)));
+        assert_eq!("  16 ".parse(), Ok(Steps(16)));
+
+        // Duration has a strict format.
+        let validation_err = Err("duration should be composed \
+         of positive integers followed by time units"
+            .to_string());
+        assert_eq!("  16 33".parse::<StepsOrTimePeriod>(), validation_err);
+        assert_eq!(
+            "  seconds 22  ".parse::<StepsOrTimePeriod>(),
+            validation_err
+        );
+        assert_eq!("  -4 m".parse::<StepsOrTimePeriod>(), validation_err);
+        assert_eq!("5s 3".parse::<StepsOrTimePeriod>(), validation_err);
+
+        // Units are u64.
+        assert_eq!(
+            "18446744073709551616minutes".parse::<StepsOrTimePeriod>(),
+            Err("integer too large: 18446744073709551616".to_string())
+        );
+
+        // Units are validated.
+        assert_eq!(
+            "1 millenium".parse::<StepsOrTimePeriod>(),
+            Err("incorrect time unit: millenium".to_string())
+        );
+
+        // Units can't be specified twice.
+        assert_eq!(
+            "2 seconds 6s".parse::<StepsOrTimePeriod>(),
+            Err("seconds specified more than once".to_string())
+        );
+
+        // Various formats are correctly handled.
+        assert_eq!(
+            "4s".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(4, 0)))
+        );
+        assert_eq!(
+            "2m".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(120, 0)))
+        );
+        assert_eq!(
+            "5h".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(5 * 60 * 60, 0)))
+        );
+        assert_eq!(
+            "3d".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(3 * 24 * 60 * 60, 0)))
+        );
+        assert_eq!(
+            "1m30s".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(90, 0)))
+        );
+        assert_eq!(
+            "1m 20 seconds".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(80, 0)))
+        );
+        assert_eq!(
+            "  2 minute 1day".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(24 * 60 * 60 + 2 * 60, 0)))
+        );
+        assert_eq!(
+            "3 d 2hour 5 minutes 30sec".parse::<StepsOrTimePeriod>(),
+            Ok(TimePeriod(Duration::new(
+                3 * 24 * 60 * 60 + 2 * 60 * 60 + 5 * 60 + 30,
+                0
+            )))
+        );
+
+        // Sum overflow is handled.
+        assert_eq!(
+            "18446744073709551615minutes".parse::<StepsOrTimePeriod>(),
+            Err("duration too large".to_string())
+        );
+        assert_eq!(
+            "1 minute 18446744073709551615 seconds".parse::<StepsOrTimePeriod>(),
+            Err("duration too large".to_string())
+        );
     }
 }

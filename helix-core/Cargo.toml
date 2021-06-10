@@ -31,6 +31,3 @@ toml = "0.5"
 etcetera = "0.3"
 
 rust-embed = { version = "5.9.0", optional = true }
-
-# Parsing of the arguments to :earlier and :later.
-parse_duration = "2.1.1"
