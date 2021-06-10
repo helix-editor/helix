@@ -2,6 +2,7 @@ use crate::{ChangeSet, Rope, State, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use smallvec::{smallvec, SmallVec};
+use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 
 // Stores the history of changes to a buffer.
@@ -48,8 +49,10 @@ pub struct History {
 #[derive(Debug)]
 struct Revision {
     parent: usize,
-    last_child: usize,
+    last_child: Option<NonZeroUsize>,
     transaction: Transaction,
+    // We need an inversion for undos because delete transactions don't store
+    // the deleted text.
     inversion: Transaction,
     timestamp: Instant,
 }
@@ -60,7 +63,7 @@ impl Default for History {
         Self {
             revisions: vec![Revision {
                 parent: 0,
-                last_child: 0,
+                last_child: None,
                 transaction: Transaction::from(ChangeSet::new(&Rope::new())),
                 inversion: Transaction::from(ChangeSet::new(&Rope::new())),
                 timestamp: Instant::now(),
@@ -79,10 +82,10 @@ impl History {
             .with_selection(original.selection.clone());
 
         let new_current = self.revisions.len();
-        self.revisions[self.current].last_child = new_current;
+        self.revisions[self.current].last_child = NonZeroUsize::new(new_current);
         self.revisions.push(Revision {
             parent: self.current,
-            last_child: 0,
+            last_child: None,
             transaction: transaction.clone(),
             inversion,
             timestamp: Instant::now(),
@@ -112,14 +115,14 @@ impl History {
 
     pub fn redo(&mut self) -> Option<&Transaction> {
         let current_revision = &self.revisions[self.current];
-        let last_child = current_revision.last_child;
-        if last_child == 0 {
-            return None;
-        }
-        self.current = last_child;
+        let last_child = match current_revision.last_child {
+            None => return None,
+            Some(n) => n,
+        };
+        self.current = last_child.get();
 
-        let last_child_revision = &self.revisions[last_child];
-        Some(&self.revisions[last_child].transaction)
+        let last_child_revision = &self.revisions[last_child.get()];
+        Some(&self.revisions[last_child.get()].transaction)
     }
 
     fn lowest_common_ancestor(&self, mut a: usize, mut b: usize) -> usize {
@@ -362,6 +365,21 @@ mod test {
         // undo at root is a no-op
         undo(&mut history, &mut state);
         assert_eq!("hello", state.doc);
+    }
+
+    #[test]
+    fn test_earlier_later() {
+        let mut history = History::default();
+        let doc = Rope::from("hello");
+        let mut state = State::new(doc);
+
+        let transaction1 =
+            Transaction::change(&state.doc, vec![(5, 5, Some(" world!".into()))].into_iter());
+
+        // Need to commit before applying!
+        history.commit_revision(&transaction1, &state);
+        transaction1.apply(&mut state.doc);
+        assert_eq!("hello world!", state.doc);
     }
 
     #[test]
