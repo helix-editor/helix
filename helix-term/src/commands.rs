@@ -1089,14 +1089,14 @@ mod cmd {
         Command {
             name: "earlier",
             alias: Some("ear"),
-            doc: "Jump back to an earlier point in edit history.",
+            doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
             fun: earlier,
             completer: None,
         },
         Command {
             name: "later",
             alias: Some("lat"),
-            doc: "Jump to a later point in edit history.",
+            doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
             fun: later,
             completer: None,
         },

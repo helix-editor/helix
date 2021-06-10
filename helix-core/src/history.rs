@@ -248,11 +248,17 @@ pub enum UndoKind {
     TimePeriod(std::time::Duration),
 }
 
-const TIME_UNITS: &[&str] = &["seconds", "minutes", "hours", "days"];
+// A subset of sytemd.time time span syntax units.
+const TIME_UNITS: &[(&[&str], &str)] = &[
+    (&["seconds", "second", "sec", "s"], "seconds"),
+    (&["minutes", "minute", "min", "m"], "minutes"),
+    (&["hours", "hour", "hr", "h"], "hours"),
+    (&["days", "day", "d"], "days"),
+];
 
 fn find_time_unit(s: &str) -> Result<&'static str, String> {
-    for unit in TIME_UNITS {
-        if unit.starts_with(&s.to_lowercase()) {
+    for (forms, unit) in TIME_UNITS {
+        if forms.contains(&s) {
             return Ok(unit);
         }
     }
@@ -260,9 +266,9 @@ fn find_time_unit(s: &str) -> Result<&'static str, String> {
 }
 
 static DURATION_VALIDATION_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?:\d+\s*[a-zA-Z]+\s*)+$").unwrap());
+    Lazy::new(|| Regex::new(r"^(?:\d+\s*[a-z]+\s*)+$").unwrap());
 
-static NUMBER_UNIT_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)\s*([a-zA-Z]+)").unwrap());
+static NUMBER_UNIT_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)\s*([a-z]+)").unwrap());
 
 fn parse_human_duration(s: &str) -> Result<Duration, String> {
     if !DURATION_VALIDATION_REGEX.is_match(s) {
@@ -475,7 +481,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_steps_or_time_period() {
+    fn test_parse_undo_kind() {
         use UndoKind::*;
 
         // Default is one step.
