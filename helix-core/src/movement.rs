@@ -85,7 +85,7 @@ pub fn move_vertically(
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     let movement = |range: Range| -> Result<Range, Range> {
-        let (characters, _) = enumerated_chars(&slice, range.head);
+        let characters = enumerated_chars(&slice, range.head);
         let new_head = characters.clone().skip(1).end_of_block().ok_or(range)?;
         let new_anchor = if characters.clone().at_boundary() {
             characters
@@ -109,7 +109,7 @@ pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 
 pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     let movement = |range: Range| -> Result<Range, Range> {
-        let (_, backwards) = enumerated_chars(&slice, range.head);
+        let backwards = backwards_enumerated_chars(&slice, range.head);
         let new_head = backwards
             .clone()
             .skip(1)
@@ -138,7 +138,7 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 
 pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
     let movement = |range: Range| -> Result<Range, Range> {
-        let (characters, _) = enumerated_chars(&slice, range.head);
+        let characters = enumerated_chars(&slice, range.head);
         let new_head = characters.clone().skip(1).end_of_word().ok_or(range)?;
         let new_anchor = if characters.clone().at_boundary() {
             characters
@@ -224,16 +224,20 @@ impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedCharHelpers for I {
 pub fn enumerated_chars<'a>(
     slice: &'a RopeSlice,
     index: usize,
-) -> (
-    impl Iterator<Item = (usize, char)> + 'a + Clone,
-    impl Iterator<Item = (usize, char)> + 'a + Clone,
-) {
+) -> impl Iterator<Item = (usize, char)> + 'a + Clone {
+    // Single call to the API to ensure everything after is a cheap clone.
+    let chars = slice.chars_at(index);
+    (index..).zip(chars.clone())
+}
+
+pub fn backwards_enumerated_chars<'a>(
+    slice: &'a RopeSlice,
+    index: usize,
+) -> impl Iterator<Item = (usize, char)> + 'a + Clone {
     // Single call to the API to ensure everything after is a cheap clone.
     let mut chars = slice.chars_at(index);
-    let forward = (index..).zip(chars.clone());
     chars.next();
-    let backwards = (0..=index).rev().zip(iter::from_fn(move || chars.prev()));
-    (forward, backwards)
+    (0..=index).rev().zip(iter::from_fn(move || chars.prev()))
 }
 
 #[inline]
