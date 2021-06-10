@@ -123,10 +123,7 @@ impl History {
 
     pub fn redo(&mut self) -> Option<&Transaction> {
         let current_revision = &self.revisions[self.current];
-        let last_child = match current_revision.last_child {
-            None => return None,
-            Some(n) => n,
-        };
+        let last_child = match current_revision.last_child?;
         self.current = last_child.get();
 
         let last_child_revision = &self.revisions[last_child.get()];
