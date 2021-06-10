@@ -29,5 +29,4 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 
 etcetera = "0.3"
-
 rust-embed = { version = "5.9.0", optional = true }

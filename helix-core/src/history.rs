@@ -27,13 +27,13 @@ use std::time::{Duration, Instant};
 //
 // Revisions are commited with a timestamp. :earlier and :later can be used
 // to jump to the closest revision to a moment in time relative to the timestamp
-// of the current revision plus (:earlier) or minus (:later) the duration
+// of the current revision plus (:later) or minus (:earlier) the duration
 // given to the command. If a single integer is given, the editor will instead
 // jump the given number of revisions in the vector.
 //
 // Limitations:
 //  * Changes in selections currently don't commit history changes. The selection
-//    will be updated when switching revisions only if the revision
+//    will only be updated to the state after a commited buffer change.
 //  * The vector of history revisions is currently unbounded. This might
 //    cause the memory consumption to grow significantly large during long
 //    editing sessions.
@@ -239,7 +239,7 @@ pub enum StepsOrTimePeriod {
     TimePeriod(std::time::Duration),
 }
 
-const TIME_UNITS: &'static [&'static str] = &["seconds", "minutes", "hours", "days"];
+const TIME_UNITS: &[&str] = &["seconds", "minutes", "hours", "days"];
 
 fn find_time_unit(s: &str) -> Result<&'static str, String> {
     for unit in TIME_UNITS {
@@ -250,10 +250,10 @@ fn find_time_unit(s: &str) -> Result<&'static str, String> {
     Err(format!("incorrect time unit: {}", s))
 }
 
-const DURATION_VALIDATION_REGEX: Lazy<Regex> =
+static DURATION_VALIDATION_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:\d+\s*[a-zA-Z]+\s*)+$").unwrap());
 
-const NUMBER_UNIT_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)\s*([a-zA-Z]+)").unwrap());
+static NUMBER_UNIT_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)\s*([a-zA-Z]+)").unwrap());
 
 fn parse_human_duration(s: &str) -> Result<Duration, String> {
     if !DURATION_VALIDATION_REGEX.is_match(s) {
