@@ -1030,10 +1030,8 @@ mod cmd {
                 return;
             }
         };
-        let view_id = editor.view().id;
-        let doc_id = editor.view().doc;
-        let doc = &mut editor.documents[doc_id];
-        doc.earlier(view_id, sotp)
+        let (view, doc) = editor.current();
+        doc.earlier(view.id, sotp)
     }
 
     fn later(editor: &mut Editor, args: &[&str], event: PromptEvent) {
@@ -1044,10 +1042,8 @@ mod cmd {
                 return;
             }
         };
-        let view_id = editor.view().id;
-        let doc_id = editor.view().doc;
-        let doc = &mut editor.documents[doc_id];
-        doc.later(view_id, sotp)
+        let (view, doc) = editor.current();
+        doc.later(view.id, sotp)
     }
 
     pub const COMMAND_LIST: &[Command] = &[
