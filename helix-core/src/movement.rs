@@ -98,16 +98,9 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 }
 
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
-    let mut movement = |range: Range| -> Result<Range, Range> {
-        Ok(slice.chars_at(range.head).range_to_target(target, range))
-    };
-    for _ in 0..count {
-        range = match movement(range) {
-            Ok(new_range) => new_range,
-            Err(last_valid_range) => return last_valid_range,
-        }
-    }
-    range
+    (0..count).fold(range, |range, _| {
+        slice.chars_at(range.head).range_to_target(target, range)
+    })
 }
 
 // ---- util ------------
