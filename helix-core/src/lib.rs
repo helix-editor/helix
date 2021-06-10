@@ -3,7 +3,7 @@ pub mod auto_pairs;
 pub mod comment;
 pub mod diagnostic;
 pub mod graphemes;
-mod history;
+pub mod history;
 pub mod indent;
 pub mod macros;
 pub mod match_brackets;
@@ -90,7 +90,6 @@ pub use smallvec::SmallVec;
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
-pub use history::History;
 pub use history::StepsOrTimePeriod;
 pub use state::State;
 

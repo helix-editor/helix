@@ -1020,7 +1020,10 @@ mod cmd {
     }
 
     fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let sotp = match args.join(" ").parse::<helix_core::StepsOrTimePeriod>() {
+        let sotp = match args
+            .join(" ")
+            .parse::<helix_core::history::StepsOrTimePeriod>()
+        {
             Ok(sotp) => sotp,
             Err(msg) => {
                 editor.set_error(msg);

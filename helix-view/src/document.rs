@@ -5,8 +5,9 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
+    history::History,
     syntax::{LanguageConfiguration, LOADER},
-    ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, Rope, Selection, State, Syntax, Transaction,
 };
 
 use crate::{DocumentId, ViewId};
