@@ -180,11 +180,11 @@ impl History {
     }
 
     fn jump_forward(&mut self, delta: usize) -> Vec<Transaction> {
-        use std::cmp::max;
-        self.jump_to(max(
-            self.revisions.len() - 1,
-            self.current.saturating_add(delta),
-        ))
+        self.jump_to(
+            self.current
+                .saturating_add(delta)
+                .min(self.revisions.len() - 1),
+        )
     }
 
     // Helper for a binary search case below.
@@ -460,6 +460,21 @@ mod test {
 
         later(&mut history, &mut state, Steps(50));
         assert_eq!("a f\n", state.doc);
+
+        earlier(&mut history, &mut state, Steps(4));
+        assert_eq!("a b c\n", state.doc);
+
+        later(&mut history, &mut state, TimePeriod(Duration::new(1, 0)));
+        assert_eq!("a b c\n", state.doc);
+
+        later(&mut history, &mut state, TimePeriod(Duration::new(5, 0)));
+        assert_eq!("a b c d\n", state.doc);
+
+        later(&mut history, &mut state, TimePeriod(Duration::new(6, 0)));
+        assert_eq!("a b c e\n", state.doc);
+
+        later(&mut history, &mut state, Steps(1));
+        assert_eq!("a\n", state.doc);
     }
 
     #[test]
