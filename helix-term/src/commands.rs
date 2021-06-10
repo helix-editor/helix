@@ -1091,7 +1091,7 @@ mod cmd {
         },
         Command {
             name: "earlier",
-            alias: None,
+            alias: Some("ear"),
             doc: "Jump back to an earlier point in edit history.",
             fun: earlier,
             completer: None,
