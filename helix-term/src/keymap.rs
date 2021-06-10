@@ -287,6 +287,9 @@ pub fn default() -> Keymaps {
         ctrl!('o') => commands::jump_backward,
         // ctrl!('s') => commands::save_selection,
 
+        key!('$') => commands::move_line_end,
+        key!('^') => commands::move_first_nonwhitespace,
+
         key!(' ') => commands::space_mode,
         key!('z') => commands::view_mode,
 
@@ -341,6 +344,8 @@ pub fn default() -> Keymaps {
                 code: KeyCode::Esc,
                 modifiers: KeyModifiers::NONE
             } => commands::exit_select_mode,
+            key!('$') => commands::extend_line_end,
+            key!('^') => commands::extend_first_nonwhitespace,
         )
         .into_iter(),
     );
