@@ -55,7 +55,7 @@ pub mod util {
     use super::*;
     use helix_core::{Range, Rope, Transaction};
 
-    /// Converts `lsp::Position` to a position in the document.
+    /// Converts [`lsp::Position`] to a position in the document.
     ///
     /// Returns `None` if position exceeds document length or an operation overflows.
     pub fn lsp_pos_to_pos(
@@ -100,46 +100,44 @@ pub mod util {
         }
     }
 
-    /// Converts position in the document to `lsp::Position`.
+    /// Converts position in the document to [`lsp::Position`].
     ///
-    /// Returns `None` if position exceeds the document length or an operation overflows.
+    /// Saturates the returned position to be within document bounds.
     pub fn pos_to_lsp_pos(
         doc: &Rope,
         pos: usize,
         offset_encoding: OffsetEncoding,
-    ) -> Option<lsp::Position> {
+    ) -> lsp::Position {
         let max_char = doc.chars().count();
-        let pos = if pos > max_char { return None } else { pos };
+        let pos = if pos > max_char { max_char } else { pos };
         match offset_encoding {
             OffsetEncoding::Utf8 => {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.line_to_char(line);
-                let col = pos.checked_sub(line_start)?;
+                let col = pos.saturating_sub(line_start);
 
-                Some(lsp::Position::new(line as u32, col as u32))
+                lsp::Position::new(line as u32, col as u32)
             }
             OffsetEncoding::Utf16 => {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
-                let col = doc.char_to_utf16_cu(pos).checked_sub(line_start)?;
+                let col = doc.char_to_utf16_cu(pos).saturating_sub(line_start);
 
-                Some(lsp::Position::new(line as u32, col as u32))
+                lsp::Position::new(line as u32, col as u32)
             }
         }
     }
 
-    /// Converts a range in the document to `lsp::Range`.
-    ///
-    /// Returns `None` if anchor or head exceed the document bounds or an operation overflows.
+    /// Converts a range in the document to [`lsp::Range`].
     pub fn range_to_lsp_range(
         doc: &Rope,
         range: Range,
         offset_encoding: OffsetEncoding,
-    ) -> Option<lsp::Range> {
-        let start = pos_to_lsp_pos(doc, range.from(), offset_encoding)?;
-        let end = pos_to_lsp_pos(doc, range.to(), offset_encoding)?;
+    ) -> lsp::Range {
+        let start = pos_to_lsp_pos(doc, range.from(), offset_encoding);
+        let end = pos_to_lsp_pos(doc, range.to(), offset_encoding);
 
-        Some(lsp::Range::new(start, end))
+        lsp::Range::new(start, end)
     }
 
     pub fn generate_transaction_from_edits(
@@ -317,46 +315,5 @@ mod tests {
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
         test_case!("test\n\n\n\ncase", (4, 5) => None);
         test_case!("", (u32::MAX, u32::MAX) => None);
-    }
-
-    #[test]
-    fn converts_pos_to_lsp_pos() {
-        macro_rules! test_case {
-            ($doc:expr, $pos:expr => ($x:expr, $y:expr)) => {
-                let doc = Rope::from($doc);
-                let want = lsp::Position::new($x, $y);
-                assert_eq!(
-                    Some(want),
-                    pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf16)
-                );
-                assert_eq!(Some(want), pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf8))
-            };
-            ($doc:expr, $pos:expr => $want:expr) => {
-                let doc = Rope::from($doc);
-                assert_eq!($want, pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf16));
-                assert_eq!($want, pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf8))
-            };
-        }
-
-        test_case!("", 0 => (0, 0));
-        test_case!("\n\n", 0 => (0, 0));
-        test_case!("\n\n", 1 => (1, 0));
-        test_case!("\n\n", 2 => (2, 0));
-        test_case!("\n\n", 3 => None);
-        test_case!("test\n\n\n\ncase", 0 => (0, 0));
-        test_case!("test\n\n\n\ncase", 1 => (0, 1));
-        test_case!("test\n\n\n\ncase", 2 => (0, 2));
-        test_case!("test\n\n\n\ncase", 3 => (0, 3));
-        test_case!("test\n\n\n\ncase", 4 => (0, 4));
-        test_case!("test\n\n\n\ncase", 5 => (1, 0));
-        test_case!("test\n\n\n\ncase", 6 => (2, 0));
-        test_case!("test\n\n\n\ncase", 7 => (3, 0));
-        test_case!("test\n\n\n\ncase", 8 => (4, 0));
-        test_case!("test\n\n\n\ncase", 9 => (4, 1));
-        test_case!("test\n\n\n\ncase", 10 => (4, 2));
-        test_case!("test\n\n\n\ncase", 11 => (4, 3));
-        test_case!("test\n\n\n\ncase", 12 => (4, 4));
-        test_case!("test\n\n\n\ncase", 13 => None);
-        test_case!("test\n\n\n\ncase", 14 => None);
     }
 }

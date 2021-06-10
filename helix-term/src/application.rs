@@ -177,7 +177,7 @@ impl Application {
                             let diagnostics = params
                                 .diagnostics
                                 .into_iter()
-                                .map(|diagnostic| {
+                                .filter_map(|diagnostic| {
                                     use helix_core::{
                                         diagnostic::{Range, Severity, Severity::*},
                                         Diagnostic,
@@ -195,8 +195,8 @@ impl Application {
                                     ) {
                                         start
                                     } else {
-                                        // what to do here?
-                                        0
+                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        return None;
                                     };
 
                                     let end = if let Some(end) = lsp_pos_to_pos(
@@ -206,11 +206,11 @@ impl Application {
                                     ) {
                                         end
                                     } else {
-                                        // what to do here?
-                                        0
+                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        return None;
                                     };
 
-                                    Diagnostic {
+                                    Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
@@ -224,7 +224,7 @@ impl Application {
                                         ),
                                         // code
                                         // source
-                                    }
+                                    })
                                 })
                                 .collect();
 
