@@ -1,6 +1,6 @@
 use std::iter::{self, SkipWhile};
 
-use crate::{Position, Range, RopeSlice, coords_at_pos, graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary}, iterator::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars, enumerated_chars}, pos_at_coords};
+use crate::{Position, Range, RopeSlice, coords_at_pos, graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary}, iterator::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars, distance, enumerated_chars}, pos_at_coords};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Direction {
@@ -86,20 +86,27 @@ fn word_move<C: EnumeratedChars + Clone>(
     count: usize,
     termination: fn(&mut dyn EnumeratedChars,) -> Option<usize>,
 ) -> Range {
-    let movement = |range: Range| -> Result<Range, Range> {
-        let characters = characters.clone().skip_while(|(pos, _)| *pos != range.head);
+    let mut movement = |range: Range| -> Result<Range, Range> {
+        // Calculate the new head, which differs based on
+        // the kind of move we're doing (the termination).
+        // This advances the characters iterator for further moves.
         let new_head = termination(&mut characters.clone().skip(1)).ok_or(range)?;
-        let new_anchor = if characters.clone().at_boundary() {
-            characters
-                .clone()
+
+        // Work out the span (characters from the start of the movement up to the new head)
+        let span: Vec<(usize, char)> = characters.take(distance(range.head, new_head)).collect();
+
+        // Calculate the new anchor from the span
+        let new_anchor = if span.iter().copied().at_boundary() {
+            span
+                .iter()
+                .copied()
                 .skip(1)
                 .skip_while(|(pos, c)| is_end_of_line(*c))
                 .current_position()
                 .ok_or(range)?
         } else {
-            characters.clone().skip_while(|(pos, c)| is_end_of_line(*c)).current_position().ok_or(range)?
+            span.iter().copied().skip_while(|(pos, c)| is_end_of_line(*c)).current_position().ok_or(range)?
         };
-
         (range.head != new_head)
             .then(|| Range::new(new_anchor, new_head))
             .ok_or(range)
@@ -120,6 +127,7 @@ pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range
 }
 
 pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    dbg!(slice);
     let mut characters = backwards_enumerated_chars(&slice, range.head);
     word_move(&mut characters, range, count, |c| c.end_of_word())
 }

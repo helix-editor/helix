@@ -46,7 +46,7 @@ pub type NewlineCheck = for<'r> fn(&'r (usize, char)) -> bool;
 impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedChars for I {
     fn end_of_block(&mut self) -> Option<usize> {
         let after_newline = self.clone().skip_while(|(pos, c)| is_end_of_line(*c));
-        let after_newline_zip = self.skip_while(|(pos, c)| is_end_of_line(*c)).skip(1);
+        let after_newline_zip = self.clone().skip_while(|(pos, c)| is_end_of_line(*c)).skip(1);
         let mut pairs = after_newline.zip(after_newline_zip);
         pairs
             .find_map(|((a_pos, a), (_, b))| {
@@ -58,7 +58,8 @@ impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedChars for I {
 
     fn end_of_word(&mut self) -> Option<usize> {
         let after_newline = self.clone().skip_while(|(_, c)| is_end_of_line(*c));
-        let mut pairs = after_newline.clone().zip(after_newline.skip(1));
+        let after_newline_zip = self.clone().skip_while(|(pos, c)| is_end_of_line(*c)).skip(1);
+        let mut pairs = after_newline.zip(after_newline_zip);
         pairs
             .find_map(|((a_pos, a), (_, b))| {
                 ((categorize(a) != categorize(b)) && (!a.is_whitespace() || is_end_of_line(b)))
@@ -89,3 +90,7 @@ impl<I: Clone + Iterator<Item = (usize, char)>> NewlineTraversal for I {
     }
 }
 
+pub fn distance<A: Into<usize>, B: Into<usize>>(a: A, b: B) -> usize {
+    let (a, b) = (a.into(), b.into());
+    a.saturating_sub(b).max(b.saturating_sub(a))
+}
