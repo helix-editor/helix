@@ -1,6 +1,6 @@
 use std::iter::{self, SkipWhile};
 
-use crate::{Position, Range, RopeSlice, coords_at_pos, graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary}, iterator::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars, distance, enumerated_chars}, pos_at_coords};
+use crate::{Position, Range, RopeSlice, coords_at_pos, graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary}, iterator::{SpanHelpers, backwards_enumerated_chars, distance, enumerated_chars}, pos_at_coords};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Direction {
@@ -80,32 +80,34 @@ pub fn move_vertically(
 }
 
 // Generic word motion
-fn word_move<C: EnumeratedChars + Clone>(
+fn word_move<C: SpanHelpers + Clone>(
     characters: &mut C,
     range: Range,
     count: usize,
-    termination: fn(&mut dyn EnumeratedChars,) -> Option<usize>,
+    span: fn(&mut dyn SpanHelpers,) -> Vec<char> ,
 ) -> Range {
     let mut movement = |range: Range| -> Result<Range, Range> {
-        // Calculate the new head, which differs based on
-        // the kind of move we're doing (the termination).
-        // This advances the characters iterator for further moves.
-        let new_head = termination(&mut characters.clone().skip(1)).ok_or(range)?;
+        let span = characters.to_end_of_block();
+        let new_head = (range.head + span.len()).saturating_sub(1);
+        let indexed_span = || (range.head..).zip(span.iter().copied());
 
-        // Work out the span (characters from the start of the movement up to the new head)
-        let span: Vec<(usize, char)> = characters.take(distance(range.head, new_head)).collect();
+        //print!("Span from {:?} to {:?}: ", span_iter().next(), span_iter().last());
+        //for (_, character) in span_iter() {
+        //    print!("{}", character);
+        //}
+        //println!("");
 
         // Calculate the new anchor from the span
         let new_anchor = if span.iter().copied().at_boundary() {
-            span
-                .iter()
-                .copied()
+            indexed_span()
                 .skip(1)
                 .skip_while(|(pos, c)| is_end_of_line(*c))
-                .current_position()
+                .map(|(pos, _)| pos)
+                .next()
                 .ok_or(range)?
         } else {
-            span.iter().copied().skip_while(|(pos, c)| is_end_of_line(*c)).current_position().ok_or(range)?
+            indexed_span().skip_while(|(pos, c)| is_end_of_line(*c)).map(|(pos, _)| pos)
+                .next().ok_or(range)?
         };
         (range.head != new_head)
             .then(|| Range::new(new_anchor, new_head))
@@ -117,19 +119,19 @@ fn word_move<C: EnumeratedChars + Clone>(
 }
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let mut characters = enumerated_chars(&slice, range.head);
-    word_move(&mut characters, range, count, |c| c.end_of_block())
+    let mut characters = slice.chars_at(range.head);
+    word_move(&mut characters, range, count, |c| c.to_end_of_block())
 }
 
 pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let mut characters = enumerated_chars(&slice, range.head);
-    word_move(&mut characters, range, count, |c| c.end_of_word())
+    let mut characters = slice.chars_at(range.head);
+    word_move(&mut characters, range, count, |c| c.to_end_of_word())
 }
 
 pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    dbg!(slice);
-    let mut characters = backwards_enumerated_chars(&slice, range.head);
-    word_move(&mut characters, range, count, |c| c.end_of_word())
+    let mut chars = slice.chars_at(range.head + 1);
+    let mut backwards = std::iter::from_fn(move || chars.prev());
+    word_move(&mut backwards, range, count, |c| c.to_end_of_word())
 }
 
 // ---- util ------------
