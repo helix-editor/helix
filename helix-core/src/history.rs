@@ -172,7 +172,11 @@ impl History {
     }
 
     fn jump_forward(&mut self, delta: usize) -> Vec<Transaction> {
-        self.jump_to(self.current.saturating_add(delta).min(self.revisions.len() - 1))
+        self.jump_to(
+            self.current
+                .saturating_add(delta)
+                .min(self.revisions.len() - 1),
+        )
     }
 
     // Helper for a binary search case below.
