@@ -98,52 +98,8 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 }
 
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
-    //let mut characters: Box<dyn Iterator<Item = char>> = match target {
-    //    WordMotionTarget::NextWordStart | WordMotionTarget::NextWordEnd => {
-    //        Box::new(slice.chars_at(range.head))
-    //    }
-    //    WordMotionTarget::PrevWordStart => {
-    //        let mut backwards = slice.chars_at(range.head + 1);
-    //        Box::new(from_fn(move || backwards.prev()))
-    //    }
-    //};
-    //
-    let mut characters = slice.chars_at(range.head);
-
     let mut movement = |range: Range| -> Result<Range, Range> {
-        // We're finished if there are no characters left
-        let span = characters.to_target(target);
-        let new_head = range.head.max((range.head + span.len()).saturating_sub(1));
-        let indexed_span = || (range.head..).zip(span.iter().copied());
-
-        print!("Span from {:?} to {:?}: ", indexed_span().next(), indexed_span().last());
-        for (_, character) in indexed_span() {
-            print!("{}", character);
-        }
-        println!("");
-        dbg!(new_head);
-
-        let at_boundary = matches!(
-            (span.get(0), span.get(1)),
-            (Some(a), Some(b)) if categorize(*a) != categorize(*b)
-        );
-        let new_anchor = if at_boundary {
-            indexed_span()
-                .skip(1)
-                .skip_while(|(pos, c)| is_end_of_line(*c))
-                .map(|(pos, _)| pos)
-                .next()
-                .unwrap_or(range.head + 1)
-        } else {
-            indexed_span()
-                .skip_while(|(pos, c)| is_end_of_line(*c))
-                .map(|(pos, _)| pos)
-                .next()
-                .unwrap_or(range.head)
-        };
-        (range.head != new_head)
-            .then(|| Range::new(new_anchor, new_head))
-            .ok_or(range)
+        Ok(slice.chars_at(range.head).to_target(target, range))
     };
     for _ in 0..count {
         range = match movement(range) {
@@ -254,62 +210,100 @@ pub enum WordMotionTarget {
     PrevWordStart,
 }
 
-// Helper functions for iterators over characters
-pub trait SpanHelpers {
-    // Advances until a target and returns the
-    fn to_target(&mut self, target: WordMotionTarget) -> Vec<char>;
+pub trait CharHelpers {
+    fn to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range;
 }
 
-impl SpanHelpers for Chars<'_> {
-    fn to_target(&mut self, target: WordMotionTarget) -> Vec<char> {
-        // We first extract the head and any newlines, then proceed until a category boundary
-        enum Phase {
-            CollectPreviousHead,
-            CollectNewlines,
-            ReachTarget,
+enum WordMotionPhase {
+    Start,
+    SkipNewlines,
+    ReachTarget,
+}
+
+impl CharHelpers for Chars<'_> {
+    fn to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
+        let range = origin;
+        // Characters are iterated forward or backwards depending on the motion direction.
+        let characters: Box<dyn Iterator<Item=char>> = match target {
+            WordMotionTarget::PrevWordStart => {
+                self.next();
+                Box::new(from_fn(||self.prev()))
+            },
+            _ => Box::new(self)
         };
-        let mut vec = Vec::<char>::new();
-        let mut phase = Phase::CollectPreviousHead;
-        let mut peekable = self.peekable();
 
-        while let Some(peek) = peekable.peek() {
-            match phase {
-                Phase::CollectPreviousHead => {
-                    vec.push(peekable.next().unwrap());
-                    phase = Phase::CollectNewlines;
-                },
-                Phase::CollectNewlines => {
-                    if !is_end_of_line(*peek) {
-                        phase = Phase::ReachTarget;
-                    };
-                    vec.push(peekable.next().unwrap());
-                },
-                Phase::ReachTarget => {
-                    let last = vec.last().unwrap();
-                    let reached_target = match target {
-                        WordMotionTarget::NextWordStart => {
-                            ((categorize(*last) != categorize(*peek))
-                                && (is_end_of_line(*peek) || !peek.is_whitespace()))
-                        }
-                        WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
-                            ((categorize(*last) != categorize(*peek))
-                                && (!last.is_whitespace() || is_end_of_line(*peek)))
-                        }
-                    };
+        // Index advancement also depends on the direction.
+        let advance: &dyn Fn(&mut usize) = match target {
+            WordMotionTarget::PrevWordStart => &|u| *u = u.saturating_sub(1),
+            _ => &|u| *u += 1,
+        };
 
-                    if reached_target {
+        let mut characters = characters.peekable();
+        let mut phase = WordMotionPhase::Start;
+        let mut head = origin.head;
+        let mut anchor: Option<usize> = None;
+        let is_boundary = |a: char, b: Option<char>| {
+            categorize(a) != categorize(b.unwrap_or(a))
+        };
+        while let Some(peek) = characters.peek().copied() {
+            phase = match phase {
+                WordMotionPhase::Start => {
+                    characters.next();
+                    if characters.peek().is_none() {
+                        break; // We're at the end, so there's nothing to do.
+                    }
+                    // Anchor may remain here if the head wasn't at a boundary
+                    if !is_boundary(peek, characters.peek().copied()) && !is_end_of_line(peek) {
+                        anchor = Some(head);
+                    }
+                    // First character is always skipped by the head
+                    advance(&mut head);
+                    WordMotionPhase::SkipNewlines
+                },
+                WordMotionPhase::SkipNewlines => {
+                    if is_end_of_line(peek) {
+                        characters.next();
+                        if characters.peek().is_some() {
+                            advance(&mut head);
+                        }
+                        WordMotionPhase::SkipNewlines
+                    } else {
+                        WordMotionPhase::ReachTarget
+                    }
+                },
+                WordMotionPhase::ReachTarget => {
+                    characters.next();
+                    anchor = anchor.or(Some(head));
+                    if reached_target(target, peek, characters.peek()) {
                         break;
                     } else {
-                        vec.push(peekable.next().unwrap());
+                        advance(&mut head);
                     }
+                    WordMotionPhase::ReachTarget
                 }
             }
         }
-        // Readjust the iterator to point at the right character for future steps
-        self.prev();
-        self.prev();
-        vec
+        Range::new(anchor.unwrap_or(origin.anchor), head)
     }
+}
+
+fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>) -> bool {
+    let next_peek = match next_peek {
+        Some(next_peek) => next_peek,
+        None => return true,
+    };
+
+    let reached_target = match target {
+        WordMotionTarget::NextWordStart => {
+            ((categorize(peek) != categorize(*next_peek))
+                && (is_end_of_line(*next_peek) || !next_peek.is_whitespace()))
+        }
+        WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
+            ((categorize(peek) != categorize(*next_peek))
+                && (!peek.is_whitespace() || is_end_of_line(*next_peek)))
+        }
+    };
+    reached_target
 }
 
 #[cfg(test)]
@@ -584,10 +578,10 @@ mod test {
                 vec![
                     (3, Range::new(0, 0), Range::new(17, 19)),
                 ]),
-            //("Excessive motions are performed partially",
-            //    vec![
-            //        (999, Range::new(0, 0), Range::new(32, 40)),
-            //    ]),
+            ("Excessive motions are performed partially",
+                vec![
+                    (999, Range::new(0, 0), Range::new(32, 40)),
+                ]),
             ("", // Edge case of moving forward in empty string
                 vec![
                     (1, Range::new(0, 0), Range::new(0, 0)),
@@ -756,7 +750,7 @@ mod test {
                 ]),
             ("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 0)),
+                    (1, Range::new(0, 0), Range::new(0, 4)),
                 ]),
             ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
                 vec![
