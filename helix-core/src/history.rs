@@ -75,7 +75,15 @@ impl Default for History {
 
 impl History {
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
-        // TODO: could store a single transaction, if deletes also stored the text they delete
+        self.commit_revision_at_timestamp(transaction, original, Instant::now());
+    }
+
+    pub fn commit_revision_at_timestamp(
+        &mut self,
+        transaction: &Transaction,
+        original: &State,
+        timestamp: Instant,
+    ) {
         let inversion = transaction
             .invert(&original.doc)
             // Store the current cursor position
@@ -88,7 +96,7 @@ impl History {
             last_child: None,
             transaction: transaction.clone(),
             inversion,
-            timestamp: Instant::now(),
+            timestamp,
         });
         self.current = new_current;
     }
@@ -172,11 +180,11 @@ impl History {
     }
 
     fn jump_forward(&mut self, delta: usize) -> Vec<Transaction> {
-        self.jump_to(
-            self.current
-                .saturating_add(delta)
-                .min(self.revisions.len() - 1),
-        )
+        use std::cmp::max;
+        self.jump_to(max(
+            self.revisions.len() - 1,
+            self.current.saturating_add(delta),
+        ))
     }
 
     // Helper for a binary search case below.
@@ -370,16 +378,88 @@ mod test {
     #[test]
     fn test_earlier_later() {
         let mut history = History::default();
-        let doc = Rope::from("hello");
+        let doc = Rope::from("a\n");
         let mut state = State::new(doc);
 
-        let transaction1 =
-            Transaction::change(&state.doc, vec![(5, 5, Some(" world!".into()))].into_iter());
+        fn undo(history: &mut History, state: &mut State) {
+            if let Some(transaction) = history.undo() {
+                transaction.apply(&mut state.doc);
+            }
+        };
 
-        // Need to commit before applying!
-        history.commit_revision(&transaction1, &state);
-        transaction1.apply(&mut state.doc);
-        assert_eq!("hello world!", state.doc);
+        fn earlier(history: &mut History, state: &mut State, sotp: StepsOrTimePeriod) {
+            let txns = history.earlier(sotp);
+            for txn in txns {
+                txn.apply(&mut state.doc);
+            }
+        };
+
+        fn later(history: &mut History, state: &mut State, sotp: StepsOrTimePeriod) {
+            let txns = history.later(sotp);
+            for txn in txns {
+                txn.apply(&mut state.doc);
+            }
+        };
+
+        fn commit_change(
+            history: &mut History,
+            state: &mut State,
+            change: crate::transaction::Change,
+            instant: Instant,
+        ) {
+            let txn = Transaction::change(&state.doc, vec![change.clone()].into_iter());
+            history.commit_revision_at_timestamp(&txn, &state, instant);
+            txn.apply(&mut state.doc);
+        };
+
+        let t0 = Instant::now();
+        let t = |n| t0.checked_add(Duration::new(n, 0)).unwrap();
+
+        commit_change(&mut history, &mut state, (1, 1, Some(" b".into())), t(0));
+        assert_eq!("a b\n", state.doc);
+
+        commit_change(&mut history, &mut state, (3, 3, Some(" c".into())), t(10));
+        assert_eq!("a b c\n", state.doc);
+
+        commit_change(&mut history, &mut state, (5, 5, Some(" d".into())), t(20));
+        assert_eq!("a b c d\n", state.doc);
+
+        undo(&mut history, &mut state);
+        assert_eq!("a b c\n", state.doc);
+
+        commit_change(&mut history, &mut state, (5, 5, Some(" e".into())), t(30));
+        assert_eq!("a b c e\n", state.doc);
+
+        undo(&mut history, &mut state);
+        undo(&mut history, &mut state);
+        assert_eq!("a b\n", state.doc);
+
+        commit_change(&mut history, &mut state, (1, 3, None), t(40));
+        assert_eq!("a\n", state.doc);
+
+        commit_change(&mut history, &mut state, (1, 1, Some(" f".into())), t(50));
+        assert_eq!("a f\n", state.doc);
+
+        use StepsOrTimePeriod::*;
+
+        earlier(&mut history, &mut state, Steps(3));
+        assert_eq!("a b c d\n", state.doc);
+
+        later(&mut history, &mut state, TimePeriod(Duration::new(20, 0)));
+        assert_eq!("a\n", state.doc);
+
+        earlier(&mut history, &mut state, TimePeriod(Duration::new(19, 0)));
+        assert_eq!("a b c d\n", state.doc);
+
+        earlier(
+            &mut history,
+            &mut state,
+            TimePeriod(Duration::new(10000, 0)),
+        );
+        assert_eq!("a\n", state.doc);
+
+        later(&mut history, &mut state, Steps(50));
+        assert_eq!("a f\n", state.doc);
     }
 
     #[test]
