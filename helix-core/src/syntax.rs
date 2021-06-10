@@ -366,7 +366,11 @@ impl Syntax {
         // prevents them from being moved. But both of these values are really just
         // pointers, so it's actually ok to move them.
 
-        let mut cursor = QueryCursor::new(); // reuse a pool
+        // reuse a cursor from the pool if possible
+        let mut cursor = PARSER.with(|ts_parser| {
+            let highlighter = &mut ts_parser.borrow_mut();
+            highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+        });
         let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(self.tree()) };
         let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
         let query_ref = unsafe { mem::transmute::<_, &'static Query>(&self.config.query) };
