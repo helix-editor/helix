@@ -1,4 +1,4 @@
-use crate::movement::{EnumeratedCharHelpers, backwards_enumerated_chars, enumerated_chars};
+use crate::movement::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars, enumerated_chars};
 use ropey::RopeSlice;
 
 #[must_use]

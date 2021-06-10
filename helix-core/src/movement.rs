@@ -83,19 +83,24 @@ pub fn move_vertically(
     range
 }
 
-pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn word_move<C: EnumeratedChars + Clone>(
+    characters: &C,
+    range: Range,
+    count: usize,
+    termination: fn(&dyn EnumeratedChars,) -> Option<usize>,
+) -> Range {
     let movement = |range: Range| -> Result<Range, Range> {
-        let characters = enumerated_chars(&slice, range.head);
-        let new_head = characters.clone().skip(1).end_of_block().ok_or(range)?;
+        let characters = characters.clone().skip_while(|(pos, _)| *pos != range.head);
+        let new_head = termination(&characters.clone().skip(1)).ok_or(range)?;
         let new_anchor = if characters.clone().at_boundary() {
             characters
                 .clone()
                 .skip(1)
                 .skip_newlines()
-                .position()
+                .current_position()
                 .ok_or(range)?
         } else {
-            characters.skip_newlines().position().ok_or(range)?
+            characters.clone().skip_newlines().current_position().ok_or(range)?
         };
 
         (range.head != new_head)
@@ -107,76 +112,41 @@ pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     })
 }
 
-pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let movement = |range: Range| -> Result<Range, Range> {
-        let backwards = backwards_enumerated_chars(&slice, range.head);
-        let new_head = backwards
-            .clone()
-            .skip(1)
-            .skip_newlines()
-            .end_of_word()
-            .ok_or(range)?;
-        let new_anchor = if backwards.clone().at_boundary() {
-            backwards
-                .clone()
-                .skip(1)
-                .skip_newlines()
-                .position()
-                .ok_or(range)?
-        } else {
-            backwards.skip_newlines().position().ok_or(range)?
-        };
-
-        (range.head != new_head)
-            .then(|| Range::new(new_anchor, new_head))
-            .ok_or(range)
-    };
-    (0..count).fold(range, |range, _| {
-        movement(range).unwrap_or_else(|last_range| last_range)
-    })
+pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    let characters = enumerated_chars(&slice, range.head);
+    word_move(&characters, range, count, |c| c.end_of_block())
 }
 
 pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let movement = |range: Range| -> Result<Range, Range> {
-        let characters = enumerated_chars(&slice, range.head);
-        let new_head = characters.clone().skip(1).end_of_word().ok_or(range)?;
-        let new_anchor = if characters.clone().at_boundary() {
-            characters
-                .clone()
-                .skip(1)
-                .skip_newlines()
-                .position()
-                .ok_or(range)?
-        } else {
-            characters.skip_newlines().position().ok_or(range)?
-        };
+    let characters = enumerated_chars(&slice, range.head);
+    word_move(&characters, range, count, |c| c.end_of_word())
+}
 
-        (range.head != new_head)
-            .then(|| Range::new(new_anchor, new_head))
-            .ok_or(range)
-    };
-    (0..count).fold(range, |range, _| {
-        movement(range).unwrap_or_else(|last_range| last_range)
-    })
+pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    let characters = backwards_enumerated_chars(&slice, range.head);
+    word_move(&characters, range, count, |c| c.end_of_word())
 }
 
 // Helper functions for iterators over (usize, char) tuples
 // (necessary to iterate over ropes efficiently while retaining
 // the index).
-pub trait EnumeratedCharHelpers: Sized {
+pub trait EnumeratedChars: Iterator<Item = (usize, char)> {
     //Returns the index at the current [word/punctuation + whitespace] group
-    fn end_of_block(self) -> Option<usize>;
-    fn end_of_word(self) -> Option<usize>;
-    fn position(self) -> Option<usize>;
-    fn last_position(self) -> Option<usize>;
-    fn at_boundary(self) -> bool;
+    fn end_of_block(&self) -> Option<usize>;
+    fn end_of_word(&self) -> Option<usize>;
+    fn current_position(&mut self) -> Option<usize>;
+    fn last_position(&self) -> Option<usize>;
+    fn at_boundary(&mut self) -> bool;
+}
+
+pub trait NewlineTraversal: Sized {
     fn skip_newlines(self) -> SkipWhile<Self, NewlineCheck>;
 }
 
 pub type NewlineCheck = for<'r> fn(&'r (usize, char)) -> bool;
 
-impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedCharHelpers for I {
-    fn end_of_block(self) -> Option<usize> {
+impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedChars for I {
+    fn end_of_block(&self) -> Option<usize> {
         let after_newline = self.clone().skip_newlines();
         let mut pairs = after_newline.clone().zip(after_newline.skip(1));
         pairs
@@ -187,7 +157,7 @@ impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedCharHelpers for I {
             .or_else(|| self.last_position())
     }
 
-    fn end_of_word(self) -> Option<usize> {
+    fn end_of_word(&self) -> Option<usize> {
         let after_newline = self.clone().skip_while(|(_, c)| is_end_of_line(*c));
         let mut pairs = after_newline.clone().zip(after_newline.skip(1));
         pairs
@@ -198,21 +168,23 @@ impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedCharHelpers for I {
             .or_else(|| self.last_position())
     }
 
-    fn last_position(self) -> Option<usize> {
-        self.last().map(|(pos, _)| pos)
+    fn last_position(&self) -> Option<usize> {
+        self.clone().last().map(|(pos, _)| pos)
     }
 
-    fn position(mut self) -> Option<usize> {
+    fn current_position(&mut self) -> Option<usize> {
         self.next().map(|(pos, _)| pos)
     }
 
-    fn at_boundary(mut self) -> bool {
+    fn at_boundary(&mut self) -> bool {
         matches!(
             (self.next(), self.next()),
             (Some((_, a)), Some((_, b))) if categorize(a) != categorize(b)
         )
     }
+}
 
+impl<I: Clone + Iterator<Item = (usize, char)>> NewlineTraversal for I {
     fn skip_newlines(self) -> SkipWhile<Self, NewlineCheck> {
         self.skip_while(|(_, c)| is_end_of_line(*c))
     }
