@@ -1189,9 +1189,9 @@ pub fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(picker));
 }
 
-// I inserts at the start of each line with a selection
+// I inserts at the first nonwhitespace character of each line with a selection
 pub fn prepend_to_line(cx: &mut Context) {
-    move_line_start(cx);
+    move_first_nonwhitespace(cx);
     let doc = cx.doc();
     enter_insert_mode(doc);
 }
