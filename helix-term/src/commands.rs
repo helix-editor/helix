@@ -1098,7 +1098,7 @@ mod cmd {
         },
         Command {
             name: "later",
-            alias: None,
+            alias: Some("lat"),
             doc: "Jump to a later point in edit history.",
             fun: later,
             completer: None,
