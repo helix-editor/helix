@@ -81,23 +81,23 @@ pub fn move_vertically(
 
 // Generic word motion
 fn word_move<C: EnumeratedChars + Clone>(
-    characters: &C,
+    characters: &mut C,
     range: Range,
     count: usize,
-    termination: fn(&dyn EnumeratedChars,) -> Option<usize>,
+    termination: fn(&mut dyn EnumeratedChars,) -> Option<usize>,
 ) -> Range {
     let movement = |range: Range| -> Result<Range, Range> {
         let characters = characters.clone().skip_while(|(pos, _)| *pos != range.head);
-        let new_head = termination(&characters.clone().skip(1)).ok_or(range)?;
+        let new_head = termination(&mut characters.clone().skip(1)).ok_or(range)?;
         let new_anchor = if characters.clone().at_boundary() {
             characters
                 .clone()
                 .skip(1)
-                .skip_newlines()
+                .skip_while(|(pos, c)| is_end_of_line(*c))
                 .current_position()
                 .ok_or(range)?
         } else {
-            characters.clone().skip_newlines().current_position().ok_or(range)?
+            characters.clone().skip_while(|(pos, c)| is_end_of_line(*c)).current_position().ok_or(range)?
         };
 
         (range.head != new_head)
@@ -110,18 +110,18 @@ fn word_move<C: EnumeratedChars + Clone>(
 }
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let characters = enumerated_chars(&slice, range.head);
-    word_move(&characters, range, count, |c| c.end_of_block())
+    let mut characters = enumerated_chars(&slice, range.head);
+    word_move(&mut characters, range, count, |c| c.end_of_block())
 }
 
 pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let characters = enumerated_chars(&slice, range.head);
-    word_move(&characters, range, count, |c| c.end_of_word())
+    let mut characters = enumerated_chars(&slice, range.head);
+    word_move(&mut characters, range, count, |c| c.end_of_word())
 }
 
 pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    let characters = backwards_enumerated_chars(&slice, range.head);
-    word_move(&characters, range, count, |c| c.end_of_word())
+    let mut characters = backwards_enumerated_chars(&slice, range.head);
+    word_move(&mut characters, range, count, |c| c.end_of_word())
 }
 
 // ---- util ------------

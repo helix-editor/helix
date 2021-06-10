@@ -1,13 +1,13 @@
 use ropey::RopeSlice;
 
-use crate::iterator::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars};
+use crate::{iterator::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars}, movement::is_end_of_line};
 
 #[must_use]
 pub fn nth_prev_word_boundary(slice: RopeSlice, index: usize, count: usize) -> usize {
     (0..count)
         .try_fold(index, |index, _| {
             let backwards = backwards_enumerated_chars(&slice, index);
-            backwards.skip_newlines().end_of_word()
+            backwards.skip_while(|(pos, c)| is_end_of_line(*c)).end_of_word()
         })
         .unwrap_or(0)
 }

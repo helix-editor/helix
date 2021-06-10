@@ -30,23 +30,24 @@ pub fn backwards_enumerated_chars<'a>(
 // the index).
 pub trait EnumeratedChars: Iterator<Item = (usize, char)> {
     //Returns the index at the current [word/punctuation + whitespace] group
-    fn end_of_block(&self) -> Option<usize>;
-    fn end_of_word(&self) -> Option<usize>;
+    fn end_of_block(&mut self) -> Option<usize>;
+    fn end_of_word(&mut self) -> Option<usize>;
     fn current_position(&mut self) -> Option<usize>;
-    fn last_position(&self) -> Option<usize>;
+    fn last_position(&mut self) -> Option<usize>;
     fn at_boundary(&mut self) -> bool;
 }
 
 pub trait NewlineTraversal: Sized {
-    fn skip_newlines(self) -> SkipWhile<Self, NewlineCheck>;
+    fn skip_newlines(&mut self) -> SkipWhile<&mut Self, NewlineCheck>;
 }
 
 pub type NewlineCheck = for<'r> fn(&'r (usize, char)) -> bool;
 
 impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedChars for I {
-    fn end_of_block(&self) -> Option<usize> {
-        let after_newline = self.clone().skip_newlines();
-        let mut pairs = after_newline.clone().zip(after_newline.skip(1));
+    fn end_of_block(&mut self) -> Option<usize> {
+        let after_newline = self.clone().skip_while(|(pos, c)| is_end_of_line(*c));
+        let after_newline_zip = self.skip_while(|(pos, c)| is_end_of_line(*c)).skip(1);
+        let mut pairs = after_newline.zip(after_newline_zip);
         pairs
             .find_map(|((a_pos, a), (_, b))| {
                 ((categorize(a) != categorize(b)) && (is_end_of_line(b) || !b.is_whitespace()))
@@ -55,7 +56,7 @@ impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedChars for I {
             .or_else(|| self.last_position())
     }
 
-    fn end_of_word(&self) -> Option<usize> {
+    fn end_of_word(&mut self) -> Option<usize> {
         let after_newline = self.clone().skip_while(|(_, c)| is_end_of_line(*c));
         let mut pairs = after_newline.clone().zip(after_newline.skip(1));
         pairs
@@ -66,8 +67,8 @@ impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedChars for I {
             .or_else(|| self.last_position())
     }
 
-    fn last_position(&self) -> Option<usize> {
-        self.clone().last().map(|(pos, _)| pos)
+    fn last_position(&mut self) -> Option<usize> {
+        self.last().map(|(pos, _)| pos)
     }
 
     fn current_position(&mut self) -> Option<usize> {
@@ -83,7 +84,7 @@ impl<I: Clone + Iterator<Item = (usize, char)>> EnumeratedChars for I {
 }
 
 impl<I: Clone + Iterator<Item = (usize, char)>> NewlineTraversal for I {
-    fn skip_newlines(self) -> SkipWhile<Self, NewlineCheck> {
+    fn skip_newlines(&mut self) -> SkipWhile<&mut Self, NewlineCheck> {
         self.skip_while(|(_, c)| is_end_of_line(*c))
     }
 }
