@@ -1,5 +1,6 @@
-use crate::movement::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars, enumerated_chars};
 use ropey::RopeSlice;
+
+use crate::iterator::{EnumeratedChars, NewlineTraversal, backwards_enumerated_chars};
 
 #[must_use]
 pub fn nth_prev_word_boundary(slice: RopeSlice, index: usize, count: usize) -> usize {
