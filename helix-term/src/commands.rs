@@ -1402,7 +1402,12 @@ fn _goto(
         let (view, doc) = editor.current();
         let definition_pos = location.range.start;
         // TODO: convert inside server
-        let new_pos = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding);
+        let new_pos =
+            if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding) {
+                new_pos
+            } else {
+                return;
+            };
         doc.set_selection(view.id, Selection::point(new_pos));
         align_view(doc, view, Align::Center);
     }
@@ -1440,7 +1445,13 @@ pub fn goto_definition(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = if let Some(pos) =
+        pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding)
+    {
+        pos
+    } else {
+        return;
+    };
 
     // TODO: handle fails
     let future = language_server.goto_definition(doc.identifier(), pos);
@@ -1477,7 +1488,13 @@ pub fn goto_type_definition(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = if let Some(pos) =
+        pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding)
+    {
+        pos
+    } else {
+        return;
+    };
 
     // TODO: handle fails
     let future = language_server.goto_type_definition(doc.identifier(), pos);
@@ -1514,7 +1531,13 @@ pub fn goto_implementation(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = if let Some(pos) =
+        pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding)
+    {
+        pos
+    } else {
+        return;
+    };
 
     // TODO: handle fails
     let future = language_server.goto_implementation(doc.identifier(), pos);
@@ -1551,7 +1574,13 @@ pub fn goto_reference(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = if let Some(pos) =
+        pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding)
+    {
+        pos
+    } else {
+        return;
+    };
 
     // TODO: handle fails
     let future = language_server.goto_reference(doc.identifier(), pos);
@@ -1659,11 +1688,15 @@ pub fn signature_help(cx: &mut Context) {
         None => return,
     };
 
-    let pos = pos_to_lsp_pos(
+    let pos = if let Some(pos) = pos_to_lsp_pos(
         doc.text(),
         doc.selection(view.id).cursor(),
         language_server.offset_encoding(),
-    );
+    ) {
+        pos
+    } else {
+        return;
+    };
 
     // TODO: handle fails
     let future = language_server.text_document_signature_help(doc.identifier(), pos);
@@ -2141,11 +2174,14 @@ pub fn format_selections(cx: &mut Context) {
         None => return,
     };
 
-    let ranges: Vec<lsp::Range> = doc
-        .selection(view.id)
-        .iter()
-        .map(|range| range_to_lsp_range(doc.text(), *range, language_server.offset_encoding()))
-        .collect();
+    let mut ranges = vec![];
+    for range in doc.selection(view.id) {
+        if let Some(range) =
+            range_to_lsp_range(doc.text(), *range, language_server.offset_encoding())
+        {
+            ranges.push(range);
+        }
+    }
 
     for range in ranges {
         let language_server = match doc.language_server() {
@@ -2296,11 +2332,15 @@ pub fn completion(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
+    let pos = if let Some(pos) = pos_to_lsp_pos(
         doc.text(),
         doc.selection(view.id).cursor(),
         language_server.offset_encoding(),
-    );
+    ) {
+        pos
+    } else {
+        return;
+    };
 
     // TODO: handle fails
     let future = language_server.completion(doc.identifier(), pos);
@@ -2354,11 +2394,15 @@ pub fn hover(cx: &mut Context) {
 
     // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
 
-    let pos = pos_to_lsp_pos(
+    let pos = if let Some(pos) = pos_to_lsp_pos(
         doc.text(),
         doc.selection(view.id).cursor(),
         language_server.offset_encoding(),
-    );
+    ) {
+        pos
+    } else {
+        return;
+    };
 
     // TODO: handle fails
     let future = language_server.text_document_hover(doc.identifier(), pos);

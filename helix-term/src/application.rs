@@ -188,16 +188,27 @@ impl Application {
                                     let language_server = doc.language_server().unwrap();
 
                                     // TODO: convert inside server
-                                    let start = lsp_pos_to_pos(
+                                    let start = if let Some(start) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.start,
                                         language_server.offset_encoding(),
-                                    );
-                                    let end = lsp_pos_to_pos(
+                                    ) {
+                                        start
+                                    } else {
+                                        // what to do here?
+                                        0
+                                    };
+
+                                    let end = if let Some(end) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.end,
                                         language_server.offset_encoding(),
-                                    );
+                                    ) {
+                                        end
+                                    } else {
+                                        // what to do here?
+                                        0
+                                    };
 
                                     Diagnostic {
                                         range: Range { start, end },

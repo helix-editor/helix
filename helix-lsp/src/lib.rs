@@ -55,55 +55,91 @@ pub mod util {
     use super::*;
     use helix_core::{Range, Rope, Transaction};
 
+    /// Converts `lsp::Position` to a position in the document.
+    ///
+    /// Returns `None` if position exceeds document length or an operation overflows.
     pub fn lsp_pos_to_pos(
         doc: &Rope,
         pos: lsp::Position,
         offset_encoding: OffsetEncoding,
-    ) -> usize {
+    ) -> Option<usize> {
+        let max_line = doc.lines().count().saturating_sub(1);
+        let pos_line = pos.line as usize;
+        let pos_line = if pos_line > max_line {
+            return None;
+        } else {
+            pos_line
+        };
         match offset_encoding {
             OffsetEncoding::Utf8 => {
-                let line = doc.line_to_char(pos.line as usize);
-                line + pos.character as usize
+                let max_char = doc
+                    .line_to_char(max_line)
+                    .checked_add(doc.line(max_line).len_chars())?;
+                let line = doc.line_to_char(pos_line);
+                let pos = line.checked_add(pos.character as usize)?;
+                if pos <= max_char {
+                    Some(pos)
+                } else {
+                    None
+                }
             }
             OffsetEncoding::Utf16 => {
-                let line = doc.line_to_char(pos.line as usize);
+                let max_char = doc
+                    .line_to_char(max_line)
+                    .checked_add(doc.line(max_line).len_chars())?;
+                let max_cu = doc.char_to_utf16_cu(max_char);
+                let line = doc.line_to_char(pos_line);
                 let line_start = doc.char_to_utf16_cu(line);
-                doc.utf16_cu_to_char(line_start + pos.character as usize)
+                let pos = line_start.checked_add(pos.character as usize)?;
+                if pos <= max_cu {
+                    Some(doc.utf16_cu_to_char(pos))
+                } else {
+                    None
+                }
             }
         }
     }
+
+    /// Converts position in the document to `lsp::Position`.
+    ///
+    /// Returns `None` if position exceeds the document length or an operation overflows.
     pub fn pos_to_lsp_pos(
         doc: &Rope,
         pos: usize,
         offset_encoding: OffsetEncoding,
-    ) -> lsp::Position {
+    ) -> Option<lsp::Position> {
+        let max_char = doc.chars().count();
+        let pos = if pos > max_char { return None } else { pos };
         match offset_encoding {
             OffsetEncoding::Utf8 => {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.line_to_char(line);
-                let col = pos - line_start;
+                let col = pos.checked_sub(line_start)?;
 
-                lsp::Position::new(line as u32, col as u32)
+                Some(lsp::Position::new(line as u32, col as u32))
             }
             OffsetEncoding::Utf16 => {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
-                let col = doc.char_to_utf16_cu(pos) - line_start;
+                let col = doc.char_to_utf16_cu(pos).checked_sub(line_start)?;
 
-                lsp::Position::new(line as u32, col as u32)
+                Some(lsp::Position::new(line as u32, col as u32))
             }
         }
     }
 
+    /// Converts a range in the document to `lsp::Range`.
+    ///
+    /// Returns `None` if anchor or head exceed the document bounds or an operation overflows.
     pub fn range_to_lsp_range(
         doc: &Rope,
         range: Range,
         offset_encoding: OffsetEncoding,
-    ) -> lsp::Range {
-        let start = pos_to_lsp_pos(doc, range.from(), offset_encoding);
-        let end = pos_to_lsp_pos(doc, range.to(), offset_encoding);
+    ) -> Option<lsp::Range> {
+        let start = pos_to_lsp_pos(doc, range.from(), offset_encoding)?;
+        let end = pos_to_lsp_pos(doc, range.to(), offset_encoding)?;
 
-        lsp::Range::new(start, end)
+        Some(lsp::Range::new(start, end))
     }
 
     pub fn generate_transaction_from_edits(
@@ -121,8 +157,17 @@ pub mod util {
                     None
                 };
 
-                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding);
-                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding);
+                let start =
+                    if let Some(start) = lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
+                        start
+                    } else {
+                        return (0, 0, None);
+                    };
+                let end = if let Some(end) = lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
+                    end
+                } else {
+                    return (0, 0, None);
+                };
                 (start, end, replacement)
             }),
         )
