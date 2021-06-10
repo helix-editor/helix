@@ -1020,27 +1020,27 @@ mod cmd {
     }
 
     fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let sotp = match args.join(" ").parse::<helix_core::history::UndoKind>() {
-            Ok(sotp) => sotp,
+        let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
+            Ok(uk) => uk,
             Err(msg) => {
                 editor.set_error(msg);
                 return;
             }
         };
         let (view, doc) = editor.current();
-        doc.earlier(view.id, sotp)
+        doc.earlier(view.id, uk)
     }
 
     fn later(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let sotp = match args.join(" ").parse::<helix_core::history::UndoKind>() {
-            Ok(sotp) => sotp,
+        let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
+            Ok(uk) => uk,
             Err(msg) => {
                 editor.set_error(msg);
                 return;
             }
         };
         let (view, doc) = editor.current();
-        doc.later(view.id, sotp)
+        doc.later(view.id, uk)
     }
 
     pub const COMMAND_LIST: &[Command] = &[

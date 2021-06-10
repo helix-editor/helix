@@ -310,13 +310,12 @@ impl std::str::FromStr for UndoKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
         if s.is_empty() {
-            return Ok(Self::Steps(1usize));
+            Ok(Self::Steps(1usize))
+        } else if let Ok(n) = s.parse::<usize>() {
+            Ok(UndoKind::Steps(n))
+        } else {
+            Ok(Self::TimePeriod(parse_human_duration(s)?))
         }
-        if let Ok(n) = s.parse::<usize>() {
-            return Ok(UndoKind::Steps(n));
-        }
-        let d = parse_human_duration(s)?;
-        Ok(Self::TimePeriod(d))
     }
 }
 
@@ -411,7 +410,7 @@ mod test {
         };
 
         let t0 = Instant::now();
-        let t = |n| t0.checked_add(Duration::new(n, 0)).unwrap();
+        let t = |n| t0.checked_add(Duration::from_secs(n)).unwrap();
 
         commit_change(&mut history, &mut state, (1, 1, Some(" b".into())), t(0));
         assert_eq!("a b\n", state.doc);
@@ -516,37 +515,36 @@ mod test {
         // Various formats are correctly handled.
         assert_eq!(
             "4s".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(4, 0)))
+            Ok(TimePeriod(Duration::from_secs(4)))
         );
         assert_eq!(
             "2m".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(120, 0)))
+            Ok(TimePeriod(Duration::from_secs(120)))
         );
         assert_eq!(
             "5h".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(5 * 60 * 60, 0)))
+            Ok(TimePeriod(Duration::from_secs(5 * 60 * 60)))
         );
         assert_eq!(
             "3d".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(3 * 24 * 60 * 60, 0)))
+            Ok(TimePeriod(Duration::from_secs(3 * 24 * 60 * 60)))
         );
         assert_eq!(
             "1m30s".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(90, 0)))
+            Ok(TimePeriod(Duration::from_secs(90)))
         );
         assert_eq!(
             "1m 20 seconds".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(80, 0)))
+            Ok(TimePeriod(Duration::from_secs(80)))
         );
         assert_eq!(
             "  2 minute 1day".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(24 * 60 * 60 + 2 * 60, 0)))
+            Ok(TimePeriod(Duration::from_secs(24 * 60 * 60 + 2 * 60)))
         );
         assert_eq!(
             "3 d 2hour 5 minutes 30sec".parse::<UndoKind>(),
-            Ok(TimePeriod(Duration::new(
-                3 * 24 * 60 * 60 + 2 * 60 * 60 + 5 * 60 + 30,
-                0
+            Ok(TimePeriod(Duration::from_secs(
+                3 * 24 * 60 * 60 + 2 * 60 * 60 + 5 * 60 + 30
             )))
         );
 
