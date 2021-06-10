@@ -172,11 +172,7 @@ impl History {
     }
 
     fn jump_forward(&mut self, delta: usize) -> Vec<Transaction> {
-        use std::cmp::max;
-        self.jump_to(max(
-            self.revisions.len() - 1,
-            self.current.saturating_add(delta),
-        ))
+        self.jump_to(self.current.saturating_add(delta).min(self.revisions.len() - 1))
     }
 
     // Helper for a binary search case below.
