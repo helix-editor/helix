@@ -4,8 +4,8 @@ use helix_core::{
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register, search, selection, words, Change, ChangeSet, Position, Range, Rope, RopeSlice,
-    Selection, SmallVec, Tendril, Transaction,
+    register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -1869,15 +1869,11 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
-        let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                (
-                    words::nth_prev_word_boundary(text, range.head, count),
-                    range.head,
-                    None,
-                )
-            });
-        doc.apply(&transaction, view.id);
+        let selection = doc
+            .selection(view.id)
+            .transform(|range| movement::move_prev_word_start(text, range, count));
+        doc.set_selection(view.id, selection);
+        delete_selection(cx)
     }
 }
 

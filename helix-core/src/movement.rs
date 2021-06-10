@@ -1,4 +1,4 @@
-use std::iter::{self, Peekable, SkipWhile, from_fn};
+use std::iter::{self, from_fn, Peekable, SkipWhile};
 
 use ropey::iter::Chars;
 
@@ -99,7 +99,7 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
     let mut movement = |range: Range| -> Result<Range, Range> {
-        Ok(slice.chars_at(range.head).to_target(target, range))
+        Ok(slice.chars_at(range.head).range_to_target(target, range))
     };
     for _ in 0..count {
         range = match movement(range) {
@@ -211,7 +211,7 @@ pub enum WordMotionTarget {
 }
 
 pub trait CharHelpers {
-    fn to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range;
+    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range;
 }
 
 enum WordMotionPhase {
@@ -221,15 +221,15 @@ enum WordMotionPhase {
 }
 
 impl CharHelpers for Chars<'_> {
-    fn to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
+    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
         let range = origin;
         // Characters are iterated forward or backwards depending on the motion direction.
-        let characters: Box<dyn Iterator<Item=char>> = match target {
+        let characters: Box<dyn Iterator<Item = char>> = match target {
             WordMotionTarget::PrevWordStart => {
                 self.next();
-                Box::new(from_fn(||self.prev()))
-            },
-            _ => Box::new(self)
+                Box::new(from_fn(|| self.prev()))
+            }
+            _ => Box::new(self),
         };
 
         // Index advancement also depends on the direction.
@@ -242,9 +242,7 @@ impl CharHelpers for Chars<'_> {
         let mut phase = WordMotionPhase::Start;
         let mut head = origin.head;
         let mut anchor: Option<usize> = None;
-        let is_boundary = |a: char, b: Option<char>| {
-            categorize(a) != categorize(b.unwrap_or(a))
-        };
+        let is_boundary = |a: char, b: Option<char>| categorize(a) != categorize(b.unwrap_or(a));
         while let Some(peek) = characters.peek().copied() {
             phase = match phase {
                 WordMotionPhase::Start => {
@@ -259,7 +257,7 @@ impl CharHelpers for Chars<'_> {
                     // First character is always skipped by the head
                     advance(&mut head);
                     WordMotionPhase::SkipNewlines
-                },
+                }
                 WordMotionPhase::SkipNewlines => {
                     if is_end_of_line(peek) {
                         characters.next();
@@ -270,7 +268,7 @@ impl CharHelpers for Chars<'_> {
                     } else {
                         WordMotionPhase::ReachTarget
                     }
-                },
+                }
                 WordMotionPhase::ReachTarget => {
                     characters.next();
                     anchor = anchor.or(Some(head));
@@ -293,7 +291,7 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
         None => return true,
     };
 
-    let reached_target = match target {
+    match target {
         WordMotionTarget::NextWordStart => {
             ((categorize(peek) != categorize(*next_peek))
                 && (is_end_of_line(*next_peek) || !next_peek.is_whitespace()))
@@ -302,8 +300,7 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
             ((categorize(peek) != categorize(*next_peek))
                 && (!peek.is_whitespace() || is_end_of_line(*next_peek)))
         }
-    };
-    reached_target
+    }
 }
 
 #[cfg(test)]
