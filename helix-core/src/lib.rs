@@ -90,7 +90,6 @@ pub use smallvec::SmallVec;
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
-pub use history::StepsOrTimePeriod;
 pub use state::State;
 
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};

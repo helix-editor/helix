@@ -1020,10 +1020,7 @@ mod cmd {
     }
 
     fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let sotp = match args
-            .join(" ")
-            .parse::<helix_core::history::StepsOrTimePeriod>()
-        {
+        let sotp = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(sotp) => sotp,
             Err(msg) => {
                 editor.set_error(msg);
@@ -1035,7 +1032,7 @@ mod cmd {
     }
 
     fn later(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let sotp = match args.join(" ").parse::<helix_core::StepsOrTimePeriod>() {
+        let sotp = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(sotp) => sotp,
             Err(msg) => {
                 editor.set_error(msg);

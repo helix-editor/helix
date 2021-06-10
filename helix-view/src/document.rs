@@ -395,15 +395,15 @@ impl Document {
         }
     }
 
-    pub fn earlier(&mut self, view_id: ViewId, sotp: helix_core::StepsOrTimePeriod) {
-        let txns = self.history.get_mut().earlier(sotp);
+    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().earlier(uk);
         for txn in txns {
             self._apply(&txn, view_id);
         }
     }
 
-    pub fn later(&mut self, view_id: ViewId, sotp: helix_core::StepsOrTimePeriod) {
-        let txns = self.history.get_mut().later(sotp);
+    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().later(uk);
         for txn in txns {
             self._apply(&txn, view_id);
         }

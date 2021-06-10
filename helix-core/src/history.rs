@@ -224,17 +224,17 @@ impl History {
         }
     }
 
-    pub fn earlier(&mut self, sotp: StepsOrTimePeriod) -> Vec<Transaction> {
-        use StepsOrTimePeriod::*;
-        match sotp {
+    pub fn earlier(&mut self, uk: UndoKind) -> Vec<Transaction> {
+        use UndoKind::*;
+        match uk {
             Steps(n) => self.jump_backward(n),
             TimePeriod(d) => self.jump_duration_backward(d),
         }
     }
 
-    pub fn later(&mut self, sotp: StepsOrTimePeriod) -> Vec<Transaction> {
-        use StepsOrTimePeriod::*;
-        match sotp {
+    pub fn later(&mut self, uk: UndoKind) -> Vec<Transaction> {
+        use UndoKind::*;
+        match uk {
             Steps(n) => self.jump_forward(n),
             TimePeriod(d) => self.jump_duration_forward(d),
         }
@@ -242,7 +242,7 @@ impl History {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum StepsOrTimePeriod {
+pub enum UndoKind {
     Steps(usize),
     TimePeriod(std::time::Duration),
 }
@@ -303,7 +303,7 @@ fn parse_human_duration(s: &str) -> Result<Duration, String> {
     }
 }
 
-impl std::str::FromStr for StepsOrTimePeriod {
+impl std::str::FromStr for UndoKind {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -312,7 +312,7 @@ impl std::str::FromStr for StepsOrTimePeriod {
             return Ok(Self::Steps(1usize));
         }
         if let Ok(n) = s.parse::<usize>() {
-            return Ok(StepsOrTimePeriod::Steps(n));
+            return Ok(UndoKind::Steps(n));
         }
         let d = parse_human_duration(s)?;
         Ok(Self::TimePeriod(d))
@@ -384,15 +384,15 @@ mod test {
             }
         };
 
-        fn earlier(history: &mut History, state: &mut State, sotp: StepsOrTimePeriod) {
-            let txns = history.earlier(sotp);
+        fn earlier(history: &mut History, state: &mut State, uk: UndoKind) {
+            let txns = history.earlier(uk);
             for txn in txns {
                 txn.apply(&mut state.doc);
             }
         };
 
-        fn later(history: &mut History, state: &mut State, sotp: StepsOrTimePeriod) {
-            let txns = history.later(sotp);
+        fn later(history: &mut History, state: &mut State, uk: UndoKind) {
+            let txns = history.later(uk);
             for txn in txns {
                 txn.apply(&mut state.doc);
             }
@@ -437,7 +437,7 @@ mod test {
         commit_change(&mut history, &mut state, (1, 1, Some(" f".into())), t(50));
         assert_eq!("a f\n", state.doc);
 
-        use StepsOrTimePeriod::*;
+        use UndoKind::*;
 
         earlier(&mut history, &mut state, Steps(3));
         assert_eq!("a b c d\n", state.doc);
@@ -476,7 +476,7 @@ mod test {
 
     #[test]
     fn test_parse_steps_or_time_period() {
-        use StepsOrTimePeriod::*;
+        use UndoKind::*;
 
         // Default is one step.
         assert_eq!("".parse(), Ok(Steps(1)));
@@ -489,63 +489,60 @@ mod test {
         let validation_err = Err("duration should be composed \
          of positive integers followed by time units"
             .to_string());
-        assert_eq!("  16 33".parse::<StepsOrTimePeriod>(), validation_err);
-        assert_eq!(
-            "  seconds 22  ".parse::<StepsOrTimePeriod>(),
-            validation_err
-        );
-        assert_eq!("  -4 m".parse::<StepsOrTimePeriod>(), validation_err);
-        assert_eq!("5s 3".parse::<StepsOrTimePeriod>(), validation_err);
+        assert_eq!("  16 33".parse::<UndoKind>(), validation_err);
+        assert_eq!("  seconds 22  ".parse::<UndoKind>(), validation_err);
+        assert_eq!("  -4 m".parse::<UndoKind>(), validation_err);
+        assert_eq!("5s 3".parse::<UndoKind>(), validation_err);
 
         // Units are u64.
         assert_eq!(
-            "18446744073709551616minutes".parse::<StepsOrTimePeriod>(),
+            "18446744073709551616minutes".parse::<UndoKind>(),
             Err("integer too large: 18446744073709551616".to_string())
         );
 
         // Units are validated.
         assert_eq!(
-            "1 millenium".parse::<StepsOrTimePeriod>(),
+            "1 millenium".parse::<UndoKind>(),
             Err("incorrect time unit: millenium".to_string())
         );
 
         // Units can't be specified twice.
         assert_eq!(
-            "2 seconds 6s".parse::<StepsOrTimePeriod>(),
+            "2 seconds 6s".parse::<UndoKind>(),
             Err("seconds specified more than once".to_string())
         );
 
         // Various formats are correctly handled.
         assert_eq!(
-            "4s".parse::<StepsOrTimePeriod>(),
+            "4s".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(4, 0)))
         );
         assert_eq!(
-            "2m".parse::<StepsOrTimePeriod>(),
+            "2m".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(120, 0)))
         );
         assert_eq!(
-            "5h".parse::<StepsOrTimePeriod>(),
+            "5h".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(5 * 60 * 60, 0)))
         );
         assert_eq!(
-            "3d".parse::<StepsOrTimePeriod>(),
+            "3d".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(3 * 24 * 60 * 60, 0)))
         );
         assert_eq!(
-            "1m30s".parse::<StepsOrTimePeriod>(),
+            "1m30s".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(90, 0)))
         );
         assert_eq!(
-            "1m 20 seconds".parse::<StepsOrTimePeriod>(),
+            "1m 20 seconds".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(80, 0)))
         );
         assert_eq!(
-            "  2 minute 1day".parse::<StepsOrTimePeriod>(),
+            "  2 minute 1day".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(24 * 60 * 60 + 2 * 60, 0)))
         );
         assert_eq!(
-            "3 d 2hour 5 minutes 30sec".parse::<StepsOrTimePeriod>(),
+            "3 d 2hour 5 minutes 30sec".parse::<UndoKind>(),
             Ok(TimePeriod(Duration::new(
                 3 * 24 * 60 * 60 + 2 * 60 * 60 + 5 * 60 + 30,
                 0
@@ -554,11 +551,11 @@ mod test {
 
         // Sum overflow is handled.
         assert_eq!(
-            "18446744073709551615minutes".parse::<StepsOrTimePeriod>(),
+            "18446744073709551615minutes".parse::<UndoKind>(),
             Err("duration too large".to_string())
         );
         assert_eq!(
-            "1 minute 18446744073709551615 seconds".parse::<StepsOrTimePeriod>(),
+            "1 minute 18446744073709551615 seconds".parse::<UndoKind>(),
             Err("duration too large".to_string())
         );
     }
