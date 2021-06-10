@@ -288,3 +288,75 @@ impl Registry {
 // there needs to be a way to process incoming lsp messages from all clients.
 //  -> notifications need to be dispatched to wherever
 //  -> requests need to generate a reply and travel back to the same lsp!
+
+#[cfg(test)]
+mod tests {
+    use super::{lsp, util::*, OffsetEncoding};
+    use helix_core::Rope;
+
+    #[test]
+    fn converts_lsp_pos_to_pos() {
+        macro_rules! test_case {
+            ($doc:expr, ($x:expr, $y:expr) => $want:expr) => {
+                let doc = Rope::from($doc);
+                let pos = lsp::Position::new($x, $y);
+                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf16));
+                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf8))
+            };
+        }
+
+        test_case!("", (0, 0) => Some(0));
+        test_case!("", (0, 1) => None);
+        test_case!("", (1, 0) => None);
+        test_case!("\n\n", (0, 0) => Some(0));
+        test_case!("\n\n", (1, 0) => Some(1));
+        test_case!("\n\n", (1, 1) => Some(2));
+        test_case!("\n\n", (2, 0) => Some(2));
+        test_case!("\n\n", (3, 0) => None);
+        test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
+        test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
+        test_case!("test\n\n\n\ncase", (4, 5) => None);
+        test_case!("", (u32::MAX, u32::MAX) => None);
+    }
+
+    #[test]
+    fn converts_pos_to_lsp_pos() {
+        macro_rules! test_case {
+            ($doc:expr, $pos:expr => ($x:expr, $y:expr)) => {
+                let doc = Rope::from($doc);
+                let want = lsp::Position::new($x, $y);
+                assert_eq!(
+                    Some(want),
+                    pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf16)
+                );
+                assert_eq!(Some(want), pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf8))
+            };
+            ($doc:expr, $pos:expr => $want:expr) => {
+                let doc = Rope::from($doc);
+                assert_eq!($want, pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf16));
+                assert_eq!($want, pos_to_lsp_pos(&doc, $pos, OffsetEncoding::Utf8))
+            };
+        }
+
+        test_case!("", 0 => (0, 0));
+        test_case!("\n\n", 0 => (0, 0));
+        test_case!("\n\n", 1 => (1, 0));
+        test_case!("\n\n", 2 => (2, 0));
+        test_case!("\n\n", 3 => None);
+        test_case!("test\n\n\n\ncase", 0 => (0, 0));
+        test_case!("test\n\n\n\ncase", 1 => (0, 1));
+        test_case!("test\n\n\n\ncase", 2 => (0, 2));
+        test_case!("test\n\n\n\ncase", 3 => (0, 3));
+        test_case!("test\n\n\n\ncase", 4 => (0, 4));
+        test_case!("test\n\n\n\ncase", 5 => (1, 0));
+        test_case!("test\n\n\n\ncase", 6 => (2, 0));
+        test_case!("test\n\n\n\ncase", 7 => (3, 0));
+        test_case!("test\n\n\n\ncase", 8 => (4, 0));
+        test_case!("test\n\n\n\ncase", 9 => (4, 1));
+        test_case!("test\n\n\n\ncase", 10 => (4, 2));
+        test_case!("test\n\n\n\ncase", 11 => (4, 3));
+        test_case!("test\n\n\n\ncase", 12 => (4, 4));
+        test_case!("test\n\n\n\ncase", 13 => None);
+        test_case!("test\n\n\n\ncase", 14 => None);
+    }
+}
