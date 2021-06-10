@@ -65,6 +65,10 @@ impl Editor {
         }
     }
 
+    pub fn clear_status(&mut self) {
+        self.status_msg = None;
+    }
+
     pub fn set_status(&mut self, status: String) {
         self.status_msg = Some((status, Severity::Info));
     }

@@ -227,6 +227,10 @@ impl Client {
                     }),
                     ..Default::default()
                 }),
+                window: Some(lsp::WindowClientCapabilities {
+                    work_done_progress: Some(true),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             trace: None,

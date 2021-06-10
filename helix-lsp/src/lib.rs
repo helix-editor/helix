@@ -134,6 +134,7 @@ pub enum Notification {
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
+    ProgressMessage(lsp::ProgressParams),
 }
 
 impl Notification {
@@ -151,16 +152,19 @@ impl Notification {
             }
 
             lsp::notification::ShowMessage::METHOD => {
-                let params: lsp::ShowMessageParams =
-                    params.parse().expect("Failed to parse ShowMessage params");
+                let params: lsp::ShowMessageParams = params.parse().ok()?;
 
                 Self::ShowMessage(params)
             }
             lsp::notification::LogMessage::METHOD => {
-                let params: lsp::LogMessageParams =
-                    params.parse().expect("Failed to parse ShowMessage params");
+                let params: lsp::LogMessageParams = params.parse().ok()?;
 
                 Self::LogMessage(params)
+            }
+            lsp::notification::Progress::METHOD => {
+                let params: lsp::ProgressParams = params.parse().ok()?;
+
+                Self::ProgressMessage(params)
             }
             _ => {
                 log::error!("unhandled LSP notification: {}", method);

@@ -1,3 +1,4 @@
+use helix_lsp::lsp;
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
 use crate::{args::Args, compositor::Compositor, ui};
@@ -227,6 +228,63 @@ impl Application {
                     }
                     Notification::LogMessage(params) => {
                         log::warn!("unhandled window/logMessage: {:?}", params);
+                    }
+                    Notification::ProgressMessage(params) => {
+                        let token = match params.token {
+                            lsp::NumberOrString::Number(n) => n.to_string(),
+                            lsp::NumberOrString::String(s) => s,
+                        };
+                        let msg = {
+                            let lsp::ProgressParamsValue::WorkDone(work) = params.value;
+                            match work {
+                                lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
+                                    title,
+                                    message,
+                                    percentage,
+                                    ..
+                                }) => {
+                                    let mut status = String::new();
+                                    if let Some(percentage) = percentage {
+                                        status.push_str(percentage.to_string().as_str());
+                                        status.push_str("% ");
+                                    }
+                                    status.push_str(&title);
+                                    if let Some(message) = message {
+                                        status.push_str(" - ");
+                                        status.push_str(&message);
+                                    }
+                                    status
+                                }
+                                lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
+                                    message,
+                                    percentage,
+                                    ..
+                                }) => {
+                                    let mut status = String::new();
+                                    if let Some(percentage) = percentage {
+                                        status.push_str(percentage.to_string().as_str());
+                                        status.push_str("% ");
+                                    }
+                                    if let Some(message) = message {
+                                        status.push_str(&message);
+                                    }
+                                    status
+                                }
+                                lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd {
+                                    message,
+                                }) => {
+                                    if let Some(message) = message {
+                                        message
+                                    } else {
+                                        self.editor.clear_status();
+                                        return;
+                                    }
+                                }
+                            }
+                        };
+                        let status = format!("[{}] {}", token, msg);
+                        self.editor.set_status(status);
+                        self.render();
                     }
                     _ => unreachable!(),
                 }
