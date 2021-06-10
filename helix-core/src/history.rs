@@ -249,21 +249,12 @@ pub enum UndoKind {
 }
 
 // A subset of sytemd.time time span syntax units.
-const TIME_UNITS: &[(&[&str], &str)] = &[
-    (&["seconds", "second", "sec", "s"], "seconds"),
-    (&["minutes", "minute", "min", "m"], "minutes"),
-    (&["hours", "hour", "hr", "h"], "hours"),
-    (&["days", "day", "d"], "days"),
+const TIME_UNITS: &[(&[&str], &str, u64)] = &[
+    (&["seconds", "second", "sec", "s"], "seconds", 1),
+    (&["minutes", "minute", "min", "m"], "minutes", 60),
+    (&["hours", "hour", "hr", "h"], "hours", 60 * 60),
+    (&["days", "day", "d"], "days", 24 * 60 * 60),
 ];
-
-fn find_time_unit(s: &str) -> Result<&'static str, String> {
-    for (forms, unit) in TIME_UNITS {
-        if forms.contains(&s) {
-            return Ok(unit);
-        }
-    }
-    Err(format!("incorrect time unit: {}", s))
-}
 
 static DURATION_VALIDATION_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:\d+\s*[a-z]+\s*)+$").unwrap());
@@ -277,37 +268,38 @@ fn parse_human_duration(s: &str) -> Result<Duration, String> {
             .to_string());
     }
 
-    let mut units = std::collections::HashMap::new();
+    let mut specified = [false; TIME_UNITS.len()];
+    let mut seconds = 0u64;
     for cap in NUMBER_UNIT_REGEX.captures_iter(s) {
-        let (n_str, short_unit) = (&cap[1], &cap[2]);
+        let (n_str, unit_str) = (&cap[1], &cap[2]);
 
         let n = match n_str.parse::<u64>() {
             Err(_) => return Err(format!("integer too large: {}", n_str)),
             Ok(n) => n,
         };
 
-        let unit = find_time_unit(short_unit)?;
-        if units.contains_key(unit) {
-            return Err(format!("{} specified more than once", unit));
+        let time_unit = TIME_UNITS
+            .iter()
+            .enumerate()
+            .find(|(_, (forms, _, _))| forms.iter().any(|f| f == &unit_str));
+
+        if let Some((i, (_, unit, mul))) = time_unit {
+            if specified[i] {
+                return Err(format!("{} specified more than once", unit));
+            }
+            specified[i] = true;
+
+            let new_seconds = n.checked_mul(*mul).and_then(|s| seconds.checked_add(s));
+            match new_seconds {
+                Some(ns) => seconds = ns,
+                None => return Err("duration too large".to_string()),
+            }
+        } else {
+            return Err(format!("incorrect time unit: {}", unit_str));
         }
-        units.insert(unit, n);
     }
 
-    let units_in_seconds = [
-        Some(*units.get("seconds").unwrap_or(&0)),
-        units.get("minutes").unwrap_or(&0).checked_mul(60),
-        units.get("hours").unwrap_or(&0).checked_mul(60 * 60),
-        units.get("days").unwrap_or(&0).checked_mul(60 * 60 * 24),
-    ];
-    // A checked sum.
-    let seconds = units_in_seconds
-        .iter()
-        .try_fold(0u64, |acc, x| x.and_then(|x| acc.checked_add(x)));
-
-    match seconds {
-        Some(seconds) => Ok(Duration::new(seconds, 0)),
-        None => Err("duration too large".to_string()),
-    }
+    Ok(Duration::from_secs(seconds))
 }
 
 impl std::str::FromStr for UndoKind {
