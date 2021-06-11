@@ -271,12 +271,9 @@ fn parse_human_duration(s: &str) -> Result<Duration, String> {
     let mut specified = [false; TIME_UNITS.len()];
     let mut seconds = 0u64;
     for cap in NUMBER_UNIT_REGEX.captures_iter(s) {
-        let (n_str, unit_str) = (&cap[1], &cap[2]);
+        let (n, unit_str) = (&cap[1], &cap[2]);
 
-        let n = match n_str.parse::<u64>() {
-            Err(_) => return Err(format!("integer too large: {}", n_str)),
-            Ok(n) => n,
-        };
+        let n: u64 = n.parse().map_err(|_| format!("integer too large: {}", n))?;
 
         let time_unit = TIME_UNITS
             .iter()
