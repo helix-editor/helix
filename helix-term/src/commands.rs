@@ -1311,6 +1311,13 @@ fn push_jump(editor: &mut Editor) {
     view.jumps.push(jump);
 }
 
+fn switch_to_alternate_file(cx: &mut Context) {
+    let alternate_file = cx.view().alternate_file;
+    if let Some(alt) = alternate_file {
+        cx.editor.switch(alt, Action::Replace);
+    }
+}
+
 pub fn goto_mode(cx: &mut Context) {
     if let Some(count) = cx._count {
         push_jump(cx.editor);
@@ -1332,6 +1339,7 @@ pub fn goto_mode(cx: &mut Context) {
             match (cx.doc().mode, ch) {
                 (_, 'g') => move_file_start(cx),
                 (_, 'e') => move_file_end(cx),
+                (_, 'a') => switch_to_alternate_file(cx),
                 (Mode::Normal, 'h') => move_line_start(cx),
                 (Mode::Normal, 'l') => move_line_end(cx),
                 (Mode::Select, 'h') => extend_line_start(cx),
@@ -2442,6 +2450,10 @@ pub fn jump_backward(cx: &mut Context) {
     let (view, doc) = cx.current();
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
+        // manually set the alternate_file as we cannot use the Editor::switch function here.
+        if view.doc != *id {
+            view.alternate_file = Some(view.doc)
+        }
         view.doc = *id;
         let selection = selection.clone();
         let (view, doc) = cx.current(); // refetch doc
