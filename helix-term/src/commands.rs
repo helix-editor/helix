@@ -348,28 +348,34 @@ where
 
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            let (view, doc) = cx.current();
-            let text = doc.text().slice(..);
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => '\n',
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            _ => return,
+        };
 
-            let selection = doc.selection(view.id).transform(|mut range| {
-                search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
-                    if extend {
-                        Range::new(range.anchor, pos)
-                    } else {
-                        // select
-                        Range::new(range.head, pos)
-                    }
-                    // or (pos, pos) to move to found val
-                })
-            });
+        let (view, doc) = cx.current();
+        let text = doc.text().slice(..);
 
-            doc.set_selection(view.id, selection);
-        }
+        let selection = doc.selection(view.id).transform(|mut range| {
+            search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
+                if extend {
+                    Range::new(range.anchor, pos)
+                } else {
+                    // select
+                    Range::new(range.head, pos)
+                }
+                // or (pos, pos) to move to found val
+            })
+        });
+
+        doc.set_selection(view.id, selection);
     })
 }
 
