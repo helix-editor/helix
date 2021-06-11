@@ -236,50 +236,46 @@ impl Application {
                         };
                         let msg = {
                             let lsp::ProgressParamsValue::WorkDone(work) = params.value;
-                            match work {
+                            let parts = match work {
                                 lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
                                     title,
                                     message,
                                     percentage,
                                     ..
-                                }) => {
-                                    let mut status = String::new();
-                                    if let Some(percentage) = percentage {
-                                        status.push_str(percentage.to_string().as_str());
-                                        status.push_str("% ");
-                                    }
-                                    status.push_str(&title);
-                                    if let Some(message) = message {
-                                        status.push_str(" - ");
-                                        status.push_str(&message);
-                                    }
-                                    status
-                                }
+                                }) => (Some(title), message, percentage.map(|n| n.to_string())),
                                 lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
                                     message,
                                     percentage,
                                     ..
-                                }) => {
-                                    let mut status = String::new();
-                                    if let Some(percentage) = percentage {
-                                        status.push_str(percentage.to_string().as_str());
-                                        status.push_str("% ");
-                                    }
-                                    if let Some(message) = message {
-                                        status.push_str(&message);
-                                    }
-                                    status
-                                }
+                                }) => (None, message, percentage.map(|n| n.to_string())),
                                 lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd {
                                     message,
                                 }) => {
                                     if let Some(message) = message {
-                                        message
+                                        (None, Some(message), None)
                                     } else {
                                         self.editor.clear_status();
                                         return;
                                     }
                                 }
+                            };
+                            match parts {
+                                (Some(title), Some(message), Some(percentage)) => {
+                                    format!("{}% {} - {}", percentage, title, message)
+                                }
+                                (Some(title), None, Some(percentage)) => {
+                                    format!("{}% {}", percentage, title)
+                                }
+                                (Some(title), Some(message), None) => {
+                                    format!("{} - {}", title, message)
+                                }
+                                (None, Some(message), Some(percentage)) => {
+                                    format!("{}% {}", percentage, message)
+                                }
+                                (Some(title), None, None) => title,
+                                (None, Some(message), None) => message,
+                                (None, None, Some(percentage)) => format!("{}%", percentage),
+                                (None, None, None) => "".into(),
                             }
                         };
                         let status = format!("[{}] {}", token, msg);
