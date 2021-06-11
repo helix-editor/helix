@@ -5,8 +5,9 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
+    history::History,
     syntax::{LanguageConfiguration, LOADER},
-    ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, Rope, Selection, State, Syntax, Transaction,
 };
 
 use crate::{DocumentId, ViewId};
@@ -387,7 +388,7 @@ impl Document {
         success
     }
 
-    pub fn undo(&mut self, view_id: ViewId) -> bool {
+    pub fn undo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
             self._apply(&transaction, view_id)
@@ -400,11 +401,9 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
-
-        success
     }
 
-    pub fn redo(&mut self, view_id: ViewId) -> bool {
+    pub fn redo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.redo() {
             self._apply(&transaction, view_id)
@@ -417,8 +416,20 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
+    }
 
-        false
+    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().earlier(uk);
+        for txn in txns {
+            self._apply(&txn, view_id);
+        }
+    }
+
+    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().later(uk);
+        for txn in txns {
+            self._apply(&txn, view_id);
+        }
     }
 
     pub fn append_changes_to_history(&mut self, view_id: ViewId) {

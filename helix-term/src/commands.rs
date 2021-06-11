@@ -980,6 +980,30 @@ mod cmd {
         doc.format(view.id)
     }
 
+    fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
+            Ok(uk) => uk,
+            Err(msg) => {
+                editor.set_error(msg);
+                return;
+            }
+        };
+        let (view, doc) = editor.current();
+        doc.earlier(view.id, uk)
+    }
+
+    fn later(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
+            Ok(uk) => uk,
+            Err(msg) => {
+                editor.set_error(msg);
+                return;
+            }
+        };
+        let (view, doc) = editor.current();
+        doc.later(view.id, uk)
+    }
+
     pub const COMMAND_LIST: &[Command] = &[
         Command {
             name: "quit",
@@ -1021,6 +1045,20 @@ mod cmd {
             alias: Some("fmt"),
             doc: "Format the file using a formatter.",
             fun: format,
+            completer: None,
+        },
+        Command {
+            name: "earlier",
+            alias: Some("ear"),
+            doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
+            fun: earlier,
+            completer: None,
+        },
+        Command {
+            name: "later",
+            alias: Some("lat"),
+            doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
+            fun: later,
             completer: None,
         },
     ];
