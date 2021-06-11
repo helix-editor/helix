@@ -286,8 +286,7 @@ impl Document {
         scopes: &[String],
     ) {
         if let Some(language_config) = language_config {
-            if self.text.len_bytes() < max_file_size.unwrap()
-                || max_file_size.unwrap() == 0
+            if self.text.len_bytes() < max_file_size.unwrap_or(0) || max_file_size.unwrap_or(0) == 0
             {
                 if let Some(highlight_config) = language_config.highlight_config(scopes) {
                     let syntax = Syntax::new(&self.text, highlight_config);

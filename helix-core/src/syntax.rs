@@ -232,7 +232,7 @@ impl Loader {
 
         loader
     }
-    
+
     #[inline]
     pub fn scopes(&self) -> &[String] {
         &self.scopes
