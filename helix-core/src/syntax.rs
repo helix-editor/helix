@@ -15,7 +15,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
+    pub global: GlobalConfiguration,
     pub language: Vec<LanguageConfiguration>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct GlobalConfiguration {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_file_size: Option<usize>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
@@ -196,6 +204,7 @@ pub struct Loader {
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
     scopes: Vec<String>,
+    global: GlobalConfiguration,
 }
 
 impl Loader {
@@ -204,6 +213,7 @@ impl Loader {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
             scopes,
+            global: config.global,
         };
 
         for config in config.language {
@@ -222,9 +232,15 @@ impl Loader {
 
         loader
     }
-
+    
+    #[inline]
     pub fn scopes(&self) -> &[String] {
         &self.scopes
+    }
+
+    #[inline]
+    pub fn global(&self) -> &GlobalConfiguration {
+        &self.global
     }
 
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
@@ -245,6 +261,7 @@ impl Loader {
         // TODO: content_regex handling conflict resolution
     }
 
+    #[inline]
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
             .iter()
@@ -330,6 +347,7 @@ impl Syntax {
         syntax
     }
 
+    #[inline]
     pub fn update(
         &mut self,
         old_source: &Rope,
@@ -355,6 +373,7 @@ impl Syntax {
     //
     // fn parse(language, old_tree, ranges)
     //
+    #[inline]
     pub fn tree(&self) -> &Tree {
         self.root_layer.tree()
     }
@@ -471,7 +490,7 @@ impl LanguageLayer {
     // pub fn new() -> Self {
     //     Self { tree: None }
     // }
-
+    #[inline]
     pub fn tree(&self) -> &Tree {
         // TODO: no unwrap
         self.tree.as_ref().unwrap()
@@ -940,6 +959,7 @@ impl HighlightConfiguration {
     }
 
     /// Get a slice containing all of the highlight names used in the configuration.
+    #[inline]
     pub fn names(&self) -> &[String] {
         self.query.capture_names()
     }

@@ -260,8 +260,9 @@ impl Document {
         if let Some(path) = self.path() {
             let loader = LOADER.get().unwrap();
             let language_config = loader.language_config_for_file_name(path);
+            let max_file_size = loader.global().max_file_size;
             let scopes = loader.scopes();
-            self.set_language(language_config, scopes);
+            self.set_language(language_config, max_file_size, scopes);
         }
     }
 
@@ -281,13 +282,18 @@ impl Document {
     pub fn set_language(
         &mut self,
         language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
+        max_file_size: Option<usize>,
         scopes: &[String],
     ) {
         if let Some(language_config) = language_config {
-            if let Some(highlight_config) = language_config.highlight_config(scopes) {
-                let syntax = Syntax::new(&self.text, highlight_config);
-                self.syntax = Some(syntax);
-                // TODO: config.configure(scopes) is now delayed, is that ok?
+            if self.text.len_bytes() < max_file_size.unwrap()
+                || max_file_size.unwrap() == 0
+            {
+                if let Some(highlight_config) = language_config.highlight_config(scopes) {
+                    let syntax = Syntax::new(&self.text, highlight_config);
+                    self.syntax = Some(syntax);
+                    // TODO: config.configure(scopes) is now delayed, is that ok?
+                }
             }
 
             self.language = Some(language_config);
@@ -300,9 +306,10 @@ impl Document {
     pub fn set_language2(&mut self, scope: &str) {
         let loader = LOADER.get().unwrap();
         let language_config = loader.language_config_for_scope(scope);
+        let max_file_size = loader.global().max_file_size;
         let scopes = loader.scopes();
 
-        self.set_language(language_config, scopes);
+        self.set_language(language_config, max_file_size, scopes);
     }
 
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {

@@ -149,6 +149,8 @@ pub fn suggested_indent_for_pos(
 
 #[cfg(test)]
 mod test {
+    use crate::syntax::GlobalConfiguration;
+
     use super::*;
 
     #[test]
@@ -270,6 +272,9 @@ where
                     }),
                     indent_query: OnceCell::new(),
                 }],
+                global: GlobalConfiguration {
+                    max_file_size: Some(0),
+                },
             },
             Vec::new(),
         );
