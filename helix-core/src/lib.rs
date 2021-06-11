@@ -16,7 +16,6 @@ pub mod selection;
 mod state;
 pub mod syntax;
 mod transaction;
-pub mod words;
 
 pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
     line.chars().position(|ch| !ch.is_whitespace())

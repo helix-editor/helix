@@ -4,8 +4,8 @@ use helix_core::{
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register, search, selection, words, Change, ChangeSet, Position, Range, Rope, RopeSlice,
-    Selection, SmallVec, Tendril, Transaction,
+    register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -19,6 +19,7 @@ use helix_lsp::{
     util::{lsp_pos_to_pos, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
+use movement::Movement;
 
 use crate::{
     compositor::{Callback, Component, Compositor},
@@ -29,8 +30,10 @@ use crate::application::{LspCallbackWrapper, LspCallbacks};
 use futures_util::FutureExt;
 use std::future::Future;
 
-use std::borrow::Cow;
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 use crossterm::event::{KeyCode, KeyEvent};
 use once_cell::sync::Lazy;
@@ -132,13 +135,7 @@ pub fn move_char_left(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            false, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -148,13 +145,7 @@ pub fn move_char_right(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            false, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -164,13 +155,7 @@ pub fn move_line_up(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            false, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -180,13 +165,7 @@ pub fn move_line_down(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            false, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -249,9 +228,9 @@ pub fn move_next_word_start(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).transform(|range| {
-        movement::move_next_word_start(text, range.head, count).unwrap_or(range)
-    });
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_next_word_start(text, range, count));
 
     doc.set_selection(view.id, selection);
 }
@@ -261,9 +240,9 @@ pub fn move_prev_word_start(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).transform(|range| {
-        movement::move_prev_word_start(text, range.head, count).unwrap_or(range)
-    });
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_prev_word_start(text, range, count));
 
     doc.set_selection(view.id, selection);
 }
@@ -275,7 +254,7 @@ pub fn move_next_word_end(cx: &mut Context) {
 
     let selection = doc
         .selection(view.id)
-        .transform(|range| movement::move_next_word_end(text, range.head, count).unwrap_or(range));
+        .transform(|range| movement::move_next_word_end(text, range, count));
 
     doc.set_selection(view.id, selection);
 }
@@ -300,7 +279,7 @@ pub fn extend_next_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let word = movement::move_next_word_start(text, range.head, count).unwrap_or(range);
+        let word = movement::move_next_word_start(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
     });
@@ -314,7 +293,7 @@ pub fn extend_prev_word_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let word = movement::move_prev_word_start(text, range.head, count).unwrap_or(range);
+        let word = movement::move_prev_word_start(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
     });
@@ -327,7 +306,7 @@ pub fn extend_next_word_end(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let word = movement::move_next_word_end(text, range.head, count).unwrap_or(range);
+        let word = movement::move_next_word_end(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
     });
@@ -578,13 +557,7 @@ pub fn extend_char_left(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            true, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -594,13 +567,7 @@ pub fn extend_char_right(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            true, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -610,13 +577,7 @@ pub fn extend_line_up(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            true, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -626,13 +587,7 @@ pub fn extend_line_down(cx: &mut Context) {
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            true, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -1920,15 +1875,11 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
-        let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                (
-                    words::nth_prev_word_boundary(text, range.head, count),
-                    range.head,
-                    None,
-                )
-            });
-        doc.apply(&transaction, view.id);
+        let selection = doc
+            .selection(view.id)
+            .transform(|range| movement::move_prev_word_start(text, range, count));
+        doc.set_selection(view.id, selection);
+        delete_selection(cx)
     }
 }
 
@@ -2183,7 +2134,7 @@ pub fn format_selections(cx: &mut Context) {
 }
 
 pub fn join_selections(cx: &mut Context) {
-    use movement::skip_over_next;
+    use movement::skip_while;
     let (view, doc) = cx.current();
     let text = doc.text();
     let slice = doc.text().slice(..);
@@ -2204,7 +2155,7 @@ pub fn join_selections(cx: &mut Context) {
         for line in lines {
             let mut start = text.line_to_char(line + 1).saturating_sub(1);
             let mut end = start + 1;
-            skip_over_next(slice, &mut end, |ch| matches!(ch, ' ' | '\t'));
+            end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
             // need to skip from start, not end
             let change = (start, end, Some(fragment.clone()));

@@ -35,6 +35,10 @@ impl Range {
         }
     }
 
+    pub fn point(head: usize) -> Self {
+        Self::new(head, head)
+    }
+
     /// Start of the range.
     #[inline]
     #[must_use]
