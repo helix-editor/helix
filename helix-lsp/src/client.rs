@@ -229,7 +229,8 @@ impl Client {
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
-                    work_done_progress: Some(true),
+                    // TODO: temporarily disabled until we implement handling for window/workDoneProgress/create
+                    // work_done_progress: Some(true),
                     ..Default::default()
                 }),
                 ..Default::default()
