@@ -125,13 +125,13 @@ impl<T: Component> Component for Popup<T> {
         let mut rel_x = position.col as u16;
         let mut rel_y = position.row as u16;
         if viewport.width <= rel_x + width {
-            rel_x -= ((rel_x + width) - viewport.width)
+            rel_x = rel_x.saturating_sub((rel_x + width).saturating_sub(viewport.width));
         };
 
         // TODO: be able to specify orientation preference. We want above for most popups, below
         // for menus/autocomplete.
         if height <= rel_y {
-            rel_y -= height // position above point
+            rel_y = rel_y.saturating_sub(height) // position above point
         } else {
             rel_y += 1 // position below point
         }

@@ -3,7 +3,7 @@ pub mod auto_pairs;
 pub mod comment;
 pub mod diagnostic;
 pub mod graphemes;
-mod history;
+pub mod history;
 pub mod indent;
 pub mod macros;
 pub mod match_brackets;
@@ -16,33 +16,9 @@ pub mod selection;
 mod state;
 pub mod syntax;
 mod transaction;
-pub mod words;
 
-pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> {
-    // find first non-whitespace char
-    for (start, ch) in line.chars().enumerate() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-    }
-
-    None
-}
-pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -> Option<usize> {
-    let line = text.line(line_num);
-    let mut start = text.line_to_char(line_num);
-
-    // find first non-whitespace char
-    for ch in line.chars() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-        start += 1;
-    }
-
-    None
+pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
+    line.chars().position(|ch| !ch.is_whitespace())
 }
 
 pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
@@ -113,7 +89,6 @@ pub use smallvec::SmallVec;
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
-pub use history::History;
 pub use state::State;
 
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};

@@ -11,7 +11,8 @@ use std::collections::HashMap;
 //          W = next WORD
 //          e = end of word
 //          E = end of WORD
-//          r =
+//          r = replace
+//          R = replace with yanked
 //          t = 'till char
 //          y = yank
 //          u = undo
@@ -156,6 +157,7 @@ pub fn default() -> Keymaps {
         // and matching set for select mode (extend)
         //
         key!('r') => commands::replace,
+        key!('R') => commands::replace_with_yanked,
 
         KeyEvent {
             code: KeyCode::Home,
@@ -278,7 +280,10 @@ pub fn default() -> Keymaps {
 
         // z family for save/restore/combine from/to sels from register
 
-        ctrl!('i') => commands::jump_forward, // TODO: ctrl-i conflicts tab
+        KeyEvent { // supposedly ctrl!('i') but did not work
+            code: KeyCode::Tab,
+            modifiers: KeyModifiers::NONE,
+        } => commands::jump_forward,
         ctrl!('o') => commands::jump_backward,
         // ctrl!('s') => commands::save_selection,
 

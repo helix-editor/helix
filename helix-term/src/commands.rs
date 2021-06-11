@@ -1,10 +1,11 @@
 use helix_core::{
-    comment, coords_at_pos, find_root, graphemes, indent, match_brackets,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register, search, selection, words, Change, ChangeSet, Position, Range, Rope, RopeSlice,
-    Selection, SmallVec, Tendril, Transaction,
+    register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -18,6 +19,7 @@ use helix_lsp::{
     util::{lsp_pos_to_pos, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
+use movement::Movement;
 
 use crate::{
     compositor::{Callback, Component, Compositor},
@@ -28,15 +30,17 @@ use crate::application::{LspCallbackWrapper, LspCallbacks};
 use futures_util::FutureExt;
 use std::future::Future;
 
-use std::borrow::Cow;
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 use crossterm::event::{KeyCode, KeyEvent};
 use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
     pub register: helix_view::RegisterSelection,
-    pub count: usize,
+    pub _count: Option<std::num::NonZeroUsize>,
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
@@ -96,6 +100,11 @@ impl<'a> Context<'a> {
         });
         self.callbacks.push(callback);
     }
+
+    #[inline]
+    pub fn count(&self) -> usize {
+        self._count.map_or(1, |v| v.get())
+    }
 }
 
 enum Align {
@@ -122,65 +131,41 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
 pub type Command = fn(cx: &mut Context);
 
 pub fn move_char_left(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            false, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
 
 pub fn move_char_right(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            false, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
 
 pub fn move_line_up(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            false, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
 
 pub fn move_line_down(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            false, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Move)
     });
     doc.set_selection(view.id, selection);
 }
@@ -216,42 +201,60 @@ pub fn move_line_start(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+pub fn move_first_nonwhitespace(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line_idx = text.char_to_line(range.head);
+
+        if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
+            let pos = pos + text.line_to_char(line_idx);
+            Range::new(pos, pos)
+        } else {
+            range
+        }
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
 // TODO: move vs extend could take an extra type Extend/Move that would
 // Range::new(if Move { pos } if Extend { range.anchor }, pos)
 // since these all really do the same thing
 
 pub fn move_next_word_start(cx: &mut Context) {
-    let count = cx.count;
-    let (view, doc) = cx.current();
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).transform(|range| {
-        movement::move_next_word_start(text, range.head, count).unwrap_or(range)
-    });
-
-    doc.set_selection(view.id, selection);
-}
-
-pub fn move_prev_word_start(cx: &mut Context) {
-    let count = cx.count;
-    let (view, doc) = cx.current();
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).transform(|range| {
-        movement::move_prev_word_start(text, range.head, count).unwrap_or(range)
-    });
-
-    doc.set_selection(view.id, selection);
-}
-
-pub fn move_next_word_end(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
     let selection = doc
         .selection(view.id)
-        .transform(|range| movement::move_next_word_end(text, range.head, count).unwrap_or(range));
+        .transform(|range| movement::move_next_word_start(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+pub fn move_prev_word_start(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = cx.current();
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_prev_word_start(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+pub fn move_next_word_end(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = cx.current();
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_next_word_end(text, range, count));
 
     doc.set_selection(view.id, selection);
 }
@@ -271,12 +274,12 @@ pub fn move_file_end(cx: &mut Context) {
 }
 
 pub fn extend_next_word_start(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let word = movement::move_next_word_start(text, range.head, count).unwrap_or(range);
+        let word = movement::move_next_word_start(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
     });
@@ -285,12 +288,12 @@ pub fn extend_next_word_start(cx: &mut Context) {
 }
 
 pub fn extend_prev_word_start(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let word = movement::move_prev_word_start(text, range.head, count).unwrap_or(range);
+        let word = movement::move_prev_word_start(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
     });
@@ -298,12 +301,12 @@ pub fn extend_prev_word_start(cx: &mut Context) {
 }
 
 pub fn extend_next_word_end(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).transform(|mut range| {
-        let word = movement::move_next_word_end(text, range.head, count).unwrap_or(range);
+        let word = movement::move_next_word_end(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
     });
@@ -320,32 +323,38 @@ where
 {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
-    let count = cx.count;
+    let count = cx.count();
 
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            let (view, doc) = cx.current();
-            let text = doc.text().slice(..);
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => '\n',
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            _ => return,
+        };
 
-            let selection = doc.selection(view.id).transform(|mut range| {
-                search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
-                    if extend {
-                        Range::new(range.anchor, pos)
-                    } else {
-                        // select
-                        Range::new(range.head, pos)
-                    }
-                    // or (pos, pos) to move to found val
-                })
-            });
+        let (view, doc) = cx.current();
+        let text = doc.text().slice(..);
 
-            doc.set_selection(view.id, selection);
-        }
+        let selection = doc.selection(view.id).transform(|mut range| {
+            search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
+                if extend {
+                    Range::new(range.anchor, pos)
+                } else {
+                    // select
+                    Range::new(range.head, pos)
+                }
+                // or (pos, pos) to move to found val
+            })
+        });
+
+        doc.set_selection(view.id, selection);
     })
 }
 
@@ -421,21 +430,54 @@ pub fn extend_prev_char(cx: &mut Context) {
     )
 }
 
+pub fn extend_first_nonwhitespace(cx: &mut Context) {
+    let (view, doc) = cx.current();
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line_idx = text.char_to_line(range.head);
+
+        if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
+            let pos = pos + text.line_to_char(line_idx);
+            Range::new(range.anchor, pos)
+        } else {
+            range
+        }
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
 pub fn replace(cx: &mut Context) {
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            let text = Tendril::from_char(ch);
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => Some(ch),
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => Some('\n'),
+            _ => None,
+        };
 
+        if let Some(ch) = ch {
             let (view, doc) = cx.current();
 
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    (range.from(), range.to() + 1, Some(text.clone()))
+                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let to = std::cmp::min(max_to, range.to() + 1);
+                    let text: String = doc
+                        .text()
+                        .slice(range.from()..to)
+                        .chars()
+                        .map(|c| if c == '\n' { '\n' } else { ch })
+                        .collect();
+
+                    (range.from(), to, Some(text.into()))
                 });
 
             doc.apply(&transaction, view.id);
@@ -511,65 +553,41 @@ pub fn half_page_down(cx: &mut Context) {
 }
 
 pub fn extend_char_left(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            true, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
 
 pub fn extend_char_right(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_horizontally(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            true, /* extend */
-        )
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
 
 pub fn extend_line_up(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Backward,
-            count,
-            true, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
 
 pub fn extend_line_down(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).transform(|range| {
-        movement::move_vertically(
-            text,
-            range,
-            Direction::Forward,
-            count,
-            true, /* extend */
-        )
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
@@ -654,9 +672,10 @@ pub fn split_selection_on_newline(cx: &mut Context) {
 fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
     let selection = doc.selection(view.id);
-    let start = selection.cursor();
+    let start = text.char_to_byte(selection.cursor());
 
     // use find_at to find the next match after the cursor, loop around the end
+    // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mat = regex
         .find_at(contents, start)
         .or_else(|| regex.find(contents));
@@ -670,7 +689,7 @@ fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, e
             return;
         }
 
-        let head = end;
+        let head = end - 1;
 
         let selection = if extend {
             selection.clone().push(Range::new(start, head))
@@ -742,7 +761,7 @@ pub fn search_selection(cx: &mut Context) {
 //
 
 pub fn select_line(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
     let pos = doc.selection(view.id).primary();
@@ -757,7 +776,7 @@ pub fn select_line(cx: &mut Context) {
     doc.set_selection(view.id, Selection::single(start, end));
 }
 pub fn extend_line(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
     let pos = doc.selection(view.id).primary();
@@ -961,6 +980,30 @@ mod cmd {
         doc.format(view.id)
     }
 
+    fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
+            Ok(uk) => uk,
+            Err(msg) => {
+                editor.set_error(msg);
+                return;
+            }
+        };
+        let (view, doc) = editor.current();
+        doc.earlier(view.id, uk)
+    }
+
+    fn later(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
+            Ok(uk) => uk,
+            Err(msg) => {
+                editor.set_error(msg);
+                return;
+            }
+        };
+        let (view, doc) = editor.current();
+        doc.later(view.id, uk)
+    }
+
     pub const COMMAND_LIST: &[Command] = &[
         Command {
             name: "quit",
@@ -1004,6 +1047,20 @@ mod cmd {
             fun: format,
             completer: None,
         },
+        Command {
+            name: "earlier",
+            alias: Some("ear"),
+            doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
+            fun: earlier,
+            completer: None,
+        },
+        Command {
+            name: "later",
+            alias: Some("lat"),
+            doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
+            fun: later,
+            completer: None,
+        },
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static Command>> = Lazy::new(|| {
@@ -1027,7 +1084,7 @@ pub fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".to_owned(),
         |input: &str| {
-            // we use .this over split_ascii_whitespace() because we care about empty segments
+            // we use .this over split_whitespace() because we care about empty segments
             let parts = input.split(' ').collect::<Vec<&str>>();
 
             // simple heuristic: if there's no just one part, complete command name.
@@ -1069,7 +1126,7 @@ pub fn command_mode(cx: &mut Context) {
                 return;
             }
 
-            let parts = input.split_ascii_whitespace().collect::<Vec<&str>>();
+            let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
             }
@@ -1131,9 +1188,9 @@ pub fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(picker));
 }
 
-// I inserts at the start of each line with a selection
+// I inserts at the first nonwhitespace character of each line with a selection
 pub fn prepend_to_line(cx: &mut Context) {
-    move_line_start(cx);
+    move_first_nonwhitespace(cx);
     let doc = cx.doc();
     enter_insert_mode(doc);
 }
@@ -1159,7 +1216,7 @@ enum Open {
 }
 
 fn open(cx: &mut Context, open: Open) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     enter_insert_mode(doc);
 
@@ -1250,20 +1307,16 @@ pub fn normal_mode(cx: &mut Context) {
 // Store a jump on the jumplist.
 fn push_jump(editor: &mut Editor) {
     let (view, doc) = editor.current();
-    let jump = { (doc.id(), doc.selection(view.id).clone()) };
+    let jump = (doc.id(), doc.selection(view.id).clone());
     view.jumps.push(jump);
 }
 
 pub fn goto_mode(cx: &mut Context) {
-    let count = cx.count;
-
-    if count > 1 {
+    if let Some(count) = cx._count {
         push_jump(cx.editor);
 
-        // TODO: can't go to line 1 since we can't distinguish between g and 1g, g gets converted
-        // to 1g
         let (view, doc) = cx.current();
-        let line_idx = std::cmp::min(count - 1, doc.text().len_lines().saturating_sub(2));
+        let line_idx = std::cmp::min(count.get() - 1, doc.text().len_lines().saturating_sub(2));
         let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
         return;
@@ -1287,6 +1340,8 @@ pub fn goto_mode(cx: &mut Context) {
                 (_, 'y') => goto_type_definition(cx),
                 (_, 'r') => goto_reference(cx),
                 (_, 'i') => goto_implementation(cx),
+                (Mode::Normal, 's') => move_first_nonwhitespace(cx),
+                (Mode::Select, 's') => extend_first_nonwhitespace(cx),
 
                 (_, 't') | (_, 'm') | (_, 'b') => {
                     let (view, doc) = cx.current();
@@ -1825,7 +1880,7 @@ pub mod insert {
 
     // TODO: handle indent-aware delete
     pub fn delete_char_backward(cx: &mut Context) {
-        let count = cx.count;
+        let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
         let transaction =
@@ -1840,7 +1895,7 @@ pub mod insert {
     }
 
     pub fn delete_char_forward(cx: &mut Context) {
-        let count = cx.count;
+        let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
         let transaction =
@@ -1855,18 +1910,14 @@ pub mod insert {
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
-        let count = cx.count;
+        let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
-        let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                (
-                    words::nth_prev_word_boundary(text, range.head, count),
-                    range.head,
-                    None,
-                )
-            });
-        doc.apply(&transaction, view.id);
+        let selection = doc
+            .selection(view.id)
+            .transform(|range| movement::move_prev_word_start(text, range, count));
+        doc.set_selection(view.id, selection);
+        delete_selection(cx)
     }
 }
 
@@ -1948,6 +1999,26 @@ fn _paste(reg: char, doc: &mut Document, view: &View, action: Paste) -> Option<T
     None
 }
 
+pub fn replace_with_yanked(cx: &mut Context) {
+    let reg = cx.register.name();
+
+    if let Some(values) = register::get(reg) {
+        let (view, doc) = cx.current();
+
+        if let Some(yank) = values.first() {
+            let transaction =
+                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let to = std::cmp::min(max_to, range.to());
+                    (range.from(), to, Some(yank.as_str().into()))
+                });
+
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        }
+    }
+}
+
 // alt-p => paste every yanked selection after selected text
 // alt-P => paste every yanked selection before selected text
 // R => replace selected text with yanked text
@@ -1996,7 +2067,7 @@ fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
 }
 
 pub fn indent(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let lines = get_lines(doc, view.id);
 
@@ -2015,7 +2086,7 @@ pub fn indent(cx: &mut Context) {
 }
 
 pub fn unindent(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
     let lines = get_lines(doc, view.id);
     let mut changes = Vec::with_capacity(lines.len());
@@ -2101,7 +2172,7 @@ pub fn format_selections(cx: &mut Context) {
 }
 
 pub fn join_selections(cx: &mut Context) {
-    use movement::skip_over_next;
+    use movement::skip_while;
     let (view, doc) = cx.current();
     let text = doc.text();
     let slice = doc.text().slice(..);
@@ -2122,7 +2193,7 @@ pub fn join_selections(cx: &mut Context) {
         for line in lines {
             let mut start = text.line_to_char(line + 1).saturating_sub(1);
             let mut end = start + 1;
-            skip_over_next(slice, &mut end, |ch| matches!(ch, ' ' | '\t'));
+            end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
             // need to skip from start, not end
             let change = (start, end, Some(fragment.clone()));
@@ -2252,7 +2323,9 @@ pub fn completion(cx: &mut Context) {
             }
             use crate::compositor::AnyComponent;
             let size = compositor.size();
-            let ui = compositor.find("hx::ui::editor::EditorView").unwrap();
+            let ui = compositor
+                .find(std::any::type_name::<ui::EditorView>())
+                .unwrap();
             if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
                 ui.set_completion(items, offset_encoding, trigger_offset, size);
             };
@@ -2351,7 +2424,7 @@ pub fn match_brackets(cx: &mut Context) {
 //
 
 pub fn jump_forward(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
     if let Some((id, selection)) = view.jumps.forward(count) {
@@ -2365,10 +2438,10 @@ pub fn jump_forward(cx: &mut Context) {
 }
 
 pub fn jump_backward(cx: &mut Context) {
-    let count = cx.count;
+    let count = cx.count();
     let (view, doc) = cx.current();
 
-    if let Some((id, selection)) = view.jumps.backward(count) {
+    if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         view.doc = *id;
         let selection = selection.clone();
         let (view, doc) = cx.current(); // refetch doc

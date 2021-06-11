@@ -12,6 +12,7 @@ pub const PADDING: usize = 5;
 
 type Jump = (DocumentId, Selection);
 
+#[derive(Debug)]
 pub struct JumpList {
     jumps: Vec<Jump>,
     current: usize,
@@ -37,20 +38,28 @@ impl JumpList {
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {
         if self.current + count < self.jumps.len() {
             self.current += count;
-            return self.jumps.get(self.current);
+            self.jumps.get(self.current)
+        } else {
+            None
         }
-        None
     }
 
-    pub fn backward(&mut self, count: usize) -> Option<&Jump> {
-        if self.current.checked_sub(count).is_some() {
-            self.current -= count;
-            return self.jumps.get(self.current);
+    // Taking view and doc to prevent unnecessary cloning when jump is not required.
+    pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
+        if let Some(current) = self.current.checked_sub(count) {
+            if self.current == self.jumps.len() {
+                let jump = (doc.id(), doc.selection(view_id).clone());
+                self.push(jump);
+            }
+            self.current = current;
+            self.jumps.get(self.current)
+        } else {
+            None
         }
-        None
     }
 }
 
+#[derive(Debug)]
 pub struct View {
     pub id: ViewId,
     pub doc: DocumentId,
@@ -106,7 +115,7 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self, doc: &Document) -> usize {
-        let height = self.area.height.saturating_sub(2); // - 2 for statusline
+        let height = self.area.height.saturating_sub(1); // - 1 for statusline
         std::cmp::min(
             self.first_line + height as usize,
             doc.text().len_lines() - 1,

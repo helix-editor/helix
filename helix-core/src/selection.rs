@@ -35,7 +35,7 @@ impl Range {
         }
     }
 
-    pub fn single(head: usize) -> Self {
+    pub fn point(head: usize) -> Self {
         Self::new(head, head)
     }
 

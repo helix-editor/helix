@@ -5,15 +5,16 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
+    history::History,
     syntax::{LanguageConfiguration, LOADER},
-    ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, Rope, Selection, State, Syntax, Transaction,
 };
 
 use crate::{DocumentId, ViewId};
 
 use std::collections::HashMap;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
     Select,
@@ -50,6 +51,29 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+}
+
+use std::fmt;
+impl fmt::Debug for Document {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Document")
+            .field("id", &self.id)
+            .field("text", &self.text)
+            .field("selections", &self.selections)
+            .field("path", &self.path)
+            .field("mode", &self.mode)
+            .field("restore_cursor", &self.restore_cursor)
+            .field("syntax", &self.syntax)
+            .field("language", &self.language)
+            .field("changes", &self.changes)
+            .field("old_state", &self.old_state)
+            // .field("history", &self.history)
+            .field("last_saved_revision", &self.last_saved_revision)
+            .field("version", &self.version)
+            .field("diagnostics", &self.diagnostics)
+            // .field("language_server", &self.language_server)
+            .finish()
+    }
 }
 
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
@@ -147,7 +171,12 @@ impl Document {
             Rope::from("\n")
         } else {
             let file = File::open(&path).context(format!("unable to open {:?}", path))?;
-            Rope::from_reader(BufReader::new(file))?
+            let mut doc = Rope::from_reader(BufReader::new(file))?;
+            // add missing newline at the end of file
+            if doc.len_bytes() == 0 || doc.byte(doc.len_bytes() - 1) != b'\n' {
+                doc.insert_char(doc.len_chars(), '\n');
+            }
+            doc
         };
 
         let mut doc = Self::new(doc);
@@ -359,7 +388,7 @@ impl Document {
         success
     }
 
-    pub fn undo(&mut self, view_id: ViewId) -> bool {
+    pub fn undo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
             self._apply(&transaction, view_id)
@@ -372,11 +401,9 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
-
-        success
     }
 
-    pub fn redo(&mut self, view_id: ViewId) -> bool {
+    pub fn redo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.redo() {
             self._apply(&transaction, view_id)
@@ -389,8 +416,20 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
+    }
 
-        false
+    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().earlier(uk);
+        for txn in txns {
+            self._apply(&txn, view_id);
+        }
+    }
+
+    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().later(uk);
+        for txn in txns {
+            self._apply(&txn, view_id);
+        }
     }
 
     pub fn append_changes_to_history(&mut self, view_id: ViewId) {

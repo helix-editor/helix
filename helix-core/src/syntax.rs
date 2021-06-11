@@ -5,6 +5,7 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{HashMap, HashSet},
+    fmt,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -12,13 +13,13 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
@@ -46,7 +47,7 @@ pub struct LanguageConfiguration {
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
     pub command: String,
@@ -55,14 +56,14 @@ pub struct LanguageServerConfiguration {
     pub args: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
     pub tab_width: usize,
     pub unit: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentQuery {
     #[serde(default)]
@@ -189,6 +190,7 @@ impl LanguageConfiguration {
 
 pub static LOADER: OnceCell<Loader> = OnceCell::new();
 
+#[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
@@ -256,6 +258,12 @@ pub struct TsParser {
     cursors: Vec<QueryCursor>,
 }
 
+impl fmt::Debug for TsParser {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TsParser").finish()
+    }
+}
+
 // could also just use a pool, or a single instance?
 thread_local! {
     pub static PARSER: RefCell<TsParser> = RefCell::new(TsParser {
@@ -264,6 +272,7 @@ thread_local! {
     })
 }
 
+#[derive(Debug)]
 pub struct Syntax {
     config: Arc<HighlightConfiguration>,
 
@@ -366,7 +375,11 @@ impl Syntax {
         // prevents them from being moved. But both of these values are really just
         // pointers, so it's actually ok to move them.
 
-        let mut cursor = QueryCursor::new(); // reuse a pool
+        // reuse a cursor from the pool if possible
+        let mut cursor = PARSER.with(|ts_parser| {
+            let highlighter = &mut ts_parser.borrow_mut();
+            highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+        });
         let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(self.tree()) };
         let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
         let query_ref = unsafe { mem::transmute::<_, &'static Query>(&self.config.query) };
@@ -440,6 +453,7 @@ impl Syntax {
     // buffer_range_for_scope_at_pos
 }
 
+#[derive(Debug)]
 pub struct LanguageLayer {
     // mode
     // grammar
@@ -748,6 +762,7 @@ pub enum HighlightEvent {
 /// Contains the data neeeded to higlight code written in a particular language.
 ///
 /// This struct is immutable and can be shared between threads.
+#[derive(Debug)]
 pub struct HighlightConfiguration {
     pub language: Grammar,
     pub query: Query,
@@ -778,6 +793,7 @@ struct LocalScope<'a> {
     local_defs: Vec<LocalDef<'a>>,
 }
 
+#[derive(Debug)]
 struct HighlightIter<'a, 'tree: 'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
@@ -801,6 +817,12 @@ struct HighlightIterLayer<'a, 'tree: 'a> {
     scope_stack: Vec<LocalScope<'a>>,
     ranges: Vec<Range>,
     depth: usize,
+}
+
+impl<'a, 'tree: 'a> fmt::Debug for HighlightIterLayer<'a, 'tree> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HighlightIterLayer").finish()
+    }
 }
 
 impl HighlightConfiguration {

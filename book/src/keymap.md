@@ -19,7 +19,7 @@
 | F   | find previous char |
 | Home   | move to the start of the line |
 | End   | move to the end of the line |
-| m   | Jump to matching bracket | 
+| m   | Jump to matching bracket |
 | PageUp | Move page up |
 | PageDown | Move page down |
 | ctrl-u | Move half page up |
@@ -38,13 +38,14 @@
 
 | Key | Description |
 |-----|-----------|
-| r   | replace (single character change) |
+| r   | replace with a character |
+| R   | replace with yanked text |
 | i   | Insert before selection |
 | a   | Insert after selection (append) |
-| I   | Insert at the start of the line | 
-| A   | Insert at the end of the line | 
-| o   | Open new line below selection | 
-| o   | Open new line above selection | 
+| I   | Insert at the start of the line |
+| A   | Insert at the end of the line |
+| o   | Open new line below selection |
+| o   | Open new line above selection |
 | u   | Undo change |
 | U   | Redo change |
 | y   | Yank selection |
@@ -53,26 +54,26 @@
 | >   | Indent selection |
 | <   | Unindent selection |
 | =   | Format selection |
-| d   | Delete selection | 
-| c   | Change selection (delete and enter insert mode) | 
+| d   | Delete selection |
+| c   | Change selection (delete and enter insert mode) |
 
 ### Selection manipulation
 
 | Key | Description |
 |-----|-----------|
-| s   | Select all regex matches inside selections | 
-| S   | Split selection into subselections on regex matches | 
-| alt-s   | Split selection on newlines | 
-| ;   | Collapse selection onto a single cursor | 
-| alt-;   | Flip selection cursor and anchor | 
-| %   | Select entire file | 
-| x   | Select current line | 
-| X   | Extend to next line | 
-| [   | Expand selection to parent syntax node TODO: pick a key | 
+| s   | Select all regex matches inside selections |
+| S   | Split selection into subselections on regex matches |
+| alt-s   | Split selection on newlines |
+| ;   | Collapse selection onto a single cursor |
+| alt-;   | Flip selection cursor and anchor |
+| %   | Select entire file |
+| x   | Select current line |
+| X   | Extend to next line |
+| [   | Expand selection to parent syntax node TODO: pick a key |
 | J | join lines inside selection |
 | K | keep selections matching the regex TODO: overlapped by hover help |
 | space | keep only the primary selection TODO: overlapped by space mode |
-| ctrl-c | Comment/uncomment the selections | 
+| ctrl-c | Comment/uncomment the selections |
 
 ### Search
 
@@ -81,10 +82,10 @@ in reverse, or searching via smartcase.
 
 | Key | Description |
 |-----|-----------|
-| /   | Search for regex pattern | 
-| n   | Select next search match | 
-| N   | Add next search match to selection | 
-| *   | Use current selection as the search pattern | 
+| /   | Search for regex pattern |
+| n   | Select next search match |
+| N   | Add next search match to selection |
+| *   | Use current selection as the search pattern |
 
 ### Diagnostics
 
@@ -132,6 +133,7 @@ Jumps to various locations.
 | e   | Go to the end of the file |
 | h   | Go to the start of the line |
 | l   | Go to the end of the line |
+| s   | Go to first non-whitespace character of the line |
 | t   | Go to the top of the screen |
 | m   | Go to the middle of the screen |
 | b   | Go to the bottom of the screen |

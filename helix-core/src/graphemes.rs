@@ -3,6 +3,8 @@ use ropey::{iter::Chunks, str_utils::byte_to_char_idx, RopeSlice};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 use unicode_width::UnicodeWidthStr;
 
+use std::fmt;
+
 #[must_use]
 pub fn grapheme_width(g: &str) -> usize {
     if g.as_bytes()[0] <= 127 {
@@ -154,6 +156,18 @@ pub struct RopeGraphemes<'a> {
     cur_chunk: &'a str,
     cur_chunk_start: usize,
     cursor: GraphemeCursor,
+}
+
+impl<'a> fmt::Debug for RopeGraphemes<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RopeGraphemes")
+            .field("text", &self.text)
+            .field("chunks", &self.chunks)
+            .field("cur_chunk", &self.cur_chunk)
+            .field("cur_chunk_start", &self.cur_chunk_start)
+            // .field("cursor", &self.cursor)
+            .finish()
+    }
 }
 
 impl<'a> RopeGraphemes<'a> {
