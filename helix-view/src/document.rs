@@ -8,7 +8,8 @@ use helix_core::{
     chars::{char_is_linebreak, char_is_whitespace},
     history::History,
     syntax::{LanguageConfiguration, LOADER},
-    ChangeSet, Diagnostic, History, Rope, RopeSlice, RopeGraphemes, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, History, Rope, RopeGraphemes, RopeSlice, Selection, State, Syntax,
+    Transaction,
 };
 
 use crate::{DocumentId, ViewId};
@@ -34,12 +35,12 @@ pub enum IndentStyle {
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum LineEnding {
     None = 0, // No line ending
-    CRLF = 1, // CarriageReturn followed by LineFeed
+    Crlf = 1, // CarriageReturn followed by LineFeed
     LF = 2,   // U+000A -- LineFeed
     VT = 3,   // U+000B -- VerticalTab
     FF = 4,   // U+000C -- FormFeed
     CR = 5,   // U+000D -- CarriageReturn
-    NEL = 6,  // U+0085 -- NextLine
+    Nel = 6,  // U+0085 -- NextLine
     LS = 7,   // U+2028 -- Line Separator
     PS = 8,   // U+2029 -- ParagraphSeparator
 }
@@ -77,7 +78,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    line_ending: LineEnding
+    _line_ending: LineEnding,
 }
 
 use std::fmt;
@@ -166,31 +167,29 @@ pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
 pub fn auto_detect_line_ending(doc: &Rope) -> LineEnding {
     // based on https://github.com/cessen/led/blob/27572c8838a1c664ee378a19358604063881cc1d/src/editor/mod.rs#L88-L162
 
-        let mut ending = LineEnding::None;
-        for line in doc.lines().take(1) { // check first line only - unsure how sound this is
-            // Get the line ending
-            ending = if line.len_chars() == 1 {
-                let g = RopeGraphemes::new(line.slice((line.len_chars() - 1)..))
-                    .last()
-                    .unwrap();
-                rope_slice_to_line_ending(&g)
-            } else if line.len_chars() > 1 {
-                let g = RopeGraphemes::new(line.slice((line.len_chars() - 2)..))
-                    .last()
-                    .unwrap();
-                rope_slice_to_line_ending(&g)
-            } else {
-                LineEnding::None
-            };
+    let mut ending = LineEnding::None;
+    for line in doc.lines().take(1) { // check first line only - unsure how sound this is
+        ending = match line.len_chars() {
+            1 => { let g = RopeGraphemes::new(line.slice((line.len_chars() - 1)..))
+                .last()
+                .unwrap();
+            rope_slice_to_line_ending(&g)}
+            n if n > 1 => { let g = RopeGraphemes::new(line.slice((line.len_chars() - 2)..))
+                .last()
+                .unwrap();
+            rope_slice_to_line_ending(&g) }
+            _ => LineEnding::None
+
         }
-        ending
+    }
+    ending
 }
 
 pub fn rope_slice_to_line_ending(g: &RopeSlice) -> LineEnding {
     if let Some(text) = g.as_str() {
         str_to_line_ending(text)
     } else if g == "\u{000D}\u{000A}" {
-        LineEnding::CRLF
+        LineEnding::Crlf
     } else {
         // Not a line ending
         LineEnding::None
@@ -199,12 +198,12 @@ pub fn rope_slice_to_line_ending(g: &RopeSlice) -> LineEnding {
 
 pub fn str_to_line_ending(g: &str) -> LineEnding {
     match g {
-        "\u{000D}\u{000A}" => LineEnding::CRLF,
+        "\u{000D}\u{000A}" => LineEnding::Crlf,
         "\u{000A}" => LineEnding::LF,
         "\u{000B}" => LineEnding::VT,
         "\u{000C}" => LineEnding::FF,
         "\u{000D}" => LineEnding::CR,
-        "\u{0085}" => LineEnding::NEL,
+        "\u{0085}" => LineEnding::Nel,
         "\u{2028}" => LineEnding::LS,
         "\u{2029}" => LineEnding::PS,
 
@@ -217,7 +216,7 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn new(text: Rope, line_ending: LineEnding) -> Self {
+    pub fn new(text: Rope, _line_ending: LineEnding) -> Self {
         let changes = ChangeSet::new(&text);
         let old_state = None;
 
@@ -238,7 +237,7 @@ impl Document {
             history: Cell::new(History::default()),
             last_saved_revision: 0,
             language_server: None,
-            line_ending: line_ending
+            _line_ending
         }
     }
 

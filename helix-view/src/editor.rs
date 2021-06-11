@@ -1,4 +1,6 @@
-use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId, LineEnding};
+use crate::{
+    theme::Theme, tree::Tree, Document, DocumentId, LineEnding, RegisterSelection, View, ViewId,
+};
 use tui::layout::Rect;
 use tui::terminal::CursorKind;
 
