@@ -1,3 +1,4 @@
+use helix_lsp::lsp;
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
 use crate::{args::Args, compositor::Compositor, ui};
@@ -227,6 +228,59 @@ impl Application {
                     }
                     Notification::LogMessage(params) => {
                         log::warn!("unhandled window/logMessage: {:?}", params);
+                    }
+                    Notification::ProgressMessage(params) => {
+                        let token = match params.token {
+                            lsp::NumberOrString::Number(n) => n.to_string(),
+                            lsp::NumberOrString::String(s) => s,
+                        };
+                        let msg = {
+                            let lsp::ProgressParamsValue::WorkDone(work) = params.value;
+                            let parts = match work {
+                                lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
+                                    title,
+                                    message,
+                                    percentage,
+                                    ..
+                                }) => (Some(title), message, percentage.map(|n| n.to_string())),
+                                lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
+                                    message,
+                                    percentage,
+                                    ..
+                                }) => (None, message, percentage.map(|n| n.to_string())),
+                                lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd {
+                                    message,
+                                }) => {
+                                    if let Some(message) = message {
+                                        (None, Some(message), None)
+                                    } else {
+                                        self.editor.clear_status();
+                                        return;
+                                    }
+                                }
+                            };
+                            match parts {
+                                (Some(title), Some(message), Some(percentage)) => {
+                                    format!("{}% {} - {}", percentage, title, message)
+                                }
+                                (Some(title), None, Some(percentage)) => {
+                                    format!("{}% {}", percentage, title)
+                                }
+                                (Some(title), Some(message), None) => {
+                                    format!("{} - {}", title, message)
+                                }
+                                (None, Some(message), Some(percentage)) => {
+                                    format!("{}% {}", percentage, message)
+                                }
+                                (Some(title), None, None) => title,
+                                (None, Some(message), None) => message,
+                                (None, None, Some(percentage)) => format!("{}%", percentage),
+                                (None, None, None) => "".into(),
+                            }
+                        };
+                        let status = format!("[{}] {}", token, msg);
+                        self.editor.set_status(status);
+                        self.render();
                     }
                     _ => unreachable!(),
                 }
