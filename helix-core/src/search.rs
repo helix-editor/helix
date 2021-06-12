@@ -67,7 +67,7 @@ impl Searcher {
 
         // Create Regex DFAs for all search directions.
         let mut builder = dense::Builder::new();
-        let builder = builder.case_insensitive(!has_uppercase);
+        let builder = builder.case_insensitive(!has_uppercase).unicode(false);
 
         let left_fdfa = builder.clone().reverse(true).build(pattern)?;
         let left_rdfa = builder
