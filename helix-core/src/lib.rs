@@ -69,7 +69,7 @@ fn runtime_dir() -> std::path::PathBuf {
     // fallback to location of the executable being run
     std::env::current_exe()
         .ok()
-        .and_then(|path| path.parent().map(|path| path.to_path_buf()))
+        .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
         .unwrap()
 }
 
