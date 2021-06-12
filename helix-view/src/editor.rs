@@ -90,7 +90,7 @@ impl Editor {
         use helix_core::Selection;
 
         if !self.documents.contains_key(id) {
-            log::warn!("cannot switch to document that does not exist (anymore)");
+            log::error!("cannot switch to document that does not exist (anymore)");
             return;
         }
 
@@ -104,7 +104,7 @@ impl Editor {
 
                 let view = self.view_mut();
                 view.jumps.push(jump);
-                view.alternate_file = Some(view.doc);
+                view.alternate_doc = Some(view.doc);
                 view.doc = id;
                 view.first_line = 0;
 

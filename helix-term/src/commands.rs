@@ -1312,7 +1312,7 @@ fn push_jump(editor: &mut Editor) {
 }
 
 fn switch_to_alternate_file(cx: &mut Context) {
-    let alternate_file = cx.view().alternate_file;
+    let alternate_file = cx.view().alternate_doc;
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
     }
@@ -2452,7 +2452,7 @@ pub fn jump_backward(cx: &mut Context) {
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         // manually set the alternate_file as we cannot use the Editor::switch function here.
         if view.doc != *id {
-            view.alternate_file = Some(view.doc)
+            view.alternate_doc = Some(view.doc)
         }
         view.doc = *id;
         let selection = selection.clone();

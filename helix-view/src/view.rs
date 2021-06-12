@@ -67,7 +67,7 @@ pub struct View {
     pub first_col: usize,
     pub area: Rect,
     pub jumps: JumpList,
-    pub alternate_file: Option<DocumentId>,
+    pub alternate_doc: Option<DocumentId>,
 }
 
 impl View {
@@ -79,7 +79,7 @@ impl View {
             first_col: 0,
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
-            alternate_file: None,
+            alternate_doc: None,
         }
     }
 
