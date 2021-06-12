@@ -142,11 +142,11 @@ pub mod util {
         doc: &Rope,
         range: lsp::Range,
         offset_encoding: OffsetEncoding,
-    ) -> Range {
-        let start = lsp_pos_to_pos(doc, range.start, offset_encoding);
-        let end = lsp_pos_to_pos(doc, range.end, offset_encoding);
+    ) -> Option<Range> {
+        let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
+        let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
-        Range::new(start, end)
+        Some(Range::new(start, end))
     }
 
     pub fn generate_transaction_from_edits(

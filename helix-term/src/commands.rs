@@ -1250,10 +1250,12 @@ pub fn symbol_picker(cx: &mut Context) {
                         push_jump(editor);
                         let (view, doc) = editor.current();
 
-                        let range =
-                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding);
-                        doc.set_selection(view.id, Selection::single(range.to(), range.from()));
-                        align_view(doc, view, Align::Center);
+                        if let Some(range) =
+                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+                        {
+                            doc.set_selection(view.id, Selection::single(range.to(), range.from()));
+                            align_view(doc, view, Align::Center);
+                        }
                     },
                 );
                 compositor.push(Box::new(picker))
