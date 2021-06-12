@@ -75,8 +75,10 @@ pub struct IndentQuery {
 
 #[cfg(not(feature = "embed_runtime"))]
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let root = crate::runtime_dir();
-    let path = root.join("queries").join(language).join(filename);
+    let path = crate::RUNTIME_DIR
+        .join("queries")
+        .join(language)
+        .join(filename);
     std::fs::read_to_string(&path)
 }
 
