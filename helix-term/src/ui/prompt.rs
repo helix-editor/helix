@@ -85,6 +85,27 @@ impl Prompt {
         self.exit_selection();
     }
 
+    pub fn delete_word_backwards(&mut self) {
+        use helix_core::get_general_category;
+        let mut chars = self.line.char_indices().rev();
+        // TODO add skipping whitespace logic here
+        let (mut i, cat) = match chars.next() {
+            Some((i, c)) => (i, get_general_category(c)),
+            None => return,
+        };
+        self.cursor -= 1;
+        for (nn, nc) in chars {
+            if get_general_category(nc) != cat {
+                break;
+            }
+            i = nn;
+            self.cursor -= 1;
+        }
+        self.line.drain(i..);
+        self.completion = (self.completion_fn)(&self.line);
+        self.exit_selection();
+    }
+
     pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
         if self.completion.is_empty() {
             return;
@@ -270,6 +291,10 @@ impl Component for Prompt {
                 code: KeyCode::Char('a'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_start(),
+            KeyEvent {
+                code: KeyCode::Char('w'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.delete_word_backwards(),
             KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
