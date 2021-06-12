@@ -67,6 +67,8 @@ pub struct View {
     pub first_col: usize,
     pub area: Rect,
     pub jumps: JumpList,
+    /// the last accessed file before the current one
+    pub last_accessed_doc: Option<DocumentId>,
 }
 
 impl View {
@@ -78,6 +80,7 @@ impl View {
             first_col: 0,
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
+            last_accessed_doc: None,
         }
     }
 
