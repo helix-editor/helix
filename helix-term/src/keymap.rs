@@ -1,5 +1,5 @@
 use crate::commands::{self, Command};
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Error, Result};
 use helix_core::hashmap;
 use helix_view::document::Mode;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
@@ -98,6 +98,9 @@ pub use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub type Keymap = HashMap<KeyEvent, Command>;
 pub type Keymaps = HashMap<Mode, Keymap>;
+
+pub type Remap = HashMap<KeyEvent, KeyEvent>;
+pub type Remaps = HashMap<Mode, Remap>;
 
 #[macro_export]
 macro_rules! key {
@@ -456,7 +459,7 @@ impl FromStr for RepresentableKeyEvent {
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
         };
 
-        let mut modifiers = KeyModifiers::NONE;
+        let mut modifiers = KeyModifiers::empty();
         for token in tokens {
             let flag = match token {
                 "S" => KeyModifiers::SHIFT,
@@ -465,19 +468,67 @@ impl FromStr for RepresentableKeyEvent {
                 _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
             };
 
-            if modifiers | flag == flag {
+            if modifiers.contains(flag) {
                 return Err(anyhow!("Repeated key modifier '{}-'", token));
             }
-            modifiers |= flag;
+            modifiers.insert(flag);
         }
 
         Ok(RepresentableKeyEvent(KeyEvent{ code, modifiers }))
     }
 }
 
+pub fn parse_remaps(remaps: &str) -> Result<Remaps> {
+    type TomlCompatibleRemaps = HashMap<String, HashMap<String, String>>;
+    let toml_remaps: TomlCompatibleRemaps = toml::from_str(remaps)?;
+    let mut remaps = Remaps::new();
+
+    for (mode, map) in toml_remaps {
+        let mode = Mode::from_str(&mode)?;
+        let mut remap = Remap::new();
+
+        for (source_key, target_key) in map {
+            let source_key = str::parse::<RepresentableKeyEvent>(&source_key)?;
+            let target_key = str::parse::<RepresentableKeyEvent>(&target_key)?;
+            remap.insert(source_key.0, target_key.0);
+        }
+        remaps.insert(mode, remap);
+    }
+    Ok(remaps)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn parsing_remaps_file() {
+        let sample_remaps = "\
+            [Insert]\n\
+            y = \"x\"\n\
+            S-C-a = \"F12\"\n\
+
+            [Normal]
+            A-F12 = \"S-C-w\"\n\
+        ";
+
+        let parsed = parse_remaps(sample_remaps).unwrap();
+        assert_eq!(
+            parsed,
+            hashmap!(
+                Mode::Insert => hashmap!(
+                    KeyEvent { code: KeyCode::Char('y'), modifiers: KeyModifiers::NONE }
+                        => KeyEvent { code: KeyCode::Char('x'), modifiers: KeyModifiers::NONE },
+                    KeyEvent { code: KeyCode::Char('a'), modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL }
+                        => KeyEvent { code: KeyCode::F(12), modifiers: KeyModifiers::NONE },
+                ),
+                Mode::Normal => hashmap!(
+                    KeyEvent { code: KeyCode::F(12), modifiers: KeyModifiers::ALT }
+                        => KeyEvent { code: KeyCode::Char('w'), modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL },
+                )
+            )
+        )
+    }
 
     #[test]
     fn parsing_unmodified_keys() {
