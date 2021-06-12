@@ -41,14 +41,12 @@ cargo install --path helix-term
 
 This will install the `hx` binary to `$HOME/.cargo/bin`.
 
-Now copy the `runtime/` directory somewhere. Helix will by default look for the
-runtime inside the same folder as the executable, but that can be overriden via
-the `HELIX_RUNTIME` environment variable.
+Now copy the `runtime/` directory somewhere. Helix will by default look for the runtime
+inside the config directory or the same directory as executable, but that can be overriden
+via the `HELIX_RUNTIME` environment variable.
 
-> NOTE: You should set this to <path to repository>/runtime in development (if
-> running via cargo).
-> 
-> `export HELIX_RUNTIME=$PWD/runtime`
+> NOTE: running via cargo doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
+> detect the `runtime` directory in the project root.
 
 If you want to embed the `runtime/` directory into the Helix binary you can build
 it with:
