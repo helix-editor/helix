@@ -966,7 +966,13 @@ mod cmd {
             editor.set_error("cannot write a buffer without a filename".to_string());
             return;
         }
-        doc.format(view.id); // TODO: merge into save
+        let autofmt = doc
+            .language_config()
+            .map(|config| config.auto_format)
+            .unwrap_or_default();
+        if autofmt {
+            doc.format(view.id); // TODO: merge into save
+        }
         tokio::spawn(doc.save());
     }
 

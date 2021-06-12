@@ -28,8 +28,8 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
 
-    // pub path: PathBuf,
-    // root_path for tree-sitter (^)
+    #[serde(default)]
+    pub auto_format: bool,
 
     // content_regex
     // injection_regex
