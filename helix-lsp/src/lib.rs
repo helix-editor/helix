@@ -102,26 +102,24 @@ pub mod util {
 
     /// Converts position in the document to [`lsp::Position`].
     ///
-    /// Saturates the returned position to be within document bounds.
+    /// Panics when `pos` is out of `doc` bounds or operation overflows.
     pub fn pos_to_lsp_pos(
         doc: &Rope,
         pos: usize,
         offset_encoding: OffsetEncoding,
     ) -> lsp::Position {
-        let max_char = doc.chars().count();
-        let pos = if pos > max_char { max_char } else { pos };
         match offset_encoding {
             OffsetEncoding::Utf8 => {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.line_to_char(line);
-                let col = pos.saturating_sub(line_start);
+                let col = pos - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
             OffsetEncoding::Utf16 => {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
-                let col = doc.char_to_utf16_cu(pos).saturating_sub(line_start);
+                let col = doc.char_to_utf16_cu(pos) - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
