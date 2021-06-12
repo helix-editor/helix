@@ -1,7 +1,8 @@
 use crate::commands::{self, Command};
+use anyhow::{anyhow, Error};
 use helix_core::hashmap;
 use helix_view::document::Mode;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 // Kakoune-inspired:
 // mode = {
@@ -376,4 +377,184 @@ pub fn default() -> Keymaps {
             ctrl!('w') => commands::insert::delete_word_backward,
         ),
     )
+}
+
+// Newtype wrapper over keys to allow toml serialization/parsing
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
+pub struct RepresentableKeyEvent(pub KeyEvent);
+impl Display for RepresentableKeyEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(key) = self;
+        f.write_fmt(format_args!(
+            "{}{}{}",
+            if key.modifiers | KeyModifiers::SHIFT == KeyModifiers::SHIFT {
+                "S-"
+            } else {
+                ""
+            },
+            if key.modifiers | KeyModifiers::ALT == KeyModifiers::ALT {
+                "A-"
+            } else {
+                ""
+            },
+            if key.modifiers | KeyModifiers::CONTROL == KeyModifiers::CONTROL {
+                "C-"
+            } else {
+                ""
+            },
+        ))?;
+        match key.code {
+            KeyCode::Backspace => f.write_str("Bs")?,
+            KeyCode::Enter => f.write_str("Enter")?,
+            KeyCode::Left => f.write_str("Left")?,
+            KeyCode::Right => f.write_str("Right")?,
+            KeyCode::Up => f.write_str("Up")?,
+            KeyCode::Down => f.write_str("Down")?,
+            KeyCode::Home => f.write_str("Home")?,
+            KeyCode::End => f.write_str("End")?,
+            KeyCode::PageUp => f.write_str("PageUp")?,
+            KeyCode::PageDown => f.write_str("PageDown")?,
+            KeyCode::Tab => f.write_str("Tab")?,
+            KeyCode::BackTab => f.write_str("BackTab")?,
+            KeyCode::Delete => f.write_str("Del")?,
+            KeyCode::Insert => f.write_str("Insert")?,
+            KeyCode::F(i) => f.write_fmt(format_args!("F{}", i))?,
+            KeyCode::Char(c) => f.write_fmt(format_args!("{}", c))?,
+            KeyCode::Null => f.write_str("Null")?,
+            KeyCode::Esc => f.write_str("Esc")?,
+        };
+        Ok(())
+    }
+}
+
+impl FromStr for RepresentableKeyEvent {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut tokens: Vec<_> = s.split("-").collect();
+        let code = match tokens.pop().ok_or(anyhow!("Missing key code"))? {
+            "Bs" => KeyCode::Backspace,
+            "Enter" => KeyCode::Enter,
+            "Left" => KeyCode::Left,
+            "Right" => KeyCode::Right,
+            "Up" => KeyCode::Down,
+            "Home" => KeyCode::Home,
+            "End" => KeyCode::End,
+            "PageUp" => KeyCode::PageUp,
+            "PageDown" => KeyCode::PageDown,
+            "Tab" => KeyCode::Tab,
+            "BackTab" => KeyCode::BackTab,
+            "Del" => KeyCode::Delete,
+            "Insert" => KeyCode::Insert,
+            single if single.len() == 1 => KeyCode::Char(single.chars().nth(0).unwrap()),
+            function if function.len() > 1 && &function[0..1] == "F" => {
+                let function = str::parse::<u8>(&function[1..])?;
+                (function > 0 && function < 13)
+                    .then(|| KeyCode::F(function))
+                    .ok_or(anyhow!("Invalid function key '{}'", function))?
+            }
+            invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
+        };
+
+        let mut modifiers = KeyModifiers::NONE;
+        for token in tokens {
+            let flag = match token {
+                "S" => KeyModifiers::SHIFT,
+                "A" => KeyModifiers::ALT,
+                "C" => KeyModifiers::CONTROL,
+                _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
+            };
+
+            if modifiers | flag == flag {
+                return Err(anyhow!("Repeated key modifier '{}-'", token));
+            }
+            modifiers |= flag;
+        }
+
+        Ok(RepresentableKeyEvent(KeyEvent{ code, modifiers }))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parsing_unmodified_keys() {
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("Bs").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Backspace,
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("Left").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>(",").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Char(','),
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("w").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Char('w'),
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("F12").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::F(12),
+                modifiers: KeyModifiers::NONE
+            })
+        );
+    }
+
+    fn parsing_modified_keys() {
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("S-Bs").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Backspace,
+                modifiers: KeyModifiers::SHIFT
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("C-A-S-F12").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::F(12),
+                modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL | KeyModifiers::ALT
+            })
+        );
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("S-C-2").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::F(2),
+                modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL
+            })
+        );
+    }
+
+    #[test]
+    fn parsing_nonsensical_keys_fails() {
+        assert!(str::parse::<RepresentableKeyEvent>("F13").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("F0").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("aaa").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("S-S-a").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("C-A-S-C-1").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("FU").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("123").is_err());
+    }
 }
