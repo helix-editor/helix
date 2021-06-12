@@ -141,6 +141,7 @@ Jumps to various locations.
 | y   | Go to type definition |
 | r   | Go to references |
 | i   | Go to implementation |
+| a   | Go to the last accessed/alternate file |
 
 ## Object mode
 
