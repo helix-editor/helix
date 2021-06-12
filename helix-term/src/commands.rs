@@ -1315,6 +1315,8 @@ fn switch_to_last_accessed_file(cx: &mut Context) {
     let alternate_file = cx.view().last_accessed_doc;
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
+    } else {
+        cx.editor.set_error("no last buffer".to_owned())
     }
 }
 
