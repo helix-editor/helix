@@ -169,3 +169,17 @@ This layer is a kludge of mappings I had under leader key in neovim.
 | s   | Open symbol picker (current document)|
 | w   | Enter window mode |
 | space   | Keep primary selection TODO: it's here because space mode replaced it |
+
+# Picker
+
+Keys to use within picker.
+
+| Key | Description |
+|-----|-------------|
+| up, ctrl-p | Previous entry |
+| down, ctrl-n | Next entry |
+| ctrl-space | Filter options |
+| enter | Open selected |
+| ctrl-h | Open horizontally |
+| ctrl-v | Open vertically |
+| escape, ctrl-c | Close picker |
