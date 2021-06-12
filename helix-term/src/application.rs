@@ -1,7 +1,7 @@
 use helix_lsp::lsp;
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{args::Args, compositor::Compositor, ui};
+use crate::{args::Args, compositor::Compositor, keymap::Remaps, ui};
 
 use log::{error, info};
 
@@ -40,13 +40,18 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(mut args: Args) -> Result<Self, Error> {
+    pub fn new(mut args: Args, remaps: Option<Remaps>) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
         let mut editor = Editor::new(size);
 
-        compositor.push(Box::new(ui::EditorView::new()));
+        let mut editor_view = Box::new(ui::EditorView::new());
+        if let Some(remaps) = remaps {
+            editor_view.apply_remaps(remaps);
+        }
+
+        compositor.push(editor_view);
 
         if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty

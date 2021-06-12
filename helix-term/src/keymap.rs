@@ -1,4 +1,5 @@
-use crate::commands::{self, Command};
+use crate::commands;
+pub use crate::commands::Command;
 use anyhow::{anyhow, Error, Result};
 use helix_core::hashmap;
 use helix_view::document::Mode;
@@ -390,17 +391,17 @@ impl Display for RepresentableKeyEvent {
         let Self(key) = self;
         f.write_fmt(format_args!(
             "{}{}{}",
-            if key.modifiers | KeyModifiers::SHIFT == KeyModifiers::SHIFT {
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
                 "S-"
             } else {
                 ""
             },
-            if key.modifiers | KeyModifiers::ALT == KeyModifiers::ALT {
+            if key.modifiers.contains(KeyModifiers::ALT) {
                 "A-"
             } else {
                 ""
             },
-            if key.modifiers | KeyModifiers::CONTROL == KeyModifiers::CONTROL {
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
                 "C-"
             } else {
                 ""
@@ -434,8 +435,8 @@ impl FromStr for RepresentableKeyEvent {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut tokens: Vec<_> = s.split("-").collect();
-        let code = match tokens.pop().ok_or(anyhow!("Missing key code"))? {
+        let mut tokens: Vec<_> = s.split('-').collect();
+        let code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
             "Bs" => KeyCode::Backspace,
             "Enter" => KeyCode::Enter,
             "Left" => KeyCode::Left,
@@ -449,12 +450,14 @@ impl FromStr for RepresentableKeyEvent {
             "BackTab" => KeyCode::BackTab,
             "Del" => KeyCode::Delete,
             "Insert" => KeyCode::Insert,
-            single if single.len() == 1 => KeyCode::Char(single.chars().nth(0).unwrap()),
+            "Null" => KeyCode::Null,
+            "Esc" => KeyCode::Esc,
+            single if single.len() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && &function[0..1] == "F" => {
                 let function = str::parse::<u8>(&function[1..])?;
                 (function > 0 && function < 13)
                     .then(|| KeyCode::F(function))
-                    .ok_or(anyhow!("Invalid function key '{}'", function))?
+                    .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
             }
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
         };
@@ -474,7 +477,7 @@ impl FromStr for RepresentableKeyEvent {
             modifiers.insert(flag);
         }
 
-        Ok(RepresentableKeyEvent(KeyEvent{ code, modifiers }))
+        Ok(RepresentableKeyEvent(KeyEvent { code, modifiers }))
     }
 }
 

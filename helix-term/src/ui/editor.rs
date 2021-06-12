@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Compositor, Context, EventResult},
     key,
-    keymap::{self, Keymaps},
+    keymap::{self, Keymaps, Remaps},
     ui::Completion,
 };
 
@@ -12,7 +12,7 @@ use helix_core::{
     Position, Range,
 };
 use helix_view::{document::Mode, Document, Editor, Theme, View};
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use crossterm::{
     cursor,
@@ -567,6 +567,23 @@ impl EditorView {
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
+    }
+
+    pub fn apply_remaps(&mut self, remaps: Remaps) {
+        for (mode, remap) in remaps {
+            let mut new_pairs = HashMap::<KeyEvent, keymap::Command>::new();
+            for (source, target) in remap {
+                if let Some(command) = self.keymap.get(&mode).map(|m| m.get(&target)).flatten() {
+                    new_pairs.insert(source, *command);
+                }
+            }
+
+            for (key, command) in new_pairs {
+                self.keymap
+                    .get_mut(&mode)
+                    .map(|mut m| m.insert(key, command));
+            }
+        }
     }
 }
 
