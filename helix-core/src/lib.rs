@@ -94,6 +94,8 @@ pub use ropey::{Rope, RopeSlice};
 
 pub use tendril::StrTendril as Tendril;
 
+pub use unicode_general_category::get_general_category;
+
 #[doc(inline)]
 pub use {regex, tree_sitter};
 
