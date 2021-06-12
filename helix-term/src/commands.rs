@@ -1392,7 +1392,7 @@ fn switch_to_last_accessed_file(cx: &mut Context) {
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
     } else {
-        cx.editor.set_error("no last buffer".to_owned())
+        cx.editor.set_error("no last accessed buffer".to_owned())
     }
 }
 
