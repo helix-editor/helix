@@ -23,6 +23,8 @@ pub struct Picker<T> {
     matcher: Box<Matcher>,
     /// (index, score)
     matches: Vec<(usize, i64)>,
+    /// Filter over original options.
+    filters: Vec<usize>, // could be optimized into bit but not worth it now
 
     cursor: usize,
     // pattern: String,
@@ -50,6 +52,7 @@ impl<T> Picker<T> {
             options,
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
+            filters: Vec::new(),
             cursor: 0,
             prompt,
             format_fn: Box::new(format_fn),
@@ -68,6 +71,7 @@ impl<T> Picker<T> {
             ref mut options,
             ref mut matcher,
             ref mut matches,
+            ref filters,
             ref format_fn,
             ..
         } = *self;
@@ -81,6 +85,10 @@ impl<T> Picker<T> {
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
+                    // filter options first before matching
+                    if !filters.is_empty() {
+                        filters.binary_search(&index).ok()?;
+                    }
                     // TODO: maybe using format_fn isn't the best idea here
                     let text = (format_fn)(option);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
@@ -113,6 +121,14 @@ impl<T> Picker<T> {
         self.matches
             .get(self.cursor)
             .map(|(index, _score)| &self.options[*index])
+    }
+
+    pub fn save_filter(&mut self) {
+        self.filters.clear();
+        self.filters
+            .extend(self.matches.iter().map(|(index, _)| *index));
+        self.filters.sort_unstable(); // used for binary search later
+        self.prompt.clear();
     }
 }
 
@@ -204,6 +220,12 @@ impl<T: 'static> Component for Picker<T> {
                     (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
                 }
                 return close_fn;
+            }
+            KeyEvent {
+                code: KeyCode::Char(' '),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
+                self.save_filter();
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
