@@ -166,5 +166,6 @@ This layer is a kludge of mappings I had under leader key in neovim.
 |-----|-----------|
 | f   | Open file picker |
 | b   | Open buffer picker |
+| s   | Open symbol picker (current document)|
 | w   | Enter window mode |
 | space   | Keep primary selection TODO: it's here because space mode replaced it |

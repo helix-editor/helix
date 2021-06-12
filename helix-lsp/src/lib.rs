@@ -138,6 +138,17 @@ pub mod util {
         lsp::Range::new(start, end)
     }
 
+    pub fn lsp_range_to_range(
+        doc: &Rope,
+        range: lsp::Range,
+        offset_encoding: OffsetEncoding,
+    ) -> Option<Range> {
+        let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
+        let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
+
+        Some(Range::new(start, end))
+    }
+
     pub fn generate_transaction_from_edits(
         doc: &Rope,
         edits: Vec<lsp::TextEdit>,

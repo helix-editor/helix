@@ -16,7 +16,7 @@ use helix_view::{
 
 use helix_lsp::{
     lsp,
-    util::{lsp_pos_to_pos, pos_to_lsp_pos, range_to_lsp_range},
+    util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
 use movement::Movement;
@@ -1192,6 +1192,76 @@ pub fn buffer_picker(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(picker));
+}
+
+pub fn symbol_picker(cx: &mut Context) {
+    fn nested_to_flat(
+        list: &mut Vec<lsp::SymbolInformation>,
+        file: &lsp::TextDocumentIdentifier,
+        symbol: lsp::DocumentSymbol,
+    ) {
+        #[allow(deprecated)]
+        list.push(lsp::SymbolInformation {
+            name: symbol.name,
+            kind: symbol.kind,
+            tags: symbol.tags,
+            deprecated: symbol.deprecated,
+            location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
+            container_name: None,
+        });
+        for child in symbol.children.into_iter().flatten() {
+            nested_to_flat(list, file, child);
+        }
+    }
+    let (view, doc) = cx.current();
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+    let offset_encoding = language_server.offset_encoding();
+
+    let future = language_server.document_symbols(doc.identifier());
+
+    cx.callback(
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::DocumentSymbolResponse>| {
+            if let Some(symbols) = response {
+                // lsp has two ways to represent symbols (flat/nested)
+                // convert the nested variant to flat, so that we have a homogeneous list
+                let symbols = match symbols {
+                    lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
+                    lsp::DocumentSymbolResponse::Nested(symbols) => {
+                        let (_view, doc) = editor.current();
+                        let mut flat_symbols = Vec::new();
+                        for symbol in symbols {
+                            nested_to_flat(&mut flat_symbols, &doc.identifier(), symbol)
+                        }
+                        flat_symbols
+                    }
+                };
+
+                let picker = Picker::new(
+                    symbols,
+                    |symbol| (&symbol.name).into(),
+                    move |editor: &mut Editor, symbol, _action| {
+                        push_jump(editor);
+                        let (view, doc) = editor.current();
+
+                        if let Some(range) =
+                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+                        {
+                            doc.set_selection(view.id, Selection::single(range.to(), range.from()));
+                            align_view(doc, view, Align::Center);
+                        }
+                    },
+                );
+                compositor.push(Box::new(picker))
+            }
+        },
+    )
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection
@@ -2548,6 +2618,7 @@ pub fn space_mode(cx: &mut Context) {
             match ch {
                 'f' => file_picker(cx),
                 'b' => buffer_picker(cx),
+                's' => symbol_picker(cx),
                 'w' => window_mode(cx),
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took its old key
