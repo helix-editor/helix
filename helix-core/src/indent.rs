@@ -263,6 +263,7 @@ where
                     highlight_config: OnceCell::new(),
                     //
                     roots: vec![],
+                    auto_format: false,
                     language_server: None,
                     indent: Some(IndentationConfiguration {
                         tab_width: 4,
