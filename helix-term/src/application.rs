@@ -178,7 +178,7 @@ impl Application {
                             let diagnostics = params
                                 .diagnostics
                                 .into_iter()
-                                .map(|diagnostic| {
+                                .filter_map(|diagnostic| {
                                     use helix_core::{
                                         diagnostic::{Range, Severity, Severity::*},
                                         Diagnostic,
@@ -189,18 +189,29 @@ impl Application {
                                     let language_server = doc.language_server().unwrap();
 
                                     // TODO: convert inside server
-                                    let start = lsp_pos_to_pos(
+                                    let start = if let Some(start) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.start,
                                         language_server.offset_encoding(),
-                                    );
-                                    let end = lsp_pos_to_pos(
+                                    ) {
+                                        start
+                                    } else {
+                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        return None;
+                                    };
+
+                                    let end = if let Some(end) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.end,
                                         language_server.offset_encoding(),
-                                    );
+                                    ) {
+                                        end
+                                    } else {
+                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        return None;
+                                    };
 
-                                    Diagnostic {
+                                    Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
@@ -214,7 +225,7 @@ impl Application {
                                         ),
                                         // code
                                         // source
-                                    }
+                                    })
                                 })
                                 .collect();
 

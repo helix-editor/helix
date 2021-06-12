@@ -966,7 +966,13 @@ mod cmd {
             editor.set_error("cannot write a buffer without a filename".to_string());
             return;
         }
-        doc.format(view.id); // TODO: merge into save
+        let autofmt = doc
+            .language_config()
+            .map(|config| config.auto_format)
+            .unwrap_or_default();
+        if autofmt {
+            doc.format(view.id); // TODO: merge into save
+        }
         tokio::spawn(doc.save());
     }
 
@@ -1469,7 +1475,12 @@ fn _goto(
         let (view, doc) = editor.current();
         let definition_pos = location.range.start;
         // TODO: convert inside server
-        let new_pos = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding);
+        let new_pos =
+            if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding) {
+                new_pos
+            } else {
+                return;
+            };
         doc.set_selection(view.id, Selection::point(new_pos));
         align_view(doc, view, Align::Center);
     }
@@ -2359,11 +2370,7 @@ pub fn completion(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id).cursor(),
-        language_server.offset_encoding(),
-    );
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
     let future = language_server.completion(doc.identifier(), pos);
