@@ -660,4 +660,17 @@ impl Client {
 
         self.call::<lsp::request::References>(params)
     }
+
+    pub fn document_symbols(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::DocumentSymbolParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.call::<lsp::request::DocumentSymbolRequest>(params)
+    }
 }
