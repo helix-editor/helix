@@ -506,14 +506,14 @@ mod test {
 
     #[test]
     fn parsing_remaps_file() {
-        let sample_remaps = "\
-            [Insert]\n\
-            y = \"x\"\n\
-            S-C-a = \"F12\"\n\
+        let sample_remaps = r#"
+            [Insert]
+            y = "x"
+            S-C-a = "F12"
 
             [Normal]
-            A-F12 = \"S-C-w\"\n\
-        ";
+            A-F12 = "S-C-w"
+        "#;
 
         let parsed = parse_remaps(sample_remaps).unwrap();
         assert_eq!(
