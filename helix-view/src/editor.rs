@@ -104,7 +104,7 @@ impl Editor {
 
                 let view = self.view_mut();
                 view.jumps.push(jump);
-                view.alternate_doc = Some(view.doc);
+                view.last_accessed_doc = Some(view.doc);
                 view.doc = id;
                 view.first_line = 0;
 
