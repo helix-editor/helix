@@ -17,6 +17,9 @@ mod state;
 pub mod syntax;
 mod transaction;
 
+static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
+    once_cell::sync::Lazy::new(runtime_dir);
+
 pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
     line.chars().position(|ch| !ch.is_whitespace())
 }
@@ -47,15 +50,26 @@ pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
 
 #[cfg(not(embed_runtime))]
 pub fn runtime_dir() -> std::path::PathBuf {
-    // runtime env var || dir where binary is located
-    std::env::var("HELIX_RUNTIME")
-        .map(|path| path.into())
-        .unwrap_or_else(|_| {
-            std::env::current_exe()
-                .ok()
-                .and_then(|path| path.parent().map(|path| path.to_path_buf()))
-                .unwrap()
-        })
+    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        return dir.into();
+    }
+
+    const RT_DIR: &str = "runtime";
+    let conf_dir = config_dir().join(RT_DIR);
+    if conf_dir.exists() {
+        return conf_dir;
+    }
+
+    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
+        return std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+    }
+
+    // fallback to location of the executable being run
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()))
+        .unwrap()
 }
 
 pub fn config_dir() -> std::path::PathBuf {
