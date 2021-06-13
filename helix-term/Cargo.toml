@@ -1,6 +1,6 @@
 [package]
 name = "helix-term"
-version = "0.0.10"
+version = "0.2.0"
 description = "A post-modern text editor."
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"

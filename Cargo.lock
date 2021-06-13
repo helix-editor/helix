@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "helix-core"
-version = "0.0.10"
+version = "0.2.0"
 dependencies = [
  "etcetera",
  "helix-syntax",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "helix-lsp"
-version = "0.0.10"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "helix-syntax"
-version = "0.0.10"
+version = "0.2.0"
 dependencies = [
  "cc",
  "serde",
@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "helix-term"
-version = "0.0.10"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -326,7 +326,7 @@ dependencies = [
 
 [[package]]
 name = "helix-tui"
-version = "0.0.10"
+version = "0.2.0"
 dependencies = [
  "bitflags",
  "cassowary",
@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "helix-view"
-version = "0.0.10"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "crossterm",
