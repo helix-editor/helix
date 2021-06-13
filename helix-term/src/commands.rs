@@ -2240,7 +2240,7 @@ pub fn replace_with_yanked(cx: &mut Context) {
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                     let max_to = doc.text().len_chars().saturating_sub(1);
-                    let to = std::cmp::min(max_to, range.to());
+                    let to = std::cmp::min(max_to, range.to() + 1);
                     (range.from(), to, Some(yank.as_str().into()))
                 });
 
