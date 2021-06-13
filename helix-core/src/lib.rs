@@ -110,5 +110,5 @@ pub use syntax::Syntax;
 pub use diagnostic::Diagnostic;
 pub use state::State;
 
-pub use line_ending::{auto_detect_line_ending, DEFAULT_LINE_ENDING, LineEnding};
+pub use line_ending::{auto_detect_line_ending, LineEnding, DEFAULT_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};
