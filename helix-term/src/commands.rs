@@ -915,15 +915,7 @@ mod cmd {
     fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         // last view and we have unsaved changes
         if editor.tree.views().count() == 1 {
-            let modified = _modified_left(editor);
-
-            if !modified.is_empty() {
-                let err = format!(
-                    "{} unsaved buffer(s) remaining: {:?}",
-                    modified.len(),
-                    modified
-                );
-                editor.set_error(err);
+            if _buffers_remaining(editor) {
                 return;
             }
         }
@@ -1025,8 +1017,10 @@ mod cmd {
         force_quit(editor, &[], event);
     }
 
-    fn _modified_left(editor: &mut Editor) -> Vec<&str> {
-        editor
+    /// Returns `true` if there are modified buffers remaining and sets editor error,
+    /// otherwise returns `false`
+    fn _buffers_remaining(editor: &mut Editor) -> bool {
+        let modified: Vec<_> = editor
             .documents()
             .filter(|doc| doc.is_modified())
             .map(|doc| {
@@ -1034,7 +1028,18 @@ mod cmd {
                     .and_then(|path| path.to_str())
                     .unwrap_or("[scratch]")
             })
-            .collect()
+            .collect();
+        if !modified.is_empty() {
+            let err = format!(
+                "{} unsaved buffer(s) remaining: {:?}",
+                modified.len(),
+                modified
+            );
+            editor.set_error(err);
+            true
+        } else {
+            false
+        }
     }
 
     fn _write_all(editor: &mut Editor, args: &[&str], event: PromptEvent, quit: bool, force: bool) {
@@ -1052,16 +1057,7 @@ mod cmd {
 
         if quit {
             if !force {
-                // check if there are some unsaved buffers
-                let modified = _modified_left(editor);
-
-                if !modified.is_empty() {
-                    let err = format!(
-                        "{} unsaved buffer(s) remaining: {:?}",
-                        modified.len(),
-                        modified
-                    );
-                    editor.set_error(err);
+                if _buffers_remaining(editor) {
                     return;
                 }
             }
@@ -1088,15 +1084,7 @@ mod cmd {
 
     fn _quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
         if !force {
-            // check if there are some unsaved buffers
-            let modified = _modified_left(editor);
-            if !modified.is_empty() {
-                let err = format!(
-                    "{} unsaved buffer(s) remaining: {:?}",
-                    modified.len(),
-                    modified
-                );
-                editor.set_error(err);
+            if _buffers_remaining(editor) {
                 return;
             }
         }
