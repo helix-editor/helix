@@ -62,4 +62,4 @@ pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
 #[cfg(target_os = "windows")]
 pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
 #[cfg(not(target_os = "windows"))]
-pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Lf;
+pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::LF;
