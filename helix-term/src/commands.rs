@@ -914,10 +914,8 @@ mod cmd {
 
     fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         // last view and we have unsaved changes
-        if editor.tree.views().count() == 1 {
-            if _buffers_remaining(editor) {
-                return;
-            }
+        if editor.tree.views().count() == 1 && _buffers_remaining(editor) {
+            return;
         }
         editor.close(editor.view().id, /* close_buffer */ false);
     }
@@ -1056,10 +1054,8 @@ mod cmd {
         editor.set_error(errors);
 
         if quit {
-            if !force {
-                if _buffers_remaining(editor) {
-                    return;
-                }
+            if !force && _buffers_remaining(editor) {
+                return;
             }
 
             // close all views
@@ -1083,10 +1079,8 @@ mod cmd {
     }
 
     fn _quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
-        if !force {
-            if _buffers_remaining(editor) {
-                return;
-            }
+        if !force && _buffers_remaining(editor) {
+            return;
         }
 
         // close all views
