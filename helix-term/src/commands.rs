@@ -915,15 +915,7 @@ mod cmd {
     fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         // last view and we have unsaved changes
         if editor.tree.views().count() == 1 {
-            let modified: Vec<_> = editor
-                .documents()
-                .filter(|doc| doc.is_modified())
-                .map(|doc| {
-                    doc.relative_path()
-                        .and_then(|path| path.to_str())
-                        .unwrap_or("[scratch]")
-                })
-                .collect();
+            let modified = _modified_left(editor);
 
             if !modified.is_empty() {
                 let err = format!(
@@ -1033,26 +1025,51 @@ mod cmd {
         force_quit(editor, &[], event);
     }
 
+    fn _modified_left(editor: &mut Editor) -> Vec<&str> {
+        editor
+            .documents()
+            .filter(|doc| doc.is_modified())
+            .map(|doc| {
+                doc.relative_path()
+                    .and_then(|path| path.to_str())
+                    .unwrap_or("[scratch]")
+            })
+            .collect()
+    }
+
     fn _write_all(editor: &mut Editor, args: &[&str], event: PromptEvent, quit: bool, force: bool) {
-        let ids = editor
-            .tree
-            .views()
-            .map(|(view, _)| (view.id, view.doc))
-            .collect::<Vec<_>>();
+        let mut errors = String::new();
 
-        for (view_id, doc_id) in ids {
-            if let Some(doc) = editor.documents.get_mut(doc_id) {
-                let view = editor.tree.get(view_id);
-                if let Err(e) = _write(view, doc, None::<&str>) {
-                    editor.set_error(e.to_string());
-                } else if quit {
-                    editor.close(view_id, false);
-                    continue;
-                }
+        // save all documents
+        for (id, mut doc) in &mut editor.documents {
+            if doc.path().is_none() {
+                errors.push_str("cannot write a buffer without a filename\n");
+                continue;
+            }
+            tokio::spawn(doc.save());
+        }
+        editor.set_error(errors);
 
-                if force {
-                    editor.close(view_id, false);
+        if quit {
+            if !force {
+                // check if there are some unsaved buffers
+                let modified = _modified_left(editor);
+
+                if !modified.is_empty() {
+                    let err = format!(
+                        "{} unsaved buffer(s) remaining: {:?}",
+                        modified.len(),
+                        modified
+                    );
+                    editor.set_error(err);
+                    return;
                 }
+            }
+
+            // close all views
+            let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+            for view_id in views {
+                editor.close(view_id, false);
             }
         }
     }
