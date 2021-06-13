@@ -280,18 +280,16 @@ impl Document {
         // TODO: this is probably a generally useful utility function.  Where
         // should we put it?
         fn char_is_linebreak(c: char) -> bool {
-            match c {
-                '\u{000A}' | // LineFeed
-                '\u{000B}' | // VerticalTab
-                '\u{000C}' | // FormFeed
-                '\u{000D}' | // CarriageReturn
-                '\u{0085}' | // NextLine
-                '\u{2028}' | // Line Separator
-                '\u{2029}'   // ParagraphSeparator
-                => true,
-
-                _ => false,
-            }
+            [
+                '\u{000A}', // LineFeed
+                '\u{000B}', // VerticalTab
+                '\u{000C}', // FormFeed
+                '\u{000D}', // CarriageReturn
+                '\u{0085}', // NextLine
+                '\u{2028}', // Line Separator
+                '\u{2029}', // ParagraphSeparator
+            ]
+            .contains(&c)
         }
 
         // Determine whether a character qualifies as (non-line-break)
@@ -320,7 +318,7 @@ impl Document {
                 // En Quad, Em Quad, En Space, Em Space, Three-per-em Space,
                 // Four-per-em Space, Six-per-em Space, Figure Space,
                 // Punctuation Space, Thin Space, Hair Space, Zero Width Space.
-                c if c >= '\u{2000}' && c <= '\u{200B}' => true,
+                c if ('\u{2000}' ..= '\u{200B}').contains(&c) => true,
 
                 _ => false,
             }
@@ -436,7 +434,7 @@ impl Document {
                 .and_then(|config| config.indent.as_ref())
                 .map_or("  ", |config| config.unit.as_str()); // fallback to 2 spaces
 
-            self.indent_style = if indent.starts_with(" ") {
+            self.indent_style = if indent.starts_with(' ') {
                 IndentStyle::Spaces(indent.len() as u8)
             } else {
                 IndentStyle::Tabs
