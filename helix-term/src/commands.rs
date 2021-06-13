@@ -949,9 +949,7 @@ mod cmd {
             };
         }
         if doc.path().is_none() {
-            return Err(anyhow!(
-                "cannot write a buffer without a filename".to_string()
-            ));
+            return Err(anyhow!("cannot write a buffer without a filename"));
         }
         let autofmt = doc
             .language_config()
@@ -1006,8 +1004,12 @@ mod cmd {
     }
 
     fn write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        write(editor, args, event);
-        quit(editor, &[], event);
+        let (view, doc) = editor.current();
+        if let Err(e) = _write(view, doc, args.first()) {
+            editor.set_error(e.to_string());
+            return;
+        };
+        quit(editor, &[], event)
     }
 
     fn force_write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
