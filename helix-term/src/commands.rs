@@ -1024,12 +1024,12 @@ mod cmd {
     }
 
     fn write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        write(editor, args, event.clone());
+        write(editor, args, event);
         quit(editor, &[], event);
     }
 
     fn force_write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        write(editor, args, event.clone());
+        write(editor, args, event);
         force_quit(editor, &[], event);
     }
 

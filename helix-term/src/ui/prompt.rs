@@ -18,7 +18,7 @@ pub struct Prompt {
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
     Update,
