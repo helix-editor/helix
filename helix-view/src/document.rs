@@ -32,13 +32,15 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
-    pub(crate) indent_style: IndentStyle,
 
     path: Option<PathBuf>,
 
     /// Current editing mode.
     pub mode: Mode,
     pub restore_cursor: bool,
+
+    /// Current indent style.
+    pub indent_style: IndentStyle,
 
     syntax: Option<Syntax>,
     // /// Corresponding language scope name. Usually `source.<lang>`.
