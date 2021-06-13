@@ -21,11 +21,18 @@ pub enum Mode {
     Insert,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum IndentStyle {
+    Tabs,
+    Spaces(u8),
+}
+
 pub struct Document {
     // rope + selection
     pub(crate) id: DocumentId,
     text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
+    pub(crate) indent_style: IndentStyle,
 
     path: Option<PathBuf>,
 
@@ -149,6 +156,7 @@ impl Document {
             path: None,
             text,
             selections: HashMap::default(),
+            indent_style: IndentStyle::Spaces(4),
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -182,6 +190,7 @@ impl Document {
         let mut doc = Self::new(doc);
         // set the path and try detecting the language
         doc.set_path(&path)?;
+        doc.detect_indent_style();
 
         Ok(doc)
     }
@@ -262,6 +271,176 @@ impl Document {
             let language_config = loader.language_config_for_file_name(path);
             let scopes = loader.scopes();
             self.set_language(language_config, scopes);
+        }
+    }
+
+    fn detect_indent_style(&mut self) {
+        // Determine whether a character is a line break.
+        //
+        // TODO: this is probably a generally useful utility function.  Where
+        // should we put it?
+        fn char_is_linebreak(c: char) -> bool {
+            match c {
+                '\u{000A}' | // LineFeed
+                '\u{000B}' | // VerticalTab
+                '\u{000C}' | // FormFeed
+                '\u{000D}' | // CarriageReturn
+                '\u{0085}' | // NextLine
+                '\u{2028}' | // Line Separator
+                '\u{2029}'   // ParagraphSeparator
+                => true,
+
+                _ => false,
+            }
+        }
+
+        // Determine whether a character qualifies as (non-line-break)
+        // whitespace.
+        //
+        // TODO: this is probably a generally useful utility function.  Where
+        // should we put it?
+        //
+        // TODO: this is a naive binary categorization of whitespace
+        // characters.  For display, word wrapping, etc. we'll need a better
+        // categorization based on e.g. breaking vs non-breaking spaces
+        // and whether they're zero-width or not.
+        pub fn char_is_whitespace(c: char) -> bool {
+            match c {
+                //'\u{1680}' | // Ogham Space Mark (here for completeness, but usually displayed as a dash, not as whitespace)
+                '\u{0009}' | // Character Tabulation
+                '\u{0020}' | // Space
+                '\u{00A0}' | // No-break Space
+                '\u{180E}' | // Mongolian Vowel Separator
+                '\u{202F}' | // Narrow No-break Space
+                '\u{205F}' | // Medium Mathematical Space
+                '\u{3000}' | // Ideographic Space
+                '\u{FEFF}'   // Zero Width No-break Space
+                => true,
+
+                // En Quad, Em Quad, En Space, Em Space, Three-per-em Space,
+                // Four-per-em Space, Six-per-em Space, Figure Space,
+                // Punctuation Space, Thin Space, Hair Space, Zero Width Space.
+                c if c >= '\u{2000}' && c <= '\u{200B}' => true,
+
+                _ => false,
+            }
+        }
+
+        // Build a histogram of the indentation *increases* between
+        // subsequent lines, ignoring lines that are all whitespace.
+        //
+        // Index 0 is for tabs, the rest are 1-8 spaces.
+        let histogram: [usize; 9] = {
+            let mut histogram = [0; 9];
+            let mut prev_line_indent = (false, 0usize); // (was_tabs, count)
+
+            'outer: for line in self.text.lines().take(1000) {
+                let mut c_iter = line.chars();
+
+                // Is first character a tab or space?
+                let is_tabs = match c_iter.next() {
+                    Some('\t') => true,
+                    Some(' ') => false,
+
+                    // Ignore blank lines.
+                    Some(c) if char_is_linebreak(c) => continue 'outer,
+
+                    _ => {
+                        prev_line_indent = (false, 0usize);
+                        continue 'outer;
+                    }
+                };
+
+                // Count the total leading tab/space characters.
+                let mut count = 1;
+                let mut count_is_done = false;
+                for c in c_iter {
+                    match c {
+                        '\t' if is_tabs && !count_is_done => count += 1,
+                        ' ' if !is_tabs && !count_is_done => count += 1,
+
+                        // We stop counting if we hit whitespace that doesn't
+                        // qualify as indent or doesn't match the leading
+                        // whitespace, but we don't exit the loop yet because
+                        // we still want to determine if the line is blank.
+                        c if char_is_whitespace(c) => count_is_done = true,
+
+                        // Ignore blank lines.
+                        c if char_is_linebreak(c) => continue 'outer,
+
+                        _ => break,
+                    }
+
+                    // Bound the worst-case execution time for weird text files.
+                    if count > 256 {
+                        continue 'outer;
+                    }
+                }
+
+                // Update stats.
+                if (prev_line_indent.0 == is_tabs || prev_line_indent.1 == 0)
+                    && prev_line_indent.1 < count
+                {
+                    if is_tabs {
+                        histogram[0] += 1;
+                    } else {
+                        let amount = count - prev_line_indent.1;
+                        if amount <= 8 {
+                            histogram[amount] += 1;
+                        }
+                    }
+                }
+
+                // Store data for use with the next line.
+                prev_line_indent = (is_tabs, count);
+            }
+
+            // Give more weight to tabs, because their presence is a very
+            // strong indicator.
+            histogram[0] *= 2;
+
+            histogram
+        };
+
+        // Find the most frequent indent, its frequency, and the frequency of
+        // the next-most frequent indent.
+        let indent = histogram
+            .iter()
+            .enumerate()
+            .max_by_key(|kv| kv.1)
+            .unwrap()
+            .0;
+        let indent_freq = histogram[indent];
+        let indent_freq_2 = *histogram
+            .iter()
+            .enumerate()
+            .filter(|kv| kv.0 != indent)
+            .map(|kv| kv.1)
+            .max()
+            .unwrap();
+
+        // Use the auto-detected result if we're confident enough in its
+        // accuracy, based on some heuristics.  Otherwise fall back to
+        // the language-based setting.
+        if indent_freq >= 1 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
+            // Use the auto-detected setting.
+            self.indent_style = match indent {
+                0 => IndentStyle::Tabs,
+                _ => IndentStyle::Spaces(indent as u8),
+            };
+        } else {
+            // Fall back to language-based setting.
+            let indent = self
+                .language
+                .as_ref()
+                .and_then(|config| config.indent.as_ref())
+                .map_or("  ", |config| config.unit.as_str()); // fallback to 2 spaces
+
+            self.indent_style = if indent.starts_with(" ") {
+                IndentStyle::Spaces(indent.len() as u8)
+            } else {
+                IndentStyle::Tabs
+            };
         }
     }
 
@@ -507,13 +686,25 @@ impl Document {
     }
 
     /// Returns a string containing a single level of indentation.
+    ///
+    /// TODO: we might not need this function anymore, since the information
+    /// is conveniently available in `Document::indent_style` now.
     pub fn indent_unit(&self) -> &str {
-        self.language
-            .as_ref()
-            .and_then(|config| config.indent.as_ref())
-            .map_or("  ", |config| config.unit.as_str()) // fallback to 2 spaces
+        match self.indent_style {
+            IndentStyle::Tabs => "\t",
+            IndentStyle::Spaces(1) => " ",
+            IndentStyle::Spaces(2) => "  ",
+            IndentStyle::Spaces(3) => "   ",
+            IndentStyle::Spaces(4) => "    ",
+            IndentStyle::Spaces(5) => "     ",
+            IndentStyle::Spaces(6) => "      ",
+            IndentStyle::Spaces(7) => "       ",
+            IndentStyle::Spaces(8) => "        ",
 
-        // " ".repeat(TAB_WIDTH)
+            // Unsupported indentation style.  This should never happen,
+            // but just in case fall back to two spaces.
+            _ => "  ",
+        }
     }
 
     #[inline]
