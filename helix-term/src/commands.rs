@@ -1086,6 +1086,36 @@ mod cmd {
         _write_all(editor, args, event, true, true)
     }
 
+    fn _quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
+        if !force {
+            // check if there are some unsaved buffers
+            let modified = _modified_left(editor);
+            if !modified.is_empty() {
+                let err = format!(
+                    "{} unsaved buffer(s) remaining: {:?}",
+                    modified.len(),
+                    modified
+                );
+                editor.set_error(err);
+                return;
+            }
+        }
+
+        // close all views
+        let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+        for view_id in views {
+            editor.close(view_id, false);
+        }
+    }
+
+    fn quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _quit_all(editor, args, event, false)
+    }
+
+    fn force_quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _quit_all(editor, args, event, true)
+    }
+
     pub const COMMAND_LIST: &[Command] = &[
         Command {
             name: "quit",
@@ -1165,19 +1195,34 @@ mod cmd {
             completer: None,
         },
         Command {
-            name: "write-all-quit",
-            alias: Some("waq"),
+            name: "write-quit-all",
+            alias: Some("wqa"),
             doc: "Writes changes from all views to disk and close all views.",
             fun: write_all_quit,
             completer: None,
         },
         Command {
-            name: "write-all-quit!",
-            alias: Some("waq!"),
-            doc: "Writes changes from all views to disk and close all views forcefully (ignoring errors).",
+            name: "write-quit-all!",
+            alias: Some("wqa!"),
+            doc: "Writes changes from all views to disk and close all views forcefully (ignoring unsaved changes).",
             fun: force_write_all_quit,
             completer: None,
         },
+        Command {
+            name: "quit-all",
+            alias: Some("qa"),
+            doc: "Close all views.",
+            fun: quit_all,
+            completer: None,
+        },
+        Command {
+            name: "quit-all!",
+            alias: Some("qa!"),
+            doc: "Close all views forcefully (ignoring unsaved changes).",
+            fun: force_quit_all,
+            completer: None,
+        },
+
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static Command>> = Lazy::new(|| {
