@@ -954,17 +954,22 @@ mod cmd {
         };
     }
 
-    fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let (view, doc) = editor.current();
-        if let Some(path) = args.get(0) {
-            if let Err(err) = doc.set_path(Path::new(path)) {
-                editor.set_error(format!("invalid filepath: {}", err));
-                return;
+    fn _write<P: AsRef<Path>>(
+        view: &View,
+        doc: &mut Document,
+        path: Option<P>,
+    ) -> Result<(), anyhow::Error> {
+        use anyhow::anyhow;
+
+        if let Some(path) = path {
+            if let Err(err) = doc.set_path(path.as_ref()) {
+                return Err(anyhow!("invalid filepath: {}", err));
             };
         }
         if doc.path().is_none() {
-            editor.set_error("cannot write a buffer without a filename".to_string());
-            return;
+            return Err(anyhow!(
+                "cannot write a buffer without a filename".to_string()
+            ));
         }
         let autofmt = doc
             .language_config()
@@ -974,6 +979,14 @@ mod cmd {
             doc.format(view.id); // TODO: merge into save
         }
         tokio::spawn(doc.save());
+        Ok(())
+    }
+
+    fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let (view, doc) = editor.current();
+        if let Err(e) = _write(view, doc, args.first()) {
+            editor.set_error(e.to_string());
+        };
     }
 
     fn new_file(editor: &mut Editor, args: &[&str], event: PromptEvent) {
@@ -1008,6 +1021,52 @@ mod cmd {
         };
         let (view, doc) = editor.current();
         doc.later(view.id, uk)
+    }
+
+    fn write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        write(editor, args, event.clone());
+        quit(editor, &[], event);
+    }
+
+    fn force_write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        write(editor, args, event.clone());
+        force_quit(editor, &[], event);
+    }
+
+    fn _write_all(editor: &mut Editor, args: &[&str], event: PromptEvent, quit: bool, force: bool) {
+        let ids = editor
+            .tree
+            .views()
+            .map(|(view, _)| (view.id, view.doc))
+            .collect::<Vec<_>>();
+
+        for (view_id, doc_id) in ids {
+            if let Some(doc) = editor.documents.get_mut(doc_id) {
+                let view = editor.tree.get(view_id);
+                if let Err(e) = _write(view, doc, None::<&str>) {
+                    editor.set_error(e.to_string());
+                } else if quit {
+                    editor.close(view_id, false);
+                    continue;
+                }
+
+                if force {
+                    editor.close(view_id, false);
+                }
+            }
+        }
+    }
+
+    fn write_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _write_all(editor, args, event, false, false)
+    }
+
+    fn write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _write_all(editor, args, event, true, false)
+    }
+
+    fn force_write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _write_all(editor, args, event, true, true)
     }
 
     pub const COMMAND_LIST: &[Command] = &[
@@ -1065,6 +1124,41 @@ mod cmd {
             alias: Some("lat"),
             doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
             fun: later,
+            completer: None,
+        },
+        Command {
+            name: "write-quit",
+            alias: Some("wq"),
+            doc: "Writes changes to disk and closes the current view. Accepts an optional path (:wq some/path.txt)",
+            fun: write_quit,
+            completer: Some(completers::filename),
+        },
+        Command {
+            name: "write-quit!",
+            alias: Some("wq!"),
+            doc: "Writes changes to disk and closes the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
+            fun: force_write_quit,
+            completer: Some(completers::filename),
+        },
+        Command {
+            name: "write-all",
+            alias: Some("wa"),
+            doc: "Writes changes from all views to disk.",
+            fun: write_all,
+            completer: None,
+        },
+        Command {
+            name: "write-all-quit",
+            alias: Some("waq"),
+            doc: "Writes changes from all views to disk and close all views.",
+            fun: write_all_quit,
+            completer: None,
+        },
+        Command {
+            name: "write-all-quit!",
+            alias: Some("waq!"),
+            doc: "Writes changes from all views to disk and close all views forcefully (ignoring errors).",
+            fun: force_write_all_quit,
             completer: None,
         },
     ];
