@@ -45,7 +45,7 @@ impl EditorView {
         Self {
             keymap: keymap::default(),
             on_next_key: None,
-            last_insert: (commands::Command::NORMAL_MODE, Vec::new()),
+            last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
         }
     }

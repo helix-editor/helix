@@ -133,84 +133,84 @@ macro_rules! alt {
 
 pub fn default() -> Keymaps {
     let normal = hashmap!(
-        key!('h') => commands::Command::MOVE_CHAR_LEFT,
-        key!('j') => commands::Command::MOVE_LINE_DOWN,
-        key!('k') => commands::Command::MOVE_LINE_UP,
-        key!('l') => commands::Command::MOVE_CHAR_RIGHT,
+        key!('h') => commands::Command::move_char_left,
+        key!('j') => commands::Command::move_line_down,
+        key!('k') => commands::Command::move_line_up,
+        key!('l') => commands::Command::move_char_right,
 
         KeyEvent {
             code: KeyCode::Left,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::MOVE_CHAR_LEFT,
+        } => commands::Command::move_char_left,
         KeyEvent {
             code: KeyCode::Down,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::MOVE_LINE_DOWN,
+        } => commands::Command::move_line_down,
         KeyEvent {
             code: KeyCode::Up,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::MOVE_LINE_UP,
+        } => commands::Command::move_line_up,
         KeyEvent {
             code: KeyCode::Right,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::MOVE_CHAR_RIGHT,
+        } => commands::Command::move_char_right,
 
-        key!('t') => commands::Command::FIND_TILL_CHAR,
-        key!('f') => commands::Command::FIND_NEXT_CHAR,
-        key!('T') => commands::Command::TILL_PREV_CHAR,
-        key!('F') => commands::Command::FIND_PREV_CHAR,
+        key!('t') => commands::Command::find_till_char,
+        key!('f') => commands::Command::find_next_char,
+        key!('T') => commands::Command::till_prev_char,
+        key!('F') => commands::Command::find_prev_char,
         // and matching set for select mode (extend)
         //
-        key!('r') => commands::Command::REPLACE,
-        key!('R') => commands::Command::REPLACE_WITH_YANKED,
+        key!('r') => commands::Command::replace,
+        key!('R') => commands::Command::replace_with_yanked,
 
         KeyEvent {
             code: KeyCode::Home,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::MOVE_LINE_START,
+        } => commands::Command::move_line_start,
 
         KeyEvent {
             code: KeyCode::End,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::MOVE_LINE_END,
+        } => commands::Command::move_line_end,
 
-        key!('w') => commands::Command::MOVE_NEXT_WORD_START,
-        key!('b') => commands::Command::MOVE_PREV_WORD_START,
-        key!('e') => commands::Command::MOVE_NEXT_WORD_END,
+        key!('w') => commands::Command::move_next_word_start,
+        key!('b') => commands::Command::move_prev_word_start,
+        key!('e') => commands::Command::move_next_word_end,
 
-        key!('v') => commands::Command::SELECT_MODE,
-        key!('g') => commands::Command::GOTO_MODE,
-        key!(':') => commands::Command::COMMAND_MODE,
+        key!('v') => commands::Command::select_mode,
+        key!('g') => commands::Command::goto_mode,
+        key!(':') => commands::Command::command_mode,
 
-        key!('i') => commands::Command::INSERT_MODE,
-        key!('I') => commands::Command::PREPEND_TO_LINE,
-        key!('a') => commands::Command::APPEND_MODE,
-        key!('A') => commands::Command::APPEND_TO_LINE,
-        key!('o') => commands::Command::OPEN_BELOW,
-        key!('O') => commands::Command::OPEN_ABOVE,
+        key!('i') => commands::Command::insert_mode,
+        key!('I') => commands::Command::prepend_to_line,
+        key!('a') => commands::Command::append_mode,
+        key!('A') => commands::Command::append_to_line,
+        key!('o') => commands::Command::open_below,
+        key!('O') => commands::Command::open_above,
         // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
 
-        key!('d') => commands::Command::DELETE_SELECTION,
+        key!('d') => commands::Command::delete_selection,
         // TODO: also delete without yanking
-        key!('c') => commands::Command::CHANGE_SELECTION,
+        key!('c') => commands::Command::change_selection,
         // TODO: also change delete without yanking
 
-        // key!('r') => commands::Command::REPLACE_WITH_CHAR,
+        // key!('r') => commands::Command::replace_with_char,
 
-        key!('s') => commands::Command::SELECT_REGEX,
-        alt!('s') => commands::Command::SPLIT_SELECTION_ON_NEWLINE,
-        key!('S') => commands::Command::SPLIT_SELECTION,
-        key!(';') => commands::Command::COLLAPSE_SELECTION,
-        alt!(';') => commands::Command::FLIP_SELECTIONS,
-        key!('%') => commands::Command::SELECT_ALL,
-        key!('x') => commands::Command::SELECT_LINE,
-        key!('X') => commands::Command::EXTEND_LINE,
+        key!('s') => commands::Command::select_regex,
+        alt!('s') => commands::Command::split_selection_on_newline,
+        key!('S') => commands::Command::split_selection,
+        key!(';') => commands::Command::collapse_selection,
+        alt!(';') => commands::Command::flip_selections,
+        key!('%') => commands::Command::select_all,
+        key!('x') => commands::Command::select_line,
+        key!('X') => commands::Command::extend_line,
         // or select mode X?
         // extend_to_whole_line, crop_to_whole_line
 
 
-        key!('m') => commands::Command::MATCH_BRACKETS,
+        key!('m') => commands::Command::match_brackets,
         // TODO: refactor into
         // key!('m') => commands::select_to_matching,
         // key!('M') => commands::back_select_to_matching,
@@ -220,39 +220,39 @@ pub fn default() -> Keymaps {
         // repeat_select
 
         // TODO: figure out what key to use
-        // key!('[') => commands::Command::EXPAND_SELECTION, ??
-        key!('[') => commands::Command::LEFT_BRACKET_MODE,
-        key!(']') => commands::Command::RIGHT_BRACKET_MODE,
+        // key!('[') => commands::Command::expand_selection, ??
+        key!('[') => commands::Command::left_bracket_mode,
+        key!(']') => commands::Command::right_bracket_mode,
 
-        key!('/') => commands::Command::SEARCH,
+        key!('/') => commands::Command::search,
         // ? for search_reverse
-        key!('n') => commands::Command::SEARCH_NEXT,
-        key!('N') => commands::Command::EXTEND_SEARCH_NEXT,
+        key!('n') => commands::Command::search_next,
+        key!('N') => commands::Command::extend_search_next,
         // N for search_prev
-        key!('*') => commands::Command::SEARCH_SELECTION,
+        key!('*') => commands::Command::search_selection,
 
-        key!('u') => commands::Command::UNDO,
-        key!('U') => commands::Command::REDO,
+        key!('u') => commands::Command::undo,
+        key!('U') => commands::Command::redo,
 
-        key!('y') => commands::Command::YANK,
+        key!('y') => commands::Command::yank,
         // yank_all
-        key!('p') => commands::Command::PASTE_AFTER,
+        key!('p') => commands::Command::paste_after,
         // paste_all
-        key!('P') => commands::Command::PASTE_BEFORE,
+        key!('P') => commands::Command::paste_before,
 
-        key!('>') => commands::Command::INDENT,
-        key!('<') => commands::Command::UNINDENT,
-        key!('=') => commands::Command::FORMAT_SELECTIONS,
-        key!('J') => commands::Command::JOIN_SELECTIONS,
+        key!('>') => commands::Command::indent,
+        key!('<') => commands::Command::unindent,
+        key!('=') => commands::Command::format_selections,
+        key!('J') => commands::Command::join_selections,
         // TODO: conflicts hover/doc
-        key!('K') => commands::Command::KEEP_SELECTIONS,
+        key!('K') => commands::Command::keep_selections,
         // TODO: and another method for inverse
 
         // TODO: clashes with space mode
-        key!(' ') => commands::Command::KEEP_PRIMARY_SELECTION,
+        key!(' ') => commands::Command::keep_primary_selection,
 
-        // key!('q') => commands::Command::RECORD_MACRO,
-        // key!('Q') => commands::Command::REPLAY_MACRO,
+        // key!('q') => commands::Command::record_macro,
+        // key!('Q') => commands::Command::replay_macro,
 
         // ~ / apostrophe => change case
         // & align selections
@@ -263,39 +263,39 @@ pub fn default() -> Keymaps {
         KeyEvent {
             code: KeyCode::Esc,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::NORMAL_MODE,
+        } => commands::Command::normal_mode,
         KeyEvent {
             code: KeyCode::PageUp,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::PAGE_UP,
-        ctrl!('b') => commands::Command::PAGE_UP,
+        } => commands::Command::page_up,
+        ctrl!('b') => commands::Command::page_up,
         KeyEvent {
             code: KeyCode::PageDown,
             modifiers: KeyModifiers::NONE
-        } => commands::Command::PAGE_DOWN,
-        ctrl!('f') => commands::Command::PAGE_DOWN,
-        ctrl!('u') => commands::Command::HALF_PAGE_UP,
-        ctrl!('d') => commands::Command::HALF_PAGE_DOWN,
+        } => commands::Command::page_down,
+        ctrl!('f') => commands::Command::page_down,
+        ctrl!('u') => commands::Command::half_page_up,
+        ctrl!('d') => commands::Command::half_page_down,
 
-        ctrl!('w') => commands::Command::WINDOW_MODE,
+        ctrl!('w') => commands::Command::window_mode,
 
         // move under <space>c
-        ctrl!('c') => commands::Command::TOGGLE_COMMENTS,
-        key!('K') => commands::Command::HOVER,
+        ctrl!('c') => commands::Command::toggle_comments,
+        key!('K') => commands::Command::hover,
 
         // z family for save/restore/combine from/to sels from register
 
         KeyEvent { // supposedly ctrl!('i') but did not work
             code: KeyCode::Tab,
             modifiers: KeyModifiers::NONE,
-        } => commands::Command::JUMP_FORWARD,
-        ctrl!('o') => commands::Command::JUMP_BACKWARD,
-        // ctrl!('s') => commands::Command::SAVE_SELECTION,
+        } => commands::Command::jump_forward,
+        ctrl!('o') => commands::Command::jump_backward,
+        // ctrl!('s') => commands::Command::save_selection,
 
-        key!(' ') => commands::Command::SPACE_MODE,
-        key!('z') => commands::Command::VIEW_MODE,
+        key!(' ') => commands::Command::space_mode,
+        key!('z') => commands::Command::view_mode,
 
-        key!('"') => commands::Command::SELECT_REGISTER,
+        key!('"') => commands::Command::select_register,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
     // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
@@ -303,49 +303,49 @@ pub fn default() -> Keymaps {
     let mut select = normal.clone();
     select.extend(
         hashmap!(
-            key!('h') => commands::Command::EXTEND_CHAR_LEFT,
-            key!('j') => commands::Command::EXTEND_LINE_DOWN,
-            key!('k') => commands::Command::EXTEND_LINE_UP,
-            key!('l') => commands::Command::EXTEND_CHAR_RIGHT,
+            key!('h') => commands::Command::extend_char_left,
+            key!('j') => commands::Command::extend_line_down,
+            key!('k') => commands::Command::extend_line_up,
+            key!('l') => commands::Command::extend_char_right,
 
             KeyEvent {
                 code: KeyCode::Left,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::EXTEND_CHAR_LEFT,
+            } => commands::Command::extend_char_left,
             KeyEvent {
                 code: KeyCode::Down,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::EXTEND_LINE_DOWN,
+            } => commands::Command::extend_line_down,
             KeyEvent {
                 code: KeyCode::Up,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::EXTEND_LINE_UP,
+            } => commands::Command::extend_line_up,
             KeyEvent {
                 code: KeyCode::Right,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::EXTEND_CHAR_RIGHT,
+            } => commands::Command::extend_char_right,
 
-            key!('w') => commands::Command::EXTEND_NEXT_WORD_START,
-            key!('b') => commands::Command::EXTEND_PREV_WORD_START,
-            key!('e') => commands::Command::EXTEND_NEXT_WORD_END,
+            key!('w') => commands::Command::extend_next_word_start,
+            key!('b') => commands::Command::extend_prev_word_start,
+            key!('e') => commands::Command::extend_next_word_end,
 
-            key!('t') => commands::Command::EXTEND_TILL_CHAR,
-            key!('f') => commands::Command::EXTEND_NEXT_CHAR,
+            key!('t') => commands::Command::extend_till_char,
+            key!('f') => commands::Command::extend_next_char,
 
-            key!('T') => commands::Command::EXTEND_TILL_PREV_CHAR,
-            key!('F') => commands::Command::EXTEND_PREV_CHAR,
+            key!('T') => commands::Command::extend_till_prev_char,
+            key!('F') => commands::Command::extend_prev_char,
             KeyEvent {
                 code: KeyCode::Home,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::EXTEND_LINE_START,
+            } => commands::Command::extend_line_start,
             KeyEvent {
                 code: KeyCode::End,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::EXTEND_LINE_END,
+            } => commands::Command::extend_line_end,
             KeyEvent {
                 code: KeyCode::Esc,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::EXIT_SELECT_MODE,
+            } => commands::Command::exit_select_mode,
         )
         .into_iter(),
     );
@@ -359,26 +359,26 @@ pub fn default() -> Keymaps {
             KeyEvent {
                 code: KeyCode::Esc,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::NORMAL_MODE,
+            } => commands::Command::normal_mode,
             KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::DELETE_CHAR_BACKWARD,
+            } => commands::Command::delete_char_backward,
             KeyEvent {
                 code: KeyCode::Delete,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::DELETE_CHAR_FORWARD,
+            } => commands::Command::delete_char_forward,
             KeyEvent {
                 code: KeyCode::Enter,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::INSERT_NEWLINE,
+            } => commands::Command::insert_newline,
             KeyEvent {
                 code: KeyCode::Tab,
                 modifiers: KeyModifiers::NONE
-            } => commands::Command::INSERT_TAB,
+            } => commands::Command::insert_tab,
 
-            ctrl!('x') => commands::Command::COMPLETION,
-            ctrl!('w') => commands::Command::DELETE_WORD_BACKWARD,
+            ctrl!('x') => commands::Command::completion,
+            ctrl!('w') => commands::Command::delete_word_backward,
         ),
     )
 }
