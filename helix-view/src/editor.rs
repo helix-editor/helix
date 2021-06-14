@@ -1,4 +1,4 @@
-use crate::{theme::Theme, tree::Tree, Document, DocumentId, View, ViewId};
+use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId};
 use tui::layout::Rect;
 
 use std::path::PathBuf;
@@ -9,17 +9,19 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 
+#[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
-    pub count: Option<usize>,
+    pub count: Option<std::num::NonZeroUsize>,
+    pub register: RegisterSelection,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
     pub status_msg: Option<(String, Severity)>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Action {
     Replace,
     HorizontalSplit,
@@ -36,6 +38,18 @@ impl Editor {
             .unwrap_or(include_bytes!("../../theme.toml"));
         let theme: Theme = toml::from_slice(toml).expect("failed to parse theme.toml");
 
+        // initialize language registry
+        use helix_core::syntax::{Loader, LOADER};
+
+        // load $HOME/.config/helix/languages.toml, fallback to default config
+        let config = std::fs::read(helix_core::config_dir().join("languages.toml"));
+        let toml = config
+            .as_deref()
+            .unwrap_or(include_bytes!("../../languages.toml"));
+
+        let config = toml::from_slice(toml).expect("Could not parse languages.toml");
+        LOADER.get_or_init(|| Loader::new(config, theme.scopes().to_vec()));
+
         let language_servers = helix_lsp::Registry::new();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
@@ -45,10 +59,15 @@ impl Editor {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
             count: None,
+            register: RegisterSelection::default(),
             theme,
             language_servers,
             status_msg: None,
         }
+    }
+
+    pub fn clear_status(&mut self) {
+        self.status_msg = None;
     }
 
     pub fn set_status(&mut self, status: String) {
@@ -69,6 +88,12 @@ impl Editor {
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
         use helix_core::Selection;
+
+        if !self.documents.contains_key(id) {
+            log::error!("cannot switch to document that does not exist (anymore)");
+            return;
+        }
+
         match action {
             Action::Replace => {
                 let view = self.view();
@@ -79,6 +104,7 @@ impl Editor {
 
                 let view = self.view_mut();
                 view.jumps.push(jump);
+                view.last_accessed_doc = Some(view.doc);
                 view.doc = id;
                 view.first_line = 0;
 
@@ -125,7 +151,7 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let path = std::fs::canonicalize(path)?;
+        let path = crate::document::canonicalize_path(&path)?;
 
         let id = self
             .documents()
@@ -135,13 +161,13 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::load(path, self.theme.scopes())?;
+            let mut doc = Document::load(path)?;
 
             // try to find a language server based on the language name
             let language_server = doc
                 .language
                 .as_ref()
-                .and_then(|language| self.language_servers.get(language));
+                .and_then(|language| self.language_servers.get(language).ok());
 
             if let Some(language_server) = language_server {
                 doc.set_language_server(Some(language_server.clone()));
@@ -182,7 +208,7 @@ impl Editor {
             let language_server = doc
                 .language
                 .as_ref()
-                .and_then(|language| language_servers.get(language));
+                .and_then(|language| language_servers.get(language).ok());
             if let Some(language_server) = language_server {
                 tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }

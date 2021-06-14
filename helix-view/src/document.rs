@@ -5,15 +5,16 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
+    history::History,
     syntax::{LanguageConfiguration, LOADER},
-    ChangeSet, Diagnostic, History, Rope, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, Rope, Selection, State, Syntax, Transaction,
 };
 
 use crate::{DocumentId, ViewId};
 
 use std::collections::HashMap;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
     Select,
@@ -48,8 +49,31 @@ pub struct Document {
     last_saved_revision: usize,
     version: i32, // should be usize?
 
-    pub diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+}
+
+use std::fmt;
+impl fmt::Debug for Document {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Document")
+            .field("id", &self.id)
+            .field("text", &self.text)
+            .field("selections", &self.selections)
+            .field("path", &self.path)
+            .field("mode", &self.mode)
+            .field("restore_cursor", &self.restore_cursor)
+            .field("syntax", &self.syntax)
+            .field("language", &self.language)
+            .field("changes", &self.changes)
+            .field("old_state", &self.old_state)
+            // .field("history", &self.history)
+            .field("last_saved_revision", &self.last_saved_revision)
+            .field("version", &self.version)
+            .field("diagnostics", &self.diagnostics)
+            // .field("language_server", &self.language_server)
+            .finish()
+    }
 }
 
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
@@ -104,6 +128,14 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     ret
 }
 
+// Returns the canonical, absolute form of a path with all intermediate components normalized.
+//
+// This function is used instead of `std::fs::canonicalize` because we don't want to verify
+// here if the path exists, just normalize it's components.
+pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
+    std::env::current_dir().map(|current_dir| normalize_path(&current_dir.join(path)))
+}
+
 use helix_lsp::lsp;
 use url::Url;
 
@@ -131,27 +163,25 @@ impl Document {
         }
     }
 
-    // TODO: passing scopes here is awkward
     // TODO: async fn?
-    pub fn load(path: PathBuf, scopes: &[String]) -> Result<Self, Error> {
-        use std::{env, fs::File, io::BufReader};
-        let _current_dir = env::current_dir()?;
+    pub fn load(path: PathBuf) -> Result<Self, Error> {
+        use std::{fs::File, io::BufReader};
 
-        let file = File::open(path.clone()).context(format!("unable to open {:?}", path))?;
-        let doc = Rope::from_reader(BufReader::new(file))?;
-
-        // TODO: create if not found
+        let doc = if !path.exists() {
+            Rope::from("\n")
+        } else {
+            let file = File::open(&path).context(format!("unable to open {:?}", path))?;
+            let mut doc = Rope::from_reader(BufReader::new(file))?;
+            // add missing newline at the end of file
+            if doc.len_bytes() == 0 || doc.byte(doc.len_bytes() - 1) != b'\n' {
+                doc.insert_char(doc.len_chars(), '\n');
+            }
+            doc
+        };
 
         let mut doc = Self::new(doc);
-
-        let language_config = LOADER
-            .get()
-            .unwrap()
-            .language_config_for_file_name(path.as_path());
-        doc.set_language(language_config, scopes);
-
-        // canonicalize path to absolute value
-        doc.path = Some(std::fs::canonicalize(path)?);
+        // set the path and try detecting the language
+        doc.set_path(&path)?;
 
         Ok(doc)
     }
@@ -200,6 +230,14 @@ impl Document {
 
         async move {
             use tokio::{fs::File, io::AsyncWriteExt};
+            if let Some(parent) = path.parent() {
+                // TODO: display a prompt asking the user if the directories should be created
+                if !parent.exists() {
+                    return Err(Error::msg(
+                        "can't save file, parent directory does not exist",
+                    ));
+                }
+            }
             let mut file = File::create(path).await?;
 
             // write all the rope chunks to file
@@ -218,17 +256,25 @@ impl Document {
         }
     }
 
-    pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        // canonicalize path to absolute value
-        let current_dir = std::env::current_dir()?;
-        let path = normalize_path(&current_dir.join(path));
-
-        if let Some(parent) = path.parent() {
-            // TODO: return error as necessary
-            if parent.exists() {
-                self.path = Some(path);
-            }
+    fn detect_language(&mut self) {
+        if let Some(path) = self.path() {
+            let loader = LOADER.get().unwrap();
+            let language_config = loader.language_config_for_file_name(path);
+            let scopes = loader.scopes();
+            self.set_language(language_config, scopes);
         }
+    }
+
+    pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
+        let path = canonicalize_path(path)?;
+
+        // if parent doesn't exist we still want to open the document
+        // and error out when document is saved
+        self.path = Some(path);
+
+        // try detecting the language based on filepath
+        self.detect_language();
+
         Ok(())
     }
 
@@ -251,8 +297,10 @@ impl Document {
         };
     }
 
-    pub fn set_language2(&mut self, scope: &str, scopes: &[String]) {
-        let language_config = LOADER.get().unwrap().language_config_for_scope(scope);
+    pub fn set_language2(&mut self, scope: &str) {
+        let loader = LOADER.get().unwrap();
+        let language_config = loader.language_config_for_scope(scope);
+        let scopes = loader.scopes();
 
         self.set_language(language_config, scopes);
     }
@@ -340,32 +388,48 @@ impl Document {
         success
     }
 
-    pub fn undo(&mut self, view_id: ViewId) -> bool {
+    pub fn undo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
-        if let Some(transaction) = history.undo() {
-            let success = self._apply(&transaction, view_id);
+        let success = if let Some(transaction) = history.undo() {
+            self._apply(&transaction, view_id)
+        } else {
+            false
+        };
+        self.history.set(history);
 
+        if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
-
-            return success;
         }
-        self.history.set(history);
-        false
     }
 
-    pub fn redo(&mut self, view_id: ViewId) -> bool {
+    pub fn redo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
-        if let Some(transaction) = history.redo() {
-            let success = self._apply(&transaction, view_id);
+        let success = if let Some(transaction) = history.redo() {
+            self._apply(&transaction, view_id)
+        } else {
+            false
+        };
+        self.history.set(history);
 
+        if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
-
-            return success;
         }
-        self.history.set(history);
-        false
+    }
+
+    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().earlier(uk);
+        for txn in txns {
+            self._apply(&txn, view_id);
+        }
+    }
+
+    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+        let txns = self.history.get_mut().later(uk);
+        for txn in txns {
+            self._apply(&txn, view_id);
+        }
     }
 
     pub fn append_changes_to_history(&mut self, view_id: ViewId) {
@@ -398,8 +462,7 @@ impl Document {
         let history = self.history.take();
         let current_revision = history.current_revision();
         self.history.set(history);
-        self.path.is_some()
-            && (current_revision != self.last_saved_revision || !self.changes.is_empty())
+        current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
     #[inline]
@@ -493,6 +556,14 @@ impl Document {
 
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
+    }
+
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
+        self.diagnostics = diagnostics;
     }
 }
 

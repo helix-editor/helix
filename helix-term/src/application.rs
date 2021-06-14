@@ -1,6 +1,7 @@
+use helix_lsp::lsp;
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{compositor::Compositor, ui, Args};
+use crate::{args::Args, compositor::Compositor, ui};
 
 use log::{error, info};
 
@@ -45,15 +46,27 @@ impl Application {
         let size = compositor.size();
         let mut editor = Editor::new(size);
 
+        compositor.push(Box::new(ui::EditorView::new()));
+
         if !args.files.is_empty() {
-            for file in args.files {
-                editor.open(file, Action::VerticalSplit)?;
+            let first = &args.files[0]; // we know it's not empty
+            if first.is_dir() {
+                editor.new_file(Action::VerticalSplit);
+                compositor.push(Box::new(ui::file_picker(first.clone())));
+            } else {
+                for file in args.files {
+                    if file.is_dir() {
+                        return Err(anyhow::anyhow!(
+                            "expected a path to file, found a directory. (to open a directory pass it as first argument)"
+                        ));
+                    } else {
+                        editor.open(file, Action::VerticalSplit)?;
+                    }
+                }
             }
         } else {
             editor.new_file(Action::VerticalSplit);
         }
-
-        compositor.push(Box::new(ui::EditorView::new()));
 
         let mut app = Self {
             compositor,
@@ -165,7 +178,7 @@ impl Application {
                             let diagnostics = params
                                 .diagnostics
                                 .into_iter()
-                                .map(|diagnostic| {
+                                .filter_map(|diagnostic| {
                                     use helix_core::{
                                         diagnostic::{Range, Severity, Severity::*},
                                         Diagnostic,
@@ -176,18 +189,29 @@ impl Application {
                                     let language_server = doc.language_server().unwrap();
 
                                     // TODO: convert inside server
-                                    let start = lsp_pos_to_pos(
+                                    let start = if let Some(start) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.start,
                                         language_server.offset_encoding(),
-                                    );
-                                    let end = lsp_pos_to_pos(
+                                    ) {
+                                        start
+                                    } else {
+                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        return None;
+                                    };
+
+                                    let end = if let Some(end) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.end,
                                         language_server.offset_encoding(),
-                                    );
+                                    ) {
+                                        end
+                                    } else {
+                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        return None;
+                                    };
 
-                                    Diagnostic {
+                                    Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
@@ -201,11 +225,11 @@ impl Application {
                                         ),
                                         // code
                                         // source
-                                    }
+                                    })
                                 })
                                 .collect();
 
-                            doc.diagnostics = diagnostics;
+                            doc.set_diagnostics(diagnostics);
                             // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                             self.render();
                         }
@@ -215,6 +239,59 @@ impl Application {
                     }
                     Notification::LogMessage(params) => {
                         log::warn!("unhandled window/logMessage: {:?}", params);
+                    }
+                    Notification::ProgressMessage(params) => {
+                        let token = match params.token {
+                            lsp::NumberOrString::Number(n) => n.to_string(),
+                            lsp::NumberOrString::String(s) => s,
+                        };
+                        let msg = {
+                            let lsp::ProgressParamsValue::WorkDone(work) = params.value;
+                            let parts = match work {
+                                lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
+                                    title,
+                                    message,
+                                    percentage,
+                                    ..
+                                }) => (Some(title), message, percentage.map(|n| n.to_string())),
+                                lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
+                                    message,
+                                    percentage,
+                                    ..
+                                }) => (None, message, percentage.map(|n| n.to_string())),
+                                lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd {
+                                    message,
+                                }) => {
+                                    if let Some(message) = message {
+                                        (None, Some(message), None)
+                                    } else {
+                                        self.editor.clear_status();
+                                        return;
+                                    }
+                                }
+                            };
+                            match parts {
+                                (Some(title), Some(message), Some(percentage)) => {
+                                    format!("{}% {} - {}", percentage, title, message)
+                                }
+                                (Some(title), None, Some(percentage)) => {
+                                    format!("{}% {}", percentage, title)
+                                }
+                                (Some(title), Some(message), None) => {
+                                    format!("{} - {}", title, message)
+                                }
+                                (None, Some(message), Some(percentage)) => {
+                                    format!("{}% {}", percentage, message)
+                                }
+                                (Some(title), None, None) => title,
+                                (None, Some(message), None) => message,
+                                (None, None, Some(percentage)) => format!("{}%", percentage),
+                                (None, None, None) => "".into(),
+                            }
+                        };
+                        let status = format!("[{}] {}", token, msg);
+                        self.editor.set_status(status);
+                        self.render();
                     }
                     _ => unreachable!(),
                 }

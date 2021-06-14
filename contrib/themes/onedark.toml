@@ -1,0 +1,41 @@
+# Author : Gokul Soumya <gokulps15@gmail.com>
+
+"attribute" = { fg = "#E5C07B" }
+"comment" = { fg = "#5C6370", modifiers = ['italic'] }
+"constant" = { fg = "#56B6C2" }
+"constant.builtin" = { fg = "#61AFEF" }
+"constructor" = { fg = "#61AFEF" }
+"escape" = { fg = "#D19A66" }
+"function" = { fg = "#61AFEF" }
+"function.builtin" = { fg = "#61AFEF" }
+"function.macro" = { fg = "#C678DD" }
+"keyword" = { fg = "#E06C75" }
+"keyword.directive" = { fg = "#C678DD" }
+"label" = { fg = "#C678DD" }
+"namespace" = { fg = "#61AFEF" }
+"number" = { fg = "#D19A66" }
+"operator" = { fg = "#C678DD" }
+"property" = { fg = "#E06C75" }
+"special" = { fg = "#61AFEF" }
+"string" = { fg = "#98C379" }
+"type" = { fg = "#E5C07B" }
+"type.builtin" = { fg = "#E5C07B" }
+"variable" = { fg = "#61AFEF" }
+"variable.builtin" = { fg = "#61AFEF" }
+"variable.parameter" = { fg = "#E06C75" }
+
+"info" = { fg = "#61afef", modifiers = ['bold'] }
+"hint" = { fg = "#98c379", modifiers = ['bold'] }
+"warning" = { fg = "#e5c07b", modifiers = ['bold'] }
+"error" = { fg = "#e06c75", modifiers = ['bold'] }
+
+"ui.menu.selected" = { fg = "#282C34", bg = "#61AFEF" }
+"ui.background" = { fg = "#ABB2BF", bg = "#282C34" }
+"ui.help" = { bg = "#3E4452" }
+"ui.linenr" = { fg = "#4B5263", modifiers = ['dim'] }
+"ui.popup" = { bg = "#3E4452" }
+"ui.statusline" = { fg = "#ABB2BF", bg = "#2C323C" }
+"ui.selection" = { bg = "#3E4452" }
+"ui.text" = { fg = "#ABB2BF", bg = "#282C34" }
+"ui.text.focus" = { fg = "#ABB2BF", bg = "#2C323C", modifiers = ['bold'] }
+"ui.window" = { bg = "#3E4452" }

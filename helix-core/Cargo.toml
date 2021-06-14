@@ -1,11 +1,15 @@
 [package]
 name = "helix-core"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"
 license = "MPL-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[features]
+embed_runtime = ["rust-embed"]
 
 [dependencies]
 helix-syntax = { path = "../helix-syntax" }
@@ -13,14 +17,16 @@ helix-syntax = { path = "../helix-syntax" }
 ropey = "1.2"
 smallvec = "1.4"
 tendril = "0.4.2"
-unicode-segmentation = "1.6"
+unicode-segmentation = "1.7.1"
 unicode-width = "0.1"
+unicode-general-category = "0.4.0"
 # slab = "0.4.2"
 tree-sitter = "0.19"
-once_cell = "1.4"
+once_cell = "1.8"
 regex = "1"
 
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 
 etcetera = "0.3"
+rust-embed = { version = "5.9.0", optional = true }

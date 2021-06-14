@@ -1,12 +1,17 @@
 [package]
 name = "helix-term"
-version = "0.1.0"
+version = "0.2.0"
 description = "A post-modern text editor."
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"
 license = "MPL-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package.metadata.nix]
+build = true
+app = true
+
+[features]
+embed_runtime = ["helix-core/embed_runtime"]
 
 [[bin]]
 name = "hx"
@@ -18,12 +23,12 @@ helix-view = { path = "../helix-view", features = ["term"]}
 helix-lsp = { path = "../helix-lsp"}
 
 anyhow = "1"
-once_cell = "1.4"
+once_cell = "1.8"
 
 tokio = { version = "1", features = ["full"] }
 num_cpus = "1"
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
-crossterm = { version = "0.19", features = ["event-stream"] }
+crossterm = { version = "0.20", features = ["event-stream"] }
 
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 

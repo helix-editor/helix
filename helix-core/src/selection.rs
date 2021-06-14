@@ -35,6 +35,10 @@ impl Range {
         }
     }
 
+    pub fn point(head: usize) -> Self {
+        Self::new(head, head)
+    }
+
     /// Start of the range.
     #[inline]
     #[must_use]
@@ -383,7 +387,7 @@ pub fn split_on_matches(
             // TODO: retain range direction
 
             let end = text.byte_to_char(start_byte + mat.start());
-            result.push(Range::new(start, end - 1));
+            result.push(Range::new(start, end.saturating_sub(1)));
             start = text.byte_to_char(start_byte + mat.end());
         }
 

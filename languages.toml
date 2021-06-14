@@ -4,6 +4,7 @@ scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
 roots = []
+auto-format = true
 
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
@@ -42,6 +43,7 @@ injection-regex = "c"
 file-types = ["c"] # TODO: ["h"]
 roots = []
 
+language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -51,6 +53,7 @@ injection-regex = "cpp"
 file-types = ["cc", "cpp", "hpp", "h"]
 roots = []
 
+language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -59,6 +62,7 @@ scope = "source.go"
 injection-regex = "go"
 file-types = ["go"]
 roots = ["Gopkg.toml", "go.mod"]
+auto-format = true
 
 language-server = { command = "gopls" }
 # TODO: gopls needs utf-8 offsets?
@@ -115,6 +119,15 @@ language-server = { command = "pyls" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "nix"
+scope = "source.nix"
+injection-regex = "nix"
+file-types = ["nix"]
+roots = []
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
@@ -142,3 +155,12 @@ file-types = ["php"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
+
+# [[language]]
+# name = "haskell"
+# scope = "source.haskell"
+# injection-regex = "haskell"
+# file-types = ["hs"]
+# roots = []
+#
+# indent = { tab-width = 2, unit = "  " }

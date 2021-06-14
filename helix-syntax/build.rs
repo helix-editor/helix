@@ -1,15 +1,7 @@
+use std::fs;
 use std::path::PathBuf;
-use std::{env, fs};
 
 use std::sync::mpsc::channel;
-
-fn get_opt_level() -> u32 {
-    env::var("OPT_LEVEL").unwrap().parse::<u32>().unwrap()
-}
-
-fn get_debug() -> bool {
-    env::var("DEBUG").unwrap() == "true"
-}
 
 fn collect_tree_sitter_dirs(ignore: &[String]) -> Vec<String> {
     let mut dirs = Vec::new();
@@ -58,25 +50,28 @@ fn build_c(files: Vec<String>, language: &str) {
             .file(&file)
             .include(PathBuf::from(file).parent().unwrap())
             .pic(true)
-            .opt_level(get_opt_level())
-            .debug(get_debug())
-            .warnings(false)
-            .flag_if_supported("-std=c99");
+            .warnings(false);
     }
     build.compile(&format!("tree-sitter-{}-c", language));
 }
 
 fn build_cpp(files: Vec<String>, language: &str) {
     let mut build = cc::Build::new();
+
+    let flag = if build.get_compiler().is_like_msvc() {
+        "/std:c++17"
+    } else {
+        "-std=c++14"
+    };
+
     for file in files {
         build
             .file(&file)
             .include(PathBuf::from(file).parent().unwrap())
             .pic(true)
-            .opt_level(get_opt_level())
-            .debug(get_debug())
             .warnings(false)
-            .cpp(true);
+            .cpp(true)
+            .flag_if_supported(flag);
     }
     build.compile(&format!("tree-sitter-{}-cpp", language));
 }
@@ -109,6 +104,7 @@ fn build_dir(dir: &str, language: &str) {
 fn main() {
     let ignore = vec![
         "tree-sitter-typescript".to_string(),
+        "tree-sitter-haskell".to_string(), // aarch64 failures: https://github.com/tree-sitter/tree-sitter-haskell/issues/34
         ".DS_Store".to_string(),
     ];
     let dirs = collect_tree_sitter_dirs(&ignore);

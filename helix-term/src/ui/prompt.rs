@@ -18,7 +18,7 @@ pub struct Prompt {
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
     Update,
@@ -26,6 +26,11 @@ pub enum PromptEvent {
     Validate,
     /// Abort the change, reverting to the initial state.
     Abort,
+}
+
+pub enum CompletionDirection {
+    Forward,
+    Backward,
 }
 
 impl Prompt {
@@ -80,11 +85,39 @@ impl Prompt {
         self.exit_selection();
     }
 
-    pub fn change_completion_selection(&mut self) {
+    pub fn delete_word_backwards(&mut self) {
+        use helix_core::get_general_category;
+        let mut chars = self.line.char_indices().rev();
+        // TODO add skipping whitespace logic here
+        let (mut i, cat) = match chars.next() {
+            Some((i, c)) => (i, get_general_category(c)),
+            None => return,
+        };
+        self.cursor -= 1;
+        for (nn, nc) in chars {
+            if get_general_category(nc) != cat {
+                break;
+            }
+            i = nn;
+            self.cursor -= 1;
+        }
+        self.line.drain(i..);
+        self.completion = (self.completion_fn)(&self.line);
+        self.exit_selection();
+    }
+
+    pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
         if self.completion.is_empty() {
             return;
         }
-        let index = self.selection.map_or(0, |i| i + 1) % self.completion.len();
+
+        let index = match direction {
+            CompletionDirection::Forward => self.selection.map_or(0, |i| i + 1),
+            CompletionDirection::Backward => {
+                self.selection.unwrap_or(0) + self.completion.len() - 1
+            }
+        } % self.completion.len();
+
         self.selection = Some(index);
 
         let (range, item) = &self.completion[index];
@@ -92,8 +125,8 @@ impl Prompt {
         self.line.replace_range(range.clone(), item);
 
         self.move_end();
-        // TODO: recalculate completion when completion item is accepted, (Enter)
     }
+
     pub fn exit_selection(&mut self) {
         self.selection = None;
     }
@@ -114,8 +147,21 @@ impl Prompt {
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
-        let max_col = area.width / BASE_WIDTH;
-        let height = ((self.completion.len() as u16 + max_col - 1) / max_col);
+        let max_len = self
+            .completion
+            .iter()
+            .map(|(_, completion)| completion.len() as u16)
+            .max()
+            .unwrap_or(BASE_WIDTH)
+            .max(BASE_WIDTH);
+
+        let cols = std::cmp::max(1, area.width / max_len);
+        let col_width = (area.width - (cols)) / cols;
+
+        let height = ((self.completion.len() as u16 + cols - 1) / cols)
+            .min(10) // at most 10 rows (or less)
+            .min(area.height);
+
         let completion_area = Rect::new(
             area.x,
             (area.height - height).saturating_sub(1),
@@ -132,7 +178,13 @@ impl Prompt {
             let mut row = 0;
             let mut col = 0;
 
-            for (i, (_range, completion)) in self.completion.iter().enumerate() {
+            // TODO: paginate
+            for (i, (_range, completion)) in self
+                .completion
+                .iter()
+                .enumerate()
+                .take(height as usize * cols as usize)
+            {
                 let color = if Some(i) == self.selection {
                     // Style::default().bg(Color::Rgb(104, 60, 232))
                     selected_color // TODO: just invert bg
@@ -140,19 +192,16 @@ impl Prompt {
                     text_color
                 };
                 surface.set_stringn(
-                    area.x + 1 + col * BASE_WIDTH,
+                    area.x + col * (1 + col_width),
                     area.y + row,
                     &completion,
-                    BASE_WIDTH as usize - 1,
+                    col_width.saturating_sub(1) as usize,
                     color,
                 );
                 row += 1;
                 if row > area.height - 1 {
                     row = 0;
                     col += 1;
-                }
-                if col > max_col {
-                    break;
                 }
             }
         }
@@ -243,6 +292,10 @@ impl Component for Prompt {
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_start(),
             KeyEvent {
+                code: KeyCode::Char('w'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.delete_word_backwards(),
+            KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
             } => {
@@ -253,12 +306,21 @@ impl Component for Prompt {
                 code: KeyCode::Enter,
                 ..
             } => {
-                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
-                return close_fn;
+                if self.line.ends_with('/') {
+                    self.completion = (self.completion_fn)(&self.line);
+                    self.exit_selection();
+                } else {
+                    (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
+                    return close_fn;
+                }
             }
             KeyEvent {
                 code: KeyCode::Tab, ..
-            } => self.change_completion_selection(),
+            } => self.change_completion_selection(CompletionDirection::Forward),
+            KeyEvent {
+                code: KeyCode::BackTab,
+                ..
+            } => self.change_completion_selection(CompletionDirection::Backward),
             KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::CONTROL,

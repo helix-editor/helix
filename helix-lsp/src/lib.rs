@@ -1,26 +1,27 @@
 mod client;
-mod select_all;
 mod transport;
 
+pub use client::Client;
+pub use futures_executor::block_on;
+pub use jsonrpc::Call;
 pub use jsonrpc_core as jsonrpc;
+pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
-pub use client::Client;
-pub use lsp::{Position, Url};
-
-pub type Result<T> = core::result::Result<T, Error>;
-
+use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::LanguageConfiguration;
 
-use thiserror::Error;
-
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
-
+use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-pub use futures_executor::block_on;
+pub type Result<T> = core::result::Result<T, Error>;
+type LanguageId = String;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -28,8 +29,14 @@ pub enum Error {
     Rpc(#[from] jsonrpc::Error),
     #[error("failed to parse: {0}")]
     Parse(#[from] serde_json::Error),
+    #[error("IO Error: {0}")]
+    IO(#[from] std::io::Error),
     #[error("request timed out")]
     Timeout,
+    #[error("server closed the stream")]
+    StreamClosed,
+    #[error("LSP not defined")]
+    LspNotDefined,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -48,23 +55,54 @@ pub mod util {
     use super::*;
     use helix_core::{Range, Rope, Transaction};
 
+    /// Converts [`lsp::Position`] to a position in the document.
+    ///
+    /// Returns `None` if position exceeds document length or an operation overflows.
     pub fn lsp_pos_to_pos(
         doc: &Rope,
         pos: lsp::Position,
         offset_encoding: OffsetEncoding,
-    ) -> usize {
+    ) -> Option<usize> {
+        let max_line = doc.lines().count().saturating_sub(1);
+        let pos_line = pos.line as usize;
+        let pos_line = if pos_line > max_line {
+            return None;
+        } else {
+            pos_line
+        };
         match offset_encoding {
             OffsetEncoding::Utf8 => {
-                let line = doc.line_to_char(pos.line as usize);
-                line + pos.character as usize
+                let max_char = doc
+                    .line_to_char(max_line)
+                    .checked_add(doc.line(max_line).len_chars())?;
+                let line = doc.line_to_char(pos_line);
+                let pos = line.checked_add(pos.character as usize)?;
+                if pos <= max_char {
+                    Some(pos)
+                } else {
+                    None
+                }
             }
             OffsetEncoding::Utf16 => {
-                let line = doc.line_to_char(pos.line as usize);
+                let max_char = doc
+                    .line_to_char(max_line)
+                    .checked_add(doc.line(max_line).len_chars())?;
+                let max_cu = doc.char_to_utf16_cu(max_char);
+                let line = doc.line_to_char(pos_line);
                 let line_start = doc.char_to_utf16_cu(line);
-                doc.utf16_cu_to_char(line_start + pos.character as usize)
+                let pos = line_start.checked_add(pos.character as usize)?;
+                if pos <= max_cu {
+                    Some(doc.utf16_cu_to_char(pos))
+                } else {
+                    None
+                }
             }
         }
     }
+
+    /// Converts position in the document to [`lsp::Position`].
+    ///
+    /// Panics when `pos` is out of `doc` bounds or operation overflows.
     pub fn pos_to_lsp_pos(
         doc: &Rope,
         pos: usize,
@@ -88,6 +126,7 @@ pub mod util {
         }
     }
 
+    /// Converts a range in the document to [`lsp::Range`].
     pub fn range_to_lsp_range(
         doc: &Rope,
         range: Range,
@@ -97,6 +136,17 @@ pub mod util {
         let end = pos_to_lsp_pos(doc, range.to(), offset_encoding);
 
         lsp::Range::new(start, end)
+    }
+
+    pub fn lsp_range_to_range(
+        doc: &Rope,
+        range: lsp::Range,
+        offset_encoding: OffsetEncoding,
+    ) -> Option<Range> {
+        let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
+        let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
+
+        Some(Range::new(start, end))
     }
 
     pub fn generate_transaction_from_edits(
@@ -114,14 +164,21 @@ pub mod util {
                     None
                 };
 
-                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding);
-                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding);
+                let start =
+                    if let Some(start) = lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
+                        start
+                    } else {
+                        return (0, 0, None);
+                    };
+                let end = if let Some(end) = lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
+                    end
+                } else {
+                    return (0, 0, None);
+                };
                 (start, end, replacement)
             }),
         )
     }
-
-    // apply_insert_replace_edit
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -129,6 +186,7 @@ pub enum Notification {
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
+    ProgressMessage(lsp::ProgressParams),
 }
 
 impl Notification {
@@ -146,16 +204,19 @@ impl Notification {
             }
 
             lsp::notification::ShowMessage::METHOD => {
-                let params: lsp::ShowMessageParams =
-                    params.parse().expect("Failed to parse ShowMessage params");
+                let params: lsp::ShowMessageParams = params.parse().ok()?;
 
                 Self::ShowMessage(params)
             }
             lsp::notification::LogMessage::METHOD => {
-                let params: lsp::LogMessageParams =
-                    params.parse().expect("Failed to parse ShowMessage params");
+                let params: lsp::LogMessageParams = params.parse().ok()?;
 
                 Self::LogMessage(params)
+            }
+            lsp::notification::Progress::METHOD => {
+                let params: lsp::ProgressParams = params.parse().ok()?;
+
+                Self::ProgressMessage(params)
             }
             _ => {
                 log::error!("unhandled LSP notification: {}", method);
@@ -167,14 +228,9 @@ impl Notification {
     }
 }
 
-pub use jsonrpc::Call;
-
-type LanguageId = String;
-
-use crate::select_all::SelectAll;
-
+#[derive(Debug)]
 pub struct Registry {
-    inner: HashMap<LanguageId, Option<Arc<Client>>>,
+    inner: HashMap<LanguageId, Arc<Client>>,
 
     pub incoming: SelectAll<UnboundedReceiverStream<Call>>,
 }
@@ -193,35 +249,29 @@ impl Registry {
         }
     }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Option<Arc<Client>> {
-        // TODO: propagate the error
+    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
         if let Some(config) = &language_config.language_server {
             // avoid borrow issues
             let inner = &mut self.inner;
-            let s_incoming = &self.incoming;
+            let s_incoming = &mut self.incoming;
 
-            let language_server = inner
-                .entry(language_config.scope.clone()) // can't use entry with Borrow keys: https://github.com/rust-lang/rfcs/pull/1769
-                .or_insert_with(|| {
-                    // TODO: lookup defaults for id (name, args)
-
+            match inner.entry(language_config.scope.clone()) {
+                Entry::Occupied(language_server) => Ok(language_server.get().clone()),
+                Entry::Vacant(entry) => {
                     // initialize a new client
-                    let (mut client, incoming) =
-                        Client::start(&config.command, &config.args).ok()?;
-
+                    let (mut client, incoming) = Client::start(&config.command, &config.args)?;
                     // TODO: run this async without blocking
-                    futures_executor::block_on(client.initialize()).unwrap();
-
+                    futures_executor::block_on(client.initialize())?;
                     s_incoming.push(UnboundedReceiverStream::new(incoming));
+                    let client = Arc::new(client);
 
-                    Some(Arc::new(client))
-                })
-                .clone();
-
-            return language_server;
+                    entry.insert(client.clone());
+                    Ok(client)
+                }
+            }
+        } else {
+            Err(Error::LspNotDefined)
         }
-
-        None
     }
 }
 
@@ -250,3 +300,34 @@ impl Registry {
 // there needs to be a way to process incoming lsp messages from all clients.
 //  -> notifications need to be dispatched to wherever
 //  -> requests need to generate a reply and travel back to the same lsp!
+
+#[cfg(test)]
+mod tests {
+    use super::{lsp, util::*, OffsetEncoding};
+    use helix_core::Rope;
+
+    #[test]
+    fn converts_lsp_pos_to_pos() {
+        macro_rules! test_case {
+            ($doc:expr, ($x:expr, $y:expr) => $want:expr) => {
+                let doc = Rope::from($doc);
+                let pos = lsp::Position::new($x, $y);
+                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf16));
+                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf8))
+            };
+        }
+
+        test_case!("", (0, 0) => Some(0));
+        test_case!("", (0, 1) => None);
+        test_case!("", (1, 0) => None);
+        test_case!("\n\n", (0, 0) => Some(0));
+        test_case!("\n\n", (1, 0) => Some(1));
+        test_case!("\n\n", (1, 1) => Some(2));
+        test_case!("\n\n", (2, 0) => Some(2));
+        test_case!("\n\n", (3, 0) => None);
+        test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
+        test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
+        test_case!("test\n\n\n\ncase", (4, 5) => None);
+        test_case!("", (u32::MAX, u32::MAX) => None);
+    }
+}

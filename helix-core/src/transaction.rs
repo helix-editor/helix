@@ -15,7 +15,7 @@ pub enum Operation {
     Insert(Tendril),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Assoc {
     Before,
     After,
@@ -90,7 +90,8 @@ impl ChangeSet {
             return;
         }
 
-        self.len_after += fragment.len();
+        // Avoiding std::str::len() to account for UTF-8 characters.
+        self.len_after += fragment.chars().count();
 
         let new_last = match self.changes.as_mut_slice() {
             [.., Insert(prev)] | [.., Insert(prev), Delete(_)] => {
@@ -753,5 +754,22 @@ mod test {
 
         use Operation::*;
         assert_eq!(changes.changes, &[Insert("a".into())]);
+    }
+
+    #[test]
+    fn combine_with_utf8() {
+        const TEST_CASE: &'static str = "Hello, これはヘリックスエディターです！";
+
+        let empty = Rope::from("");
+        let mut a = ChangeSet::new(&empty);
+
+        let mut b = ChangeSet::new(&empty);
+        b.insert(TEST_CASE.into());
+
+        let changes = a.compose(b);
+
+        use Operation::*;
+        assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
+        assert_eq!(changes.len_after, TEST_CASE.chars().count());
     }
 }

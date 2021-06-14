@@ -1,5 +1,5 @@
 use crate::{
-    find_first_non_whitespace_char2, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
+    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
 use core::ops::Range;
 use std::borrow::Cow;
@@ -14,7 +14,7 @@ fn find_line_comment(
     let mut min = usize::MAX; // minimum col for find_first_non_whitespace_char
     for line in lines {
         let line_slice = text.line(line);
-        if let Some(pos) = find_first_non_whitespace_char2(line_slice) {
+        if let Some(pos) = find_first_non_whitespace_char(line_slice) {
             let len = line_slice.len_chars();
 
             if pos < min {

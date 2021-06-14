@@ -34,6 +34,12 @@ pub struct EditorView {
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
+impl Default for EditorView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EditorView {
     pub fn new() -> Self {
         Self {
@@ -195,7 +201,7 @@ impl EditorView {
                             }
 
                             // ugh,interleave highlight spans with diagnostic spans
-                            let is_diagnostic = doc.diagnostics.iter().any(|diagnostic| {
+                            let is_diagnostic = doc.diagnostics().iter().any(|diagnostic| {
                                 diagnostic.range.start <= char_index
                                     && diagnostic.range.end > char_index
                             });
@@ -234,8 +240,7 @@ impl EditorView {
                 // .bg(Color::Rgb(255, 255, 255))
                 .add_modifier(Modifier::REVERSED);
 
-            // let selection_style = Style::default().bg(Color::Rgb(94, 0, 128));
-            let selection_style = Style::default().bg(Color::Rgb(84, 0, 153));
+            let selection_style = theme.get("ui.selection");
 
             for selection in doc
                 .selection(view.id)
@@ -261,7 +266,16 @@ impl EditorView {
                         Rect::new(
                             viewport.x + start.col as u16,
                             viewport.y + start.row as u16,
-                            ((end.col - start.col) as u16 + 1).min(viewport.width),
+                            // .min is important, because set_style does a
+                            // for i in area.left()..area.right() and
+                            // area.right = x + width !!! which shouldn't be > then surface.area.right()
+                            // This is checked by a debug_assert! in Buffer::index_of
+                            ((end.col - start.col) as u16 + 1).min(
+                                surface
+                                    .area
+                                    .width
+                                    .saturating_sub(viewport.x + start.col as u16),
+                            ),
                             1,
                         ),
                         selection_style,
@@ -272,7 +286,7 @@ impl EditorView {
                             viewport.x + start.col as u16,
                             viewport.y + start.row as u16,
                             // text.line(view.first_line).len_chars() as u16 - start.col as u16,
-                            viewport.width - start.col as u16,
+                            viewport.width.saturating_sub(start.col as u16),
                             1,
                         ),
                         selection_style,
@@ -290,7 +304,12 @@ impl EditorView {
                         );
                     }
                     surface.set_style(
-                        Rect::new(viewport.x, viewport.y + end.row as u16, end.col as u16, 1),
+                        Rect::new(
+                            viewport.x,
+                            viewport.y + end.row as u16,
+                            (end.col as u16).min(viewport.width),
+                            1,
+                        ),
                         selection_style,
                     );
                 }
@@ -306,6 +325,31 @@ impl EditorView {
                         ),
                         cursor_style,
                     );
+                    // TODO: set cursor position for IME
+                    if let Some(syntax) = doc.syntax() {
+                        use helix_core::match_brackets;
+                        let pos = doc.selection(view.id).cursor();
+                        let pos = match_brackets::find(syntax, doc.text(), pos);
+                        if let Some(pos) = pos {
+                            let pos = view.screen_coords_at_pos(doc, text, pos);
+                            if let Some(pos) = pos {
+                                if (pos.col as u16) < viewport.width + view.first_col as u16
+                                    && pos.col >= view.first_col
+                                {
+                                    let style = Style::default()
+                                        .add_modifier(Modifier::REVERSED)
+                                        .add_modifier(Modifier::DIM);
+
+                                    surface
+                                        .get_mut(
+                                            viewport.x + pos.col as u16,
+                                            viewport.y + pos.row as u16,
+                                        )
+                                        .set_style(style);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -320,7 +364,7 @@ impl EditorView {
 
         for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics.iter().find(|d| d.line == line) {
+            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
                     viewport.x - OFFSET,
                     viewport.y + i as u16,
@@ -364,7 +408,7 @@ impl EditorView {
         let cursor = doc.selection(view.id).cursor();
         let line = doc.text().char_to_line(cursor);
 
-        let diagnostics = doc.diagnostics.iter().filter(|diagnostic| {
+        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
@@ -446,7 +490,7 @@ impl EditorView {
         surface.set_stringn(
             viewport.x + viewport.width.saturating_sub(15),
             viewport.y,
-            format!("{}", doc.diagnostics.len()),
+            format!("{}", doc.diagnostics().len()),
             4,
             text_color,
         );
@@ -482,7 +526,8 @@ impl EditorView {
             // count handling
             key!(i @ '0'..='9') => {
                 let i = i.to_digit(10).unwrap() as usize;
-                cxt.editor.count = Some(cxt.editor.count.map_or(i, |c| c * 10 + i));
+                cxt.editor.count =
+                    std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
             key!('.') => {
@@ -495,10 +540,13 @@ impl EditorView {
             }
             _ => {
                 // set the count
-                cxt.count = cxt.editor.count.take().unwrap_or(1);
+                cxt._count = cxt.editor.count.take();
                 // TODO: edge case: 0j -> reset to 1
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
+
+                // set the register
+                cxt.register = cxt.editor.register.take();
 
                 if let Some(command) = self.keymap[&mode].get(&event) {
                     command(cxt);
@@ -529,7 +577,8 @@ impl Component for EditorView {
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
-            Event::Key(key) => {
+            Event::Key(mut key) => {
+                canonicalize_key(&mut key);
                 // clear status
                 cx.editor.status_msg = None;
 
@@ -537,11 +586,12 @@ impl Component for EditorView {
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
+                    register: helix_view::RegisterSelection::default(),
                     editor: &mut cx.editor,
-                    count: 1,
+                    _count: None,
                     callback: None,
-                    callbacks: cx.callbacks,
                     on_next_key_callback: None,
+                    callbacks: cx.callbacks,
                 };
 
                 if let Some(on_next_key) = self.on_next_key.take() {
@@ -674,5 +724,15 @@ impl Component for EditorView {
 
         // It's easier to just not render the cursor and use selection rendering instead.
         None
+    }
+}
+
+fn canonicalize_key(key: &mut KeyEvent) {
+    if let KeyEvent {
+        code: KeyCode::Char(_),
+        modifiers: _,
+    } = key
+    {
+        key.modifiers.remove(KeyModifiers::SHIFT)
     }
 }

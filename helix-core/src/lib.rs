@@ -3,7 +3,7 @@ pub mod auto_pairs;
 pub mod comment;
 pub mod diagnostic;
 pub mod graphemes;
-mod history;
+pub mod history;
 pub mod indent;
 pub mod macros;
 pub mod match_brackets;
@@ -17,43 +17,59 @@ mod state;
 pub mod syntax;
 mod transaction;
 
-pub(crate) fn find_first_non_whitespace_char2(line: RopeSlice) -> Option<usize> {
-    // find first non-whitespace char
-    for (start, ch) in line.chars().enumerate() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-    }
+static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
+    once_cell::sync::Lazy::new(runtime_dir);
 
-    None
-}
-pub(crate) fn find_first_non_whitespace_char(text: RopeSlice, line_num: usize) -> Option<usize> {
-    let line = text.line(line_num);
-    let mut start = text.line_to_char(line_num);
-
-    // find first non-whitespace char
-    for ch in line.chars() {
-        // TODO: could use memchr with chunks?
-        if ch != ' ' && ch != '\t' && ch != '\n' {
-            return Some(start);
-        }
-        start += 1;
-    }
-
-    None
+pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
+    line.chars().position(|ch| !ch.is_whitespace())
 }
 
-pub fn runtime_dir() -> std::path::PathBuf {
-    // runtime env var || dir where binary is located
-    std::env::var("HELIX_RUNTIME")
-        .map(|path| path.into())
-        .unwrap_or_else(|_| {
-            std::env::current_exe()
-                .ok()
-                .and_then(|path| path.parent().map(|path| path.to_path_buf()))
-                .unwrap()
-        })
+pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+
+    let root = match root {
+        Some(root) => {
+            let root = std::path::Path::new(root);
+            if root.is_absolute() {
+                root.to_path_buf()
+            } else {
+                current_dir.join(root)
+            }
+        }
+        None => current_dir,
+    };
+
+    for ancestor in root.ancestors() {
+        // TODO: also use defined roots if git isn't found
+        if ancestor.join(".git").is_dir() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
+}
+
+#[cfg(not(embed_runtime))]
+fn runtime_dir() -> std::path::PathBuf {
+    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        return dir.into();
+    }
+
+    const RT_DIR: &str = "runtime";
+    let conf_dir = config_dir().join(RT_DIR);
+    if conf_dir.exists() {
+        return conf_dir;
+    }
+
+    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
+        return std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+    }
+
+    // fallback to location of the executable being run
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
+        .unwrap()
 }
 
 pub fn config_dir() -> std::path::PathBuf {
@@ -78,6 +94,8 @@ pub use ropey::{Rope, RopeSlice};
 
 pub use tendril::StrTendril as Tendril;
 
+pub use unicode_general_category::get_general_category;
+
 #[doc(inline)]
 pub use {regex, tree_sitter};
 
@@ -87,7 +105,6 @@ pub use smallvec::SmallVec;
 pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
-pub use history::History;
 pub use state::State;
 
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};

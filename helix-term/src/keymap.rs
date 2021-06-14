@@ -11,7 +11,8 @@ use std::collections::HashMap;
 //          W = next WORD
 //          e = end of word
 //          E = end of WORD
-//          r =
+//          r = replace
+//          R = replace with yanked
 //          t = 'till char
 //          y = yank
 //          u = undo
@@ -35,10 +36,10 @@ use std::collections::HashMap;
 //          f = find_char()
 //          g = goto (gg, G, gc, gd, etc)
 //
-//          h = move_char_left(n)
-//          j = move_line_down(n)
-//          k = move_line_up(n)
-//          l = move_char_right(n)
+//          h = move_char_left(n)   || arrow-left  = move_char_left(n)
+//          j = move_line_down(n)   || arrow-down  = move_line_down(n)
+//          k = move_line_up(n)     || arrow_up    = move_line_up(n)
+//          l = move_char_right(n)  || arrow-right = move_char_right(n)
 //          : = command line
 //          ; = collapse selection to cursor
 //          " = use register
@@ -61,8 +62,8 @@ use std::collections::HashMap;
 //          in kakoune these are alt-h alt-l / gh gl
 //                              select from curs to begin end / move curs to begin end
 //          0 = start of line
-//          ^ = start of line (first non blank char)
-//          $ = end of line
+//          ^ = start of line(first non blank char) || Home  = start of line(first non blank char)
+//          $ = end of line                         || End   = end of line
 //
 //          z = save selections
 //          Z = restore selections
@@ -85,6 +86,10 @@ use std::collections::HashMap;
 //
 //      gd = goto definition
 //      gr = goto reference
+//      [d = previous diagnostic
+//      d] = next diagnostic
+//      [D = first diagnostic
+//      D] = last diagnostic
 // }
 
 // #[cfg(feature = "term")]
@@ -95,19 +100,16 @@ pub type Keymaps = HashMap<Mode, Keymap>;
 
 #[macro_export]
 macro_rules! key {
+    ($key:ident) => {
+        KeyEvent {
+            code: KeyCode::$key,
+            modifiers: KeyModifiers::NONE,
+        }
+    };
     ($($ch:tt)*) => {
         KeyEvent {
             code: KeyCode::Char($($ch)*),
             modifiers: KeyModifiers::NONE,
-        }
-    };
-}
-
-macro_rules! shift {
-    ($($ch:tt)*) => {
-        KeyEvent {
-            code: KeyCode::Char($($ch)*),
-            modifiers: KeyModifiers::SHIFT,
         }
     };
 }
@@ -137,16 +139,22 @@ pub fn default() -> Keymaps {
         key!('k') => commands::move_line_up,
         key!('l') => commands::move_char_right,
 
+        key!(Left) => commands::move_char_left,
+        key!(Down) => commands::move_line_down,
+        key!(Up) => commands::move_line_up,
+        key!(Right) => commands::move_char_right,
+
         key!('t') => commands::find_till_char,
         key!('f') => commands::find_next_char,
-        shift!('T') => commands::till_prev_char,
-        shift!('F') => commands::find_prev_char,
+        key!('T') => commands::till_prev_char,
+        key!('F') => commands::find_prev_char,
         // and matching set for select mode (extend)
         //
         key!('r') => commands::replace,
+        key!('R') => commands::replace_with_yanked,
 
-        key!('^') => commands::move_line_start,
-        key!('$') => commands::move_line_end,
+        key!(Home) => commands::move_line_start,
+        key!(End) => commands::move_line_end,
 
         key!('w') => commands::move_next_word_start,
         key!('b') => commands::move_prev_word_start,
@@ -157,11 +165,11 @@ pub fn default() -> Keymaps {
         key!(':') => commands::command_mode,
 
         key!('i') => commands::insert_mode,
-        shift!('I') => commands::prepend_to_line,
+        key!('I') => commands::prepend_to_line,
         key!('a') => commands::append_mode,
-        shift!('A') => commands::append_to_line,
+        key!('A') => commands::append_to_line,
         key!('o') => commands::open_below,
-        shift!('O') => commands::open_above,
+        key!('O') => commands::open_above,
         // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
 
@@ -174,12 +182,12 @@ pub fn default() -> Keymaps {
 
         key!('s') => commands::select_regex,
         alt!('s') => commands::split_selection_on_newline,
-        shift!('S') => commands::split_selection,
+        key!('S') => commands::split_selection,
         key!(';') => commands::collapse_selection,
         alt!(';') => commands::flip_selections,
         key!('%') => commands::select_all,
         key!('x') => commands::select_line,
-        shift!('X') => commands::extend_line,
+        key!('X') => commands::extend_line,
         // or select mode X?
         // extend_to_whole_line, crop_to_whole_line
 
@@ -194,30 +202,32 @@ pub fn default() -> Keymaps {
         // repeat_select
 
         // TODO: figure out what key to use
-        key!('[') => commands::expand_selection,
+        // key!('[') => commands::expand_selection, ??
+        key!('[') => commands::left_bracket_mode,
+        key!(']') => commands::right_bracket_mode,
 
         key!('/') => commands::search,
         // ? for search_reverse
         key!('n') => commands::search_next,
-        shift!('N') => commands::extend_search_next,
+        key!('N') => commands::extend_search_next,
         // N for search_prev
         key!('*') => commands::search_selection,
 
         key!('u') => commands::undo,
-        shift!('U') => commands::redo,
+        key!('U') => commands::redo,
 
         key!('y') => commands::yank,
         // yank_all
         key!('p') => commands::paste_after,
         // paste_all
-        shift!('P') => commands::paste_before,
+        key!('P') => commands::paste_before,
 
         key!('>') => commands::indent,
         key!('<') => commands::unindent,
         key!('=') => commands::format_selections,
-        shift!('J') => commands::join_selections,
+        key!('J') => commands::join_selections,
         // TODO: conflicts hover/doc
-        shift!('K') => commands::keep_selections,
+        key!('K') => commands::keep_selections,
         // TODO: and another method for inverse
 
         // TODO: clashes with space mode
@@ -232,40 +242,31 @@ pub fn default() -> Keymaps {
 
         // C / altC = copy (repeat) selections on prev/next lines
 
-        KeyEvent {
-            code: KeyCode::Esc,
-            modifiers: KeyModifiers::NONE
-        } => commands::normal_mode,
-        KeyEvent {
-            code: KeyCode::PageUp,
-            modifiers: KeyModifiers::NONE
-        } => commands::page_up,
+        key!(Esc) => commands::normal_mode,
+        key!(PageUp) => commands::page_up,
+        key!(PageDown) => commands::page_down,
         ctrl!('b') => commands::page_up,
-        KeyEvent {
-            code: KeyCode::PageDown,
-            modifiers: KeyModifiers::NONE
-        } => commands::page_down,
         ctrl!('f') => commands::page_down,
         ctrl!('u') => commands::half_page_up,
         ctrl!('d') => commands::half_page_down,
 
-        KeyEvent {
-            code: KeyCode::Tab,
-            modifiers: KeyModifiers::NONE
-        } => commands::next_view,
+        ctrl!('w') => commands::window_mode,
 
         // move under <space>c
         ctrl!('c') => commands::toggle_comments,
-        shift!('K') => commands::hover,
+        key!('K') => commands::hover,
 
         // z family for save/restore/combine from/to sels from register
 
-        ctrl!('i') => commands::jump_forward, // TODO: ctrl-i conflicts tab
+        // supposedly ctrl!('i') but did not work
+        key!(Tab) => commands::jump_forward,
         ctrl!('o') => commands::jump_backward,
         // ctrl!('s') => commands::save_selection,
 
         key!(' ') => commands::space_mode,
         key!('z') => commands::view_mode,
+
+        key!('"') => commands::select_register,
     );
     // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
     // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
@@ -278,19 +279,23 @@ pub fn default() -> Keymaps {
             key!('k') => commands::extend_line_up,
             key!('l') => commands::extend_char_right,
 
+            key!(Left) => commands::extend_char_left,
+            key!(Down) => commands::extend_line_down,
+            key!(Up) => commands::extend_line_up,
+            key!(Right) => commands::extend_char_right,
+
             key!('w') => commands::extend_next_word_start,
             key!('b') => commands::extend_prev_word_start,
             key!('e') => commands::extend_next_word_end,
 
             key!('t') => commands::extend_till_char,
             key!('f') => commands::extend_next_char,
-            shift!('T') => commands::extend_till_prev_char,
-            shift!('F') => commands::extend_prev_char,
 
-            KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: KeyModifiers::NONE
-            } => commands::exit_select_mode as Command,
+            key!('T') => commands::extend_till_prev_char,
+            key!('F') => commands::extend_prev_char,
+            key!(Home) => commands::extend_line_start,
+            key!(End) => commands::extend_line_end,
+            key!(Esc) => commands::exit_select_mode,
         )
         .into_iter(),
     );
@@ -301,52 +306,20 @@ pub fn default() -> Keymaps {
         Mode::Normal => normal,
         Mode::Select => select,
         Mode::Insert => hashmap!(
-            KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: KeyModifiers::NONE
-            } => commands::normal_mode as Command,
-            KeyEvent {
-                code: KeyCode::Backspace,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::delete_char_backward,
-            KeyEvent {
-                code: KeyCode::Delete,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::delete_char_forward,
-            KeyEvent {
-                code: KeyCode::Enter,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::insert_newline,
-            KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::insert_tab,
-            KeyEvent {
-                code: KeyCode::Left,
-                modifiers: KeyModifiers::NONE
-            } => commands::move_char_left,
-            KeyEvent {
-                code: KeyCode::Down,
-                modifiers: KeyModifiers::NONE
-            } => commands::move_line_down,
-            KeyEvent {
-                code: KeyCode::Up,
-                modifiers: KeyModifiers::NONE
-            } => commands::move_line_up,
-            KeyEvent {
-                code: KeyCode::Right,
-                modifiers: KeyModifiers::NONE
-            } => commands::move_char_right,
-            KeyEvent {
-                code: KeyCode::Home,
-                modifiers: KeyModifiers::NONE
-            } => commands::move_line_start,
-            KeyEvent {
-                code: KeyCode::End,
-                modifiers: KeyModifiers::NONE
-            } => commands::move_line_end,
+            key!(Esc) => commands::normal_mode as Command,
+            key!(Backspace) => commands::insert::delete_char_backward,
+            key!(Delete) => commands::insert::delete_char_forward,
+            key!(Enter) => commands::insert::insert_newline,
+            key!(Tab) => commands::insert::insert_tab,
+            key!(Left) => commands::move_char_left,
+            key!(Down) => commands::move_line_down,
+            key!(Up) => commands::move_line_up,
+            key!(Right) => commands::move_char_right,
+            key!(Home) => commands::move_line_start,
+            key!(End) => commands::move_line_end,
 
             ctrl!('x') => commands::completion,
+            ctrl!('w') => commands::insert::delete_word_backward,
         ),
     )
 }

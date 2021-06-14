@@ -1,0 +1,47 @@
+# Author : Wojciech Kępka <wojciech@wkepka.dev>
+
+"attribute" = "#dc7759"
+"keyword" = { fg = "#dcb659", modifiers = ["bold"] }
+"keyword.directive" = "#dcb659"
+"namespace" = "#d32c5d"
+"punctuation" = "#dc7759"
+"punctuation.delimiter" = "#dc7759"
+"operator" = { fg = "#dc7759", modifiers = ["bold"] }
+"special" = "#7fdc59"
+"property" = "#c6b8ad"
+"variable" = "#c6b8ad"
+"variable.parameter" = "#c6b8ad"
+"type" = "#dc597f"
+"type.builtin" = { fg = "#d32c5d", modifiers = ["bold"] }
+"constructor" = "#dc597f"
+"function" = "#59dcd8"
+"function.macro" = { fg = "#dc7759", modifiers = ["bold"] }
+"function.builtin" = { fg = "#59dcd8", modifiers = ["bold"] }
+"comment" = "#627d9d"
+"variable.builtin" = "#c6b8ad"
+"constant" = "#59dcb7"
+"constant.builtin" = "#59dcb7"
+"string" = "#59dcb7"
+"number" = "#59c0dc"
+"escape" = { fg = "#7fdc59", modifiers = ["bold"] }
+"label" = "#59c0dc"
+
+"module" = "#d32c5d"
+
+"ui.background" = { bg = "#161c23" }
+"ui.linenr" = { fg = "#415367" }
+"ui.statusline" = { bg = "#232d38" }
+"ui.popup" = { bg = "#232d38" }
+"ui.window" = { bg = "#232d38" }
+"ui.help" = { bg = "#232d38", fg = "#e5ded6" }
+
+"ui.text" = { fg = "#e5ded6" }
+"ui.text.focus" = { fg = "#e5ded6", modifiers= ["bold"] }
+
+"ui.selection" = { bg = "#540099" }
+"ui.menu.selected" = { fg = "#e5ded6", bg = "#313f4e" }
+
+"warning" = "#dc7759"
+"error" = "#dc597f"
+"info" = "#59dcb7"
+"hint" = "#59c0dc"

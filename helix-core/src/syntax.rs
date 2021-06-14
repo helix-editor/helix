@@ -5,6 +5,7 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{HashMap, HashSet},
+    fmt,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -12,13 +13,13 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
@@ -27,8 +28,8 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
 
-    // pub path: PathBuf,
-    // root_path for tree-sitter (^)
+    #[serde(default)]
+    pub auto_format: bool,
 
     // content_regex
     // injection_regex
@@ -46,7 +47,7 @@ pub struct LanguageConfiguration {
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
     pub command: String,
@@ -55,14 +56,14 @@ pub struct LanguageServerConfiguration {
     pub args: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
     pub tab_width: usize,
     pub unit: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentQuery {
     #[serde(default)]
@@ -73,16 +74,48 @@ pub struct IndentQuery {
     pub outdent: HashSet<String>,
 }
 
+#[cfg(not(feature = "embed_runtime"))]
+fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
+    let path = crate::RUNTIME_DIR
+        .join("queries")
+        .join(language)
+        .join(filename);
+    std::fs::read_to_string(&path)
+}
+
+#[cfg(feature = "embed_runtime")]
+fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
+    use std::fmt;
+
+    #[derive(rust_embed::RustEmbed)]
+    #[folder = "../runtime/"]
+    struct Runtime;
+
+    #[derive(Debug)]
+    struct EmbeddedFileNotFoundError {
+        path: PathBuf,
+    }
+    impl std::error::Error for EmbeddedFileNotFoundError {}
+    impl fmt::Display for EmbeddedFileNotFoundError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "failed to load embedded file {}", self.path.display())
+        }
+    }
+
+    let path = PathBuf::from("queries").join(language).join(filename);
+
+    if let Some(query_bytes) = Runtime::get(&path.display().to_string()) {
+        String::from_utf8(query_bytes.to_vec()).map_err(|err| err.into())
+    } else {
+        Err(Box::new(EmbeddedFileNotFoundError { path }))
+    }
+}
+
 fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()]+)\s*").unwrap());
 
-    let root = crate::runtime_dir();
-    // let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-
-    let path = root.join("queries").join(language).join(filename);
-
-    let query = std::fs::read_to_string(&path).unwrap_or_default();
+    let query = load_runtime_file(language, filename).unwrap_or_default();
 
     // TODO: the collect() is not ideal
     let inherits = INHERITS_REGEX
@@ -146,11 +179,8 @@ impl LanguageConfiguration {
             .get_or_init(|| {
                 let language = get_language_name(self.language_id).to_ascii_lowercase();
 
-                let root = crate::runtime_dir();
-                let path = root.join("queries").join(language).join("indents.toml");
-
-                let toml = std::fs::read(&path).ok()?;
-                toml::from_slice(&toml).ok()
+                let toml = load_runtime_file(&language, "indents.toml").ok()?;
+                toml::from_slice(&toml.as_bytes()).ok()
             })
             .as_ref()
     }
@@ -162,17 +192,20 @@ impl LanguageConfiguration {
 
 pub static LOADER: OnceCell<Loader> = OnceCell::new();
 
+#[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+    scopes: Vec<String>,
 }
 
 impl Loader {
-    pub fn new(config: Configuration) -> Self {
+    pub fn new(config: Configuration, scopes: Vec<String>) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
+            scopes,
         };
 
         for config in config.language {
@@ -190,6 +223,10 @@ impl Loader {
         }
 
         loader
+    }
+
+    pub fn scopes(&self) -> &[String] {
+        &self.scopes
     }
 
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
@@ -223,6 +260,12 @@ pub struct TsParser {
     cursors: Vec<QueryCursor>,
 }
 
+impl fmt::Debug for TsParser {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TsParser").finish()
+    }
+}
+
 // could also just use a pool, or a single instance?
 thread_local! {
     pub static PARSER: RefCell<TsParser> = RefCell::new(TsParser {
@@ -231,6 +274,7 @@ thread_local! {
     })
 }
 
+#[derive(Debug)]
 pub struct Syntax {
     config: Arc<HighlightConfiguration>,
 
@@ -333,7 +377,11 @@ impl Syntax {
         // prevents them from being moved. But both of these values are really just
         // pointers, so it's actually ok to move them.
 
-        let mut cursor = QueryCursor::new(); // reuse a pool
+        // reuse a cursor from the pool if possible
+        let mut cursor = PARSER.with(|ts_parser| {
+            let highlighter = &mut ts_parser.borrow_mut();
+            highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+        });
         let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(self.tree()) };
         let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
         let query_ref = unsafe { mem::transmute::<_, &'static Query>(&self.config.query) };
@@ -407,6 +455,7 @@ impl Syntax {
     // buffer_range_for_scope_at_pos
 }
 
+#[derive(Debug)]
 pub struct LanguageLayer {
     // mode
     // grammar
@@ -715,6 +764,7 @@ pub enum HighlightEvent {
 /// Contains the data neeeded to higlight code written in a particular language.
 ///
 /// This struct is immutable and can be shared between threads.
+#[derive(Debug)]
 pub struct HighlightConfiguration {
     pub language: Grammar,
     pub query: Query,
@@ -745,6 +795,7 @@ struct LocalScope<'a> {
     local_defs: Vec<LocalDef<'a>>,
 }
 
+#[derive(Debug)]
 struct HighlightIter<'a, 'tree: 'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
@@ -768,6 +819,12 @@ struct HighlightIterLayer<'a, 'tree: 'a> {
     scope_stack: Vec<LocalScope<'a>>,
     ranges: Vec<Range>,
     depth: usize,
+}
+
+impl<'a, 'tree: 'a> fmt::Debug for HighlightIterLayer<'a, 'tree> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HighlightIterLayer").finish()
+    }
 }
 
 impl HighlightConfiguration {
@@ -1699,4 +1756,14 @@ fn test_input_edits() {
             new_end_position: Point { row: 0, column: 14 }
         }]
     );
+}
+
+#[test]
+fn test_load_runtime_file() {
+    // Test to make sure we can load some data from the runtime directory.
+    let contents = load_runtime_file("rust", "indents.toml").unwrap();
+    assert!(!contents.is_empty());
+
+    let results = load_runtime_file("rust", "does-not-exist");
+    assert!(results.is_err());
 }

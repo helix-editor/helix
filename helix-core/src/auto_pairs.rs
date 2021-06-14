@@ -67,7 +67,7 @@ fn handle_open(
 
     let mut offs = 0;
 
-    let mut transaction = Transaction::change_by_selection(doc, selection, |range| {
+    let transaction = Transaction::change_by_selection(doc, selection, |range| {
         let pos = range.head;
         let next = next_char(doc, pos);
 
@@ -109,7 +109,7 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
 
     let mut offs = 0;
 
-    let mut transaction = Transaction::change_by_selection(doc, selection, |range| {
+    let transaction = Transaction::change_by_selection(doc, selection, |range| {
         let pos = range.head;
         let next = next_char(doc, pos);
 

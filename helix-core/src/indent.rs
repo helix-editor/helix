@@ -105,11 +105,14 @@ fn suggested_indent_for_line(
     line_num: usize,
     tab_width: usize,
 ) -> usize {
-    let line = text.line(line_num);
-    let current = indent_level_for_line(line, tab_width);
-
-    if let Some(start) = find_first_non_whitespace_char(text, line_num) {
-        return suggested_indent_for_pos(Some(language_config), syntax, text, start, false);
+    if let Some(start) = find_first_non_whitespace_char(text.line(line_num)) {
+        return suggested_indent_for_pos(
+            Some(language_config),
+            syntax,
+            text,
+            start + text.line_to_char(line_num),
+            false,
+        );
     };
 
     // if the line is blank, indent should be zero
@@ -251,22 +254,26 @@ where
             Configuration, IndentationConfiguration, Lang, LanguageConfiguration, Loader,
         };
         use once_cell::sync::OnceCell;
-        let loader = Loader::new(Configuration {
-            language: vec![LanguageConfiguration {
-                scope: "source.rust".to_string(),
-                file_types: vec!["rs".to_string()],
-                language_id: Lang::Rust,
-                highlight_config: OnceCell::new(),
-                //
-                roots: vec![],
-                language_server: None,
-                indent: Some(IndentationConfiguration {
-                    tab_width: 4,
-                    unit: String::from("    "),
-                }),
-                indent_query: OnceCell::new(),
-            }],
-        });
+        let loader = Loader::new(
+            Configuration {
+                language: vec![LanguageConfiguration {
+                    scope: "source.rust".to_string(),
+                    file_types: vec!["rs".to_string()],
+                    language_id: Lang::Rust,
+                    highlight_config: OnceCell::new(),
+                    //
+                    roots: vec![],
+                    auto_format: false,
+                    language_server: None,
+                    indent: Some(IndentationConfiguration {
+                        tab_width: 4,
+                        unit: String::from("    "),
+                    }),
+                    indent_query: OnceCell::new(),
+                }],
+            },
+            Vec::new(),
+        );
 
         // set runtime path so we can find the queries
         let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
