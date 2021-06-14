@@ -77,6 +77,7 @@ Possible keys:
 | ui.text | |
 | ui.text.focus | |
 | ui.menu.selected | |
+| ui.selection | for selections in the editing area |
 | warning | LSP warning |
 | error | LSP error |
 | info | LSP info |
