@@ -984,14 +984,12 @@ mod cmd {
 
         let style = match args.get(0) {
             Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
-            Some(arg) if arg.len() == 1 => {
-                let ch = arg.chars().next().unwrap();
-                if ('1'..='8').contains(&ch) {
-                    Some(Spaces(ch.to_digit(10).unwrap() as u8))
-                } else {
-                    None
-                }
-            }
+            Some(&"0") => Some(Tabs),
+            Some(arg) => arg
+                .parse::<u8>()
+                .ok()
+                .filter(|n| (1..=8).contains(n))
+                .map(Spaces),
             _ => None,
         };
 
@@ -1166,7 +1164,7 @@ mod cmd {
             completer: None,
         },
         Command {
-            name: "indent_style",
+            name: "indent-style",
             alias: None,
             doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
             fun: set_indent_style,
