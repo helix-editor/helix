@@ -405,24 +405,30 @@ impl Display for RepresentableKeyEvent {
             },
         ))?;
         match key.code {
-            KeyCode::Backspace => f.write_str("Bs")?,
-            KeyCode::Enter => f.write_str("Enter")?,
-            KeyCode::Left => f.write_str("Left")?,
-            KeyCode::Right => f.write_str("Right")?,
-            KeyCode::Up => f.write_str("Up")?,
-            KeyCode::Down => f.write_str("Down")?,
-            KeyCode::Home => f.write_str("Home")?,
-            KeyCode::End => f.write_str("End")?,
-            KeyCode::PageUp => f.write_str("PageUp")?,
-            KeyCode::PageDown => f.write_str("PageDown")?,
-            KeyCode::Tab => f.write_str("Tab")?,
-            KeyCode::BackTab => f.write_str("BackTab")?,
-            KeyCode::Delete => f.write_str("Del")?,
-            KeyCode::Insert => f.write_str("Insert")?,
+            KeyCode::Backspace => f.write_str("backspace")?,
+            KeyCode::Enter => f.write_str("ret")?,
+            KeyCode::Left => f.write_str("left")?,
+            KeyCode::Right => f.write_str("right")?,
+            KeyCode::Up => f.write_str("up")?,
+            KeyCode::Down => f.write_str("down")?,
+            KeyCode::Home => f.write_str("home")?,
+            KeyCode::End => f.write_str("end")?,
+            KeyCode::PageUp => f.write_str("pageup")?,
+            KeyCode::PageDown => f.write_str("pagedown")?,
+            KeyCode::Tab => f.write_str("tab")?,
+            KeyCode::BackTab => f.write_str("backtab")?,
+            KeyCode::Delete => f.write_str("del")?,
+            KeyCode::Insert => f.write_str("ins")?,
+            KeyCode::Null => f.write_str("null")?,
+            KeyCode::Esc => f.write_str("esc")?,
+            KeyCode::Char('<') => f.write_str("lt")?,
+            KeyCode::Char('>') => f.write_str("gt")?,
+            KeyCode::Char('+') => f.write_str("plus")?,
+            KeyCode::Char('-') => f.write_str("minus")?,
+            KeyCode::Char(';') => f.write_str("semicolon")?,
+            KeyCode::Char('%') => f.write_str("percent")?,
             KeyCode::F(i) => f.write_fmt(format_args!("F{}", i))?,
             KeyCode::Char(c) => f.write_fmt(format_args!("{}", c))?,
-            KeyCode::Null => f.write_str("Null")?,
-            KeyCode::Esc => f.write_str("Esc")?,
         };
         Ok(())
     }
@@ -434,21 +440,28 @@ impl FromStr for RepresentableKeyEvent {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut tokens: Vec<_> = s.split('-').collect();
         let code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
-            "Bs" => KeyCode::Backspace,
-            "Enter" => KeyCode::Enter,
-            "Left" => KeyCode::Left,
-            "Right" => KeyCode::Right,
-            "Up" => KeyCode::Down,
-            "Home" => KeyCode::Home,
-            "End" => KeyCode::End,
-            "PageUp" => KeyCode::PageUp,
-            "PageDown" => KeyCode::PageDown,
-            "Tab" => KeyCode::Tab,
-            "BackTab" => KeyCode::BackTab,
-            "Del" => KeyCode::Delete,
-            "Insert" => KeyCode::Insert,
-            "Null" => KeyCode::Null,
-            "Esc" => KeyCode::Esc,
+            "backspace" => KeyCode::Backspace,
+            "space" => KeyCode::Char(' '),
+            "ret" => KeyCode::Enter,
+            "lt" => KeyCode::Char('<'),
+            "gt" => KeyCode::Char('>'),
+            "plus" => KeyCode::Char('+'),
+            "minus" => KeyCode::Char('-'),
+            "semicolon" => KeyCode::Char(';'),
+            "percent" => KeyCode::Char('%'),
+            "left" => KeyCode::Left,
+            "right" => KeyCode::Right,
+            "up" => KeyCode::Down,
+            "home" => KeyCode::Home,
+            "end" => KeyCode::End,
+            "pageup" => KeyCode::PageUp,
+            "pagedown" => KeyCode::PageDown,
+            "tab" => KeyCode::Tab,
+            "backtab" => KeyCode::BackTab,
+            "del" => KeyCode::Delete,
+            "ins" => KeyCode::Insert,
+            "null" => KeyCode::Null,
+            "esc" => KeyCode::Esc,
             single if single.len() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && &function[0..1] == "F" => {
                 let function = str::parse::<u8>(&function[1..])?;
@@ -537,7 +550,7 @@ mod test {
     #[test]
     fn parsing_unmodified_keys() {
         assert_eq!(
-            str::parse::<RepresentableKeyEvent>("Bs").unwrap(),
+            str::parse::<RepresentableKeyEvent>("backspace").unwrap(),
             RepresentableKeyEvent(KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE
@@ -545,7 +558,7 @@ mod test {
         );
 
         assert_eq!(
-            str::parse::<RepresentableKeyEvent>("Left").unwrap(),
+            str::parse::<RepresentableKeyEvent>("left").unwrap(),
             RepresentableKeyEvent(KeyEvent {
                 code: KeyCode::Left,
                 modifiers: KeyModifiers::NONE
@@ -579,9 +592,9 @@ mod test {
 
     fn parsing_modified_keys() {
         assert_eq!(
-            str::parse::<RepresentableKeyEvent>("S-Bs").unwrap(),
+            str::parse::<RepresentableKeyEvent>("S-minus").unwrap(),
             RepresentableKeyEvent(KeyEvent {
-                code: KeyCode::Backspace,
+                code: KeyCode::Char('-'),
                 modifiers: KeyModifiers::SHIFT
             })
         );
@@ -593,6 +606,7 @@ mod test {
                 modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL | KeyModifiers::ALT
             })
         );
+
         assert_eq!(
             str::parse::<RepresentableKeyEvent>("S-C-2").unwrap(),
             RepresentableKeyEvent(KeyEvent {
@@ -611,5 +625,6 @@ mod test {
         assert!(str::parse::<RepresentableKeyEvent>("C-A-S-C-1").is_err());
         assert!(str::parse::<RepresentableKeyEvent>("FU").is_err());
         assert!(str::parse::<RepresentableKeyEvent>("123").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("S--").is_err());
     }
 }
