@@ -232,7 +232,45 @@ impl EditorView {
             }
         }
 
-        // render selections
+        // render gutters
+
+        let linenr: Style = theme.get("ui.linenr");
+        let warning: Style = theme.get("warning");
+        let error: Style = theme.get("error");
+        let info: Style = theme.get("info");
+        let hint: Style = theme.get("hint");
+
+        for (i, line) in (view.first_line..last_line).enumerate() {
+            use helix_core::diagnostic::Severity;
+            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
+                surface.set_stringn(
+                    viewport.x - OFFSET,
+                    viewport.y + i as u16,
+                    "●",
+                    1,
+                    match diagnostic.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    },
+                );
+            }
+
+            // line numbers having selections are rendered differently
+            surface.set_stringn(
+                viewport.x + 1 - OFFSET,
+                viewport.y + i as u16,
+                format!("{:>5}", line + 1),
+                5,
+                linenr,
+            );
+        }
+
+        // render selections and selected linenr(s)
+        let linenr_select: Style = theme
+            .try_get("ui.linenr.selected")
+            .unwrap_or_else(|| theme.get("ui.linenr"));
 
         if is_focused {
             let screen = {
@@ -329,6 +367,13 @@ impl EditorView {
                         ),
                         cursor_style,
                     );
+                    surface.set_stringn(
+                        viewport.x + 1 - OFFSET,
+                        viewport.y + head.row as u16,
+                        format!("{:>5}", view.first_line + head.row + 1),
+                        5,
+                        linenr_select,
+                    );
                     // TODO: set cursor position for IME
                     if let Some(syntax) = doc.syntax() {
                         use helix_core::match_brackets;
@@ -356,40 +401,6 @@ impl EditorView {
                     }
                 }
             }
-        }
-
-        // render gutters
-
-        let style: Style = theme.get("ui.linenr");
-        let warning: Style = theme.get("warning");
-        let error: Style = theme.get("error");
-        let info: Style = theme.get("info");
-        let hint: Style = theme.get("hint");
-
-        for (i, line) in (view.first_line..last_line).enumerate() {
-            use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
-                surface.set_stringn(
-                    viewport.x - OFFSET,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    },
-                );
-            }
-
-            surface.set_stringn(
-                viewport.x + 1 - OFFSET,
-                viewport.y + i as u16,
-                format!("{:>5}", line + 1),
-                5,
-                style,
-            );
         }
     }
 
