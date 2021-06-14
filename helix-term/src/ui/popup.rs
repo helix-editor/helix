@@ -3,7 +3,7 @@ use crate::{
     ctrl, key,
 };
 use crossterm::event::Event;
-use tui::buffer::Buffer as Surface;
+use tui::buffer::{Buffer as Surface, SurfaceExt};
 
 use helix_core::Position;
 use helix_view::graphics::{Margin, Rect};

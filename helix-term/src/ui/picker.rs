@@ -5,7 +5,7 @@ use crate::{
 };
 use crossterm::event::Event;
 use tui::{
-    buffer::Buffer as Surface,
+    buffer::{Buffer as Surface, SurfaceExt},
     widgets::{Block, BorderType, Borders},
 };
 
@@ -579,9 +579,8 @@ impl<T: 'static> Component for Picker<T> {
         let sep_style = Style::default().fg(Color::Rgb(90, 89, 119));
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
-            if let Some(cell) = surface.get_mut(x, inner.y + 1) {
-                cell.set_symbol(borders.horizontal).set_style(sep_style);
-            }
+            let cell = surface.get_mut(x, inner.y + 1);
+            cell.set_symbol(borders.horizontal).set_style(sep_style);
         }
 
         // -- Render the contents:

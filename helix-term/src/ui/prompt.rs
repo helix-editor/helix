@@ -4,7 +4,7 @@ use crossterm::event::Event;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::{KeyCode, KeyModifiers};
 use std::{borrow::Cow, ops::RangeFrom};
-use tui::buffer::Buffer as Surface;
+use tui::buffer::{Buffer as Surface, SurfaceExt};
 use tui::widgets::{Block, Borders, Widget};
 
 use helix_core::{

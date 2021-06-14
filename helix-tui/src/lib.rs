@@ -122,12 +122,8 @@
 //! you might need a blank space somewhere, try to pass an additional constraint and don't use the
 //! corresponding area.
 
-pub mod backend;
 pub mod buffer;
 pub mod layout;
 pub mod symbols;
-pub mod terminal;
 pub mod text;
 pub mod widgets;
-
-pub use self::terminal::{Terminal, TerminalOptions, Viewport};

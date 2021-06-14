@@ -254,7 +254,7 @@ impl Application {
         use helix_view::graphics::Rect;
         match signal {
             signal::SIGTSTP => {
-                self.compositor.save_cursor();
+                self.compositor.restore_cursor();
                 self.restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }

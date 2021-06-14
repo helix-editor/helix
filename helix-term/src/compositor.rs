@@ -71,51 +71,52 @@ pub trait Component: Any + AnyComponent {
     }
 }
 
-use anyhow::Error;
-use std::io::stdout;
-use tui::backend::{Backend, CrosstermBackend};
-type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+use termwiz::{
+    caps::Capabilities, surface::CursorVisibility, terminal::buffered::BufferedTerminal,
+    terminal::SystemTerminal,
+};
+type Terminal = BufferedTerminal<SystemTerminal>;
 
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
     terminal: Terminal,
+    surface: Surface,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
 }
 
 impl Compositor {
-    pub fn new() -> Result<Self, Error> {
-        let backend = CrosstermBackend::new(stdout());
-        let terminal = Terminal::new(backend)?;
+    pub fn new() -> Result<Self, termwiz::Error> {
+        let terminal = BufferedTerminal::new(SystemTerminal::new(Capabilities::new_from_env()?)?)?;
+        let (width, height) = terminal.dimensions();
+        let surface = Surface::new(width, height);
         Ok(Self {
             layers: Vec::new(),
             terminal,
+            surface,
             last_picker: None,
         })
     }
 
     pub fn size(&self) -> Rect {
-        self.terminal.size().expect("couldn't get terminal size")
+        let (width, height) = self.terminal.dimensions();
+        Rect::new(0, 0, width as u16, height as u16)
     }
 
+    // TODO: pass in usize
     pub fn resize(&mut self, width: u16, height: u16) {
-        self.terminal
-            .resize(Rect::new(0, 0, width, height))
-            .expect("Unable to resize terminal")
+        self.terminal.resize(width as usize, height as usize)
     }
 
-    pub fn save_cursor(&mut self) {
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal
-                .backend_mut()
-                .show_cursor(CursorKind::Block)
-                .ok();
+    pub fn restore_cursor(&mut self) {
+        if self.terminal.cursor_visibility() == CursorVisibility::Hidden {
+            // TODO: set cursor to block
         }
     }
 
     pub fn load_cursor(&mut self) {
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal.backend_mut().hide_cursor().ok();
+        if self.terminal.cursor_visibility() == CursorVisibility::Hidden {
+            // TODO: hide cursor again
         }
     }
 
@@ -177,24 +178,45 @@ impl Compositor {
     }
 
     pub fn render(&mut self, cx: &mut Context) {
-        self.terminal
-            .autoresize()
-            .expect("Unable to determine terminal size");
+        // self.terminal
+        //     .autoresize()
+        //     .expect("Unable to determine terminal size");
 
         // TODO: need to recalculate view tree if necessary
 
-        let surface = self.terminal.current_buffer_mut();
+        let area = self.size();
 
-        let area = *surface.area();
-
-        for layer in &mut self.layers {
-            layer.render(area, surface, cx);
+        if (area.width as usize, area.height as usize) != self.surface.dimensions() {
+            self.surface
+                .resize(area.width as usize, area.height as usize);
         }
 
-        let (pos, kind) = self.cursor(area, cx.editor);
-        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
+        for layer in &mut self.layers {
+            layer.render(area, &mut self.surface, cx)
+        }
 
-        self.terminal.draw(pos, kind).unwrap();
+        // TODO use kind
+        let (pos, kind) = self.cursor(area, cx.editor);
+        let pos = pos.map(|pos| (pos.col, pos.row));
+
+        use termwiz::surface::{Change, Position};
+        if let Some(pos) = pos {
+            self.terminal
+                .add_change(Change::CursorVisibility(CursorVisibility::Visible));
+            self.terminal.add_change(Change::CursorPosition {
+                x: Position::Absolute(pos.0),
+                y: Position::Absolute(pos.1),
+            });
+        } else {
+            self.terminal
+                .add_change(Change::CursorVisibility(CursorVisibility::Hidden));
+        }
+
+        self.terminal.draw_from_screen(&self.surface, 0, 0);
+        self.terminal.flush().expect("failed to flush");
+
+        self.surface
+            .flush_changes_older_than(self.surface.current_seqno());
     }
 
     pub fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {

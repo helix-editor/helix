@@ -1,5 +1,5 @@
 use crate::{
-    buffer::Buffer,
+    buffer::{Buffer, SurfaceExt},
     symbols::line,
     text::{Span, Spans},
     widgets::{Borders, Widget},
@@ -134,62 +134,62 @@ impl<'a> Widget for Block<'a> {
         if area.area() == 0 {
             return;
         }
-        buf.set_style(area, self.style);
+        // buf.set_style(area, self.style);
         let symbols = BorderType::line_symbols(self.border_type);
 
-        // Sides
-        if self.borders.intersects(Borders::LEFT) {
-            for y in area.top()..area.bottom() {
-                buf[(area.left(), y)]
-                    .set_symbol(symbols.vertical)
-                    .set_style(self.border_style);
-            }
-        }
-        if self.borders.intersects(Borders::TOP) {
-            for x in area.left()..area.right() {
-                buf[(x, area.top())]
-                    .set_symbol(symbols.horizontal)
-                    .set_style(self.border_style);
-            }
-        }
-        if self.borders.intersects(Borders::RIGHT) {
-            let x = area.right() - 1;
-            for y in area.top()..area.bottom() {
-                buf[(x, y)]
-                    .set_symbol(symbols.vertical)
-                    .set_style(self.border_style);
-            }
-        }
-        if self.borders.intersects(Borders::BOTTOM) {
-            let y = area.bottom() - 1;
-            for x in area.left()..area.right() {
-                buf[(x, y)]
-                    .set_symbol(symbols.horizontal)
-                    .set_style(self.border_style);
-            }
-        }
+        // // Sides
+        // if self.borders.intersects(Borders::LEFT) {
+        //     for y in area.top()..area.bottom() {
+        //         buf[(area.left(), y)]
+        //             .set_symbol(symbols.vertical)
+        //             .set_style(self.border_style);
+        //     }
+        // }
+        // if self.borders.intersects(Borders::TOP) {
+        //     for x in area.left()..area.right() {
+        //         buf[(x, area.top())]
+        //             .set_symbol(symbols.horizontal)
+        //             .set_style(self.border_style);
+        //     }
+        // }
+        // if self.borders.intersects(Borders::RIGHT) {
+        //     let x = area.right() - 1;
+        //     for y in area.top()..area.bottom() {
+        //         buf[(x, y)]
+        //             .set_symbol(symbols.vertical)
+        //             .set_style(self.border_style);
+        //     }
+        // }
+        // if self.borders.intersects(Borders::BOTTOM) {
+        //     let y = area.bottom() - 1;
+        //     for x in area.left()..area.right() {
+        //         buf[(x, y)]
+        //             .set_symbol(symbols.horizontal)
+        //             .set_style(self.border_style);
+        //     }
+        // }
 
-        // Corners
-        if self.borders.contains(Borders::RIGHT | Borders::BOTTOM) {
-            buf[(area.right() - 1, area.bottom() - 1)]
-                .set_symbol(symbols.bottom_right)
-                .set_style(self.border_style);
-        }
-        if self.borders.contains(Borders::RIGHT | Borders::TOP) {
-            buf[(area.right() - 1, area.top())]
-                .set_symbol(symbols.top_right)
-                .set_style(self.border_style);
-        }
-        if self.borders.contains(Borders::LEFT | Borders::BOTTOM) {
-            buf[(area.left(), area.bottom() - 1)]
-                .set_symbol(symbols.bottom_left)
-                .set_style(self.border_style);
-        }
-        if self.borders.contains(Borders::LEFT | Borders::TOP) {
-            buf[(area.left(), area.top())]
-                .set_symbol(symbols.top_left)
-                .set_style(self.border_style);
-        }
+        // // Corners
+        // if self.borders.contains(Borders::RIGHT | Borders::BOTTOM) {
+        //     buf[(area.right() - 1, area.bottom() - 1)]
+        //         .set_symbol(symbols.bottom_right)
+        //         .set_style(self.border_style);
+        // }
+        // if self.borders.contains(Borders::RIGHT | Borders::TOP) {
+        //     buf[(area.right() - 1, area.top())]
+        //         .set_symbol(symbols.top_right)
+        //         .set_style(self.border_style);
+        // }
+        // if self.borders.contains(Borders::LEFT | Borders::BOTTOM) {
+        //     buf[(area.left(), area.bottom() - 1)]
+        //         .set_symbol(symbols.bottom_left)
+        //         .set_style(self.border_style);
+        // }
+        // if self.borders.contains(Borders::LEFT | Borders::TOP) {
+        //     buf[(area.left(), area.top())]
+        //         .set_symbol(symbols.top_left)
+        //         .set_style(self.border_style);
+        // }
 
         if let Some(title) = self.title {
             let lx = if self.borders.intersects(Borders::LEFT) {

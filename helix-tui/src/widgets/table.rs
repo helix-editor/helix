@@ -1,5 +1,5 @@
 use crate::{
-    buffer::Buffer,
+    buffer::{Buffer, SurfaceExt},
     layout::Constraint,
     text::Text,
     widgets::{Block, Widget},
@@ -390,7 +390,7 @@ impl<'a> Table<'a> {
         if area.area() == 0 {
             return;
         }
-        buf.set_style(area, self.style);
+        // buf.set_style(area, self.style);
         let table_area = match self.block.take() {
             Some(b) => {
                 let inner_area = b.inner(area);
@@ -410,15 +410,15 @@ impl<'a> Table<'a> {
         // Draw header
         if let Some(ref header) = self.header {
             let max_header_height = table_area.height.min(header.total_height());
-            buf.set_style(
-                Rect {
-                    x: table_area.left(),
-                    y: table_area.top(),
-                    width: table_area.width,
-                    height: table_area.height.min(header.height),
-                },
-                header.style,
-            );
+            // buf.set_style(
+            //     Rect {
+            //         x: table_area.left(),
+            //         y: table_area.top(),
+            //         width: table_area.width,
+            //         height: table_area.height.min(header.height),
+            //     },
+            //     header.style,
+            // );
             let mut col = table_area.left();
             if has_selection {
                 col += (highlight_symbol.width() as u16).min(table_area.width);
@@ -461,7 +461,7 @@ impl<'a> Table<'a> {
                 width: table_area.width,
                 height: table_row.height,
             };
-            buf.set_style(table_row_area, table_row.style);
+            // buf.set_style(table_row_area, table_row.style);
             let is_selected = state.selected.map(|s| s == i).unwrap_or(false);
             let table_row_start_col = if has_selection {
                 let symbol = if is_selected {
@@ -490,14 +490,14 @@ impl<'a> Table<'a> {
                 col += *width + self.column_spacing;
             }
             if is_selected {
-                buf.set_style(table_row_area, self.highlight_style);
+                // buf.set_style(table_row_area, self.highlight_style);
             }
         }
     }
 }
 
 fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect) {
-    buf.set_style(area, cell.style);
+    // buf.set_style(area, cell.style);
     for (i, spans) in cell.content.lines.iter().enumerate() {
         if i as u16 >= area.height {
             break;

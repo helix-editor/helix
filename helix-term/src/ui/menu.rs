@@ -3,7 +3,10 @@ use crate::{
     ctrl, key, shift,
 };
 use crossterm::event::Event;
-use tui::{buffer::Buffer as Surface, widgets::Table};
+use tui::{
+    buffer::{Buffer as Surface, SurfaceExt},
+    widgets::Table,
+};
 
 pub use tui::widgets::{Cell, Row};
 
@@ -320,7 +323,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if !fits && is_marked {
-                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
+                let cell = surface.get_mut(area.x + area.width - 2, area.y + i as u16);
                 cell.set_symbol("▐");
                 // cell.set_style(selected);
                 // cell.set_style(if is_marked { selected } else { style });

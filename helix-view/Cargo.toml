@@ -10,8 +10,8 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
 [features]
-default = []
-term = ["crossterm"]
+default = ["term"]
+term = ["termwiz", "crossterm"]
 
 [dependencies]
 bitflags = "1.3"
@@ -20,6 +20,7 @@ helix-core = { version = "0.6", path = "../helix-core" }
 helix-lsp = { version = "0.6", path = "../helix-lsp"}
 helix-dap = { version = "0.6", path = "../helix-dap"}
 crossterm = { version = "0.23", optional = true }
+termwiz = { version = "0.15", optional = true }
 
 # Conversion traits
 once_cell = "1.10"

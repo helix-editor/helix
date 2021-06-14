@@ -1,5 +1,5 @@
 use crate::{
-    buffer::Buffer,
+    buffer::{Buffer, SurfaceExt},
     layout::Alignment,
     text::{StyledGrapheme, Text},
     widgets::{
@@ -134,7 +134,7 @@ impl<'a> Paragraph<'a> {
 
 impl<'a> Widget for Paragraph<'a> {
     fn render(mut self, area: Rect, buf: &mut Buffer) {
-        buf.set_style(area, self.style);
+        // buf.set_style(area, self.style);
         let text_area = match self.block.take() {
             Some(b) => {
                 let inner_area = b.inner(area);
@@ -176,15 +176,15 @@ impl<'a> Widget for Paragraph<'a> {
             if y >= self.scroll.0 {
                 let mut x = get_line_offset(current_line_width, text_area.width, self.alignment);
                 for StyledGrapheme { symbol, style } in current_line {
-                    buf[(text_area.left() + x, text_area.top() + y - self.scroll.0)]
-                        .set_symbol(if symbol.is_empty() {
-                            // If the symbol is empty, the last char which rendered last time will
-                            // leave on the line. It's a quick fix.
-                            " "
-                        } else {
-                            symbol
-                        })
-                        .set_style(*style);
+                    // buf[(text_area.left() + x, text_area.top() + y - self.scroll.0)]
+                    //     .set_symbol(if symbol.is_empty() {
+                    //         // If the symbol is empty, the last char which rendered last time will
+                    //         // leave on the line. It's a quick fix.
+                    //         " "
+                    //     } else {
+                    //         symbol
+                    //     })
+                    //     .set_style(*style);
                     x += symbol.width() as u16;
                 }
             }

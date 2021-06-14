@@ -28,7 +28,7 @@ use helix_view::{
 use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
-use tui::buffer::Buffer as Surface;
+use tui::buffer::{Buffer as Surface, SurfaceExt};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -136,7 +136,8 @@ impl EditorView {
             let x = area.right();
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
-                surface[(x, y)]
+                surface
+                    .get_mut(x, y)
                     .set_symbol(tui::symbols::line::VERTICAL)
                     //.set_symbol(" ")
                     .set_style(border_style);
@@ -437,7 +438,8 @@ impl EditorView {
                             .add_modifier(Modifier::DIM)
                     });
 
-                    surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
+                    surface
+                        .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
                         .set_style(style);
                 }
             }
@@ -1207,7 +1209,10 @@ impl Component for EditorView {
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
-        surface.set_style(area, cx.editor.theme.get("ui.background"));
+        let bg = cx.editor.theme.get("ui.background");
+        surface.add_change(termwiz::surface::Change::ClearScreen(
+            bg.bg.expect("no bg color set!").into(),
+        ));
 
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
