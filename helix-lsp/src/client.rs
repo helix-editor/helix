@@ -713,4 +713,31 @@ impl Client {
 
         self.call::<lsp::request::DocumentSymbolRequest>(params)
     }
+
+    // empty string to get all symbols
+    pub fn workspace_symbols(&self, query: String) -> impl Future<Output = Result<Value>> {
+        let params = lsp::WorkspaceSymbolParams {
+            query,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.call::<lsp::request::WorkspaceSymbol>(params)
+    }
+
+    pub fn code_actions(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::CodeActionParams {
+            text_document,
+            range,
+            context: lsp::CodeActionContext::default(),
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.call::<lsp::request::CodeActionRequest>(params)
+    }
 }
