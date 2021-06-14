@@ -76,7 +76,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    line_ending: LineEnding,
+    pub line_ending: LineEnding,
 }
 
 use std::fmt;

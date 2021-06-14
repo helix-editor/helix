@@ -31,6 +31,9 @@ pub fn str_to_line_ending(g: &str) -> Option<LineEnding> {
         "\u{000D}" => Some(LineEnding::CR),
         "\u{0085}" => Some(LineEnding::Nel),
         "\u{2028}" => Some(LineEnding::LS),
+        "\u{000B}" => Some(LineEnding::VT),
+        "\u{000C}" => Some(LineEnding::FF),
+        "\u{2029}" => Some(LineEnding::PS),
         // Not a line ending
         _ => None,
     }
@@ -58,7 +61,10 @@ pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
             _ => None,
         };
         if ending.is_some() {
-            return ending;
+            match ending {
+                Some(LineEnding::VT) | Some(LineEnding::FF) | Some(LineEnding::PS) => {}
+                _ => return ending,
+            }
         }
     }
     ending

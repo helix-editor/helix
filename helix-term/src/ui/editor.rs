@@ -7,7 +7,7 @@ use crate::{
 };
 
 use helix_core::{
-    coords_at_pos,
+    coords_at_pos, rope_slice_to_line_ending,
     syntax::{self, HighlightEvent},
     Position, Range,
 };
@@ -179,7 +179,7 @@ impl EditorView {
 
                     // iterate over range char by char
                     for grapheme in RopeGraphemes::new(text) {
-                        if grapheme == "\n" || grapheme == "\r\n" {
+                        if rope_slice_to_line_ending(&grapheme).is_some() {
                             visual_x = 0;
                             line += 1;
 
