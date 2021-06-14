@@ -70,6 +70,7 @@ Possible keys:
 | `module`                |                                     |
 | `ui.background`         |                                     |
 | `ui.linenr`             |                                     |
+| `ui.linenr.selected`    | For lines with cursors              |
 | `ui.statusline`         |                                     |
 | `ui.popup`              |                                     |
 | `ui.window`             |                                     |
