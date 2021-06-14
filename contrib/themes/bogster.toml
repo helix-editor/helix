@@ -38,6 +38,7 @@
 "ui.text" = { fg = "#e5ded6" }
 "ui.text.focus" = { fg = "#e5ded6", modifiers= ["bold"] }
 
+"ui.selection" = { bg = "#540099" }
 "ui.menu.selected" = { fg = "#e5ded6", bg = "#313f4e" }
 
 "warning" = "#dc7759"

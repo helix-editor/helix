@@ -240,8 +240,7 @@ impl EditorView {
                 // .bg(Color::Rgb(255, 255, 255))
                 .add_modifier(Modifier::REVERSED);
 
-            // let selection_style = Style::default().bg(Color::Rgb(94, 0, 128));
-            let selection_style = Style::default().bg(Color::Rgb(84, 0, 153));
+            let selection_style = theme.get("ui.selection");
 
             for selection in doc
                 .selection(view.id)
