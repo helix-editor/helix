@@ -9,7 +9,7 @@ use helix_core::{
 };
 
 use helix_view::{
-    document::Mode,
+    document::{IndentStyle, Mode},
     view::{View, PADDING},
     Document, DocumentId, Editor, ViewId,
 };
@@ -979,6 +979,28 @@ mod cmd {
         doc.format(view.id)
     }
 
+    fn set_indent_style(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        use IndentStyle::*;
+
+        let style = match args.get(0) {
+            Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
+            Some(arg) if arg.len() == 1 => {
+                let ch = arg.chars().next().unwrap();
+                if ('1'..='8').contains(&ch) {
+                    Some(Spaces(ch.to_digit(10).unwrap() as u8))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+
+        if let Some(s) = style {
+            let (_, doc) = editor.current();
+            doc.indent_style = s;
+        }
+    }
+
     fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
@@ -1141,6 +1163,13 @@ mod cmd {
             alias: Some("fmt"),
             doc: "Format the file using a formatter.",
             fun: format,
+            completer: None,
+        },
+        Command {
+            name: "indent_style",
+            alias: None,
+            doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
+            fun: set_indent_style,
             completer: None,
         },
         Command {

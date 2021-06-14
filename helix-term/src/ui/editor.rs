@@ -501,7 +501,7 @@ impl EditorView {
         // Compute the individual info strings.
         let diag_count = format!("{}", doc.diagnostics().len());
         let indent_info = match doc.indent_style {
-            IndentStyle::Tabs => "tab",
+            IndentStyle::Tabs => "tabs",
             IndentStyle::Spaces(1) => "spaces:1",
             IndentStyle::Spaces(2) => "spaces:2",
             IndentStyle::Spaces(3) => "spaces:3",
