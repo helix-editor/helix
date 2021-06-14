@@ -1280,6 +1280,96 @@ mod cmd {
         editor.set_theme_from_name(theme);
     }
 
+    fn yank_main_selection_to_clipboard(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let (view, doc) = current!(editor);
+
+        // TODO: currently the main selection is the first one. This needs to be revisited later.
+        let range = doc
+            .selection(view.id)
+            .ranges()
+            .first()
+            .expect("at least one selection");
+
+        let value = range.fragment(doc.text().slice(..));
+
+        if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
+            log::error!("Couldn't set system clipboard content: {:?}", e);
+        }
+
+        editor.set_status("yanked main selection to system clipboard".to_owned());
+    }
+
+    fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let (view, doc) = current!(editor);
+
+        let values: Vec<String> = doc
+            .selection(view.id)
+            .fragments(doc.text().slice(..))
+            .map(Cow::into_owned)
+            .collect();
+
+        let msg = format!(
+            "joined and yanked {} selection(s) to system clipboard",
+            values.len(),
+        );
+
+        let joined = values.join("\n");
+
+        if let Err(e) = editor.clipboard_provider.set_contents(joined) {
+            log::error!("Couldn't set system clipboard content: {:?}", e);
+        }
+
+        editor.set_status(msg);
+    }
+
+    fn paste_clipboard_impl(editor: &mut Editor, action: Paste) {
+        let (view, doc) = current!(editor);
+
+        match editor
+            .clipboard_provider
+            .get_contents()
+            .map(|contents| paste_impl(&[contents], doc, view, action))
+        {
+            Ok(Some(transaction)) => {
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
+            }
+            Ok(None) => {}
+            Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+        }
+    }
+
+    fn paste_clipboard_after(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        paste_clipboard_impl(editor, Paste::After);
+    }
+
+    fn paste_clipboard_before(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        paste_clipboard_impl(editor, Paste::After);
+    }
+
+    fn replace_selections_with_clipboard(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let (view, doc) = current!(editor);
+
+        match editor.clipboard_provider.get_contents() {
+            Ok(contents) => {
+                let transaction =
+                    Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                        let max_to = doc.text().len_chars().saturating_sub(1);
+                        let to = std::cmp::min(max_to, range.to() + 1);
+                        (range.from(), to, Some(contents.as_str().into()))
+                    });
+
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
+            }
+            Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+        }
+    }
+
+    fn show_clipboard_provider(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        editor.set_status(editor.clipboard_provider.name().into());
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1400,7 +1490,48 @@ mod cmd {
             fun: theme,
             completer: Some(completers::theme),
         },
-
+        TypableCommand {
+            name: "clipboard-yank",
+            alias: None,
+            doc: "Yank main selection into system clipboard.",
+            fun: yank_main_selection_to_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-yank-join",
+            alias: None,
+            doc: "Yank joined selections into system clipboard.",
+            fun: yank_joined_to_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-paste-after",
+            alias: None,
+            doc: "Paste system clipboard after selections.",
+            fun: paste_clipboard_after,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-paste-before",
+            alias: None,
+            doc: "Paste system clipboard before selections.",
+            fun: paste_clipboard_before,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-paste-replace",
+            alias: None,
+            doc: "Replace selections with content of system clipboard.",
+            fun: replace_selections_with_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "show-clipboard-provider",
+            alias: None,
+            doc: "Show clipboard provider name in status bar.",
+            fun: show_clipboard_provider,
+            completer: None,
+        },
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
