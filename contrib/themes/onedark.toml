@@ -35,6 +35,7 @@
 "ui.linenr" = { fg = "#4B5263", modifiers = ['dim'] }
 "ui.popup" = { bg = "#3E4452" }
 "ui.statusline" = { fg = "#ABB2BF", bg = "#2C323C" }
+"ui.selection" = { bg = "#3E4452" }
 "ui.text" = { fg = "#ABB2BF", bg = "#282C34" }
 "ui.text.focus" = { fg = "#ABB2BF", bg = "#2C323C", modifiers = ['bold'] }
 "ui.window" = { bg = "#3E4452" }
