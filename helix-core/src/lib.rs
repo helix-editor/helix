@@ -1,5 +1,6 @@
 #![allow(unused)]
 pub mod auto_pairs;
+pub mod chars;
 pub mod comment;
 pub mod diagnostic;
 pub mod graphemes;

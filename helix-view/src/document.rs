@@ -5,6 +5,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
+    chars::{char_is_linebreak, char_is_whitespace},
     history::History,
     syntax::{LanguageConfiguration, LOADER},
     ChangeSet, Diagnostic, Rope, Selection, State, Syntax, Transaction,
@@ -277,55 +278,6 @@ impl Document {
     }
 
     fn detect_indent_style(&mut self) {
-        // Determine whether a character is a line break.
-        //
-        // TODO: this is probably a generally useful utility function.  Where
-        // should we put it?
-        fn char_is_linebreak(c: char) -> bool {
-            [
-                '\u{000A}', // LineFeed
-                '\u{000B}', // VerticalTab
-                '\u{000C}', // FormFeed
-                '\u{000D}', // CarriageReturn
-                '\u{0085}', // NextLine
-                '\u{2028}', // Line Separator
-                '\u{2029}', // ParagraphSeparator
-            ]
-            .contains(&c)
-        }
-
-        // Determine whether a character qualifies as (non-line-break)
-        // whitespace.
-        //
-        // TODO: this is probably a generally useful utility function.  Where
-        // should we put it?
-        //
-        // TODO: this is a naive binary categorization of whitespace
-        // characters.  For display, word wrapping, etc. we'll need a better
-        // categorization based on e.g. breaking vs non-breaking spaces
-        // and whether they're zero-width or not.
-        pub fn char_is_whitespace(c: char) -> bool {
-            match c {
-                //'\u{1680}' | // Ogham Space Mark (here for completeness, but usually displayed as a dash, not as whitespace)
-                '\u{0009}' | // Character Tabulation
-                '\u{0020}' | // Space
-                '\u{00A0}' | // No-break Space
-                '\u{180E}' | // Mongolian Vowel Separator
-                '\u{202F}' | // Narrow No-break Space
-                '\u{205F}' | // Medium Mathematical Space
-                '\u{3000}' | // Ideographic Space
-                '\u{FEFF}'   // Zero Width No-break Space
-                => true,
-
-                // En Quad, Em Quad, En Space, Em Space, Three-per-em Space,
-                // Four-per-em Space, Six-per-em Space, Figure Space,
-                // Punctuation Space, Thin Space, Hair Space, Zero Width Space.
-                c if ('\u{2000}' ..= '\u{200B}').contains(&c) => true,
-
-                _ => false,
-            }
-        }
-
         // Build a histogram of the indentation *increases* between
         // subsequent lines, ignoring lines that are all whitespace.
         //
@@ -689,7 +641,7 @@ impl Document {
     ///
     /// TODO: we might not need this function anymore, since the information
     /// is conveniently available in `Document::indent_style` now.
-    pub fn indent_unit(&self) -> &str {
+    pub fn indent_unit(&self) -> &'static str {
         match self.indent_style {
             IndentStyle::Tabs => "\t",
             IndentStyle::Spaces(1) => " ",
