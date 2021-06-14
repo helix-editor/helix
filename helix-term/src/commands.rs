@@ -128,10 +128,8 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
     view.first_line = line.saturating_sub(relative);
 }
 
-/// A command is a function that takes the current state and a count, and does a side-effect on the
-/// state (usually by creating and applying a transaction).
-//pub type Command = fn(cx: &mut Context);
-
+/// A command is composed of a static name, and a function that takes the current state plus a count,
+/// and does a side-effect on the state (usually by creating and applying a transaction).
 #[derive(Clone)]
 pub struct Command(fn(cx: &mut Context), &'static str);
 
@@ -152,6 +150,7 @@ impl Command {
     pub fn execute(&self, cx: &mut Context) {
         (self.0)(cx);
     }
+
     pub fn name(&self) -> &'static str {
         self.1
     }
