@@ -284,8 +284,11 @@ impl Document {
         // Index 0 is for tabs, the rest are 1-8 spaces.
         let histogram: [usize; 9] = {
             let mut histogram = [0; 9];
-            let mut prev_line_indent = (false, 0usize); // (was_tabs, count)
+            let mut prev_line_is_tabs = false;
+            let mut prev_line_leading_count = 0usize;
 
+            // Loop through the lines, checking for and recording indentation
+            // increases as we go.
             'outer: for line in self.text.lines().take(1000) {
                 let mut c_iter = line.chars();
 
@@ -295,21 +298,22 @@ impl Document {
                     Some(' ') => false,
 
                     // Ignore blank lines.
-                    Some(c) if char_is_linebreak(c) => continue 'outer,
+                    Some(c) if char_is_linebreak(c) => continue,
 
                     _ => {
-                        prev_line_indent = (false, 0usize);
-                        continue 'outer;
+                        prev_line_is_tabs = false;
+                        prev_line_leading_count = 0;
+                        continue;
                     }
                 };
 
-                // Count the total leading tab/space characters.
-                let mut count = 1;
+                // Count the line's total leading tab/space characters.
+                let mut leading_count = 1;
                 let mut count_is_done = false;
                 for c in c_iter {
                     match c {
-                        '\t' if is_tabs && !count_is_done => count += 1,
-                        ' ' if !is_tabs && !count_is_done => count += 1,
+                        '\t' if is_tabs && !count_is_done => leading_count += 1,
+                        ' ' if !is_tabs && !count_is_done => leading_count += 1,
 
                         // We stop counting if we hit whitespace that doesn't
                         // qualify as indent or doesn't match the leading
@@ -324,27 +328,30 @@ impl Document {
                     }
 
                     // Bound the worst-case execution time for weird text files.
-                    if count > 256 {
+                    if leading_count > 256 {
                         continue 'outer;
                     }
                 }
 
-                // Update stats.
-                if (prev_line_indent.0 == is_tabs || prev_line_indent.1 == 0)
-                    && prev_line_indent.1 < count
+                // If there was an increase in indentation over the previous
+                // line, update the histogram with that increase.
+                if (prev_line_is_tabs == is_tabs || prev_line_leading_count == 0)
+                    && prev_line_leading_count < leading_count
                 {
                     if is_tabs {
                         histogram[0] += 1;
                     } else {
-                        let amount = count - prev_line_indent.1;
+                        let amount = leading_count - prev_line_leading_count;
                         if amount <= 8 {
                             histogram[amount] += 1;
                         }
                     }
                 }
 
-                // Store data for use with the next line.
-                prev_line_indent = (is_tabs, count);
+                // Store this line's leading whitespace info for use with
+                // the next line.
+                prev_line_is_tabs = is_tabs;
+                prev_line_leading_count = leading_count;
             }
 
             // Give more weight to tabs, because their presence is a very
