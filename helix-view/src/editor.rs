@@ -1,3 +1,4 @@
+use crate::clipboard::{get_clipboard_provider, ClipboardProvider};
 use crate::{
     theme::{self, Theme},
     tree::Tree,
@@ -14,9 +15,10 @@ use slotmap::SlotMap;
 
 use anyhow::Error;
 
+use helix_core::Position;
+
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
 
 #[derive(Debug)]
 pub struct Editor {
@@ -27,6 +29,7 @@ pub struct Editor {
     pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+    pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -62,6 +65,7 @@ impl Editor {
             syn_loader: config_loader,
             theme_loader: themes,
             registers: Registers::default(),
+            clipboard_provider: get_clipboard_provider(),
             status_msg: None,
         }
     }
