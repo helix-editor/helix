@@ -500,18 +500,18 @@ impl EditorView {
 
         // Compute the individual info strings.
         let diag_count = format!("{}", doc.diagnostics().len());
-        let indent_info = match doc.indent_style {
-            IndentStyle::Tabs => "tabs",
-            IndentStyle::Spaces(1) => "spaces:1",
-            IndentStyle::Spaces(2) => "spaces:2",
-            IndentStyle::Spaces(3) => "spaces:3",
-            IndentStyle::Spaces(4) => "spaces:4",
-            IndentStyle::Spaces(5) => "spaces:5",
-            IndentStyle::Spaces(6) => "spaces:6",
-            IndentStyle::Spaces(7) => "spaces:7",
-            IndentStyle::Spaces(8) => "spaces:8",
-            _ => "indent:ERROR",
-        };
+        // let indent_info = match doc.indent_style {
+        //     IndentStyle::Tabs => "tabs",
+        //     IndentStyle::Spaces(1) => "spaces:1",
+        //     IndentStyle::Spaces(2) => "spaces:2",
+        //     IndentStyle::Spaces(3) => "spaces:3",
+        //     IndentStyle::Spaces(4) => "spaces:4",
+        //     IndentStyle::Spaces(5) => "spaces:5",
+        //     IndentStyle::Spaces(6) => "spaces:6",
+        //     IndentStyle::Spaces(7) => "spaces:7",
+        //     IndentStyle::Spaces(8) => "spaces:8",
+        //     _ => "indent:ERROR",
+        // };
         let position_info = {
             let pos = coords_at_pos(doc.text().slice(..), doc.selection(view.id).cursor());
             format!("{}:{}", pos.row + 1, pos.col + 1) // convert to 1-indexing
@@ -519,9 +519,9 @@ impl EditorView {
 
         // Render them to the status line together.
         let right_side_text = format!(
-            "{}  {}  {} ",
+            "{}    {} ",
             &diag_count[..diag_count.len().min(4)],
-            indent_info,
+            // indent_info,
             position_info
         );
         let text_len = right_side_text.len() as u16;
