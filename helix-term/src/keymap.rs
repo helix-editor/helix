@@ -100,6 +100,12 @@ pub type Keymaps = HashMap<Mode, Keymap>;
 
 #[macro_export]
 macro_rules! key {
+    ($key:ident) => {
+        KeyEvent {
+            code: KeyCode::$key,
+            modifiers: KeyModifiers::NONE,
+        }
+    };
     ($($ch:tt)*) => {
         KeyEvent {
             code: KeyCode::Char($($ch)*),
@@ -133,22 +139,10 @@ pub fn default() -> Keymaps {
         key!('k') => commands::move_line_up,
         key!('l') => commands::move_char_right,
 
-        KeyEvent {
-            code: KeyCode::Left,
-            modifiers: KeyModifiers::NONE
-        } => commands::move_char_left,
-        KeyEvent {
-            code: KeyCode::Down,
-            modifiers: KeyModifiers::NONE
-        } => commands::move_line_down,
-        KeyEvent {
-            code: KeyCode::Up,
-            modifiers: KeyModifiers::NONE
-        } => commands::move_line_up,
-        KeyEvent {
-            code: KeyCode::Right,
-            modifiers: KeyModifiers::NONE
-        } => commands::move_char_right,
+        key!(Left) => commands::move_char_left,
+        key!(Down) => commands::move_line_down,
+        key!(Up) => commands::move_line_up,
+        key!(Right) => commands::move_char_right,
 
         key!('t') => commands::find_till_char,
         key!('f') => commands::find_next_char,
@@ -159,15 +153,8 @@ pub fn default() -> Keymaps {
         key!('r') => commands::replace,
         key!('R') => commands::replace_with_yanked,
 
-        KeyEvent {
-            code: KeyCode::Home,
-            modifiers: KeyModifiers::NONE
-        } => commands::move_line_start,
-
-        KeyEvent {
-            code: KeyCode::End,
-            modifiers: KeyModifiers::NONE
-        } => commands::move_line_end,
+        key!(Home) => commands::move_line_start,
+        key!(End) => commands::move_line_end,
 
         key!('w') => commands::move_next_word_start,
         key!('b') => commands::move_prev_word_start,
@@ -255,19 +242,10 @@ pub fn default() -> Keymaps {
 
         // C / altC = copy (repeat) selections on prev/next lines
 
-        KeyEvent {
-            code: KeyCode::Esc,
-            modifiers: KeyModifiers::NONE
-        } => commands::normal_mode,
-        KeyEvent {
-            code: KeyCode::PageUp,
-            modifiers: KeyModifiers::NONE
-        } => commands::page_up,
+        key!(Esc) => commands::normal_mode,
+        key!(PageUp) => commands::page_up,
+        key!(PageDown) => commands::page_down,
         ctrl!('b') => commands::page_up,
-        KeyEvent {
-            code: KeyCode::PageDown,
-            modifiers: KeyModifiers::NONE
-        } => commands::page_down,
         ctrl!('f') => commands::page_down,
         ctrl!('u') => commands::half_page_up,
         ctrl!('d') => commands::half_page_down,
@@ -280,10 +258,8 @@ pub fn default() -> Keymaps {
 
         // z family for save/restore/combine from/to sels from register
 
-        KeyEvent { // supposedly ctrl!('i') but did not work
-            code: KeyCode::Tab,
-            modifiers: KeyModifiers::NONE,
-        } => commands::jump_forward,
+        // supposedly ctrl!('i') but did not work
+        key!(Tab) => commands::jump_forward,
         ctrl!('o') => commands::jump_backward,
         // ctrl!('s') => commands::save_selection,
 
@@ -303,22 +279,10 @@ pub fn default() -> Keymaps {
             key!('k') => commands::extend_line_up,
             key!('l') => commands::extend_char_right,
 
-            KeyEvent {
-                code: KeyCode::Left,
-                modifiers: KeyModifiers::NONE
-            } => commands::extend_char_left,
-            KeyEvent {
-                code: KeyCode::Down,
-                modifiers: KeyModifiers::NONE
-            } => commands::extend_line_down,
-            KeyEvent {
-                code: KeyCode::Up,
-                modifiers: KeyModifiers::NONE
-            } => commands::extend_line_up,
-            KeyEvent {
-                code: KeyCode::Right,
-                modifiers: KeyModifiers::NONE
-            } => commands::extend_char_right,
+            key!(Left) => commands::extend_char_left,
+            key!(Down) => commands::extend_line_down,
+            key!(Up) => commands::extend_line_up,
+            key!(Right) => commands::extend_char_right,
 
             key!('w') => commands::extend_next_word_start,
             key!('b') => commands::extend_prev_word_start,
@@ -329,18 +293,9 @@ pub fn default() -> Keymaps {
 
             key!('T') => commands::extend_till_prev_char,
             key!('F') => commands::extend_prev_char,
-            KeyEvent {
-                code: KeyCode::Home,
-                modifiers: KeyModifiers::NONE
-            } => commands::extend_line_start,
-            KeyEvent {
-                code: KeyCode::End,
-                modifiers: KeyModifiers::NONE
-            } => commands::extend_line_end,
-            KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: KeyModifiers::NONE
-            } => commands::exit_select_mode,
+            key!(Home) => commands::extend_line_start,
+            key!(End) => commands::extend_line_end,
+            key!(Esc) => commands::exit_select_mode,
         )
         .into_iter(),
     );
@@ -351,26 +306,11 @@ pub fn default() -> Keymaps {
         Mode::Normal => normal,
         Mode::Select => select,
         Mode::Insert => hashmap!(
-            KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: KeyModifiers::NONE
-            } => commands::normal_mode as Command,
-            KeyEvent {
-                code: KeyCode::Backspace,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::delete_char_backward,
-            KeyEvent {
-                code: KeyCode::Delete,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::delete_char_forward,
-            KeyEvent {
-                code: KeyCode::Enter,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::insert_newline,
-            KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::NONE
-            } => commands::insert::insert_tab,
+            key!(Esc) => commands::normal_mode as Command,
+            key!(Backspace) => commands::insert::delete_char_backward,
+            key!(Delete) => commands::insert::delete_char_forward,
+            key!(Enter) => commands::insert::insert_newline,
+            key!(Tab) => commands::insert::insert_tab,
 
             ctrl!('x') => commands::completion,
             ctrl!('w') => commands::insert::delete_word_backward,
