@@ -150,6 +150,7 @@ macro_rules! commands {
 
 impl Command {
     pub fn execute(&self, cx: &mut Context) { (self.0)(cx); }
+    pub fn name(&self) -> &'static str { self.1 }
 
     commands!(
         move_char_left,
@@ -2994,6 +2995,13 @@ impl std::str::FromStr for Command {
                 return Ok(command.clone());
             }
         }
-        Err(anyhow!("No command with name '{}'", s))
+        Err(anyhow!("No command named '{}'", s))
+    }
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Command(_, name) = self;
+        f.debug_tuple("Command").field(name).finish()
     }
 }

@@ -100,9 +100,6 @@ pub use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 pub type Keymap = HashMap<KeyEvent, Command>;
 pub type Keymaps = HashMap<Mode, Keymap>;
 
-pub type Remap = HashMap<KeyEvent, KeyEvent>;
-pub type Remaps = HashMap<Mode, Remap>;
-
 #[macro_export]
 macro_rules! key {
     ($($ch:tt)*) => {
@@ -481,19 +478,19 @@ impl FromStr for RepresentableKeyEvent {
     }
 }
 
-pub fn parse_remaps(remaps: &str) -> Result<Remaps> {
+pub fn parse_remaps(remaps: &str) -> Result<Keymaps> {
     type TomlCompatibleRemaps = HashMap<String, HashMap<String, String>>;
     let toml_remaps: TomlCompatibleRemaps = toml::from_str(remaps)?;
-    let mut remaps = Remaps::new();
+    let mut remaps = Keymaps::new();
 
     for (mode, map) in toml_remaps {
         let mode = Mode::from_str(&mode)?;
-        let mut remap = Remap::new();
+        let mut remap = Keymap::new();
 
-        for (source_key, target_key) in map {
-            let source_key = str::parse::<RepresentableKeyEvent>(&source_key)?;
-            let target_key = str::parse::<RepresentableKeyEvent>(&target_key)?;
-            remap.insert(source_key.0, target_key.0);
+        for (key, command) in map {
+            let key = str::parse::<RepresentableKeyEvent>(&key)?;
+            let command = str::parse::<Command>(&command)?;
+            remap.insert(key.0, command);
         }
         remaps.insert(mode, remap);
     }
@@ -504,15 +501,19 @@ pub fn parse_remaps(remaps: &str) -> Result<Remaps> {
 mod test {
     use super::*;
 
+    impl PartialEq for Command {
+        fn eq(&self, other: &Self) -> bool { self.name() == other.name() }
+    }
+
     #[test]
     fn parsing_remaps_file() {
         let sample_remaps = r#"
             [Insert]
-            y = "x"
-            S-C-a = "F12"
+            y = "move_line_down"
+            S-C-a = "delete_selection"
 
             [Normal]
-            A-F12 = "S-C-w"
+            A-F12 = "move_next_word_end"
         "#;
 
         let parsed = parse_remaps(sample_remaps).unwrap();
@@ -521,13 +522,13 @@ mod test {
             hashmap!(
                 Mode::Insert => hashmap!(
                     KeyEvent { code: KeyCode::Char('y'), modifiers: KeyModifiers::NONE }
-                        => KeyEvent { code: KeyCode::Char('x'), modifiers: KeyModifiers::NONE },
+                        => commands::Command::move_line_down,
                     KeyEvent { code: KeyCode::Char('a'), modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL }
-                        => KeyEvent { code: KeyCode::F(12), modifiers: KeyModifiers::NONE },
+                        => commands::Command::delete_selection,
                 ),
                 Mode::Normal => hashmap!(
                     KeyEvent { code: KeyCode::F(12), modifiers: KeyModifiers::ALT }
-                        => KeyEvent { code: KeyCode::Char('w'), modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL },
+                        => commands::Command::move_next_word_end,
                 )
             )
         )

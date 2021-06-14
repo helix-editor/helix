@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Compositor, Context, EventResult},
     key,
-    keymap::{self, Keymaps, Remaps},
+    keymap::{self, Keymaps},
     ui::Completion,
 };
 
@@ -569,19 +569,10 @@ impl EditorView {
         self.completion = Some(completion);
     }
 
-    pub fn apply_remaps(&mut self, remaps: Remaps) {
+    pub fn apply_remaps(&mut self, remaps: Keymaps) {
         for (mode, remap) in remaps {
-            let mut new_pairs = HashMap::<KeyEvent, keymap::Command>::new();
-            for (source, target) in remap {
-                if let Some(command) = self.keymap.get(&mode).map(|m| m.get(&target)).flatten() {
-                    new_pairs.insert(source, command.clone());
-                }
-            }
-
-            for (key, command) in new_pairs {
-                self.keymap
-                    .get_mut(&mode)
-                    .map(|mut m| m.insert(key, command));
+            for (key, command) in remap {
+                self.keymap.get_mut(&mode).map(|mut m| m.insert(key, command));
             }
         }
     }
