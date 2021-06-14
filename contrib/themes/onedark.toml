@@ -1,3 +1,5 @@
+# Author : Gokul Soumya <gokulps15@gmail.com>
+
 "attribute" = { fg = "#E5C07B" }
 "comment" = { fg = "#5C6370", modifiers = ['italic'] }
 "constant" = { fg = "#56B6C2" }
