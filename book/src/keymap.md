@@ -141,6 +141,7 @@ Jumps to various locations.
 | y   | Go to type definition |
 | r   | Go to references |
 | i   | Go to implementation |
+| a   | Go to the last accessed/alternate file |
 
 ## Object mode
 
@@ -165,5 +166,6 @@ This layer is a kludge of mappings I had under leader key in neovim.
 |-----|-----------|
 | f   | Open file picker |
 | b   | Open buffer picker |
+| s   | Open symbol picker (current document)|
 | w   | Enter window mode |
 | space   | Keep primary selection TODO: it's here because space mode replaced it |

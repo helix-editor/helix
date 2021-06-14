@@ -18,7 +18,7 @@ pub struct Prompt {
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
     Update,
@@ -126,8 +126,18 @@ impl Prompt {
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
-        let max_col = std::cmp::max(1, area.width / BASE_WIDTH);
-        let height = ((self.completion.len() as u16 + max_col - 1) / max_col)
+        let max_len = self
+            .completion
+            .iter()
+            .map(|(_, completion)| completion.len() as u16)
+            .max()
+            .unwrap_or(BASE_WIDTH)
+            .max(BASE_WIDTH);
+
+        let cols = std::cmp::max(1, area.width / max_len);
+        let col_width = (area.width - (cols)) / cols;
+
+        let height = ((self.completion.len() as u16 + cols - 1) / cols)
             .min(10) // at most 10 rows (or less)
             .min(area.height);
 
@@ -147,7 +157,13 @@ impl Prompt {
             let mut row = 0;
             let mut col = 0;
 
-            for (i, (_range, completion)) in self.completion.iter().enumerate() {
+            // TODO: paginate
+            for (i, (_range, completion)) in self
+                .completion
+                .iter()
+                .enumerate()
+                .take(height as usize * cols as usize)
+            {
                 let color = if Some(i) == self.selection {
                     // Style::default().bg(Color::Rgb(104, 60, 232))
                     selected_color // TODO: just invert bg
@@ -155,19 +171,16 @@ impl Prompt {
                     text_color
                 };
                 surface.set_stringn(
-                    area.x + 1 + col * BASE_WIDTH,
+                    area.x + col * (1 + col_width),
                     area.y + row,
                     &completion,
-                    BASE_WIDTH as usize - 1,
+                    col_width.saturating_sub(1) as usize,
                     color,
                 );
                 row += 1;
                 if row > area.height - 1 {
                     row = 0;
                     col += 1;
-                }
-                if col > max_col {
-                    break;
                 }
             }
         }

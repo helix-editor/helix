@@ -487,8 +487,7 @@ impl Document {
         let history = self.history.take();
         let current_revision = history.current_revision();
         self.history.set(history);
-        self.path.is_some()
-            && (current_revision != self.last_saved_revision || !self.changes.is_empty())
+        current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
     #[inline]

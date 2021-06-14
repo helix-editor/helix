@@ -16,7 +16,7 @@ use helix_view::{
 
 use helix_lsp::{
     lsp,
-    util::{lsp_pos_to_pos, pos_to_lsp_pos, range_to_lsp_range},
+    util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
 use movement::Movement;
@@ -914,26 +914,8 @@ mod cmd {
 
     fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         // last view and we have unsaved changes
-        if editor.tree.views().count() == 1 {
-            let modified: Vec<_> = editor
-                .documents()
-                .filter(|doc| doc.is_modified())
-                .map(|doc| {
-                    doc.relative_path()
-                        .and_then(|path| path.to_str())
-                        .unwrap_or("[scratch]")
-                })
-                .collect();
-
-            if !modified.is_empty() {
-                let err = format!(
-                    "{} unsaved buffer(s) remaining: {:?}",
-                    modified.len(),
-                    modified
-                );
-                editor.set_error(err);
-                return;
-            }
+        if editor.tree.views().count() == 1 && _buffers_remaining(editor) {
+            return;
         }
         editor.close(editor.view().id, /* close_buffer */ false);
     }
@@ -954,20 +936,37 @@ mod cmd {
         };
     }
 
-    fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let (view, doc) = editor.current();
-        if let Some(path) = args.get(0) {
-            if let Err(err) = doc.set_path(Path::new(path)) {
-                editor.set_error(format!("invalid filepath: {}", err));
-                return;
+    fn _write<P: AsRef<Path>>(
+        view: &View,
+        doc: &mut Document,
+        path: Option<P>,
+    ) -> Result<(), anyhow::Error> {
+        use anyhow::anyhow;
+
+        if let Some(path) = path {
+            if let Err(err) = doc.set_path(path.as_ref()) {
+                return Err(anyhow!("invalid filepath: {}", err));
             };
         }
         if doc.path().is_none() {
-            editor.set_error("cannot write a buffer without a filename".to_string());
-            return;
+            return Err(anyhow!("cannot write a buffer without a filename"));
         }
-        doc.format(view.id); // TODO: merge into save
+        let autofmt = doc
+            .language_config()
+            .map(|config| config.auto_format)
+            .unwrap_or_default();
+        if autofmt {
+            doc.format(view.id); // TODO: merge into save
+        }
         tokio::spawn(doc.save());
+        Ok(())
+    }
+
+    fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let (view, doc) = editor.current();
+        if let Err(e) = _write(view, doc, args.first()) {
+            editor.set_error(e.to_string());
+        };
     }
 
     fn new_file(editor: &mut Editor, args: &[&str], event: PromptEvent) {
@@ -1002,6 +1001,103 @@ mod cmd {
         };
         let (view, doc) = editor.current();
         doc.later(view.id, uk)
+    }
+
+    fn write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let (view, doc) = editor.current();
+        if let Err(e) = _write(view, doc, args.first()) {
+            editor.set_error(e.to_string());
+            return;
+        };
+        quit(editor, &[], event)
+    }
+
+    fn force_write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        write(editor, args, event);
+        force_quit(editor, &[], event);
+    }
+
+    /// Returns `true` if there are modified buffers remaining and sets editor error,
+    /// otherwise returns `false`
+    fn _buffers_remaining(editor: &mut Editor) -> bool {
+        let modified: Vec<_> = editor
+            .documents()
+            .filter(|doc| doc.is_modified())
+            .map(|doc| {
+                doc.relative_path()
+                    .and_then(|path| path.to_str())
+                    .unwrap_or("[scratch]")
+            })
+            .collect();
+        if !modified.is_empty() {
+            let err = format!(
+                "{} unsaved buffer(s) remaining: {:?}",
+                modified.len(),
+                modified
+            );
+            editor.set_error(err);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn _write_all(editor: &mut Editor, args: &[&str], event: PromptEvent, quit: bool, force: bool) {
+        let mut errors = String::new();
+
+        // save all documents
+        for (id, mut doc) in &mut editor.documents {
+            if doc.path().is_none() {
+                errors.push_str("cannot write a buffer without a filename\n");
+                continue;
+            }
+            tokio::spawn(doc.save());
+        }
+        editor.set_error(errors);
+
+        if quit {
+            if !force && _buffers_remaining(editor) {
+                return;
+            }
+
+            // close all views
+            let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+            for view_id in views {
+                editor.close(view_id, false);
+            }
+        }
+    }
+
+    fn write_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _write_all(editor, args, event, false, false)
+    }
+
+    fn write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _write_all(editor, args, event, true, false)
+    }
+
+    fn force_write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _write_all(editor, args, event, true, true)
+    }
+
+    fn _quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
+        if !force && _buffers_remaining(editor) {
+            return;
+        }
+
+        // close all views
+        let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+        for view_id in views {
+            editor.close(view_id, false);
+        }
+    }
+
+    fn quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _quit_all(editor, args, event, false)
+    }
+
+    fn force_quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        _quit_all(editor, args, event, true)
     }
 
     pub const COMMAND_LIST: &[Command] = &[
@@ -1061,6 +1157,56 @@ mod cmd {
             fun: later,
             completer: None,
         },
+        Command {
+            name: "write-quit",
+            alias: Some("wq"),
+            doc: "Writes changes to disk and closes the current view. Accepts an optional path (:wq some/path.txt)",
+            fun: write_quit,
+            completer: Some(completers::filename),
+        },
+        Command {
+            name: "write-quit!",
+            alias: Some("wq!"),
+            doc: "Writes changes to disk and closes the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
+            fun: force_write_quit,
+            completer: Some(completers::filename),
+        },
+        Command {
+            name: "write-all",
+            alias: Some("wa"),
+            doc: "Writes changes from all views to disk.",
+            fun: write_all,
+            completer: None,
+        },
+        Command {
+            name: "write-quit-all",
+            alias: Some("wqa"),
+            doc: "Writes changes from all views to disk and close all views.",
+            fun: write_all_quit,
+            completer: None,
+        },
+        Command {
+            name: "write-quit-all!",
+            alias: Some("wqa!"),
+            doc: "Writes changes from all views to disk and close all views forcefully (ignoring unsaved changes).",
+            fun: force_write_all_quit,
+            completer: None,
+        },
+        Command {
+            name: "quit-all",
+            alias: Some("qa"),
+            doc: "Close all views.",
+            fun: quit_all,
+            completer: None,
+        },
+        Command {
+            name: "quit-all!",
+            alias: Some("qa!"),
+            doc: "Close all views forcefully (ignoring unsaved changes).",
+            fun: force_quit_all,
+            completer: None,
+        },
+
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static Command>> = Lazy::new(|| {
@@ -1188,6 +1334,76 @@ pub fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(picker));
 }
 
+pub fn symbol_picker(cx: &mut Context) {
+    fn nested_to_flat(
+        list: &mut Vec<lsp::SymbolInformation>,
+        file: &lsp::TextDocumentIdentifier,
+        symbol: lsp::DocumentSymbol,
+    ) {
+        #[allow(deprecated)]
+        list.push(lsp::SymbolInformation {
+            name: symbol.name,
+            kind: symbol.kind,
+            tags: symbol.tags,
+            deprecated: symbol.deprecated,
+            location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
+            container_name: None,
+        });
+        for child in symbol.children.into_iter().flatten() {
+            nested_to_flat(list, file, child);
+        }
+    }
+    let (view, doc) = cx.current();
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+    let offset_encoding = language_server.offset_encoding();
+
+    let future = language_server.document_symbols(doc.identifier());
+
+    cx.callback(
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::DocumentSymbolResponse>| {
+            if let Some(symbols) = response {
+                // lsp has two ways to represent symbols (flat/nested)
+                // convert the nested variant to flat, so that we have a homogeneous list
+                let symbols = match symbols {
+                    lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
+                    lsp::DocumentSymbolResponse::Nested(symbols) => {
+                        let (_view, doc) = editor.current();
+                        let mut flat_symbols = Vec::new();
+                        for symbol in symbols {
+                            nested_to_flat(&mut flat_symbols, &doc.identifier(), symbol)
+                        }
+                        flat_symbols
+                    }
+                };
+
+                let picker = Picker::new(
+                    symbols,
+                    |symbol| (&symbol.name).into(),
+                    move |editor: &mut Editor, symbol, _action| {
+                        push_jump(editor);
+                        let (view, doc) = editor.current();
+
+                        if let Some(range) =
+                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+                        {
+                            doc.set_selection(view.id, Selection::single(range.to(), range.from()));
+                            align_view(doc, view, Align::Center);
+                        }
+                    },
+                );
+                compositor.push(Box::new(picker))
+            }
+        },
+    )
+}
+
 // I inserts at the first nonwhitespace character of each line with a selection
 pub fn prepend_to_line(cx: &mut Context) {
     move_first_nonwhitespace(cx);
@@ -1311,6 +1527,15 @@ fn push_jump(editor: &mut Editor) {
     view.jumps.push(jump);
 }
 
+fn switch_to_last_accessed_file(cx: &mut Context) {
+    let alternate_file = cx.view().last_accessed_doc;
+    if let Some(alt) = alternate_file {
+        cx.editor.switch(alt, Action::Replace);
+    } else {
+        cx.editor.set_error("no last accessed buffer".to_owned())
+    }
+}
+
 pub fn goto_mode(cx: &mut Context) {
     if let Some(count) = cx._count {
         push_jump(cx.editor);
@@ -1332,6 +1557,7 @@ pub fn goto_mode(cx: &mut Context) {
             match (cx.doc().mode, ch) {
                 (_, 'g') => move_file_start(cx),
                 (_, 'e') => move_file_end(cx),
+                (_, 'a') => switch_to_last_accessed_file(cx),
                 (Mode::Normal, 'h') => move_line_start(cx),
                 (Mode::Normal, 'l') => move_line_end(cx),
                 (Mode::Select, 'h') => extend_line_start(cx),
@@ -1401,7 +1627,12 @@ fn _goto(
         let (view, doc) = editor.current();
         let definition_pos = location.range.start;
         // TODO: convert inside server
-        let new_pos = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding);
+        let new_pos =
+            if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding) {
+                new_pos
+            } else {
+                return;
+            };
         doc.set_selection(view.id, Selection::point(new_pos));
         align_view(doc, view, Align::Center);
     }
@@ -2009,7 +2240,7 @@ pub fn replace_with_yanked(cx: &mut Context) {
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                     let max_to = doc.text().len_chars().saturating_sub(1);
-                    let to = std::cmp::min(max_to, range.to());
+                    let to = std::cmp::min(max_to, range.to() + 1);
                     (range.from(), to, Some(yank.as_str().into()))
                 });
 
@@ -2291,11 +2522,7 @@ pub fn completion(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(
-        doc.text(),
-        doc.selection(view.id).cursor(),
-        language_server.offset_encoding(),
-    );
+    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
     let future = language_server.completion(doc.identifier(), pos);
@@ -2442,6 +2669,10 @@ pub fn jump_backward(cx: &mut Context) {
     let (view, doc) = cx.current();
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
+        // manually set the alternate_file as we cannot use the Editor::switch function here.
+        if view.doc != *id {
+            view.last_accessed_doc = Some(view.doc)
+        }
         view.doc = *id;
         let selection = selection.clone();
         let (view, doc) = cx.current(); // refetch doc
@@ -2527,6 +2758,7 @@ pub fn space_mode(cx: &mut Context) {
             match ch {
                 'f' => file_picker(cx),
                 'b' => buffer_picker(cx),
+                's' => symbol_picker(cx),
                 'w' => window_mode(cx),
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took its old key
