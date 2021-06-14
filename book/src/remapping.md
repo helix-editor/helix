@@ -9,30 +9,38 @@ this:
 ```toml
 # At most one section each of 'Normal', 'Insert' and 'Select'
 [Normal]
-a = "w" # Maps the 'a' key to 'w' (move to next word)
-w = "i" # Maps the 'w' key to 'i' (enter insert mode)
-C-S-Esc = "f" # Maps Control-Shift-Escape to 'f' (find char)
+a = "move_char_left" # Maps the 'a' key to the move_char_left command
+w = "move_line_up" # Maps the 'w' key move_line_up
+C-S-Esc = "select_line" # Maps Control-Shift-Escape to select_line
 
 [Insert]
-A-x = "Esc" # Maps Alt-X to 'Esc' (leave insert mode)
+A-x = "normal_mode" # Maps Alt-X to enter normal mode
 ```
 
 Control, Shift and Alt modifiers are encoded respectively with the prefixes
 `C-`, `S-` and `A-`. Special keys are encoded as follows:
 
-* Backspace => `Bs`
-* Enter => `Enter`
-* Left => `Left`
-* Right => `Right`
-* Up => `Up`
-* Down => `Down`
-* Home => `Home`
-* End => `End`
-* PageUp => `PageUp`
-* PageDown => `PageDown`
-* Tab => `Tab`
-* BackTab => `BackTab`
-* Delete => `Del`
-* Insert => `Insert`
-* Null => `Null` (No associated key)
-* Esc => `Esc`
+* Backspace => "backspace"
+* Space => "space"
+* Return/Enter => "ret"
+* < => "lt"
+* > => "gt"
+* + => "plus"
+* - => "minus"
+* ; => "semicolon"
+* % => "percent"
+* Left => "left"
+* Right => "right"
+* Up => "up"
+* Home => "home"
+* End => "end"
+* Page Up => "pageup"
+* Page Down => "pagedown"
+* Tab => "tab"
+* Back Tab => "backtab"
+* Delete => "del"
+* Insert => "ins"
+* Null => "null"
+* Escape => "esc"
+
+Commands can be found in the source code at `../../helix-term/src/commands.rs`
