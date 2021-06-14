@@ -14,13 +14,13 @@ use helix_view::{
     Document, DocumentId, Editor, ViewId,
 };
 
+use anyhow::anyhow;
 use helix_lsp::{
     lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
 use movement::Movement;
-use anyhow::anyhow;
 
 use crate::{
     compositor::{Callback, Component, Compositor},
@@ -37,8 +37,8 @@ use std::{
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
-use once_cell::sync::Lazy;
 use insert::*;
+use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
     pub register: helix_view::RegisterSelection,
@@ -149,8 +149,12 @@ macro_rules! commands {
 }
 
 impl Command {
-    pub fn execute(&self, cx: &mut Context) { (self.0)(cx); }
-    pub fn name(&self) -> &'static str { self.1 }
+    pub fn execute(&self, cx: &mut Context) {
+        (self.0)(cx);
+    }
+    pub fn name(&self) -> &'static str {
+        self.1
+    }
 
     commands!(
         move_char_left,
@@ -494,7 +498,7 @@ where
 fn find_till_char(cx: &mut Context) {
     _find_char(
         cx,
-       search::find_nth_next,
+        search::find_nth_next,
         false, /* inclusive */
         false, /* extend */
     )
@@ -931,7 +935,7 @@ fn extend_line(cx: &mut Context) {
 // heuristic: append changes to history after each command, unless we're in insert mode
 
 fn _delete_selection(reg: char, doc: &mut Document, view_id: ViewId) {
-   // first yank the selection
+    // first yank the selection
     let values: Vec<String> = doc
         .selection(view_id)
         .fragments(doc.text().slice(..))
@@ -958,7 +962,7 @@ fn delete_selection(cx: &mut Context) {
     doc.append_changes_to_history(view.id);
 
     // exit select mode, if currently in select mode
-   exit_select_mode(cx);
+    exit_select_mode(cx);
 }
 
 fn change_selection(cx: &mut Context) {
@@ -1089,7 +1093,7 @@ mod cmd {
             .map(|config| config.auto_format)
             .unwrap_or_default();
         if autofmt {
-           doc.format(view.id); // TODO: merge into save
+            doc.format(view.id); // TODO: merge into save
         }
         tokio::spawn(doc.save());
         Ok(())
@@ -1357,7 +1361,7 @@ mod cmd {
 }
 
 fn command_mode(cx: &mut Context) {
-   // TODO: completion items should have a info section that would get displayed in
+    // TODO: completion items should have a info section that would get displayed in
     // a popup above the prompt when items are tabbed over
 
     let mut prompt = Prompt::new(
@@ -1588,8 +1592,8 @@ fn open(cx: &mut Context, open: Open) {
 
             let index = doc.text().line_to_char(line).saturating_sub(1);
 
-           // TODO: share logic with insert_newline for indentation
-           let indent_level = indent::suggested_indent_for_pos(
+            // TODO: share logic with insert_newline for indentation
+            let indent_level = indent::suggested_indent_for_pos(
                 doc.language_config(),
                 doc.syntax(),
                 text,
@@ -1695,10 +1699,10 @@ fn goto_mode(cx: &mut Context) {
                 (Mode::Normal, 'l') => move_line_end(cx),
                 (Mode::Select, 'h') => extend_line_start(cx),
                 (Mode::Select, 'l') => extend_line_end(cx),
-               (_, 'd') => goto_definition(cx),
-               (_, 'y') => goto_type_definition(cx),
-               (_, 'r') => goto_reference(cx),
-               (_, 'i') => goto_implementation(cx),
+                (_, 'd') => goto_definition(cx),
+                (_, 'y') => goto_type_definition(cx),
+                (_, 'r') => goto_reference(cx),
+                (_, 'i') => goto_implementation(cx),
                 (Mode::Normal, 's') => move_first_nonwhitespace(cx),
                 (Mode::Select, 's') => extend_first_nonwhitespace(cx),
 
@@ -2165,7 +2169,7 @@ pub mod insert {
         }
     }
 
-   pub fn insert_tab(cx: &mut Context) {
+    pub fn insert_tab(cx: &mut Context) {
         let (view, doc) = cx.current();
         // TODO: round out to nearest indentation level (for example a line with 3 spaces should
         // indent by one to reach 4 spaces).
@@ -2243,7 +2247,7 @@ pub mod insert {
     }
 
     // TODO: handle indent-aware delete
-   pub fn delete_char_backward(cx: &mut Context) {
+    pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
@@ -2258,7 +2262,7 @@ pub mod insert {
         doc.apply(&transaction, view.id);
     }
 
-   pub fn delete_char_forward(cx: &mut Context) {
+    pub fn delete_char_forward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
@@ -2273,7 +2277,7 @@ pub mod insert {
         doc.apply(&transaction, view.id);
     }
 
-   pub fn delete_word_backward(cx: &mut Context) {
+    pub fn delete_word_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = cx.current();
         let text = doc.text().slice(..);
@@ -2823,10 +2827,10 @@ fn window_mode(cx: &mut Context) {
         } = event
         {
             match ch {
-               'w' => rotate_view(cx),
-               'h' => hsplit(cx),
-               'v' => vsplit(cx),
-               'q' => wclose(cx),
+                'w' => rotate_view(cx),
+                'h' => hsplit(cx),
+                'v' => vsplit(cx),
+                'q' => wclose(cx),
                 _ => {}
             }
         }

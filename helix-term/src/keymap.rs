@@ -515,7 +515,9 @@ mod test {
     use super::*;
 
     impl PartialEq for Command {
-        fn eq(&self, other: &Self) -> bool { self.name() == other.name() }
+        fn eq(&self, other: &Self) -> bool {
+            self.name() == other.name()
+        }
     }
 
     #[test]

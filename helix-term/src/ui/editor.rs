@@ -572,7 +572,9 @@ impl EditorView {
     pub fn apply_remaps(&mut self, remaps: Keymaps) {
         for (mode, remap) in remaps {
             for (key, command) in remap {
-                self.keymap.get_mut(&mode).map(|mut m| m.insert(key, command));
+                self.keymap
+                    .get_mut(&mode)
+                    .map(|mut m| m.insert(key, command));
             }
         }
     }
