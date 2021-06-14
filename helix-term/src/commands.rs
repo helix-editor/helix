@@ -958,7 +958,7 @@ mod cmd {
         if autofmt {
             doc.format(view.id); // TODO: merge into save
         }
-        tokio::spawn(doc.save());
+        helix_lsp::block_on(doc.save());
         Ok(())
     }
 
@@ -1051,7 +1051,7 @@ mod cmd {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
             }
-            tokio::spawn(doc.save());
+            helix_lsp::block_on(doc.save());
         }
         editor.set_error(errors);
 
