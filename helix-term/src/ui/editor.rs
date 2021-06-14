@@ -45,7 +45,7 @@ impl EditorView {
         Self {
             keymap: keymap::default(),
             on_next_key: None,
-            last_insert: (commands::normal_mode, Vec::new()),
+            last_insert: (commands::Command::NORMAL_MODE, Vec::new()),
             completion: None,
         }
     }
@@ -512,7 +512,7 @@ impl EditorView {
 
     fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
         if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
-            command(cx);
+            command.execute(cx);
         } else if let KeyEvent {
             code: KeyCode::Char(ch),
             ..
@@ -533,7 +533,7 @@ impl EditorView {
             // special handling for repeat operator
             key!('.') => {
                 // first execute whatever put us into insert mode
-                (self.last_insert.0)(cxt);
+                self.last_insert.0.execute(cxt);
                 // then replay the inputs
                 for key in &self.last_insert.1 {
                     self.insert_mode(cxt, *key)
@@ -550,7 +550,7 @@ impl EditorView {
                 cxt.register = cxt.editor.register.take();
 
                 if let Some(command) = self.keymap[&mode].get(&event) {
-                    command(cxt);
+                    command.execute(cxt);
                 }
             }
         }
@@ -574,7 +574,7 @@ impl EditorView {
             let mut new_pairs = HashMap::<KeyEvent, keymap::Command>::new();
             for (source, target) in remap {
                 if let Some(command) = self.keymap.get(&mode).map(|m| m.get(&target)).flatten() {
-                    new_pairs.insert(source, *command);
+                    new_pairs.insert(source, command.clone());
                 }
             }
 
@@ -681,7 +681,7 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = self.keymap[&mode][&key];
+                        self.last_insert.0 = self.keymap[&mode][&key].clone();
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

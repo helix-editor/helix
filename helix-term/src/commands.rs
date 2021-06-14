@@ -128,7 +128,132 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
 
 /// A command is a function that takes the current state and a count, and does a side-effect on the
 /// state (usually by creating and applying a transaction).
-pub type Command = fn(cx: &mut Context);
+//pub type Command = fn(cx: &mut Context);
+
+#[derive(Clone)]
+pub enum Command {
+    /// Regular commands are reached only by their bound key/combination
+    Regular(fn(cx: &mut Context)),
+    /// Typable commands can be bound to keys and also typed through `:`
+    Typable(fn(cx: &mut Context), TypableCommandData),
+}
+
+impl Command {
+    pub fn execute(&self, cx: &mut Context) {
+        match self {
+            Command::Regular(function) => function(cx),
+            Command::Typable(function, _) => function(cx),
+        }
+    }
+
+    pub const MOVE_CHAR_LEFT: Self = Self::Regular(move_char_left);
+    pub const MOVE_CHAR_RIGHT: Self = Self::Regular(move_char_right);
+    pub const MOVE_LINE_UP: Self = Self::Regular(move_line_up);
+    pub const MOVE_LINE_DOWN: Self = Self::Regular(move_line_down);
+    pub const MOVE_LINE_END: Self = Self::Regular(move_line_end);
+    pub const MOVE_LINE_START: Self = Self::Regular(move_line_start);
+    pub const MOVE_FIRST_NONWHITESPACE: Self = Self::Regular(move_first_nonwhitespace);
+    pub const MOVE_NEXT_WORD_START: Self = Self::Regular(move_next_word_start);
+    pub const MOVE_PREV_WORD_START: Self = Self::Regular(move_prev_word_start);
+    pub const MOVE_NEXT_WORD_END: Self = Self::Regular(move_next_word_end);
+    pub const MOVE_FILE_START: Self = Self::Regular(move_file_start);
+    pub const MOVE_FILE_END: Self = Self::Regular(move_file_end);
+    pub const EXTEND_NEXT_WORD_START: Self = Self::Regular(extend_next_word_start);
+    pub const EXTEND_PREV_WORD_START: Self = Self::Regular(extend_prev_word_start);
+    pub const EXTEND_NEXT_WORD_END: Self = Self::Regular(extend_next_word_end);
+    pub const FIND_TILL_CHAR: Self = Self::Regular(find_till_char);
+    pub const FIND_NEXT_CHAR: Self = Self::Regular(find_next_char);
+    pub const EXTEND_TILL_CHAR: Self = Self::Regular(extend_till_char);
+    pub const EXTEND_NEXT_CHAR: Self = Self::Regular(extend_next_char);
+    pub const TILL_PREV_CHAR: Self = Self::Regular(till_prev_char);
+    pub const FIND_PREV_CHAR: Self = Self::Regular(find_prev_char);
+    pub const EXTEND_TILL_PREV_CHAR: Self = Self::Regular(extend_till_prev_char);
+    pub const EXTEND_PREV_CHAR: Self = Self::Regular(extend_prev_char);
+    pub const EXTEND_FIRST_NONWHITESPACE: Self = Self::Regular(extend_first_nonwhitespace);
+    pub const REPLACE: Self = Self::Regular(replace);
+    pub const PAGE_UP: Self = Self::Regular(page_up);
+    pub const PAGE_DOWN: Self = Self::Regular(page_down);
+    pub const HALF_PAGE_UP: Self = Self::Regular(half_page_up);
+    pub const HALF_PAGE_DOWN: Self = Self::Regular(half_page_down);
+    pub const EXTEND_CHAR_LEFT: Self = Self::Regular(extend_char_left);
+    pub const EXTEND_CHAR_RIGHT: Self = Self::Regular(extend_char_right);
+    pub const EXTEND_LINE_UP: Self = Self::Regular(extend_line_up);
+    pub const EXTEND_LINE_DOWN: Self = Self::Regular(extend_line_down);
+    pub const EXTEND_LINE_END: Self = Self::Regular(extend_line_end);
+    pub const EXTEND_LINE_START: Self = Self::Regular(extend_line_start);
+    pub const SELECT_ALL: Self = Self::Regular(select_all);
+    pub const SELECT_REGEX: Self = Self::Regular(select_regex);
+    pub const SPLIT_SELECTION: Self = Self::Regular(split_selection);
+    pub const SPLIT_SELECTION_ON_NEWLINE: Self = Self::Regular(split_selection_on_newline);
+    pub const SEARCH: Self = Self::Regular(search);
+    pub const SEARCH_NEXT: Self = Self::Regular(search_next);
+    pub const EXTEND_SEARCH_NEXT: Self = Self::Regular(extend_search_next);
+    pub const SEARCH_SELECTION: Self = Self::Regular(search_selection);
+    pub const SELECT_LINE: Self = Self::Regular(select_line);
+    pub const EXTEND_LINE: Self = Self::Regular(extend_line);
+    pub const DELETE_SELECTION: Self = Self::Regular(delete_selection);
+    pub const CHANGE_SELECTION: Self = Self::Regular(change_selection);
+    pub const COLLAPSE_SELECTION: Self = Self::Regular(collapse_selection);
+    pub const FLIP_SELECTIONS: Self = Self::Regular(flip_selections);
+    pub const INSERT_MODE: Self = Self::Regular(insert_mode);
+    pub const APPEND_MODE: Self = Self::Regular(append_mode);
+    pub const COMMAND_MODE: Self = Self::Regular(command_mode);
+    pub const FILE_PICKER: Self = Self::Regular(file_picker);
+    pub const BUFFER_PICKER: Self = Self::Regular(buffer_picker);
+    pub const SYMBOL_PICKER: Self = Self::Regular(symbol_picker);
+    pub const PREPEND_TO_LINE: Self = Self::Regular(prepend_to_line);
+    pub const APPEND_TO_LINE: Self = Self::Regular(append_to_line);
+    pub const OPEN_BELOW: Self = Self::Regular(open_below);
+    pub const OPEN_ABOVE: Self = Self::Regular(open_above);
+    pub const NORMAL_MODE: Self = Self::Regular(normal_mode);
+    pub const GOTO_MODE: Self = Self::Regular(goto_mode);
+    pub const SELECT_MODE: Self = Self::Regular(select_mode);
+    pub const EXIT_SELECT_MODE: Self = Self::Regular(exit_select_mode);
+    pub const GOTO_DEFINITION: Self = Self::Regular(goto_definition);
+    pub const GOTO_TYPE_DEFINITION: Self = Self::Regular(goto_type_definition);
+    pub const GOTO_IMPLEMENTATION: Self = Self::Regular(goto_implementation);
+    pub const GOTO_REFERENCE: Self = Self::Regular(goto_reference);
+    pub const GOTO_FIRST_DIAG: Self = Self::Regular(goto_first_diag);
+    pub const GOTO_LAST_DIAG: Self = Self::Regular(goto_last_diag);
+    pub const GOTO_NEXT_DIAG: Self = Self::Regular(goto_next_diag);
+    pub const GOTO_PREV_DIAG: Self = Self::Regular(goto_prev_diag);
+    pub const SIGNATURE_HELP: Self = Self::Regular(signature_help);
+    pub const INSERT_TAB: Self = Self::Regular(insert::insert_tab);
+    pub const INSERT_NEWLINE: Self = Self::Regular(insert::insert_newline);
+    pub const DELETE_CHAR_BACKWARD: Self = Self::Regular(insert::delete_char_backward);
+    pub const DELETE_CHAR_FORWARD: Self = Self::Regular(insert::delete_char_forward);
+    pub const DELETE_WORD_BACKWARD: Self = Self::Regular(insert::delete_word_backward);
+    pub const UNDO: Self = Self::Regular(undo);
+    pub const REDO: Self = Self::Regular(redo);
+    pub const YANK: Self = Self::Regular(yank);
+    pub const REPLACE_WITH_YANKED: Self = Self::Regular(replace_with_yanked);
+    pub const PASTE_AFTER: Self = Self::Regular(paste_after);
+    pub const PASTE_BEFORE: Self = Self::Regular(paste_before);
+    pub const INDENT: Self = Self::Regular(indent);
+    pub const UNINDENT: Self = Self::Regular(unindent);
+    pub const FORMAT_SELECTIONS: Self = Self::Regular(format_selections);
+    pub const JOIN_SELECTIONS: Self = Self::Regular(join_selections);
+    pub const KEEP_SELECTIONS: Self = Self::Regular(keep_selections);
+    pub const KEEP_PRIMARY_SELECTION: Self = Self::Regular(keep_primary_selection);
+    pub const SAVE: Self = Self::Regular(save);
+    pub const COMPLETION: Self = Self::Regular(completion);
+    pub const HOVER: Self = Self::Regular(hover);
+    pub const TOGGLE_COMMENTS: Self = Self::Regular(toggle_comments);
+    pub const EXPAND_SELECTION: Self = Self::Regular(expand_selection);
+    pub const MATCH_BRACKETS: Self = Self::Regular(match_brackets);
+    pub const JUMP_FORWARD: Self = Self::Regular(jump_forward);
+    pub const JUMP_BACKWARD: Self = Self::Regular(jump_backward);
+    pub const WINDOW_MODE: Self = Self::Regular(window_mode);
+    pub const ROTATE_VIEW: Self = Self::Regular(rotate_view);
+    pub const HSPLIT: Self = Self::Regular(hsplit);
+    pub const VSPLIT: Self = Self::Regular(vsplit);
+    pub const WCLOSE: Self = Self::Regular(wclose);
+    pub const SELECT_REGISTER: Self = Self::Regular(select_register);
+    pub const SPACE_MODE: Self = Self::Regular(space_mode);
+    pub const VIEW_MODE: Self = Self::Regular(view_mode);
+    pub const LEFT_BRACKET_MODE: Self = Self::Regular(left_bracket_mode);
+    pub const RIGHT_BRACKET_MODE: Self = Self::Regular(right_bracket_mode);
+}
 
 pub fn move_char_left(cx: &mut Context) {
     let count = cx.count();
@@ -903,7 +1028,7 @@ mod cmd {
     use ui::completers::{self, Completer};
 
     #[derive(Clone)]
-    pub struct Command {
+    pub struct TypableCommandData {
         pub name: &'static str,
         pub alias: Option<&'static str>,
         pub doc: &'static str,
@@ -1100,106 +1225,106 @@ mod cmd {
         _quit_all(editor, args, event, true)
     }
 
-    pub const COMMAND_LIST: &[Command] = &[
-        Command {
+    pub const COMMAND_LIST: &[TypableCommandData] = &[
+        TypableCommandData {
             name: "quit",
             alias: Some("q"),
             doc: "Close the current view.",
             fun: quit,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "quit!",
             alias: Some("q!"),
             doc: "Close the current view.",
             fun: force_quit,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "open",
             alias: Some("o"),
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
         },
-        Command {
+        TypableCommandData {
             name: "write",
             alias: Some("w"),
             doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
             completer: Some(completers::filename),
         },
-        Command {
+        TypableCommandData {
             name: "new",
             alias: Some("n"),
             doc: "Create a new scratch buffer.",
             fun: new_file,
             completer: Some(completers::filename),
         },
-        Command {
+        TypableCommandData {
             name: "format",
             alias: Some("fmt"),
             doc: "Format the file using a formatter.",
             fun: format,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "earlier",
             alias: Some("ear"),
             doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
             fun: earlier,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "later",
             alias: Some("lat"),
             doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
             fun: later,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "write-quit",
             alias: Some("wq"),
             doc: "Writes changes to disk and closes the current view. Accepts an optional path (:wq some/path.txt)",
             fun: write_quit,
             completer: Some(completers::filename),
         },
-        Command {
+        TypableCommandData {
             name: "write-quit!",
             alias: Some("wq!"),
             doc: "Writes changes to disk and closes the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
             fun: force_write_quit,
             completer: Some(completers::filename),
         },
-        Command {
+        TypableCommandData {
             name: "write-all",
             alias: Some("wa"),
             doc: "Writes changes from all views to disk.",
             fun: write_all,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "write-quit-all",
             alias: Some("wqa"),
             doc: "Writes changes from all views to disk and close all views.",
             fun: write_all_quit,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "write-quit-all!",
             alias: Some("wqa!"),
             doc: "Writes changes from all views to disk and close all views forcefully (ignoring unsaved changes).",
             fun: force_write_all_quit,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "quit-all",
             alias: Some("qa"),
             doc: "Close all views.",
             fun: quit_all,
             completer: None,
         },
-        Command {
+        TypableCommandData {
             name: "quit-all!",
             alias: Some("qa!"),
             doc: "Close all views forcefully (ignoring unsaved changes).",
@@ -1209,7 +1334,7 @@ mod cmd {
 
     ];
 
-    pub static COMMANDS: Lazy<HashMap<&'static str, &'static Command>> = Lazy::new(|| {
+    pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommandData>> = Lazy::new(|| {
         let mut map = HashMap::new();
 
         for cmd in COMMAND_LIST {
@@ -1246,7 +1371,7 @@ pub fn command_mode(cx: &mut Context) {
             } else {
                 let part = parts.last().unwrap();
 
-                if let Some(cmd::Command {
+                if let Some(cmd::TypableCommandData {
                     completer: Some(completer),
                     ..
                 }) = cmd::COMMANDS.get(parts[0])
@@ -1287,7 +1412,7 @@ pub fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let part = input.split(' ').next().unwrap_or_default();
 
-        if let Some(cmd::Command { doc, .. }) = cmd::COMMANDS.get(part) {
+        if let Some(cmd::TypableCommandData { doc, .. }) = cmd::COMMANDS.get(part) {
             return Some(doc);
         }
 
@@ -2706,6 +2831,8 @@ pub fn rotate_view(cx: &mut Context) {
 
 // split helper, clear it later
 use helix_view::editor::Action;
+
+use self::cmd::TypableCommandData;
 fn split(cx: &mut Context, action: Action) {
     use helix_view::editor::Action;
     let (view, doc) = cx.current();
