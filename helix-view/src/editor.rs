@@ -8,13 +8,15 @@ use slotmap::SlotMap;
 use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
+pub use helix_core::register::Registers;
 
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
-    pub register: RegisterSelection,
+    pub selected_register: RegisterSelection,
+    pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
@@ -59,9 +61,10 @@ impl Editor {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
             count: None,
-            register: RegisterSelection::default(),
+            selected_register: RegisterSelection::default(),
             theme,
             language_servers,
+            registers: Registers::default(),
             status_msg: None,
         }
     }
@@ -237,6 +240,13 @@ impl Editor {
         let view = self.tree.get_mut(self.tree.focus);
         let doc = &mut self.documents[view.doc];
         (view, doc)
+    }
+
+    pub fn current_with_registers(&mut self) -> (&mut View, &mut Document, &mut Registers) {
+        let view = self.tree.get_mut(self.tree.focus);
+        let doc = &mut self.documents[view.doc];
+        let registers = &mut self.registers;
+        (view, doc, registers)
     }
 
     pub fn view(&self) -> &View {

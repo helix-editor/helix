@@ -1,20 +1,63 @@
-use crate::Tendril;
-use once_cell::sync::Lazy;
-use std::{collections::HashMap, sync::RwLock};
+use std::collections::HashMap;
 
-// TODO: could be an instance on Editor
-static REGISTRY: Lazy<RwLock<HashMap<char, Vec<String>>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
-
-/// Read register values.
-pub fn get(register_name: char) -> Option<Vec<String>> {
-    let registry = REGISTRY.read().unwrap();
-    registry.get(&register_name).cloned() // TODO: no cloning
+#[derive(Debug)]
+pub struct Register {
+    name: char,
+    values: Vec<String>,
 }
 
-/// Read register values.
-// restoring: bool
-pub fn set(register_name: char, values: Vec<String>) {
-    let mut registry = REGISTRY.write().unwrap();
-    registry.insert(register_name, values);
+impl Register {
+    pub fn new(name: char) -> Self {
+        Self {
+            name,
+            values: Vec::new(),
+        }
+    }
+
+    pub fn new_with_values(name: char, values: Vec<String>) -> Self {
+        Self { name, values }
+    }
+
+    pub fn name(&self) -> char {
+        self.name
+    }
+
+    pub fn read(&self) -> &Vec<String> {
+        &self.values
+    }
+
+    pub fn write(&mut self, values: Vec<String>) {
+        self.values = values;
+    }
+}
+
+/// Currently just wraps a `HashMap` of `Register`s
+#[derive(Debug, Default)]
+pub struct Registers {
+    inner: HashMap<char, Register>,
+}
+
+impl Registers {
+    pub fn get(&self, name: char) -> Option<&Register> {
+        self.inner.get(&name)
+    }
+
+    pub fn get_mut(&mut self, name: char) -> Option<&mut Register> {
+        self.inner.get_mut(&name)
+    }
+
+    pub fn get_or_insert(&mut self, name: char) -> &mut Register {
+        self.inner
+            .entry(name)
+            .or_insert_with(|| Register::new(name))
+    }
+
+    pub fn write(&mut self, name: char, values: Vec<String>) {
+        self.inner
+            .insert(name, Register::new_with_values(name, values));
+    }
+
+    pub fn read(&self, name: char) -> Option<&Vec<String>> {
+        self.get(name).map(|reg| reg.read())
+    }
 }
