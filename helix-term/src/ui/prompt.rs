@@ -106,6 +106,13 @@ impl Prompt {
         self.exit_selection();
     }
 
+    pub fn clear(&mut self) {
+        self.line.clear();
+        self.cursor = 0;
+        self.completion = (self.completion_fn)(&self.line);
+        self.exit_selection();
+    }
+
     pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
         if self.completion.is_empty() {
             return;

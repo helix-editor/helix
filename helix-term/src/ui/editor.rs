@@ -12,7 +12,7 @@ use helix_core::{
     Position, Range,
 };
 use helix_view::{document::Mode, Document, Editor, Theme, View};
-use std::{borrow::Cow, collections::HashMap};
+use std::borrow::Cow;
 
 use crossterm::{
     cursor,
@@ -455,6 +455,10 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
     ) {
+        //-------------------------------
+        // Left side of the status line.
+        //-------------------------------
+
         let mode = match doc.mode() {
             Mode::Insert => "INS",
             Mode::Select => "SEL",
@@ -487,24 +491,41 @@ impl EditorView {
             );
         }
 
-        surface.set_stringn(
-            viewport.x + viewport.width.saturating_sub(15),
-            viewport.y,
-            format!("{}", doc.diagnostics().len()),
-            4,
-            text_color,
+        //-------------------------------
+        // Right side of the status line.
+        //-------------------------------
+
+        // Compute the individual info strings.
+        let diag_count = format!("{}", doc.diagnostics().len());
+        // let indent_info = match doc.indent_style {
+        //     IndentStyle::Tabs => "tabs",
+        //     IndentStyle::Spaces(1) => "spaces:1",
+        //     IndentStyle::Spaces(2) => "spaces:2",
+        //     IndentStyle::Spaces(3) => "spaces:3",
+        //     IndentStyle::Spaces(4) => "spaces:4",
+        //     IndentStyle::Spaces(5) => "spaces:5",
+        //     IndentStyle::Spaces(6) => "spaces:6",
+        //     IndentStyle::Spaces(7) => "spaces:7",
+        //     IndentStyle::Spaces(8) => "spaces:8",
+        //     _ => "indent:ERROR",
+        // };
+        let position_info = {
+            let pos = coords_at_pos(doc.text().slice(..), doc.selection(view.id).cursor());
+            format!("{}:{}", pos.row + 1, pos.col + 1) // convert to 1-indexing
+        };
+
+        // Render them to the status line together.
+        let right_side_text = format!(
+            "{}    {} ",
+            &diag_count[..diag_count.len().min(4)],
+            // indent_info,
+            position_info
         );
-
-        // render line:col
-        let pos = coords_at_pos(doc.text().slice(..), doc.selection(view.id).cursor());
-
-        let text = format!("{}:{}", pos.row + 1, pos.col + 1); // convert to 1-indexing
-        let len = text.len();
-
+        let text_len = right_side_text.len() as u16;
         surface.set_string(
-            viewport.x + viewport.width.saturating_sub(len as u16 + 1),
+            viewport.x + viewport.width.saturating_sub(text_len),
             viewport.y,
-            text,
+            right_side_text,
             text_color,
         );
     }
@@ -540,7 +561,7 @@ impl EditorView {
             }
             _ => {
                 // set the count
-                cxt._count = cxt.editor.count.take();
+                cxt.count = cxt.editor.count.take();
                 // TODO: edge case: 0j -> reset to 1
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
@@ -598,7 +619,7 @@ impl Component for EditorView {
                 let mut cxt = commands::Context {
                     register: helix_view::RegisterSelection::default(),
                     editor: &mut cx.editor,
-                    _count: None,
+                    count: None,
                     callback: None,
                     on_next_key_callback: None,
                     callbacks: cx.callbacks,
