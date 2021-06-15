@@ -1,5 +1,6 @@
 use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId};
 use tui::layout::Rect;
+use tui::terminal::CursorKind;
 
 use std::path::PathBuf;
 
@@ -9,6 +10,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
+use helix_core::Position;
 
 #[derive(Debug)]
 pub struct Editor {
@@ -276,7 +278,7 @@ impl Editor {
     //     let doc = &mut editor.documents[id];
     // }
 
-    pub fn cursor_position(&self) -> Option<helix_core::Position> {
+    pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = self.view();
         let doc = &self.documents[view.doc];
@@ -284,8 +286,9 @@ impl Editor {
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
             pos.col += view.area.x as usize + OFFSET as usize;
             pos.row += view.area.y as usize;
-            return Some(pos);
+            (Some(pos), CursorKind::Hidden)
+        } else {
+            (None, CursorKind::Hidden)
         }
-        None
     }
 }

@@ -26,6 +26,7 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Modifier, Style},
+    terminal::CursorKind,
 };
 
 pub struct EditorView {
@@ -739,15 +740,12 @@ impl Component for EditorView {
         }
     }
 
-    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         // match view.doc.mode() {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
-        // return editor.cursor_position()
-
-        // It's easier to just not render the cursor and use selection rendering instead.
-        None
+        editor.cursor()
     }
 }
 

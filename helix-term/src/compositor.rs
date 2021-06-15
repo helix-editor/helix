@@ -4,7 +4,7 @@
 
 use crossterm::event::Event;
 use helix_core::Position;
-use tui::{buffer::Buffer as Surface, layout::Rect};
+use tui::{buffer::Buffer as Surface, layout::Rect, terminal::CursorKind};
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
 
@@ -47,8 +47,9 @@ pub trait Component: Any + AnyComponent {
     /// Render the component onto the provided surface.
     fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
-    fn cursor_position(&self, area: Rect, ctx: &Editor) -> Option<Position> {
-        None
+    /// Get cursor position and cursor kind.
+    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+        (None, CursorKind::Hidden)
     }
 
     /// May be used by the parent component to compute the child area.
@@ -137,20 +138,19 @@ impl Compositor {
             layer.render(area, surface, cx)
         }
 
-        let pos = self
-            .cursor_position(area, cx.editor)
-            .map(|pos| (pos.col as u16, pos.row as u16));
+        let (pos, kind) = self.cursor(area, cx.editor);
+        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
 
-        self.terminal.draw(pos);
+        self.terminal.draw(pos, kind);
     }
 
-    pub fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+    pub fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         for layer in self.layers.iter().rev() {
-            if let Some(pos) = layer.cursor_position(area, editor) {
-                return Some(pos);
+            if let (Some(pos), kind) = layer.cursor(area, editor) {
+                return (Some(pos), kind);
             }
         }
-        None
+        (None, CursorKind::Hidden)
     }
 
     pub fn find(&mut self, type_name: &str) -> Option<&mut dyn Component> {
