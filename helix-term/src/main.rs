@@ -93,7 +93,9 @@ FLAGS:
     let config = std::fs::read_to_string(conf_dir.join("config.toml"))
         .ok()
         .map(|s| Config::from_str(&s))
-        .transpose()?;
+        .transpose()?
+        .or_else(|| Some(Config::default()))
+        .unwrap();
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 

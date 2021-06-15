@@ -3,7 +3,12 @@ pub use crate::commands::Command;
 use anyhow::{anyhow, Error, Result};
 use helix_core::hashmap;
 use helix_view::document::Mode;
-use std::{collections::HashMap, fmt::Display, str::FromStr};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
 
 // Kakoune-inspired:
 // mode = {
@@ -97,8 +102,10 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 // #[cfg(feature = "term")]
 pub use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-pub type Keymap = HashMap<KeyEvent, Command>;
-pub type Keymaps = HashMap<Mode, Keymap>;
+#[derive(Clone, Debug)]
+pub struct Keymap(pub HashMap<KeyEvent, Command>);
+#[derive(Clone, Debug)]
+pub struct Keymaps(pub HashMap<Mode, Keymap>);
 
 #[macro_export]
 macro_rules! key {
@@ -134,189 +141,191 @@ macro_rules! alt {
     };
 }
 
-pub fn default() -> Keymaps {
-    let normal = hashmap!(
-        key!('h') => Command::move_char_left,
-        key!('j') => Command::move_line_down,
-        key!('k') => Command::move_line_up,
-        key!('l') => Command::move_char_right,
+impl Default for Keymaps {
+    fn default() -> Self {
+        let normal = Keymap(hashmap!(
+            key!('h') => Command::move_char_left,
+            key!('j') => Command::move_line_down,
+            key!('k') => Command::move_line_up,
+            key!('l') => Command::move_char_right,
 
-        key!(Left) => Command::move_char_left,
-        key!(Down) => Command::move_line_down,
-        key!(Up) => Command::move_line_up,
-        key!(Right) => Command::move_char_right,
+            key!(Left) => Command::move_char_left,
+            key!(Down) => Command::move_line_down,
+            key!(Up) => Command::move_line_up,
+            key!(Right) => Command::move_char_right,
 
-        key!('t') => Command::find_till_char,
-        key!('f') => Command::find_next_char,
-        key!('T') => Command::till_prev_char,
-        key!('F') => Command::find_prev_char,
-        // and matching set for select mode (extend)
-        //
-        key!('r') => Command::replace,
-        key!('R') => Command::replace_with_yanked,
+            key!('t') => Command::find_till_char,
+            key!('f') => Command::find_next_char,
+            key!('T') => Command::till_prev_char,
+            key!('F') => Command::find_prev_char,
+            // and matching set for select mode (extend)
+            //
+            key!('r') => Command::replace,
+            key!('R') => Command::replace_with_yanked,
 
-        key!(Home) => Command::move_line_start,
-        key!(End) => Command::move_line_end,
+            key!(Home) => Command::move_line_start,
+            key!(End) => Command::move_line_end,
 
-        key!('w') => Command::move_next_word_start,
-        key!('b') => Command::move_prev_word_start,
-        key!('e') => Command::move_next_word_end,
+            key!('w') => Command::move_next_word_start,
+            key!('b') => Command::move_prev_word_start,
+            key!('e') => Command::move_next_word_end,
 
-        key!('v') => Command::select_mode,
-        key!('g') => Command::goto_mode,
-        key!(':') => Command::command_mode,
+            key!('v') => Command::select_mode,
+            key!('g') => Command::goto_mode,
+            key!(':') => Command::command_mode,
 
-        key!('i') => Command::insert_mode,
-        key!('I') => Command::prepend_to_line,
-        key!('a') => Command::append_mode,
-        key!('A') => Command::append_to_line,
-        key!('o') => Command::open_below,
-        key!('O') => Command::open_above,
-        // [<space>  ]<space> equivalents too (add blank new line, no edit)
-
-
-        key!('d') => Command::delete_selection,
-        // TODO: also delete without yanking
-        key!('c') => Command::change_selection,
-        // TODO: also change delete without yanking
-
-        // key!('r') => Command::replace_with_char,
-
-        key!('s') => Command::select_regex,
-        alt!('s') => Command::split_selection_on_newline,
-        key!('S') => Command::split_selection,
-        key!(';') => Command::collapse_selection,
-        alt!(';') => Command::flip_selections,
-        key!('%') => Command::select_all,
-        key!('x') => Command::select_line,
-        key!('X') => Command::extend_line,
-        // or select mode X?
-        // extend_to_whole_line, crop_to_whole_line
+            key!('i') => Command::insert_mode,
+            key!('I') => Command::prepend_to_line,
+            key!('a') => Command::append_mode,
+            key!('A') => Command::append_to_line,
+            key!('o') => Command::open_below,
+            key!('O') => Command::open_above,
+            // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
 
-        key!('m') => Command::match_brackets,
-        // TODO: refactor into
-        // key!('m') => commands::select_to_matching,
-        // key!('M') => commands::back_select_to_matching,
-        // select mode extend equivalents
+            key!('d') => Command::delete_selection,
+            // TODO: also delete without yanking
+            key!('c') => Command::change_selection,
+            // TODO: also change delete without yanking
 
-        // key!('.') => commands::repeat_insert,
-        // repeat_select
+            // key!('r') => Command::replace_with_char,
 
-        // TODO: figure out what key to use
-        // key!('[') => Command::expand_selection, ??
-        key!('[') => Command::left_bracket_mode,
-        key!(']') => Command::right_bracket_mode,
+            key!('s') => Command::select_regex,
+            alt!('s') => Command::split_selection_on_newline,
+            key!('S') => Command::split_selection,
+            key!(';') => Command::collapse_selection,
+            alt!(';') => Command::flip_selections,
+            key!('%') => Command::select_all,
+            key!('x') => Command::select_line,
+            key!('X') => Command::extend_line,
+            // or select mode X?
+            // extend_to_whole_line, crop_to_whole_line
 
-        key!('/') => Command::search,
-        // ? for search_reverse
-        key!('n') => Command::search_next,
-        key!('N') => Command::extend_search_next,
-        // N for search_prev
-        key!('*') => Command::search_selection,
 
-        key!('u') => Command::undo,
-        key!('U') => Command::redo,
+            key!('m') => Command::match_brackets,
+            // TODO: refactor into
+            // key!('m') => commands::select_to_matching,
+            // key!('M') => commands::back_select_to_matching,
+            // select mode extend equivalents
 
-        key!('y') => Command::yank,
-        // yank_all
-        key!('p') => Command::paste_after,
-        // paste_all
-        key!('P') => Command::paste_before,
+            // key!('.') => commands::repeat_insert,
+            // repeat_select
 
-        key!('>') => Command::indent,
-        key!('<') => Command::unindent,
-        key!('=') => Command::format_selections,
-        key!('J') => Command::join_selections,
-        // TODO: conflicts hover/doc
-        key!('K') => Command::keep_selections,
-        // TODO: and another method for inverse
+            // TODO: figure out what key to use
+            // key!('[') => Command::expand_selection, ??
+            key!('[') => Command::left_bracket_mode,
+            key!(']') => Command::right_bracket_mode,
 
-        // TODO: clashes with space mode
-        key!(' ') => Command::keep_primary_selection,
+            key!('/') => Command::search,
+            // ? for search_reverse
+            key!('n') => Command::search_next,
+            key!('N') => Command::extend_search_next,
+            // N for search_prev
+            key!('*') => Command::search_selection,
 
-        // key!('q') => Command::record_macro,
-        // key!('Q') => Command::replay_macro,
+            key!('u') => Command::undo,
+            key!('U') => Command::redo,
 
-        // ~ / apostrophe => change case
-        // & align selections
-        // _ trim selections
+            key!('y') => Command::yank,
+            // yank_all
+            key!('p') => Command::paste_after,
+            // paste_all
+            key!('P') => Command::paste_before,
 
-        // C / altC = copy (repeat) selections on prev/next lines
+            key!('>') => Command::indent,
+            key!('<') => Command::unindent,
+            key!('=') => Command::format_selections,
+            key!('J') => Command::join_selections,
+            // TODO: conflicts hover/doc
+            key!('K') => Command::keep_selections,
+            // TODO: and another method for inverse
 
-        key!(Esc) => Command::normal_mode,
-        key!(PageUp) => Command::page_up,
-        key!(PageDown) => Command::page_down,
-        ctrl!('b') => Command::page_up,
-        ctrl!('f') => Command::page_down,
-        ctrl!('u') => Command::half_page_up,
-        ctrl!('d') => Command::half_page_down,
+            // TODO: clashes with space mode
+            key!(' ') => Command::keep_primary_selection,
 
-        ctrl!('w') => Command::window_mode,
+            // key!('q') => Command::record_macro,
+            // key!('Q') => Command::replay_macro,
 
-        // move under <space>c
-        ctrl!('c') => Command::toggle_comments,
-        key!('K') => Command::hover,
+            // ~ / apostrophe => change case
+            // & align selections
+            // _ trim selections
 
-        // z family for save/restore/combine from/to sels from register
+            // C / altC = copy (repeat) selections on prev/next lines
 
-        // supposedly ctrl!('i') but did not work
-        key!(Tab) => Command::jump_forward,
-        ctrl!('o') => Command::jump_backward,
-        // ctrl!('s') => Command::save_selection,
+            key!(Esc) => Command::normal_mode,
+            key!(PageUp) => Command::page_up,
+            key!(PageDown) => Command::page_down,
+            ctrl!('b') => Command::page_up,
+            ctrl!('f') => Command::page_down,
+            ctrl!('u') => Command::half_page_up,
+            ctrl!('d') => Command::half_page_down,
 
-        key!(' ') => Command::space_mode,
-        key!('z') => Command::view_mode,
+            ctrl!('w') => Command::window_mode,
 
-        key!('"') => Command::select_register,
-    );
-    // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
-    // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
-    // because some selection operations can now be done from normal mode, some from select mode.
-    let mut select = normal.clone();
-    select.extend(
-        hashmap!(
-            key!('h') => Command::extend_char_left,
-            key!('j') => Command::extend_line_down,
-            key!('k') => Command::extend_line_up,
-            key!('l') => Command::extend_char_right,
+            // move under <space>c
+            ctrl!('c') => Command::toggle_comments,
+            key!('K') => Command::hover,
 
-            key!(Left) => Command::extend_char_left,
-            key!(Down) => Command::extend_line_down,
-            key!(Up) => Command::extend_line_up,
-            key!(Right) => Command::extend_char_right,
+            // z family for save/restore/combine from/to sels from register
 
-            key!('w') => Command::extend_next_word_start,
-            key!('b') => Command::extend_prev_word_start,
-            key!('e') => Command::extend_next_word_end,
+            // supposedly ctrl!('i') but did not work
+            key!(Tab) => Command::jump_forward,
+            ctrl!('o') => Command::jump_backward,
+            // ctrl!('s') => Command::save_selection,
 
-            key!('t') => Command::extend_till_char,
-            key!('f') => Command::extend_next_char,
+            key!(' ') => Command::space_mode,
+            key!('z') => Command::view_mode,
 
-            key!('T') => Command::extend_till_prev_char,
-            key!('F') => Command::extend_prev_char,
-            key!(Home) => Command::extend_line_start,
-            key!(End) => Command::extend_line_end,
-            key!(Esc) => Command::exit_select_mode,
-        )
-        .into_iter(),
-    );
+            key!('"') => Command::select_register,
+        ));
+        // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
+        // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
+        // because some selection operations can now be done from normal mode, some from select mode.
+        let mut select = normal.clone();
+        select.0.extend(
+            hashmap!(
+                key!('h') => Command::extend_char_left,
+                key!('j') => Command::extend_line_down,
+                key!('k') => Command::extend_line_up,
+                key!('l') => Command::extend_char_right,
 
-    hashmap!(
-        // as long as you cast the first item, rust is able to infer the other cases
-        // TODO: select could be normal mode with some bindings merged over
-        Mode::Normal => normal,
-        Mode::Select => select,
-        Mode::Insert => hashmap!(
-            key!(Esc) => Command::normal_mode as Command,
-            key!(Backspace) => Command::delete_char_backward,
-            key!(Delete) => Command::delete_char_forward,
-            key!(Enter) => Command::insert_newline,
-            key!(Tab) => Command::insert_tab,
-            ctrl!('x') => Command::completion,
-            ctrl!('w') => Command::delete_word_backward,
-        ),
-    )
+                key!(Left) => Command::extend_char_left,
+                key!(Down) => Command::extend_line_down,
+                key!(Up) => Command::extend_line_up,
+                key!(Right) => Command::extend_char_right,
+
+                key!('w') => Command::extend_next_word_start,
+                key!('b') => Command::extend_prev_word_start,
+                key!('e') => Command::extend_next_word_end,
+
+                key!('t') => Command::extend_till_char,
+                key!('f') => Command::extend_next_char,
+
+                key!('T') => Command::extend_till_prev_char,
+                key!('F') => Command::extend_prev_char,
+                key!(Home) => Command::extend_line_start,
+                key!(End) => Command::extend_line_end,
+                key!(Esc) => Command::exit_select_mode,
+            )
+            .into_iter(),
+        );
+
+        Keymaps(hashmap!(
+            // as long as you cast the first item, rust is able to infer the other cases
+            // TODO: select could be normal mode with some bindings merged over
+            Mode::Normal => normal,
+            Mode::Select => select,
+            Mode::Insert => Keymap(hashmap!(
+                key!(Esc) => Command::normal_mode as Command,
+                key!(Backspace) => Command::delete_char_backward,
+                key!(Delete) => Command::delete_char_forward,
+                key!(Enter) => Command::insert_newline,
+                key!(Tab) => Command::insert_tab,
+                ctrl!('x') => Command::completion,
+                ctrl!('w') => Command::delete_word_backward,
+            )),
+        ))
+    }
 }
 
 // Newtype wrapper over keys to allow toml serialization/parsing
@@ -430,21 +439,44 @@ impl FromStr for RepresentableKeyEvent {
     }
 }
 
-pub fn parse_remaps(toml_remaps: &HashMap<String, HashMap<String, String>>) -> Result<Keymaps> {
-    let mut remaps = Keymaps::new();
+pub fn parse_keymaps(toml_keymaps: &HashMap<String, HashMap<String, String>>) -> Result<Keymaps> {
+    let mut keymaps = Keymaps::default();
 
-    for (mode, map) in toml_remaps {
+    for (mode, map) in toml_keymaps {
         let mode = Mode::from_str(&mode)?;
-        let mut remap = Keymap::new();
-
         for (key, command) in map {
             let key = str::parse::<RepresentableKeyEvent>(&key)?;
             let command = str::parse::<Command>(&command)?;
-            remap.insert(key.0, command);
+            keymaps.0.get_mut(&mode).unwrap().0.insert(key.0, command);
         }
-        remaps.insert(mode, remap);
     }
-    Ok(remaps)
+    Ok(keymaps)
+}
+
+impl Deref for Keymap {
+    type Target = HashMap<KeyEvent, Command>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Deref for Keymaps {
+    type Target = HashMap<Mode, Keymap>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Keymap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl DerefMut for Keymaps {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 #[cfg(test)]
@@ -460,8 +492,8 @@ mod test {
     }
 
     #[test]
-    fn parsing_remaps_config_file() {
-        let sample_remaps = r#"
+    fn parsing_keymaps_config_file() {
+        let sample_keymaps = r#"
             [keys.Insert]
             y = "move_line_down"
             S-C-a = "delete_selection"
@@ -470,22 +502,49 @@ mod test {
             A-F12 = "move_next_word_end"
         "#;
 
-        let config = Config::from_str(sample_remaps).unwrap();
+        let config = Config::from_str(sample_keymaps).unwrap();
         assert_eq!(
-            config.keys.unwrap(),
-            hashmap!(
-                Mode::Insert => hashmap!(
-                    KeyEvent { code: KeyCode::Char('y'), modifiers: KeyModifiers::NONE }
-                        => Command::move_line_down,
-                    KeyEvent { code: KeyCode::Char('a'), modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL }
-                        => Command::delete_selection,
-                ),
-                Mode::Normal => hashmap!(
-                    KeyEvent { code: KeyCode::F(12), modifiers: KeyModifiers::ALT }
-                        => Command::move_next_word_end,
-                )
-            )
-        )
+            *config
+                .keymaps
+                .0
+                .get(&Mode::Insert)
+                .unwrap()
+                .0
+                .get(&KeyEvent {
+                    code: KeyCode::Char('y'),
+                    modifiers: KeyModifiers::NONE
+                })
+                .unwrap(),
+            Command::move_line_down
+        );
+        assert_eq!(
+            *config
+                .keymaps
+                .0
+                .get(&Mode::Insert)
+                .unwrap()
+                .0
+                .get(&KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL
+                })
+                .unwrap(),
+            Command::delete_selection
+        );
+        assert_eq!(
+            *config
+                .keymaps
+                .0
+                .get(&Mode::Normal)
+                .unwrap()
+                .0
+                .get(&KeyEvent {
+                    code: KeyCode::F(12),
+                    modifiers: KeyModifiers::ALT
+                })
+                .unwrap(),
+            Command::move_next_word_end
+        );
     }
 
     #[test]

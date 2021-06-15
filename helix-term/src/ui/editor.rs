@@ -26,7 +26,7 @@ use tui::{
 };
 
 pub struct EditorView {
-    keymap: Keymaps,
+    keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -36,14 +36,14 @@ const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new()
+        Self::new(Keymaps::default())
     }
 }
 
 impl EditorView {
-    pub fn new() -> Self {
+    pub fn new(keymaps: Keymaps) -> Self {
         Self {
-            keymap: keymap::default(),
+            keymaps,
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
@@ -531,7 +531,7 @@ impl EditorView {
     }
 
     fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
+        if let Some(command) = self.keymaps[&Mode::Insert].get(&event) {
             command.execute(cx);
         } else if let KeyEvent {
             code: KeyCode::Char(ch),
@@ -569,7 +569,7 @@ impl EditorView {
                 // set the register
                 cxt.register = cxt.editor.register.take();
 
-                if let Some(command) = self.keymap[&mode].get(&event) {
+                if let Some(command) = self.keymaps[&mode].get(&event) {
                     command.execute(cxt);
                 }
             }
@@ -587,16 +587,6 @@ impl EditorView {
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
-    }
-
-    pub fn apply_remaps(&mut self, remaps: Keymaps) {
-        for (mode, remap) in remaps {
-            for (key, command) in remap {
-                self.keymap
-                    .get_mut(&mode)
-                    .map(|mut m| m.insert(key, command));
-            }
-        }
     }
 }
 
@@ -694,7 +684,7 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = self.keymap[&mode][&key].clone();
+                        self.last_insert.0 = self.keymaps[&mode][&key].clone();
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

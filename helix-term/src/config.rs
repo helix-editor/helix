@@ -3,10 +3,11 @@ use std::{collections::HashMap, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::keymap::{parse_remaps, Keymaps};
+use crate::keymap::{parse_keymaps, Keymaps};
 
+#[derive(Default)]
 pub struct Config {
-    pub keys: Option<Keymaps>,
+    pub keymaps: Keymaps,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -20,7 +21,12 @@ impl FromStr for Config {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let toml_config: TomlConfig = toml::from_str(&s)?;
         Ok(Self {
-            keys: toml_config.keys.map(|r| parse_remaps(&r)).transpose()?,
+            keymaps: toml_config
+                .keys
+                .map(|r| parse_keymaps(&r))
+                .transpose()?
+                .or_else(|| Some(Keymaps::default()))
+                .unwrap(),
         })
     }
 }
