@@ -2,6 +2,7 @@ use crate::{
     backend::Backend,
     buffer::{Buffer, Cell},
     layout::Rect,
+    terminal::CursorKind,
 };
 use std::{fmt::Write, io};
 use unicode_width::UnicodeWidthStr;
@@ -122,7 +123,7 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn show_cursor(&mut self) -> Result<(), io::Error> {
+    fn show_cursor(&mut self, _kind: CursorKind) -> Result<(), io::Error> {
         self.cursor = true;
         Ok(())
     }

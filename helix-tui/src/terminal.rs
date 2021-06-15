@@ -14,9 +14,9 @@ pub enum CursorKind {
     /// █
     Block,
     /// |
-    // Bar,
+    Bar,
     /// _
-    // Underline,
+    Underline,
     /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
     Hidden,
 }
@@ -70,7 +70,7 @@ where
     fn drop(&mut self) {
         // Attempt to restore the cursor state
         if self.hidden_cursor {
-            if let Err(err) = self.show_cursor() {
+            if let Err(err) = self.show_cursor(CursorKind::Block) {
                 eprintln!("Failed to show the cursor: {}", err);
             }
         }
@@ -184,8 +184,8 @@ where
         }
 
         match cursor_kind {
-            CursorKind::Block => self.show_cursor()?,
             CursorKind::Hidden => self.hide_cursor()?,
+            kind => self.show_cursor(kind)?,
         }
 
         // Swap buffers
@@ -203,8 +203,8 @@ where
         Ok(())
     }
 
-    pub fn show_cursor(&mut self) -> io::Result<()> {
-        self.backend.show_cursor()?;
+    pub fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
+        self.backend.show_cursor(kind)?;
         self.hidden_cursor = false;
         Ok(())
     }
