@@ -570,7 +570,7 @@ impl EditorView {
                 // debug_assert!(cxt.count != 0);
 
                 // set the register
-                cxt.register = cxt.editor.register.take();
+                cxt.selected_register = cxt.editor.selected_register.take();
 
                 if let Some(command) = self.keymap[&mode].get(&event) {
                     command(cxt);
@@ -610,7 +610,7 @@ impl Component for EditorView {
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
-                    register: helix_view::RegisterSelection::default(),
+                    selected_register: helix_view::RegisterSelection::default(),
                     editor: &mut cx.editor,
                     count: None,
                     callback: None,
