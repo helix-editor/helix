@@ -40,7 +40,7 @@ use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
     pub register: helix_view::RegisterSelection,
-    pub _count: Option<std::num::NonZeroUsize>,
+    pub count: Option<std::num::NonZeroUsize>,
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
@@ -103,7 +103,7 @@ impl<'a> Context<'a> {
 
     #[inline]
     pub fn count(&self) -> usize {
-        self._count.map_or(1, |v| v.get())
+        self.count.map_or(1, |v| v.get())
     }
 }
 
@@ -315,7 +315,7 @@ pub fn extend_next_word_end(cx: &mut Context) {
 }
 
 #[inline]
-fn _find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
+fn find_char_impl<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
 where
     // TODO: make an options struct for and abstract this Fn into a searcher type
     // use the definition for w/b/e too
@@ -359,7 +359,7 @@ where
 }
 
 pub fn find_till_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_next,
         false, /* inclusive */
@@ -368,7 +368,7 @@ pub fn find_till_char(cx: &mut Context) {
 }
 
 pub fn find_next_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_next,
         true,  /* inclusive */
@@ -377,7 +377,7 @@ pub fn find_next_char(cx: &mut Context) {
 }
 
 pub fn extend_till_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_next,
         false, /* inclusive */
@@ -386,7 +386,7 @@ pub fn extend_till_char(cx: &mut Context) {
 }
 
 pub fn extend_next_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_next,
         true, /* inclusive */
@@ -395,7 +395,7 @@ pub fn extend_next_char(cx: &mut Context) {
 }
 
 pub fn till_prev_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_prev,
         false, /* inclusive */
@@ -404,7 +404,7 @@ pub fn till_prev_char(cx: &mut Context) {
 }
 
 pub fn find_prev_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_prev,
         true,  /* inclusive */
@@ -413,7 +413,7 @@ pub fn find_prev_char(cx: &mut Context) {
 }
 
 pub fn extend_till_prev_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_prev,
         false, /* inclusive */
@@ -422,7 +422,7 @@ pub fn extend_till_prev_char(cx: &mut Context) {
 }
 
 pub fn extend_prev_char(cx: &mut Context) {
-    _find_char(
+    find_char_impl(
         cx,
         search::find_nth_prev,
         true, /* inclusive */
@@ -669,7 +669,7 @@ pub fn split_selection_on_newline(cx: &mut Context) {
 // I'd probably collect all the matches right now and store the current index. The cache needs
 // wiping if input happens.
 
-fn _search(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
+fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
     let selection = doc.selection(view.id);
     let start = text.char_to_byte(selection.cursor());
@@ -715,8 +715,7 @@ pub fn search(cx: &mut Context) {
 
     let view_id = view.id;
     let prompt = ui::regex_prompt(cx, "search:".to_string(), move |view, doc, regex| {
-        _search(doc, view, &contents, &regex, false);
-
+        search_impl(doc, view, &contents, &regex, false);
         // TODO: only store on enter (accept), not update
         register::set('\\', vec![regex.as_str().to_string()]);
     });
@@ -725,22 +724,22 @@ pub fn search(cx: &mut Context) {
 }
 // can't search next for ""compose"" for some reason
 
-pub fn _search_next(cx: &mut Context, extend: bool) {
+pub fn search_next_impl(cx: &mut Context, extend: bool) {
     if let Some(query) = register::get('\\') {
         let query = query.first().unwrap();
         let (view, doc) = cx.current();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(query).unwrap();
-        _search(doc, view, &contents, &regex, extend);
+        search_impl(doc, view, &contents, &regex, extend);
     }
 }
 
 pub fn search_next(cx: &mut Context) {
-    _search_next(cx, false);
+    search_next_impl(cx, false);
 }
 
 pub fn extend_search_next(cx: &mut Context) {
-    _search_next(cx, true);
+    search_next_impl(cx, true);
 }
 
 pub fn search_selection(cx: &mut Context) {
@@ -795,7 +794,7 @@ pub fn extend_line(cx: &mut Context) {
 
 // heuristic: append changes to history after each command, unless we're in insert mode
 
-fn _delete_selection(reg: char, doc: &mut Document, view_id: ViewId) {
+fn delete_selection_impl(reg: char, doc: &mut Document, view_id: ViewId) {
     // first yank the selection
     let values: Vec<String> = doc
         .selection(view_id)
@@ -818,7 +817,7 @@ fn _delete_selection(reg: char, doc: &mut Document, view_id: ViewId) {
 pub fn delete_selection(cx: &mut Context) {
     let reg = cx.register.name();
     let (view, doc) = cx.current();
-    _delete_selection(reg, doc, view.id);
+    delete_selection_impl(reg, doc, view.id);
 
     doc.append_changes_to_history(view.id);
 
@@ -829,7 +828,7 @@ pub fn delete_selection(cx: &mut Context) {
 pub fn change_selection(cx: &mut Context) {
     let reg = cx.register.name();
     let (view, doc) = cx.current();
-    _delete_selection(reg, doc, view.id);
+    delete_selection_impl(reg, doc, view.id);
     enter_insert_mode(doc);
 }
 
@@ -912,7 +911,7 @@ mod cmd {
 
     fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         // last view and we have unsaved changes
-        if editor.tree.views().count() == 1 && _buffers_remaining(editor) {
+        if editor.tree.views().count() == 1 && buffers_remaining_impl(editor) {
             return;
         }
         editor.close(editor.view().id, /* close_buffer */ false);
@@ -934,7 +933,7 @@ mod cmd {
         };
     }
 
-    fn _write<P: AsRef<Path>>(
+    fn write_impl<P: AsRef<Path>>(
         view: &View,
         doc: &mut Document,
         path: Option<P>,
@@ -962,7 +961,7 @@ mod cmd {
 
     fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let (view, doc) = editor.current();
-        if let Err(e) = _write(view, doc, args.first()) {
+        if let Err(e) = write_impl(view, doc, args.first()) {
             editor.set_error(e.to_string());
         };
     }
@@ -1039,7 +1038,7 @@ mod cmd {
 
     fn write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let (view, doc) = editor.current();
-        if let Err(e) = _write(view, doc, args.first()) {
+        if let Err(e) = write_impl(view, doc, args.first()) {
             editor.set_error(e.to_string());
             return;
         };
@@ -1053,7 +1052,7 @@ mod cmd {
 
     /// Returns `true` if there are modified buffers remaining and sets editor error,
     /// otherwise returns `false`
-    fn _buffers_remaining(editor: &mut Editor) -> bool {
+    fn buffers_remaining_impl(editor: &mut Editor) -> bool {
         let modified: Vec<_> = editor
             .documents()
             .filter(|doc| doc.is_modified())
@@ -1076,7 +1075,13 @@ mod cmd {
         }
     }
 
-    fn _write_all(editor: &mut Editor, args: &[&str], event: PromptEvent, quit: bool, force: bool) {
+    fn write_all_impl(
+        editor: &mut Editor,
+        args: &[&str],
+        event: PromptEvent,
+        quit: bool,
+        force: bool,
+    ) {
         let mut errors = String::new();
 
         // save all documents
@@ -1090,7 +1095,7 @@ mod cmd {
         editor.set_error(errors);
 
         if quit {
-            if !force && _buffers_remaining(editor) {
+            if !force && buffers_remaining_impl(editor) {
                 return;
             }
 
@@ -1103,19 +1108,19 @@ mod cmd {
     }
 
     fn write_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        _write_all(editor, args, event, false, false)
+        write_all_impl(editor, args, event, false, false)
     }
 
     fn write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        _write_all(editor, args, event, true, false)
+        write_all_impl(editor, args, event, true, false)
     }
 
     fn force_write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        _write_all(editor, args, event, true, true)
+        write_all_impl(editor, args, event, true, true)
     }
 
-    fn _quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
-        if !force && _buffers_remaining(editor) {
+    fn quit_all_impl(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
+        if !force && buffers_remaining_impl(editor) {
             return;
         }
 
@@ -1127,11 +1132,11 @@ mod cmd {
     }
 
     fn quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        _quit_all(editor, args, event, false)
+        quit_all_impl(editor, args, event, false)
     }
 
     fn force_quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        _quit_all(editor, args, event, true)
+        quit_all_impl(editor, args, event, true)
     }
 
     pub const COMMAND_LIST: &[Command] = &[
@@ -1578,7 +1583,7 @@ fn switch_to_last_accessed_file(cx: &mut Context) {
 }
 
 pub fn goto_mode(cx: &mut Context) {
-    if let Some(count) = cx._count {
+    if let Some(count) = cx.count {
         push_jump(cx.editor);
 
         let (view, doc) = cx.current();
@@ -1646,7 +1651,7 @@ pub fn exit_select_mode(cx: &mut Context) {
     cx.doc().mode = Mode::Normal;
 }
 
-fn _goto(
+fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
     locations: Vec<lsp::Location>,
@@ -1734,7 +1739,7 @@ pub fn goto_definition(cx: &mut Context) {
                 None => Vec::new(),
             };
 
-            _goto(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding);
         },
     );
 }
@@ -1771,7 +1776,7 @@ pub fn goto_type_definition(cx: &mut Context) {
                 None => Vec::new(),
             };
 
-            _goto(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding);
         },
     );
 }
@@ -1808,7 +1813,7 @@ pub fn goto_implementation(cx: &mut Context) {
                 None => Vec::new(),
             };
 
-            _goto(editor, compositor, items, offset_encoding);
+            goto_impl(editor, compositor, items, offset_encoding);
         },
     );
 }
@@ -1832,7 +1837,7 @@ pub fn goto_reference(cx: &mut Context) {
         move |editor: &mut Editor,
               compositor: &mut Compositor,
               items: Option<Vec<lsp::Location>>| {
-            _goto(
+            goto_impl(
                 editor,
                 compositor,
                 items.unwrap_or_default(),
@@ -2236,7 +2241,7 @@ enum Paste {
     After,
 }
 
-fn _paste(reg: char, doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
+fn paste_impl(reg: char, doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
     if let Some(values) = register::get(reg) {
         let repeat = std::iter::repeat(
             values
@@ -2305,7 +2310,7 @@ pub fn paste_after(cx: &mut Context) {
     let reg = cx.register.name();
     let (view, doc) = cx.current();
 
-    if let Some(transaction) = _paste(reg, doc, view, Paste::After) {
+    if let Some(transaction) = paste_impl(reg, doc, view, Paste::After) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
@@ -2315,7 +2320,7 @@ pub fn paste_before(cx: &mut Context) {
     let reg = cx.register.name();
     let (view, doc) = cx.current();
 
-    if let Some(transaction) = _paste(reg, doc, view, Paste::Before) {
+    if let Some(transaction) = paste_impl(reg, doc, view, Paste::Before) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
