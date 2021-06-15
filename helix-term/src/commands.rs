@@ -982,6 +982,19 @@ mod cmd {
     fn set_indent_style(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         use IndentStyle::*;
 
+        // If no argument, report current indent style.
+        if args.is_empty() {
+            let style = editor.current().1.indent_style;
+            editor.set_status(match style {
+                Tabs => "tabs".into(),
+                Spaces(1) => "1 space".into(),
+                Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
+                _ => "error".into(), // Shouldn't happen.
+            });
+            return;
+        }
+
+        // Attempt to parse argument as an indent style.
         let style = match args.get(0) {
             Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
             Some(&"0") => Some(Tabs),
@@ -996,6 +1009,9 @@ mod cmd {
         if let Some(s) = style {
             let (_, doc) = editor.current();
             doc.indent_style = s;
+        } else {
+            // Invalid argument.
+            editor.set_error(format!("invalid indent style '{}'", args[0],));
         }
     }
 
