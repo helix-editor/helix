@@ -564,7 +564,7 @@ impl EditorView {
             }
             _ => {
                 // set the count
-                cxt._count = cxt.editor.count.take();
+                cxt.count = cxt.editor.count.take();
                 // TODO: edge case: 0j -> reset to 1
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
@@ -612,7 +612,7 @@ impl Component for EditorView {
                 let mut cxt = commands::Context {
                     register: helix_view::RegisterSelection::default(),
                     editor: &mut cx.editor,
-                    _count: None,
+                    count: None,
                     callback: None,
                     on_next_key_callback: None,
                     callbacks: cx.callbacks,
