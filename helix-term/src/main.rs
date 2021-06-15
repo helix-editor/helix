@@ -39,7 +39,6 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     Ok(())
 }
 
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let cache_dir = helix_core::cache_dir();

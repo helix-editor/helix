@@ -1,9 +1,9 @@
+use anyhow::{Error, Result};
 use std::{collections::HashMap, str::FromStr};
-use anyhow::{Result, Error};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::keymap::{Keymaps, parse_remaps};
+use crate::keymap::{parse_remaps, Keymaps};
 
 pub struct Config {
     pub keys: Option<Keymaps>,
@@ -20,7 +20,7 @@ impl FromStr for Config {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let toml_config: TomlConfig = toml::from_str(&s)?;
         Ok(Self {
-            keys: toml_config.keys.map(|r| parse_remaps(&r)).transpose()?
+            keys: toml_config.keys.map(|r| parse_remaps(&r)).transpose()?,
         })
     }
 }
