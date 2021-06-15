@@ -1,7 +1,8 @@
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::keymap::parse_remaps;
+use helix_term::config::Config;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 
@@ -37,6 +38,7 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
 
     Ok(())
 }
+
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -89,16 +91,15 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
-    let remaps = if let Ok(remaps) = std::fs::read_to_string(conf_dir.join("keymap.toml")) {
-        Some(parse_remaps(&remaps).context("Invalid keymap.toml file")?)
-    } else {
-        None
-    };
+    let config = std::fs::read_to_string(conf_dir.join("config.toml"))
+        .ok()
+        .map(|s| Config::from_str(&s))
+        .transpose()?;
 
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, remaps).context("unable to create new application")?;
+    let mut app = Application::new(args, config).context("unable to create new application")?;
     app.run().await.unwrap();
 
     Ok(())

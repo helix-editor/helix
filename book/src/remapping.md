@@ -2,18 +2,18 @@
 
 One-way key remapping is supported via a simple TOML configuration file.
 
-To remap keys, write a `keymap.toml` file in your `helix` configuration
+To remap keys, write a `config.toml` file in your `helix` configuration
 directory (default `~/.config/helix` in Linux systems) with a structure like
 this:
 
 ```toml
-# At most one section each of 'Normal', 'Insert' and 'Select'
-[Normal]
+# At most one section each of 'keys.Normal', 'keys.Insert' and 'keys.Select'
+[keys.Normal]
 a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
 C-S-esc = "select_line" # Maps Control-Shift-Escape to select_line
 
-[Insert]
+[keys.Insert]
 A-x = "normal_mode" # Maps Alt-X to enter normal mode
 ```
 

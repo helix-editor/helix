@@ -1,7 +1,7 @@
 use helix_lsp::lsp;
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{args::Args, compositor::Compositor, keymap::Keymaps, ui};
+use crate::{args::Args, compositor::Compositor, config::Config, keymap::Keymaps, ui};
 
 use log::{error, info};
 
@@ -40,15 +40,15 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(mut args: Args, remaps: Option<Keymaps>) -> Result<Self, Error> {
+    pub fn new(mut args: Args, config: Option<Config>) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
         let mut editor = Editor::new(size);
 
         let mut editor_view = Box::new(ui::EditorView::new());
-        if let Some(remaps) = remaps {
-            editor_view.apply_remaps(remaps);
+        if let Some(Config { keys: Some(keys) }) = config {
+            editor_view.apply_remaps(keys);
         }
 
         compositor.push(editor_view);
