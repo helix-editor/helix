@@ -715,8 +715,6 @@ pub fn search(cx: &mut Context) {
 
     let view_id = view.id;
     let prompt = ui::regex_prompt(cx, "search:".to_string(), move |view, doc, regex| {
-        let text = doc.text();
-        let start = doc.selection(view.id).cursor();
         _search(doc, view, &contents, &regex, false);
 
         // TODO: only store on enter (accept), not update
