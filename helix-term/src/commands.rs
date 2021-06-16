@@ -1495,53 +1495,55 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(doc);
 
     let text = doc.text().slice(..);
+    let contents = doc.text();
     let selection = doc.selection(view.id);
 
     let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut offs = 0;
 
-    let changes: Vec<Change> = selection
-        .iter()
-        .map(|range| {
-            let line = text.char_to_line(range.head);
+    let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+        let line = text.char_to_line(range.head);
 
-            let line = match open {
-                // adjust position to the end of the line (next line - 1)
-                Open::Below => line + 1,
-                // adjust position to the end of the previous line (current line - 1)
-                Open::Above => line,
-            };
+        let line = match open {
+            // adjust position to the end of the line (next line - 1)
+            Open::Below => line + 1,
+            // adjust position to the end of the previous line (current line - 1)
+            Open::Above => line,
+        };
 
-            let index = doc.text().line_to_char(line).saturating_sub(1);
+        let index = doc.text().line_to_char(line).saturating_sub(1);
 
-            // TODO: share logic with insert_newline for indentation
-            let indent_level = indent::suggested_indent_for_pos(
-                doc.language_config(),
-                doc.syntax(),
-                text,
-                index,
-                true,
-            );
-            let indent = doc.indent_unit().repeat(indent_level);
-            let mut text = String::with_capacity(1 + indent.len());
-            text.push('\n');
-            text.push_str(&indent);
-            let text = text.repeat(count);
+        // TODO: share logic with insert_newline for indentation
+        let indent_level = indent::suggested_indent_for_pos(
+            doc.language_config(),
+            doc.syntax(),
+            text,
+            index,
+            true,
+        );
+        let indent = doc.indent_unit().repeat(indent_level);
+        let mut text = String::with_capacity(1 + indent.len());
+        text.push('\n');
+        text.push_str(&indent);
+        let text = text.repeat(count);
 
-            // calculate new selection range
-            let pos = index + text.chars().count();
-            ranges.push(Range::new(pos, pos));
+        // calculate new selection range
+        let pos = if line == 0 {
+            0 // Required since text will have a min len of 1 (\n)
+        } else {
+            index + offs + text.chars().count()
+        };
+        ranges.push(Range::new(pos, pos));
 
-            (index, index, Some(text.into()))
-        })
-        .collect();
+        offs += text.chars().count();
+
+        (index, index, Some(text.into()))
+    });
 
     // TODO: count actually inserts "n" new lines and starts editing on all of them.
     // TODO: append "count" newlines and modify cursors to those lines
 
-    let selection = Selection::new(ranges, 0);
-
-    let transaction =
-        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection);
+    transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
 }
