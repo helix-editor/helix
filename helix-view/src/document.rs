@@ -5,11 +5,14 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
+<<<<<<< HEAD
     chars::{char_is_linebreak, char_is_whitespace},
     history::History,
+=======
+    auto_detect_line_ending, default_line_ending,
+>>>>>>> 491a8b3 (resolved conflict in rebase)
     syntax::{LanguageConfiguration, LOADER},
-    ChangeSet, Diagnostic, History, Rope, RopeGraphemes, RopeSlice, Selection, State, Syntax,
-    Transaction,
+    ChangeSet, Diagnostic, History, LineEnding, Rope, Selection, State, Syntax, Transaction,
 };
 
 use crate::{DocumentId, ViewId};
@@ -23,6 +26,7 @@ pub enum Mode {
     Insert,
 }
 
+<<<<<<< HEAD
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum IndentStyle {
@@ -45,6 +49,8 @@ pub enum LineEnding {
     PS = 8,   // U+2029 -- ParagraphSeparator
 }
 
+=======
+>>>>>>> 491a8b3 (resolved conflict in rebase)
 pub struct Document {
     // rope + selection
     pub(crate) id: DocumentId,
@@ -78,7 +84,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    _line_ending: LineEnding,
+    line_ending: Option<LineEnding>,
 }
 
 use std::fmt;
@@ -164,61 +170,14 @@ pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
     std::env::current_dir().map(|current_dir| normalize_path(&current_dir.join(path)))
 }
 
-pub fn auto_detect_line_ending(doc: &Rope) -> LineEnding {
-    // based on https://github.com/cessen/led/blob/27572c8838a1c664ee378a19358604063881cc1d/src/editor/mod.rs#L88-L162
-
-    let mut ending = LineEnding::None;
-    for line in doc.lines().take(1) { // check first line only - unsure how sound this is
-        ending = match line.len_chars() {
-            1 => { let g = RopeGraphemes::new(line.slice((line.len_chars() - 1)..))
-                .last()
-                .unwrap();
-            rope_slice_to_line_ending(&g)}
-            n if n > 1 => { let g = RopeGraphemes::new(line.slice((line.len_chars() - 2)..))
-                .last()
-                .unwrap();
-            rope_slice_to_line_ending(&g) }
-            _ => LineEnding::None
-
-        }
-    }
-    ending
-}
-
-pub fn rope_slice_to_line_ending(g: &RopeSlice) -> LineEnding {
-    if let Some(text) = g.as_str() {
-        str_to_line_ending(text)
-    } else if g == "\u{000D}\u{000A}" {
-        LineEnding::Crlf
-    } else {
-        // Not a line ending
-        LineEnding::None
-    }
-}
-
-pub fn str_to_line_ending(g: &str) -> LineEnding {
-    match g {
-        "\u{000D}\u{000A}" => LineEnding::Crlf,
-        "\u{000A}" => LineEnding::LF,
-        "\u{000B}" => LineEnding::VT,
-        "\u{000C}" => LineEnding::FF,
-        "\u{000D}" => LineEnding::CR,
-        "\u{0085}" => LineEnding::Nel,
-        "\u{2028}" => LineEnding::LS,
-        "\u{2029}" => LineEnding::PS,
-
-        // Not a line ending
-        _ => LineEnding::None,
-    }
-}
-
 use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn new(text: Rope, _line_ending: LineEnding) -> Self {
+    pub fn new(text: Rope) -> Self {
         let changes = ChangeSet::new(&text);
         let old_state = None;
+        let line_ending = default_line_ending();
 
         Self {
             id: DocumentId::default(),
@@ -237,7 +196,7 @@ impl Document {
             history: Cell::new(History::default()),
             last_saved_revision: 0,
             language_server: None,
-            _line_ending
+            line_ending,
         }
     }
 
@@ -260,10 +219,14 @@ impl Document {
         // search for line endings
         let line_ending = auto_detect_line_ending(&doc);
 
-        let mut doc = Self::new(doc, line_ending);
+        let mut doc = Self::new(doc);
         // set the path and try detecting the language
         doc.set_path(&path)?;
+<<<<<<< HEAD
         doc.detect_indent_style();
+=======
+        doc.set_line_ending(line_ending);
+>>>>>>> 491a8b3 (resolved conflict in rebase)
 
         Ok(doc)
     }
@@ -520,6 +483,10 @@ impl Document {
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
         // TODO: use a transaction?
         self.selections.insert(view_id, selection);
+    }
+
+    pub fn set_line_ending(&mut self, line_ending: Option<LineEnding>) {
+        self.line_ending = line_ending;
     }
 
     fn _apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {

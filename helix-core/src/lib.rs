@@ -6,6 +6,7 @@ pub mod diagnostic;
 pub mod graphemes;
 pub mod history;
 pub mod indent;
+pub mod line_ending;
 pub mod macros;
 pub mod match_brackets;
 pub mod movement;
@@ -109,4 +110,5 @@ pub use syntax::Syntax;
 pub use diagnostic::Diagnostic;
 pub use state::State;
 
+pub use line_ending::{auto_detect_line_ending, default_line_ending, LineEnding};
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};
