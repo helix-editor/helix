@@ -1,16 +1,14 @@
 use crate::{Rope, RopeGraphemes, RopeSlice};
 
 /// Represents one of the valid Unicode line endings.
+/// VT, FF and PS are excluded here, as we don't expect them to show up as a default line break
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum LineEnding {
     Crlf, // CarriageReturn followed by LineFeed
     LF,   // U+000A -- LineFeed
-    VT,   // U+000B -- VerticalTab
-    FF,   // U+000C -- FormFeed
     CR,   // U+000D -- CarriageReturn
     Nel,  // U+0085 -- NextLine
     LS,   // U+2028 -- Line Separator
-    PS,   // U+2029 -- ParagraphSeparator
 }
 
 pub fn rope_slice_to_line_ending(g: &RopeSlice) -> Option<LineEnding> {
@@ -28,13 +26,9 @@ pub fn str_to_line_ending(g: &str) -> Option<LineEnding> {
     match g {
         "\u{000D}\u{000A}" => Some(LineEnding::Crlf),
         "\u{000A}" => Some(LineEnding::LF),
-        "\u{000B}" => Some(LineEnding::VT),
-        "\u{000C}" => Some(LineEnding::FF),
         "\u{000D}" => Some(LineEnding::CR),
         "\u{0085}" => Some(LineEnding::Nel),
         "\u{2028}" => Some(LineEnding::LS),
-        "\u{2029}" => Some(LineEnding::PS),
-
         // Not a line ending
         _ => None,
     }
@@ -65,10 +59,7 @@ pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
     ending
 }
 
-pub fn default_line_ending() -> Option<LineEnding> {
-    if cfg!(windows) {
-        Some(LineEnding::Crlf)
-    } else {
-        Some(LineEnding::LF)
-    }
-}
+#[cfg(target_os = "windows")]
+pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
+#[cfg(not(target_os = "windows"))]
+pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Lf;

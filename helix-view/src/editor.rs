@@ -8,13 +8,9 @@ use slotmap::SlotMap;
 
 use anyhow::Error;
 
-<<<<<<< HEAD
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::Position;
-=======
-pub use helix_core::{diagnostic::Severity, LineEnding};
->>>>>>> 491a8b3 (resolved conflict in rebase)
 
 #[derive(Debug)]
 pub struct Editor {

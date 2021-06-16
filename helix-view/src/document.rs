@@ -5,14 +5,10 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
-<<<<<<< HEAD
     chars::{char_is_linebreak, char_is_whitespace},
-    history::History,
-=======
-    auto_detect_line_ending, default_line_ending,
->>>>>>> 491a8b3 (resolved conflict in rebase)
+    auto_detect_line_ending, DEFAULT_LINE_ENDING, history::History,
     syntax::{LanguageConfiguration, LOADER},
-    ChangeSet, Diagnostic, History, LineEnding, Rope, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, LineEnding, Rope, Selection, State, Syntax, Transaction,
 };
 
 use crate::{DocumentId, ViewId};
@@ -25,8 +21,6 @@ pub enum Mode {
     Select,
     Insert,
 }
-
-<<<<<<< HEAD
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum IndentStyle {
@@ -49,8 +43,6 @@ pub enum LineEnding {
     PS = 8,   // U+2029 -- ParagraphSeparator
 }
 
-=======
->>>>>>> 491a8b3 (resolved conflict in rebase)
 pub struct Document {
     // rope + selection
     pub(crate) id: DocumentId,
@@ -84,7 +76,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    line_ending: Option<LineEnding>,
+    line_ending: LineEnding,
 }
 
 use std::fmt;
@@ -177,7 +169,6 @@ impl Document {
     pub fn new(text: Rope) -> Self {
         let changes = ChangeSet::new(&text);
         let old_state = None;
-        let line_ending = default_line_ending();
 
         Self {
             id: DocumentId::default(),
@@ -196,7 +187,7 @@ impl Document {
             history: Cell::new(History::default()),
             last_saved_revision: 0,
             language_server: None,
-            line_ending,
+            line_ending: DEFAULT_LINE_ENDING,
         }
     }
 
@@ -217,16 +208,13 @@ impl Document {
         };
 
         // search for line endings
-        let line_ending = auto_detect_line_ending(&doc);
+        let line_ending = auto_detect_line_ending(&doc).unwrap_or(DEFAULT_LINE_ENDING);
 
         let mut doc = Self::new(doc);
         // set the path and try detecting the language
         doc.set_path(&path)?;
-<<<<<<< HEAD
         doc.detect_indent_style();
-=======
         doc.set_line_ending(line_ending);
->>>>>>> 491a8b3 (resolved conflict in rebase)
 
         Ok(doc)
     }
@@ -485,7 +473,7 @@ impl Document {
         self.selections.insert(view_id, selection);
     }
 
-    pub fn set_line_ending(&mut self, line_ending: Option<LineEnding>) {
+    pub fn set_line_ending(&mut self, line_ending: LineEnding) {
         self.line_ending = line_ending;
     }
 
