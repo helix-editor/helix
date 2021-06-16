@@ -104,6 +104,7 @@ pub use position::{coords_at_pos, pos_at_coords, Position};
 pub use selection::{Range, Selection};
 pub use smallvec::SmallVec;
 pub use syntax::Syntax;
+pub use graphemes::RopeGraphemes;
 
 pub use diagnostic::Diagnostic;
 pub use state::State;

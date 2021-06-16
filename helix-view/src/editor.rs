@@ -1,4 +1,4 @@
-use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId};
+use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId, LineEnding};
 use tui::layout::Rect;
 use tui::terminal::CursorKind;
 
@@ -148,7 +148,7 @@ impl Editor {
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
         use helix_core::Rope;
-        let doc = Document::new(Rope::from("\n"));
+        let doc = Document::new(Rope::from("\n"), LineEnding::LF);
         let id = self.documents.insert(doc);
         self.documents[id].id = id;
         self.switch(id, action);

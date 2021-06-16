@@ -179,7 +179,7 @@ impl EditorView {
 
                     // iterate over range char by char
                     for grapheme in RopeGraphemes::new(text) {
-                        if grapheme == "\n" {
+                        if grapheme == "\n" || grapheme == "\r\n" {
                             visual_x = 0;
                             line += 1;
 

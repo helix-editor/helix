@@ -10,6 +10,7 @@ new_key_type! { pub struct DocumentId; }
 new_key_type! { pub struct ViewId; }
 
 pub use document::Document;
+pub use document::LineEnding;
 pub use editor::Editor;
 pub use register_selection::RegisterSelection;
 pub use theme::Theme;
