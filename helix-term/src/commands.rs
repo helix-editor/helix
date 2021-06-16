@@ -4,14 +4,9 @@ use helix_core::{
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-<<<<<<< HEAD
     register::{self, Register, Registers},
-    search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection, SmallVec,
-    Tendril, Transaction,
-=======
-    register, search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice,
-    Selection, SmallVec, Tendril, Transaction,
->>>>>>> 856fd95 (trying out line ending helper functions in commands.rs)
+    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -348,7 +343,7 @@ where
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => '\n', 
+            } => '\n',
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
@@ -2285,15 +2280,10 @@ fn paste_impl(
             .unwrap(),
     );
 
-<<<<<<< HEAD
     // if any of values ends \n it's linewise paste
-    let linewise = values.iter().any(|value| value.ends_with('\n'));
-=======
-        // if any of values ends \n it's linewise paste
-        let linewise = values
-            .iter()
-            .any(|value| value.ends_with(doc.line_ending()));
->>>>>>> 856fd95 (trying out line ending helper functions in commands.rs)
+    let linewise = values
+        .iter()
+        .any(|value| value.ends_with(doc.line_ending()));
 
     let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 

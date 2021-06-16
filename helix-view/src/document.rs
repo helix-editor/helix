@@ -5,7 +5,9 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::{
+    auto_detect_line_ending,
     chars::{char_is_linebreak, char_is_whitespace},
+    history::History,
     syntax::{LanguageConfiguration, LOADER},
     ChangeSet, Diagnostic, LineEnding, Rope, Selection, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
@@ -26,21 +28,6 @@ pub enum Mode {
 pub enum IndentStyle {
     Tabs,
     Spaces(u8),
-}
-
-/// Represents one of the valid Unicode line endings.
-/// Also acts as an index into `LINE_ENDINGS`.
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub enum LineEnding {
-    None = 0, // No line ending
-    Crlf = 1, // CarriageReturn followed by LineFeed
-    LF = 2,   // U+000A -- LineFeed
-    VT = 3,   // U+000B -- VerticalTab
-    FF = 4,   // U+000C -- FormFeed
-    CR = 5,   // U+000D -- CarriageReturn
-    Nel = 6,  // U+0085 -- NextLine
-    LS = 7,   // U+2028 -- Line Separator
-    PS = 8,   // U+2029 -- ParagraphSeparator
 }
 
 pub struct Document {
