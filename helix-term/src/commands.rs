@@ -348,7 +348,7 @@ where
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => '\n', // TODO: we should be calling doc.line_ending() here
+            } => '\n', 
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
@@ -476,7 +476,7 @@ pub fn replace(cx: &mut Context) {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => Some('\n'), // TODO: we should be calling doc.line_ending() here
+            } => Some('\n'),
             _ => None,
         };
 

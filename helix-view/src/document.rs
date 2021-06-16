@@ -741,7 +741,7 @@ impl Document {
         self.diagnostics = diagnostics;
     }
 
-    pub fn line_ending(&self) -> &str {
+    pub fn line_ending(&self) -> &'static str {
         match self.line_ending {
             LineEnding::Crlf => "\u{000D}\u{000A}",
             LineEnding::LF => "\u{000A}",
