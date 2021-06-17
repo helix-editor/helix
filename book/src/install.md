@@ -4,9 +4,12 @@ We provide pre-built binaries on the [GitHub Releases page](https://github.com/h
 
 ## OSX
 
-TODO: brew tap
+A Homebrew tap is available:
 
-Please use a pre-built binary release for the time being.
+```
+brew tap helix-editor/helix
+brew install helix
+```
 
 ## Linux
 

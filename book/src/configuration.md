@@ -26,62 +26,63 @@ if the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
 
 Possible modifiers:
 
-| modifier |
-| --- |
-| bold |
-| dim |
-| italic |
-| underlined |
-| slow\_blink |
-| rapid\_blink |
-| reversed |
-| hidden |
-| crossed\_out |
+| Modifier       |
+| ---            |
+| `bold`         |
+| `dim`          |
+| `italic`       |
+| `underlined`   |
+| `slow\_blink`  |
+| `rapid\_blink` |
+| `reversed`     |
+| `hidden`       |
+| `crossed\_out` |
 
 Possible keys:
 
-| key | notes |
-| --- | --- |
-| attribute | |
-| keyword | |
-| keyword.directive | preprocessor directives (\#if in C) |
-| namespace | |
-| punctuation | |
-| punctuation.delimiter | |
-| operator | |
-| special | |
-| property | |
-| variable | |
-| variable.parameter | |
-| type | |
-| type.builtin | |
-| constructor | |
-| function | |
-| function.macro | |
-| function.builtin | |
-| comment | |
-| variable.builtin | |
-| constant | |
-| constant.builtin | |
-| string | |
-| number | |
-| escape | escaped characters |
-| label | used for lifetimes |
-| module | |
-| ui.background | |
-| ui.linenr | |
-| ui.statusline | |
-| ui.popup | |
-| ui.window | |
-| ui.help | |
-| ui.text | |
-| ui.text.focus | |
-| ui.menu.selected | |
-| ui.selection | for selections in the editing area |
-| warning | LSP warning |
-| error | LSP error |
-| info | LSP info |
-| hint | LSP hint |
+| Key                     | Notes                               |
+| ---                     | ---                                 |
+| `attribute`             |                                     |
+| `keyword`               |                                     |
+| `keyword.directive`     | Preprocessor directives (\#if in C) |
+| `namespace`             |                                     |
+| `punctuation`           |                                     |
+| `punctuation.delimiter` |                                     |
+| `operator`              |                                     |
+| `special`               |                                     |
+| `property`              |                                     |
+| `variable`              |                                     |
+| `variable.parameter`    |                                     |
+| `type`                  |                                     |
+| `type.builtin`          |                                     |
+| `constructor`           |                                     |
+| `function`              |                                     |
+| `function.macro`        |                                     |
+| `function.builtin`      |                                     |
+| `comment`               |                                     |
+| `variable.builtin`      |                                     |
+| `constant`              |                                     |
+| `constant.builtin`      |                                     |
+| `string`                |                                     |
+| `number`                |                                     |
+| `escape`                | Escaped characters                  |
+| `label`                 | For lifetimes                       |
+| `module`                |                                     |
+| `ui.background`         |                                     |
+| `ui.linenr`             |                                     |
+| `ui.linenr.selected`    | For lines with cursors              |
+| `ui.statusline`         |                                     |
+| `ui.popup`              |                                     |
+| `ui.window`             |                                     |
+| `ui.help`               |                                     |
+| `ui.text`               |                                     |
+| `ui.text.focus`         |                                     |
+| `ui.menu.selected`      |                                     |
+| `ui.selection`          | For selections in the editing area  |
+| `warning`               | LSP warning                         |
+| `error`                 | LSP error                           |
+| `info`                  | LSP info                            |
+| `hint`                  | LSP hint                            |
 
 These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We half-follow the common scopes from [macromates language grammars](https://macromates.com/manual/en/language_grammars) with some differences.
 

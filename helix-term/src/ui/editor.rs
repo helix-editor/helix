@@ -23,10 +23,11 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Modifier, Style},
+    terminal::CursorKind,
 };
 
 pub struct EditorView {
-    keymap: Keymaps,
+    keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -36,16 +37,16 @@ const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new()
+        Self::new(Keymaps::default())
     }
 }
 
 impl EditorView {
-    pub fn new() -> Self {
+    pub fn new(keymaps: Keymaps) -> Self {
         Self {
-            keymap: keymap::default(),
+            keymaps,
             on_next_key: None,
-            last_insert: (commands::normal_mode, Vec::new()),
+            last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
         }
     }
@@ -228,7 +229,45 @@ impl EditorView {
             }
         }
 
-        // render selections
+        // render gutters
+
+        let linenr: Style = theme.get("ui.linenr");
+        let warning: Style = theme.get("warning");
+        let error: Style = theme.get("error");
+        let info: Style = theme.get("info");
+        let hint: Style = theme.get("hint");
+
+        for (i, line) in (view.first_line..last_line).enumerate() {
+            use helix_core::diagnostic::Severity;
+            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
+                surface.set_stringn(
+                    viewport.x - OFFSET,
+                    viewport.y + i as u16,
+                    "●",
+                    1,
+                    match diagnostic.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    },
+                );
+            }
+
+            // line numbers having selections are rendered differently
+            surface.set_stringn(
+                viewport.x + 1 - OFFSET,
+                viewport.y + i as u16,
+                format!("{:>5}", line + 1),
+                5,
+                linenr,
+            );
+        }
+
+        // render selections and selected linenr(s)
+        let linenr_select: Style = theme
+            .try_get("ui.linenr.selected")
+            .unwrap_or_else(|| theme.get("ui.linenr"));
 
         if is_focused {
             let screen = {
@@ -325,6 +364,13 @@ impl EditorView {
                         ),
                         cursor_style,
                     );
+                    surface.set_stringn(
+                        viewport.x + 1 - OFFSET,
+                        viewport.y + head.row as u16,
+                        format!("{:>5}", view.first_line + head.row + 1),
+                        5,
+                        linenr_select,
+                    );
                     // TODO: set cursor position for IME
                     if let Some(syntax) = doc.syntax() {
                         use helix_core::match_brackets;
@@ -352,40 +398,6 @@ impl EditorView {
                     }
                 }
             }
-        }
-
-        // render gutters
-
-        let style: Style = theme.get("ui.linenr");
-        let warning: Style = theme.get("warning");
-        let error: Style = theme.get("error");
-        let info: Style = theme.get("info");
-        let hint: Style = theme.get("hint");
-
-        for (i, line) in (view.first_line..last_line).enumerate() {
-            use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
-                surface.set_stringn(
-                    viewport.x - OFFSET,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    },
-                );
-            }
-
-            surface.set_stringn(
-                viewport.x + 1 - OFFSET,
-                viewport.y + i as u16,
-                format!("{:>5}", line + 1),
-                5,
-                style,
-            );
         }
     }
 
@@ -455,6 +467,10 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
     ) {
+        //-------------------------------
+        // Left side of the status line.
+        //-------------------------------
+
         let mode = match doc.mode() {
             Mode::Insert => "INS",
             Mode::Select => "SEL",
@@ -487,31 +503,48 @@ impl EditorView {
             );
         }
 
-        surface.set_stringn(
-            viewport.x + viewport.width.saturating_sub(15),
-            viewport.y,
-            format!("{}", doc.diagnostics().len()),
-            4,
-            text_color,
+        //-------------------------------
+        // Right side of the status line.
+        //-------------------------------
+
+        // Compute the individual info strings.
+        let diag_count = format!("{}", doc.diagnostics().len());
+        // let indent_info = match doc.indent_style {
+        //     IndentStyle::Tabs => "tabs",
+        //     IndentStyle::Spaces(1) => "spaces:1",
+        //     IndentStyle::Spaces(2) => "spaces:2",
+        //     IndentStyle::Spaces(3) => "spaces:3",
+        //     IndentStyle::Spaces(4) => "spaces:4",
+        //     IndentStyle::Spaces(5) => "spaces:5",
+        //     IndentStyle::Spaces(6) => "spaces:6",
+        //     IndentStyle::Spaces(7) => "spaces:7",
+        //     IndentStyle::Spaces(8) => "spaces:8",
+        //     _ => "indent:ERROR",
+        // };
+        let position_info = {
+            let pos = coords_at_pos(doc.text().slice(..), doc.selection(view.id).cursor());
+            format!("{}:{}", pos.row + 1, pos.col + 1) // convert to 1-indexing
+        };
+
+        // Render them to the status line together.
+        let right_side_text = format!(
+            "{}    {} ",
+            &diag_count[..diag_count.len().min(4)],
+            // indent_info,
+            position_info
         );
-
-        // render line:col
-        let pos = coords_at_pos(doc.text().slice(..), doc.selection(view.id).cursor());
-
-        let text = format!("{}:{}", pos.row + 1, pos.col + 1); // convert to 1-indexing
-        let len = text.len();
-
+        let text_len = right_side_text.len() as u16;
         surface.set_string(
-            viewport.x + viewport.width.saturating_sub(len as u16 + 1),
+            viewport.x + viewport.width.saturating_sub(text_len),
             viewport.y,
-            text,
+            right_side_text,
             text_color,
         );
     }
 
     fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
-            command(cx);
+        if let Some(command) = self.keymaps[&Mode::Insert].get(&event) {
+            command.execute(cx);
         } else if let KeyEvent {
             code: KeyCode::Char(ch),
             ..
@@ -532,7 +565,7 @@ impl EditorView {
             // special handling for repeat operator
             key!('.') => {
                 // first execute whatever put us into insert mode
-                (self.last_insert.0)(cxt);
+                self.last_insert.0.execute(cxt);
                 // then replay the inputs
                 for key in &self.last_insert.1 {
                     self.insert_mode(cxt, *key)
@@ -540,16 +573,16 @@ impl EditorView {
             }
             _ => {
                 // set the count
-                cxt._count = cxt.editor.count.take();
+                cxt.count = cxt.editor.count.take();
                 // TODO: edge case: 0j -> reset to 1
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
 
                 // set the register
-                cxt.register = cxt.editor.register.take();
+                cxt.selected_register = cxt.editor.selected_register.take();
 
-                if let Some(command) = self.keymap[&mode].get(&event) {
-                    command(cxt);
+                if let Some(command) = self.keymaps[&mode].get(&event) {
+                    command.execute(cxt);
                 }
             }
         }
@@ -586,9 +619,9 @@ impl Component for EditorView {
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
-                    register: helix_view::RegisterSelection::default(),
+                    selected_register: helix_view::RegisterSelection::default(),
                     editor: &mut cx.editor,
-                    _count: None,
+                    count: None,
                     callback: None,
                     on_next_key_callback: None,
                     callbacks: cx.callbacks,
@@ -663,7 +696,7 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = self.keymap[&mode][&key];
+                        self.last_insert.0 = self.keymaps[&mode][&key];
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {
@@ -715,15 +748,12 @@ impl Component for EditorView {
         }
     }
 
-    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         // match view.doc.mode() {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
-        // return editor.cursor_position()
-
-        // It's easier to just not render the cursor and use selection rendering instead.
-        None
+        editor.cursor()
     }
 }
 

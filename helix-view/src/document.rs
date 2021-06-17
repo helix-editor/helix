@@ -1,10 +1,13 @@
-use anyhow::{Context, Error};
+use anyhow::{anyhow, Context, Error};
 use std::cell::Cell;
+use std::fmt::Display;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use helix_core::{
+    chars::{char_is_linebreak, char_is_whitespace},
     history::History,
     syntax::{LanguageConfiguration, LOADER},
     ChangeSet, Diagnostic, Rope, Selection, State, Syntax, Transaction,
@@ -21,6 +24,12 @@ pub enum Mode {
     Insert,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum IndentStyle {
+    Tabs,
+    Spaces(u8),
+}
+
 pub struct Document {
     // rope + selection
     pub(crate) id: DocumentId,
@@ -32,6 +41,9 @@ pub struct Document {
     /// Current editing mode.
     pub mode: Mode,
     pub restore_cursor: bool,
+
+    /// Current indent style.
+    pub indent_style: IndentStyle,
 
     syntax: Option<Syntax>,
     // /// Corresponding language scope name. Usually `source.<lang>`.
@@ -73,6 +85,29 @@ impl fmt::Debug for Document {
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
             .finish()
+    }
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Mode::Normal => f.write_str("normal"),
+            Mode::Select => f.write_str("select"),
+            Mode::Insert => f.write_str("insert"),
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "normal" => Ok(Mode::Normal),
+            "select" => Ok(Mode::Select),
+            "insert" => Ok(Mode::Insert),
+            _ => Err(anyhow!("Invalid mode '{}'", s)),
+        }
     }
 }
 
@@ -149,6 +184,7 @@ impl Document {
             path: None,
             text,
             selections: HashMap::default(),
+            indent_style: IndentStyle::Spaces(4),
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -182,6 +218,7 @@ impl Document {
         let mut doc = Self::new(doc);
         // set the path and try detecting the language
         doc.set_path(&path)?;
+        doc.detect_indent_style();
 
         Ok(doc)
     }
@@ -262,6 +299,132 @@ impl Document {
             let language_config = loader.language_config_for_file_name(path);
             let scopes = loader.scopes();
             self.set_language(language_config, scopes);
+        }
+    }
+
+    fn detect_indent_style(&mut self) {
+        // Build a histogram of the indentation *increases* between
+        // subsequent lines, ignoring lines that are all whitespace.
+        //
+        // Index 0 is for tabs, the rest are 1-8 spaces.
+        let histogram: [usize; 9] = {
+            let mut histogram = [0; 9];
+            let mut prev_line_is_tabs = false;
+            let mut prev_line_leading_count = 0usize;
+
+            // Loop through the lines, checking for and recording indentation
+            // increases as we go.
+            'outer: for line in self.text.lines().take(1000) {
+                let mut c_iter = line.chars();
+
+                // Is first character a tab or space?
+                let is_tabs = match c_iter.next() {
+                    Some('\t') => true,
+                    Some(' ') => false,
+
+                    // Ignore blank lines.
+                    Some(c) if char_is_linebreak(c) => continue,
+
+                    _ => {
+                        prev_line_is_tabs = false;
+                        prev_line_leading_count = 0;
+                        continue;
+                    }
+                };
+
+                // Count the line's total leading tab/space characters.
+                let mut leading_count = 1;
+                let mut count_is_done = false;
+                for c in c_iter {
+                    match c {
+                        '\t' if is_tabs && !count_is_done => leading_count += 1,
+                        ' ' if !is_tabs && !count_is_done => leading_count += 1,
+
+                        // We stop counting if we hit whitespace that doesn't
+                        // qualify as indent or doesn't match the leading
+                        // whitespace, but we don't exit the loop yet because
+                        // we still want to determine if the line is blank.
+                        c if char_is_whitespace(c) => count_is_done = true,
+
+                        // Ignore blank lines.
+                        c if char_is_linebreak(c) => continue 'outer,
+
+                        _ => break,
+                    }
+
+                    // Bound the worst-case execution time for weird text files.
+                    if leading_count > 256 {
+                        continue 'outer;
+                    }
+                }
+
+                // If there was an increase in indentation over the previous
+                // line, update the histogram with that increase.
+                if (prev_line_is_tabs == is_tabs || prev_line_leading_count == 0)
+                    && prev_line_leading_count < leading_count
+                {
+                    if is_tabs {
+                        histogram[0] += 1;
+                    } else {
+                        let amount = leading_count - prev_line_leading_count;
+                        if amount <= 8 {
+                            histogram[amount] += 1;
+                        }
+                    }
+                }
+
+                // Store this line's leading whitespace info for use with
+                // the next line.
+                prev_line_is_tabs = is_tabs;
+                prev_line_leading_count = leading_count;
+            }
+
+            // Give more weight to tabs, because their presence is a very
+            // strong indicator.
+            histogram[0] *= 2;
+
+            histogram
+        };
+
+        // Find the most frequent indent, its frequency, and the frequency of
+        // the next-most frequent indent.
+        let indent = histogram
+            .iter()
+            .enumerate()
+            .max_by_key(|kv| kv.1)
+            .unwrap()
+            .0;
+        let indent_freq = histogram[indent];
+        let indent_freq_2 = *histogram
+            .iter()
+            .enumerate()
+            .filter(|kv| kv.0 != indent)
+            .map(|kv| kv.1)
+            .max()
+            .unwrap();
+
+        // Use the auto-detected result if we're confident enough in its
+        // accuracy, based on some heuristics.  Otherwise fall back to
+        // the language-based setting.
+        if indent_freq >= 1 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
+            // Use the auto-detected setting.
+            self.indent_style = match indent {
+                0 => IndentStyle::Tabs,
+                _ => IndentStyle::Spaces(indent as u8),
+            };
+        } else {
+            // Fall back to language-based setting.
+            let indent = self
+                .language
+                .as_ref()
+                .and_then(|config| config.indent.as_ref())
+                .map_or("  ", |config| config.unit.as_str()); // fallback to 2 spaces
+
+            self.indent_style = if indent.starts_with(' ') {
+                IndentStyle::Spaces(indent.len() as u8)
+            } else {
+                IndentStyle::Tabs
+            };
         }
     }
 
@@ -507,13 +670,25 @@ impl Document {
     }
 
     /// Returns a string containing a single level of indentation.
-    pub fn indent_unit(&self) -> &str {
-        self.language
-            .as_ref()
-            .and_then(|config| config.indent.as_ref())
-            .map_or("  ", |config| config.unit.as_str()) // fallback to 2 spaces
+    ///
+    /// TODO: we might not need this function anymore, since the information
+    /// is conveniently available in `Document::indent_style` now.
+    pub fn indent_unit(&self) -> &'static str {
+        match self.indent_style {
+            IndentStyle::Tabs => "\t",
+            IndentStyle::Spaces(1) => " ",
+            IndentStyle::Spaces(2) => "  ",
+            IndentStyle::Spaces(3) => "   ",
+            IndentStyle::Spaces(4) => "    ",
+            IndentStyle::Spaces(5) => "     ",
+            IndentStyle::Spaces(6) => "      ",
+            IndentStyle::Spaces(7) => "       ",
+            IndentStyle::Spaces(8) => "        ",
 
-        // " ".repeat(TAB_WIDTH)
+            // Unsupported indentation style.  This should never happen,
+            // but just in case fall back to two spaces.
+            _ => "  ",
+        }
     }
 
     #[inline]

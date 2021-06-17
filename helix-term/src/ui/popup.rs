@@ -116,7 +116,7 @@ impl<T: Component> Component for Popup<T> {
 
         let position = self
             .position
-            .or_else(|| cx.editor.cursor_position())
+            .or_else(|| cx.editor.cursor().0)
             .unwrap_or_default();
 
         let (width, height) = self.size;

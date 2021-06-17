@@ -80,6 +80,7 @@ mk_langs!(
     (Java, tree_sitter_java),
     (Json, tree_sitter_json),
     (Julia, tree_sitter_julia),
+    (Latex, tree_sitter_latex),
     (Nix, tree_sitter_nix),
     (Php, tree_sitter_php),
     (Python, tree_sitter_python),

@@ -4,6 +4,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use helix_core::Position;
 use helix_view::{Editor, Theme};
 use std::{borrow::Cow, ops::RangeFrom};
+use tui::terminal::CursorKind;
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 
@@ -102,6 +103,13 @@ impl Prompt {
             self.cursor -= 1;
         }
         self.line.drain(i..);
+        self.completion = (self.completion_fn)(&self.line);
+        self.exit_selection();
+    }
+
+    pub fn clear(&mut self) {
+        self.line.clear();
+        self.cursor = 0;
         self.completion = (self.completion_fn)(&self.line);
         self.exit_selection();
     }
@@ -335,11 +343,14 @@ impl Component for Prompt {
         self.render_prompt(area, surface, cx)
     }
 
-    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         let line = area.height as usize - 1;
-        Some(Position::new(
-            area.y as usize + line,
-            area.x as usize + self.prompt.len() + self.cursor,
-        ))
+        (
+            Some(Position::new(
+                area.y as usize + line,
+                area.x as usize + self.prompt.len() + self.cursor,
+            )),
+            CursorKind::Block,
+        )
     }
 }

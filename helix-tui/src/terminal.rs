@@ -8,6 +8,19 @@ enum ResizeBehavior {
     Auto,
 }
 
+#[derive(Debug)]
+/// UNSTABLE
+pub enum CursorKind {
+    /// █
+    Block,
+    /// |
+    Bar,
+    /// _
+    Underline,
+    /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
+    Hidden,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 /// UNSTABLE
 pub struct Viewport {
@@ -57,7 +70,7 @@ where
     fn drop(&mut self) {
         // Attempt to restore the cursor state
         if self.hidden_cursor {
-            if let Err(err) = self.show_cursor() {
+            if let Err(err) = self.show_cursor(CursorKind::Block) {
                 eprintln!("Failed to show the cursor: {}", err);
             }
         }
@@ -147,7 +160,11 @@ where
 
     /// Synchronizes terminal size, calls the rendering closure, flushes the current internal state
     /// and prepares for the next draw call.
-    pub fn draw(&mut self, cursor_position: Option<(u16, u16)>) -> io::Result<()> {
+    pub fn draw(
+        &mut self,
+        cursor_position: Option<(u16, u16)>,
+        cursor_kind: CursorKind,
+    ) -> io::Result<()> {
         // // Autoresize - otherwise we get glitches if shrinking or potential desync between widgets
         // // and the terminal (if growing), which may OOB.
         // self.autoresize()?;
@@ -162,12 +179,13 @@ where
         // Draw to stdout
         self.flush()?;
 
-        match cursor_position {
-            None => self.hide_cursor()?,
-            Some((x, y)) => {
-                self.show_cursor()?;
-                self.set_cursor(x, y)?;
-            }
+        if let Some((x, y)) = cursor_position {
+            self.set_cursor(x, y)?;
+        }
+
+        match cursor_kind {
+            CursorKind::Hidden => self.hide_cursor()?,
+            kind => self.show_cursor(kind)?,
         }
 
         // Swap buffers
@@ -185,8 +203,8 @@ where
         Ok(())
     }
 
-    pub fn show_cursor(&mut self) -> io::Result<()> {
-        self.backend.show_cursor()?;
+    pub fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
+        self.backend.show_cursor(kind)?;
         self.hidden_cursor = false;
         Ok(())
     }

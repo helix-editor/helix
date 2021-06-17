@@ -1,5 +1,6 @@
 use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId};
 use tui::layout::Rect;
+use tui::terminal::CursorKind;
 
 use std::path::PathBuf;
 
@@ -8,13 +9,16 @@ use slotmap::SlotMap;
 use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
+pub use helix_core::register::Registers;
+use helix_core::Position;
 
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
-    pub register: RegisterSelection,
+    pub selected_register: RegisterSelection,
+    pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
@@ -59,9 +63,10 @@ impl Editor {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
             count: None,
-            register: RegisterSelection::default(),
+            selected_register: RegisterSelection::default(),
             theme,
             language_servers,
+            registers: Registers::default(),
             status_msg: None,
         }
     }
@@ -239,6 +244,13 @@ impl Editor {
         (view, doc)
     }
 
+    pub fn current_with_registers(&mut self) -> (&mut View, &mut Document, &mut Registers) {
+        let view = self.tree.get_mut(self.tree.focus);
+        let doc = &mut self.documents[view.doc];
+        let registers = &mut self.registers;
+        (view, doc, registers)
+    }
+
     pub fn view(&self) -> &View {
         self.tree.get(self.tree.focus)
     }
@@ -266,7 +278,7 @@ impl Editor {
     //     let doc = &mut editor.documents[id];
     // }
 
-    pub fn cursor_position(&self) -> Option<helix_core::Position> {
+    pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = self.view();
         let doc = &self.documents[view.doc];
@@ -274,8 +286,9 @@ impl Editor {
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
             pos.col += view.area.x as usize + OFFSET as usize;
             pos.row += view.area.y as usize;
-            return Some(pos);
+            (Some(pos), CursorKind::Hidden)
+        } else {
+            (None, CursorKind::Hidden)
         }
-        None
     }
 }
