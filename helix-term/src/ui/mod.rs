@@ -128,7 +128,7 @@ pub mod completers {
         let path = helix_view::document::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with('/') {
-            (path.into(), None)
+            (path, None)
         } else {
             let file_name = path
                 .file_name()
