@@ -1,7 +1,7 @@
 use helix_lsp::{lsp, LspProgressMap};
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{args::Args, compositor::Compositor, config::Config, keymap::Keymaps, ui};
+use crate::{args::Args, compositor::Compositor, config::Config, ui};
 
 use log::{error, info};
 
@@ -49,7 +49,7 @@ impl Application {
         let size = compositor.size();
         let mut editor = Editor::new(size);
 
-        let mut editor_view = Box::new(ui::EditorView::new(config.keymaps));
+        let mut editor_view = Box::new(ui::EditorView::new(config.keys));
         compositor.push(editor_view);
 
         if !args.files.is_empty() {
