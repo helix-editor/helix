@@ -23,6 +23,7 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Rect,
     style::{Color, Modifier, Style},
+    terminal::CursorKind,
 };
 
 pub struct EditorView {
@@ -228,7 +229,45 @@ impl EditorView {
             }
         }
 
-        // render selections
+        // render gutters
+
+        let linenr: Style = theme.get("ui.linenr");
+        let warning: Style = theme.get("warning");
+        let error: Style = theme.get("error");
+        let info: Style = theme.get("info");
+        let hint: Style = theme.get("hint");
+
+        for (i, line) in (view.first_line..last_line).enumerate() {
+            use helix_core::diagnostic::Severity;
+            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
+                surface.set_stringn(
+                    viewport.x - OFFSET,
+                    viewport.y + i as u16,
+                    "●",
+                    1,
+                    match diagnostic.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    },
+                );
+            }
+
+            // line numbers having selections are rendered differently
+            surface.set_stringn(
+                viewport.x + 1 - OFFSET,
+                viewport.y + i as u16,
+                format!("{:>5}", line + 1),
+                5,
+                linenr,
+            );
+        }
+
+        // render selections and selected linenr(s)
+        let linenr_select: Style = theme
+            .try_get("ui.linenr.selected")
+            .unwrap_or_else(|| theme.get("ui.linenr"));
 
         if is_focused {
             let screen = {
@@ -325,6 +364,13 @@ impl EditorView {
                         ),
                         cursor_style,
                     );
+                    surface.set_stringn(
+                        viewport.x + 1 - OFFSET,
+                        viewport.y + head.row as u16,
+                        format!("{:>5}", view.first_line + head.row + 1),
+                        5,
+                        linenr_select,
+                    );
                     // TODO: set cursor position for IME
                     if let Some(syntax) = doc.syntax() {
                         use helix_core::match_brackets;
@@ -352,40 +398,6 @@ impl EditorView {
                     }
                 }
             }
-        }
-
-        // render gutters
-
-        let style: Style = theme.get("ui.linenr");
-        let warning: Style = theme.get("warning");
-        let error: Style = theme.get("error");
-        let info: Style = theme.get("info");
-        let hint: Style = theme.get("hint");
-
-        for (i, line) in (view.first_line..last_line).enumerate() {
-            use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
-                surface.set_stringn(
-                    viewport.x - OFFSET,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    },
-                );
-            }
-
-            surface.set_stringn(
-                viewport.x + 1 - OFFSET,
-                viewport.y + i as u16,
-                format!("{:>5}", line + 1),
-                5,
-                style,
-            );
         }
     }
 
@@ -567,7 +579,7 @@ impl EditorView {
                 // debug_assert!(cxt.count != 0);
 
                 // set the register
-                cxt.register = cxt.editor.register.take();
+                cxt.selected_register = cxt.editor.selected_register.take();
 
                 if let Some(command) = self.keymaps[&mode].get(&event) {
                     command.execute(cxt);
@@ -607,7 +619,7 @@ impl Component for EditorView {
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
-                    register: helix_view::RegisterSelection::default(),
+                    selected_register: helix_view::RegisterSelection::default(),
                     editor: &mut cx.editor,
                     count: None,
                     callback: None,
@@ -736,15 +748,12 @@ impl Component for EditorView {
         }
     }
 
-    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         // match view.doc.mode() {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),
         // };
-        // return editor.cursor_position()
-
-        // It's easier to just not render the cursor and use selection rendering instead.
-        None
+        editor.cursor()
     }
 }
 

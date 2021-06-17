@@ -16,6 +16,7 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::editor::Action;
 use helix_view::Editor;
+use tui::terminal::CursorKind;
 
 pub struct Picker<T> {
     options: Vec<T>,
@@ -304,7 +305,7 @@ impl<T: 'static> Component for Picker<T> {
         }
     }
 
-    fn cursor_position(&self, area: Rect, editor: &Editor) -> Option<Position> {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         // TODO: this is mostly duplicate code
         let area = inner_rect(area);
         let block = Block::default().borders(Borders::ALL);
@@ -314,6 +315,6 @@ impl<T: 'static> Component for Picker<T> {
         // prompt area
         let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
 
-        self.prompt.cursor_position(area, editor)
+        self.prompt.cursor(area, editor)
     }
 }

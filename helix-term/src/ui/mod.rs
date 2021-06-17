@@ -20,6 +20,7 @@ pub use tui::layout::Rect;
 pub use tui::style::{Color, Modifier, Style};
 
 use helix_core::regex::Regex;
+use helix_core::register::Registers;
 use helix_view::{Document, Editor, View};
 
 use std::path::{Path, PathBuf};
@@ -27,7 +28,7 @@ use std::path::{Path, PathBuf};
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: String,
-    fun: impl Fn(&mut View, &mut Document, Regex) + 'static,
+    fun: impl Fn(&mut View, &mut Document, &mut Registers, Regex) + 'static,
 ) -> Prompt {
     let view_id = cx.view().id;
     let snapshot = cx.doc().selection(view_id).clone();
@@ -53,13 +54,13 @@ pub fn regex_prompt(
 
                     match Regex::new(input) {
                         Ok(regex) => {
-                            let (view, doc) = editor.current();
+                            let (view, doc, registers) = editor.current_with_registers();
 
                             // revert state to what it was before the last update
                             // TODO: also revert text
                             doc.set_selection(view.id, snapshot.clone());
 
-                            fun(view, doc, regex);
+                            fun(view, doc, registers, regex);
 
                             view.ensure_cursor_in_view(doc);
                         }

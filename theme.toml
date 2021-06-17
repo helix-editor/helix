@@ -40,6 +40,7 @@
 
 "ui.background" = { bg = "#3b224c" } # midnight
 "ui.linenr" = { fg = "#5a5977" } # comet
+"ui.linenr.selected" = { fg = "#dbbfef" } # lilac
 "ui.statusline" = { bg = "#281733" } # revolver
 "ui.popup" = { bg = "#281733" } # revolver
 "ui.window" = { bg = "#452859" } # bossa nova

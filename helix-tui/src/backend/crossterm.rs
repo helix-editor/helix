@@ -3,9 +3,10 @@ use crate::{
     buffer::Cell,
     layout::Rect,
     style::{Color, Modifier},
+    terminal::CursorKind,
 };
 use crossterm::{
-    cursor::{Hide, MoveTo, Show},
+    cursor::{CursorShape, Hide, MoveTo, SetCursorShape, Show},
     execute, queue,
     style::{
         Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
@@ -93,8 +94,14 @@ where
         map_error(execute!(self.buffer, Hide))
     }
 
-    fn show_cursor(&mut self) -> io::Result<()> {
-        map_error(execute!(self.buffer, Show))
+    fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
+        let shape = match kind {
+            CursorKind::Block => CursorShape::Block,
+            CursorKind::Bar => CursorShape::Line,
+            CursorKind::Underline => CursorShape::UnderScore,
+            CursorKind::Hidden => unreachable!(),
+        };
+        map_error(execute!(self.buffer, Show, SetCursorShape(shape)))
     }
 
     fn get_cursor(&mut self) -> io::Result<(u16, u16)> {

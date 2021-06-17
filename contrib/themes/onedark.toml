@@ -33,6 +33,7 @@
 "ui.background" = { fg = "#ABB2BF", bg = "#282C34" }
 "ui.help" = { bg = "#3E4452" }
 "ui.linenr" = { fg = "#4B5263", modifiers = ['dim'] }
+"ui.linenr.selected" = { fg = "#ABB2BF" }
 "ui.popup" = { bg = "#3E4452" }
 "ui.statusline" = { fg = "#ABB2BF", bg = "#2C323C" }
 "ui.selection" = { bg = "#3E4452" }

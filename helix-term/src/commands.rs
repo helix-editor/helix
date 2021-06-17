@@ -4,8 +4,9 @@ use helix_core::{
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register, search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection,
-    SmallVec, Tendril, Transaction,
+    register::{self, Register, Registers},
+    search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection, SmallVec,
+    Tendril, Transaction,
 };
 
 use helix_view::{
@@ -41,7 +42,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use once_cell::sync::Lazy;
 
 pub struct Context<'a> {
-    pub register: helix_view::RegisterSelection,
+    pub selected_register: helix_view::RegisterSelection,
     pub count: Option<std::num::NonZeroUsize>,
     pub editor: &'a mut Editor,
 
@@ -65,6 +66,11 @@ impl<'a> Context<'a> {
     #[inline]
     pub fn current(&mut self) -> (&mut View, &mut Document) {
         self.editor.current()
+    }
+
+    #[inline]
+    pub fn current_with_registers(&mut self) -> (&mut View, &mut Document, &mut Registers) {
+        self.editor.current_with_registers()
     }
 
     /// Push a new component onto the compositor.
@@ -103,6 +109,7 @@ impl<'a> Context<'a> {
         self.callbacks.push(callback);
     }
 
+    /// Returns 1 if no explicit count was provided
     #[inline]
     pub fn count(&self) -> usize {
         self.count.map_or(1, |v| v.get())
@@ -767,7 +774,7 @@ fn select_all(cx: &mut Context) {
 }
 
 fn select_regex(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "select:".to_string(), move |view, doc, regex| {
+    let prompt = ui::regex_prompt(cx, "select:".to_string(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
         {
@@ -779,7 +786,7 @@ fn select_regex(cx: &mut Context) {
 }
 
 fn split_selection(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "split:".to_string(), move |view, doc, regex| {
+    let prompt = ui::regex_prompt(cx, "split:".to_string(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
         doc.set_selection(view.id, selection);
@@ -850,20 +857,23 @@ fn search(cx: &mut Context) {
     let contents = doc.text().slice(..).to_string();
 
     let view_id = view.id;
-    let prompt = ui::regex_prompt(cx, "search:".to_string(), move |view, doc, regex| {
-        search_impl(doc, view, &contents, &regex, false);
-        // TODO: only store on enter (accept), not update
-        register::set('\\', vec![regex.as_str().to_string()]);
-    });
+    let prompt = ui::regex_prompt(
+        cx,
+        "search:".to_string(),
+        move |view, doc, registers, regex| {
+            search_impl(doc, view, &contents, &regex, false);
+            // TODO: only store on enter (accept), not update
+            registers.write('\\', vec![regex.as_str().to_string()]);
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
 
-// can't search next for ""compose"" for some reason
 fn search_next_impl(cx: &mut Context, extend: bool) {
-    if let Some(query) = register::get('\\') {
+    let (view, doc, registers) = cx.current_with_registers();
+    if let Some(query) = registers.read('\\') {
         let query = query.first().unwrap();
-        let (view, doc) = cx.current();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(query).unwrap();
         search_impl(doc, view, &contents, &regex, extend);
@@ -883,7 +893,7 @@ fn search_selection(cx: &mut Context) {
     let contents = doc.text().slice(..);
     let query = doc.selection(view.id).primary().fragment(contents);
     let regex = regex::escape(&query);
-    register::set('\\', vec![regex]);
+    cx.editor.registers.write('\\', vec![regex]);
     search_next(cx);
 }
 
@@ -930,7 +940,7 @@ fn extend_line(cx: &mut Context) {
 
 // heuristic: append changes to history after each command, unless we're in insert mode
 
-fn delete_selection_impl(reg: char, doc: &mut Document, view_id: ViewId) {
+fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
     // first yank the selection
     let values: Vec<String> = doc
         .selection(view_id)
@@ -938,7 +948,7 @@ fn delete_selection_impl(reg: char, doc: &mut Document, view_id: ViewId) {
         .map(Cow::into_owned)
         .collect();
 
-    register::set(reg, values);
+    reg.write(values);
 
     // then delete
     let transaction =
@@ -951,8 +961,9 @@ fn delete_selection_impl(reg: char, doc: &mut Document, view_id: ViewId) {
 }
 
 fn delete_selection(cx: &mut Context) {
-    let reg = cx.register.name();
-    let (view, doc) = cx.current();
+    let reg_name = cx.selected_register.name();
+    let (view, doc, registers) = cx.current_with_registers();
+    let reg = registers.get_or_insert(reg_name);
     delete_selection_impl(reg, doc, view.id);
 
     doc.append_changes_to_history(view.id);
@@ -962,8 +973,9 @@ fn delete_selection(cx: &mut Context) {
 }
 
 fn change_selection(cx: &mut Context) {
-    let reg = cx.register.name();
-    let (view, doc) = cx.current();
+    let reg_name = cx.selected_register.name();
+    let (view, doc, registers) = cx.current_with_registers();
+    let reg = registers.get_or_insert(reg_name);
     delete_selection_impl(reg, doc, view.id);
     enter_insert_mode(doc);
 }
@@ -1619,53 +1631,55 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(doc);
 
     let text = doc.text().slice(..);
+    let contents = doc.text();
     let selection = doc.selection(view.id);
 
     let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut offs = 0;
 
-    let changes: Vec<Change> = selection
-        .iter()
-        .map(|range| {
-            let line = text.char_to_line(range.head);
+    let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+        let line = text.char_to_line(range.head);
 
-            let line = match open {
-                // adjust position to the end of the line (next line - 1)
-                Open::Below => line + 1,
-                // adjust position to the end of the previous line (current line - 1)
-                Open::Above => line,
-            };
+        let line = match open {
+            // adjust position to the end of the line (next line - 1)
+            Open::Below => line + 1,
+            // adjust position to the end of the previous line (current line - 1)
+            Open::Above => line,
+        };
 
-            let index = doc.text().line_to_char(line).saturating_sub(1);
+        // insert newlines after this index for both Above and Below variants
+        let linend_index = doc.text().line_to_char(line).saturating_sub(1);
 
-            // TODO: share logic with insert_newline for indentation
-            let indent_level = indent::suggested_indent_for_pos(
-                doc.language_config(),
-                doc.syntax(),
-                text,
-                index,
-                true,
-            );
-            let indent = doc.indent_unit().repeat(indent_level);
-            let mut text = String::with_capacity(1 + indent.len());
-            text.push('\n');
-            text.push_str(&indent);
-            let text = text.repeat(count);
+        // TODO: share logic with insert_newline for indentation
+        let indent_level = indent::suggested_indent_for_pos(
+            doc.language_config(),
+            doc.syntax(),
+            text,
+            linend_index,
+            true,
+        );
+        let indent = doc.indent_unit().repeat(indent_level);
+        let mut text = String::with_capacity(1 + indent.len());
+        text.push('\n');
+        text.push_str(&indent);
+        let text = text.repeat(count);
 
-            // calculate new selection range
-            let pos = index + text.chars().count();
-            ranges.push(Range::new(pos, pos));
+        // calculate new selection ranges
+        let pos = if line == 0 {
+            0 // Required since text will have a min len of 1 (\n)
+        } else {
+            offs + linend_index + 1
+        };
+        for i in 0..count {
+            ranges.push(Range::new(pos + i, pos + i));
+        }
 
-            (index, index, Some(text.into()))
-        })
-        .collect();
+        offs += text.chars().count();
 
-    // TODO: count actually inserts "n" new lines and starts editing on all of them.
-    // TODO: append "count" newlines and modify cursors to those lines
+        (linend_index, linend_index, Some(text.into()))
+    });
 
-    let selection = Selection::new(ranges, 0);
-
-    let transaction =
-        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection);
+    transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
 }
@@ -2363,10 +2377,12 @@ fn yank(cx: &mut Context) {
     let msg = format!(
         "yanked {} selection(s) to register {}",
         values.len(),
-        cx.register.name()
+        cx.selected_register.name()
     );
 
-    register::set(cx.register.name(), values);
+    cx.editor
+        .registers
+        .write(cx.selected_register.name(), values);
 
     cx.editor.set_status(msg)
 }
@@ -2377,47 +2393,48 @@ enum Paste {
     After,
 }
 
-fn paste_impl(reg: char, doc: &mut Document, view: &View, action: Paste) -> Option<Transaction> {
-    if let Some(values) = register::get(reg) {
-        let repeat = std::iter::repeat(
-            values
-                .last()
-                .map(|value| Tendril::from_slice(value))
-                .unwrap(),
-        );
+fn paste_impl(
+    values: &[String],
+    doc: &mut Document,
+    view: &View,
+    action: Paste,
+) -> Option<Transaction> {
+    let repeat = std::iter::repeat(
+        values
+            .last()
+            .map(|value| Tendril::from_slice(value))
+            .unwrap(),
+    );
 
-        // if any of values ends \n it's linewise paste
-        let linewise = values.iter().any(|value| value.ends_with('\n'));
+    // if any of values ends \n it's linewise paste
+    let linewise = values.iter().any(|value| value.ends_with('\n'));
 
-        let mut values = values.into_iter().map(Tendril::from).chain(repeat);
+    let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 
-        let text = doc.text();
+    let text = doc.text();
 
-        let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let pos = match (action, linewise) {
-                    // paste linewise before
-                    (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
-                    // paste linewise after
-                    (Paste::After, true) => text.line_to_char(text.char_to_line(range.to()) + 1),
-                    // paste insert
-                    (Paste::Before, false) => range.from(),
-                    // paste append
-                    (Paste::After, false) => range.to() + 1,
-                };
-                (pos, pos, Some(values.next().unwrap()))
-            });
-        return Some(transaction);
-    }
-    None
+    let transaction = Transaction::change_by_selection(text, doc.selection(view.id), |range| {
+        let pos = match (action, linewise) {
+            // paste linewise before
+            (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
+            // paste linewise after
+            (Paste::After, true) => text.line_to_char(text.char_to_line(range.to()) + 1),
+            // paste insert
+            (Paste::Before, false) => range.from(),
+            // paste append
+            (Paste::After, false) => range.to() + 1,
+        };
+        (pos, pos, Some(values.next().unwrap()))
+    });
+
+    Some(transaction)
 }
 
 fn replace_with_yanked(cx: &mut Context) {
-    let reg = cx.register.name();
+    let reg_name = cx.selected_register.name();
+    let (view, doc, registers) = cx.current_with_registers();
 
-    if let Some(values) = register::get(reg) {
-        let (view, doc) = cx.current();
-
+    if let Some(values) = registers.read(reg_name) {
         if let Some(yank) = values.first() {
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
@@ -2443,20 +2460,26 @@ fn replace_with_yanked(cx: &mut Context) {
 // default insert
 
 fn paste_after(cx: &mut Context) {
-    let reg = cx.register.name();
-    let (view, doc) = cx.current();
+    let reg_name = cx.selected_register.name();
+    let (view, doc, registers) = cx.current_with_registers();
 
-    if let Some(transaction) = paste_impl(reg, doc, view, Paste::After) {
+    if let Some(transaction) = registers
+        .read(reg_name)
+        .and_then(|values| paste_impl(values, doc, view, Paste::After))
+    {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
 }
 
 fn paste_before(cx: &mut Context) {
-    let reg = cx.register.name();
-    let (view, doc) = cx.current();
+    let reg_name = cx.selected_register.name();
+    let (view, doc, registers) = cx.current_with_registers();
 
-    if let Some(transaction) = paste_impl(reg, doc, view, Paste::Before) {
+    if let Some(transaction) = registers
+        .read(reg_name)
+        .and_then(|values| paste_impl(values, doc, view, Paste::Before))
+    {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
@@ -2630,7 +2653,7 @@ fn join_selections(cx: &mut Context) {
 
 fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
-    let prompt = ui::regex_prompt(cx, "keep:".to_string(), move |view, doc, regex| {
+    let prompt = ui::regex_prompt(cx, "keep:".to_string(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
 
         if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
@@ -2926,7 +2949,7 @@ fn select_register(cx: &mut Context) {
             ..
         } = event
         {
-            cx.editor.register.select(ch);
+            cx.editor.selected_register.select(ch);
         }
     })
 }

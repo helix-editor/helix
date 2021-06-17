@@ -156,6 +156,15 @@ roots = []
 
 indent = { tab-width = 2, unit = "  " }
 
+[[language]]
+name = "latex"
+scope = "source.tex"
+injection-regex = "tex"
+file-types = ["tex"]
+roots = []
+
+indent = { tab-width = 4, unit = "\t" }
+
 # [[language]]
 # name = "haskell"
 # scope = "source.haskell"

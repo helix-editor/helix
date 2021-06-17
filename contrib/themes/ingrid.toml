@@ -30,6 +30,7 @@
 
 "ui.background" = { bg = "#FFFCFD" }
 "ui.linenr" = { fg = "#bbbbbb" }
+"ui.linenr.selected" = { fg = "#F3EAE9" }  # TODO
 "ui.statusline" = { bg = "#F3EAE9" }
 "ui.popup" = { bg = "#F3EAE9" }
 "ui.window" = { bg = "#D8B8B3" }
