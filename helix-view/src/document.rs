@@ -91,9 +91,9 @@ impl fmt::Debug for Document {
 impl Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Mode::Normal => f.write_str("Normal"),
-            Mode::Select => f.write_str("Select"),
-            Mode::Insert => f.write_str("Insert"),
+            Mode::Normal => f.write_str("normal"),
+            Mode::Select => f.write_str("select"),
+            Mode::Insert => f.write_str("insert"),
         }
     }
 }
@@ -103,9 +103,9 @@ impl FromStr for Mode {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Normal" => Ok(Mode::Normal),
-            "Select" => Ok(Mode::Select),
-            "Insert" => Ok(Mode::Insert),
+            "normal" => Ok(Mode::Normal),
+            "select" => Ok(Mode::Select),
+            "insert" => Ok(Mode::Insert),
             _ => Err(anyhow!("Invalid mode '{}'", s)),
         }
     }

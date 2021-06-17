@@ -411,8 +411,9 @@ impl FromStr for RepresentableKeyEvent {
             "null" => KeyCode::Null,
             "esc" => KeyCode::Esc,
             single if single.len() == 1 => KeyCode::Char(single.chars().next().unwrap()),
-            function if function.len() > 1 && &function[0..1] == "F" => {
-                let function = str::parse::<u8>(&function[1..])?;
+            function if function.len() > 1 && function.starts_with('F') => {
+                let function: String = function.chars().skip(1).collect();
+                let function = str::parse::<u8>(&function)?;
                 (function > 0 && function < 13)
                     .then(|| KeyCode::F(function))
                     .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
@@ -494,11 +495,11 @@ mod test {
     #[test]
     fn parsing_keymaps_config_file() {
         let sample_keymaps = r#"
-            [keys.Insert]
+            [keys.insert]
             y = "move_line_down"
             S-C-a = "delete_selection"
 
-            [keys.Normal]
+            [keys.normal]
             A-F12 = "move_next_word_end"
         "#;
 

@@ -25,8 +25,7 @@ impl FromStr for Config {
                 .keys
                 .map(|r| parse_keymaps(&r))
                 .transpose()?
-                .or_else(|| Some(Keymaps::default()))
-                .unwrap(),
+                .unwrap_or_else(Keymaps::default),
         })
     }
 }

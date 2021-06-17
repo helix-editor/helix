@@ -684,7 +684,7 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = self.keymaps[&mode][&key].clone();
+                        self.last_insert.0 = self.keymaps[&mode][&key];
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

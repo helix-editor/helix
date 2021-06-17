@@ -130,14 +130,14 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
 
 /// A command is composed of a static name, and a function that takes the current state plus a count,
 /// and does a side-effect on the state (usually by creating and applying a transaction).
-#[derive(Clone)]
-pub struct Command(fn(cx: &mut Context), &'static str);
+#[derive(Copy, Clone)]
+pub struct Command(&'static str, fn(cx: &mut Context));
 
 macro_rules! commands {
-    ( $($name: ident),* ) => {
+    ( $($name:ident),* ) => {
         $(
             #[allow(non_upper_case_globals)]
-            pub const $name: Self = Self($name, stringify!($name));
+            pub const $name: Self = Self(stringify!($name), $name);
         )*
 
         pub const COMMAND_LIST: &'static [Self] = &[
@@ -148,11 +148,11 @@ macro_rules! commands {
 
 impl Command {
     pub fn execute(&self, cx: &mut Context) {
-        (self.0)(cx);
+        (self.1)(cx);
     }
 
     pub fn name(&self) -> &'static str {
-        self.1
+        self.0
     }
 
     commands!(
@@ -3030,7 +3030,7 @@ fn right_bracket_mode(cx: &mut Context) {
 
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(_, name) = self;
+        let Command(name, _) = self;
         f.write_str(name)
     }
 }
@@ -3039,18 +3039,17 @@ impl std::str::FromStr for Command {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for command in Command::COMMAND_LIST {
-            if command.1 == s {
-                return Ok(command.clone());
-            }
-        }
-        Err(anyhow!("No command named '{}'", s))
+        Command::COMMAND_LIST
+            .iter()
+            .copied()
+            .find(|cmd| cmd.0 == s)
+            .ok_or_else(|| anyhow!("No command named '{}'", s))
     }
 }
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(_, name) = self;
+        let Command(name, _) = self;
         f.debug_tuple("Command").field(name).finish()
     }
 }
