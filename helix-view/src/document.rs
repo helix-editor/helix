@@ -128,6 +128,7 @@ pub fn expand_tilde(path: &Path) -> PathBuf {
 /// needs to improve on.
 /// Copied from cargo: https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81
 pub fn normalize_path(path: &Path) -> PathBuf {
+    let path = expand_tilde(path);
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
@@ -136,7 +137,7 @@ pub fn normalize_path(path: &Path) -> PathBuf {
         PathBuf::new()
     };
 
-    for (i, component) in components.enumerate() {
+    for component in components {
         match component {
             Component::Prefix(..) => unreachable!(),
             Component::RootDir => {
@@ -146,19 +147,25 @@ pub fn normalize_path(path: &Path) -> PathBuf {
             Component::ParentDir => {
                 ret.pop();
             }
-            Component::Normal(c) if c == "~" && i == 0 => {
-                if let Ok(home) = helix_core::home_dir() {
-                    ret.push(home);
-                } else {
-                    ret.push(c);
-                }
-            }
             Component::Normal(c) => {
                 ret.push(c);
             }
         }
     }
     ret
+}
+
+/// Returns the canonical, absolute form of a path with all intermediate components normalized.
+///
+/// This function is used instead of `std::fs::canonicalize` because we don't want to verify
+/// here if the path exists, just normalize it's components.
+pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
+    let normalized = normalize_path(path);
+    if normalized.is_absolute() {
+        Ok(normalized)
+    } else {
+        std::env::current_dir().map(|current_dir| current_dir.join(normalized))
+    }
 }
 
 use helix_lsp::lsp;
@@ -419,7 +426,7 @@ impl Document {
     }
 
     pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        let path = normalize_path(path);
+        let path = canonicalize_path(path)?;
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
