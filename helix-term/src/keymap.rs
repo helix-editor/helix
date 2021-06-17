@@ -503,7 +503,7 @@ mod test {
             A-F12 = "move_next_word_end"
         "#;
 
-        let config = Config::from_str(sample_keymaps).unwrap();
+        let config: Config = toml::from_str(sample_keymaps).unwrap();
         assert_eq!(
             *config
                 .keymaps

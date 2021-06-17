@@ -2,7 +2,6 @@ use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::Config;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use anyhow::{Context, Result};
 
@@ -92,7 +91,7 @@ FLAGS:
 
     let config = std::fs::read_to_string(conf_dir.join("config.toml"))
         .ok()
-        .map(|s| Config::from_str(&s))
+        .map(|s| toml::from_str(&s))
         .transpose()?
         .or_else(|| Some(Config::default()))
         .unwrap();

@@ -1,7 +1,7 @@
 use anyhow::{Error, Result};
 use std::{collections::HashMap, str::FromStr};
 
-use serde::{Deserialize, Serialize};
+use serde::{de::Error as SerdeError, Deserialize, Serialize};
 
 use crate::keymap::{parse_keymaps, Keymaps};
 
@@ -15,16 +15,18 @@ struct TomlConfig {
     keys: Option<HashMap<String, HashMap<String, String>>>,
 }
 
-impl FromStr for Config {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let toml_config: TomlConfig = toml::from_str(&s)?;
+impl<'de> Deserialize<'de> for Config {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let config = TomlConfig::deserialize(deserializer)?;
         Ok(Self {
-            keymaps: toml_config
+            keymaps: config
                 .keys
                 .map(|r| parse_keymaps(&r))
-                .transpose()?
+                .transpose()
+                .map_err(|e| D::Error::custom(format!("Error deserializing keymap: {}", e)))?
                 .unwrap_or_else(Keymaps::default),
         })
     }
