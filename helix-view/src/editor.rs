@@ -101,19 +101,19 @@ impl Editor {
 
         match action {
             Action::Replace => {
-                let view = self.view();
+                let view = view!(self);
                 let jump = (
                     view.doc,
                     self.documents[view.doc].selection(view.id).clone(),
                 );
 
-                let view = self.view_mut();
+                let view = view_mut!(self);
                 view.jumps.push(jump);
                 view.last_accessed_doc = Some(view.doc);
                 view.doc = id;
                 view.first_line = 0;
 
-                let (view, doc) = self.current();
+                let (view, doc) = current!(self);
 
                 // initialize selection for view
                 let selection = doc
@@ -238,27 +238,6 @@ impl Editor {
         self.tree.is_empty()
     }
 
-    pub fn current(&mut self) -> (&mut View, &mut Document) {
-        let view = self.tree.get_mut(self.tree.focus);
-        let doc = &mut self.documents[view.doc];
-        (view, doc)
-    }
-
-    pub fn current_with_registers(&mut self) -> (&mut View, &mut Document, &mut Registers) {
-        let view = self.tree.get_mut(self.tree.focus);
-        let doc = &mut self.documents[view.doc];
-        let registers = &mut self.registers;
-        (view, doc, registers)
-    }
-
-    pub fn view(&self) -> &View {
-        self.tree.get(self.tree.focus)
-    }
-
-    pub fn view_mut(&mut self) -> &mut View {
-        self.tree.get_mut(self.tree.focus)
-    }
-
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
         let doc = &self.documents[view.doc];
@@ -280,7 +259,7 @@ impl Editor {
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        let view = self.view();
+        let view = view!(self);
         let doc = &self.documents[view.doc];
         let cursor = doc.selection(view.id).cursor();
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {

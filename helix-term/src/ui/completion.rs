@@ -89,7 +89,7 @@ impl Completion {
                     // doc.state = snapshot.clone();
                 }
                 PromptEvent::Validate => {
-                    let (view, doc) = editor.current();
+                    let (view, doc) = current!(editor);
 
                     // revert state to what it was before the last update
                     // doc.state = snapshot.clone();
@@ -169,7 +169,7 @@ impl Completion {
     pub fn update(&mut self, cx: &mut commands::Context) {
         // recompute menu based on matches
         let menu = self.popup.contents_mut();
-        let (view, doc) = cx.editor.current();
+        let (view, doc) = current!(cx.editor);
 
         // cx.hooks()
         // cx.add_hook(enum type,  ||)
@@ -233,7 +233,7 @@ impl Component for Completion {
             // ---
             // option.documentation
 
-            let (view, doc) = cx.editor.current();
+            let (view, doc) = current!(cx.editor);
             let language = doc
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))

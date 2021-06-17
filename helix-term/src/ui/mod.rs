@@ -30,8 +30,9 @@ pub fn regex_prompt(
     prompt: String,
     fun: impl Fn(&mut View, &mut Document, &mut Registers, Regex) + 'static,
 ) -> Prompt {
-    let view_id = cx.view().id;
-    let snapshot = cx.doc().selection(view_id).clone();
+    let (view, doc) = current!(cx.editor);
+    let view_id = view.id;
+    let snapshot = doc.selection(view_id).clone();
 
     Prompt::new(
         prompt,
@@ -40,7 +41,7 @@ pub fn regex_prompt(
             match event {
                 PromptEvent::Abort => {
                     // TODO: also revert text
-                    let (view, doc) = editor.current();
+                    let (view, doc) = current!(editor);
                     doc.set_selection(view.id, snapshot.clone());
                 }
                 PromptEvent::Validate => {
@@ -54,7 +55,8 @@ pub fn regex_prompt(
 
                     match Regex::new(input) {
                         Ok(regex) => {
-                            let (view, doc, registers) = editor.current_with_registers();
+                            let (view, doc) = current!(editor);
+                            let registers = &mut editor.registers;
 
                             // revert state to what it was before the last update
                             // TODO: also revert text
