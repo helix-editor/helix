@@ -102,6 +102,22 @@ where
     }
 }
 
+/// Expands tilde `~` into users home directory if avilable, otherwise returns the path
+/// unchanged. The tilde will only be expanded when present as the first component of the path
+/// and only slash follows it.
+pub fn expand_tilde(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    if let Some(Component::Normal(c)) = components.peek() {
+        if c == &"~" {
+            if let Ok(home) = helix_core::home_dir() {
+                return home.join(path.strip_prefix("~").unwrap());
+            }
+        }
+    }
+
+    path.to_path_buf()
+}
+
 /// Normalize a path, removing things like `.` and `..`.
 ///
 /// CAUTION: This does not resolve symlinks (unlike
