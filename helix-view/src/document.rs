@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Context, Error};
+use serde::de::{self, Deserialize, Deserializer};
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
@@ -15,13 +17,45 @@ use helix_core::{
 
 use crate::{DocumentId, ViewId};
 
-use std::collections::HashMap;
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
     Select,
     Insert,
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Mode::Normal => f.write_str("normal"),
+            Mode::Select => f.write_str("select"),
+            Mode::Insert => f.write_str("insert"),
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "normal" => Ok(Mode::Normal),
+            "select" => Ok(Mode::Select),
+            "insert" => Ok(Mode::Insert),
+            _ => Err(anyhow!("Invalid mode '{}'", s)),
+        }
+    }
+}
+
+// toml deserializer doesn't seem to recognize string as enum
+impl<'de> Deserialize<'de> for Mode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(de::Error::custom)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -85,29 +119,6 @@ impl fmt::Debug for Document {
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
             .finish()
-    }
-}
-
-impl Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Mode::Normal => f.write_str("normal"),
-            Mode::Select => f.write_str("select"),
-            Mode::Insert => f.write_str("insert"),
-        }
-    }
-}
-
-impl FromStr for Mode {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "normal" => Ok(Mode::Normal),
-            "select" => Ok(Mode::Select),
-            "insert" => Ok(Mode::Insert),
-            _ => Err(anyhow!("Invalid mode '{}'", s)),
-        }
     }
 }
 
