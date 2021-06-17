@@ -615,7 +615,7 @@ impl Component for EditorView {
                 // clear status
                 cx.editor.status_msg = None;
 
-                let (view, doc) = cx.editor.current();
+                let (view, doc) = current!(cx.editor);
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
@@ -684,7 +684,7 @@ impl Component for EditorView {
                     return EventResult::Ignored;
                 }
 
-                let (view, doc) = cx.editor.current();
+                let (view, doc) = current!(cx.editor);
                 view.ensure_cursor_in_view(doc);
 
                 // mode transitions
