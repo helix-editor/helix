@@ -107,6 +107,7 @@ impl<'a> Context<'a> {
         self.callbacks.push(callback);
     }
 
+    /// Returns 1 if no explicit count was provided
     #[inline]
     pub fn count(&self) -> usize {
         self.count.map_or(1, |v| v.get())
@@ -1511,14 +1512,15 @@ fn open(cx: &mut Context, open: Open) {
             Open::Above => line,
         };
 
-        let index = doc.text().line_to_char(line).saturating_sub(1);
+        // insert newlines after this index for both Above and Below variants
+        let linend_index = doc.text().line_to_char(line).saturating_sub(1);
 
         // TODO: share logic with insert_newline for indentation
         let indent_level = indent::suggested_indent_for_pos(
             doc.language_config(),
             doc.syntax(),
             text,
-            index,
+            linend_index,
             true,
         );
         let indent = doc.indent_unit().repeat(indent_level);
@@ -1527,21 +1529,20 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(&indent);
         let text = text.repeat(count);
 
-        // calculate new selection range
+        // calculate new selection ranges
         let pos = if line == 0 {
             0 // Required since text will have a min len of 1 (\n)
         } else {
-            index + offs + text.chars().count()
+            offs + linend_index + 1
         };
-        ranges.push(Range::new(pos, pos));
+        for i in 0..count {
+            ranges.push(Range::new(pos + i, pos + i));
+        }
 
         offs += text.chars().count();
 
-        (index, index, Some(text.into()))
+        (linend_index, linend_index, Some(text.into()))
     });
-
-    // TODO: count actually inserts "n" new lines and starts editing on all of them.
-    // TODO: append "count" newlines and modify cursors to those lines
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
