@@ -124,7 +124,8 @@ pub mod completers {
         use ignore::WalkBuilder;
         use std::path::{Path, PathBuf};
 
-        let path = Path::new(input);
+        let is_tilde = input.starts_with('~') && input.len() == 1;
+        let path = helix_view::document::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with('/') {
             (path.into(), None)
@@ -152,7 +153,16 @@ pub mod completers {
                     let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let path = entry.path();
-                    let mut path = path.strip_prefix(&dir).unwrap_or(path).to_path_buf();
+                    let mut path = if is_tilde {
+                        // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
+                        // one of the directories the tilde will be replaced with a valid path not with a relative
+                        // home directory name.
+                        // ~ -> <TAB> -> /home/user
+                        // ~/ -> <TAB> -> ~/first_entry
+                        path.to_path_buf()
+                    } else {
+                        path.strip_prefix(&dir).unwrap_or(path).to_path_buf()
+                    };
 
                     if is_dir {
                         path.push("");
@@ -182,7 +192,7 @@ pub mod completers {
                 })
                 .collect();
 
-            let range = ((input.len() - file_name.len())..);
+            let range = ((input.len().saturating_sub(file_name.len()))..);
 
             matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
             files = matches
