@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Hooks</title>
+        <title>Key Remapping</title>
                 
 
         <!-- Custom HTML head -->
@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">3.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html" class="active"><strong aria-hidden="true">3.3.</strong> Hooks</a></li></ol></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html" class="active"><strong aria-hidden="true">3.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.3.</strong> Hooks</a></li></ol></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -145,16 +145,73 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="hooks"><a class="header" href="#hooks">Hooks</a></h1>
+                        <h1 id="key-remapping"><a class="header" href="#key-remapping">Key Remapping</a></h1>
+<p>One-way key remapping is temporarily supported via a simple TOML configuration
+file. (More powerful solutions such as rebinding via commands will be
+available in the feature).</p>
+<p>To remap keys, write a <code>config.toml</code> file in your <code>helix</code> configuration
+directory (default <code>~/.config/helix</code> in Linux systems) with a structure like
+this:</p>
+<pre><code class="language-toml"># At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
+[keys.normal]
+a = &quot;move_char_left&quot; # Maps the 'a' key to the move_char_left command
+w = &quot;move_line_up&quot; # Maps the 'w' key move_line_up
+C-S-esc = &quot;select_line&quot; # Maps Control-Shift-Escape to select_line
+
+[keys.insert]
+A-x = &quot;normal_mode&quot; # Maps Alt-X to enter normal mode
+</code></pre>
+<p>Control, Shift and Alt modifiers are encoded respectively with the prefixes
+<code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
+<ul>
+<li>Backspace =&gt; &quot;backspace&quot;</li>
+<li>Space =&gt; &quot;space&quot;</li>
+<li>Return/Enter =&gt; &quot;ret&quot;</li>
+<li>&lt; =&gt; &quot;lt&quot;</li>
+<li>
+<blockquote>
+<p>=&gt; &quot;gt&quot;</p>
+</blockquote>
+</li>
+<li>
+<ul>
+<li>=&gt; &quot;plus&quot;</li>
+</ul>
+</li>
+<li>
+<ul>
+<li>=&gt; &quot;minus&quot;</li>
+</ul>
+</li>
+<li>; =&gt; &quot;semicolon&quot;</li>
+<li>% =&gt; &quot;percent&quot;</li>
+<li>Left =&gt; &quot;left&quot;</li>
+<li>Right =&gt; &quot;right&quot;</li>
+<li>Up =&gt; &quot;up&quot;</li>
+<li>Home =&gt; &quot;home&quot;</li>
+<li>End =&gt; &quot;end&quot;</li>
+<li>Page Up =&gt; &quot;pageup&quot;</li>
+<li>Page Down =&gt; &quot;pagedown&quot;</li>
+<li>Tab =&gt; &quot;tab&quot;</li>
+<li>Back Tab =&gt; &quot;backtab&quot;</li>
+<li>Delete =&gt; &quot;del&quot;</li>
+<li>Insert =&gt; &quot;ins&quot;</li>
+<li>Null =&gt; &quot;null&quot;</li>
+<li>Escape =&gt; &quot;esc&quot;</li>
+</ul>
+<p>Commands can be found in the source code at <code>../../helix-term/src/commands.rs</code></p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                                                    <a rel="prev" href="remapping.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                                    <a rel="prev" href="keymap.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
+                                                    <a rel="next" href="hooks.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
                         <div style="clear: both"></div>
                     </nav>
@@ -162,10 +219,13 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                                    <a rel="prev" href="remapping.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                    <a rel="prev" href="keymap.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
+                                    <a rel="next" href="hooks.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                             </nav>
 
         </div>
