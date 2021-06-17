@@ -13,6 +13,29 @@ pub enum LineEnding {
     PS,   // U+2029 -- ParagraphSeparator
 }
 
+impl LineEnding {
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Crlf => 2,
+            _ => 1,
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Crlf => "\u{000D}\u{000A}",
+            Self::LF => "\u{000A}",
+            Self::Nel => "\u{0085}",
+            Self::LS => "\u{2028}",
+            Self::CR => "\u{000D}",
+            _ => panic!(
+                "Unexpected line ending: {:?}, expected Crlf, LF, CR, Nel, or LS.",
+                self
+            ),
+        }
+    }
+}
+
 pub fn rope_slice_to_line_ending(g: &RopeSlice) -> Option<LineEnding> {
     if let Some(text) = g.as_str() {
         str_to_line_ending(text)

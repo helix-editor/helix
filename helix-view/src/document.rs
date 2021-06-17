@@ -63,7 +63,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    pub line_ending: LineEnding,
+    line_ending: LineEnding,
 }
 
 use std::fmt;
@@ -728,18 +728,8 @@ impl Document {
         self.diagnostics = diagnostics;
     }
 
-    pub fn line_ending(&self) -> &'static str {
-        match self.line_ending {
-            LineEnding::Crlf => "\u{000D}\u{000A}",
-            LineEnding::LF => "\u{000A}",
-            LineEnding::Nel => "\u{0085}",
-            LineEnding::LS => "\u{2028}",
-            LineEnding::CR => "\u{000D}",
-            _ => panic!(
-                "Unexpected line ending: {:?}, expected Crlf, LF, CR, Nel, or LS.",
-                self.line_ending
-            ),
-        }
+    pub fn line_ending(&self) -> LineEnding {
+        self.line_ending
     }
 }
 

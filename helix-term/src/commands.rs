@@ -184,14 +184,10 @@ pub fn move_line_end(cx: &mut Context) {
         let line = text.char_to_line(range.head);
 
         // Line end is pos at the start of next line - 1
-        // subtract 3 if the line ending is \r\n, otherwise subtract 2 as I assume all others are just 1 char length
-        let pos =
-            text.line_to_char(line + 1)
-                .saturating_sub(if doc.line_ending == LineEnding::Crlf {
-                    3
-                } else {
-                    2
-                });
+        // subtract another 1 because the line ends with \n
+        let pos = text
+            .line_to_char(line + 1)
+            .saturating_sub(doc.line_ending().len() + 1);
         Range::new(pos, pos)
     });
 
@@ -612,14 +608,10 @@ pub fn extend_line_end(cx: &mut Context) {
         let line = text.char_to_line(range.head);
 
         // Line end is pos at the start of next line - 1
-        // subtract 3 if the line ending is \r\n, otherwise subtract 2 as I assume all others are just 1 char length
-        let pos =
-            text.line_to_char(line + 1)
-                .saturating_sub(if doc.line_ending == LineEnding::Crlf {
-                    3
-                } else {
-                    2
-                });
+        // subtract another 1 because the line ends with \n
+        let pos = text
+            .line_to_char(line + 1)
+            .saturating_sub(doc.line_ending().len() + 1);
         Range::new(range.anchor, pos)
     });
 
@@ -908,7 +900,7 @@ pub fn append_mode(cx: &mut Context) {
     if selection.iter().any(|range| range.head == end) {
         let transaction = Transaction::change(
             doc.text(),
-            std::array::IntoIter::new([(end, end, Some(Tendril::from_char('\n')))]), // TODO: change \n to doc.line_ending()
+            std::array::IntoIter::new([(end, end, Some(doc.line_ending().as_str().into()))]),
         );
         doc.apply(&transaction, view.id);
     }
@@ -1535,7 +1527,7 @@ fn open(cx: &mut Context, open: Open) {
             );
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
-            text.push_str(doc.line_ending());
+            text.push_str(doc.line_ending().as_str());
             text.push_str(&indent);
             let text = text.repeat(count);
 
@@ -2143,7 +2135,7 @@ pub mod insert {
             );
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
-            text.push_str(doc.line_ending());
+            text.push_str(doc.line_ending().as_str());
             text.push_str(&indent);
 
             let head = pos + offs + text.chars().count();
@@ -2164,7 +2156,7 @@ pub mod insert {
             if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
                 // another newline, indent the end bracket one level less
                 let indent = doc.indent_unit().repeat(indent_level.saturating_sub(1));
-                text.push_str(doc.line_ending());
+                text.push_str(doc.line_ending().as_str());
                 text.push_str(&indent);
             }
 
@@ -2283,7 +2275,7 @@ fn paste_impl(
     // if any of values ends \n it's linewise paste
     let linewise = values
         .iter()
-        .any(|value| value.ends_with(doc.line_ending()));
+        .any(|value| value.ends_with(doc.line_ending().as_str()));
 
     let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 
