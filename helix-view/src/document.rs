@@ -1,7 +1,9 @@
-use anyhow::{Context, Error};
+use anyhow::{anyhow, Context, Error};
 use std::cell::Cell;
+use std::fmt::Display;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use helix_core::{
@@ -83,6 +85,29 @@ impl fmt::Debug for Document {
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
             .finish()
+    }
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Mode::Normal => f.write_str("normal"),
+            Mode::Select => f.write_str("select"),
+            Mode::Insert => f.write_str("insert"),
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "normal" => Ok(Mode::Normal),
+            "select" => Ok(Mode::Select),
+            "insert" => Ok(Mode::Insert),
+            _ => Err(anyhow!("Invalid mode '{}'", s)),
+        }
     }
 }
 
