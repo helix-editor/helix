@@ -185,25 +185,25 @@ impl Client {
         let server_tx = self.server_tx.clone();
 
         async move {
-        let output = match result {
-            Ok(result) => Output::Success(Success {
-                jsonrpc: Some(Version::V2),
-                id,
-                result,
-            }),
-            Err(error) => Output::Failure(Failure {
-                jsonrpc: Some(Version::V2),
-                id,
-                error,
-            }),
-        };
+            let output = match result {
+                Ok(result) => Output::Success(Success {
+                    jsonrpc: Some(Version::V2),
+                    id,
+                    result,
+                }),
+                Err(error) => Output::Failure(Failure {
+                    jsonrpc: Some(Version::V2),
+                    id,
+                    error,
+                }),
+            };
 
             server_tx
-            .send(Payload::Response(output))
-            .map_err(|e| Error::Other(e.into()))?;
+                .send(Payload::Response(output))
+                .map_err(|e| Error::Other(e.into()))?;
 
-        Ok(())
-    }
+            Ok(())
+        }
     }
 
     // -------------------------------------------------------------------------------------------
@@ -243,8 +243,7 @@ impl Client {
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
-                    // TODO: temporarily disabled until we implement handling for window/workDoneProgress/create
-                    // work_done_progress: Some(true),
+                    work_done_progress: Some(true),
                     ..Default::default()
                 }),
                 ..Default::default()
