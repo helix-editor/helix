@@ -672,9 +672,9 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
 name = "ropey"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0f3ef16589fdbb3e8fbce3dca944c08e61f39c7f16064b21a257d68ea911a83"
+checksum = "e4b1996ad82fb6b8ac0711329432d80aa1ad5d70a0fe6edd1a9cf6fd2375fbb2"
 dependencies = [
  "smallvec",
 ]
