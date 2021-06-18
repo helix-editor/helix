@@ -22,7 +22,12 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
-    pub status_msg: Option<(String, Severity)>,
+    // TODO we might want to limit severity to only info and error
+    // since we only use those two
+    /// Status message, always have to check severity even if it is empty.
+    status: String,
+    /// If Some means status should be shown, with severity level.
+    severity: Option<Severity>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -67,20 +72,34 @@ impl Editor {
             theme,
             language_servers,
             registers: Registers::default(),
-            status_msg: None,
+            status: String::new(),
+            severity: None,
         }
     }
 
+    /// Get status message and severity.
+    pub fn status(&self) -> Option<(&str, Severity)> {
+        self.severity.map(|level| (self.status.as_str(), level))
+    }
+
+    /// Clear status.
     pub fn clear_status(&mut self) {
-        self.status_msg = None;
+        self.status.clear();
+        self.severity = None;
     }
 
-    pub fn set_status(&mut self, status: String) {
-        self.status_msg = Some((status, Severity::Info));
+    /// Get mutable status with severity info.
+    pub fn status_mut(&mut self) -> &mut String {
+        self.status.clear();
+        self.severity = Some(Severity::Info);
+        &mut self.status
     }
 
-    pub fn set_error(&mut self, error: String) {
-        self.status_msg = Some((error, Severity::Error));
+    /// Get mutable status with severity error.
+    pub fn error_mut(&mut self) -> &mut String {
+        self.status.clear();
+        self.severity = Some(Severity::Error);
+        &mut self.status
     }
 
     fn _refresh(&mut self) {

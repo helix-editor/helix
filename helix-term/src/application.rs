@@ -172,6 +172,7 @@ impl Application {
                 };
 
                 // TODO: parse should return Result/Option
+                // TODO: refactor this part out as it became too long
                 match notification {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
@@ -276,45 +277,52 @@ impl Application {
                                 }
                             }
                         };
-                        let token_d: &dyn std::fmt::Display = match &token {
-                            lsp::NumberOrString::Number(n) => n,
-                            lsp::NumberOrString::String(s) => s,
-                        };
 
-                        let status = match parts {
-                            (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
-                            }
-                            (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
-                            }
-                            (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
-                            }
-                            (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
-                            }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
-                            (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
-                            }
-                            (None, None, None) => format!("[{}]", token_d),
-                        };
+                        if self.lsp_progress_enabled {
+                            use std::fmt::Write;
+
+                            let token_d: &dyn std::fmt::Display = match &token {
+                                lsp::NumberOrString::Number(n) => n,
+                                lsp::NumberOrString::String(s) => s,
+                            };
+
+                            let mut status = self.editor.status_mut();
+                            match parts {
+                                (Some(title), Some(message), Some(percentage)) => {
+                                    write!(
+                                        &mut status,
+                                        "[{}] {}% {} - {}",
+                                        token_d, percentage, title, message
+                                    )
+                                }
+                                (Some(title), None, Some(percentage)) => {
+                                    write!(&mut status, "[{}] {}% {}", token_d, percentage, title)
+                                }
+                                (Some(title), Some(message), None) => {
+                                    write!(&mut status, "[{}] {} - {}", token_d, title, message)
+                                }
+                                (None, Some(message), Some(percentage)) => {
+                                    write!(&mut status, "[{}] {}% {}", token_d, percentage, message)
+                                }
+                                (Some(title), None, None) => {
+                                    write!(&mut status, "[{}] {}", token_d, title)
+                                }
+                                (None, Some(message), None) => {
+                                    write!(&mut status, "[{}] {}", token_d, message)
+                                }
+                                (None, None, Some(percentage)) => {
+                                    write!(&mut status, "[{}] {}%", token_d, percentage)
+                                }
+                                (None, None, None) => write!(&mut status, "[{}]", token_d),
+                            };
+
+                            self.render();
+                        }
 
                         if let lsp::WorkDoneProgress::End(_) = work {
                             self.lsp_progress.end_progress(server_id, &token);
                         } else {
                             self.lsp_progress.update(server_id, token, work);
-                        }
-
-                        if self.lsp_progress_enabled {
-                            self.editor.set_status(status);
-                            self.render();
                         }
                     }
                     _ => unreachable!(),

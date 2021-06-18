@@ -613,7 +613,7 @@ impl Component for EditorView {
             Event::Key(mut key) => {
                 canonicalize_key(&mut key);
                 // clear status
-                cx.editor.status_msg = None;
+                cx.editor.clear_status();
 
                 let (view, doc) = current!(cx.editor);
                 let mode = doc.mode();
@@ -726,7 +726,7 @@ impl Component for EditorView {
         }
 
         // render status msg
-        if let Some((status_msg, severity)) = &cx.editor.status_msg {
+        if let Some((message, severity)) = &cx.editor.status() {
             use helix_view::editor::Severity;
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
@@ -737,7 +737,7 @@ impl Component for EditorView {
             surface.set_string(
                 area.x,
                 area.y + area.height.saturating_sub(1),
-                status_msg,
+                message,
                 style,
             );
         }

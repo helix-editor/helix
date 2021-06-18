@@ -31,7 +31,7 @@ use crate::{
 
 use crate::application::{LspCallbackWrapper, LspCallbacks};
 use futures_util::FutureExt;
-use std::{fmt, future::Future, path::Display, str::FromStr};
+use std::{fmt, fmt::Write, future::Future, path::Display, str::FromStr};
 
 use std::{
     borrow::Cow,
@@ -1058,7 +1058,7 @@ mod cmd {
                 editor.open(path.into(), Action::Replace);
             }
             None => {
-                editor.set_error("wrong argument count".to_string());
+                editor.error_mut().push_str("wrong argument count");
             }
         };
     }
@@ -1092,7 +1092,7 @@ mod cmd {
     fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let (view, doc) = current!(editor);
         if let Err(e) = write_impl(view, doc, args.first()) {
-            editor.set_error(e.to_string());
+            editor.error_mut().push_str(&e.to_string());
         };
     }
 
@@ -1112,12 +1112,13 @@ mod cmd {
         // If no argument, report current indent style.
         if args.is_empty() {
             let style = current!(editor).1.indent_style;
-            editor.set_status(match style {
-                Tabs => "tabs".into(),
-                Spaces(1) => "1 space".into(),
-                Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
-                _ => "error".into(), // Shouldn't happen.
-            });
+            let mut status = editor.status_mut();
+            match style {
+                Tabs => write!(&mut status, "tabs"),
+                Spaces(1) => write!(&mut status, "1 space"),
+                Spaces(n) if (2..=8).contains(&n) => write!(&mut status, "{} spaces", n),
+                style => unreachable!("{:?}", style), // Shouldn't happen.
+            };
             return;
         }
 
@@ -1138,7 +1139,7 @@ mod cmd {
             doc.indent_style = s;
         } else {
             // Invalid argument.
-            editor.set_error(format!("invalid indent style '{}'", args[0],));
+            write!(editor.error_mut(), "invalid indent style '{}'", args[0]);
         }
     }
 
@@ -1146,7 +1147,7 @@ mod cmd {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
             Err(msg) => {
-                editor.set_error(msg);
+                editor.error_mut().push_str(&msg);
                 return;
             }
         };
@@ -1158,7 +1159,7 @@ mod cmd {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
             Err(msg) => {
-                editor.set_error(msg);
+                editor.error_mut().push_str(&msg);
                 return;
             }
         };
@@ -1169,7 +1170,7 @@ mod cmd {
     fn write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let (view, doc) = current!(editor);
         if let Err(e) = write_impl(view, doc, args.first()) {
-            editor.set_error(e.to_string());
+            editor.error_mut().push_str(&e.to_string());
             return;
         };
         quit(editor, &[], event)
@@ -1198,7 +1199,7 @@ mod cmd {
                 modified.len(),
                 modified
             );
-            editor.set_error(err);
+            editor.error_mut().push_str(&err);
             true
         } else {
             false
@@ -1222,7 +1223,7 @@ mod cmd {
             }
             helix_lsp::block_on(doc.save());
         }
-        editor.set_error(errors);
+        editor.error_mut().push_str(&errors);
 
         if quit {
             if !force && buffers_remaining_impl(editor) {
@@ -1456,7 +1457,7 @@ fn command_mode(cx: &mut Context) {
             if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
                 (cmd.fun)(editor, &parts[1..], event);
             } else {
-                editor.set_error(format!("no such command: '{}'", parts[0]));
+                write!(editor.error_mut(), "no such command: '{}'", parts[0]);
             };
         },
     );
@@ -1714,7 +1715,7 @@ fn switch_to_last_accessed_file(cx: &mut Context) {
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
     } else {
-        cx.editor.set_error("no last accessed buffer".to_owned())
+        cx.editor.error_mut().push_str("no last accessed buffer");
     }
 }
 
@@ -1825,7 +1826,7 @@ fn goto_impl(
             jump_to(editor, location, offset_encoding, Action::Replace);
         }
         [] => {
-            editor.set_error("No definition found.".to_string());
+            editor.error_mut().push_str("No definition found");
         }
         _locations => {
             let mut picker = ui::Picker::new(
@@ -2363,7 +2364,8 @@ fn yank(cx: &mut Context) {
         .map(Cow::into_owned)
         .collect();
 
-    let msg = format!(
+    write!(
+        cx.editor.status_mut(),
         "yanked {} selection(s) to register {}",
         values.len(),
         cx.selected_register.name()
@@ -2372,8 +2374,6 @@ fn yank(cx: &mut Context) {
     cx.editor
         .registers
         .write(cx.selected_register.name(), values);
-
-    cx.editor.set_status(msg)
 }
 
 #[derive(Copy, Clone)]
