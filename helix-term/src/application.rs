@@ -109,8 +109,8 @@ impl Application {
                 event = reader.next() => {
                     self.handle_terminal_events(event)
                 }
-                Some(call) = self.editor.language_servers.incoming.next() => {
-                    self.handle_language_server_message(call).await
+                Some((id, call)) = self.editor.language_servers.incoming.next() => {
+                    self.handle_language_server_message(call, id).await
                 }
                 Some(callback) = &mut self.callbacks.next() => {
                     self.handle_language_server_callback(callback)
@@ -153,8 +153,12 @@ impl Application {
         }
     }
 
-    pub async fn handle_language_server_message(&mut self, call: helix_lsp::Call) {
-        use helix_lsp::{Call, Notification};
+    pub async fn handle_language_server_message(
+        &mut self,
+        call: helix_lsp::Call,
+        server_id: usize,
+    ) {
+        use helix_lsp::{Call, MethodCall, Notification};
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
