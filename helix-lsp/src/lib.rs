@@ -182,6 +182,30 @@ pub mod util {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum MethodCall {
+    WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
+}
+
+impl MethodCall {
+    pub fn parse(method: &str, params: jsonrpc::Params) -> Option<MethodCall> {
+        use lsp::request::Request;
+        let request = match method {
+            lsp::request::WorkDoneProgressCreate::METHOD => {
+                let params: lsp::WorkDoneProgressCreateParams = params
+                    .parse()
+                    .expect("Failed to parse WorkDoneCreate params");
+                Self::WorkDoneProgressCreate(params)
+            }
+            _ => {
+                log::warn!("unhandled lsp request: {}", method);
+                return None;
+            }
+        };
+        Some(request)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Notification {
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
@@ -272,6 +296,80 @@ impl Registry {
         } else {
             Err(Error::LspNotDefined)
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum ProgressStatus {
+    Created,
+    Started(lsp::WorkDoneProgress),
+}
+
+impl ProgressStatus {
+    pub fn progress(&self) -> Option<&lsp::WorkDoneProgress> {
+        match &self {
+            ProgressStatus::Created => None,
+            ProgressStatus::Started(progress) => Some(&progress),
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+/// Acts as a container for progress reported by language servers. Each server
+/// has a unique id assigned at creation through [`Registry`]. This id is then used
+/// to store the progress in this map.
+pub struct LspProgressMap(HashMap<usize, HashMap<lsp::ProgressToken, ProgressStatus>>);
+
+impl LspProgressMap {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns a map of all tokens coresponding to the lanaguage server with `id`.
+    pub fn progress_map(&self, id: usize) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
+        self.0.get(&id)
+    }
+
+    /// Returns last progress status for a given server with `id` and `token`.
+    pub fn progress(&self, id: usize, token: &lsp::ProgressToken) -> Option<&ProgressStatus> {
+        self.0.get(&id).and_then(|values| values.get(token))
+    }
+
+    /// Checks if progress `token` for server with `id` is created.
+    pub fn is_created(&mut self, id: usize, token: &lsp::ProgressToken) -> bool {
+        self.0
+            .get(&id)
+            .map(|values| values.get(token).is_some())
+            .unwrap_or_default()
+    }
+
+    pub fn create(&mut self, id: usize, token: lsp::ProgressToken) {
+        self.0
+            .entry(id)
+            .or_default()
+            .insert(token, ProgressStatus::Created);
+    }
+
+    /// Ends the progress by removing the `token` from server with `id`, if removed returns the value.
+    pub fn end_progress(
+        &mut self,
+        id: usize,
+        token: &lsp::ProgressToken,
+    ) -> Option<ProgressStatus> {
+        self.0.get_mut(&id).and_then(|vals| vals.remove(token))
+    }
+
+    /// Updates the progess of `token` for server with `id` to `status`, returns the value replaced or `None`.
+    pub fn update(
+        &mut self,
+        id: usize,
+        token: lsp::ProgressToken,
+        status: lsp::WorkDoneProgress,
+    ) -> Option<ProgressStatus> {
+        self.0
+            .entry(id)
+            .or_default()
+            .insert(token, ProgressStatus::Started(status))
     }
 }
 
