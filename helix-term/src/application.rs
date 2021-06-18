@@ -1,4 +1,4 @@
-use helix_lsp::lsp;
+use helix_lsp::{lsp, LspProgressMap};
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
 use crate::{args::Args, compositor::Compositor, config::Config, keymap::Keymaps, ui};
@@ -9,6 +9,7 @@ use std::{
     future::Future,
     io::{self, stdout, Stdout, Write},
     path::PathBuf,
+    pin::Pin,
     sync::Arc,
     time::Duration,
 };
@@ -23,7 +24,6 @@ use crossterm::{
 use tui::layout::Rect;
 
 use futures_util::stream::FuturesUnordered;
-use std::pin::Pin;
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 pub type LspCallback =
@@ -37,6 +37,8 @@ pub struct Application {
     editor: Editor,
 
     callbacks: LspCallbacks,
+
+    lsp_progress: LspProgressMap,
 }
 
 impl Application {
@@ -74,6 +76,7 @@ impl Application {
             editor,
 
             callbacks: FuturesUnordered::new(),
+            lsp_progress: LspProgressMap::new(),
         };
 
         Ok(app)
@@ -246,55 +249,67 @@ impl Application {
                         log::warn!("unhandled window/logMessage: {:?}", params);
                     }
                     Notification::ProgressMessage(params) => {
-                        let token = match params.token {
-                            lsp::NumberOrString::Number(n) => n.to_string(),
-                            lsp::NumberOrString::String(s) => s,
-                        };
-                        let msg = {
-                            let lsp::ProgressParamsValue::WorkDone(work) = params.value;
-                            let parts = match work {
+                        let lsp::ProgressParams { token, value } = params;
+
+                        let lsp::ProgressParamsValue::WorkDone(work) = value;
+                        let parts = match &work {
                                 lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
                                     title,
                                     message,
                                     percentage,
                                     ..
-                                }) => (Some(title), message, percentage.map(|n| n.to_string())),
+                            }) => (Some(title), message, percentage),
                                 lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
                                     message,
                                     percentage,
                                     ..
-                                }) => (None, message, percentage.map(|n| n.to_string())),
-                                lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd {
-                                    message,
-                                }) => {
-                                    if let Some(message) = message {
-                                        (None, Some(message), None)
+                            }) => (None, message, percentage),
+                            lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) => {
+                                if message.is_some() {
+                                    (None, message, &None)
                                     } else {
+                                    self.lsp_progress.end_progress(server_id, &token);
                                         self.editor.clear_status();
                                         return;
                                     }
                                 }
                             };
-                            match parts {
+                        let token_d: &dyn std::fmt::Display = match &token {
+                            lsp::NumberOrString::Number(n) => n,
+                            lsp::NumberOrString::String(s) => s,
+                        };
+
+                        let status = match parts {
                                 (Some(title), Some(message), Some(percentage)) => {
-                                    format!("{}% {} - {}", percentage, title, message)
+                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
                                 }
                                 (Some(title), None, Some(percentage)) => {
-                                    format!("{}% {}", percentage, title)
+                                format!("[{}] {}% {}", token_d, percentage, title)
                                 }
                                 (Some(title), Some(message), None) => {
-                                    format!("{} - {}", title, message)
+                                format!("[{}] {} - {}", token_d, title, message)
                                 }
                                 (None, Some(message), Some(percentage)) => {
-                                    format!("{}% {}", percentage, message)
+                                format!("[{}] {}% {}", token_d, percentage, message)
                                 }
-                                (Some(title), None, None) => title,
-                                (None, Some(message), None) => message,
-                                (None, None, Some(percentage)) => format!("{}%", percentage),
-                                (None, None, None) => "".into(),
+                            (Some(title), None, None) => {
+                                format!("[{}] {}", token_d, title)
                             }
+                            (None, Some(message), None) => {
+                                format!("[{}] {}", token_d, message)
+                            }
+                            (None, None, Some(percentage)) => {
+                                format!("[{}] {}%", token_d, percentage)
+                            }
+                            (None, None, None) => format!("[{}]", token_d),
                         };
-                        let status = format!("[{}] {}", token, msg);
+
+                        if let lsp::WorkDoneProgress::End(_) = work {
+                            self.lsp_progress.end_progress(server_id, &token);
+                        } else {
+                            self.lsp_progress.update(server_id, token, work);
+                        }
+
                         self.editor.set_status(status);
                         self.render();
                     }
