@@ -6,12 +6,19 @@ use serde::{de::Error as SerdeError, Deserialize, Serialize};
 use crate::keymap::{parse_keymaps, Keymaps};
 
 #[derive(Default)]
+pub struct GlobalConfig {
+    pub lsp_progress: bool,
+}
+
+#[derive(Default)]
 pub struct Config {
+    pub global: GlobalConfig,
     pub keymaps: Keymaps,
 }
 
 #[derive(Serialize, Deserialize)]
 struct TomlConfig {
+    lsp_progress: Option<bool>,
     keys: Option<HashMap<String, HashMap<String, String>>>,
 }
 
@@ -22,6 +29,9 @@ impl<'de> Deserialize<'de> for Config {
     {
         let config = TomlConfig::deserialize(deserializer)?;
         Ok(Self {
+            global: GlobalConfig {
+                lsp_progress: config.lsp_progress.unwrap_or(true),
+            },
             keymaps: config
                 .keys
                 .map(|r| parse_keymaps(&r))
