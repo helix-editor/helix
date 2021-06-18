@@ -31,7 +31,8 @@
 "ui.background" = { bg = "#FFFCFD" }
 "ui.linenr" = { fg = "#bbbbbb" }
 "ui.linenr.selected" = { fg = "#F3EAE9" }  # TODO
-"ui.statusline" = { bg = "#F3EAE9" }
+"ui.statusline" = { fg = "#250E07", bg = "#F3EAE9" }
+"ui.statusline.inactive" = { fg = "#7b91b3", bg = "#F3EAE9" }
 "ui.popup" = { bg = "#F3EAE9" }
 "ui.window" = { bg = "#D8B8B3" }
 "ui.help" = { bg = "#D8B8B3", fg = "#250E07" }

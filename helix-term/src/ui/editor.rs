@@ -476,18 +476,15 @@ impl EditorView {
             Mode::Select => "SEL",
             Mode::Normal => "NOR",
         };
-        let text_color = if is_focused {
-            theme.get("ui.text.focus")
+        let style = if is_focused {
+            theme.get("ui.statusline")
         } else {
-            theme.get("ui.text")
+            theme.get("ui.statusline.inactive")
         };
         // statusline
-        surface.set_style(
-            Rect::new(viewport.x, viewport.y, viewport.width, 1),
-            theme.get("ui.statusline"),
-        );
+        surface.set_style(Rect::new(viewport.x, viewport.y, viewport.width, 1), style);
         if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, text_color);
+            surface.set_string(viewport.x + 1, viewport.y, mode, style);
         }
 
         if let Some(path) = doc.relative_path() {
@@ -499,7 +496,7 @@ impl EditorView {
                 viewport.y,
                 title,
                 viewport.width.saturating_sub(6) as usize,
-                text_color,
+                style,
             );
         }
 
@@ -538,7 +535,7 @@ impl EditorView {
             viewport.x + viewport.width.saturating_sub(text_len),
             viewport.y,
             right_side_text,
-            text_color,
+            style,
         );
     }
 
