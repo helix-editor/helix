@@ -5,9 +5,14 @@ use serde::{de::Error as SerdeError, Deserialize, Serialize};
 
 use crate::keymap::{parse_keymaps, Keymaps};
 
-#[derive(Default)]
 pub struct GlobalConfig {
     pub lsp_progress: bool,
+}
+
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        Self { lsp_progress: true }
+    }
 }
 
 #[derive(Default)]
