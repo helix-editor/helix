@@ -13,8 +13,8 @@ default = ["term"]
 
 [dependencies]
 anyhow = "1"
-helix-core = { path = "../helix-core" }
-helix-lsp = { path = "../helix-lsp"}
+helix-core = { version = "0.2", path = "../helix-core" }
+helix-lsp = { version = "0.2", path = "../helix-lsp"}
 
 # Conversion traits
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"], optional = true }
