@@ -165,13 +165,16 @@ impl Client {
     }
 
     /// Reply to a language server RPC call.
-    pub async fn reply(
+    pub fn reply(
         &self,
         id: jsonrpc::Id,
         result: core::result::Result<Value, jsonrpc::Error>,
-    ) -> Result<()> {
+    ) -> impl Future<Output = Result<()>> {
         use jsonrpc::{Failure, Output, Success, Version};
 
+        let server_tx = self.server_tx.clone();
+
+        async move {
         let output = match result {
             Ok(result) => Output::Success(Success {
                 jsonrpc: Some(Version::V2),
@@ -185,11 +188,12 @@ impl Client {
             }),
         };
 
-        self.server_tx
+            server_tx
             .send(Payload::Response(output))
             .map_err(|e| Error::Other(e.into()))?;
 
         Ok(())
+    }
     }
 
     // -------------------------------------------------------------------------------------------
