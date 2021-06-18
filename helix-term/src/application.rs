@@ -253,45 +253,45 @@ impl Application {
 
                         let lsp::ProgressParamsValue::WorkDone(work) = value;
                         let parts = match &work {
-                                lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
-                                    title,
-                                    message,
-                                    percentage,
-                                    ..
+                            lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
+                                title,
+                                message,
+                                percentage,
+                                ..
                             }) => (Some(title), message, percentage),
-                                lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
-                                    message,
-                                    percentage,
-                                    ..
+                            lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
+                                message,
+                                percentage,
+                                ..
                             }) => (None, message, percentage),
                             lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) => {
                                 if message.is_some() {
                                     (None, message, &None)
-                                    } else {
+                                } else {
                                     self.lsp_progress.end_progress(server_id, &token);
-                                        self.editor.clear_status();
-                                        return;
-                                    }
+                                    self.editor.clear_status();
+                                    return;
                                 }
-                            };
+                            }
+                        };
                         let token_d: &dyn std::fmt::Display = match &token {
                             lsp::NumberOrString::Number(n) => n,
                             lsp::NumberOrString::String(s) => s,
                         };
 
                         let status = match parts {
-                                (Some(title), Some(message), Some(percentage)) => {
+                            (Some(title), Some(message), Some(percentage)) => {
                                 format!("[{}] {}% {} - {}", token_d, percentage, title, message)
-                                }
-                                (Some(title), None, Some(percentage)) => {
+                            }
+                            (Some(title), None, Some(percentage)) => {
                                 format!("[{}] {}% {}", token_d, percentage, title)
-                                }
-                                (Some(title), Some(message), None) => {
+                            }
+                            (Some(title), Some(message), None) => {
                                 format!("[{}] {} - {}", token_d, title, message)
-                                }
-                                (None, Some(message), Some(percentage)) => {
+                            }
+                            (None, Some(message), Some(percentage)) => {
                                 format!("[{}] {}% {}", token_d, percentage, message)
-                                }
+                            }
                             (Some(title), None, None) => {
                                 format!("[{}] {}", token_d, title)
                             }
@@ -316,9 +316,61 @@ impl Application {
                     _ => unreachable!(),
                 }
             }
-            Call::MethodCall(call) => {
-                error!("Method not found {}", call.method);
+            Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
+                method,
+                params,
+                jsonrpc,
+                id,
+            }) => {
+                let call = match MethodCall::parse(&method, params) {
+                    Some(call) => call,
+                    None => {
+                        error!("Method not found {}", method);
+                        return;
+                    }
+                };
 
+                match call {
+                    MethodCall::WorkDoneProgressCreate(params) => {
+                        self.lsp_progress.create(server_id, params.token);
+
+                        let doc = self.editor.documents().find(|doc| {
+                            doc.language_server()
+                                .map(|server| server.id() == server_id)
+                                .unwrap_or_default()
+                        });
+                        match doc {
+                            Some(doc) => {
+                                // it's ok to unwrap, we check for the language server before
+                                let server = doc.language_server().unwrap();
+                                tokio::spawn(server.reply(id, Ok(serde_json::Value::Null)));
+                            }
+                            None => {
+                                if let Some(server) =
+                                    self.editor.language_servers.get_by_id(server_id)
+                                {
+                                    log::warn!(
+                                        "missing document with language server id `{}`",
+                                        server_id
+                                    );
+                                    tokio::spawn(server.reply(
+                                        id,
+                                        Err(helix_lsp::jsonrpc::Error {
+                                            code: helix_lsp::jsonrpc::ErrorCode::InternalError,
+                                            message: "document missing".to_string(),
+                                            data: None,
+                                        }),
+                                    ));
+                                } else {
+                                    log::warn!(
+                                        "can't find language server with id `{}`",
+                                        server_id
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
                 // self.language_server.reply(
                 //     call.id,
                 //     // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
