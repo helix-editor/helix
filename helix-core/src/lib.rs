@@ -18,6 +18,12 @@ mod state;
 pub mod syntax;
 mod transaction;
 
+pub mod unicode {
+    pub use unicode_general_category as category;
+    pub use unicode_segmentation as segmentation;
+    pub use unicode_width as width;
+}
+
 static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
     once_cell::sync::Lazy::new(runtime_dir);
 
@@ -96,8 +102,6 @@ use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 pub use ropey::{Rope, RopeSlice};
 
 pub use tendril::StrTendril as Tendril;
-
-pub use unicode_general_category::get_general_category;
 
 #[doc(inline)]
 pub use {regex, tree_sitter};

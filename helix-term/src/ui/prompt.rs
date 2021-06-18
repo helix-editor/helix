@@ -6,8 +6,10 @@ use helix_view::{Editor, Theme};
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::terminal::CursorKind;
 
-use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
-use unicode_width::UnicodeWidthStr;
+use helix_core::{
+    unicode::segmentation::{GraphemeCursor, GraphemeIncomplete},
+    unicode::width::UnicodeWidthStr,
+};
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 
