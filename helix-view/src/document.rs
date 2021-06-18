@@ -227,10 +227,11 @@ impl Document {
     pub fn format(&mut self, view_id: ViewId) {
         if let Some(language_server) = self.language_server() {
             // TODO: await, no blocking
-            let transaction = helix_lsp::block_on(
-                language_server
-                    .text_document_formatting(self.identifier(), lsp::FormattingOptions::default()),
-            )
+            let transaction = helix_lsp::block_on(language_server.text_document_formatting(
+                self.identifier(),
+                lsp::FormattingOptions::default(),
+                None,
+            ))
             .map(|edits| {
                 helix_lsp::util::generate_transaction_from_edits(
                     self.text(),

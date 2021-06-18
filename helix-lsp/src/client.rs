@@ -465,6 +465,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         // ) -> Result<Vec<lsp::CompletionItem>> {
         let params = lsp::CompletionParams {
@@ -473,9 +474,7 @@ impl Client {
                 position,
             },
             // TODO: support these tokens by async receiving and updating the choice list
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },
@@ -490,15 +489,14 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             context: None,
             // lsp::SignatureHelpContext
         };
@@ -510,15 +508,14 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::HoverParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             // lsp::SignatureHelpContext
         };
 
@@ -531,6 +528,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         options: lsp::FormattingOptions,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
         let capabilities = self.capabilities.as_ref().unwrap();
 
@@ -545,9 +543,7 @@ impl Client {
         let params = lsp::DocumentFormattingParams {
             text_document,
             options,
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
         let response = self.request::<lsp::request::Formatting>(params).await?;
@@ -560,6 +556,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
         options: lsp::FormattingOptions,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
         let capabilities = self.capabilities.as_ref().unwrap();
 
@@ -575,9 +572,7 @@ impl Client {
             text_document,
             range,
             options,
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
         let response = self
@@ -596,15 +591,14 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::GotoDefinitionParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },
@@ -617,30 +611,42 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
-        self.goto_request::<lsp::request::GotoDefinition>(text_document, position)
+        self.goto_request::<lsp::request::GotoDefinition>(text_document, position, work_done_token)
     }
 
     pub fn goto_type_definition(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
-        self.goto_request::<lsp::request::GotoTypeDefinition>(text_document, position)
+        self.goto_request::<lsp::request::GotoTypeDefinition>(
+            text_document,
+            position,
+            work_done_token,
+        )
     }
 
     pub fn goto_implementation(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
-        self.goto_request::<lsp::request::GotoImplementation>(text_document, position)
+        self.goto_request::<lsp::request::GotoImplementation>(
+            text_document,
+            position,
+            work_done_token,
+        )
     }
 
     pub fn goto_reference(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::ReferenceParams {
             text_document_position: lsp::TextDocumentPositionParams {
@@ -650,9 +656,7 @@ impl Client {
             context: lsp::ReferenceContext {
                 include_declaration: true,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },

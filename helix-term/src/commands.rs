@@ -1869,7 +1869,7 @@ fn goto_definition(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let future = language_server.goto_definition(doc.identifier(), pos);
+    let future = language_server.goto_definition(doc.identifier(), pos, None);
 
     cx.callback(
         future,
@@ -1906,7 +1906,7 @@ fn goto_type_definition(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let future = language_server.goto_type_definition(doc.identifier(), pos);
+    let future = language_server.goto_type_definition(doc.identifier(), pos, None);
 
     cx.callback(
         future,
@@ -1943,7 +1943,7 @@ fn goto_implementation(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let future = language_server.goto_implementation(doc.identifier(), pos);
+    let future = language_server.goto_implementation(doc.identifier(), pos, None);
 
     cx.callback(
         future,
@@ -1980,7 +1980,7 @@ fn goto_reference(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let future = language_server.goto_reference(doc.identifier(), pos);
+    let future = language_server.goto_reference(doc.identifier(), pos, None);
 
     cx.callback(
         future,
@@ -2092,7 +2092,7 @@ fn signature_help(cx: &mut Context) {
     );
 
     // TODO: handle fails
-    let future = language_server.text_document_signature_help(doc.identifier(), pos);
+    let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
 
     cx.callback(
         future,
@@ -2730,7 +2730,7 @@ fn completion(cx: &mut Context) {
     let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
 
     // TODO: handle fails
-    let future = language_server.completion(doc.identifier(), pos);
+    let future = language_server.completion(doc.identifier(), pos, None);
 
     let trigger_offset = doc.selection(view.id).cursor();
 
@@ -2788,7 +2788,7 @@ fn hover(cx: &mut Context) {
     );
 
     // TODO: handle fails
-    let future = language_server.text_document_hover(doc.identifier(), pos);
+    let future = language_server.text_document_hover(doc.identifier(), pos, None);
 
     cx.callback(
         future,
