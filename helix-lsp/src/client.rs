@@ -18,6 +18,7 @@ use tokio::{
 
 #[derive(Debug)]
 pub struct Client {
+    id: usize,
     _process: Child,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
@@ -26,7 +27,11 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn start(cmd: &str, args: &[String]) -> Result<(Self, UnboundedReceiver<Call>)> {
+    pub fn start(
+        cmd: &str,
+        args: &[String],
+        id: usize,
+    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>)> {
         let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -43,9 +48,10 @@ impl Client {
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (server_rx, server_tx) = Transport::start(reader, writer, stderr);
+        let (server_rx, server_tx) = Transport::start(reader, writer, stderr, id);
 
         let client = Self {
+            id,
             _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
@@ -57,6 +63,10 @@ impl Client {
         // maybe use an arc<atomic> flag
 
         Ok((client, server_rx))
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
     }
 
     fn next_request_id(&self) -> jsonrpc::Id {

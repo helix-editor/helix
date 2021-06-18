@@ -33,7 +33,8 @@ enum ServerMessage {
 
 #[derive(Debug)]
 pub struct Transport {
-    client_tx: UnboundedSender<jsonrpc::Call>,
+    id: usize,
+    client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
     client_rx: UnboundedReceiver<Payload>,
 
     pending_requests: HashMap<jsonrpc::Id, Sender<Result<Value>>>,
@@ -48,11 +49,16 @@ impl Transport {
         server_stdout: BufReader<ChildStdout>,
         server_stdin: BufWriter<ChildStdin>,
         server_stderr: BufReader<ChildStderr>,
-    ) -> (UnboundedReceiver<jsonrpc::Call>, UnboundedSender<Payload>) {
+        id: usize,
+    ) -> (
+        UnboundedReceiver<(usize, jsonrpc::Call)>,
+        UnboundedSender<Payload>,
+    ) {
         let (client_tx, rx) = unbounded_channel();
         let (tx, client_rx) = unbounded_channel();
 
         let transport = Self {
+            id,
             server_stdout,
             server_stdin,
             server_stderr,
@@ -156,7 +162,7 @@ impl Transport {
         match msg {
             ServerMessage::Output(output) => self.process_request_response(output).await?,
             ServerMessage::Call(call) => {
-                self.client_tx.send(call).unwrap();
+                self.client_tx.send((self.id, call)).unwrap();
                 // let notification = Notification::parse(&method, params);
             }
         };

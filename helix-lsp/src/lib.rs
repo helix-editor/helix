@@ -13,7 +13,10 @@ use helix_core::syntax::LanguageConfiguration;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use serde::{Deserialize, Serialize};
@@ -254,9 +257,10 @@ impl Notification {
 
 #[derive(Debug)]
 pub struct Registry {
-    inner: HashMap<LanguageId, Arc<Client>>,
+    inner: HashMap<LanguageId, (usize, Arc<Client>)>,
 
-    pub incoming: SelectAll<UnboundedReceiverStream<Call>>,
+    counter: AtomicUsize,
+    pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
 }
 
 impl Default for Registry {
@@ -269,8 +273,16 @@ impl Registry {
     pub fn new() -> Self {
         Self {
             inner: HashMap::new(),
+            counter: AtomicUsize::new(0),
             incoming: SelectAll::new(),
         }
+    }
+
+    pub fn get_by_id(&mut self, id: usize) -> Option<&Client> {
+        self.inner
+            .values()
+            .find(|(client_id, _)| client_id == &id)
+            .map(|(_, client)| client.as_ref())
     }
 
     pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
@@ -280,16 +292,17 @@ impl Registry {
             let s_incoming = &mut self.incoming;
 
             match inner.entry(language_config.scope.clone()) {
-                Entry::Occupied(language_server) => Ok(language_server.get().clone()),
+                Entry::Occupied(entry) => Ok(entry.get().1.clone()),
                 Entry::Vacant(entry) => {
                     // initialize a new client
-                    let (mut client, incoming) = Client::start(&config.command, &config.args)?;
+                    let id = self.counter.fetch_add(1, Ordering::Relaxed);
+                    let (mut client, incoming) = Client::start(&config.command, &config.args, id)?;
                     // TODO: run this async without blocking
                     futures_executor::block_on(client.initialize())?;
                     s_incoming.push(UnboundedReceiverStream::new(incoming));
                     let client = Arc::new(client);
 
-                    entry.insert(client.clone());
+                    entry.insert((id, client.clone()));
                     Ok(client)
                 }
             }
