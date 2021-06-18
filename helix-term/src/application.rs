@@ -39,6 +39,7 @@ pub struct Application {
     callbacks: LspCallbacks,
 
     lsp_progress: LspProgressMap,
+    lsp_progress_enabled: bool,
 }
 
 impl Application {
@@ -77,6 +78,7 @@ impl Application {
 
             callbacks: FuturesUnordered::new(),
             lsp_progress: LspProgressMap::new(),
+            lsp_progress_enabled: config.global.lsp_progress,
         };
 
         Ok(app)
@@ -310,8 +312,10 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        self.editor.set_status(status);
-                        self.render();
+                        if self.lsp_progress_enabled {
+                            self.editor.set_status(status);
+                            self.render();
+                        }
                     }
                     _ => unreachable!(),
                 }
