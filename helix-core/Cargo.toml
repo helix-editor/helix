@@ -4,10 +4,11 @@ version = "0.2.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"
 license = "MPL-2.0"
+description = "Helix editor core editing primitives"
+categories = ["editor"]
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 
 [features]
 embed_runtime = ["rust-embed"]
