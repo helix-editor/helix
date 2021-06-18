@@ -82,7 +82,7 @@ impl Transport {
             reader.read_line(buffer).await?;
             let header = buffer.trim();
 
-            if header.is_empty() {
+            if header.is_empty() && content_length.is_some() {
                 break;
             }
 
