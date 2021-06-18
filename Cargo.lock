@@ -322,6 +322,8 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
+ "unicode-segmentation",
+ "unicode-width",
 ]
 
 [[package]]
