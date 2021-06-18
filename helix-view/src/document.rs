@@ -110,8 +110,22 @@ pub fn expand_tilde(path: &Path) -> PathBuf {
     if let Some(Component::Normal(c)) = components.peek() {
         if c == &"~" {
             if let Ok(home) = helix_core::home_dir() {
+                // it's ok to unwrap, the path starts with `~`
                 return home.join(path.strip_prefix("~").unwrap());
             }
+        }
+    }
+
+    path.to_path_buf()
+}
+
+/// Replaces users home directory from `path` with tilde `~` if the directory
+/// is available, otherwise returns the path unchanged.
+pub fn fold_home_dir(path: &Path) -> PathBuf {
+    if let Ok(home) = helix_core::home_dir() {
+        if path.starts_with(&home) {
+            // it's ok to unwrap, the path starts with home dir
+            return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
         }
     }
 
@@ -706,12 +720,19 @@ impl Document {
         &self.selections[&view_id]
     }
 
-    pub fn relative_path(&self) -> Option<&Path> {
+    pub fn relative_path(&self) -> Option<PathBuf> {
         let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
-        self.path
-            .as_ref()
-            .map(|path| path.strip_prefix(cwdir).unwrap_or(path))
+        self.path.as_ref().map(|path| {
+            let path = fold_home_dir(path);
+            if path.is_relative() {
+                path
+            } else {
+                path.strip_prefix(cwdir)
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or(path)
+            }
+        })
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

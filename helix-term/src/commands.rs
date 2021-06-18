@@ -1070,8 +1070,8 @@ mod cmd {
             .filter(|doc| doc.is_modified())
             .map(|doc| {
                 doc.relative_path()
-                    .and_then(|path| path.to_str())
-                    .unwrap_or("[scratch]")
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "[scratch]".into())
             })
             .collect();
         if !modified.is_empty() {
@@ -1369,7 +1369,7 @@ pub fn buffer_picker(cx: &mut Context) {
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (id, doc.relative_path().map(Path::to_path_buf)))
+            .map(|(id, doc)| (id, doc.relative_path()))
             .collect(),
         move |(id, path): &(DocumentId, Option<PathBuf>)| {
             // format_fn
