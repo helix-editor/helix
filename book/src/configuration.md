@@ -4,7 +4,7 @@
 
 To disable language server progress report from being displayed in the status bar add this option to your `config.toml`:
 ```toml
-lsp_progress = false
+lsp-progress = false
 ```
 
 ## Theme

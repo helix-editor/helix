@@ -17,6 +17,7 @@ pub struct Config {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct TomlConfig {
     lsp_progress: Option<bool>,
     keys: Option<HashMap<String, HashMap<String, String>>>,
