@@ -1641,7 +1641,8 @@ fn open(cx: &mut Context, open: Open) {
             true,
         );
         let indent = doc.indent_unit().repeat(indent_level);
-        let mut text = String::with_capacity(1 + indent.len());
+        let indent_len = indent.len();
+        let mut text = String::with_capacity(1 + indent_len);
         text.push('\n');
         text.push_str(&indent);
         let text = text.repeat(count);
@@ -1653,7 +1654,10 @@ fn open(cx: &mut Context, open: Open) {
             offs + linend_index + 1
         };
         for i in 0..count {
-            ranges.push(Range::new(pos + i, pos + i));
+            // pos                    -> beginning of reference line,
+            // + (i * (1+indent_len)) -> beginning of i'th line from pos
+            // + indent_len ->        -> indent for i'th line
+            ranges.push(Range::point(pos + (i * (1 + indent_len)) + indent_len));
         }
 
         offs += text.chars().count();
