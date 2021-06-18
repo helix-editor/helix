@@ -39,11 +39,11 @@ Possible modifiers:
 | `dim`          |
 | `italic`       |
 | `underlined`   |
-| `slow\_blink`  |
-| `rapid\_blink` |
+| `slow_blink`  |
+| `rapid_blink` |
 | `reversed`     |
 | `hidden`       |
-| `crossed\_out` |
+| `crossed_out` |
 
 Possible keys:
 
