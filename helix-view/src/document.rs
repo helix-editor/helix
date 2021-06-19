@@ -165,7 +165,7 @@ pub fn fold_home_dir(path: &Path) -> PathBuf {
 /// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
 /// fail, or on Windows returns annoying device paths. This is a problem Cargo
 /// needs to improve on.
-/// Copied from cargo: https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81
+/// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
 pub fn normalize_path(path: &Path) -> PathBuf {
     let path = expand_tilde(path);
     let mut components = path.components().peekable();
