@@ -11,13 +11,12 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     Position, Range,
 };
-use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 use std::borrow::Cow;
 
 use crossterm::{
     cursor,
-    event::{read, Event, EventStream},
+    event::{read, Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
 };
 use tui::{
     backend::CrosstermBackend,
@@ -608,8 +607,7 @@ impl Component for EditorView {
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
-            Event::Key(key) => {
-                let mut key = KeyEvent::from(key);
+            Event::Key(mut key) => {
                 canonicalize_key(&mut key);
                 // clear status
                 cx.editor.status_msg = None;

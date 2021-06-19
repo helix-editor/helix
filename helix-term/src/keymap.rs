@@ -3,8 +3,6 @@ pub use crate::commands::Command;
 use anyhow::{anyhow, Error, Result};
 use helix_core::hashmap;
 use helix_view::document::Mode;
-use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
-use serde::Deserialize;
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -101,6 +99,14 @@ use std::{
 //      D] = last diagnostic
 // }
 
+// #[cfg(feature = "term")]
+pub use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+#[derive(Clone, Debug)]
+pub struct Keymap(pub HashMap<KeyEvent, Command>);
+#[derive(Clone, Debug)]
+pub struct Keymaps(pub HashMap<Mode, Keymap>);
+
 #[macro_export]
 macro_rules! key {
     ($key:ident) => {
@@ -135,21 +141,9 @@ macro_rules! alt {
     };
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(transparent)]
-pub struct Keymaps(pub HashMap<Mode, HashMap<KeyEvent, Command>>);
-
-impl Deref for Keymaps {
-    type Target = HashMap<Mode, HashMap<KeyEvent, Command>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl Default for Keymaps {
-    fn default() -> Keymaps {
-        let normal = hashmap!(
+    fn default() -> Self {
+        let normal = Keymap(hashmap!(
             key!('h') => Command::move_char_left,
             key!('j') => Command::move_line_down,
             key!('k') => Command::move_line_up,
@@ -283,12 +277,12 @@ impl Default for Keymaps {
             key!('z') => Command::view_mode,
 
             key!('"') => Command::select_register,
-        );
+        ));
         // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
         // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
         // because some selection operations can now be done from normal mode, some from select mode.
         let mut select = normal.clone();
-        select.extend(
+        select.0.extend(
             hashmap!(
                 key!('h') => Command::extend_char_left,
                 key!('j') => Command::extend_line_down,
@@ -321,7 +315,7 @@ impl Default for Keymaps {
             // TODO: select could be normal mode with some bindings merged over
             Mode::Normal => normal,
             Mode::Select => select,
-            Mode::Insert => hashmap!(
+            Mode::Insert => Keymap(hashmap!(
                 key!(Esc) => Command::normal_mode as Command,
                 key!(Backspace) => Command::delete_char_backward,
                 key!(Delete) => Command::delete_char_forward,
@@ -337,7 +331,309 @@ impl Default for Keymaps {
                 key!(End) => Command::move_line_end,
                 ctrl!('x') => Command::completion,
                 ctrl!('w') => Command::delete_word_backward,
-            ),
+            )),
         ))
+    }
+}
+
+// Newtype wrapper over keys to allow toml serialization/parsing
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
+pub struct RepresentableKeyEvent(pub KeyEvent);
+impl Display for RepresentableKeyEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(key) = self;
+        f.write_fmt(format_args!(
+            "{}{}{}",
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                "S-"
+            } else {
+                ""
+            },
+            if key.modifiers.contains(KeyModifiers::ALT) {
+                "A-"
+            } else {
+                ""
+            },
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                "C-"
+            } else {
+                ""
+            },
+        ))?;
+        match key.code {
+            KeyCode::Backspace => f.write_str("backspace")?,
+            KeyCode::Enter => f.write_str("ret")?,
+            KeyCode::Left => f.write_str("left")?,
+            KeyCode::Right => f.write_str("right")?,
+            KeyCode::Up => f.write_str("up")?,
+            KeyCode::Down => f.write_str("down")?,
+            KeyCode::Home => f.write_str("home")?,
+            KeyCode::End => f.write_str("end")?,
+            KeyCode::PageUp => f.write_str("pageup")?,
+            KeyCode::PageDown => f.write_str("pagedown")?,
+            KeyCode::Tab => f.write_str("tab")?,
+            KeyCode::BackTab => f.write_str("backtab")?,
+            KeyCode::Delete => f.write_str("del")?,
+            KeyCode::Insert => f.write_str("ins")?,
+            KeyCode::Null => f.write_str("null")?,
+            KeyCode::Esc => f.write_str("esc")?,
+            KeyCode::Char('<') => f.write_str("lt")?,
+            KeyCode::Char('>') => f.write_str("gt")?,
+            KeyCode::Char('+') => f.write_str("plus")?,
+            KeyCode::Char('-') => f.write_str("minus")?,
+            KeyCode::Char(';') => f.write_str("semicolon")?,
+            KeyCode::Char('%') => f.write_str("percent")?,
+            KeyCode::F(i) => f.write_fmt(format_args!("F{}", i))?,
+            KeyCode::Char(c) => f.write_fmt(format_args!("{}", c))?,
+        };
+        Ok(())
+    }
+}
+
+impl FromStr for RepresentableKeyEvent {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut tokens: Vec<_> = s.split('-').collect();
+        let code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
+            "backspace" => KeyCode::Backspace,
+            "space" => KeyCode::Char(' '),
+            "ret" => KeyCode::Enter,
+            "lt" => KeyCode::Char('<'),
+            "gt" => KeyCode::Char('>'),
+            "plus" => KeyCode::Char('+'),
+            "minus" => KeyCode::Char('-'),
+            "semicolon" => KeyCode::Char(';'),
+            "percent" => KeyCode::Char('%'),
+            "left" => KeyCode::Left,
+            "right" => KeyCode::Right,
+            "up" => KeyCode::Down,
+            "home" => KeyCode::Home,
+            "end" => KeyCode::End,
+            "pageup" => KeyCode::PageUp,
+            "pagedown" => KeyCode::PageDown,
+            "tab" => KeyCode::Tab,
+            "backtab" => KeyCode::BackTab,
+            "del" => KeyCode::Delete,
+            "ins" => KeyCode::Insert,
+            "null" => KeyCode::Null,
+            "esc" => KeyCode::Esc,
+            single if single.len() == 1 => KeyCode::Char(single.chars().next().unwrap()),
+            function if function.len() > 1 && function.starts_with('F') => {
+                let function: String = function.chars().skip(1).collect();
+                let function = str::parse::<u8>(&function)?;
+                (function > 0 && function < 13)
+                    .then(|| KeyCode::F(function))
+                    .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
+            }
+            invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
+        };
+
+        let mut modifiers = KeyModifiers::empty();
+        for token in tokens {
+            let flag = match token {
+                "S" => KeyModifiers::SHIFT,
+                "A" => KeyModifiers::ALT,
+                "C" => KeyModifiers::CONTROL,
+                _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
+            };
+
+            if modifiers.contains(flag) {
+                return Err(anyhow!("Repeated key modifier '{}-'", token));
+            }
+            modifiers.insert(flag);
+        }
+
+        Ok(RepresentableKeyEvent(KeyEvent { code, modifiers }))
+    }
+}
+
+pub fn parse_keymaps(toml_keymaps: &HashMap<String, HashMap<String, String>>) -> Result<Keymaps> {
+    let mut keymaps = Keymaps::default();
+
+    for (mode, map) in toml_keymaps {
+        let mode = Mode::from_str(&mode)?;
+        for (key, command) in map {
+            let key = str::parse::<RepresentableKeyEvent>(&key)?;
+            let command = str::parse::<Command>(&command)?;
+            keymaps.0.get_mut(&mode).unwrap().0.insert(key.0, command);
+        }
+    }
+    Ok(keymaps)
+}
+
+impl Deref for Keymap {
+    type Target = HashMap<KeyEvent, Command>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Deref for Keymaps {
+    type Target = HashMap<Mode, Keymap>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Keymap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl DerefMut for Keymaps {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::config::Config;
+
+    use super::*;
+
+    impl PartialEq for Command {
+        fn eq(&self, other: &Self) -> bool {
+            self.name() == other.name()
+        }
+    }
+
+    #[test]
+    fn parsing_keymaps_config_file() {
+        let sample_keymaps = r#"
+            [keys.insert]
+            y = "move_line_down"
+            S-C-a = "delete_selection"
+
+            [keys.normal]
+            A-F12 = "move_next_word_end"
+        "#;
+
+        let config: Config = toml::from_str(sample_keymaps).unwrap();
+        assert_eq!(
+            *config
+                .keymaps
+                .0
+                .get(&Mode::Insert)
+                .unwrap()
+                .0
+                .get(&KeyEvent {
+                    code: KeyCode::Char('y'),
+                    modifiers: KeyModifiers::NONE
+                })
+                .unwrap(),
+            Command::move_line_down
+        );
+        assert_eq!(
+            *config
+                .keymaps
+                .0
+                .get(&Mode::Insert)
+                .unwrap()
+                .0
+                .get(&KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL
+                })
+                .unwrap(),
+            Command::delete_selection
+        );
+        assert_eq!(
+            *config
+                .keymaps
+                .0
+                .get(&Mode::Normal)
+                .unwrap()
+                .0
+                .get(&KeyEvent {
+                    code: KeyCode::F(12),
+                    modifiers: KeyModifiers::ALT
+                })
+                .unwrap(),
+            Command::move_next_word_end
+        );
+    }
+
+    #[test]
+    fn parsing_unmodified_keys() {
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("backspace").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Backspace,
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("left").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>(",").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Char(','),
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("w").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Char('w'),
+                modifiers: KeyModifiers::NONE
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("F12").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::F(12),
+                modifiers: KeyModifiers::NONE
+            })
+        );
+    }
+
+    fn parsing_modified_keys() {
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("S-minus").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::Char('-'),
+                modifiers: KeyModifiers::SHIFT
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("C-A-S-F12").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::F(12),
+                modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL | KeyModifiers::ALT
+            })
+        );
+
+        assert_eq!(
+            str::parse::<RepresentableKeyEvent>("S-C-2").unwrap(),
+            RepresentableKeyEvent(KeyEvent {
+                code: KeyCode::F(2),
+                modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL
+            })
+        );
+    }
+
+    #[test]
+    fn parsing_nonsensical_keys_fails() {
+        assert!(str::parse::<RepresentableKeyEvent>("F13").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("F0").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("aaa").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("S-S-a").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("C-A-S-C-1").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("FU").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("123").is_err());
+        assert!(str::parse::<RepresentableKeyEvent>("S--").is_err());
     }
 }

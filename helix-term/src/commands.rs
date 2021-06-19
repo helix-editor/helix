@@ -11,7 +11,6 @@ use helix_core::{
 
 use helix_view::{
     document::{IndentStyle, Mode},
-    input::{KeyCode, KeyEvent},
     view::{View, PADDING},
     Document, DocumentId, Editor, ViewId,
 };
@@ -39,8 +38,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crossterm::event::{KeyCode, KeyEvent};
 use once_cell::sync::Lazy;
-use serde::de::{self, Deserialize, Deserializer};
 
 pub struct Context<'a> {
     pub selected_register: helix_view::RegisterSelection,
@@ -251,48 +250,6 @@ impl Command {
         left_bracket_mode,
         right_bracket_mode
     );
-}
-
-impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(name, _) = self;
-        f.debug_tuple("Command").field(name).finish()
-    }
-}
-
-impl fmt::Display for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(name, _) = self;
-        f.write_str(name)
-    }
-}
-
-impl std::str::FromStr for Command {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Command::COMMAND_LIST
-            .iter()
-            .copied()
-            .find(|cmd| cmd.0 == s)
-            .ok_or_else(|| anyhow!("No command named '{}'", s))
-    }
-}
-
-impl<'de> Deserialize<'de> for Command {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(de::Error::custom)
-    }
-}
-
-impl PartialEq for Command {
-    fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name()
-    }
 }
 
 fn move_char_left(cx: &mut Context) {
@@ -3084,4 +3041,30 @@ fn right_bracket_mode(cx: &mut Context) {
             }
         }
     })
+}
+
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Command(name, _) = self;
+        f.write_str(name)
+    }
+}
+
+impl std::str::FromStr for Command {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Command::COMMAND_LIST
+            .iter()
+            .copied()
+            .find(|cmd| cmd.0 == s)
+            .ok_or_else(|| anyhow!("No command named '{}'", s))
+    }
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Command(name, _) = self;
+        f.debug_tuple("Command").field(name).finish()
+    }
 }
