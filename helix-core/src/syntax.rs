@@ -172,17 +172,16 @@ impl LanguageConfiguration {
         }
     }
 
-    pub fn highlight_config(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        if let Some(config) = self.highlight_config.get() {
-            if let Some(config) = config {
-                config.configure(scopes);
-            }
-            config.clone()
-        } else {
-            self.highlight_config
-                .get_or_init(|| self.initialize_highlight(scopes))
-                .clone()
+    pub fn reconfigure(&self, scopes: &[String]) {
+        if let Some(Some(config)) = self.highlight_config.get() {
+            config.configure(scopes);
         }
+    }
+
+    pub fn highlight_config(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
+        self.highlight_config
+            .get_or_init(|| self.initialize_highlight(scopes))
+            .clone()
     }
 
     pub fn is_highlight_initialized(&self) -> bool {
