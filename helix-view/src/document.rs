@@ -649,6 +649,7 @@ impl Document {
         }
     }
 
+    /// Commit pending changes to history
     pub fn append_changes_to_history(&mut self, view_id: ViewId) {
         if self.changes.is_empty() {
             return;

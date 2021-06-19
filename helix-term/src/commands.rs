@@ -255,7 +255,8 @@ impl Command {
         space_mode,
         view_mode,
         left_bracket_mode,
-        right_bracket_mode
+        right_bracket_mode,
+        surround
     );
 }
 
@@ -1906,6 +1907,7 @@ fn goto_mode(cx: &mut Context) {
             match (doc.mode, ch) {
                 (_, 'g') => move_file_start(cx),
                 (_, 'e') => move_file_end(cx),
+                (_, 'm') => match_brackets(cx),
                 (_, 'a') => switch_to_last_accessed_file(cx),
                 (Mode::Normal, 'h') => move_line_start(cx),
                 (Mode::Normal, 'l') => move_line_end(cx),
@@ -3307,6 +3309,122 @@ fn right_bracket_mode(cx: &mut Context) {
                 'D' => goto_last_diag(cx),
                 _ => (),
             }
+        }
+    })
+}
+
+fn surround(cx: &mut Context) {
+    let count = cx.count;
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            // FIXME: count gets reset because of cx.on_next_key()
+            cx.count = count;
+            match ch {
+                'a' => surround_add(cx),
+                'r' => surround_replace(cx),
+                'd' => {
+                    surround_delete(cx);
+                    let (view, doc) = current!(cx.editor);
+                }
+                _ => (),
+            }
+        }
+    })
+}
+
+use helix_core::surround;
+
+fn surround_add(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+            let selection = doc.selection(view.id);
+            let (open, close) = surround::get_pair(ch);
+
+            let mut changes = Vec::new();
+            for (i, range) in selection.iter().enumerate() {
+                let (from, to) = (range.from(), range.to() + 1);
+                changes.push((from, from, Some(Tendril::from_char(open))));
+                changes.push((to, to, Some(Tendril::from_char(close))));
+            }
+
+            let transaction = Transaction::change(doc.text(), changes.into_iter());
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        }
+    })
+}
+
+fn surround_replace(cx: &mut Context) {
+    let count = cx.count();
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(from),
+            ..
+        } = event
+        {
+            cx.on_next_key(move |cx, event| {
+                if let KeyEvent {
+                    code: KeyCode::Char(to),
+                    ..
+                } = event
+                {
+                    let (view, doc) = current!(cx.editor);
+                    let text = doc.text().slice(..);
+                    let selection = doc.selection(view.id);
+
+                    let change_pos = match surround::get_surround_pos(text, selection, from, count)
+                    {
+                        Some(c) => c,
+                        None => return,
+                    };
+
+                    let (open, close) = surround::get_pair(to);
+                    let transaction = Transaction::change(
+                        doc.text(),
+                        change_pos.iter().enumerate().map(|(i, &pos)| {
+                            let ch = if i % 2 == 0 { open } else { close };
+                            (pos, pos + 1, Some(Tendril::from_char(ch)))
+                        }),
+                    );
+                    doc.apply(&transaction, view.id);
+                    doc.append_changes_to_history(view.id);
+                }
+            });
+        }
+    })
+}
+
+fn surround_delete(cx: &mut Context) {
+    let count = cx.count();
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+            let selection = doc.selection(view.id);
+
+            let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
+                Some(c) => c,
+                None => return,
+            };
+
+            let transaction =
+                Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
         }
     })
 }
