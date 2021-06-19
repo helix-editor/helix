@@ -1312,6 +1312,17 @@ mod cmd {
         quit_all_impl(editor, args, event, true)
     }
 
+    fn theme(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let theme = if let Some(theme) = args.first() {
+            theme
+        } else {
+            editor.set_error("theme name not provided".into());
+            return;
+        };
+
+        editor.set_theme_from_name(theme);
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1424,6 +1435,13 @@ mod cmd {
             doc: "Close all views forcefully (ignoring unsaved changes).",
             fun: force_quit_all,
             completer: None,
+        },
+        TypableCommand {
+            name: "theme",
+            alias: None,
+            doc: "Change the theme of current view. Requires theme name as argument (:theme <name>)",
+            fun: theme,
+            completer: Some(completers::theme),
         },
 
     ];
@@ -2847,7 +2865,7 @@ fn hover(cx: &mut Context) {
 
                 // skip if contents empty
 
-                let contents = ui::Markdown::new(contents);
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let mut popup = Popup::new(contents);
                 compositor.push(Box::new(popup));
             }
