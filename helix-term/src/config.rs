@@ -6,12 +6,16 @@ use serde::{de::Error as SerdeError, Deserialize, Serialize};
 use crate::keymap::{parse_keymaps, Keymaps};
 
 pub struct GlobalConfig {
+    pub theme: Option<String>,
     pub lsp_progress: bool,
 }
 
 impl Default for GlobalConfig {
     fn default() -> Self {
-        Self { lsp_progress: true }
+        Self {
+            lsp_progress: true,
+            theme: None,
+        }
     }
 }
 
