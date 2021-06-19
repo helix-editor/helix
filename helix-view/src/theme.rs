@@ -1,6 +1,11 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
+use anyhow::Context;
 use log::warn;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
 use toml::Value;
 
@@ -86,7 +91,84 @@ pub use tui::style::{Color, Modifier, Style};
 // }
 
 /// Color theme for syntax highlighting.
-#[derive(Debug)]
+
+pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
+    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+});
+
+#[derive(Clone, Debug)]
+pub struct Loader {
+    user_dir: PathBuf,
+    default_dir: PathBuf,
+}
+impl Loader {
+    /// Creates a new loader that can load themes from two directories.
+    pub fn new<P: AsRef<Path>>(user_dir: P, default_dir: P) -> Self {
+        Self {
+            user_dir: user_dir.as_ref().join("themes"),
+            default_dir: default_dir.as_ref().join("themes"),
+        }
+    }
+
+    /// Loads a theme first looking in the `user_dir` then in `default_dir`
+    pub fn load(&self, name: &str) -> Result<Theme, anyhow::Error> {
+        if name == "default" {
+            return Ok(self.default());
+        }
+        let filename = format!("{}.toml", name);
+
+        let user_path = self.user_dir.join(&filename);
+        let path = if user_path.exists() {
+            user_path
+        } else {
+            self.default_dir.join(filename)
+        };
+
+        let data = std::fs::read(&path)?;
+        toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
+    }
+
+    pub fn read_names(path: &Path) -> Vec<String> {
+        std::fs::read_dir(path)
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        if let Ok(entry) = entry {
+                            let path = entry.path();
+                            if let Some(ext) = path.extension() {
+                                if ext != "toml" {
+                                    return None;
+                                }
+                                return Some(
+                                    entry
+                                        .file_name()
+                                        .to_string_lossy()
+                                        .trim_end_matches(".toml")
+                                        .to_owned(),
+                                );
+                            }
+                        }
+                        None
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Lists all theme names available in default and user directory
+    pub fn names(&self) -> Vec<String> {
+        let mut names = Self::read_names(&self.user_dir);
+        names.extend(Self::read_names(&self.default_dir));
+        names
+    }
+
+    /// Returns the default theme
+    pub fn default(&self) -> Theme {
+        DEFAULT_THEME.clone()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Theme {
     scopes: Vec<String>,
     styles: HashMap<String, Style>,
