@@ -38,9 +38,8 @@ impl LineEnding {
 pub fn rope_slice_to_line_ending(g: &RopeSlice) -> Option<LineEnding> {
     if let Some(text) = g.as_str() {
         str_to_line_ending(text)
-    } else if g == "\u{000D}\u{000A}" {
-        Some(LineEnding::Crlf)
-    } else {
+    }
+    else {
         // Not a line ending
         None
     }

@@ -6,7 +6,7 @@ use helix_core::{
     regex::{self, Regex},
     register::{self, Register, Registers},
     search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice, Selection,
-    SmallVec, Tendril, Transaction,
+    SmallVec, Tendril, Transaction, DEFAULT_LINE_ENDING,
 };
 
 use helix_view::{
@@ -627,7 +627,7 @@ fn replace(cx: &mut Context) {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => Some('\n'),
+            } => Some('\n'), // TODO: replace this with DEFAULT_LINE_ENDING
             _ => None,
         };
 
@@ -982,7 +982,13 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
     // then delete
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-            let max_to = doc.text().len_chars().saturating_sub(1);
+            let alltext = doc.text();
+            let line = alltext.char_to_line(range.head);
+            let max_to = doc.text().len_chars().saturating_sub(
+                get_line_ending(&alltext.line(line))
+                    .map(|le| le.len_chars())
+                    .unwrap_or(0),
+            );
             let to = std::cmp::min(max_to, range.to() + 1);
             (range.from(), to, None)
         });
@@ -1644,8 +1650,12 @@ fn append_to_line(cx: &mut Context) {
     let selection = doc.selection(view.id).transform(|range| {
         let text = doc.text();
         let line = text.char_to_line(range.head);
-        // we can't use line_to_char(line + 1) - 2 because the last line might not contain \n
-        let pos = (text.line_to_char(line) + text.line(line).len_chars()).saturating_sub(1);
+        // we can't use line_to_char(line + 1) - 2 because the last line might not contain a newline
+        let pos = (text.line_to_char(line) + text.line(line).len_chars()).saturating_sub(
+            get_line_ending(&text.line(line))
+                .map(|le| le.len_chars())
+                .unwrap_or(0),
+        );
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);

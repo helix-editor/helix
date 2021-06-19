@@ -5,7 +5,7 @@ use ropey::iter::Chars;
 use crate::{
     coords_at_pos,
     graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary},
-    pos_at_coords, Position, Range, RopeSlice,
+    pos_at_coords, Position, Range, RopeSlice, get_line_ending
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -38,7 +38,9 @@ pub fn move_horizontally(
         }
         Direction::Forward => {
             // Line end is pos at the start of next line - 1
-            let end = slice.line_to_char(line + 1).saturating_sub(1);
+            let end = slice.line_to_char(line + 1).saturating_sub(get_line_ending(&slice.line(line))
+                .map(|le| le.len_chars())
+                .unwrap_or(0));
             nth_next_grapheme_boundary(slice, pos, count).min(end)
         }
     };
