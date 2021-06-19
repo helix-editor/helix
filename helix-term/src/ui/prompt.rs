@@ -179,14 +179,9 @@ impl Prompt {
         self.exit_selection();
     }
 
-    pub fn move_char_left(&mut self) {
-        let pos = self.eval_movement(Movement::BackwardChar(1));
+    pub fn move_cursor(&mut self, movement: Movement) {
+        let pos = self.eval_movement(movement);
         self.cursor = pos
-    }
-
-    pub fn move_char_right(&mut self) {
-        let pos = self.eval_movement(Movement::ForwardChar(1));
-        self.cursor = pos;
     }
 
     pub fn move_start(&mut self) {
@@ -210,6 +205,14 @@ impl Prompt {
         let pos = self.eval_movement(Movement::BackwardWord(1));
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
+
+        self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
+    }
+
+    pub fn kill_to_end_of_line(&mut self) {
+        let pos = self.eval_movement(Movement::EndOfLine);
+        self.line.replace_range(self.cursor..pos, "");
 
         self.exit_selection();
         self.completion = (self.completion_fn)(&self.line);
@@ -386,31 +389,71 @@ impl Component for Prompt {
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
             }
             KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Esc, ..
             } => {
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
             KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Right,
                 ..
-            } => self.move_char_right(),
+            } => self.move_cursor(Movement::ForwardChar(1)),
             KeyEvent {
+                code: KeyCode::Char('b'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Left,
                 ..
-            } => self.move_char_left(),
+            } => self.move_cursor(Movement::BackwardChar(1)),
             KeyEvent {
+                code: KeyCode::End,
+                modifiers: KeyModifiers::NONE,
+            }
+            | KeyEvent {
                 code: KeyCode::Char('e'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_end(),
             KeyEvent {
+                code: KeyCode::Home,
+                modifiers: KeyModifiers::NONE,
+            }
+            | KeyEvent {
                 code: KeyCode::Char('a'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_start(),
             KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('b'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::BackwardWord(1)),
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::ForwardWord(1)),
+            KeyEvent {
                 code: KeyCode::Char('w'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.delete_word_backwards(),
+            KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.kill_to_end_of_line(),
             KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
