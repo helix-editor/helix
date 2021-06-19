@@ -1668,15 +1668,15 @@ fn open(cx: &mut Context, open: Open) {
     let mut ranges = SmallVec::with_capacity(selection.len());
     let mut offs = 0;
 
-    let line = match open {
-        // adjust position to the end of the line (next line - 1)
-        Open::Below => line + 1,
-        // adjust position to the end of the previous line (current line - 1)
-        Open::Above => line,
-    };
-
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         let line = text.char_to_line(range.head);
+
+        let line = match open {
+            // adjust position to the end of the line (next line - 1)
+            Open::Below => line + 1,
+            // adjust position to the end of the previous line (current line - 1)
+            Open::Above => line,
+        };
 
         // insert newlines after this index for both Above and Below variants
         let linend_index = doc.text().line_to_char(line).saturating_sub(1);
