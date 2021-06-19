@@ -85,7 +85,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">3.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.3.</strong> Hooks</a></li></ol></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">3.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">3.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.4.</strong> Hooks</a></li></ol></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -179,16 +179,21 @@ it with:</p>
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<p>To override global configuration parameters create a <code>config.toml</code> file located in your config directory (i.e <code>~/.config/helix/config.toml</code>).</p>
 <h2 id="lsp"><a class="header" href="#lsp">LSP</a></h2>
 <p>To disable language server progress report from being displayed in the status bar add this option to your <code>config.toml</code>:</p>
 <pre><code class="language-toml">lsp-progress = false
 </code></pre>
-<h2 id="theme"><a class="header" href="#theme">Theme</a></h2>
-<p>Use a custom theme by placing a theme.toml in your config directory (i.e ~/.config/helix/theme.toml). The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/contrib/themes">here</a>.</p>
-<p>Styles in theme.toml are specified of in the form:</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
+<p>First you'll need to place selected themes in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>), the directory might have to be created beforehand.</p>
+<p>To use a custom theme add <code>theme = &lt;name&gt;</code> to your <a href="./configuration.html"><code>config.toml</code></a> or override it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<p>The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/contrib/themes">here</a>. </p>
+<h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
+<p>First create a file with the name of your theme as file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>).</p>
+<p>Each line in the theme file is specified as below:</p>
 <pre><code class="language-toml">key = { fg = &quot;#ffffff&quot;, bg = &quot;#000000&quot;, modifiers = [&quot;bold&quot;, &quot;italic&quot;] }
 </code></pre>
-<p>where <code>name</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, and <code>modifiers</code> is a list of style modifiers. <code>bg</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
+<p>where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, and <code>modifiers</code> is a list of style modifiers. <code>bg</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
 <p>To specify only the foreground color:</p>
 <pre><code class="language-toml">key = &quot;#ffffff&quot;
 </code></pre>
@@ -201,11 +206,11 @@ it with:</p>
 <tr><td><code>dim</code></td></tr>
 <tr><td><code>italic</code></td></tr>
 <tr><td><code>underlined</code></td></tr>
-<tr><td><code>slow_blink</code></td></tr>
-<tr><td><code>rapid_blink</code></td></tr>
+<tr><td><code>slow\_blink</code></td></tr>
+<tr><td><code>rapid\_blink</code></td></tr>
 <tr><td><code>reversed</code></td></tr>
 <tr><td><code>hidden</code></td></tr>
-<tr><td><code>crossed_out</code></td></tr>
+<tr><td><code>crossed\_out</code></td></tr>
 </tbody></table>
 <p>Possible keys:</p>
 <table><thead><tr><th>Key</th><th>Notes</th></tr></thead><tbody>
@@ -237,7 +242,6 @@ it with:</p>
 <tr><td><code>module</code></td><td></td></tr>
 <tr><td><code>ui.background</code></td><td></td></tr>
 <tr><td><code>ui.linenr</code></td><td></td></tr>
-<tr><td><code>ui.linenr.selected</code></td><td>For lines with cursors</td></tr>
 <tr><td><code>ui.statusline</code></td><td></td></tr>
 <tr><td><code>ui.popup</code></td><td></td></tr>
 <tr><td><code>ui.window</code></td><td></td></tr>

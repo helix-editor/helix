@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Configuration</title>
+        <title>Themes</title>
                 
 
         <!-- Custom HTML head -->
@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html" class="active"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">3.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">3.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.4.</strong> Hooks</a></li></ol></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html" class="active"><strong aria-hidden="true">3.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">3.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.4.</strong> Hooks</a></li></ol></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -145,22 +145,89 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
-<p>To override global configuration parameters create a <code>config.toml</code> file located in your config directory (i.e <code>~/.config/helix/config.toml</code>).</p>
-<h2 id="lsp"><a class="header" href="#lsp">LSP</a></h2>
-<p>To disable language server progress report from being displayed in the status bar add this option to your <code>config.toml</code>:</p>
-<pre><code class="language-toml">lsp-progress = false
+                        <h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
+<p>First you'll need to place selected themes in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>), the directory might have to be created beforehand.</p>
+<p>To use a custom theme add <code>theme = &lt;name&gt;</code> to your <a href="./configuration.html"><code>config.toml</code></a> or override it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<p>The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/contrib/themes">here</a>. </p>
+<h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
+<p>First create a file with the name of your theme as file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>).</p>
+<p>Each line in the theme file is specified as below:</p>
+<pre><code class="language-toml">key = { fg = &quot;#ffffff&quot;, bg = &quot;#000000&quot;, modifiers = [&quot;bold&quot;, &quot;italic&quot;] }
 </code></pre>
+<p>where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, and <code>modifiers</code> is a list of style modifiers. <code>bg</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
+<p>To specify only the foreground color:</p>
+<pre><code class="language-toml">key = &quot;#ffffff&quot;
+</code></pre>
+<p>if the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
+<pre><code class="language-toml">&quot;key.key&quot; = &quot;#ffffff&quot;
+</code></pre>
+<p>Possible modifiers:</p>
+<table><thead><tr><th>Modifier</th></tr></thead><tbody>
+<tr><td><code>bold</code></td></tr>
+<tr><td><code>dim</code></td></tr>
+<tr><td><code>italic</code></td></tr>
+<tr><td><code>underlined</code></td></tr>
+<tr><td><code>slow\_blink</code></td></tr>
+<tr><td><code>rapid\_blink</code></td></tr>
+<tr><td><code>reversed</code></td></tr>
+<tr><td><code>hidden</code></td></tr>
+<tr><td><code>crossed\_out</code></td></tr>
+</tbody></table>
+<p>Possible keys:</p>
+<table><thead><tr><th>Key</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>attribute</code></td><td></td></tr>
+<tr><td><code>keyword</code></td><td></td></tr>
+<tr><td><code>keyword.directive</code></td><td>Preprocessor directives (#if in C)</td></tr>
+<tr><td><code>namespace</code></td><td></td></tr>
+<tr><td><code>punctuation</code></td><td></td></tr>
+<tr><td><code>punctuation.delimiter</code></td><td></td></tr>
+<tr><td><code>operator</code></td><td></td></tr>
+<tr><td><code>special</code></td><td></td></tr>
+<tr><td><code>property</code></td><td></td></tr>
+<tr><td><code>variable</code></td><td></td></tr>
+<tr><td><code>variable.parameter</code></td><td></td></tr>
+<tr><td><code>type</code></td><td></td></tr>
+<tr><td><code>type.builtin</code></td><td></td></tr>
+<tr><td><code>constructor</code></td><td></td></tr>
+<tr><td><code>function</code></td><td></td></tr>
+<tr><td><code>function.macro</code></td><td></td></tr>
+<tr><td><code>function.builtin</code></td><td></td></tr>
+<tr><td><code>comment</code></td><td></td></tr>
+<tr><td><code>variable.builtin</code></td><td></td></tr>
+<tr><td><code>constant</code></td><td></td></tr>
+<tr><td><code>constant.builtin</code></td><td></td></tr>
+<tr><td><code>string</code></td><td></td></tr>
+<tr><td><code>number</code></td><td></td></tr>
+<tr><td><code>escape</code></td><td>Escaped characters</td></tr>
+<tr><td><code>label</code></td><td>For lifetimes</td></tr>
+<tr><td><code>module</code></td><td></td></tr>
+<tr><td><code>ui.background</code></td><td></td></tr>
+<tr><td><code>ui.linenr</code></td><td></td></tr>
+<tr><td><code>ui.statusline</code></td><td></td></tr>
+<tr><td><code>ui.popup</code></td><td></td></tr>
+<tr><td><code>ui.window</code></td><td></td></tr>
+<tr><td><code>ui.help</code></td><td></td></tr>
+<tr><td><code>ui.text</code></td><td></td></tr>
+<tr><td><code>ui.text.focus</code></td><td></td></tr>
+<tr><td><code>ui.menu.selected</code></td><td></td></tr>
+<tr><td><code>ui.selection</code></td><td>For selections in the editing area</td></tr>
+<tr><td><code>warning</code></td><td>LSP warning</td></tr>
+<tr><td><code>error</code></td><td>LSP error</td></tr>
+<tr><td><code>info</code></td><td>LSP info</td></tr>
+<tr><td><code>hint</code></td><td>LSP hint</td></tr>
+</tbody></table>
+<p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme">tree-sitter scopes</a>. We half-follow the common scopes from <a href="https://macromates.com/manual/en/language_grammars">macromates language grammars</a> with some differences.</p>
+<p>For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight <code>function.macro</code> and <code>function.builtin</code> as well, but you can use more specific scopes to highlight specific cases differently.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                                                    <a rel="prev" href="usage.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                                    <a rel="prev" href="configuration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
-                                                    <a rel="next" href="themes.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                                    <a rel="next" href="keymap.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -170,11 +237,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                                    <a rel="prev" href="usage.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                    <a rel="prev" href="configuration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
-                                    <a rel="next" href="themes.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                    <a rel="next" href="keymap.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                             </nav>
