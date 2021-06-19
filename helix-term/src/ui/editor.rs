@@ -717,6 +717,10 @@ impl Component for EditorView {
             self.render_view(doc, view, area, surface, &cx.editor.theme, is_focused);
         }
 
+        if let Some(info) = std::mem::take(&mut cx.editor.autoinfo) {
+            info.render(area, surface, cx);
+        }
+
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
             use helix_view::editor::Severity;
@@ -735,8 +739,7 @@ impl Component for EditorView {
         }
 
         if let Some(completion) = &self.completion {
-            completion.render(area, surface, cx)
-            // render completion here
+            completion.render(area, surface, cx);
         }
     }
 

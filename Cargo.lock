@@ -419,6 +419,7 @@ dependencies = [
  "slotmap",
  "tokio",
  "toml",
+ "unicode-width",
  "url",
  "which",
 ]

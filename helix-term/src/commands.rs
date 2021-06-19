@@ -16,6 +16,7 @@ use helix_core::{
 use helix_view::{
     document::{IndentStyle, Mode},
     editor::Action,
+    info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
     view::{View, PADDING},
@@ -33,6 +34,7 @@ use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
+    key,
     ui::{self, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -3400,32 +3402,87 @@ fn select_register(cx: &mut Context) {
     })
 }
 
-fn space_mode(cx: &mut Context) {
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            // TODO: temporarily show SPC in the mode list
-            match ch {
-                'f' => file_picker(cx),
-                'b' => buffer_picker(cx),
-                's' => symbol_picker(cx),
-                'w' => window_mode(cx),
-                'y' => yank_joined_to_clipboard(cx),
-                'Y' => yank_main_selection_to_clipboard(cx),
-                'p' => paste_clipboard_after(cx),
-                'P' => paste_clipboard_before(cx),
-                'R' => replace_selections_with_clipboard(cx),
-                // ' ' => toggle_alternate_buffer(cx),
-                // TODO: temporary since space mode took its old key
-                ' ' => keep_primary_selection(cx),
-                _ => (),
-            }
+macro_rules! mode_info {
+    // TODO: how to use one expr for both pat and expr?
+    // TODO: how to use replaced function name as str at compile time?
+    // TODO: extend to support multiple keys, but first solve the other two
+    {$name:literal, $cx:expr, $($key:expr => $func:expr; $funcs:literal),+,} => {
+        mode_info! {
+            $name, $cx,
+            $($key; $key => $func; $funcs,)+
         }
-    })
+    };
+    {$name:literal, $cx:expr, $($key:expr; $keyp:pat => $func:expr; $funcs:literal),+,} => {
+        $cx.editor.autoinfo = Some(Info::key(
+            $name,
+            vec![
+                $(
+                (vec![$key], $funcs),
+                )+
+            ],
+        ));
+        $cx.on_next_key(move |cx, event| {
+            match event {
+                $(
+                $keyp => $func(cx),
+                )+
+                _ => {}
+            }
+        })
+    }
 }
+
+fn space_mode(cx: &mut Context) {
+    mode_info! {
+        "space mode", cx,
+        key!('f'); key!('f') => file_picker; "file picker",
+        key!('b'); key!('b') => buffer_picker; "buffer picker",
+        key!('s'); key!('s') => symbol_picker; "symbol picker",
+        key!('w'); key!('w') => window_mode; "window mode",
+        key!('y'); key!('y') => yank_joined_to_clipboard; "yank joined to clipboard",
+        key!('Y'); key!('Y') => yank_main_selection_to_clipboard; "yank main selection to clipboard",
+        key!('p'); key!('p') => paste_clipboard_after; "paste clipboard after",
+        key!('P'); key!('P') => paste_clipboard_before; "paste clipboard before",
+        key!('R'); key!('R') => replace_selections_with_clipboard; "replace selections with clipboard",
+        key!(' '); key!(' ') => keep_primary_selection; "keep primary selection",
+    }
+}
+
+// TODO: generated, delete it later
+// fn space_mode(cx: &mut Context) {
+//     cx.editor.autoinfo = Some(Info::key(
+//         "space",
+//         vec![
+//             (vec![key!('f')], "file picker"),
+//             (vec![key!('b')], "buffer picker"),
+//             (vec![key!('s')], "symbol picker"),
+//             (vec![key!('w')], "window mode"),
+//             (vec![key!('y')], "yank joined to clipboard"),
+//             (vec![key!('Y')], "yank main selection to clipboard"),
+//             (vec![key!('p')], "paste clipboard after"),
+//             (vec![key!('P')], "paste clipboard before"),
+//             (vec![key!('R')], "replace selections with clipboard"),
+//             (vec![key!(' ')], "keep primary selection"),
+//         ],
+//     ));
+//     cx.on_next_key(move |cx, event| {
+//         match event {
+//             key!('f') => file_picker(cx),
+//             key!('b') => buffer_picker(cx),
+//             key!('s') => symbol_picker(cx),
+//             key!('w') => window_mode(cx),
+//             key!('y') => yank_joined_to_clipboard(cx),
+//             key!('Y') => yank_main_selection_to_clipboard(cx),
+//             key!('p') => paste_clipboard_after(cx),
+//             key!('P') => paste_clipboard_before(cx),
+//             key!('R') => replace_selections_with_clipboard(cx),
+//             // key!(' ') => toggle_alternate_buffer(cx),
+//             // TODO: temporary since space mode took its old key
+//             key!(' ') => keep_primary_selection(cx),
+//             _ => {}
+//         }
+//     })
+// }
 
 fn view_mode(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
