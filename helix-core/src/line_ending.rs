@@ -95,12 +95,18 @@ pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
 /// Returns the passed line's line ending, if any.
 pub fn get_line_ending(line: &RopeSlice) -> Option<LineEnding> {
     // Last character as str.
-    let g1 = line.slice(line.len_chars().saturating_sub(1)..).as_str().unwrap();
+    let g1 = line
+        .slice(line.len_chars().saturating_sub(1)..)
+        .as_str()
+        .unwrap();
 
     // Last two characters as str, or empty str if they're not contiguous.
     // It's fine to punt on the non-contiguous case, because Ropey guarantees
     // that CRLF is always contiguous.
-    let g2 = line.slice(line.len_chars().saturating_sub(2)..).as_str().unwrap_or("");
+    let g2 = line
+        .slice(line.len_chars().saturating_sub(2)..)
+        .as_str()
+        .unwrap_or("");
 
     // First check the two-character case for CRLF, then check the single-character case.
     str_to_line_ending(g2).or_else(|| str_to_line_ending(g1))

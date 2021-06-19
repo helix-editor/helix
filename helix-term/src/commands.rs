@@ -1,11 +1,11 @@
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
-    match_brackets,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, get_line_ending, graphemes,
+    indent, match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     register::{self, Register, Registers},
-    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice, Selection, get_line_ending,
+    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice, Selection,
     SmallVec, Tendril, Transaction,
 };
 
@@ -183,9 +183,11 @@ pub fn move_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        let pos = text
-            .line_to_char(line + 1)
-            .saturating_sub(get_line_ending(&text.line(line)).map(|le| le.len_chars()).unwrap_or(0));
+        let pos = text.line_to_char(line + 1).saturating_sub(
+            get_line_ending(&text.line(line))
+                .map(|le| le.len_chars())
+                .unwrap_or(0),
+        );
 
         Range::new(pos, pos)
     });
@@ -606,9 +608,11 @@ pub fn extend_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        let pos = text
-            .line_to_char(line + 1)
-            .saturating_sub(get_line_ending(&text.line(line)).map(|le| le.len_chars()).unwrap_or(0));
+        let pos = text.line_to_char(line + 1).saturating_sub(
+            get_line_ending(&text.line(line))
+                .map(|le| le.len_chars())
+                .unwrap_or(0),
+        );
 
         Range::new(range.anchor, pos)
     });

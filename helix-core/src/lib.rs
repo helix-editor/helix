@@ -111,6 +111,7 @@ pub use diagnostic::Diagnostic;
 pub use state::State;
 
 pub use line_ending::{
-    auto_detect_line_ending, rope_slice_to_line_ending, LineEnding, DEFAULT_LINE_ENDING, get_line_ending
+    auto_detect_line_ending, get_line_ending, rope_slice_to_line_ending, LineEnding,
+    DEFAULT_LINE_ENDING,
 };
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};
