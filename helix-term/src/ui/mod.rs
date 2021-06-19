@@ -115,9 +115,42 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
 
 pub mod completers {
     use crate::ui::prompt::Completion;
-    use std::borrow::Cow;
+    use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
+    use fuzzy_matcher::FuzzyMatcher;
+    use helix_view::theme;
+    use std::cmp::Reverse;
+    use std::{borrow::Cow, sync::Arc};
 
     pub type Completer = fn(&str) -> Vec<Completion>;
+
+    pub fn theme(input: &str) -> Vec<Completion> {
+        let mut names = theme::Loader::read_names(&helix_core::runtime_dir().join("themes"));
+        names.extend(theme::Loader::read_names(
+            &helix_core::config_dir().join("themes"),
+        ));
+        names.push("default".into());
+
+        let mut names: Vec<_> = names
+            .into_iter()
+            .map(|name| ((0..), Cow::from(name)))
+            .collect();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = names
+            .into_iter()
+            .filter_map(|(range, name)| {
+                matcher
+                    .fuzzy_match(&name, &input)
+                    .map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
+
+        names
+    }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     pub fn filename(input: &str) -> Vec<Completion> {
@@ -178,10 +211,6 @@ pub mod completers {
 
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
-            use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-            use fuzzy_matcher::FuzzyMatcher;
-            use std::cmp::Reverse;
-
             let matcher = Matcher::default();
 
             // inefficient, but we need to calculate the scores, filter out None, then sort.
