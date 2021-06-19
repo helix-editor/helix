@@ -222,9 +222,14 @@ impl Command {
         undo,
         redo,
         yank,
+        yank_joined_to_clipboard,
+        yank_main_selection_to_clipboard,
         replace_with_yanked,
+        replace_selections_with_clipboard,
         paste_after,
         paste_before,
+        paste_clipboard_after,
+        paste_clipboard_before,
         indent,
         unindent,
         format_selections,
@@ -1280,74 +1285,24 @@ mod cmd {
         editor.set_theme_from_name(theme);
     }
 
-    fn yank_main_selection_to_clipboard(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(editor);
-
-        // TODO: currently the main selection is the first one. This needs to be revisited later.
-        let range = doc
-            .selection(view.id)
-            .ranges()
-            .first()
-            .expect("at least one selection");
-
-        let value = range.fragment(doc.text().slice(..));
-
-        if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
-            log::error!("Couldn't set system clipboard content: {:?}", e);
-        }
-
-        editor.set_status("yanked main selection to system clipboard".to_owned());
+    fn yank_main_selection_to_clipboard(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        yank_main_selection_to_clipboard_impl(editor);
     }
 
-    fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(editor);
-
-        let values: Vec<String> = doc
-            .selection(view.id)
-            .fragments(doc.text().slice(..))
-            .map(Cow::into_owned)
-            .collect();
-
-        let msg = format!(
-            "joined and yanked {} selection(s) to system clipboard",
-            values.len(),
-        );
-
-        let joined = values.join("\n");
-
-        if let Err(e) = editor.clipboard_provider.set_contents(joined) {
-            log::error!("Couldn't set system clipboard content: {:?}", e);
-        }
-
-        editor.set_status(msg);
-    }
-
-    fn paste_clipboard_impl(editor: &mut Editor, action: Paste) {
-        let (view, doc) = current!(editor);
-
-        match editor
-            .clipboard_provider
-            .get_contents()
-            .map(|contents| paste_impl(&[contents], doc, view, action))
-        {
-            Ok(Some(transaction)) => {
-                doc.apply(&transaction, view.id);
-                doc.append_changes_to_history(view.id);
-            }
-            Ok(None) => {}
-            Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
-        }
+    fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], _: PromptEvent) {
+        let separator = args.first().copied().unwrap_or("\n");
+        yank_joined_to_clipboard_impl(editor, separator);
     }
 
     fn paste_clipboard_after(editor: &mut Editor, _: &[&str], _: PromptEvent) {
         paste_clipboard_impl(editor, Paste::After);
     }
 
-    fn paste_clipboard_before(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn paste_clipboard_before(editor: &mut Editor, _: &[&str], _: PromptEvent) {
         paste_clipboard_impl(editor, Paste::After);
     }
 
-    fn replace_selections_with_clipboard(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn replace_selections_with_clipboard(editor: &mut Editor, _: &[&str], _: PromptEvent) {
         let (view, doc) = current!(editor);
 
         match editor.clipboard_provider.get_contents() {
@@ -1500,7 +1455,7 @@ mod cmd {
         TypableCommand {
             name: "clipboard-yank-join",
             alias: None,
-            doc: "Yank joined selections into system clipboard.",
+            doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
             fun: yank_joined_to_clipboard,
             completer: None,
         },
@@ -2525,6 +2480,52 @@ fn yank(cx: &mut Context) {
     cx.editor.set_status(msg)
 }
 
+fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) {
+    let (view, doc) = current!(editor);
+
+    let values: Vec<String> = doc
+        .selection(view.id)
+        .fragments(doc.text().slice(..))
+        .map(Cow::into_owned)
+        .collect();
+
+    let msg = format!(
+        "joined and yanked {} selection(s) to system clipboard",
+        values.len(),
+    );
+
+    let joined = values.join(separator);
+
+    if let Err(e) = editor.clipboard_provider.set_contents(joined) {
+        log::error!("Couldn't set system clipboard content: {:?}", e);
+    }
+
+    editor.set_status(msg);
+}
+
+fn yank_joined_to_clipboard(cx: &mut Context) {
+    yank_joined_to_clipboard_impl(&mut cx.editor, "\n");
+}
+
+fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) {
+    let (view, doc) = current!(editor);
+
+    let value = doc
+        .selection(view.id)
+        .primary()
+        .fragment(doc.text().slice(..));
+
+    if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
+        log::error!("Couldn't set system clipboard content: {:?}", e);
+    }
+
+    editor.set_status("yanked main selection to system clipboard".to_owned());
+}
+
+fn yank_main_selection_to_clipboard(cx: &mut Context) {
+    yank_main_selection_to_clipboard_impl(&mut cx.editor);
+}
+
 #[derive(Copy, Clone)]
 enum Paste {
     Before,
@@ -2568,6 +2569,31 @@ fn paste_impl(
     Some(transaction)
 }
 
+fn paste_clipboard_impl(editor: &mut Editor, action: Paste) {
+    let (view, doc) = current!(editor);
+
+    match editor
+        .clipboard_provider
+        .get_contents()
+        .map(|contents| paste_impl(&[contents], doc, view, action))
+    {
+        Ok(Some(transaction)) => {
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        }
+        Ok(None) => {}
+        Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+    }
+}
+
+fn paste_clipboard_after(cx: &mut Context) {
+    paste_clipboard_impl(&mut cx.editor, Paste::After);
+}
+
+fn paste_clipboard_before(cx: &mut Context) {
+    paste_clipboard_impl(&mut cx.editor, Paste::Before);
+}
+
 fn replace_with_yanked(cx: &mut Context) {
     let reg_name = cx.selected_register.name();
     let (view, doc) = current!(cx.editor);
@@ -2586,6 +2612,29 @@ fn replace_with_yanked(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     }
+}
+
+fn replace_selections_with_clipboard_impl(editor: &mut Editor) {
+    let (view, doc) = current!(editor);
+
+    match editor.clipboard_provider.get_contents() {
+        Ok(contents) => {
+            let transaction =
+                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let to = std::cmp::min(max_to, range.to() + 1);
+                    (range.from(), to, Some(contents.as_str().into()))
+                });
+
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        }
+        Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+    }
+}
+
+fn replace_selections_with_clipboard(cx: &mut Context) {
+    replace_selections_with_clipboard_impl(&mut cx.editor);
 }
 
 // alt-p => paste every yanked selection after selected text
@@ -3108,6 +3157,11 @@ fn space_mode(cx: &mut Context) {
                 'b' => buffer_picker(cx),
                 's' => symbol_picker(cx),
                 'w' => window_mode(cx),
+                'y' => yank_joined_to_clipboard(cx),
+                'Y' => yank_main_selection_to_clipboard(cx),
+                'p' => paste_clipboard_after(cx),
+                'P' => paste_clipboard_before(cx),
+                'R' => replace_selections_with_clipboard(cx),
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took its old key
                 ' ' => keep_primary_selection(cx),
