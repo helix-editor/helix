@@ -16,6 +16,7 @@ pub mod register;
 pub mod search;
 pub mod selection;
 mod state;
+pub mod surround;
 pub mod syntax;
 mod transaction;
 
