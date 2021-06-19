@@ -85,7 +85,7 @@ impl Editor {
             .language_configs_iter()
             .filter(|cfg| cfg.is_highlight_initialized())
         {
-            config.highlight_config(scopes);
+            config.reconfigure(scopes);
         }
 
         self.theme = theme;
