@@ -246,34 +246,43 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: convert to wrapped text
-                    Markdown::new(format!(
-                        "```{}\n{}\n```\n{}",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                        contents.clone()
-                    ))
+                    Markdown::new(
+                        format!(
+                            "```{}\n{}\n```\n{}",
+                            language,
+                            option.detail.as_deref().unwrap_or_default(),
+                            contents.clone()
+                        ),
+                        cx.editor.syn_loader.clone(),
+                    )
                 }
                 Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
                     kind: lsp::MarkupKind::Markdown,
                     value: contents,
                 })) => {
                     // TODO: set language based on doc scope
-                    Markdown::new(format!(
-                        "```{}\n{}\n```\n{}",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                        contents.clone()
-                    ))
+                    Markdown::new(
+                        format!(
+                            "```{}\n{}\n```\n{}",
+                            language,
+                            option.detail.as_deref().unwrap_or_default(),
+                            contents.clone()
+                        ),
+                        cx.editor.syn_loader.clone(),
+                    )
                 }
                 None if option.detail.is_some() => {
                     // TODO: copied from above
 
                     // TODO: set language based on doc scope
-                    Markdown::new(format!(
-                        "```{}\n{}\n```",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                    ))
+                    Markdown::new(
+                        format!(
+                            "```{}\n{}\n```",
+                            language,
+                            option.detail.as_deref().unwrap_or_default(),
+                        ),
+                        cx.editor.syn_loader.clone(),
+                    )
                 }
                 None => return,
             };

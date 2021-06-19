@@ -1,5 +1,6 @@
+use helix_core::syntax;
 use helix_lsp::{lsp, LspProgressMap};
-use helix_view::{document::Mode, Document, Editor, Theme, View};
+use helix_view::{document::Mode, theme, Document, Editor, Theme, View};
 
 use crate::{args::Args, compositor::Compositor, config::Config, ui};
 
@@ -14,7 +15,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 
 use crossterm::{
     event::{Event, EventStream},
@@ -36,6 +37,8 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
+    theme_loader: Arc<theme::Loader>,
+    syn_loader: Arc<syntax::Loader>,
     callbacks: LspCallbacks,
 
     lsp_progress: LspProgressMap,
@@ -47,7 +50,34 @@ impl Application {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
-        let mut editor = Editor::new(size);
+
+        let conf_dir = helix_core::config_dir();
+
+        let theme_loader =
+            std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
+
+        // load $HOME/.config/helix/languages.toml, fallback to default config
+        let lang_conf = std::fs::read(conf_dir.join("languages.toml"));
+        let lang_conf = lang_conf
+            .as_deref()
+            .unwrap_or(include_bytes!("../../languages.toml"));
+
+        let theme = if let Some(theme) = &config.global.theme {
+            match theme_loader.load(theme) {
+                Ok(theme) => theme,
+                Err(e) => {
+                    log::warn!("failed to load theme `{}` - {}", theme, e);
+                    theme_loader.default()
+                }
+            }
+        } else {
+            theme_loader.default()
+        };
+
+        let syn_loader_conf = toml::from_slice(lang_conf).expect("Could not parse languages.toml");
+        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+
+        let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
 
         let mut editor_view = Box::new(ui::EditorView::new(config.keys));
         compositor.push(editor_view);
@@ -72,10 +102,14 @@ impl Application {
             editor.new_file(Action::VerticalSplit);
         }
 
+        editor.set_theme(theme);
+
         let mut app = Self {
             compositor,
             editor,
 
+            theme_loader,
+            syn_loader,
             callbacks: FuturesUnordered::new(),
             lsp_progress: LspProgressMap::new(),
             lsp_progress_enabled: config.global.lsp_progress,
