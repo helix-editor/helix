@@ -9,11 +9,11 @@ use std::sync::Arc;
 use helix_core::{
     chars::{char_is_linebreak, char_is_whitespace},
     history::History,
-    syntax::{LanguageConfiguration, LOADER},
+    syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, Rope, Selection, State, Syntax, Transaction,
 };
 
-use crate::{DocumentId, ViewId};
+use crate::{DocumentId, Theme, ViewId};
 
 use std::collections::HashMap;
 
@@ -236,7 +236,11 @@ impl Document {
     }
 
     // TODO: async fn?
-    pub fn load(path: PathBuf) -> Result<Self, Error> {
+    pub fn load(
+        path: PathBuf,
+        theme: Option<&Theme>,
+        config_loader: Option<&syntax::Loader>,
+    ) -> Result<Self, Error> {
         use std::{fs::File, io::BufReader};
 
         let doc = if !path.exists() {
@@ -255,6 +259,10 @@ impl Document {
         // set the path and try detecting the language
         doc.set_path(&path)?;
         doc.detect_indent_style();
+
+        if let Some(loader) = config_loader {
+            doc.detect_language(theme, loader);
+        }
 
         Ok(doc)
     }
@@ -330,12 +338,10 @@ impl Document {
         }
     }
 
-    fn detect_language(&mut self) {
-        if let Some(path) = self.path() {
-            let loader = LOADER.get().unwrap();
-            let language_config = loader.language_config_for_file_name(path);
-            let scopes = loader.scopes();
-            self.set_language(language_config, scopes);
+    pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
+        if let Some(path) = &self.path {
+            let language_config = config_loader.language_config_for_file_name(path);
+            self.set_language(theme, language_config);
         }
     }
 
@@ -472,18 +478,16 @@ impl Document {
         // and error out when document is saved
         self.path = Some(path);
 
-        // try detecting the language based on filepath
-        self.detect_language();
-
         Ok(())
     }
 
     pub fn set_language(
         &mut self,
+        theme: Option<&Theme>,
         language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
-        scopes: &[String],
     ) {
         if let Some(language_config) = language_config {
+            let scopes = theme.map(|theme| theme.scopes()).unwrap_or(&[]);
             if let Some(highlight_config) = language_config.highlight_config(scopes) {
                 let syntax = Syntax::new(&self.text, highlight_config);
                 self.syntax = Some(syntax);
@@ -497,12 +501,15 @@ impl Document {
         };
     }
 
-    pub fn set_language2(&mut self, scope: &str) {
-        let loader = LOADER.get().unwrap();
-        let language_config = loader.language_config_for_scope(scope);
-        let scopes = loader.scopes();
+    pub fn set_language2(
+        &mut self,
+        scope: &str,
+        theme: Option<&Theme>,
+        config_loader: Arc<syntax::Loader>,
+    ) {
+        let language_config = config_loader.language_config_for_scope(scope);
 
-        self.set_language(language_config, scopes);
+        self.set_language(theme, language_config);
     }
 
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {

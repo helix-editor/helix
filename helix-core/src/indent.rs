@@ -254,26 +254,23 @@ where
             Configuration, IndentationConfiguration, Lang, LanguageConfiguration, Loader,
         };
         use once_cell::sync::OnceCell;
-        let loader = Loader::new(
-            Configuration {
-                language: vec![LanguageConfiguration {
-                    scope: "source.rust".to_string(),
-                    file_types: vec!["rs".to_string()],
-                    language_id: Lang::Rust,
-                    highlight_config: OnceCell::new(),
-                    //
-                    roots: vec![],
-                    auto_format: false,
-                    language_server: None,
-                    indent: Some(IndentationConfiguration {
-                        tab_width: 4,
-                        unit: String::from("    "),
-                    }),
-                    indent_query: OnceCell::new(),
-                }],
-            },
-            Vec::new(),
-        );
+        let loader = Loader::new(Configuration {
+            language: vec![LanguageConfiguration {
+                scope: "source.rust".to_string(),
+                file_types: vec!["rs".to_string()],
+                language_id: Lang::Rust,
+                highlight_config: OnceCell::new(),
+                //
+                roots: vec![],
+                auto_format: false,
+                language_server: None,
+                indent: Some(IndentationConfiguration {
+                    tab_width: 4,
+                    unit: String::from("    "),
+                }),
+                indent_query: OnceCell::new(),
+            }],
+        });
 
         // set runtime path so we can find the queries
         let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));

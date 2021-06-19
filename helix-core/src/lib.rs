@@ -50,7 +50,7 @@ pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
 }
 
 #[cfg(not(embed_runtime))]
-fn runtime_dir() -> std::path::PathBuf {
+pub fn runtime_dir() -> std::path::PathBuf {
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
         return dir.into();
     }

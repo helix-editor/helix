@@ -1,10 +1,14 @@
-use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, View, ViewId};
+use crate::{
+    theme::{self, Theme},
+    tree::Tree,
+    Document, DocumentId, RegisterSelection, View, ViewId,
+};
+use helix_core::syntax;
 use tui::layout::Rect;
 use tui::terminal::CursorKind;
 
 use futures_util::future;
-use std::path::PathBuf;
-use std::time::Duration;
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use slotmap::SlotMap;
 
@@ -24,6 +28,9 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
+    pub syn_loader: Arc<syntax::Loader>,
+    pub theme_loader: Arc<theme::Loader>,
+
     pub status_msg: Option<(String, Severity)>,
 }
 
@@ -35,27 +42,11 @@ pub enum Action {
 }
 
 impl Editor {
-    pub fn new(mut area: tui::layout::Rect) -> Self {
-        use helix_core::config_dir;
-        let config = std::fs::read(config_dir().join("theme.toml"));
-        // load $HOME/.config/helix/theme.toml, fallback to default config
-        let toml = config
-            .as_deref()
-            .unwrap_or(include_bytes!("../../theme.toml"));
-        let theme: Theme = toml::from_slice(toml).expect("failed to parse theme.toml");
-
-        // initialize language registry
-        use helix_core::syntax::{Loader, LOADER};
-
-        // load $HOME/.config/helix/languages.toml, fallback to default config
-        let config = std::fs::read(helix_core::config_dir().join("languages.toml"));
-        let toml = config
-            .as_deref()
-            .unwrap_or(include_bytes!("../../languages.toml"));
-
-        let config = toml::from_slice(toml).expect("Could not parse languages.toml");
-        LOADER.get_or_init(|| Loader::new(config, theme.scopes().to_vec()));
-
+    pub fn new(
+        mut area: tui::layout::Rect,
+        themes: Arc<theme::Loader>,
+        config_loader: Arc<syntax::Loader>,
+    ) -> Self {
         let language_servers = helix_lsp::Registry::new();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
@@ -66,8 +57,10 @@ impl Editor {
             documents: SlotMap::with_key(),
             count: None,
             selected_register: RegisterSelection::default(),
-            theme,
+            theme: themes.default(),
             language_servers,
+            syn_loader: config_loader,
+            theme_loader: themes,
             registers: Registers::default(),
             status_msg: None,
         }
@@ -83,6 +76,32 @@ impl Editor {
 
     pub fn set_error(&mut self, error: String) {
         self.status_msg = Some((error, Severity::Error));
+    }
+
+    pub fn set_theme(&mut self, theme: Theme) {
+        let scopes = theme.scopes();
+        for config in self
+            .syn_loader
+            .language_configs_iter()
+            .filter(|cfg| cfg.is_highlight_initialized())
+        {
+            config.highlight_config(scopes);
+        }
+
+        self.theme = theme;
+        self._refresh();
+    }
+
+    pub fn set_theme_from_name(&mut self, theme: &str) {
+        let theme = match self.theme_loader.load(theme.as_ref()) {
+            Ok(theme) => theme,
+            Err(e) => {
+                log::warn!("failed setting theme `{}` - {}", theme, e);
+                return;
+            }
+        };
+
+        self.set_theme(theme);
     }
 
     fn _refresh(&mut self) {
@@ -168,7 +187,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::load(path)?;
+            let mut doc = Document::load(path, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
             let language_server = doc
@@ -252,6 +271,10 @@ impl Editor {
 
     pub fn documents(&self) -> impl Iterator<Item = &Document> {
         self.documents.iter().map(|(_id, doc)| doc)
+    }
+
+    pub fn documents_mut(&mut self) -> impl Iterator<Item = &mut Document> {
+        self.documents.iter_mut().map(|(_id, doc)| doc)
     }
 
     // pub fn current_document(&self) -> Document {
