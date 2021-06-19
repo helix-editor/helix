@@ -34,11 +34,11 @@
     "helix": {
       "flake": false,
       "locked": {
-        "lastModified": 1623545930,
-        "narHash": "sha256-14ASoYbxXHU/qPGctiUymb4fMRCoih9c7YujjxqEkdU=",
+        "lastModified": 1624077450,
+        "narHash": "sha256-gcL519tetuEv0N+oBP8X3U4bPjwcAgzbPdgwW19qeVI=",
         "ref": "master",
-        "rev": "9640ed1425f2db904fb42cd0c54dc6fbc05ca292",
-        "revCount": 821,
+        "rev": "1c2585202145467f0fde7ad9c571e462081c3656",
+        "revCount": 894,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/helix-editor/helix.git"
@@ -58,11 +58,11 @@
         "rustOverlay": "rustOverlay"
       },
       "locked": {
-        "lastModified": 1623591988,
-        "narHash": "sha256-a8E5LYKxYjHmBWZsFxKnCBVGsWHFEWrKjeAJkplWrfI=",
+        "lastModified": 1624070370,
+        "narHash": "sha256-sfFqfmerCYvk0jDeP1gfuskz7AaqDsgV8aiQrEUGdsc=",
         "owner": "yusdacra",
         "repo": "nix-cargo-integration",
-        "rev": "8254b71eddd4e85173eddc189174b873fad85360",
+        "rev": "85e6c1ba4c0e3e6dec5a7d1f65bcc036d2ea6ae3",
         "type": "github"
       },
       "original": {
@@ -73,11 +73,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1623324058,
-        "narHash": "sha256-Jm9GUTXdjXz56gWDKy++EpFfjrBaxqXlLvTLfgEi8lo=",
+        "lastModified": 1623580589,
+        "narHash": "sha256-Ayp1cjXpwFCkAiWUE46rj9APTltsiEBdIs2+cj+U7+c=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "432fc2d9a67f92e05438dff5fdc2b39d33f77997",
+        "rev": "fa0326ce5233f7d592271df52c9d0812bec47b84",
         "type": "github"
       },
       "original": {
@@ -98,11 +98,11 @@
     "rustOverlay": {
       "flake": false,
       "locked": {
-        "lastModified": 1623550815,
-        "narHash": "sha256-RumRrkE6OTJDndHV4qZNZv8kUGnzwRHZQSyzx29r6/g=",
+        "lastModified": 1624069337,
+        "narHash": "sha256-9mTcx7osE4biF2Hm/GU19s1T3+KvphWj4QaUcJh39lU=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "9824f142cbd7bc3e2a92eefbb79addfff8704cd3",
+        "rev": "67dc2a9543a7c24591e6cb102ad0121c3a704aab",
         "type": "github"
       },
       "original": {
