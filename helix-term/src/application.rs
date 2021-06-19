@@ -406,16 +406,7 @@ impl Application {
 
         self.event_loop().await;
 
-        tokio::time::timeout(
-            Duration::from_millis(500),
-            future::join_all(
-                self.editor
-                    .language_servers
-                    .iter_clients()
-                    .map(|client| client.force_shutdown()),
-            ),
-        )
-        .await;
+        self.editor.close_language_servers(None).await;
 
         // reset cursor shape
         write!(stdout, "\x1B[2 q");

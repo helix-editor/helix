@@ -2,7 +2,9 @@ use crate::{theme::Theme, tree::Tree, Document, DocumentId, RegisterSelection, V
 use tui::layout::Rect;
 use tui::terminal::CursorKind;
 
+use futures_util::future;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use slotmap::SlotMap;
 
@@ -269,5 +271,23 @@ impl Editor {
         } else {
             (None, CursorKind::Hidden)
         }
+    }
+
+    /// Closes language servers with timeout. The default timeout is 500 ms, use
+    /// `timeout` parameter to override this.
+    pub async fn close_language_servers(
+        &self,
+        timeout: Option<u64>,
+    ) -> Result<(), tokio::time::error::Elapsed> {
+        tokio::time::timeout(
+            Duration::from_millis(timeout.unwrap_or(500)),
+            future::join_all(
+                self.language_servers
+                    .iter_clients()
+                    .map(|client| client.force_shutdown()),
+            ),
+        )
+        .await
+        .map(|_| ())
     }
 }
