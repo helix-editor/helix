@@ -1,4 +1,5 @@
 use crate::Result;
+use anyhow::Context;
 use jsonrpc_core as jsonrpc;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -90,7 +91,7 @@ impl Transport {
 
             match (parts.next(), parts.next(), parts.next()) {
                 (Some("Content-Length"), Some(value), None) => {
-                    content_length = Some(value.parse().unwrap());
+                    content_length = Some(value.parse().context("invalid content length")?);
                 }
                 (Some(_), Some(_), None) => {}
                 _ => {
@@ -103,12 +104,12 @@ impl Transport {
             }
         }
 
-        let content_length = content_length.unwrap();
+        let content_length = content_length.context("missing content length")?;
 
         //TODO: reuse vector
         let mut content = vec![0; content_length];
         reader.read_exact(&mut content).await?;
-        let msg = String::from_utf8(content).unwrap();
+        let msg = String::from_utf8(content).context("invalid utf8 from server")?;
 
         info!("<- {}", msg);
 
@@ -162,7 +163,9 @@ impl Transport {
         match msg {
             ServerMessage::Output(output) => self.process_request_response(output).await?,
             ServerMessage::Call(call) => {
-                self.client_tx.send((self.id, call)).unwrap();
+                self.client_tx
+                    .send((self.id, call))
+                    .context("failed to send a message to server")?;
                 // let notification = Notification::parse(&method, params);
             }
         };
