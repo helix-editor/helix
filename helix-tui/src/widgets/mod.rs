@@ -1,4 +1,4 @@
-//! `widgets` is a collection of types that implement [`Widget`] or [`StatefulWidget`] or both.
+//! `widgets` is a collection of types that implement [`Widget`].
 //!
 //! All widgets are implemented using the builder pattern and are consumable objects. They are not
 //! meant to be stored but used as *commands* to draw common figures in the UI.
