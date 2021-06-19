@@ -5,7 +5,7 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     register::{self, Register, Registers},
-    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice, Selection,
+    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice, Selection, get_line_ending,
     SmallVec, Tendril, Transaction,
 };
 
@@ -183,11 +183,10 @@ pub fn move_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        // Line end is pos at the start of next line - 1
-        // subtract another 1 because the line ends with \n
         let pos = text
             .line_to_char(line + 1)
-            .saturating_sub(doc.line_ending().len() + 1);
+            .saturating_sub(get_line_ending(&text.line(line)).map(|le| le.len_chars()).unwrap_or(0));
+
         Range::new(pos, pos)
     });
 
@@ -607,11 +606,10 @@ pub fn extend_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        // Line end is pos at the start of next line - 1
-        // subtract another 1 because the line ends with \n
         let pos = text
             .line_to_char(line + 1)
-            .saturating_sub(doc.line_ending().len() + 1);
+            .saturating_sub(get_line_ending(&text.line(line)).map(|le| le.len_chars()).unwrap_or(0));
+
         Range::new(range.anchor, pos)
     });
 
