@@ -310,6 +310,10 @@ impl Registry {
             Err(Error::LspNotDefined)
         }
     }
+
+    pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
+        self.inner.values().map(|(_, client)| client)
+    }
 }
 
 #[derive(Debug)]

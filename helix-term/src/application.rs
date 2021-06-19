@@ -23,7 +23,7 @@ use crossterm::{
 
 use tui::layout::Rect;
 
-use futures_util::stream::FuturesUnordered;
+use futures_util::{future, stream::FuturesUnordered};
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 pub type LspCallback =
@@ -405,6 +405,17 @@ impl Application {
         }));
 
         self.event_loop().await;
+
+        tokio::time::timeout(
+            Duration::from_millis(500),
+            future::join_all(
+                self.editor
+                    .language_servers
+                    .iter_clients()
+                    .map(|client| client.force_shutdown()),
+            ),
+        )
+        .await;
 
         // reset cursor shape
         write!(stdout, "\x1B[2 q");

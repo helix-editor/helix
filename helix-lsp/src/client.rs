@@ -272,6 +272,21 @@ impl Client {
         self.notify::<lsp::notification::Exit>(())
     }
 
+    /// Tries to shut down the language server but returns
+    /// early if server responds with an error.
+    pub async fn shutdown_and_exit(&self) -> Result<()> {
+        self.shutdown().await?;
+        self.exit().await
+    }
+
+    /// Forcefully shuts down the language server ignoring any errors.
+    pub async fn force_shutdown(&self) -> Result<()> {
+        if let Err(e) = self.shutdown().await {
+            log::warn!("language server failed to terminate gracefully - {}", e);
+        }
+        self.exit().await
+    }
+
     // -------------------------------------------------------------------------------------------
     // Text document
     // -------------------------------------------------------------------------------------------
