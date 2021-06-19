@@ -18,6 +18,7 @@ use tokio::{
 
 #[derive(Debug)]
 pub struct Client {
+    id: usize,
     _process: Child,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
@@ -26,7 +27,11 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn start(cmd: &str, args: &[String]) -> Result<(Self, UnboundedReceiver<Call>)> {
+    pub fn start(
+        cmd: &str,
+        args: &[String],
+        id: usize,
+    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>)> {
         let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -43,9 +48,10 @@ impl Client {
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (server_rx, server_tx) = Transport::start(reader, writer, stderr);
+        let (server_rx, server_tx) = Transport::start(reader, writer, stderr, id);
 
         let client = Self {
+            id,
             _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
@@ -57,6 +63,10 @@ impl Client {
         // maybe use an arc<atomic> flag
 
         Ok((client, server_rx))
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
     }
 
     fn next_request_id(&self) -> jsonrpc::Id {
@@ -165,31 +175,35 @@ impl Client {
     }
 
     /// Reply to a language server RPC call.
-    pub async fn reply(
+    pub fn reply(
         &self,
         id: jsonrpc::Id,
         result: core::result::Result<Value, jsonrpc::Error>,
-    ) -> Result<()> {
+    ) -> impl Future<Output = Result<()>> {
         use jsonrpc::{Failure, Output, Success, Version};
 
-        let output = match result {
-            Ok(result) => Output::Success(Success {
-                jsonrpc: Some(Version::V2),
-                id,
-                result,
-            }),
-            Err(error) => Output::Failure(Failure {
-                jsonrpc: Some(Version::V2),
-                id,
-                error,
-            }),
-        };
+        let server_tx = self.server_tx.clone();
 
-        self.server_tx
-            .send(Payload::Response(output))
-            .map_err(|e| Error::Other(e.into()))?;
+        async move {
+            let output = match result {
+                Ok(result) => Output::Success(Success {
+                    jsonrpc: Some(Version::V2),
+                    id,
+                    result,
+                }),
+                Err(error) => Output::Failure(Failure {
+                    jsonrpc: Some(Version::V2),
+                    id,
+                    error,
+                }),
+            };
 
-        Ok(())
+            server_tx
+                .send(Payload::Response(output))
+                .map_err(|e| Error::Other(e.into()))?;
+
+            Ok(())
+        }
     }
 
     // -------------------------------------------------------------------------------------------
@@ -229,8 +243,7 @@ impl Client {
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
-                    // TODO: temporarily disabled until we implement handling for window/workDoneProgress/create
-                    // work_done_progress: Some(true),
+                    work_done_progress: Some(true),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -257,6 +270,21 @@ impl Client {
 
     pub fn exit(&self) -> impl Future<Output = Result<()>> {
         self.notify::<lsp::notification::Exit>(())
+    }
+
+    /// Tries to shut down the language server but returns
+    /// early if server responds with an error.
+    pub async fn shutdown_and_exit(&self) -> Result<()> {
+        self.shutdown().await?;
+        self.exit().await
+    }
+
+    /// Forcefully shuts down the language server ignoring any errors.
+    pub async fn force_shutdown(&self) -> Result<()> {
+        if let Err(e) = self.shutdown().await {
+            log::warn!("language server failed to terminate gracefully - {}", e);
+        }
+        self.exit().await
     }
 
     // -------------------------------------------------------------------------------------------
@@ -465,6 +493,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         // ) -> Result<Vec<lsp::CompletionItem>> {
         let params = lsp::CompletionParams {
@@ -473,9 +502,7 @@ impl Client {
                 position,
             },
             // TODO: support these tokens by async receiving and updating the choice list
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },
@@ -490,15 +517,14 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             context: None,
             // lsp::SignatureHelpContext
         };
@@ -510,15 +536,14 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::HoverParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             // lsp::SignatureHelpContext
         };
 
@@ -531,6 +556,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         options: lsp::FormattingOptions,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
         let capabilities = self.capabilities.as_ref().unwrap();
 
@@ -545,9 +571,7 @@ impl Client {
         let params = lsp::DocumentFormattingParams {
             text_document,
             options,
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
         let response = self.request::<lsp::request::Formatting>(params).await?;
@@ -560,6 +584,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
         options: lsp::FormattingOptions,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
         let capabilities = self.capabilities.as_ref().unwrap();
 
@@ -575,9 +600,7 @@ impl Client {
             text_document,
             range,
             options,
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
         let response = self
@@ -596,15 +619,14 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::GotoDefinitionParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
                 position,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },
@@ -617,30 +639,42 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
-        self.goto_request::<lsp::request::GotoDefinition>(text_document, position)
+        self.goto_request::<lsp::request::GotoDefinition>(text_document, position, work_done_token)
     }
 
     pub fn goto_type_definition(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
-        self.goto_request::<lsp::request::GotoTypeDefinition>(text_document, position)
+        self.goto_request::<lsp::request::GotoTypeDefinition>(
+            text_document,
+            position,
+            work_done_token,
+        )
     }
 
     pub fn goto_implementation(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
-        self.goto_request::<lsp::request::GotoImplementation>(text_document, position)
+        self.goto_request::<lsp::request::GotoImplementation>(
+            text_document,
+            position,
+            work_done_token,
+        )
     }
 
     pub fn goto_reference(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
         let params = lsp::ReferenceParams {
             text_document_position: lsp::TextDocumentPositionParams {
@@ -650,9 +684,7 @@ impl Client {
             context: lsp::ReferenceContext {
                 include_declaration: true,
             },
-            work_done_progress_params: lsp::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },

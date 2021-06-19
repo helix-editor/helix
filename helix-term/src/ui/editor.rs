@@ -11,15 +11,13 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     Position, Range,
 };
-use helix_view::{
-    document::{IndentStyle, Mode},
-    Document, Editor, Theme, View,
-};
+use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
+use helix_view::{document::Mode, Document, Editor, Theme, View};
 use std::borrow::Cow;
 
 use crossterm::{
     cursor,
-    event::{read, Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
+    event::{read, Event, EventStream},
 };
 use tui::{
     backend::CrosstermBackend,
@@ -30,7 +28,7 @@ use tui::{
 };
 
 pub struct EditorView {
-    keymap: Keymaps,
+    keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -40,16 +38,16 @@ const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new()
+        Self::new(Keymaps::default())
     }
 }
 
 impl EditorView {
-    pub fn new() -> Self {
+    pub fn new(keymaps: Keymaps) -> Self {
         Self {
-            keymap: keymap::default(),
+            keymaps,
             on_next_key: None,
-            last_insert: (commands::normal_mode, Vec::new()),
+            last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
         }
     }
@@ -479,18 +477,15 @@ impl EditorView {
             Mode::Select => "SEL",
             Mode::Normal => "NOR",
         };
-        let text_color = if is_focused {
-            theme.get("ui.text.focus")
+        let style = if is_focused {
+            theme.get("ui.statusline")
         } else {
-            theme.get("ui.text")
+            theme.get("ui.statusline.inactive")
         };
         // statusline
-        surface.set_style(
-            Rect::new(viewport.x, viewport.y, viewport.width, 1),
-            theme.get("ui.statusline"),
-        );
+        surface.set_style(Rect::new(viewport.x, viewport.y, viewport.width, 1), style);
         if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, text_color);
+            surface.set_string(viewport.x + 1, viewport.y, mode, style);
         }
 
         if let Some(path) = doc.relative_path() {
@@ -502,7 +497,7 @@ impl EditorView {
                 viewport.y,
                 title,
                 viewport.width.saturating_sub(6) as usize,
-                text_color,
+                style,
             );
         }
 
@@ -541,13 +536,13 @@ impl EditorView {
             viewport.x + viewport.width.saturating_sub(text_len),
             viewport.y,
             right_side_text,
-            text_color,
+            style,
         );
     }
 
     fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(command) = self.keymap[&Mode::Insert].get(&event) {
-            command(cx);
+        if let Some(command) = self.keymaps[&Mode::Insert].get(&event) {
+            command.execute(cx);
         } else if let KeyEvent {
             code: KeyCode::Char(ch),
             ..
@@ -568,7 +563,7 @@ impl EditorView {
             // special handling for repeat operator
             key!('.') => {
                 // first execute whatever put us into insert mode
-                (self.last_insert.0)(cxt);
+                self.last_insert.0.execute(cxt);
                 // then replay the inputs
                 for key in &self.last_insert.1 {
                     self.insert_mode(cxt, *key)
@@ -584,8 +579,8 @@ impl EditorView {
                 // set the register
                 cxt.selected_register = cxt.editor.selected_register.take();
 
-                if let Some(command) = self.keymap[&mode].get(&event) {
-                    command(cxt);
+                if let Some(command) = self.keymaps[&mode].get(&event) {
+                    command.execute(cxt);
                 }
             }
         }
@@ -613,12 +608,13 @@ impl Component for EditorView {
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
-            Event::Key(mut key) => {
+            Event::Key(key) => {
+                let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
                 // clear status
                 cx.editor.status_msg = None;
 
-                let (view, doc) = cx.editor.current();
+                let (view, doc) = current!(cx.editor);
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
@@ -687,7 +683,7 @@ impl Component for EditorView {
                     return EventResult::Ignored;
                 }
 
-                let (view, doc) = cx.editor.current();
+                let (view, doc) = current!(cx.editor);
                 view.ensure_cursor_in_view(doc);
 
                 // mode transitions
@@ -699,7 +695,7 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = self.keymap[&mode][&key];
+                        self.last_insert.0 = self.keymaps[&mode][&key];
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

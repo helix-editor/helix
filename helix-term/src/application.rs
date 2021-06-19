@@ -1,7 +1,7 @@
-use helix_lsp::lsp;
+use helix_lsp::{lsp, LspProgressMap};
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 
-use crate::{args::Args, compositor::Compositor, ui};
+use crate::{args::Args, compositor::Compositor, config::Config, ui};
 
 use log::{error, info};
 
@@ -9,6 +9,7 @@ use std::{
     future::Future,
     io::{self, stdout, Stdout, Write},
     path::PathBuf,
+    pin::Pin,
     sync::Arc,
     time::Duration,
 };
@@ -22,8 +23,7 @@ use crossterm::{
 
 use tui::layout::Rect;
 
-use futures_util::stream::FuturesUnordered;
-use std::pin::Pin;
+use futures_util::{future, stream::FuturesUnordered};
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 pub type LspCallback =
@@ -37,16 +37,20 @@ pub struct Application {
     editor: Editor,
 
     callbacks: LspCallbacks,
+
+    lsp_progress: LspProgressMap,
+    lsp_progress_enabled: bool,
 }
 
 impl Application {
-    pub fn new(mut args: Args) -> Result<Self, Error> {
+    pub fn new(mut args: Args, config: Config) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
         let mut editor = Editor::new(size);
 
-        compositor.push(Box::new(ui::EditorView::new()));
+        let mut editor_view = Box::new(ui::EditorView::new(config.keys));
+        compositor.push(editor_view);
 
         if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
@@ -73,6 +77,8 @@ impl Application {
             editor,
 
             callbacks: FuturesUnordered::new(),
+            lsp_progress: LspProgressMap::new(),
+            lsp_progress_enabled: config.global.lsp_progress,
         };
 
         Ok(app)
@@ -108,8 +114,8 @@ impl Application {
                 event = reader.next() => {
                     self.handle_terminal_events(event)
                 }
-                Some(call) = self.editor.language_servers.incoming.next() => {
-                    self.handle_language_server_message(call).await
+                Some((id, call)) = self.editor.language_servers.incoming.next() => {
+                    self.handle_language_server_message(call, id).await
                 }
                 Some(callback) = &mut self.callbacks.next() => {
                     self.handle_language_server_callback(callback)
@@ -152,8 +158,12 @@ impl Application {
         }
     }
 
-    pub async fn handle_language_server_message(&mut self, call: helix_lsp::Call) {
-        use helix_lsp::{Call, Notification};
+    pub async fn handle_language_server_message(
+        &mut self,
+        call: helix_lsp::Call,
+        server_id: usize,
+    ) {
+        use helix_lsp::{Call, MethodCall, Notification};
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
@@ -241,64 +251,130 @@ impl Application {
                         log::warn!("unhandled window/logMessage: {:?}", params);
                     }
                     Notification::ProgressMessage(params) => {
-                        let token = match params.token {
-                            lsp::NumberOrString::Number(n) => n.to_string(),
-                            lsp::NumberOrString::String(s) => s,
-                        };
-                        let msg = {
-                            let lsp::ProgressParamsValue::WorkDone(work) = params.value;
-                            let parts = match work {
-                                lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
-                                    title,
-                                    message,
-                                    percentage,
-                                    ..
-                                }) => (Some(title), message, percentage.map(|n| n.to_string())),
-                                lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
-                                    message,
-                                    percentage,
-                                    ..
-                                }) => (None, message, percentage.map(|n| n.to_string())),
-                                lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd {
-                                    message,
-                                }) => {
-                                    if let Some(message) = message {
-                                        (None, Some(message), None)
-                                    } else {
-                                        self.editor.clear_status();
-                                        return;
-                                    }
+                        let lsp::ProgressParams { token, value } = params;
+
+                        let lsp::ProgressParamsValue::WorkDone(work) = value;
+                        let parts = match &work {
+                            lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
+                                title,
+                                message,
+                                percentage,
+                                ..
+                            }) => (Some(title), message, percentage),
+                            lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
+                                message,
+                                percentage,
+                                ..
+                            }) => (None, message, percentage),
+                            lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) => {
+                                if message.is_some() {
+                                    (None, message, &None)
+                                } else {
+                                    self.lsp_progress.end_progress(server_id, &token);
+                                    self.editor.clear_status();
+                                    return;
                                 }
-                            };
-                            match parts {
-                                (Some(title), Some(message), Some(percentage)) => {
-                                    format!("{}% {} - {}", percentage, title, message)
-                                }
-                                (Some(title), None, Some(percentage)) => {
-                                    format!("{}% {}", percentage, title)
-                                }
-                                (Some(title), Some(message), None) => {
-                                    format!("{} - {}", title, message)
-                                }
-                                (None, Some(message), Some(percentage)) => {
-                                    format!("{}% {}", percentage, message)
-                                }
-                                (Some(title), None, None) => title,
-                                (None, Some(message), None) => message,
-                                (None, None, Some(percentage)) => format!("{}%", percentage),
-                                (None, None, None) => "".into(),
                             }
                         };
-                        let status = format!("[{}] {}", token, msg);
-                        self.editor.set_status(status);
-                        self.render();
+                        let token_d: &dyn std::fmt::Display = match &token {
+                            lsp::NumberOrString::Number(n) => n,
+                            lsp::NumberOrString::String(s) => s,
+                        };
+
+                        let status = match parts {
+                            (Some(title), Some(message), Some(percentage)) => {
+                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                            }
+                            (Some(title), None, Some(percentage)) => {
+                                format!("[{}] {}% {}", token_d, percentage, title)
+                            }
+                            (Some(title), Some(message), None) => {
+                                format!("[{}] {} - {}", token_d, title, message)
+                            }
+                            (None, Some(message), Some(percentage)) => {
+                                format!("[{}] {}% {}", token_d, percentage, message)
+                            }
+                            (Some(title), None, None) => {
+                                format!("[{}] {}", token_d, title)
+                            }
+                            (None, Some(message), None) => {
+                                format!("[{}] {}", token_d, message)
+                            }
+                            (None, None, Some(percentage)) => {
+                                format!("[{}] {}%", token_d, percentage)
+                            }
+                            (None, None, None) => format!("[{}]", token_d),
+                        };
+
+                        if let lsp::WorkDoneProgress::End(_) = work {
+                            self.lsp_progress.end_progress(server_id, &token);
+                        } else {
+                            self.lsp_progress.update(server_id, token, work);
+                        }
+
+                        if self.lsp_progress_enabled {
+                            self.editor.set_status(status);
+                            self.render();
+                        }
                     }
                     _ => unreachable!(),
                 }
             }
-            Call::MethodCall(call) => {
-                error!("Method not found {}", call.method);
+            Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
+                method,
+                params,
+                jsonrpc,
+                id,
+            }) => {
+                let call = match MethodCall::parse(&method, params) {
+                    Some(call) => call,
+                    None => {
+                        error!("Method not found {}", method);
+                        return;
+                    }
+                };
 
+                match call {
+                    MethodCall::WorkDoneProgressCreate(params) => {
+                        self.lsp_progress.create(server_id, params.token);
+
+                        let doc = self.editor.documents().find(|doc| {
+                            doc.language_server()
+                                .map(|server| server.id() == server_id)
+                                .unwrap_or_default()
+                        });
+                        match doc {
+                            Some(doc) => {
+                                // it's ok to unwrap, we check for the language server before
+                                let server = doc.language_server().unwrap();
+                                tokio::spawn(server.reply(id, Ok(serde_json::Value::Null)));
+                            }
+                            None => {
+                                if let Some(server) =
+                                    self.editor.language_servers.get_by_id(server_id)
+                                {
+                                    log::warn!(
+                                        "missing document with language server id `{}`",
+                                        server_id
+                                    );
+                                    tokio::spawn(server.reply(
+                                        id,
+                                        Err(helix_lsp::jsonrpc::Error {
+                                            code: helix_lsp::jsonrpc::ErrorCode::InternalError,
+                                            message: "document missing".to_string(),
+                                            data: None,
+                                        }),
+                                    ));
+                                } else {
+                                    log::warn!(
+                                        "can't find language server with id `{}`",
+                                        server_id
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
                 // self.language_server.reply(
                 //     call.id,
                 //     // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
@@ -329,6 +405,8 @@ impl Application {
         }));
 
         self.event_loop().await;
+
+        self.editor.close_language_servers(None).await;
 
         // reset cursor shape
         write!(stdout, "\x1B[2 q");

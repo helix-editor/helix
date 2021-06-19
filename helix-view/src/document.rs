@@ -1,7 +1,11 @@
-use anyhow::{Context, Error};
+use anyhow::{anyhow, Context, Error};
+use serde::de::{self, Deserialize, Deserializer};
 use std::cell::Cell;
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use helix_core::{
@@ -15,13 +19,45 @@ use helix_core::{
 
 use crate::{DocumentId, ViewId};
 
-use std::collections::HashMap;
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
     Select,
     Insert,
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Mode::Normal => f.write_str("normal"),
+            Mode::Select => f.write_str("select"),
+            Mode::Insert => f.write_str("insert"),
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "normal" => Ok(Mode::Normal),
+            "select" => Ok(Mode::Select),
+            "insert" => Ok(Mode::Insert),
+            _ => Err(anyhow!("Invalid mode '{}'", s)),
+        }
+    }
+}
+
+// toml deserializer doesn't seem to recognize string as enum
+impl<'de> Deserialize<'de> for Mode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(de::Error::custom)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -105,6 +141,36 @@ where
     }
 }
 
+/// Expands tilde `~` into users home directory if avilable, otherwise returns the path
+/// unchanged. The tilde will only be expanded when present as the first component of the path
+/// and only slash follows it.
+pub fn expand_tilde(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    if let Some(Component::Normal(c)) = components.peek() {
+        if c == &"~" {
+            if let Ok(home) = helix_core::home_dir() {
+                // it's ok to unwrap, the path starts with `~`
+                return home.join(path.strip_prefix("~").unwrap());
+            }
+        }
+    }
+
+    path.to_path_buf()
+}
+
+/// Replaces users home directory from `path` with tilde `~` if the directory
+/// is available, otherwise returns the path unchanged.
+pub fn fold_home_dir(path: &Path) -> PathBuf {
+    if let Ok(home) = helix_core::home_dir() {
+        if path.starts_with(&home) {
+            // it's ok to unwrap, the path starts with home dir
+            return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
+        }
+    }
+
+    path.to_path_buf()
+}
+
 /// Normalize a path, removing things like `.` and `..`.
 ///
 /// CAUTION: This does not resolve symlinks (unlike
@@ -115,6 +181,7 @@ where
 /// needs to improve on.
 /// Copied from cargo: https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81
 pub fn normalize_path(path: &Path) -> PathBuf {
+    let path = expand_tilde(path);
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
@@ -141,12 +208,17 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     ret
 }
 
-// Returns the canonical, absolute form of a path with all intermediate components normalized.
-//
-// This function is used instead of `std::fs::canonicalize` because we don't want to verify
-// here if the path exists, just normalize it's components.
+/// Returns the canonical, absolute form of a path with all intermediate components normalized.
+///
+/// This function is used instead of `std::fs::canonicalize` because we don't want to verify
+/// here if the path exists, just normalize it's components.
 pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
-    std::env::current_dir().map(|current_dir| normalize_path(&current_dir.join(path)))
+    let normalized = normalize_path(path);
+    if normalized.is_absolute() {
+        Ok(normalized)
+    } else {
+        std::env::current_dir().map(|current_dir| current_dir.join(normalized))
+    }
 }
 
 use helix_lsp::lsp;
@@ -210,10 +282,11 @@ impl Document {
     pub fn format(&mut self, view_id: ViewId) {
         if let Some(language_server) = self.language_server() {
             // TODO: await, no blocking
-            let transaction = helix_lsp::block_on(
-                language_server
-                    .text_document_formatting(self.identifier(), lsp::FormattingOptions::default()),
-            )
+            let transaction = helix_lsp::block_on(language_server.text_document_formatting(
+                self.identifier(),
+                lsp::FormattingOptions::default(),
+                None,
+            ))
             .map(|edits| {
                 helix_lsp::util::generate_transaction_from_edits(
                     self.text(),
@@ -696,12 +769,19 @@ impl Document {
         &self.selections[&view_id]
     }
 
-    pub fn relative_path(&self) -> Option<&Path> {
+    pub fn relative_path(&self) -> Option<PathBuf> {
         let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
-        self.path
-            .as_ref()
-            .map(|path| path.strip_prefix(cwdir).unwrap_or(path))
+        self.path.as_ref().map(|path| {
+            let path = fold_home_dir(path);
+            if path.is_relative() {
+                path
+            } else {
+                path.strip_prefix(cwdir)
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or(path)
+            }
+        })
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

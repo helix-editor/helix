@@ -90,6 +90,8 @@ pub fn cache_dir() -> std::path::PathBuf {
     path
 }
 
+pub use etcetera::home_dir;
+
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 
 pub use ropey::{Rope, RopeSlice};

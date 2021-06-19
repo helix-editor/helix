@@ -30,8 +30,9 @@ pub fn regex_prompt(
     prompt: String,
     fun: impl Fn(&mut View, &mut Document, &mut Registers, Regex) + 'static,
 ) -> Prompt {
-    let view_id = cx.view().id;
-    let snapshot = cx.doc().selection(view_id).clone();
+    let (view, doc) = current!(cx.editor);
+    let view_id = view.id;
+    let snapshot = doc.selection(view_id).clone();
 
     Prompt::new(
         prompt,
@@ -40,7 +41,7 @@ pub fn regex_prompt(
             match event {
                 PromptEvent::Abort => {
                     // TODO: also revert text
-                    let (view, doc) = editor.current();
+                    let (view, doc) = current!(editor);
                     doc.set_selection(view.id, snapshot.clone());
                 }
                 PromptEvent::Validate => {
@@ -54,7 +55,8 @@ pub fn regex_prompt(
 
                     match Regex::new(input) {
                         Ok(regex) => {
-                            let (view, doc, registers) = editor.current_with_registers();
+                            let (view, doc) = current!(editor);
+                            let registers = &mut editor.registers;
 
                             // revert state to what it was before the last update
                             // TODO: also revert text
@@ -124,10 +126,11 @@ pub mod completers {
         use ignore::WalkBuilder;
         use std::path::{Path, PathBuf};
 
-        let path = Path::new(input);
+        let is_tilde = input.starts_with('~') && input.len() == 1;
+        let path = helix_view::document::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with('/') {
-            (path.into(), None)
+            (path, None)
         } else {
             let file_name = path
                 .file_name()
@@ -152,7 +155,16 @@ pub mod completers {
                     let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let path = entry.path();
-                    let mut path = path.strip_prefix(&dir).unwrap_or(path).to_path_buf();
+                    let mut path = if is_tilde {
+                        // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
+                        // one of the directories the tilde will be replaced with a valid path not with a relative
+                        // home directory name.
+                        // ~ -> <TAB> -> /home/user
+                        // ~/ -> <TAB> -> ~/first_entry
+                        path.to_path_buf()
+                    } else {
+                        path.strip_prefix(&dir).unwrap_or(path).to_path_buf()
+                    };
 
                     if is_dir {
                         path.push("");
@@ -182,7 +194,7 @@ pub mod completers {
                 })
                 .collect();
 
-            let range = ((input.len() - file_name.len())..);
+            let range = ((input.len().saturating_sub(file_name.len()))..);
 
             matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
             files = matches

@@ -1,5 +1,12 @@
 # Configuration
 
+## LSP
+
+To disable language server progress report from being displayed in the status bar add this option to your `config.toml`:
+```toml
+lsp-progress = false
+```
+
 ## Theme
 
 Use a custom theme by placing a theme.toml in your config directory (i.e ~/.config/helix/theme.toml). The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/contrib/themes).
@@ -32,11 +39,11 @@ Possible modifiers:
 | `dim`          |
 | `italic`       |
 | `underlined`   |
-| `slow\_blink`  |
-| `rapid\_blink` |
+| `slow_blink`  |
+| `rapid_blink` |
 | `reversed`     |
 | `hidden`       |
-| `crossed\_out` |
+| `crossed_out` |
 
 Possible keys:
 
@@ -87,3 +94,4 @@ Possible keys:
 These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We half-follow the common scopes from [macromates language grammars](https://macromates.com/manual/en/language_grammars) with some differences.
 
 For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight `function.macro` and `function.builtin` as well, but you can use more specific scopes to highlight specific cases differently.
+

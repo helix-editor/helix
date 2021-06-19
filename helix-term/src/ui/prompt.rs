@@ -53,7 +53,16 @@ impl Prompt {
     }
 
     pub fn insert_char(&mut self, c: char) {
-        self.line.insert(self.cursor, c);
+        let pos = if self.line.is_empty() {
+            0
+        } else {
+            self.line
+                .char_indices()
+                .nth(self.cursor)
+                .map(|(pos, _)| pos)
+                .unwrap_or_else(|| self.line.len())
+        };
+        self.line.insert(pos, c);
         self.cursor += 1;
         self.completion = (self.completion_fn)(&self.line);
         self.exit_selection();
@@ -79,7 +88,13 @@ impl Prompt {
 
     pub fn delete_char_backwards(&mut self) {
         if self.cursor > 0 {
-            self.line.remove(self.cursor - 1);
+            let pos = self
+                .line
+                .char_indices()
+                .nth(self.cursor - 1)
+                .map(|(pos, _)| pos)
+                .expect("line is not empty");
+            self.line.remove(pos);
             self.cursor -= 1;
             self.completion = (self.completion_fn)(&self.line);
         }

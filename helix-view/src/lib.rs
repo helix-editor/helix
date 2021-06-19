@@ -1,13 +1,18 @@
+#[macro_use]
+pub mod macros;
+
 pub mod document;
 pub mod editor;
+pub mod input;
 pub mod register_selection;
 pub mod theme;
 pub mod tree;
 pub mod view;
 
-use slotmap::new_key_type;
-new_key_type! { pub struct DocumentId; }
-new_key_type! { pub struct ViewId; }
+slotmap::new_key_type! {
+    pub struct DocumentId;
+    pub struct ViewId;
+}
 
 pub use document::Document;
 pub use editor::Editor;

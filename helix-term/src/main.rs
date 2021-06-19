@@ -1,9 +1,8 @@
+use anyhow::{Context, Error, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
-
+use helix_term::config::Config;
 use std::path::PathBuf;
-
-use anyhow::{Context, Result};
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
@@ -89,10 +88,16 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
+    let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
+        Ok(config) => toml::from_str(&config)?,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
+        Err(err) => return Err(Error::new(err)),
+    };
+
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args).context("unable to create new appliction")?;
+    let mut app = Application::new(args, config).context("unable to create new application")?;
     app.run().await.unwrap();
 
     Ok(())
