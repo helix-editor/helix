@@ -41,6 +41,7 @@ impl<'de> Deserialize<'de> for Config {
         Ok(Self {
             global: GlobalConfig {
                 lsp_progress: config.lsp_progress.unwrap_or(true),
+                theme: None,
             },
             keymaps: config
                 .keys
