@@ -333,6 +333,8 @@ impl Default for Keymaps {
                 key!(Right) => Command::move_char_right,
                 key!(PageUp) => Command::page_up,
                 key!(PageDown) => Command::page_down,
+                key!(Home) => Command::move_line_start,
+                key!(End) => Command::move_line_end,
                 ctrl!('x') => Command::completion,
                 ctrl!('w') => Command::delete_word_backward,
             ),
