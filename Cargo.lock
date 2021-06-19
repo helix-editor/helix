@@ -342,6 +342,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "crossterm",
+ "futures-util",
  "helix-core",
  "helix-lsp",
  "helix-tui",
