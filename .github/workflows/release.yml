@@ -68,7 +68,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --locked
+          args: --release --locked
 
       - name: Build release binary
         uses: actions-rs/cargo@v1
