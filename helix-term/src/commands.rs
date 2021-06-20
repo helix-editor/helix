@@ -19,7 +19,7 @@ use anyhow::anyhow;
 use helix_lsp::{
     lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
-    OffsetEncoding,
+    LspProgressMap, OffsetEncoding,
 };
 use insert::*;
 use movement::Movement;

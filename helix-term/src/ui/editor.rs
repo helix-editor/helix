@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Compositor, Context, EventResult},
     key,
     keymap::{self, Keymaps},
-    ui::Completion,
+    ui::{Completion, ProgressSpinners},
 };
 
 use helix_core::{
@@ -11,6 +11,7 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     Position, Range,
 };
+use helix_lsp::LspProgressMap;
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 use std::borrow::Cow;
 
@@ -31,6 +32,7 @@ pub struct EditorView {
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
+    spinners: ProgressSpinners,
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -48,9 +50,15 @@ impl EditorView {
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
+            spinners: ProgressSpinners::default(),
         }
     }
 
+    pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
+        &mut self.spinners
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn render_view(
         &self,
         doc: &Document,
@@ -458,6 +466,7 @@ impl EditorView {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render_statusline(
         &self,
         doc: &Document,
@@ -476,6 +485,15 @@ impl EditorView {
             Mode::Select => "SEL",
             Mode::Normal => "NOR",
         };
+        let progress = doc
+            .language_server()
+            .and_then(|srv| {
+                self.spinners
+                    .get(srv.id())
+                    .and_then(|spinner| spinner.frame())
+            })
+            .unwrap_or("");
+
         let style = if is_focused {
             theme.get("ui.statusline")
         } else {
@@ -486,13 +504,14 @@ impl EditorView {
         if is_focused {
             surface.set_string(viewport.x + 1, viewport.y, mode, style);
         }
+        surface.set_string(viewport.x + 5, viewport.y, progress, style);
 
         if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
 
             let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
             surface.set_stringn(
-                viewport.x + 6,
+                viewport.x + 8,
                 viewport.y,
                 title,
                 viewport.width.saturating_sub(6) as usize,
