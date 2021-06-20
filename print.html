@@ -187,7 +187,7 @@ it with:</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
 <p>First you'll need to place selected themes in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>), the directory might have to be created beforehand.</p>
 <p>To use a custom theme add <code>theme = &lt;name&gt;</code> to your <a href="./configuration.html"><code>config.toml</code></a> or override it during runtime using <code>:theme &lt;name&gt;</code>.</p>
-<p>The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/contrib/themes">here</a>. </p>
+<p>The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/runtime/themes">here</a>. </p>
 <h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
 <p>First create a file with the name of your theme as file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>).</p>
 <p>Each line in the theme file is specified as below:</p>
@@ -394,10 +394,10 @@ the selection.</p>
 <h2 id="window-mode"><a class="header" href="#window-mode">Window mode</a></h2>
 <p>This layer is similar to vim keybindings as kakoune does not support window.</p>
 <table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>w</code>, <code>ctrl-w</code></td><td>Switch to next window</td></tr>
-<tr><td><code>v</code>, <code>ctrl-v</code></td><td>Vertical right split</td></tr>
-<tr><td><code>h</code>, <code>ctrl-h</code></td><td>Horizontal bottom split</td></tr>
-<tr><td><code>q</code>, <code>ctrl-q</code></td><td>Close current window</td></tr>
+<tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td></tr>
+<tr><td><code>v</code>, <code>Ctrl-v</code></td><td>Vertical right split</td></tr>
+<tr><td><code>h</code>, <code>Ctrl-h</code></td><td>Horizontal bottom split</td></tr>
+<tr><td><code>q</code>, <code>Ctrl-q</code></td><td>Close current window</td></tr>
 </tbody></table>
 <h2 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h2>
 <p>This layer is a kludge of mappings I had under leader key in neovim.</p>
@@ -417,7 +417,7 @@ the selection.</p>
 <tr><td><code>Enter</code></td><td>Open selected</td></tr>
 <tr><td><code>Ctrl-h</code></td><td>Open horizontally</td></tr>
 <tr><td><code>Ctrl-v</code></td><td>Open vertically</td></tr>
-<tr><td><code>Escape</code>, <code>ctrl-c</code></td><td>Close picker</td></tr>
+<tr><td><code>Escape</code>, <code>Ctrl-c</code></td><td>Close picker</td></tr>
 </tbody></table>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="key-remapping"><a class="header" href="#key-remapping">Key Remapping</a></h1>
 <p>One-way key remapping is temporarily supported via a simple TOML configuration
@@ -437,31 +437,31 @@ A-x = &quot;normal_mode&quot; # Maps Alt-X to enter normal mode
 </code></pre>
 <p>Control, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
-<ul>
-<li>Backspace =&gt; &quot;backspace&quot;</li>
-<li>Space =&gt; &quot;space&quot;</li>
-<li>Return/Enter =&gt; &quot;ret&quot;</li>
-<li>&lt; =&gt; &quot;lt&quot;</li>
-<li>&gt; =&gt; &quot;gt&quot;</li>
-<li>+ =&gt; &quot;plus&quot;</li>
-<li>- =&gt; &quot;minus&quot;</li>
-<li>; =&gt; &quot;semicolon&quot;</li>
-<li>% =&gt; &quot;percent&quot;</li>
-<li>Left =&gt; &quot;left&quot;</li>
-<li>Right =&gt; &quot;right&quot;</li>
-<li>Up =&gt; &quot;up&quot;</li>
-<li>Home =&gt; &quot;home&quot;</li>
-<li>End =&gt; &quot;end&quot;</li>
-<li>Page Up =&gt; &quot;pageup&quot;</li>
-<li>Page Down =&gt; &quot;pagedown&quot;</li>
-<li>Tab =&gt; &quot;tab&quot;</li>
-<li>Back Tab =&gt; &quot;backtab&quot;</li>
-<li>Delete =&gt; &quot;del&quot;</li>
-<li>Insert =&gt; &quot;ins&quot;</li>
-<li>Null =&gt; &quot;null&quot;</li>
-<li>Escape =&gt; &quot;esc&quot;</li>
-</ul>
-<p>Commands can be found in the source code at <code>../../helix-term/src/commands.rs</code></p>
+<table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>
+<tr><td>Backspace</td><td><code>&quot;backspace&quot;</code></td></tr>
+<tr><td>Space</td><td><code>&quot;space&quot;</code></td></tr>
+<tr><td>Return/Enter</td><td><code>&quot;ret&quot;</code></td></tr>
+<tr><td>&lt;</td><td><code>&quot;lt&quot;</code></td></tr>
+<tr><td>&gt;</td><td><code>&quot;gt&quot;</code></td></tr>
+<tr><td>+</td><td><code>&quot;plus&quot;</code></td></tr>
+<tr><td>-</td><td><code>&quot;minus&quot;</code></td></tr>
+<tr><td>;</td><td><code>&quot;semicolon&quot;</code></td></tr>
+<tr><td>%</td><td><code>&quot;percent&quot;</code></td></tr>
+<tr><td>Left</td><td><code>&quot;left&quot;</code></td></tr>
+<tr><td>Right</td><td><code>&quot;right&quot;</code></td></tr>
+<tr><td>Up</td><td><code>&quot;up&quot;</code></td></tr>
+<tr><td>Home</td><td><code>&quot;home&quot;</code></td></tr>
+<tr><td>End</td><td><code>&quot;end&quot;</code></td></tr>
+<tr><td>Page</td><td><code>&quot;pageup&quot;</code></td></tr>
+<tr><td>Page</td><td><code>&quot;pagedown&quot;</code></td></tr>
+<tr><td>Tab</td><td><code>&quot;tab&quot;</code></td></tr>
+<tr><td>Back</td><td><code>&quot;backtab&quot;</code></td></tr>
+<tr><td>Delete</td><td><code>&quot;del&quot;</code></td></tr>
+<tr><td>Insert</td><td><code>&quot;ins&quot;</code></td></tr>
+<tr><td>Null</td><td><code>&quot;null&quot;</code></td></tr>
+<tr><td>Escape</td><td><code>&quot;esc&quot;</code></td></tr>
+</tbody></table>
+<p>Commands can be found in the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a></p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="hooks"><a class="header" href="#hooks">Hooks</a></h1>
 
                     </main>
