@@ -1,6 +1,6 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, get_line_ending, graphemes,
-    indent, line_end, match_brackets,
+    indent, line_end_char_index, match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -342,7 +342,7 @@ fn move_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        let pos = line_end(&text.slice(..), line);
+        let pos = line_end_char_index(&text.slice(..), line);
 
         Range::new(pos, pos)
     });
@@ -490,6 +490,8 @@ where
     let count = cx.count();
 
     // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending case here in terms of char.
     cx.on_next_key(move |cx, event| {
         let ch = match event {
             KeyEvent {
@@ -623,7 +625,7 @@ fn replace(cx: &mut Context) {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => Some('\n'), // TODO: replace this with DEFAULT_LINE_ENDING
+            } => Some('\n'), // TODO: use the document's default line ending.
             _ => None,
         };
 
@@ -763,7 +765,7 @@ fn extend_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        let pos = line_end(&text.slice(..), line);
+        let pos = line_end_char_index(&text.slice(..), line);
 
         Range::new(range.anchor, pos)
     });
@@ -1642,7 +1644,7 @@ fn append_to_line(cx: &mut Context) {
     let selection = doc.selection(view.id).transform(|range| {
         let text = doc.text();
         let line = text.char_to_line(range.head);
-        let pos = line_end(&text.slice(..), line);
+        let pos = line_end_char_index(&text.slice(..), line);
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);

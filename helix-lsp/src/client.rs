@@ -3,7 +3,7 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{find_root, ChangeSet, Rope};
+use helix_core::{chars::char_is_line_ending, find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
 use serde_json::Value;
@@ -337,8 +337,9 @@ impl Client {
                 mut character,
             } = pos;
 
-            for ch in text.chars() {
-                if ch == '\n' {
+            let mut chars = text.chars().peekable();
+            while let Some(ch) = chars.next() {
+                if char_is_line_ending(ch) && !(ch == '\r' && chars.peek() == Some(&'\n')) {
                     line += 1;
                     character = 0;
                 } else {

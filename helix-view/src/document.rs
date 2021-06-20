@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use helix_core::{
     auto_detect_line_ending,
-    chars::{char_is_linebreak, char_is_whitespace},
+    chars::{char_is_line_ending, char_is_whitespace},
     history::History,
     syntax::{LanguageConfiguration, LOADER},
     ChangeSet, Diagnostic, LineEnding, Rope, Selection, State, Syntax, Transaction,
@@ -81,6 +81,9 @@ pub struct Document {
     /// Current indent style.
     pub indent_style: IndentStyle,
 
+    /// The document's default line ending.
+    pub line_ending: LineEnding,
+
     syntax: Option<Syntax>,
     // /// Corresponding language scope name. Usually `source.<lang>`.
     pub(crate) language: Option<Arc<LanguageConfiguration>>,
@@ -99,7 +102,6 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
-    line_ending: LineEnding,
 }
 
 use std::fmt;
@@ -254,20 +256,20 @@ impl Document {
     pub fn load(path: PathBuf) -> Result<Self, Error> {
         use std::{fs::File, io::BufReader};
 
-        let doc = if !path.exists() {
+        let mut doc = if !path.exists() {
             Rope::from(DEFAULT_LINE_ENDING.as_str())
         } else {
             let file = File::open(&path).context(format!("unable to open {:?}", path))?;
-            let mut doc = Rope::from_reader(BufReader::new(file))?;
-            // add missing newline at the end of file
-            if doc.len_bytes() == 0 || doc.byte(doc.len_bytes() - 1) != b'\n' {
-                doc.insert_char(doc.len_chars(), '\n');
-            }
-            doc
+            Rope::from_reader(BufReader::new(file))?
         };
 
         // search for line endings
         let line_ending = auto_detect_line_ending(&doc).unwrap_or(DEFAULT_LINE_ENDING);
+
+        // add missing newline at the end of file
+        if doc.len_bytes() == 0 || char_is_line_ending(doc.char(doc.len_chars() - 1)) {
+            doc.insert(doc.len_chars(), line_ending.as_str());
+        }
 
         let mut doc = Self::new(doc);
         // set the path and try detecting the language
@@ -379,7 +381,7 @@ impl Document {
                     Some(' ') => false,
 
                     // Ignore blank lines.
-                    Some(c) if char_is_linebreak(c) => continue,
+                    Some(c) if char_is_line_ending(c) => continue,
 
                     _ => {
                         prev_line_is_tabs = false;
@@ -403,7 +405,7 @@ impl Document {
                         c if char_is_whitespace(c) => count_is_done = true,
 
                         // Ignore blank lines.
-                        c if char_is_linebreak(c) => continue 'outer,
+                        c if char_is_line_ending(c) => continue 'outer,
 
                         _ => break,
                     }

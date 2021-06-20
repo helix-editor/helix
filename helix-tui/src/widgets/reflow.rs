@@ -1,4 +1,5 @@
 use crate::text::StyledGrapheme;
+use helix_core::line_ending::str_is_line_ending;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -62,13 +63,13 @@ impl<'a, 'b> LineComposer<'a> for WordWrapper<'a, 'b> {
             // Ignore characters wider that the total max width.
             if symbol.width() as u16 > self.max_line_width
                 // Skip leading whitespace when trim is enabled.
-                || self.trim && symbol_whitespace && symbol != "\n" && current_line_width == 0
+                || self.trim && symbol_whitespace && !str_is_line_ending(symbol) && current_line_width == 0
             {
                 continue;
             }
 
             // Break on newline and discard it.
-            if symbol == "\n" {
+            if str_is_line_ending(symbol) {
                 if prev_whitespace {
                     current_line_width = width_to_last_word_end;
                     self.current_line.truncate(symbols_to_last_word_end);
@@ -170,7 +171,7 @@ impl<'a, 'b> LineComposer<'a> for LineTruncator<'a, 'b> {
             }
 
             // Break on newline and discard it.
-            if symbol == "\n" {
+            if str_is_line_ending(symbol) {
                 break;
             }
 
@@ -199,7 +200,7 @@ impl<'a, 'b> LineComposer<'a> for LineTruncator<'a, 'b> {
 
         if skip_rest {
             for StyledGrapheme { symbol, .. } in &mut self.symbols {
-                if symbol == "\n" {
+                if str_is_line_ending(symbol) {
                     break;
                 }
             }

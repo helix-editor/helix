@@ -1,4 +1,5 @@
 use crate::{
+    chars::char_is_line_ending,
     graphemes::{nth_next_grapheme_boundary, RopeGraphemes},
     Rope, RopeSlice,
 };
@@ -23,8 +24,9 @@ impl Position {
     pub fn traverse(self, text: &crate::Tendril) -> Self {
         let Self { mut row, mut col } = self;
         // TODO: there should be a better way here
-        for ch in text.chars() {
-            if ch == '\n' {
+        let mut chars = text.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if char_is_line_ending(ch) && !(ch == '\r' && chars.peek() == Some(&'\n')) {
                 row += 1;
                 col = 0;
             } else {

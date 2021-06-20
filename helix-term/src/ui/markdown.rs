@@ -110,6 +110,8 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                                         // TODO: replace tabs with indentation
 
                                         let mut slice = &text[start..end];
+                                        // TODO: do we need to handle all unicode line endings
+                                        // here, or is just '\n' okay?
                                         while let Some(end) = slice.find('\n') {
                                             // emit span up to newline
                                             let text = &slice[..end];

@@ -1,4 +1,4 @@
-use crate::{regex::Regex, Change, Rope, RopeSlice, Transaction};
+use crate::{chars::char_is_line_ending, regex::Regex, Change, Rope, RopeSlice, Transaction};
 pub use helix_syntax::{get_language, get_language_name, Lang};
 
 use std::{
@@ -579,9 +579,10 @@ impl LanguageLayer {
                 mut column,
             } = point;
 
-            // TODO: there should be a better way here
-            for ch in text.bytes() {
-                if ch == b'\n' {
+            // TODO: there should be a better way here.
+            let mut chars = text.chars().peekable();
+            while let Some(ch) = chars.next() {
+                if char_is_line_ending(ch) && !(ch == '\r' && chars.peek() == Some(&'\n')) {
                     row += 1;
                     column = 0;
                 } else {

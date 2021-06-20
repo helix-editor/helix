@@ -1,5 +1,10 @@
 use crate::{Rope, RopeGraphemes, RopeSlice};
 
+#[cfg(target_os = "windows")]
+pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
+#[cfg(not(target_os = "windows"))]
+pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::LF;
+
 /// Represents one of the valid Unicode line endings.
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum LineEnding {
@@ -14,6 +19,7 @@ pub enum LineEnding {
 }
 
 impl LineEnding {
+    #[inline]
     pub fn len_chars(&self) -> usize {
         match self {
             Self::Crlf => 2,
@@ -21,6 +27,7 @@ impl LineEnding {
         }
     }
 
+    #[inline]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Crlf => "\u{000D}\u{000A}",
@@ -34,6 +41,22 @@ impl LineEnding {
         }
     }
 
+    #[inline]
+    pub fn from_char(ch: char) -> Option<LineEnding> {
+        match ch {
+            '\u{000A}' => Some(LineEnding::LF),
+            '\u{000B}' => Some(LineEnding::VT),
+            '\u{000C}' => Some(LineEnding::FF),
+            '\u{000D}' => Some(LineEnding::CR),
+            '\u{0085}' => Some(LineEnding::Nel),
+            '\u{2028}' => Some(LineEnding::LS),
+            '\u{2029}' => Some(LineEnding::PS),
+            // Not a line ending
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn from_str(g: &str) -> Option<LineEnding> {
         match g {
             "\u{000D}\u{000A}" => Some(LineEnding::Crlf),
@@ -49,6 +72,7 @@ impl LineEnding {
         }
     }
 
+    #[inline]
     pub fn from_rope_slice(g: &RopeSlice) -> Option<LineEnding> {
         if let Some(text) = g.as_str() {
             LineEnding::from_str(text)
@@ -60,6 +84,11 @@ impl LineEnding {
             None
         }
     }
+}
+
+#[inline]
+pub fn str_is_line_ending(s: &str) -> bool {
+    LineEnding::from_str(s).is_some()
 }
 
 /// Attempts to detect what line ending the passed document uses.
@@ -96,18 +125,12 @@ pub fn get_line_ending(line: &RopeSlice) -> Option<LineEnding> {
 }
 
 /// Returns the char index of the end of the given line, not including its line ending.
-pub fn line_end(slice: &RopeSlice, line: usize) -> usize {
-    slice.line_to_char(line + 1).saturating_sub(
-        get_line_ending(&slice.line(line))
+pub fn line_end_char_index(slice: &RopeSlice, line: usize) -> usize {
+    slice.line_to_char(line + 1)
+        - get_line_ending(&slice.line(line))
             .map(|le| le.len_chars())
-            .unwrap_or(0),
-    )
+            .unwrap_or(0)
 }
-
-#[cfg(target_os = "windows")]
-pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
-#[cfg(not(target_os = "windows"))]
-pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::LF;
 
 #[cfg(test)]
 mod line_ending_tests {
@@ -150,11 +173,11 @@ mod line_ending_tests {
     fn test_rope_slice_to_line_ending() {
         let r = Rope::from_str("\r\n");
         assert_eq!(
-            rope_slice_to_line_ending(&r.slice(1..2)),
+            LineEnding::from_rope_slice(&r.slice(1..2)),
             Some(LineEnding::LF)
         );
         assert_eq!(
-            rope_slice_to_line_ending(&r.slice(0..2)),
+            LineEnding::from_rope_slice(&r.slice(0..2)),
             Some(LineEnding::Crlf)
         );
     }

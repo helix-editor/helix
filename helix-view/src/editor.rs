@@ -12,7 +12,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
+use helix_core::{Position, DEFAULT_LINE_ENDING};
 
 #[derive(Debug)]
 pub struct Editor {
@@ -150,7 +150,7 @@ impl Editor {
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
         use helix_core::Rope;
-        let doc = Document::new(Rope::from("\n"));
+        let doc = Document::new(Rope::from(DEFAULT_LINE_ENDING.as_str()));
         let id = self.documents.insert(doc);
         self.documents[id].id = id;
         self.switch(id, action);
