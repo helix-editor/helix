@@ -171,6 +171,11 @@ This layer is a kludge of mappings I had under leader key in neovim.
 | `s`     | Open symbol picker (current document)                                 |
 | `w`     | Enter [window mode](#window-mode)                                     |
 | `space` | Keep primary selection TODO: it's here because space mode replaced it |
+| `p`     | paste system clipboard after selections                               |
+| `P`     | paste system clipboard before selections                              |
+| `y`     | join and yank selections to clipboard                                 |
+| `Y`     | yank main selection to clipboard                                      |
+| `R`     | replace selections by clipboard contents                              |
 
 # Picker
 
