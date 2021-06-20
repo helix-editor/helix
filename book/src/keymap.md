@@ -155,10 +155,10 @@ This layer is similar to vim keybindings as kakoune does not support window.
 
 | Key           | Description             |
 | -----         | -------------           |
-| `w`, `ctrl-w` | Switch to next window   |
-| `v`, `ctrl-v` | Vertical right split    |
-| `h`, `ctrl-h` | Horizontal bottom split |
-| `q`, `ctrl-q` | Close current window    |
+| `w`, `Ctrl-w` | Switch to next window   |
+| `v`, `Ctrl-v` | Vertical right split    |
+| `h`, `Ctrl-h` | Horizontal bottom split |
+| `q`, `Ctrl-q` | Close current window    |
 
 ## Space mode
 
@@ -184,4 +184,4 @@ Keys to use within picker.
 | `Enter`            | Open selected     |
 | `Ctrl-h`           | Open horizontally |
 | `Ctrl-v`           | Open vertically   |
-| `Escape`, `ctrl-c` | Close picker      |
+| `Escape`, `Ctrl-c` | Close picker      |

@@ -22,27 +22,29 @@ A-x = "normal_mode" # Maps Alt-X to enter normal mode
 Control, Shift and Alt modifiers are encoded respectively with the prefixes
 `C-`, `S-` and `A-`. Special keys are encoded as follows:
 
-* Backspace => "backspace"
-* Space => "space"
-* Return/Enter => "ret"
-* < => "lt"
-* \> => "gt"
-* \+ => "plus"
-* \- => "minus"
-* ; => "semicolon"
-* % => "percent"
-* Left => "left"
-* Right => "right"
-* Up => "up"
-* Home => "home"
-* End => "end"
-* Page Up => "pageup"
-* Page Down => "pagedown"
-* Tab => "tab"
-* Back Tab => "backtab"
-* Delete => "del"
-* Insert => "ins"
-* Null => "null"
-* Escape => "esc"
+| Key name     | Representation |
+| ---          | ---            |
+| Backspace    | `"backspace"`  |
+| Space        | `"space"`      |
+| Return/Enter | `"ret"`        |
+| <            | `"lt"`         |
+| \>           | `"gt"`         |
+| \+           | `"plus"`       |
+| \-           | `"minus"`      |
+| ;            | `"semicolon"`  |
+| %            | `"percent"`    |
+| Left         | `"left"`       |
+| Right        | `"right"`      |
+| Up           | `"up"`         |
+| Home         | `"home"`       |
+| End          | `"end"`        |
+| Page         | `"pageup"`     |
+| Page         | `"pagedown"`   |
+| Tab          | `"tab"`        |
+| Back         | `"backtab"`    |
+| Delete       | `"del"`        |
+| Insert       | `"ins"`        |
+| Null         | `"null"`       |
+| Escape       | `"esc"`        |
 
-Commands can be found in the source code at `../../helix-term/src/commands.rs`
+Commands can be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
