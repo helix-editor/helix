@@ -347,6 +347,10 @@ impl LspProgressMap {
         self.0.get(&id)
     }
 
+    pub fn is_progressing(&self, id: usize) -> bool {
+        self.0.get(&id).map(|it| !it.is_empty()).unwrap_or_default()
+    }
+
     /// Returns last progress status for a given server with `id` and `token`.
     pub fn progress(&self, id: usize, token: &lsp::ProgressToken) -> Option<&ProgressStatus> {
         self.0.get(&id).and_then(|values| values.get(token))

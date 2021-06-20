@@ -1,35 +1,28 @@
 use anyhow::{Error, Result};
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use serde::{de::Error as SerdeError, Deserialize, Serialize};
 
 use crate::keymap::{parse_keymaps, Keymaps};
 
-pub struct GlobalConfig {
-    pub theme: Option<String>,
-    pub lsp_progress: bool,
-}
-
-impl Default for GlobalConfig {
-    fn default() -> Self {
-        Self {
-            lsp_progress: true,
-            theme: None,
-        }
-    }
-}
-
 #[derive(Default)]
 pub struct Config {
-    pub global: GlobalConfig,
+    pub theme: Option<String>,
+    pub lsp: LspConfig,
     pub keymaps: Keymaps,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct LspConfig {
+    pub display_messages: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 struct TomlConfig {
     theme: Option<String>,
-    lsp_progress: Option<bool>,
+    #[serde(default)]
+    lsp: LspConfig,
     keys: Option<HashMap<String, HashMap<String, String>>>,
 }
 
@@ -40,10 +33,8 @@ impl<'de> Deserialize<'de> for Config {
     {
         let config = TomlConfig::deserialize(deserializer)?;
         Ok(Self {
-            global: GlobalConfig {
-                lsp_progress: config.lsp_progress.unwrap_or(true),
-                theme: config.theme,
-            },
+            theme: config.theme,
+            lsp: config.lsp,
             keymaps: config
                 .keys
                 .map(|r| parse_keymaps(&r))

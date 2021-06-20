@@ -1,9 +1,10 @@
 // Each component declares it's own size constraints and gets fitted based on it's parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
+use helix_core::Position;
+use helix_lsp::LspProgressMap;
 
 use crossterm::event::Event;
-use helix_core::Position;
 use tui::{buffer::Buffer as Surface, layout::Rect, terminal::CursorKind};
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
