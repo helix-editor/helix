@@ -69,9 +69,8 @@
 | `;`      | Collapse selection onto a single cursor                           |
 | `Alt-;`  | Flip selection cursor and anchor                                  |
 | `%`      | Select entire file                                                |
-| `x`      | Select current line                                               |
-| `X`      | Extend to next line                                               |
-| `[`      | Expand selection to parent syntax node TODO: pick a key           |
+| `x`      | Select current line, if already selected, extend to next line     |
+| ``       | Expand selection to parent syntax node TODO: pick a key           |
 | `J`      | join lines inside selection                                       |
 | `K`      | keep selections matching the regex TODO: overlapped by hover help |
 | `Space`  | keep only the primary selection TODO: overlapped by space mode    |

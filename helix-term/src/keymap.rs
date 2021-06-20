@@ -196,9 +196,7 @@ impl Default for Keymaps {
             key!(';') => Command::collapse_selection,
             alt!(';') => Command::flip_selections,
             key!('%') => Command::select_all,
-            key!('x') => Command::select_line,
-            key!('X') => Command::extend_line,
-            // or select mode X?
+            key!('x') => Command::extend_line,
             // extend_to_whole_line, crop_to_whole_line
 
 
