@@ -162,7 +162,6 @@ fn parse<'a>(
                 }
             }
             Event::Code(text) | Event::Html(text) => {
-                log::warn!("code {:?}", text);
                 let mut span = to_span(text);
                 span.style = code_style;
                 spans.push(span);
