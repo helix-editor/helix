@@ -46,48 +46,53 @@ Possible modifiers:
 
 Possible keys:
 
-| Key                     | Notes                               |
-| ---                     | ---                                 |
-| `attribute`             |                                     |
-| `keyword`               |                                     |
-| `keyword.directive`     | Preprocessor directives (\#if in C) |
-| `namespace`             |                                     |
-| `punctuation`           |                                     |
-| `punctuation.delimiter` |                                     |
-| `operator`              |                                     |
-| `special`               |                                     |
-| `property`              |                                     |
-| `variable`              |                                     |
-| `variable.parameter`    |                                     |
-| `type`                  |                                     |
-| `type.builtin`          |                                     |
-| `constructor`           |                                     |
-| `function`              |                                     |
-| `function.macro`        |                                     |
-| `function.builtin`      |                                     |
-| `comment`               |                                     |
-| `variable.builtin`      |                                     |
-| `constant`              |                                     |
-| `constant.builtin`      |                                     |
-| `string`                |                                     |
-| `number`                |                                     |
-| `escape`                | Escaped characters                  |
-| `label`                 | For lifetimes                       |
-| `module`                |                                     |
-| `ui.background`         |                                     |
-| `ui.linenr`             |                                     |
-| `ui.statusline`         |                                     |
-| `ui.popup`              |                                     |
-| `ui.window`             |                                     |
-| `ui.help`               |                                     |
-| `ui.text`               |                                     |
-| `ui.text.focus`         |                                     |
-| `ui.menu.selected`      |                                     |
-| `ui.selection`          | For selections in the editing area  |
-| `warning`               | LSP warning                         |
-| `error`                 | LSP error                           |
-| `info`                  | LSP info                            |
-| `hint`                  | LSP hint                            |
+| Key                      | Notes                               |
+| ---                      | ---                                 |
+| `attribute`              |                                     |
+| `keyword`                |                                     |
+| `keyword.directive`      | Preprocessor directives (\#if in C) |
+| `namespace`              |                                     |
+| `punctuation`            |                                     |
+| `punctuation.delimiter`  |                                     |
+| `operator`               |                                     |
+| `special`                |                                     |
+| `property`               |                                     |
+| `variable`               |                                     |
+| `variable.parameter`     |                                     |
+| `type`                   |                                     |
+| `type.builtin`           |                                     |
+| `constructor`            |                                     |
+| `function`               |                                     |
+| `function.macro`         |                                     |
+| `function.builtin`       |                                     |
+| `comment`                |                                     |
+| `variable.builtin`       |                                     |
+| `constant`               |                                     |
+| `constant.builtin`       |                                     |
+| `string`                 |                                     |
+| `number`                 |                                     |
+| `escape`                 | Escaped characters                  |
+| `label`                  | For lifetimes                       |
+| `module`                 |                                     |
+| `ui.background`          |                                     |
+| `ui.cursor`              |                                     |
+| `ui.cursor.insert`       |                                     |
+| `ui.cursor.select`       |                                     |
+| `ui.cursor.match`        | Matching bracket etc.               |
+| `ui.linenr`              |                                     |
+| `ui.statusline`          |                                     |
+| `ui.statusline.inactive` |                                     |
+| `ui.popup`               |                                     |
+| `ui.window`              |                                     |
+| `ui.help`                |                                     |
+| `ui.text`                |                                     |
+| `ui.text.focus`          |                                     |
+| `ui.menu.selected`       |                                     |
+| `ui.selection`           | For selections in the editing area  |
+| `warning`                | LSP warning                         |
+| `error`                  | LSP error                           |
+| `info`                   | LSP info                            |
+| `hint`                   | LSP hint                            |
 
 These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We half-follow the common scopes from [macromates language grammars](https://macromates.com/manual/en/language_grammars) with some differences.
 
