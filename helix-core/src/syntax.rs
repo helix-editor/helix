@@ -1,6 +1,8 @@
 use crate::{chars::char_is_line_ending, regex::Regex, Change, Rope, RopeSlice, Transaction};
 pub use helix_syntax::{get_language, get_language_name, Lang};
 
+use arc_swap::ArcSwap;
+
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -143,35 +145,47 @@ fn read_query(language: &str, filename: &str) -> String {
 }
 
 impl LanguageConfiguration {
+    fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
+        let language = get_language_name(self.language_id).to_ascii_lowercase();
+
+        let highlights_query = read_query(&language, "highlights.scm");
+        // always highlight syntax errors
+        // highlights_query += "\n(ERROR) @error";
+
+        let injections_query = read_query(&language, "injections.scm");
+
+        let locals_query = "";
+
+        if highlights_query.is_empty() {
+            None
+        } else {
+            let language = get_language(self.language_id);
+            let mut config = HighlightConfiguration::new(
+                language,
+                &highlights_query,
+                &injections_query,
+                locals_query,
+            )
+            .unwrap(); // TODO: no unwrap
+            config.configure(scopes);
+            Some(Arc::new(config))
+        }
+    }
+
+    pub fn reconfigure(&self, scopes: &[String]) {
+        if let Some(Some(config)) = self.highlight_config.get() {
+            config.configure(scopes);
+        }
+    }
+
     pub fn highlight_config(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
         self.highlight_config
-            .get_or_init(|| {
-                let language = get_language_name(self.language_id).to_ascii_lowercase();
-
-                let highlights_query = read_query(&language, "highlights.scm");
-                // always highlight syntax errors
-                // highlights_query += "\n(ERROR) @error";
-
-                let injections_query = read_query(&language, "injections.scm");
-
-                let locals_query = "";
-
-                if highlights_query.is_empty() {
-                    None
-                } else {
-                    let language = get_language(self.language_id);
-                    let mut config = HighlightConfiguration::new(
-                        language,
-                        &highlights_query,
-                        &injections_query,
-                        locals_query,
-                    )
-                    .unwrap(); // TODO: no unwrap
-                    config.configure(scopes);
-                    Some(Arc::new(config))
-                }
-            })
+            .get_or_init(|| self.initialize_highlight(scopes))
             .clone()
+    }
+
+    pub fn is_highlight_initialized(&self) -> bool {
+        self.highlight_config.get().is_some()
     }
 
     pub fn indent_query(&self) -> Option<&IndentQuery> {
@@ -190,22 +204,18 @@ impl LanguageConfiguration {
     }
 }
 
-pub static LOADER: OnceCell<Loader> = OnceCell::new();
-
 #[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
-    scopes: Vec<String>,
 }
 
 impl Loader {
-    pub fn new(config: Configuration, scopes: Vec<String>) -> Self {
+    pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
-            scopes,
         };
 
         for config in config.language {
@@ -223,10 +233,6 @@ impl Loader {
         }
 
         loader
-    }
-
-    pub fn scopes(&self) -> &[String] {
-        &self.scopes
     }
 
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
@@ -252,6 +258,10 @@ impl Loader {
             .iter()
             .find(|config| config.scope == scope)
             .cloned()
+    }
+
+    pub fn language_configs_iter(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
+        self.language_configs.iter()
     }
 }
 
@@ -772,7 +782,7 @@ pub struct HighlightConfiguration {
     combined_injections_query: Option<Query>,
     locals_pattern_index: usize,
     highlights_pattern_index: usize,
-    highlight_indices: Vec<Option<Highlight>>,
+    highlight_indices: ArcSwap<Vec<Option<Highlight>>>,
     non_local_variable_patterns: Vec<bool>,
     injection_content_capture_index: Option<u32>,
     injection_language_capture_index: Option<u32>,
@@ -924,7 +934,7 @@ impl HighlightConfiguration {
             }
         }
 
-        let highlight_indices = vec![None; query.capture_names().len()];
+        let highlight_indices = ArcSwap::from_pointee(vec![None; query.capture_names().len()]);
         Ok(Self {
             language,
             query,
@@ -957,17 +967,20 @@ impl HighlightConfiguration {
     ///
     /// When highlighting, results are returned as `Highlight` values, which contain the index
     /// of the matched highlight this list of highlight names.
-    pub fn configure(&mut self, recognized_names: &[String]) {
+    pub fn configure(&self, recognized_names: &[String]) {
         let mut capture_parts = Vec::new();
-        self.highlight_indices.clear();
-        self.highlight_indices
-            .extend(self.query.capture_names().iter().map(move |capture_name| {
+        let indices: Vec<_> = self
+            .query
+            .capture_names()
+            .iter()
+            .map(move |capture_name| {
                 capture_parts.clear();
                 capture_parts.extend(capture_name.split('.'));
 
                 let mut best_index = None;
                 let mut best_match_len = 0;
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
+                    let recognized_name = recognized_name;
                     let mut len = 0;
                     let mut matches = true;
                     for part in recognized_name.split('.') {
@@ -983,7 +996,10 @@ impl HighlightConfiguration {
                     }
                 }
                 best_index.map(Highlight)
-            }));
+            })
+            .collect();
+
+        self.highlight_indices.store(Arc::new(indices));
     }
 }
 
@@ -1562,7 +1578,7 @@ where
                 }
             }
 
-            let current_highlight = layer.config.highlight_indices[capture.index as usize];
+            let current_highlight = layer.config.highlight_indices.load()[capture.index as usize];
 
             // If this node represents a local definition, then store the current
             // highlight value on the local scope entry representing this node.

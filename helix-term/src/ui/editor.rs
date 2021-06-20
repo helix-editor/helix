@@ -11,13 +11,12 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
-use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
 use helix_view::{document::Mode, Document, Editor, Theme, View};
 use std::borrow::Cow;
 
 use crossterm::{
     cursor,
-    event::{read, Event, EventStream},
+    event::{read, Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
 };
 use tui::{
     backend::CrosstermBackend,
@@ -130,7 +129,7 @@ impl EditorView {
             })],
         };
         let mut spans = Vec::new();
-        let mut visual_x = 0;
+        let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
 
@@ -186,7 +185,7 @@ impl EditorView {
                                 break 'outer;
                             }
                         } else if grapheme == "\t" {
-                            visual_x += (tab_width as u16);
+                            visual_x = visual_x.saturating_add(tab_width as u16);
                         } else {
                             let out_of_bounds = visual_x < view.first_col as u16
                                 || visual_x >= viewport.width + view.first_col as u16;
@@ -198,7 +197,7 @@ impl EditorView {
 
                             if out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
-                                visual_x += width;
+                                visual_x = visual_x.saturating_add(width);
                                 continue;
                             }
 
@@ -608,8 +607,7 @@ impl Component for EditorView {
                 cx.editor.resize(Rect::new(0, 0, width, height - 1));
                 EventResult::Consumed(None)
             }
-            Event::Key(key) => {
-                let mut key = KeyEvent::from(key);
+            Event::Key(mut key) => {
                 canonicalize_key(&mut key);
                 // clear status
                 cx.editor.status_msg = None;

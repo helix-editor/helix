@@ -69,9 +69,8 @@
 | `;`      | Collapse selection onto a single cursor                           |
 | `Alt-;`  | Flip selection cursor and anchor                                  |
 | `%`      | Select entire file                                                |
-| `x`      | Select current line                                               |
-| `X`      | Extend to next line                                               |
-| `[`      | Expand selection to parent syntax node TODO: pick a key           |
+| `x`      | Select current line, if already selected, extend to next line     |
+| ``       | Expand selection to parent syntax node TODO: pick a key           |
 | `J`      | join lines inside selection                                       |
 | `K`      | keep selections matching the regex TODO: overlapped by hover help |
 | `Space`  | keep only the primary selection TODO: overlapped by space mode    |
@@ -155,10 +154,10 @@ This layer is similar to vim keybindings as kakoune does not support window.
 
 | Key           | Description             |
 | -----         | -------------           |
-| `w`, `ctrl-w` | Switch to next window   |
-| `v`, `ctrl-v` | Vertical right split    |
-| `h`, `ctrl-h` | Horizontal bottom split |
-| `q`, `ctrl-q` | Close current window    |
+| `w`, `Ctrl-w` | Switch to next window   |
+| `v`, `Ctrl-v` | Vertical right split    |
+| `h`, `Ctrl-h` | Horizontal bottom split |
+| `q`, `Ctrl-q` | Close current window    |
 
 ## Space mode
 
@@ -171,6 +170,11 @@ This layer is a kludge of mappings I had under leader key in neovim.
 | `s`     | Open symbol picker (current document)                                 |
 | `w`     | Enter [window mode](#window-mode)                                     |
 | `space` | Keep primary selection TODO: it's here because space mode replaced it |
+| `p`     | paste system clipboard after selections                               |
+| `P`     | paste system clipboard before selections                              |
+| `y`     | join and yank selections to clipboard                                 |
+| `Y`     | yank main selection to clipboard                                      |
+| `R`     | replace selections by clipboard contents                              |
 
 # Picker
 
@@ -184,4 +188,4 @@ Keys to use within picker.
 | `Enter`            | Open selected     |
 | `Ctrl-h`           | Open horizontally |
 | `Ctrl-v`           | Open vertically   |
-| `Escape`, `ctrl-c` | Close picker      |
+| `Escape`, `Ctrl-c` | Close picker      |

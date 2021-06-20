@@ -44,7 +44,7 @@
 //! implement your own.
 //!
 //! Each widget follows a builder pattern API providing a default configuration along with methods
-//! to customize them. The widget is then rendered using the [`Frame::render_widget`] which take
+//! to customize them. The widget is then rendered using the `Frame::render_widget` which take
 //! your widget instance an area to draw to.
 //!
 //! The following example renders a block of the size of the terminal:

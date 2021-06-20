@@ -6,6 +6,11 @@ use helix_view::{Editor, Theme};
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::terminal::CursorKind;
 
+use helix_core::{
+    unicode::segmentation::{GraphemeCursor, GraphemeIncomplete},
+    unicode::width::UnicodeWidthStr,
+};
+
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 
 pub struct Prompt {
@@ -34,6 +39,17 @@ pub enum CompletionDirection {
     Backward,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Movement {
+    BackwardChar(usize),
+    BackwardWord(usize),
+    ForwardChar(usize),
+    ForwardWord(usize),
+    StartOfLine,
+    EndOfLine,
+    None,
+}
+
 impl Prompt {
     pub fn new(
         prompt: String,
@@ -52,30 +68,120 @@ impl Prompt {
         }
     }
 
+    /// Compute the cursor position after applying movement
+    /// Taken from: https://github.com/wez/wezterm/blob/e0b62d07ca9bf8ce69a61e30a3c20e7abc48ce7e/termwiz/src/lineedit/mod.rs#L516-L611
+    fn eval_movement(&self, movement: Movement) -> usize {
+        match movement {
+            Movement::BackwardChar(rep) => {
+                let mut position = self.cursor;
+                for _ in 0..rep {
+                    let mut cursor = GraphemeCursor::new(position, self.line.len(), false);
+                    if let Ok(Some(pos)) = cursor.prev_boundary(&self.line, 0) {
+                        position = pos;
+                    } else {
+                        break;
+                    }
+                }
+                position
+            }
+            Movement::BackwardWord(rep) => {
+                let char_indices: Vec<(usize, char)> = self.line.char_indices().collect();
+                if char_indices.is_empty() {
+                    return self.cursor;
+                }
+                let mut char_position = char_indices
+                    .iter()
+                    .position(|(idx, _)| *idx == self.cursor)
+                    .unwrap_or(char_indices.len() - 1);
+
+                for _ in 0..rep {
+                    if char_position == 0 {
+                        break;
+                    }
+
+                    let mut found = None;
+                    for prev in (0..char_position - 1).rev() {
+                        if char_indices[prev].1.is_whitespace() {
+                            found = Some(prev + 1);
+                            break;
+                        }
+                    }
+
+                    char_position = found.unwrap_or(0);
+                }
+                char_indices[char_position].0
+            }
+            Movement::ForwardWord(rep) => {
+                let char_indices: Vec<(usize, char)> = self.line.char_indices().collect();
+                if char_indices.is_empty() {
+                    return self.cursor;
+                }
+                let mut char_position = char_indices
+                    .iter()
+                    .position(|(idx, _)| *idx == self.cursor)
+                    .unwrap_or_else(|| char_indices.len());
+
+                for _ in 0..rep {
+                    // Skip any non-whitespace characters
+                    while char_position < char_indices.len()
+                        && !char_indices[char_position].1.is_whitespace()
+                    {
+                        char_position += 1;
+                    }
+
+                    // Skip any whitespace characters
+                    while char_position < char_indices.len()
+                        && char_indices[char_position].1.is_whitespace()
+                    {
+                        char_position += 1;
+                    }
+
+                    // We are now on the start of the next word
+                }
+                char_indices
+                    .get(char_position)
+                    .map(|(i, _)| *i)
+                    .unwrap_or_else(|| self.line.len())
+            }
+            Movement::ForwardChar(rep) => {
+                let mut position = self.cursor;
+                for _ in 0..rep {
+                    let mut cursor = GraphemeCursor::new(position, self.line.len(), false);
+                    if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
+                        position = pos;
+                    } else {
+                        break;
+                    }
+                }
+                position
+            }
+            Movement::StartOfLine => 0,
+            Movement::EndOfLine => {
+                let mut cursor =
+                    GraphemeCursor::new(self.line.len().saturating_sub(1), self.line.len(), false);
+                if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
+                    pos
+                } else {
+                    self.cursor
+                }
+            }
+            Movement::None => self.cursor,
+        }
+    }
+
     pub fn insert_char(&mut self, c: char) {
-        let pos = if self.line.is_empty() {
-            0
-        } else {
-            self.line
-                .char_indices()
-                .nth(self.cursor)
-                .map(|(pos, _)| pos)
-                .unwrap_or_else(|| self.line.len())
-        };
-        self.line.insert(pos, c);
-        self.cursor += 1;
+        self.line.insert(self.cursor, c);
+        let mut cursor = GraphemeCursor::new(self.cursor, self.line.len(), false);
+        if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
+            self.cursor = pos;
+        }
         self.completion = (self.completion_fn)(&self.line);
         self.exit_selection();
     }
 
-    pub fn move_char_left(&mut self) {
-        self.cursor = self.cursor.saturating_sub(1)
-    }
-
-    pub fn move_char_right(&mut self) {
-        if self.cursor < self.line.len() {
-            self.cursor += 1;
-        }
+    pub fn move_cursor(&mut self, movement: Movement) {
+        let pos = self.eval_movement(movement);
+        self.cursor = pos
     }
 
     pub fn move_start(&mut self) {
@@ -87,39 +193,29 @@ impl Prompt {
     }
 
     pub fn delete_char_backwards(&mut self) {
-        if self.cursor > 0 {
-            let pos = self
-                .line
-                .char_indices()
-                .nth(self.cursor - 1)
-                .map(|(pos, _)| pos)
-                .expect("line is not empty");
-            self.line.remove(pos);
-            self.cursor -= 1;
-            self.completion = (self.completion_fn)(&self.line);
-        }
+        let pos = self.eval_movement(Movement::BackwardChar(1));
+        self.line.replace_range(pos..self.cursor, "");
+        self.cursor = pos;
+
         self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
     }
 
     pub fn delete_word_backwards(&mut self) {
-        use helix_core::get_general_category;
-        let mut chars = self.line.char_indices().rev();
-        // TODO add skipping whitespace logic here
-        let (mut i, cat) = match chars.next() {
-            Some((i, c)) => (i, get_general_category(c)),
-            None => return,
-        };
-        self.cursor -= 1;
-        for (nn, nc) in chars {
-            if get_general_category(nc) != cat {
-                break;
-            }
-            i = nn;
-            self.cursor -= 1;
-        }
-        self.line.drain(i..);
-        self.completion = (self.completion_fn)(&self.line);
+        let pos = self.eval_movement(Movement::BackwardWord(1));
+        self.line.replace_range(pos..self.cursor, "");
+        self.cursor = pos;
+
         self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
+    }
+
+    pub fn kill_to_end_of_line(&mut self) {
+        let pos = self.eval_movement(Movement::EndOfLine);
+        self.line.replace_range(self.cursor..pos, "");
+
+        self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
     }
 
     pub fn clear(&mut self) {
@@ -293,31 +389,71 @@ impl Component for Prompt {
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
             }
             KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Esc, ..
             } => {
                 (self.callback_fn)(cx.editor, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
             KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Right,
                 ..
-            } => self.move_char_right(),
+            } => self.move_cursor(Movement::ForwardChar(1)),
             KeyEvent {
+                code: KeyCode::Char('b'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Left,
                 ..
-            } => self.move_char_left(),
+            } => self.move_cursor(Movement::BackwardChar(1)),
             KeyEvent {
+                code: KeyCode::End,
+                modifiers: KeyModifiers::NONE,
+            }
+            | KeyEvent {
                 code: KeyCode::Char('e'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_end(),
             KeyEvent {
+                code: KeyCode::Home,
+                modifiers: KeyModifiers::NONE,
+            }
+            | KeyEvent {
                 code: KeyCode::Char('a'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_start(),
             KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('b'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::BackwardWord(1)),
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::ForwardWord(1)),
+            KeyEvent {
                 code: KeyCode::Char('w'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.delete_word_backwards(),
+            KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.kill_to_end_of_line(),
             KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
@@ -363,7 +499,9 @@ impl Component for Prompt {
         (
             Some(Position::new(
                 area.y as usize + line,
-                area.x as usize + self.prompt.len() + self.cursor,
+                area.x as usize
+                    + self.prompt.len()
+                    + UnicodeWidthStr::width(&self.line[..self.cursor]),
             )),
             CursorKind::Block,
         )

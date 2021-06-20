@@ -11,7 +11,6 @@ use helix_core::{
 
 use helix_view::{
     document::{IndentStyle, Mode},
-    input::{KeyCode, KeyEvent},
     view::{View, PADDING},
     Document, DocumentId, Editor, ViewId,
 };
@@ -39,8 +38,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crossterm::event::{KeyCode, KeyEvent};
 use once_cell::sync::Lazy;
-use serde::de::{self, Deserialize, Deserializer};
 
 pub struct Context<'a> {
     pub selected_register: helix_view::RegisterSelection,
@@ -186,7 +185,6 @@ impl Command {
         search_next,
         extend_search_next,
         search_selection,
-        select_line,
         extend_line,
         delete_selection,
         change_selection,
@@ -223,9 +221,14 @@ impl Command {
         undo,
         redo,
         yank,
+        yank_joined_to_clipboard,
+        yank_main_selection_to_clipboard,
         replace_with_yanked,
+        replace_selections_with_clipboard,
         paste_after,
         paste_before,
+        paste_clipboard_after,
+        paste_clipboard_before,
         indent,
         unindent,
         format_selections,
@@ -251,48 +254,6 @@ impl Command {
         left_bracket_mode,
         right_bracket_mode
     );
-}
-
-impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(name, _) = self;
-        f.debug_tuple("Command").field(name).finish()
-    }
-}
-
-impl fmt::Display for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(name, _) = self;
-        f.write_str(name)
-    }
-}
-
-impl std::str::FromStr for Command {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Command::COMMAND_LIST
-            .iter()
-            .copied()
-            .find(|cmd| cmd.0 == s)
-            .ok_or_else(|| anyhow!("No command named '{}'", s))
-    }
-}
-
-impl<'de> Deserialize<'de> for Command {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(de::Error::custom)
-    }
-}
-
-impl PartialEq for Command {
-    fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name()
-    }
 }
 
 fn move_char_left(cx: &mut Context) {
@@ -926,21 +887,6 @@ fn search_selection(cx: &mut Context) {
 
 //
 
-fn select_line(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-
-    let pos = doc.selection(view.id).primary();
-    let text = doc.text();
-
-    let line = text.char_to_line(pos.head);
-    let start = text.line_to_char(line);
-    let end = text
-        .line_to_char(std::cmp::min(doc.text().len_lines(), line + count))
-        .saturating_sub(1);
-
-    doc.set_selection(view.id, Selection::single(start, end));
-}
 fn extend_line(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -1318,6 +1264,57 @@ mod cmd {
         quit_all_impl(editor, args, event, true)
     }
 
+    fn theme(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        let theme = if let Some(theme) = args.first() {
+            theme
+        } else {
+            editor.set_error("theme name not provided".into());
+            return;
+        };
+
+        editor.set_theme_from_name(theme);
+    }
+
+    fn yank_main_selection_to_clipboard(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        yank_main_selection_to_clipboard_impl(editor);
+    }
+
+    fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], _: PromptEvent) {
+        let separator = args.first().copied().unwrap_or("\n");
+        yank_joined_to_clipboard_impl(editor, separator);
+    }
+
+    fn paste_clipboard_after(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        paste_clipboard_impl(editor, Paste::After);
+    }
+
+    fn paste_clipboard_before(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        paste_clipboard_impl(editor, Paste::After);
+    }
+
+    fn replace_selections_with_clipboard(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        let (view, doc) = current!(editor);
+
+        match editor.clipboard_provider.get_contents() {
+            Ok(contents) => {
+                let transaction =
+                    Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                        let max_to = doc.text().len_chars().saturating_sub(1);
+                        let to = std::cmp::min(max_to, range.to() + 1);
+                        (range.from(), to, Some(contents.as_str().into()))
+                    });
+
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
+            }
+            Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+        }
+    }
+
+    fn show_clipboard_provider(editor: &mut Editor, _: &[&str], _: PromptEvent) {
+        editor.set_status(editor.clipboard_provider.name().into());
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1431,7 +1428,55 @@ mod cmd {
             fun: force_quit_all,
             completer: None,
         },
-
+        TypableCommand {
+            name: "theme",
+            alias: None,
+            doc: "Change the theme of current view. Requires theme name as argument (:theme <name>)",
+            fun: theme,
+            completer: Some(completers::theme),
+        },
+        TypableCommand {
+            name: "clipboard-yank",
+            alias: None,
+            doc: "Yank main selection into system clipboard.",
+            fun: yank_main_selection_to_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-yank-join",
+            alias: None,
+            doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
+            fun: yank_joined_to_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-paste-after",
+            alias: None,
+            doc: "Paste system clipboard after selections.",
+            fun: paste_clipboard_after,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-paste-before",
+            alias: None,
+            doc: "Paste system clipboard before selections.",
+            fun: paste_clipboard_before,
+            completer: None,
+        },
+        TypableCommand {
+            name: "clipboard-paste-replace",
+            alias: None,
+            doc: "Replace selections with content of system clipboard.",
+            fun: replace_selections_with_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "show-clipboard-provider",
+            alias: None,
+            doc: "Show clipboard provider name in status bar.",
+            fun: show_clipboard_provider,
+            completer: None,
+        },
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
@@ -2424,6 +2469,52 @@ fn yank(cx: &mut Context) {
     cx.editor.set_status(msg)
 }
 
+fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) {
+    let (view, doc) = current!(editor);
+
+    let values: Vec<String> = doc
+        .selection(view.id)
+        .fragments(doc.text().slice(..))
+        .map(Cow::into_owned)
+        .collect();
+
+    let msg = format!(
+        "joined and yanked {} selection(s) to system clipboard",
+        values.len(),
+    );
+
+    let joined = values.join(separator);
+
+    if let Err(e) = editor.clipboard_provider.set_contents(joined) {
+        log::error!("Couldn't set system clipboard content: {:?}", e);
+    }
+
+    editor.set_status(msg);
+}
+
+fn yank_joined_to_clipboard(cx: &mut Context) {
+    yank_joined_to_clipboard_impl(&mut cx.editor, "\n");
+}
+
+fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) {
+    let (view, doc) = current!(editor);
+
+    let value = doc
+        .selection(view.id)
+        .primary()
+        .fragment(doc.text().slice(..));
+
+    if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
+        log::error!("Couldn't set system clipboard content: {:?}", e);
+    }
+
+    editor.set_status("yanked main selection to system clipboard".to_owned());
+}
+
+fn yank_main_selection_to_clipboard(cx: &mut Context) {
+    yank_main_selection_to_clipboard_impl(&mut cx.editor);
+}
+
 #[derive(Copy, Clone)]
 enum Paste {
     Before,
@@ -2469,6 +2560,31 @@ fn paste_impl(
     Some(transaction)
 }
 
+fn paste_clipboard_impl(editor: &mut Editor, action: Paste) {
+    let (view, doc) = current!(editor);
+
+    match editor
+        .clipboard_provider
+        .get_contents()
+        .map(|contents| paste_impl(&[contents], doc, view, action))
+    {
+        Ok(Some(transaction)) => {
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        }
+        Ok(None) => {}
+        Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+    }
+}
+
+fn paste_clipboard_after(cx: &mut Context) {
+    paste_clipboard_impl(&mut cx.editor, Paste::After);
+}
+
+fn paste_clipboard_before(cx: &mut Context) {
+    paste_clipboard_impl(&mut cx.editor, Paste::Before);
+}
+
 fn replace_with_yanked(cx: &mut Context) {
     let reg_name = cx.selected_register.name();
     let (view, doc) = current!(cx.editor);
@@ -2487,6 +2603,29 @@ fn replace_with_yanked(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     }
+}
+
+fn replace_selections_with_clipboard_impl(editor: &mut Editor) {
+    let (view, doc) = current!(editor);
+
+    match editor.clipboard_provider.get_contents() {
+        Ok(contents) => {
+            let transaction =
+                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let to = std::cmp::min(max_to, range.to() + 1);
+                    (range.from(), to, Some(contents.as_str().into()))
+                });
+
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        }
+        Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+    }
+}
+
+fn replace_selections_with_clipboard(cx: &mut Context) {
+    replace_selections_with_clipboard_impl(&mut cx.editor);
 }
 
 // alt-p => paste every yanked selection after selected text
@@ -2854,7 +2993,7 @@ fn hover(cx: &mut Context) {
 
                 // skip if contents empty
 
-                let contents = ui::Markdown::new(contents);
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let mut popup = Popup::new(contents);
                 compositor.push(Box::new(popup));
             }
@@ -3009,6 +3148,11 @@ fn space_mode(cx: &mut Context) {
                 'b' => buffer_picker(cx),
                 's' => symbol_picker(cx),
                 'w' => window_mode(cx),
+                'y' => yank_joined_to_clipboard(cx),
+                'Y' => yank_main_selection_to_clipboard(cx),
+                'p' => paste_clipboard_after(cx),
+                'P' => paste_clipboard_before(cx),
+                'R' => replace_selections_with_clipboard(cx),
                 // ' ' => toggle_alternate_buffer(cx),
                 // TODO: temporary since space mode took its old key
                 ' ' => keep_primary_selection(cx),
@@ -3091,4 +3235,30 @@ fn right_bracket_mode(cx: &mut Context) {
             }
         }
     })
+}
+
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Command(name, _) = self;
+        f.write_str(name)
+    }
+}
+
+impl std::str::FromStr for Command {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Command::COMMAND_LIST
+            .iter()
+            .copied()
+            .find(|cmd| cmd.0 == s)
+            .ok_or_else(|| anyhow!("No command named '{}'", s))
+    }
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Command(name, _) = self;
+        f.debug_tuple("Command").field(name).finish()
+    }
 }

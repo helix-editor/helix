@@ -203,16 +203,6 @@ impl Buffer {
     /// # Panics
     ///
     /// Panics when given an coordinate that is outside of this Buffer's area.
-    ///
-    /// ```should_panic
-    /// # use helix_tui::buffer::Buffer;
-    /// # use helix_tui::layout::Rect;
-    /// let rect = Rect::new(200, 100, 10, 10);
-    /// let buffer = Buffer::empty(rect);
-    /// // Top coordinate is outside of the buffer in global coordinate space, as the Buffer's area
-    /// // starts at (200, 100).
-    /// buffer.index_of(0, 0); // Panics
-    /// ```
     pub fn index_of(&self, x: u16, y: u16) -> usize {
         debug_assert!(
             x >= self.area.left()
@@ -245,15 +235,6 @@ impl Buffer {
     /// # Panics
     ///
     /// Panics when given an index that is outside the Buffer's content.
-    ///
-    /// ```should_panic
-    /// # use helix_tui::buffer::Buffer;
-    /// # use helix_tui::layout::Rect;
-    /// let rect = Rect::new(0, 0, 10, 10); // 100 cells in total
-    /// let buffer = Buffer::empty(rect);
-    /// // Index 100 is the 101th cell, which lies outside of the area of this Buffer.
-    /// buffer.pos_of(100); // Panics
-    /// ```
     pub fn pos_of(&self, i: usize) -> (u16, u16) {
         debug_assert!(
             i < self.content.len(),
@@ -510,6 +491,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "outside the buffer")]
+    #[cfg(debug_assertions)]
     fn pos_of_panics_on_out_of_bounds() {
         let rect = Rect::new(0, 0, 10, 10);
         let buf = Buffer::empty(rect);
@@ -520,6 +502,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "outside the buffer")]
+    #[cfg(debug_assertions)]
     fn index_of_panics_on_out_of_bounds() {
         let rect = Rect::new(0, 0, 10, 10);
         let buf = Buffer::empty(rect);

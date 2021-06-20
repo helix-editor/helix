@@ -238,6 +238,9 @@ impl Component for Completion {
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))
                 .unwrap_or("");
+            let cursor_pos = doc.selection(view.id).cursor();
+            let cursor_pos = (helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row
+                - view.first_line) as u16;
 
             let doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
@@ -246,42 +249,60 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: convert to wrapped text
-                    Markdown::new(format!(
-                        "```{}\n{}\n```\n{}",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                        contents.clone()
-                    ))
+                    Markdown::new(
+                        format!(
+                            "```{}\n{}\n```\n{}",
+                            language,
+                            option.detail.as_deref().unwrap_or_default(),
+                            contents.clone()
+                        ),
+                        cx.editor.syn_loader.clone(),
+                    )
                 }
                 Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
                     kind: lsp::MarkupKind::Markdown,
                     value: contents,
                 })) => {
                     // TODO: set language based on doc scope
-                    Markdown::new(format!(
-                        "```{}\n{}\n```\n{}",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                        contents.clone()
-                    ))
+                    Markdown::new(
+                        format!(
+                            "```{}\n{}\n```\n{}",
+                            language,
+                            option.detail.as_deref().unwrap_or_default(),
+                            contents.clone()
+                        ),
+                        cx.editor.syn_loader.clone(),
+                    )
                 }
                 None if option.detail.is_some() => {
                     // TODO: copied from above
 
                     // TODO: set language based on doc scope
-                    Markdown::new(format!(
-                        "```{}\n{}\n```",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                    ))
+                    Markdown::new(
+                        format!(
+                            "```{}\n{}\n```",
+                            language,
+                            option.detail.as_deref().unwrap_or_default(),
+                        ),
+                        cx.editor.syn_loader.clone(),
+                    )
                 }
                 None => return,
             };
 
             let half = area.height / 2;
             let height = 15.min(half);
-            // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-            let area = Rect::new(0, area.height - height - 2, area.width, height);
+            // we want to make sure the cursor is visible (not hidden behind the documentation)
+            let y = if cursor_pos + view.area.y
+                >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
+            {
+                0
+            } else {
+                // -2 to subtract command line + statusline. a bit of a hack, because of splits.
+                area.height.saturating_sub(height).saturating_sub(2)
+            };
+
+            let area = Rect::new(0, y, area.width, height);
 
             // clear area
             let background = cx.editor.theme.get("ui.popup");

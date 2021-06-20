@@ -7,25 +7,34 @@ use tui::{
     text::Text,
 };
 
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
-use helix_core::Position;
+use helix_core::{syntax, Position};
 use helix_view::{Editor, Theme};
 
 pub struct Markdown {
     contents: String,
+
+    config_loader: Arc<syntax::Loader>,
 }
 
 // TODO: pre-render and self reference via Pin
 // better yet, just use Tendril + subtendril for references
 
 impl Markdown {
-    pub fn new(contents: String) -> Self {
-        Self { contents }
+    pub fn new(contents: String, config_loader: Arc<syntax::Loader>) -> Self {
+        Self {
+            contents,
+            config_loader,
+        }
     }
 }
 
-fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
+fn parse<'a>(
+    contents: &'a str,
+    theme: Option<&Theme>,
+    loader: &syntax::Loader,
+) -> tui::text::Text<'a> {
     use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
     use tui::text::{Span, Spans, Text};
 
@@ -79,9 +88,7 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                         use helix_core::Rope;
 
                         let rope = Rope::from(text.as_ref());
-                        let syntax = syntax::LOADER
-                            .get()
-                            .unwrap()
+                        let syntax = loader
                             .language_config_for_scope(&format!("source.{}", language))
                             .and_then(|config| config.highlight_config(theme.scopes()))
                             .map(|config| Syntax::new(&rope, config));
@@ -101,9 +108,7 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                                     }
                                     HighlightEvent::Source { start, end } => {
                                         let style = match highlights.first() {
-                                            Some(span) => {
-                                                theme.get(theme.scopes()[span.0].as_str())
-                                            }
+                                            Some(span) => theme.get(&theme.scopes()[span.0]),
                                             None => text_style,
                                         };
 
@@ -159,7 +164,6 @@ fn parse<'a>(contents: &'a str, theme: Option<&Theme>) -> tui::text::Text<'a> {
                 }
             }
             Event::Code(text) | Event::Html(text) => {
-                log::warn!("code {:?}", text);
                 let mut span = to_span(text);
                 span.style = code_style;
                 spans.push(span);
@@ -198,7 +202,7 @@ impl Component for Markdown {
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
-        let text = parse(&self.contents, Some(&cx.editor.theme));
+        let text = parse(&self.contents, Some(&cx.editor.theme), &self.config_loader);
 
         let par = Paragraph::new(text)
             .wrap(Wrap { trim: false })
@@ -209,7 +213,7 @@ impl Component for Markdown {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let contents = parse(&self.contents, None);
+        let contents = parse(&self.contents, None, &self.config_loader);
         let padding = 2;
         let width = std::cmp::min(contents.width() as u16 + padding, viewport.0);
         let height = std::cmp::min(contents.height() as u16 + padding, viewport.1);

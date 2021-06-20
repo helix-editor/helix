@@ -1,7 +1,5 @@
 use anyhow::{anyhow, Context, Error};
-use serde::de::{self, Deserialize, Deserializer};
 use std::cell::Cell;
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
@@ -12,52 +10,20 @@ use helix_core::{
     auto_detect_line_ending,
     chars::{char_is_line_ending, char_is_whitespace},
     history::History,
-    syntax::{LanguageConfiguration, LOADER},
+    syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Rope, Selection, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
 
-use crate::{DocumentId, ViewId};
+use crate::{DocumentId, Theme, ViewId};
+
+use std::collections::HashMap;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
     Select,
     Insert,
-}
-
-impl Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Mode::Normal => f.write_str("normal"),
-            Mode::Select => f.write_str("select"),
-            Mode::Insert => f.write_str("insert"),
-        }
-    }
-}
-
-impl FromStr for Mode {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "normal" => Ok(Mode::Normal),
-            "select" => Ok(Mode::Select),
-            "insert" => Ok(Mode::Insert),
-            _ => Err(anyhow!("Invalid mode '{}'", s)),
-        }
-    }
-}
-
-// toml deserializer doesn't seem to recognize string as enum
-impl<'de> Deserialize<'de> for Mode {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(de::Error::custom)
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -127,6 +93,29 @@ impl fmt::Debug for Document {
     }
 }
 
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Mode::Normal => f.write_str("normal"),
+            Mode::Select => f.write_str("select"),
+            Mode::Insert => f.write_str("insert"),
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "normal" => Ok(Mode::Normal),
+            "select" => Ok(Mode::Select),
+            "insert" => Ok(Mode::Insert),
+            _ => Err(anyhow!("Invalid mode '{}'", s)),
+        }
+    }
+}
+
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
 /// original value.
 fn take_with<T, F>(mut_ref: &mut T, closure: F)
@@ -181,7 +170,7 @@ pub fn fold_home_dir(path: &Path) -> PathBuf {
 /// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
 /// fail, or on Windows returns annoying device paths. This is a problem Cargo
 /// needs to improve on.
-/// Copied from cargo: https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81
+/// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
 pub fn normalize_path(path: &Path) -> PathBuf {
     let path = expand_tilde(path);
     let mut components = path.components().peekable();
@@ -253,7 +242,11 @@ impl Document {
     }
 
     // TODO: async fn?
-    pub fn load(path: PathBuf) -> Result<Self, Error> {
+    pub fn load(
+        path: PathBuf,
+        theme: Option<&Theme>,
+        config_loader: Option<&syntax::Loader>,
+    ) -> Result<Self, Error> {
         use std::{fs::File, io::BufReader};
 
         let mut doc = if !path.exists() {
@@ -276,6 +269,10 @@ impl Document {
         doc.set_path(&path)?;
         doc.detect_indent_style();
         doc.set_line_ending(line_ending);
+
+        if let Some(loader) = config_loader {
+            doc.detect_language(theme, loader);
+        }
 
         Ok(doc)
     }
@@ -351,12 +348,10 @@ impl Document {
         }
     }
 
-    fn detect_language(&mut self) {
-        if let Some(path) = self.path() {
-            let loader = LOADER.get().unwrap();
-            let language_config = loader.language_config_for_file_name(path);
-            let scopes = loader.scopes();
-            self.set_language(language_config, scopes);
+    pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
+        if let Some(path) = &self.path {
+            let language_config = config_loader.language_config_for_file_name(path);
+            self.set_language(theme, language_config);
         }
     }
 
@@ -493,18 +488,16 @@ impl Document {
         // and error out when document is saved
         self.path = Some(path);
 
-        // try detecting the language based on filepath
-        self.detect_language();
-
         Ok(())
     }
 
     pub fn set_language(
         &mut self,
+        theme: Option<&Theme>,
         language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
-        scopes: &[String],
     ) {
         if let Some(language_config) = language_config {
+            let scopes = theme.map(|theme| theme.scopes()).unwrap_or(&[]);
             if let Some(highlight_config) = language_config.highlight_config(scopes) {
                 let syntax = Syntax::new(&self.text, highlight_config);
                 self.syntax = Some(syntax);
@@ -518,12 +511,15 @@ impl Document {
         };
     }
 
-    pub fn set_language2(&mut self, scope: &str) {
-        let loader = LOADER.get().unwrap();
-        let language_config = loader.language_config_for_scope(scope);
-        let scopes = loader.scopes();
+    pub fn set_language2(
+        &mut self,
+        scope: &str,
+        theme: Option<&Theme>,
+        config_loader: Arc<syntax::Loader>,
+    ) {
+        let language_config = config_loader.language_config_for_scope(scope);
 
-        self.set_language(language_config, scopes);
+        self.set_language(theme, language_config);
     }
 
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
