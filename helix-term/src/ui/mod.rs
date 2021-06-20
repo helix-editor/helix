@@ -5,6 +5,7 @@ mod menu;
 mod picker;
 mod popup;
 mod prompt;
+mod spinner;
 mod text;
 
 pub use completion::Completion;
@@ -14,6 +15,7 @@ pub use menu::Menu;
 pub use picker::Picker;
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
+pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 pub use tui::layout::Rect;
