@@ -434,6 +434,10 @@ impl Tree {
             self.focus = key;
         }
     }
+
+    pub fn area(&self) -> Rect {
+        self.area
+    }
 }
 
 #[derive(Debug)]
