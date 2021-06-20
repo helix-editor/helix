@@ -4,7 +4,8 @@ To override global configuration parameters create a `config.toml` file located 
 
 ## LSP
 
-To disable language server progress report from being displayed in the status bar add this option to your `config.toml`:
+To display all language server messages in the status line add the following to your `config.toml`:
 ```toml
-lsp-progress = false
+[lsp]
+display-messages = true
 ```
