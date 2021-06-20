@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest a new feature or improvement
 title: ''
-labels: C-enchancement
+labels: C-enhancement
 assignees: ''
 ---
 
