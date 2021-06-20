@@ -275,9 +275,17 @@ impl EditorView {
                 let end = text.line_to_char(last_line + 1);
                 Range::new(start, end)
             };
-            let cursor_style = Style::default()
-                // .bg(Color::Rgb(255, 255, 255))
-                .add_modifier(Modifier::REVERSED);
+            let scope = match doc.mode() {
+                Mode::Insert => "ui.cursor.insert",
+                Mode::Select => "ui.cursor.select",
+                Mode::Normal => "ui.cursor",
+            };
+            let cursor_style = theme.try_get(scope).unwrap_or_else(|| {
+                theme
+                    //if cursor.insert or cursor.select was not present try to default to cursor
+                    .try_get("ui.cursor")
+                    .unwrap_or_else(|| Style::default().add_modifier(Modifier::REVERSED))
+            });
 
             let selection_style = theme.get("ui.selection");
 
@@ -382,9 +390,12 @@ impl EditorView {
                                 if (pos.col as u16) < viewport.width + view.first_col as u16
                                     && pos.col >= view.first_col
                                 {
-                                    let style = Style::default()
-                                        .add_modifier(Modifier::REVERSED)
-                                        .add_modifier(Modifier::DIM);
+                                    let style =
+                                        theme.try_get("ui.cursor.match").unwrap_or_else(|| {
+                                            Style::default()
+                                                .add_modifier(Modifier::REVERSED)
+                                                .add_modifier(Modifier::DIM)
+                                        });
 
                                     surface
                                         .get_mut(
