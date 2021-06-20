@@ -288,15 +288,26 @@ impl EditorView {
             });
 
             let selection_style = theme.get("ui.selection");
+            let primary_style = theme
+                .try_get("ui.selection.primary")
+                .unwrap_or(selection_style);
+            let selection = doc.selection(view.id);
+            let primary_idx = selection.primary_index();
 
-            for selection in doc
-                .selection(view.id)
+            for (i, selection) in selection
                 .iter()
-                .filter(|range| range.overlaps(&screen))
+                .enumerate()
+                .filter(|(_, range)| range.overlaps(&screen))
             {
                 // TODO: render also if only one of the ranges is in viewport
                 let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
                 let mut end = view.screen_coords_at_pos(doc, text, selection.head);
+
+                let style = if i != primary_idx {
+                    selection_style
+                } else {
+                    primary_style
+                };
 
                 let head = end;
 
@@ -325,7 +336,7 @@ impl EditorView {
                             ),
                             1,
                         ),
-                        selection_style,
+                        style,
                     );
                 } else {
                     surface.set_style(
@@ -336,7 +347,7 @@ impl EditorView {
                             viewport.width.saturating_sub(start.col as u16),
                             1,
                         ),
-                        selection_style,
+                        style,
                     );
                     for i in start.row + 1..end.row {
                         surface.set_style(
@@ -347,7 +358,7 @@ impl EditorView {
                                 viewport.width,
                                 1,
                             ),
-                            selection_style,
+                            style,
                         );
                     }
                     surface.set_style(
@@ -357,7 +368,7 @@ impl EditorView {
                             (end.col as u16).min(viewport.width),
                             1,
                         ),
-                        selection_style,
+                        style,
                     );
                 }
 

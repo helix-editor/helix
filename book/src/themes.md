@@ -89,6 +89,7 @@ Possible keys:
 | `ui.text.focus`          |                                     |
 | `ui.menu.selected`       |                                     |
 | `ui.selection`           | For selections in the editing area  |
+| `ui.selection.primary`   |                                     |
 | `warning`                | LSP warning                         |
 | `error`                  | LSP error                           |
 | `info`                   | LSP info                            |
