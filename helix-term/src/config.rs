@@ -28,6 +28,7 @@ pub struct Config {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 struct TomlConfig {
+    theme: Option<String>,
     lsp_progress: Option<bool>,
     keys: Option<HashMap<String, HashMap<String, String>>>,
 }
@@ -41,7 +42,7 @@ impl<'de> Deserialize<'de> for Config {
         Ok(Self {
             global: GlobalConfig {
                 lsp_progress: config.lsp_progress.unwrap_or(true),
-                theme: None,
+                theme: config.theme,
             },
             keymaps: config
                 .keys
