@@ -1,6 +1,6 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, get_line_ending, graphemes,
-    indent, match_brackets,
+    indent, line_end, match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -342,11 +342,7 @@ fn move_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        let pos = text.line_to_char(line + 1).saturating_sub(
-            get_line_ending(&text.line(line))
-                .map(|le| le.len_chars())
-                .unwrap_or(0),
-        );
+        let pos = line_end(&text.slice(..), line);
 
         Range::new(pos, pos)
     });
@@ -767,11 +763,7 @@ fn extend_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        let pos = text.line_to_char(line + 1).saturating_sub(
-            get_line_ending(&text.line(line))
-                .map(|le| le.len_chars())
-                .unwrap_or(0),
-        );
+        let pos = line_end(&text.slice(..), line);
 
         Range::new(range.anchor, pos)
     });
@@ -1650,12 +1642,7 @@ fn append_to_line(cx: &mut Context) {
     let selection = doc.selection(view.id).transform(|range| {
         let text = doc.text();
         let line = text.char_to_line(range.head);
-        // we can't use line_to_char(line + 1) - 2 because the last line might not contain a newline
-        let pos = (text.line_to_char(line) + text.line(line).len_chars()).saturating_sub(
-            get_line_ending(&text.line(line))
-                .map(|le| le.len_chars())
-                .unwrap_or(0),
-        );
+        let pos = line_end(&text.slice(..), line);
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);

@@ -111,6 +111,12 @@ pub fn get_line_ending(line: &RopeSlice) -> Option<LineEnding> {
     str_to_line_ending(g2).or_else(|| str_to_line_ending(g1))
 }
 
+pub fn line_end(slice: &RopeSlice, line: usize) -> usize {
+    slice.line_to_char(line + 1).saturating_sub(get_line_ending(&slice.line(line))
+        .map(|le| le.len_chars())
+        .unwrap_or(0))
+}
+
 #[cfg(target_os = "windows")]
 pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
 #[cfg(not(target_os = "windows"))]
