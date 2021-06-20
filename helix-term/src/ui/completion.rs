@@ -238,6 +238,9 @@ impl Component for Completion {
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))
                 .unwrap_or("");
+            let cursor_pos = doc.selection(view.id).cursor();
+            let cursor_pos =
+                helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row - view.first_line;
 
             let doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
@@ -289,8 +292,14 @@ impl Component for Completion {
 
             let half = area.height / 2;
             let height = 15.min(half);
-            // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-            let area = Rect::new(0, area.height - height - 2, area.width, height);
+            let y = if cursor_pos > half as usize {
+                0
+            } else {
+                // -2 to subtract command line + statusline. a bit of a hack, because of splits.
+                area.height.saturating_sub(height).saturating_sub(2)
+            };
+
+            let area = Rect::new(0, y, area.width, height);
 
             // clear area
             let background = cx.editor.theme.get("ui.popup");
