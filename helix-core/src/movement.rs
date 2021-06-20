@@ -3,9 +3,9 @@ use std::iter::{self, from_fn, Peekable, SkipWhile};
 use ropey::iter::Chars;
 
 use crate::{
-    coords_at_pos,
+    coords_at_pos, get_line_ending,
     graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary},
-    pos_at_coords, Position, Range, RopeSlice, get_line_ending, line_end
+    line_end, pos_at_coords, Position, Range, RopeSlice,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

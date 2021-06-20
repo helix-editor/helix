@@ -5,11 +5,11 @@ use crate::{Rope, RopeGraphemes, RopeSlice};
 pub enum LineEnding {
     Crlf, // CarriageReturn followed by LineFeed
     LF,   // U+000A -- LineFeed
+    VT,   // U+000B -- VerticalTab
+    FF,   // U+000C -- FormFeed
     CR,   // U+000D -- CarriageReturn
     Nel,  // U+0085 -- NextLine
     LS,   // U+2028 -- Line Separator
-    VT,   // U+000B -- VerticalTab
-    FF,   // U+000C -- FormFeed
     PS,   // U+2029 -- ParagraphSeparator
 }
 
@@ -21,74 +21,58 @@ impl LineEnding {
         }
     }
 
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Self::Crlf => "\u{000D}\u{000A}",
             Self::LF => "\u{000A}",
-            Self::Nel => "\u{0085}",
-            Self::LS => "\u{2028}",
-            Self::CR => "\u{000D}",
             Self::VT => "\u{000B}",
             Self::FF => "\u{000C}",
+            Self::CR => "\u{000D}",
+            Self::Nel => "\u{0085}",
+            Self::LS => "\u{2028}",
             Self::PS => "\u{2029}",
         }
     }
-}
 
-pub fn rope_slice_to_line_ending(g: &RopeSlice) -> Option<LineEnding> {
-    if let Some(text) = g.as_str() {
-        str_to_line_ending(text)
-    }
-    else {
-        // Not a line ending
-        None
-    }
-}
-
-pub fn str_to_line_ending(g: &str) -> Option<LineEnding> {
-    match g {
-        "\u{000D}\u{000A}" => Some(LineEnding::Crlf),
-        "\u{000A}" => Some(LineEnding::LF),
-        "\u{000D}" => Some(LineEnding::CR),
-        "\u{0085}" => Some(LineEnding::Nel),
-        "\u{2028}" => Some(LineEnding::LS),
-        "\u{000B}" => Some(LineEnding::VT),
-        "\u{000C}" => Some(LineEnding::FF),
-        "\u{2029}" => Some(LineEnding::PS),
-        // Not a line ending
-        _ => None,
-    }
-}
-
-pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
-    // based on https://github.com/cessen/led/blob/27572c8838a1c664ee378a19358604063881cc1d/src/editor/mod.rs#L88-L162
-
-    let mut ending = None;
-    // return first matched line ending. Not all possible line endings are being matched, as they might be special-use only
-    for line in doc.lines().take(100) {
-        ending = match line.len_chars() {
-            1 => {
-                let g = RopeGraphemes::new(line.slice((line.len_chars() - 1)..))
-                    .last()
-                    .unwrap();
-                rope_slice_to_line_ending(&g)
-            }
-            n if n > 1 => {
-                let g = RopeGraphemes::new(line.slice((line.len_chars() - 2)..))
-                    .last()
-                    .unwrap();
-                rope_slice_to_line_ending(&g)
-            }
+    pub fn from_str(g: &str) -> Option<LineEnding> {
+        match g {
+            "\u{000D}\u{000A}" => Some(LineEnding::Crlf),
+            "\u{000A}" => Some(LineEnding::LF),
+            "\u{000B}" => Some(LineEnding::VT),
+            "\u{000C}" => Some(LineEnding::FF),
+            "\u{000D}" => Some(LineEnding::CR),
+            "\u{0085}" => Some(LineEnding::Nel),
+            "\u{2028}" => Some(LineEnding::LS),
+            "\u{2029}" => Some(LineEnding::PS),
+            // Not a line ending
             _ => None,
-        };
-        if ending.is_some() {
-            match ending {
-                Some(LineEnding::VT) | Some(LineEnding::FF) | Some(LineEnding::PS) => {}
-                _ => return ending,
-            }
         }
     }
-    ending
+
+    pub fn from_rope_slice(g: &RopeSlice) -> Option<LineEnding> {
+        if let Some(text) = g.as_str() {
+            LineEnding::from_str(text)
+        } else {
+            // Non-contiguous, so it can't be a line ending.
+            // Specifically, Ropey guarantees that CRLF is always
+            // contiguous.  And the remaining line endings are all
+            // single `char`s, and therefore trivially contiguous.
+            None
+        }
+    }
+}
+
+/// Attempts to detect what line ending the passed document uses.
+pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
+    // Return first matched line ending. Not all possible line endings
+    // are being matched, as they might be special-use only
+    for line in doc.lines().take(100) {
+        match get_line_ending(&line) {
+            None | Some(LineEnding::VT) | Some(LineEnding::FF) | Some(LineEnding::PS) => {}
+            ending => return ending,
+        }
+    }
+    None
 }
 
 /// Returns the passed line's line ending, if any.
@@ -108,13 +92,16 @@ pub fn get_line_ending(line: &RopeSlice) -> Option<LineEnding> {
         .unwrap_or("");
 
     // First check the two-character case for CRLF, then check the single-character case.
-    str_to_line_ending(g2).or_else(|| str_to_line_ending(g1))
+    LineEnding::from_str(g2).or_else(|| LineEnding::from_str(g1))
 }
 
+/// Returns the char index of the end of the given line, not including its line ending.
 pub fn line_end(slice: &RopeSlice, line: usize) -> usize {
-    slice.line_to_char(line + 1).saturating_sub(get_line_ending(&slice.line(line))
-        .map(|le| le.len_chars())
-        .unwrap_or(0))
+    slice.line_to_char(line + 1).saturating_sub(
+        get_line_ending(&slice.line(line))
+            .map(|le| le.len_chars())
+            .unwrap_or(0),
+    )
 }
 
 #[cfg(target_os = "windows")]
