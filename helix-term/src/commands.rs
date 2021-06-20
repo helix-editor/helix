@@ -185,7 +185,6 @@ impl Command {
         search_next,
         extend_search_next,
         search_selection,
-        select_line,
         extend_line,
         delete_selection,
         change_selection,
