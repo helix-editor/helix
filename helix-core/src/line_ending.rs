@@ -56,6 +56,10 @@ impl LineEnding {
         }
     }
 
+    // Normally we'd want to implement the FromStr trait, but in this case
+    // that would force us into a different return type than from_char or
+    // or from_rope_slice, which would be weird.
+    #[allow(clippy::should_implement_trait)]
     #[inline]
     pub fn from_str(g: &str) -> Option<LineEnding> {
         match g {
