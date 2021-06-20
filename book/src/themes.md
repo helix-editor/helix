@@ -4,7 +4,7 @@ First you'll need to place selected themes in your `themes` directory (i.e `~/.c
 
 To use a custom theme add `theme = <name>` to your [`config.toml`](./configuration.md) or override it during runtime using `:theme <name>`.
 
-The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/contrib/themes). 
+The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/runtime/themes). 
 
 ## Creating a theme
 
