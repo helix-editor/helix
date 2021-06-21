@@ -82,7 +82,14 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         Ok(entry) => {
             // filter dirs, but we might need special handling for symlinks!
             if !entry.file_type().map_or(false, |entry| entry.is_dir()) {
-                Some(entry.into_path())
+                let mut atime = None;
+                if let Ok(metadata) = entry.metadata() {
+                    if let Ok(atime_) = metadata.accessed() {
+                        atime = Some(atime_)
+                    }
+                }
+
+                Some((entry.into_path(), atime))
             } else {
                 None
             }
@@ -90,12 +97,24 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         Err(_err) => None,
     });
 
-    let files = if root.join(".git").is_dir() {
+    let mut files: Vec<_> = if root.join(".git").is_dir() {
         files.collect()
     } else {
         const MAX: usize = 8192;
         files.take(MAX).collect()
     };
+
+    files.sort_by(|(_, atime1), (_, atime2)| {
+        if let Some(atime1) = atime1 {
+            if let Some(atime2) = atime2 {
+                return atime2.cmp(atime1);
+            }
+        }
+
+        std::cmp::Ordering::Equal
+    });
+
+    let files = files.into_iter().map(|(path, _)| path).collect();
 
     Picker::new(
         files,
