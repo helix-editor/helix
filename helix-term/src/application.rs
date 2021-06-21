@@ -328,6 +328,9 @@ impl Application {
                                         editor_view.spinners_mut().get_or_create(server_id).stop();
                                     }
                                     self.editor.clear_status();
+
+                                    // we want to render to clear any leftover spinners or messages
+                                    self.render();
                                     return;
                                 }
                             }
