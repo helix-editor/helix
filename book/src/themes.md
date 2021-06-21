@@ -79,6 +79,7 @@ Possible keys:
 | `ui.cursor.insert`       |                                     |
 | `ui.cursor.select`       |                                     |
 | `ui.cursor.match`        | Matching bracket etc.               |
+| `ui.cursor.primary`      | Cursor with primary selection       |
 | `ui.linenr`              |                                     |
 | `ui.statusline`          |                                     |
 | `ui.statusline.inactive` |                                     |
