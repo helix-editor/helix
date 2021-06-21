@@ -1,7 +1,15 @@
 use crate::{search, Selection};
 use ropey::RopeSlice;
 
-pub const PAIRS: &[(char, char)] = &[('(', ')'), ('[', ']'), ('{', '}'), ('<', '>')];
+pub const PAIRS: &[(char, char)] = &[
+    ('(', ')'),
+    ('[', ']'),
+    ('{', '}'),
+    ('<', '>'),
+    ('«', '»'),
+    ('「', '」'),
+    ('（', '）'),
+];
 
 /// Given any char in [PAIRS], return the open and closing chars. If not found in
 /// [PAIRS] return (ch, ch).
