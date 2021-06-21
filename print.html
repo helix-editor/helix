@@ -181,8 +181,9 @@ it with:</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>To override global configuration parameters create a <code>config.toml</code> file located in your config directory (i.e <code>~/.config/helix/config.toml</code>).</p>
 <h2 id="lsp"><a class="header" href="#lsp">LSP</a></h2>
-<p>To disable language server progress report from being displayed in the status bar add this option to your <code>config.toml</code>:</p>
-<pre><code class="language-toml">lsp-progress = false
+<p>To display all language server messages in the status line add the following to your <code>config.toml</code>:</p>
+<pre><code class="language-toml">[lsp]
+display-messages = true
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
 <p>First you'll need to place selected themes in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>), the directory might have to be created beforehand.</p>
