@@ -1009,7 +1009,7 @@ fn append_mode(cx: &mut Context) {
     if selection.iter().any(|range| range.head == end) {
         let transaction = Transaction::change(
             doc.text(),
-            std::array::IntoIter::new([(end, end, Some(doc.line_ending().as_str().into()))]),
+            std::array::IntoIter::new([(end, end, Some(doc.line_ending.as_str().into()))]),
         );
         doc.apply(&transaction, view.id);
     }
@@ -2349,7 +2349,7 @@ pub mod insert {
             );
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
-            text.push_str(doc.line_ending().as_str());
+            text.push_str(doc.line_ending.as_str());
             text.push_str(&indent);
 
             let head = pos + offs + text.chars().count();
@@ -2370,7 +2370,7 @@ pub mod insert {
             if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
                 // another newline, indent the end bracket one level less
                 let indent = doc.indent_unit().repeat(indent_level.saturating_sub(1));
-                text.push_str(doc.line_ending().as_str());
+                text.push_str(doc.line_ending.as_str());
                 text.push_str(&indent);
             }
 
@@ -2537,7 +2537,7 @@ fn paste_impl(
     // if any of values ends \n it's linewise paste
     let linewise = values
         .iter()
-        .any(|value| value.ends_with(doc.line_ending().as_str()));
+        .any(|value| value.ends_with(doc.line_ending.as_str()));
 
     let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 

@@ -268,7 +268,7 @@ impl Document {
         // set the path and try detecting the language
         doc.set_path(&path)?;
         doc.detect_indent_style();
-        doc.set_line_ending(line_ending);
+        doc.line_ending = line_ending;
 
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
@@ -529,10 +529,6 @@ impl Document {
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
         // TODO: use a transaction?
         self.selections.insert(view_id, selection);
-    }
-
-    pub fn set_line_ending(&mut self, line_ending: LineEnding) {
-        self.line_ending = line_ending;
     }
 
     fn _apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
@@ -804,10 +800,6 @@ impl Document {
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
-    }
-
-    pub fn line_ending(&self) -> LineEnding {
-        self.line_ending
     }
 }
 
