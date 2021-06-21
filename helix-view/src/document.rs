@@ -7,9 +7,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use helix_core::{
-    auto_detect_line_ending,
     chars::{char_is_line_ending, char_is_whitespace},
     history::History,
+    line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Rope, Selection, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,

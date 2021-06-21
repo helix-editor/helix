@@ -7,9 +7,10 @@ use crate::{
         categorize_char, char_is_line_ending, char_is_punctuation, char_is_whitespace,
         char_is_word, CharCategory,
     },
-    coords_at_pos, get_line_ending,
+    coords_at_pos,
     graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary},
-    line_end_char_index, pos_at_coords, Position, Range, RopeSlice,
+    line_ending::{get_line_ending, line_end_char_index},
+    pos_at_coords, Position, Range, RopeSlice,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

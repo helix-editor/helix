@@ -1,6 +1,7 @@
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, get_line_ending, graphemes,
-    indent, line_end_char_index, match_brackets,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    line_ending::{get_line_ending, get_line_ending_of_str, line_end_char_index},
+    match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -2534,10 +2535,10 @@ fn paste_impl(
             .unwrap(),
     );
 
-    // if any of values ends \n it's linewise paste
+    // if any of values ends with a line ending, it's linewise paste
     let linewise = values
         .iter()
-        .any(|value| value.ends_with(doc.line_ending.as_str()));
+        .any(|value| get_line_ending_of_str(value).is_some());
 
     let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 
