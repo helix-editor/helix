@@ -44,12 +44,13 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
+    config: Config,
+
     theme_loader: Arc<theme::Loader>,
     syn_loader: Arc<syntax::Loader>,
-    callbacks: LspCallbacks,
 
+    callbacks: LspCallbacks,
     lsp_progress: LspProgressMap,
-    lsp_display_messages: bool,
 }
 
 impl Application {
@@ -86,7 +87,7 @@ impl Application {
 
         let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
 
-        let mut editor_view = Box::new(ui::EditorView::new(config.keymaps));
+        let mut editor_view = Box::new(ui::EditorView::new(config.keymaps.clone()));
         compositor.push(editor_view);
 
         if !args.files.is_empty() {
@@ -115,11 +116,13 @@ impl Application {
             compositor,
             editor,
 
+            config,
+
             theme_loader,
             syn_loader,
+
             callbacks: FuturesUnordered::new(),
             lsp_progress: LspProgressMap::new(),
-            lsp_display_messages: config.lsp.display_messages,
         };
 
         Ok(app)
@@ -205,6 +208,15 @@ impl Application {
         server_id: usize,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
+        let editor_view = self
+            .compositor
+            .find(std::any::type_name::<ui::EditorView>())
+            .expect("expected at least one EditorView");
+        let editor_view = editor_view
+            .as_any_mut()
+            .downcast_mut::<ui::EditorView>()
+            .unwrap();
+
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
@@ -313,15 +325,7 @@ impl Application {
                                 } else {
                                     self.lsp_progress.end_progress(server_id, &token);
                                     if !self.lsp_progress.is_progressing(server_id) {
-                                        let ui = self
-                                            .compositor
-                                            .find(std::any::type_name::<ui::EditorView>())
-                                            .unwrap();
-                                        if let Some(ui) =
-                                            ui.as_any_mut().downcast_mut::<ui::EditorView>()
-                                        {
-                                            ui.spinners_mut().get_or_create(server_id).stop();
-                                        };
+                                        editor_view.spinners_mut().get_or_create(server_id).stop();
                                     }
                                     self.editor.clear_status();
                                     return;
@@ -362,19 +366,13 @@ impl Application {
                         if let lsp::WorkDoneProgress::End(_) = work {
                             self.lsp_progress.end_progress(server_id, &token);
                             if !self.lsp_progress.is_progressing(server_id) {
-                                let ui = self
-                                    .compositor
-                                    .find(std::any::type_name::<ui::EditorView>())
-                                    .unwrap();
-                                if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                                    ui.spinners_mut().get_or_create(server_id).stop();
-                                };
+                                editor_view.spinners_mut().get_or_create(server_id).stop();
                             }
                         } else {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.lsp_display_messages {
+                        if self.config.lsp.display_messages {
                             self.editor.set_status(status);
                         }
                         self.render();
@@ -400,16 +398,10 @@ impl Application {
                     MethodCall::WorkDoneProgressCreate(params) => {
                         self.lsp_progress.create(server_id, params.token);
 
-                        let ui = self
-                            .compositor
-                            .find(std::any::type_name::<ui::EditorView>())
-                            .unwrap();
-                        if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                            let spinner = ui.spinners_mut().get_or_create(server_id);
-                            if spinner.is_stopped() {
-                                spinner.start();
-                            }
-                        };
+                        let spinner = editor_view.spinners_mut().get_or_create(server_id);
+                        if spinner.is_stopped() {
+                            spinner.start();
+                        }
 
                         let doc = self.editor.documents().find(|doc| {
                             doc.language_server()
