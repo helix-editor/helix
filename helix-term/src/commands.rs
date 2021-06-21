@@ -791,7 +791,8 @@ fn split_selection_on_newline(cx: &mut Context) {
     let text = doc.text().slice(..);
     // only compile the regex once
     #[allow(clippy::trivial_regex)]
-    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\n").unwrap());
+    static REGEX: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\r\n|[\n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}]").unwrap());
     let selection = selection::split_on_matches(text, doc.selection(view.id), &REGEX);
     doc.set_selection(view.id, selection);
 }
