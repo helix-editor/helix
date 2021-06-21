@@ -1160,6 +1160,45 @@ mod cmd {
         }
     }
 
+    /// Sets or reports the current document's line ending setting.
+    fn set_line_ending(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        use LineEnding::*;
+
+        // If no argument, report current line ending setting.
+        if args.is_empty() {
+            let line_ending = current!(editor).1.line_ending;
+            editor.set_status(match line_ending {
+                Crlf => "crlf".into(),
+                LF => "line feed".into(),
+                FF => "form feed".into(),
+                CR => "carriage return".into(),
+                Nel => "next line".into(),
+
+                // These should never be a document's default line ending.
+                VT | LS | PS => "error".into(),
+            });
+            return;
+        }
+
+        // Attempt to parse argument as a line ending.
+        let line_ending = match args.get(0) {
+            // We check for CR first because it shares a common prefix with CRLF.
+            Some(arg) if "cr".starts_with(&arg.to_lowercase()) => Some(CR),
+            Some(arg) if "crlf".starts_with(&arg.to_lowercase()) => Some(Crlf),
+            Some(arg) if "lf".starts_with(&arg.to_lowercase()) => Some(LF),
+            Some(arg) if "ff".starts_with(&arg.to_lowercase()) => Some(FF),
+            Some(arg) if "nel".starts_with(&arg.to_lowercase()) => Some(Nel),
+            _ => None,
+        };
+
+        if let Some(le) = line_ending {
+            doc_mut!(editor).line_ending = le;
+        } else {
+            // Invalid argument.
+            editor.set_error(format!("invalid line ending '{}'", args[0],));
+        }
+    }
+
     fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
@@ -1390,6 +1429,13 @@ mod cmd {
             alias: None,
             doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
             fun: set_indent_style,
+            completer: None,
+        },
+        TypableCommand {
+            name: "line-ending",
+            alias: None,
+            doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
+            fun: set_line_ending,
             completer: None,
         },
         TypableCommand {
