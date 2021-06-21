@@ -1,13 +1,15 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
-    line_ending::{get_line_ending, get_line_ending_of_str, line_end_char_index},
+    line_ending::{
+        get_line_ending, get_line_ending_of_str, line_end_char_index, str_is_line_ending,
+    },
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     register::{self, Register, Registers},
-    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeSlice, Selection,
-    SmallVec, Tendril, Transaction, DEFAULT_LINE_ENDING,
+    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeGraphemes,
+    RopeSlice, Selection, SmallVec, Tendril, Transaction, DEFAULT_LINE_ENDING,
 };
 
 use helix_view::{
@@ -577,32 +579,37 @@ fn extend_first_nonwhitespace(cx: &mut Context) {
 }
 
 fn replace(cx: &mut Context) {
+    let mut buf = [0u8; 4]; // To hold utf8 encoded char.
+
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
+        let (view, doc) = current!(cx.editor);
         let ch = match event {
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
-            } => Some(ch),
+            } => Some(&ch.encode_utf8(&mut buf[..])[..]),
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => Some('\n'), // TODO: use the document's default line ending.
+            } => Some(doc.line_ending.as_str()),
             _ => None,
         };
 
         if let Some(ch) = ch {
-            let (view, doc) = current!(cx.editor);
-
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                     let max_to = doc.text().len_chars().saturating_sub(1);
                     let to = std::cmp::min(max_to, range.to() + 1);
-                    let text: String = doc
-                        .text()
-                        .slice(range.from()..to)
-                        .chars()
-                        .map(|c| if c == '\n' { '\n' } else { ch })
+                    let text: String = RopeGraphemes::new(doc.text().slice(range.from()..to))
+                        .map(|g| {
+                            let cow: Cow<str> = g.into();
+                            if str_is_line_ending(&cow) {
+                                cow
+                            } else {
+                                ch.into()
+                            }
+                        })
                         .collect();
 
                     (range.from(), to, Some(text.into()))
