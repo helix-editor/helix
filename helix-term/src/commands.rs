@@ -1309,6 +1309,32 @@ mod cmd {
         editor.set_status(editor.clipboard_provider.name().into());
     }
 
+    fn change_current_directory(editor: &mut Editor, args: &[&str], _: PromptEvent) {
+        let dir = match args.first() {
+            Some(dir) => dir,
+            None => {
+                editor.set_error("target directory not provided".into());
+                return;
+            }
+        };
+
+        if let Err(e) = std::env::set_current_dir(dir) {
+            editor.set_error(format!(
+                "Couldn't change the current working directory: {:?}",
+                e
+            ));
+            return;
+        }
+
+        match std::env::current_dir() {
+            Ok(cwd) => editor.set_status(format!(
+                "Current working directory is now {}",
+                cwd.display()
+            )),
+            Err(e) => editor.set_error(format!("Couldn't get the new working directory: {}", e)),
+        }
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1470,6 +1496,13 @@ mod cmd {
             doc: "Show clipboard provider name in status bar.",
             fun: show_clipboard_provider,
             completer: None,
+        },
+        TypableCommand {
+            name: "change-current-directory",
+            alias: Some("cd"),
+            doc: "Change the current working directory (:cd <dir>).",
+            fun: change_current_directory,
+            completer: Some(completers::directory),
         },
     ];
 
