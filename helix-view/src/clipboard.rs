@@ -36,7 +36,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     } else if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
         command_provider! {
             paste => "wl-paste", "--no-newline";
-            copy => "wl-copy", "--foreground", "--type", "text/plain";
+            copy => "wl-copy", "--type", "text/plain";
         }
     } else if env_var_is_set("DISPLAY") && exists("xclip") {
         command_provider! {
