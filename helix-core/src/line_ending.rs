@@ -164,7 +164,7 @@ mod line_ending_tests {
     use super::*;
 
     #[test]
-    fn test_autodetect() {
+    fn line_ending_autodetect() {
         assert_eq!(
             auto_detect_line_ending(&Rope::from_str("\n")),
             Some(LineEnding::LF)
@@ -197,15 +197,56 @@ mod line_ending_tests {
     }
 
     #[test]
-    fn test_rope_slice_to_line_ending() {
-        let r = Rope::from_str("\r\n");
+    fn str_to_line_ending() {
+        assert_eq!(LineEnding::from_str("\r"), Some(LineEnding::CR));
+        assert_eq!(LineEnding::from_str("\n"), Some(LineEnding::LF));
+        assert_eq!(LineEnding::from_str("\r\n"), Some(LineEnding::Crlf));
+        assert_eq!(LineEnding::from_str("hello\n"), None);
+    }
+
+    #[test]
+    fn rope_slice_to_line_ending() {
+        let r = Rope::from_str("hello\r\n");
         assert_eq!(
-            LineEnding::from_rope_slice(&r.slice(1..2)),
+            LineEnding::from_rope_slice(&r.slice(5..6)),
+            Some(LineEnding::CR)
+        );
+        assert_eq!(
+            LineEnding::from_rope_slice(&r.slice(6..7)),
             Some(LineEnding::LF)
         );
         assert_eq!(
-            LineEnding::from_rope_slice(&r.slice(0..2)),
+            LineEnding::from_rope_slice(&r.slice(5..7)),
             Some(LineEnding::Crlf)
         );
+        assert_eq!(LineEnding::from_rope_slice(&r.slice(..)), None);
+    }
+
+    #[test]
+    fn get_line_ending_rope_slice() {
+        let r = Rope::from_str("Hello\rworld\nhow\r\nare you?");
+        assert_eq!(get_line_ending(&r.slice(..6)), Some(LineEnding::CR));
+        assert_eq!(get_line_ending(&r.slice(..12)), Some(LineEnding::LF));
+        assert_eq!(get_line_ending(&r.slice(..17)), Some(LineEnding::Crlf));
+        assert_eq!(get_line_ending(&r.slice(..)), None);
+    }
+
+    #[test]
+    fn get_line_ending_str() {
+        let text = "Hello\rworld\nhow\r\nare you?";
+        assert_eq!(get_line_ending_of_str(&text[..6]), Some(LineEnding::CR));
+        assert_eq!(get_line_ending_of_str(&text[..12]), Some(LineEnding::LF));
+        assert_eq!(get_line_ending_of_str(&text[..17]), Some(LineEnding::Crlf));
+        assert_eq!(get_line_ending_of_str(&text[..]), None);
+    }
+
+    #[test]
+    fn line_end_char_index_rope_slice() {
+        let r = Rope::from_str("Hello\rworld\nhow\r\nare you?");
+        let s = &r.slice(..);
+        assert_eq!(line_end_char_index(s, 0), 5);
+        assert_eq!(line_end_char_index(s, 1), 11);
+        assert_eq!(line_end_char_index(s, 2), 15);
+        assert_eq!(line_end_char_index(s, 3), 25);
     }
 }
