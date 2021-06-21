@@ -116,7 +116,7 @@ roots = []
 
 language-server = { command = "pyls" }
 # TODO: pyls needs utf-8 offsets
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "nix"
