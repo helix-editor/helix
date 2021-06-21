@@ -455,13 +455,27 @@ where
 
     // need to wait for next key
     // TODO: should this be done by grapheme rather than char?  For example,
-    // we can't properly handle the line-ending case here in terms of char.
+    // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
         let ch = match event {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => '\n',
+            } =>
+            // TODO: this isn't quite correct when CRLF is involved.
+            // This hack will work in most cases, since documents don't
+            // usually mix line endings.  But we should fix it eventually
+            // anyway.
+            {
+                current!(cx.editor)
+                    .1
+                    .line_ending
+                    .as_str()
+                    .chars()
+                    .next()
+                    .unwrap()
+            }
+
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
@@ -1289,7 +1303,8 @@ mod cmd {
     }
 
     fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], _: PromptEvent) {
-        let separator = args.first().copied().unwrap_or("\n");
+        let (_, doc) = current!(editor);
+        let separator = args.first().copied().unwrap_or(doc.line_ending.as_str());
         yank_joined_to_clipboard_impl(editor, separator);
     }
 
@@ -1745,7 +1760,7 @@ fn open(cx: &mut Context, open: Open) {
         let indent = doc.indent_unit().repeat(indent_level);
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
-        text.push('\n');
+        text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
         let text = text.repeat(count);
 
@@ -2502,7 +2517,8 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) {
 }
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
-    yank_joined_to_clipboard_impl(&mut cx.editor, "\n");
+    let line_ending = current!(cx.editor).1.line_ending;
+    yank_joined_to_clipboard_impl(&mut cx.editor, line_ending.as_str());
 }
 
 fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) {
