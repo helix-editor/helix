@@ -13,6 +13,14 @@ pub const PAIRS: &[(char, char)] = &[
 
 /// Given any char in [PAIRS], return the open and closing chars. If not found in
 /// [PAIRS] return (ch, ch).
+///
+/// ```
+/// use helix_core::surround::get_pair;
+///
+/// assert_eq!(get_pair('['), ('[', ']'));
+/// assert_eq!(get_pair('}'), ('{', '}'));
+/// assert_eq!(get_pair('"'), ('"', '"'));
+/// ```
 pub fn get_pair(ch: char) -> (char, char) {
     PAIRS
         .iter()
@@ -50,17 +58,101 @@ pub fn get_surround_pos(
     let mut change_pos = Vec::new();
 
     for range in selection {
-        let head = range.head;
-
-        match find_nth_pairs_pos(text, ch, head, skip) {
-            Some((open_pos, close_pos)) => {
-                if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
-                    return None;
-                }
-                change_pos.extend_from_slice(&[open_pos, close_pos]);
-            }
-            None => return None,
+        let (open_pos, close_pos) = find_nth_pairs_pos(text, ch, range.head, skip)?;
+        if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
+            return None;
         }
+        change_pos.extend_from_slice(&[open_pos, close_pos]);
     }
     Some(change_pos)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::Range;
+
+    use ropey::Rope;
+    use smallvec::SmallVec;
+
+    #[test]
+    fn test_find_nth_pairs_pos() {
+        let doc = Rope::from("some (text) here");
+        let slice = doc.slice(..);
+
+        // cursor on [t]ext
+        assert_eq!(find_nth_pairs_pos(slice, '(', 6, 1), Some((5, 10)));
+        assert_eq!(find_nth_pairs_pos(slice, ')', 6, 1), Some((5, 10)));
+        // cursor on so[m]e
+        assert_eq!(find_nth_pairs_pos(slice, '(', 2, 1), None);
+        // cursor on bracket itself
+        // assert_eq!(find_nth_pairs_pos(slice, '(', 5, 1), Some((5, 10)));
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_skip() {
+        let doc = Rope::from("(so (many (good) text) here)");
+        let slice = doc.slice(..);
+
+        // cursor on go[o]d
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((10, 15)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 2), Some((4, 21)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 3), Some((0, 27)));
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_mixed() {
+        let doc = Rope::from("(so [many {good} text] here)");
+        let slice = doc.slice(..);
+
+        // cursor on go[o]d
+        assert_eq!(find_nth_pairs_pos(slice, '{', 13, 1), Some((10, 15)));
+        assert_eq!(find_nth_pairs_pos(slice, '[', 13, 1), Some((4, 21)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((0, 27)));
+    }
+
+    #[test]
+    fn test_get_surround_pos() {
+        let doc = Rope::from("(some) (chars)\n(newline)");
+        let slice = doc.slice(..);
+        let selection = Selection::new(
+            SmallVec::from_slice(&[Range::point(2), Range::point(9), Range::point(20)]),
+            0,
+        );
+
+        // cursor on s[o]me, c[h]ars, newl[i]ne
+        assert_eq!(
+            get_surround_pos(slice, &selection, '(', 1)
+                .unwrap()
+                .as_slice(),
+            &[0, 5, 7, 13, 15, 23]
+        );
+    }
+
+    #[test]
+    fn test_get_surround_pos_bail() {
+        let doc = Rope::from("[some]\n(chars)xx\n(newline)");
+        let slice = doc.slice(..);
+
+        let selection = Selection::new(
+            SmallVec::from_slice(&[Range::point(2), Range::point(9)]),
+            0,
+        );
+
+        // cursor on s[o]me, c[h]ars
+        assert_eq!(
+            get_surround_pos(slice, &selection, '(', 1),
+            None // different surround chars
+        );
+
+        let selection = Selection::new(
+            SmallVec::from_slice(&[Range::point(14), Range::point(24)]),
+            0,
+        );
+        // cursor on [x]x, newli[n]e
+        assert_eq!(
+            get_surround_pos(slice, &selection, '(', 1),
+            None  // overlapping surround chars
+        );
+    }
 }
