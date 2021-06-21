@@ -1304,7 +1304,10 @@ mod cmd {
 
     fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], _: PromptEvent) {
         let (_, doc) = current!(editor);
-        let separator = args.first().copied().unwrap_or(doc.line_ending.as_str());
+        let separator = args
+            .first()
+            .copied()
+            .unwrap_or_else(|| doc.line_ending.as_str());
         yank_joined_to_clipboard_impl(editor, separator);
     }
 

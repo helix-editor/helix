@@ -132,19 +132,19 @@ pub fn get_line_ending(line: &RopeSlice) -> Option<LineEnding> {
 pub fn get_line_ending_of_str(line: &str) -> Option<LineEnding> {
     if line.ends_with("\u{000D}\u{000A}") {
         Some(LineEnding::Crlf)
-    } else if line.ends_with("\u{000A}") {
+    } else if line.ends_with('\u{000A}') {
         Some(LineEnding::LF)
-    } else if line.ends_with("\u{000B}") {
+    } else if line.ends_with('\u{000B}') {
         Some(LineEnding::VT)
-    } else if line.ends_with("\u{000C}") {
+    } else if line.ends_with('\u{000C}') {
         Some(LineEnding::FF)
-    } else if line.ends_with("\u{000D}") {
+    } else if line.ends_with('\u{000D}') {
         Some(LineEnding::CR)
-    } else if line.ends_with("\u{0085}") {
+    } else if line.ends_with('\u{0085}') {
         Some(LineEnding::Nel)
-    } else if line.ends_with("\u{2028}") {
+    } else if line.ends_with('\u{2028}') {
         Some(LineEnding::LS)
-    } else if line.ends_with("\u{2029}") {
+    } else if line.ends_with('\u{2029}') {
         Some(LineEnding::PS)
     } else {
         None
