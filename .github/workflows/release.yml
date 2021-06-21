@@ -100,7 +100,7 @@ jobs:
             cp "target/${{ matrix.target }}/release/hx" "dist/"
           fi
 
-      - uses: actions/upload-artifact@v2.2.3
+      - uses: actions/upload-artifact@v2.2.4
         with:
           name: bins-${{ matrix.build }}
           path: dist
