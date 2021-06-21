@@ -275,22 +275,23 @@ impl EditorView {
                 let end = text.line_to_char(last_line + 1);
                 Range::new(start, end)
             };
-            let scope = match doc.mode() {
-                Mode::Insert => "ui.cursor.insert",
-                Mode::Select => "ui.cursor.select",
-                Mode::Normal => "ui.cursor",
-            };
-            let cursor_style = theme.try_get(scope).unwrap_or_else(|| {
-                theme
-                    //if cursor.insert or cursor.select was not present try to default to cursor
-                    .try_get("ui.cursor")
-                    .unwrap_or_else(|| Style::default().add_modifier(Modifier::REVERSED))
-            });
+
+            let base_cursor_style = theme
+                .try_get("ui.cursor")
+                .unwrap_or_else(|| Style::default().add_modifier(Modifier::REVERSED));
+            let cursor_style = match doc.mode() {
+                Mode::Insert => theme.try_get("ui.cursor.insert"),
+                Mode::Select => theme.try_get("ui.cursor.select"),
+                Mode::Normal => Some(base_cursor_style),
+            }
+            .unwrap_or(base_cursor_style);
+            let primary_cursor_style = theme.try_get("ui.cursor.primary").unwrap_or(cursor_style);
 
             let selection_style = theme.get("ui.selection");
-            let primary_style = theme
+            let primary_selection_style = theme
                 .try_get("ui.selection.primary")
                 .unwrap_or(selection_style);
+
             let selection = doc.selection(view.id);
             let primary_idx = selection.primary_index();
 
@@ -303,10 +304,10 @@ impl EditorView {
                 let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
                 let mut end = view.screen_coords_at_pos(doc, text, selection.head);
 
-                let style = if i != primary_idx {
-                    selection_style
+                let (cursor_style, selection_style) = if i == primary_idx {
+                    (primary_cursor_style, primary_selection_style)
                 } else {
-                    primary_style
+                    (cursor_style, selection_style)
                 };
 
                 let head = end;
@@ -336,7 +337,7 @@ impl EditorView {
                             ),
                             1,
                         ),
-                        style,
+                        selection_style,
                     );
                 } else {
                     surface.set_style(
@@ -347,7 +348,7 @@ impl EditorView {
                             viewport.width.saturating_sub(start.col as u16),
                             1,
                         ),
-                        style,
+                        selection_style,
                     );
                     for i in start.row + 1..end.row {
                         surface.set_style(
@@ -358,7 +359,7 @@ impl EditorView {
                                 viewport.width,
                                 1,
                             ),
-                            style,
+                            selection_style,
                         );
                     }
                     surface.set_style(
@@ -368,7 +369,7 @@ impl EditorView {
                             (end.col as u16).min(viewport.width),
                             1,
                         ),
-                        style,
+                        selection_style,
                     );
                 }
 
