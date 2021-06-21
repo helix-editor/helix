@@ -152,8 +152,46 @@ pub mod completers {
         names
     }
 
-    // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     pub fn filename(input: &str) -> Vec<Completion> {
+        filename_impl(input, |entry| {
+            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+
+            if is_dir {
+                FileMatch::AcceptIncomplete
+            } else {
+                FileMatch::Accept
+            }
+        })
+    }
+
+    pub fn directory(input: &str) -> Vec<Completion> {
+        filename_impl(input, |entry| {
+            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+
+            if is_dir {
+                FileMatch::Accept
+            } else {
+                FileMatch::Reject
+            }
+        })
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    enum FileMatch {
+        /// Entry should be ignored
+        Reject,
+        /// Entry is usable but can't be the end (for instance if the entry is a directory and we
+        /// try to match a file)
+        AcceptIncomplete,
+        /// Entry is usable and can be the end of the match
+        Accept,
+    }
+
+    // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
+    fn filename_impl<F>(input: &str, filter_fn: F) -> Vec<Completion>
+    where
+        F: Fn(&ignore::DirEntry) -> FileMatch,
+    {
         // Rust's filename handling is really annoying.
 
         use ignore::WalkBuilder;
@@ -184,7 +222,13 @@ pub mod completers {
             .max_depth(Some(1))
             .build()
             .filter_map(|file| {
-                file.ok().map(|entry| {
+                file.ok().and_then(|entry| {
+                    let fmatch = filter_fn(&entry);
+
+                    if fmatch == FileMatch::Reject {
+                        return None;
+                    }
+
                     let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let path = entry.path();
@@ -199,11 +243,12 @@ pub mod completers {
                         path.strip_prefix(&dir).unwrap_or(path).to_path_buf()
                     };
 
-                    if is_dir {
+                    if fmatch == FileMatch::AcceptIncomplete {
                         path.push("");
                     }
+
                     let path = path.to_str().unwrap().to_owned();
-                    (end.clone(), Cow::from(path))
+                    Some((end.clone(), Cow::from(path)))
                 })
             }) // TODO: unwrap or skip
             .filter(|(_, path)| !path.is_empty()) // TODO
