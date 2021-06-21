@@ -1907,7 +1907,6 @@ fn goto_mode(cx: &mut Context) {
             match (doc.mode, ch) {
                 (_, 'g') => move_file_start(cx),
                 (_, 'e') => move_file_end(cx),
-                (_, 'm') => match_brackets(cx),
                 (_, 'a') => switch_to_last_accessed_file(cx),
                 (Mode::Normal, 'h') => move_line_start(cx),
                 (Mode::Normal, 'l') => move_line_end(cx),
@@ -3324,6 +3323,7 @@ fn surround(cx: &mut Context) {
             // FIXME: count gets reset because of cx.on_next_key()
             cx.count = count;
             match ch {
+                'm' => match_brackets(cx),
                 'a' => surround_add(cx),
                 'r' => surround_replace(cx),
                 'd' => {
