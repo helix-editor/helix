@@ -1386,6 +1386,15 @@ mod cmd {
         }
     }
 
+    fn show_current_directory(editor: &mut Editor, args: &[&str], _: PromptEvent) {
+        match std::env::current_dir() {
+            Ok(cwd) => editor.set_status(format!("Current working directory is {}", cwd.display())),
+            Err(e) => {
+                editor.set_error(format!("Couldn't get the current working directory: {}", e))
+            }
+        }
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1561,6 +1570,13 @@ mod cmd {
             doc: "Change the current working directory (:cd <dir>).",
             fun: change_current_directory,
             completer: Some(completers::directory),
+        },
+        TypableCommand {
+            name: "show-directory",
+            alias: Some("pwd"),
+            doc: "Show the current working directory.",
+            fun: show_current_directory,
+            completer: None,
         },
     ];
 
