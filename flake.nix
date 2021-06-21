@@ -11,15 +11,9 @@
       url = "github:edolstra/flake-compat";
       flake = false;
     };
-    helix = {
-      url = "https://github.com/helix-editor/helix.git";
-      type = "git";
-      flake = false;
-      submodules = true;
-    };
   };
 
-  outputs = inputs@{ nixCargoIntegration, helix, ... }:
+  outputs = inputs@{ self, nixCargoIntegration, ... }:
     nixCargoIntegration.lib.makeOutputs {
       root = ./.;
       buildPlatform = "crate2nix";
@@ -29,18 +23,31 @@
       defaultOutputs = { app = "hx"; package = "helix"; };
       overrides = {
         crateOverrides = common: _: {
-          helix-term = prev: { buildInputs = (prev.buildInputs or [ ]) ++ [ common.cCompiler.cc.lib ]; };
+          helix-term = prev: {
+            # link languages and theme toml files since helix-term expects them (for tests)
+            preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml} ..";
+            buildInputs = (prev.buildInputs or [ ]) ++ [ common.cCompiler.cc.lib ];
+          };
           # link runtime since helix-core expects it because of embed_runtime feature
           helix-core = _: { preConfigure = "ln -s ${common.root + "/runtime"} ../runtime"; };
           # link languages and theme toml files since helix-view expects them
           helix-view = _: { preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml} .."; };
-          helix-syntax = prev: {
-            src = common.pkgs.runCommand prev.src.name { } ''
-              mkdir -p $out
-              ln -s ${prev.src}/* $out
-              ln -sf ${helix}/helix-syntax/languages $out
-            '';
-          };
+          helix-syntax = prev:
+            let
+              helix = common.pkgs.fetchgit {
+                url = "https://github.com/helix-editor/helix.git";
+                rev = "9fd17d4ff5b81211317da1a28d2b30442a512ffc";
+                fetchSubmodules = true;
+                sha256 = "sha256-y652sn/tCc1XoKr3YxDZv6bS2Cmr6+9K/wzzNAMFZJw=";
+              };
+            in
+            {
+              src = common.pkgs.runCommand prev.src.name { } ''
+                mkdir -p $out
+                ln -s ${prev.src}/* $out
+                ln -sf ${helix}/helix-syntax/languages $out
+              '';
+            };
         };
         shell = common: prev: {
           packages = prev.packages ++ (with common.pkgs; [ lld_10 lldb ]);
