@@ -200,7 +200,7 @@ impl Default for Keymaps {
             // extend_to_whole_line, crop_to_whole_line
 
 
-            key!('m') => Command::surround,
+            key!('m') => Command::match_mode,
             key!('[') => Command::left_bracket_mode,
             key!(']') => Command::right_bracket_mode,
 
