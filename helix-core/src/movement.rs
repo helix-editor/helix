@@ -3,8 +3,13 @@ use std::iter::{self, from_fn, Peekable, SkipWhile};
 use ropey::iter::Chars;
 
 use crate::{
+    chars::{
+        categorize_char, char_is_line_ending, char_is_punctuation, char_is_whitespace,
+        char_is_word, CharCategory,
+    },
     coords_at_pos,
     graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary},
+    line_ending::{get_line_ending, line_end_char_index},
     pos_at_coords, Position, Range, RopeSlice,
 };
 
@@ -37,9 +42,8 @@ pub fn move_horizontally(
             nth_prev_grapheme_boundary(slice, pos, count).max(start)
         }
         Direction::Forward => {
-            // Line end is pos at the start of next line - 1
-            let end = slice.line_to_char(line + 1).saturating_sub(1);
-            nth_next_grapheme_boundary(slice, pos, count).min(end)
+            let end_char_idx = line_end_char_index(&slice, line);
+            nth_next_grapheme_boundary(slice, pos, count).min(end_char_idx)
         }
     };
     let anchor = match behaviour {
@@ -68,8 +72,11 @@ pub fn move_vertically(
         ),
     };
 
-    // convert to 0-indexed, subtract another 1 because len_chars() counts \n
-    let new_line_len = slice.line(new_line).len_chars().saturating_sub(2);
+    // Length of the line sans line-ending.
+    let new_line_len = {
+        let line = slice.line(new_line);
+        line.len_chars() - get_line_ending(&line).map(|le| le.len_chars()).unwrap_or(0)
+    };
 
     let new_col = std::cmp::min(horiz as usize, new_line_len);
 
@@ -104,64 +111,6 @@ fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotio
 }
 
 // ---- util ------------
-#[inline]
-pub(crate) fn is_word(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
-}
-
-#[inline]
-pub(crate) fn is_end_of_line(ch: char) -> bool {
-    ch == '\n'
-}
-
-#[inline]
-// Whitespace, but not end of line
-pub(crate) fn is_strict_whitespace(ch: char) -> bool {
-    ch.is_whitespace() && !is_end_of_line(ch)
-}
-
-#[inline]
-pub(crate) fn is_punctuation(ch: char) -> bool {
-    use unicode_general_category::{get_general_category, GeneralCategory};
-
-    matches!(
-        get_general_category(ch),
-        GeneralCategory::OtherPunctuation
-            | GeneralCategory::OpenPunctuation
-            | GeneralCategory::ClosePunctuation
-            | GeneralCategory::InitialPunctuation
-            | GeneralCategory::FinalPunctuation
-            | GeneralCategory::ConnectorPunctuation
-            | GeneralCategory::DashPunctuation
-            | GeneralCategory::MathSymbol
-            | GeneralCategory::CurrencySymbol
-            | GeneralCategory::ModifierSymbol
-    )
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum Category {
-    Whitespace,
-    Eol,
-    Word,
-    Punctuation,
-    Unknown,
-}
-
-#[inline]
-pub(crate) fn categorize(ch: char) -> Category {
-    if is_end_of_line(ch) {
-        Category::Eol
-    } else if ch.is_whitespace() {
-        Category::Whitespace
-    } else if is_word(ch) {
-        Category::Word
-    } else if is_punctuation(ch) {
-        Category::Punctuation
-    } else {
-        Category::Unknown
-    }
-}
 
 #[inline]
 /// Returns first index that doesn't satisfy a given predicate when
@@ -235,7 +184,8 @@ impl CharHelpers for Chars<'_> {
         let mut phase = WordMotionPhase::Start;
         let mut head = origin.head;
         let mut anchor: Option<usize> = None;
-        let is_boundary = |a: char, b: Option<char>| categorize(a) != categorize(b.unwrap_or(a));
+        let is_boundary =
+            |a: char, b: Option<char>| categorize_char(a) != categorize_char(b.unwrap_or(a));
         while let Some(peek) = characters.peek().copied() {
             phase = match phase {
                 WordMotionPhase::Start => {
@@ -244,7 +194,8 @@ impl CharHelpers for Chars<'_> {
                         break; // We're at the end, so there's nothing to do.
                     }
                     // Anchor may remain here if the head wasn't at a boundary
-                    if !is_boundary(peek, characters.peek().copied()) && !is_end_of_line(peek) {
+                    if !is_boundary(peek, characters.peek().copied()) && !char_is_line_ending(peek)
+                    {
                         anchor = Some(head);
                     }
                     // First character is always skipped by the head
@@ -252,7 +203,7 @@ impl CharHelpers for Chars<'_> {
                     WordMotionPhase::SkipNewlines
                 }
                 WordMotionPhase::SkipNewlines => {
-                    if is_end_of_line(peek) {
+                    if char_is_line_ending(peek) {
                         characters.next();
                         if characters.peek().is_some() {
                             advance(&mut head);
@@ -286,12 +237,12 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
 
     match target {
         WordMotionTarget::NextWordStart => {
-            ((categorize(peek) != categorize(*next_peek))
-                && (is_end_of_line(*next_peek) || !next_peek.is_whitespace()))
+            ((categorize_char(peek) != categorize_char(*next_peek))
+                && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
         }
         WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
-            ((categorize(peek) != categorize(*next_peek))
-                && (!peek.is_whitespace() || is_end_of_line(*next_peek)))
+            ((categorize_char(peek) != categorize_char(*next_peek))
+                && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
         }
     }
 }
@@ -330,7 +281,7 @@ mod test {
                 slice,
                 move_vertically(slice, range, Direction::Forward, 1, Movement::Move).head
             ),
-            (1, 2).into()
+            (1, 3).into()
         );
     }
 
@@ -343,12 +294,12 @@ mod test {
         let mut range = Range::point(position);
 
         let moves_and_expected_coordinates = [
-            ((Direction::Forward, 1usize), (0, 1)),
-            ((Direction::Forward, 2usize), (0, 3)),
-            ((Direction::Forward, 0usize), (0, 3)),
-            ((Direction::Forward, 999usize), (0, 31)),
-            ((Direction::Forward, 999usize), (0, 31)),
-            ((Direction::Backward, 999usize), (0, 0)),
+            ((Direction::Forward, 1usize), (0, 1)), // T|his is a simple alphabetic line
+            ((Direction::Forward, 2usize), (0, 3)), // Thi|s is a simple alphabetic line
+            ((Direction::Forward, 0usize), (0, 3)), // Thi|s is a simple alphabetic line
+            ((Direction::Forward, 999usize), (0, 32)), // This is a simple alphabetic line|
+            ((Direction::Forward, 999usize), (0, 32)), // This is a simple alphabetic line|
+            ((Direction::Backward, 999usize), (0, 0)), // |This is a simple alphabetic line
         ];
 
         for ((direction, amount), coordinates) in IntoIter::new(moves_and_expected_coordinates) {
@@ -366,15 +317,15 @@ mod test {
         let mut range = Range::point(position);
 
         let moves_and_expected_coordinates = IntoIter::new([
-            ((Direction::Forward, 1usize), (0, 1)),    // M_ltiline
-            ((Direction::Forward, 2usize), (0, 3)),    // Mul_iline
-            ((Direction::Backward, 6usize), (0, 0)),   // _ultiline
-            ((Direction::Backward, 999usize), (0, 0)), // _ultiline
-            ((Direction::Forward, 3usize), (0, 3)),    // Mul_iline
-            ((Direction::Forward, 0usize), (0, 3)),    // Mul_iline
-            ((Direction::Backward, 0usize), (0, 3)),   // Mul_iline
-            ((Direction::Forward, 999usize), (0, 9)),  // Multilin_
-            ((Direction::Forward, 999usize), (0, 9)),  // Multilin_
+            ((Direction::Forward, 1usize), (0, 1)),    // M|ultiline\n
+            ((Direction::Forward, 2usize), (0, 3)),    // Mul|tiline\n
+            ((Direction::Backward, 6usize), (0, 0)),   // |Multiline\n
+            ((Direction::Backward, 999usize), (0, 0)), // |Multiline\n
+            ((Direction::Forward, 3usize), (0, 3)),    // Mul|tiline\n
+            ((Direction::Forward, 0usize), (0, 3)),    // Mul|tiline\n
+            ((Direction::Backward, 0usize), (0, 3)),   // Mul|tiline\n
+            ((Direction::Forward, 999usize), (0, 9)),  // Multiline|\n
+            ((Direction::Forward, 999usize), (0, 9)),  // Multiline|\n
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
@@ -446,7 +397,7 @@ mod test {
             // First descent preserves column as the target line is wider
             ((Axis::V, Direction::Forward, 1usize), (1, 8)),
             // Second descent clamps column as the target line is shorter
-            ((Axis::V, Direction::Forward, 1usize), (2, 4)),
+            ((Axis::V, Direction::Forward, 1usize), (2, 5)),
             // Third descent restores the original column
             ((Axis::V, Direction::Forward, 1usize), (3, 8)),
             // Behaviour is preserved even through long jumps
@@ -758,47 +709,6 @@ mod test {
                 let range = move_next_word_end(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
-        }
-    }
-
-    #[test]
-    fn test_categorize() {
-        const WORD_TEST_CASE: &'static str =
-            "_hello_world_あいうえおー1234567890１２３４５６７８９０";
-        const PUNCTUATION_TEST_CASE: &'static str =
-            "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、。：；＜＝＞？＠「」＾｀｛｜｝～";
-        const WHITESPACE_TEST_CASE: &'static str = "  　   ";
-
-        assert_eq!(Category::Eol, categorize('\n'));
-
-        for ch in WHITESPACE_TEST_CASE.chars() {
-            assert_eq!(
-                Category::Whitespace,
-                categorize(ch),
-                "Testing '{}', but got `{:?}` instead of `Category::Whitespace`",
-                ch,
-                categorize(ch)
-            );
-        }
-
-        for ch in WORD_TEST_CASE.chars() {
-            assert_eq!(
-                Category::Word,
-                categorize(ch),
-                "Testing '{}', but got `{:?}` instead of `Category::Word`",
-                ch,
-                categorize(ch)
-            );
-        }
-
-        for ch in PUNCTUATION_TEST_CASE.chars() {
-            assert_eq!(
-                Category::Punctuation,
-                categorize(ch),
-                "Testing '{}', but got `{:?}` instead of `Category::Punctuation`",
-                ch,
-                categorize(ch)
-            );
         }
     }
 }

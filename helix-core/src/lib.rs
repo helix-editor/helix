@@ -6,6 +6,7 @@ pub mod diagnostic;
 pub mod graphemes;
 pub mod history;
 pub mod indent;
+pub mod line_ending;
 pub mod macros;
 pub mod match_brackets;
 pub mod movement;
@@ -106,6 +107,7 @@ pub use tendril::StrTendril as Tendril;
 #[doc(inline)]
 pub use {regex, tree_sitter};
 
+pub use graphemes::RopeGraphemes;
 pub use position::{coords_at_pos, pos_at_coords, Position};
 pub use selection::{Range, Selection};
 pub use smallvec::SmallVec;
@@ -114,4 +116,5 @@ pub use syntax::Syntax;
 pub use diagnostic::Diagnostic;
 pub use state::State;
 
+pub use line_ending::{LineEnding, DEFAULT_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};

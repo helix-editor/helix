@@ -47,6 +47,7 @@
 //! ]);
 //! ```
 use crate::style::Style;
+use helix_core::line_ending::str_is_line_ending;
 use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
@@ -177,7 +178,7 @@ impl<'a> Span<'a> {
                 symbol: g,
                 style: base_style.patch(self.style),
             })
-            .filter(|s| s.symbol != "\n")
+            .filter(|s| !str_is_line_ending(s.symbol))
     }
 }
 

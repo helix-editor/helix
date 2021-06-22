@@ -12,7 +12,7 @@ pub const PAIRS: &[(char, char)] = &[
     ('`', '`'),
 ];
 
-const CLOSE_BEFORE: &str = ")]}'\":;> \n"; // includes space and newline
+const CLOSE_BEFORE: &str = ")]}'\":;> \n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}"; // includes space and newlines
 
 // insert hook:
 // Fn(doc, selection, char) => Option<Transaction>

@@ -1,12 +1,15 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    line_ending::{
+        get_line_ending, get_line_ending_of_str, line_end_char_index, str_is_line_ending,
+    },
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     register::{self, Register, Registers},
-    search, selection, Change, ChangeSet, Position, Range, Rope, RopeSlice, Selection, SmallVec,
-    Tendril, Transaction,
+    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeGraphemes,
+    RopeSlice, Selection, SmallVec, Tendril, Transaction, DEFAULT_LINE_ENDING,
 };
 
 use helix_view::{
@@ -303,9 +306,8 @@ fn move_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        // Line end is pos at the start of next line - 1
-        // subtract another 1 because the line ends with \n
-        let pos = text.line_to_char(line + 1).saturating_sub(2);
+        let pos = line_end_char_index(&text.slice(..), line);
+
         Range::new(pos, pos)
     });
 
@@ -452,12 +454,28 @@ where
     let count = cx.count();
 
     // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
         let ch = match event {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => '\n',
+            } =>
+            // TODO: this isn't quite correct when CRLF is involved.
+            // This hack will work in most cases, since documents don't
+            // usually mix line endings.  But we should fix it eventually
+            // anyway.
+            {
+                current!(cx.editor)
+                    .1
+                    .line_ending
+                    .as_str()
+                    .chars()
+                    .next()
+                    .unwrap()
+            }
+
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
@@ -575,32 +593,37 @@ fn extend_first_nonwhitespace(cx: &mut Context) {
 }
 
 fn replace(cx: &mut Context) {
+    let mut buf = [0u8; 4]; // To hold utf8 encoded char.
+
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
+        let (view, doc) = current!(cx.editor);
         let ch = match event {
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
-            } => Some(ch),
+            } => Some(&ch.encode_utf8(&mut buf[..])[..]),
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => Some('\n'),
+            } => Some(doc.line_ending.as_str()),
             _ => None,
         };
 
         if let Some(ch) = ch {
-            let (view, doc) = current!(cx.editor);
-
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                     let max_to = doc.text().len_chars().saturating_sub(1);
                     let to = std::cmp::min(max_to, range.to() + 1);
-                    let text: String = doc
-                        .text()
-                        .slice(range.from()..to)
-                        .chars()
-                        .map(|c| if c == '\n' { '\n' } else { ch })
+                    let text: String = RopeGraphemes::new(doc.text().slice(range.from()..to))
+                        .map(|g| {
+                            let cow: Cow<str> = g.into();
+                            if str_is_line_ending(&cow) {
+                                cow
+                            } else {
+                                ch.into()
+                            }
+                        })
                         .collect();
 
                     (range.from(), to, Some(text.into()))
@@ -725,9 +748,8 @@ fn extend_line_end(cx: &mut Context) {
         let text = doc.text();
         let line = text.char_to_line(range.head);
 
-        // Line end is pos at the start of next line - 1
-        // subtract another 1 because the line ends with \n
-        let pos = text.line_to_char(line + 1).saturating_sub(2);
+        let pos = line_end_char_index(&text.slice(..), line);
+
         Range::new(range.anchor, pos)
     });
 
@@ -783,7 +805,8 @@ fn split_selection_on_newline(cx: &mut Context) {
     let text = doc.text().slice(..);
     // only compile the regex once
     #[allow(clippy::trivial_regex)]
-    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\n").unwrap());
+    static REGEX: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\r\n|[\n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}]").unwrap());
     let selection = selection::split_on_matches(text, doc.selection(view.id), &REGEX);
     doc.set_selection(view.id, selection);
 }
@@ -922,7 +945,13 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
     // then delete
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-            let max_to = doc.text().len_chars().saturating_sub(1);
+            let alltext = doc.text();
+            let line = alltext.char_to_line(range.head);
+            let max_to = doc.text().len_chars().saturating_sub(
+                get_line_ending(&alltext.line(line))
+                    .map(|le| le.len_chars())
+                    .unwrap_or(0),
+            );
             let to = std::cmp::min(max_to, range.to() + 1);
             (range.from(), to, None)
         });
@@ -1003,7 +1032,7 @@ fn append_mode(cx: &mut Context) {
     if selection.iter().any(|range| range.head == end) {
         let transaction = Transaction::change(
             doc.text(),
-            std::array::IntoIter::new([(end, end, Some(Tendril::from_char('\n')))]),
+            std::array::IntoIter::new([(end, end, Some(doc.line_ending.as_str().into()))]),
         );
         doc.apply(&transaction, view.id);
     }
@@ -1128,6 +1157,45 @@ mod cmd {
         } else {
             // Invalid argument.
             editor.set_error(format!("invalid indent style '{}'", args[0],));
+        }
+    }
+
+    /// Sets or reports the current document's line ending setting.
+    fn set_line_ending(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+        use LineEnding::*;
+
+        // If no argument, report current line ending setting.
+        if args.is_empty() {
+            let line_ending = current!(editor).1.line_ending;
+            editor.set_status(match line_ending {
+                Crlf => "crlf".into(),
+                LF => "line feed".into(),
+                FF => "form feed".into(),
+                CR => "carriage return".into(),
+                Nel => "next line".into(),
+
+                // These should never be a document's default line ending.
+                VT | LS | PS => "error".into(),
+            });
+            return;
+        }
+
+        // Attempt to parse argument as a line ending.
+        let line_ending = match args.get(0) {
+            // We check for CR first because it shares a common prefix with CRLF.
+            Some(arg) if "cr".starts_with(&arg.to_lowercase()) => Some(CR),
+            Some(arg) if "crlf".starts_with(&arg.to_lowercase()) => Some(Crlf),
+            Some(arg) if "lf".starts_with(&arg.to_lowercase()) => Some(LF),
+            Some(arg) if "ff".starts_with(&arg.to_lowercase()) => Some(FF),
+            Some(arg) if "nel".starts_with(&arg.to_lowercase()) => Some(Nel),
+            _ => None,
+        };
+
+        if let Some(le) = line_ending {
+            doc_mut!(editor).line_ending = le;
+        } else {
+            // Invalid argument.
+            editor.set_error(format!("invalid line ending '{}'", args[0],));
         }
     }
 
@@ -1274,7 +1342,11 @@ mod cmd {
     }
 
     fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], _: PromptEvent) {
-        let separator = args.first().copied().unwrap_or("\n");
+        let (_, doc) = current!(editor);
+        let separator = args
+            .first()
+            .copied()
+            .unwrap_or_else(|| doc.line_ending.as_str());
         yank_joined_to_clipboard_impl(editor, separator);
     }
 
@@ -1357,6 +1429,13 @@ mod cmd {
             alias: None,
             doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
             fun: set_indent_style,
+            completer: None,
+        },
+        TypableCommand {
+            name: "line-ending",
+            alias: None,
+            doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
+            fun: set_line_ending,
             completer: None,
         },
         TypableCommand {
@@ -1683,8 +1762,7 @@ fn append_to_line(cx: &mut Context) {
     let selection = doc.selection(view.id).transform(|range| {
         let text = doc.text();
         let line = text.char_to_line(range.head);
-        // we can't use line_to_char(line + 1) - 2 because the last line might not contain \n
-        let pos = (text.line_to_char(line) + text.line(line).len_chars()).saturating_sub(1);
+        let pos = line_end_char_index(&text.slice(..), line);
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
@@ -1731,7 +1809,7 @@ fn open(cx: &mut Context, open: Open) {
         let indent = doc.indent_unit().repeat(indent_level);
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
-        text.push('\n');
+        text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
         let text = text.repeat(count);
 
@@ -2344,7 +2422,7 @@ pub mod insert {
             );
             let indent = doc.indent_unit().repeat(indent_level);
             let mut text = String::with_capacity(1 + indent.len());
-            text.push('\n');
+            text.push_str(doc.line_ending.as_str());
             text.push_str(&indent);
 
             let head = pos + offs + text.chars().count();
@@ -2365,7 +2443,7 @@ pub mod insert {
             if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
                 // another newline, indent the end bracket one level less
                 let indent = doc.indent_unit().repeat(indent_level.saturating_sub(1));
-                text.push('\n');
+                text.push_str(doc.line_ending.as_str());
                 text.push_str(&indent);
             }
 
@@ -2488,7 +2566,8 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) {
 }
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
-    yank_joined_to_clipboard_impl(&mut cx.editor, "\n");
+    let line_ending = current!(cx.editor).1.line_ending;
+    yank_joined_to_clipboard_impl(&mut cx.editor, line_ending.as_str());
 }
 
 fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) {
@@ -2529,8 +2608,10 @@ fn paste_impl(
             .unwrap(),
     );
 
-    // if any of values ends \n it's linewise paste
-    let linewise = values.iter().any(|value| value.ends_with('\n'));
+    // if any of values ends with a line ending, it's linewise paste
+    let linewise = values
+        .iter()
+        .any(|value| get_line_ending_of_str(value).is_some());
 
     let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 
