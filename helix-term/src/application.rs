@@ -229,7 +229,6 @@ impl Application {
                     None => return,
                 };
 
-                // TODO: parse should return Result/Option
                 match notification {
                     Notification::PublishDiagnostics(params) => {
                         let path = Some(params.uri.to_file_path().unwrap());
@@ -298,7 +297,6 @@ impl Application {
                                 .collect();
 
                             doc.set_diagnostics(diagnostics);
-                            // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
                         }
                     }
                     Notification::ShowMessage(params) => {

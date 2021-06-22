@@ -123,8 +123,6 @@ impl EditorView {
         };
 
         // TODO: range doesn't actually restrict source, just highlight range
-        // TODO: cache highlight results
-        // TODO: only recalculate when state.doc is actually modified
         let highlights: Vec<_> = match doc.syntax() {
             Some(syntax) => {
                 syntax

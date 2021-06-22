@@ -68,7 +68,7 @@ impl menu::Item for CompletionItem {
 
 /// Wraps a Menu.
 pub struct Completion {
-    popup: Popup<Menu<CompletionItem>>, // TODO: Popup<Menu> need to be able to access contents.
+    popup: Popup<Menu<CompletionItem>>,
     trigger_offset: usize,
     // TODO: maintain a completioncontext with trigger kind & trigger char
 }
@@ -82,27 +82,9 @@ impl Completion {
         // let items: Vec<CompletionItem> = Vec::new();
         let mut menu = Menu::new(items, move |editor: &mut Editor, item, event| {
             match event {
-                PromptEvent::Abort => {
-                    // revert state
-                    // let id = editor.view().doc;
-                    // let doc = &mut editor.documents[id];
-                    // doc.state = snapshot.clone();
-                }
+                PromptEvent::Abort => {}
                 PromptEvent::Validate => {
                     let (view, doc) = current!(editor);
-
-                    // revert state to what it was before the last update
-                    // doc.state = snapshot.clone();
-
-                    // extract as fn(doc, item):
-
-                    // TODO: need to apply without composing state...
-                    // TODO: need to update lsp on accept/cancel by diffing the snapshot with
-                    // the final state?
-                    // -> on update simply update the snapshot, then on accept redo the call,
-                    // finally updating doc.changes + notifying lsp.
-                    //
-                    // or we could simply use doc.undo + apply when changing between options
 
                     // always present here
                     let item = item.unwrap();
@@ -143,7 +125,6 @@ impl Completion {
 
                     doc.apply(&transaction, view.id);
 
-                    // TODO: merge edit with additional_text_edits
                     if let Some(additional_edits) = &item.additional_text_edits {
                         // gopls uses this to add extra imports
                         if !additional_edits.is_empty() {
@@ -226,7 +207,7 @@ impl Component for Completion {
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.popup.render(area, surface, cx);
 
-        // TODO: if we have a selection, render a markdown popup on top/below with info
+        // if we have a selection, render a markdown popup on top/below with info
         if let Some(option) = self.popup.contents().selection() {
             // need to render:
             // option.detail

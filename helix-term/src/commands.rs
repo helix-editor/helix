@@ -446,8 +446,6 @@ fn extend_next_word_end(cx: &mut Context) {
 #[inline]
 fn find_char_impl<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
 where
-    // TODO: make an options struct for and abstract this Fn into a searcher type
-    // use the definition for w/b/e too
     F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
 {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
@@ -652,10 +650,6 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
 
-    // cursor visual offset
-    // TODO: only if dragging via mouse?
-    // let cursor_off = cursor.row - view.first_line;
-
     view.first_line = match direction {
         Forward => view.first_line + offset,
         Backward => view.first_line.saturating_sub(offset),
@@ -812,13 +806,6 @@ fn split_selection_on_newline(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-// search: searches for the first occurence in file, provides a prompt
-// search_next: reuses the last search regex and searches for the next match. The next match becomes the main selection.
-// -> we always search from after the cursor.head
-// TODO: be able to use selection as search query (*/alt *)
-// I'd probably collect all the matches right now and store the current index. The cache needs
-// wiping if input happens.
-
 fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
     let selection = doc.selection(view.id);
@@ -847,7 +834,6 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
             Selection::single(start, head)
         };
 
-        // TODO: (first_match, regex) stuff in register?
         doc.set_selection(view.id, selection);
         align_view(doc, view, Align::Center);
     };
@@ -905,12 +891,6 @@ fn search_selection(cx: &mut Context) {
     search_next(cx);
 }
 
-// TODO: N -> search_prev
-// need to loop around buffer also and show a message
-// same for no matches
-
-//
-
 fn extend_line(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -930,8 +910,6 @@ fn extend_line(cx: &mut Context) {
 
     doc.set_selection(view.id, Selection::single(start, end));
 }
-
-// heuristic: append changes to history after each command, unless we're in insert mode
 
 fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
     // first yank the selection
@@ -1568,9 +1546,6 @@ mod cmd {
 }
 
 fn command_mode(cx: &mut Context) {
-    // TODO: completion items should have a info section that would get displayed in
-    // a popup above the prompt when items are tabbed over
-
     let mut prompt = Prompt::new(
         ":".to_owned(),
         |input: &str| {
@@ -2522,7 +2497,6 @@ fn redo(cx: &mut Context) {
 // Yank / Paste
 
 fn yank(cx: &mut Context) {
-    // TODO: should selections be made end inclusive?
     let (view, doc) = current!(cx.editor);
     let values: Vec<String> = doc
         .selection(view.id)
@@ -2702,16 +2676,6 @@ fn replace_selections_with_clipboard_impl(editor: &mut Editor) {
 fn replace_selections_with_clipboard(cx: &mut Context) {
     replace_selections_with_clipboard_impl(&mut cx.editor);
 }
-
-// alt-p => paste every yanked selection after selected text
-// alt-P => paste every yanked selection before selected text
-// R => replace selected text with yanked text
-// alt-R => replace selected text with every yanked text
-//
-// append => insert at next line
-// insert => insert at start of line
-// replace => replace
-// default insert
 
 fn paste_after(cx: &mut Context) {
     let reg_name = cx.selected_register.name();
@@ -3019,12 +2983,6 @@ fn completion(cx: &mut Context) {
             };
         },
     );
-    //  TODO: Server error: content modified
-
-    //    // TODO!: when iterating over items, show the docs in popup
-
-    //    // language server client needs to be accessible via a registry of some sort
-    //}
 }
 
 fn hover(cx: &mut Context) {

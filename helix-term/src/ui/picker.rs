@@ -256,8 +256,6 @@ impl<T: 'static> Component for Picker<T> {
         let inner = block.inner(area);
 
         block.render(area, surface);
-        // TODO: abstract into a clear(area) fn
-        // surface.set_style(inner, Style::default().bg(Color::Rgb(150, 50, 0)));
 
         // -- Render the input bar:
 

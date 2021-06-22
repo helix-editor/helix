@@ -42,7 +42,6 @@ pub fn regex_prompt(
         move |editor: &mut Editor, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
-                    // TODO: also revert text
                     let (view, doc) = current!(editor);
                     doc.set_selection(view.id, snapshot.clone());
                 }
@@ -61,7 +60,6 @@ pub fn regex_prompt(
                             let registers = &mut editor.registers;
 
                             // revert state to what it was before the last update
-                            // TODO: also revert text
                             doc.set_selection(view.id, snapshot.clone());
 
                             fun(view, doc, registers, regex);

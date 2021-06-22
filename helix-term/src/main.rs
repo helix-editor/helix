@@ -8,11 +8,6 @@ use anyhow::{Context, Result};
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
-    // Let's say we depend on something which whose "info" level messages are too
-    // verbose to include in end-user output. If we don't need them,
-    // let's not include them.
-    // .level_for("overly-verbose-target", log::LevelFilter::Warn)
-
     base_config = match verbosity {
         0 => base_config.level(log::LevelFilter::Warn),
         1 => base_config.level(log::LevelFilter::Info),
