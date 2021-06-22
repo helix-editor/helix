@@ -256,7 +256,7 @@ impl Command {
         view_mode,
         left_bracket_mode,
         right_bracket_mode,
-        surround
+        match_mode
     );
 }
 
@@ -3312,7 +3312,7 @@ fn right_bracket_mode(cx: &mut Context) {
     })
 }
 
-fn surround(cx: &mut Context) {
+fn match_mode(cx: &mut Context) {
     let count = cx.count;
     cx.on_next_key(move |cx, event| {
         if let KeyEvent {
