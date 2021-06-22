@@ -31,6 +31,8 @@ impl Configuration {
                 .find(|base| base.language_id == other.language_id)
             {
                 base.patch(other);
+            } else {
+                self.language.push(other);
             }
         })
     }
