@@ -178,6 +178,26 @@ it with:</p>
 <pre><code>cargo install --path helix-term --features &quot;embed_runtime&quot;
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
+<p>(Currently not fully documented, see the <a href="./keymap.html">keymappings</a> list for more.)</p>
+<h2 id="surround"><a class="header" href="#surround">Surround</a></h2>
+<p>Functionality similar to <a href="https://github.com/tpope/vim-surround">vim-surround</a> is built into
+helix. The keymappings have been inspired from <a href="https://github.com/machakann/vim-sandwich">vim-sandwich</a>:</p>
+<p><img src="https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif" alt="surround demo" /></p>
+<ul>
+<li><code>ms</code> - Add surround characters</li>
+<li><code>mr</code> - Replace surround characters</li>
+<li><code>md</code> - Delete surround characters</li>
+</ul>
+<p><code>ms</code> acts on a selection, so select the text first and use <code>ms&lt;char&gt;</code>. <code>mr</code> and <code>md</code> work
+on the closest pairs found and selections are not required; use counts to act in outer pairs.</p>
+<p>It can also act on multiple seletions (yay!). For example, to change every occurance of <code>(use)</code> to <code>[use]</code>:</p>
+<ul>
+<li><code>%</code> to select the whole file</li>
+<li><code>s</code> to split the selections on a search term</li>
+<li>Input <code>use</code> and hit Enter</li>
+<li><code>mr([</code> to replace the parens with square brackets</li>
+</ul>
+<p>Multiple characters are currently not supported, but planned.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>To override global configuration parameters create a <code>config.toml</code> file located in your config directory (i.e <code>~/.config/helix/config.toml</code>).</p>
 <h2 id="lsp"><a class="header" href="#lsp">LSP</a></h2>
@@ -278,7 +298,6 @@ display-messages = true
 <tr><td><code>F</code></td><td>Find previous char</td></tr>
 <tr><td><code>Home</code></td><td>Move to the start of the line</td></tr>
 <tr><td><code>End</code></td><td>Move to the end of the line</td></tr>
-<tr><td><code>m</code></td><td>Jump to matching bracket</td></tr>
 <tr><td><code>PageUp</code></td><td>Move page up</td></tr>
 <tr><td><code>PageDown</code></td><td>Move page down</td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Move half page up</td></tr>
@@ -287,6 +306,7 @@ display-messages = true
 <tr><td><code>Ctrl-o</code></td><td>Jump backward on the jumplist</td></tr>
 <tr><td><code>v</code></td><td>Enter <a href="keymap.html#select--extend-mode">select (extend) mode</a></td></tr>
 <tr><td><code>g</code></td><td>Enter <a href="keymap.html#goto-mode">goto mode</a></td></tr>
+<tr><td><code>m</code></td><td>Enter <a href="keymap.html#match-mode">match mode</a></td></tr>
 <tr><td><code>:</code></td><td>Enter command mode</td></tr>
 <tr><td><code>z</code></td><td>Enter <a href="keymap.html#view-mode">view mode</a></td></tr>
 <tr><td><code>Ctrl-w</code></td><td>Enter <a href="keymap.html#window-mode">window mode</a> (maybe will be remove for spc w w later)</td></tr>
@@ -323,7 +343,7 @@ display-messages = true
 <tr><td><code>Alt-;</code></td><td>Flip selection cursor and anchor</td></tr>
 <tr><td><code>%</code></td><td>Select entire file</td></tr>
 <tr><td><code>x</code></td><td>Select current line, if already selected, extend to next line</td></tr>
-<tr><td>``</td><td>Expand selection to parent syntax node TODO: pick a key</td></tr>
+<tr><td></td><td>Expand selection to parent syntax node TODO: pick a key</td></tr>
 <tr><td><code>J</code></td><td>join lines inside selection</td></tr>
 <tr><td><code>K</code></td><td>keep selections matching the regex TODO: overlapped by hover help</td></tr>
 <tr><td><code>Space</code></td><td>keep only the primary selection TODO: overlapped by space mode</td></tr>
@@ -388,6 +408,15 @@ the selection.</p>
 <tr><td><code>r</code></td><td>Go to references</td></tr>
 <tr><td><code>i</code></td><td>Go to implementation</td></tr>
 <tr><td><code>a</code></td><td>Go to the last accessed/alternate file</td></tr>
+</tbody></table>
+<h2 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h2>
+<p>Enter this mode using <code>m</code> from normal mode. See the relavant section
+in <a href="./usage.html#surround">Usage</a> for an explanation about surround usage.</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>m</code></td><td>Goto matching bracket</td></tr>
+<tr><td><code>s</code> <code>&lt;char&gt;</code></td><td>Surround current selection with <code>&lt;char&gt;</code></td></tr>
+<tr><td><code>r</code> <code>&lt;from&gt;&lt;to&gt;</code></td><td>Replace surround character <code>&lt;from&gt;</code> with <code>&lt;to&gt;</code></td></tr>
+<tr><td><code>d</code> <code>&lt;char&gt;</code></td><td>Delete surround character <code>&lt;char&gt;</code></td></tr>
 </tbody></table>
 <h2 id="object-mode"><a class="header" href="#object-mode">Object mode</a></h2>
 <p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>

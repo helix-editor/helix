@@ -165,7 +165,6 @@
 <tr><td><code>F</code></td><td>Find previous char</td></tr>
 <tr><td><code>Home</code></td><td>Move to the start of the line</td></tr>
 <tr><td><code>End</code></td><td>Move to the end of the line</td></tr>
-<tr><td><code>m</code></td><td>Jump to matching bracket</td></tr>
 <tr><td><code>PageUp</code></td><td>Move page up</td></tr>
 <tr><td><code>PageDown</code></td><td>Move page down</td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Move half page up</td></tr>
@@ -174,6 +173,7 @@
 <tr><td><code>Ctrl-o</code></td><td>Jump backward on the jumplist</td></tr>
 <tr><td><code>v</code></td><td>Enter <a href="#select--extend-mode">select (extend) mode</a></td></tr>
 <tr><td><code>g</code></td><td>Enter <a href="#goto-mode">goto mode</a></td></tr>
+<tr><td><code>m</code></td><td>Enter <a href="#match-mode">match mode</a></td></tr>
 <tr><td><code>:</code></td><td>Enter command mode</td></tr>
 <tr><td><code>z</code></td><td>Enter <a href="#view-mode">view mode</a></td></tr>
 <tr><td><code>Ctrl-w</code></td><td>Enter <a href="#window-mode">window mode</a> (maybe will be remove for spc w w later)</td></tr>
@@ -210,7 +210,7 @@
 <tr><td><code>Alt-;</code></td><td>Flip selection cursor and anchor</td></tr>
 <tr><td><code>%</code></td><td>Select entire file</td></tr>
 <tr><td><code>x</code></td><td>Select current line, if already selected, extend to next line</td></tr>
-<tr><td>``</td><td>Expand selection to parent syntax node TODO: pick a key</td></tr>
+<tr><td></td><td>Expand selection to parent syntax node TODO: pick a key</td></tr>
 <tr><td><code>J</code></td><td>join lines inside selection</td></tr>
 <tr><td><code>K</code></td><td>keep selections matching the regex TODO: overlapped by hover help</td></tr>
 <tr><td><code>Space</code></td><td>keep only the primary selection TODO: overlapped by space mode</td></tr>
@@ -275,6 +275,15 @@ the selection.</p>
 <tr><td><code>r</code></td><td>Go to references</td></tr>
 <tr><td><code>i</code></td><td>Go to implementation</td></tr>
 <tr><td><code>a</code></td><td>Go to the last accessed/alternate file</td></tr>
+</tbody></table>
+<h2 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h2>
+<p>Enter this mode using <code>m</code> from normal mode. See the relavant section
+in <a href="./usage.html#surround">Usage</a> for an explanation about surround usage.</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>m</code></td><td>Goto matching bracket</td></tr>
+<tr><td><code>s</code> <code>&lt;char&gt;</code></td><td>Surround current selection with <code>&lt;char&gt;</code></td></tr>
+<tr><td><code>r</code> <code>&lt;from&gt;&lt;to&gt;</code></td><td>Replace surround character <code>&lt;from&gt;</code> with <code>&lt;to&gt;</code></td></tr>
+<tr><td><code>d</code> <code>&lt;char&gt;</code></td><td>Delete surround character <code>&lt;char&gt;</code></td></tr>
 </tbody></table>
 <h2 id="object-mode"><a class="header" href="#object-mode">Object mode</a></h2>
 <p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>
