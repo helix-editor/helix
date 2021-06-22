@@ -1,7 +1,8 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
     line_ending::{
-        get_line_ending, get_line_ending_of_str, line_end_char_index, str_is_line_ending,
+        get_line_ending, get_line_ending_of_str, line_end_char_index, rope_end_without_line_ending,
+        str_is_line_ending,
     },
     match_brackets,
     movement::{self, Direction},
@@ -612,7 +613,7 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let max_to = rope_end_without_line_ending(&doc.text().slice(..));
                     let to = std::cmp::min(max_to, range.to() + 1);
                     let text: String = RopeGraphemes::new(doc.text().slice(range.from()..to))
                         .map(|g| {
@@ -769,7 +770,7 @@ fn extend_line_start(cx: &mut Context) {
 fn select_all(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    let end = doc.text().len_chars().saturating_sub(1);
+    let end = rope_end_without_line_ending(&doc.text().slice(..));
     doc.set_selection(view.id, Selection::single(0, end))
 }
 
@@ -900,13 +901,13 @@ fn extend_line(cx: &mut Context) {
 
     let line_start = text.char_to_line(pos.anchor);
     let mut line = text.char_to_line(pos.head);
-    let line_end = text.line_to_char(line + 1).saturating_sub(1);
-    if line_start <= pos.anchor && pos.head == line_end && line != text.len_lines() {
+    let line_end = line_end_char_index(&text.slice(..), line);
+    if line_start <= pos.anchor && pos.head == line_end && line < (text.len_lines() - 2) {
         line += 1;
     }
 
     let start = text.line_to_char(line_start);
-    let end = text.line_to_char(line + 1).saturating_sub(1);
+    let end = line_end_char_index(&text.slice(..), line);
 
     doc.set_selection(view.id, Selection::single(start, end));
 }
@@ -924,13 +925,9 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
     // then delete
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-            let alltext = doc.text();
+            let alltext = doc.text().slice(..);
             let line = alltext.char_to_line(range.head);
-            let max_to = doc.text().len_chars().saturating_sub(
-                get_line_ending(&alltext.line(line))
-                    .map(|le| le.len_chars())
-                    .unwrap_or(0),
-            );
+            let max_to = rope_end_without_line_ending(&alltext);
             let to = std::cmp::min(max_to, range.to() + 1);
             (range.from(), to, None)
         });
@@ -1348,7 +1345,7 @@ mod cmd {
             Ok(contents) => {
                 let transaction =
                     Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                        let max_to = doc.text().len_chars().saturating_sub(1);
+                        let max_to = rope_end_without_line_ending(&doc.text().slice(..));
                         let to = std::cmp::min(max_to, range.to() + 1);
                         (range.from(), to, Some(contents.as_str().into()))
                     });
@@ -1831,7 +1828,10 @@ fn open(cx: &mut Context, open: Open) {
         };
 
         // insert newlines after this index for both Above and Below variants
-        let linend_index = doc.text().line_to_char(line).saturating_sub(1);
+        let linend_index = doc.text().line_to_char(line)
+            - get_line_ending(&doc.text().line(line))
+                .map(|le| le.len_chars())
+                .unwrap_or(0);
 
         // TODO: share logic with insert_newline for indentation
         let indent_level = indent::suggested_indent_for_pos(
@@ -2702,7 +2702,7 @@ fn replace_with_yanked(cx: &mut Context) {
         if let Some(yank) = values.first() {
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let max_to = rope_end_without_line_ending(&doc.text().slice(..));
                     let to = std::cmp::min(max_to, range.to() + 1);
                     (range.from(), to, Some(yank.as_str().into()))
                 });
@@ -2720,7 +2720,7 @@ fn replace_selections_with_clipboard_impl(editor: &mut Editor) {
         Ok(contents) => {
             let transaction =
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    let max_to = doc.text().len_chars().saturating_sub(1);
+                    let max_to = rope_end_without_line_ending(&doc.text().slice(..));
                     let to = std::cmp::min(max_to, range.to() + 1);
                     (range.from(), to, Some(contents.as_str().into()))
                 });
@@ -2906,8 +2906,8 @@ fn join_selections(cx: &mut Context) {
         changes.reserve(lines.len());
 
         for line in lines {
-            let mut start = text.line_to_char(line + 1).saturating_sub(1);
-            let mut end = start + 1;
+            let mut start = line_end_char_index(&slice, line);
+            let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
             // need to skip from start, not end
@@ -3371,11 +3371,7 @@ fn surround_add(cx: &mut Context) {
             for (i, range) in selection.iter().enumerate() {
                 let from = range.from();
                 let line = text.char_to_line(range.to());
-                let max_to = doc.text().len_chars().saturating_sub(
-                    get_line_ending(&text.line(line))
-                        .map(|le| le.len_chars())
-                        .unwrap_or(0),
-                );
+                let max_to = rope_end_without_line_ending(&text);
                 let to = std::cmp::min(range.to() + 1, max_to);
 
                 changes.push((from, from, Some(Tendril::from_char(open))));

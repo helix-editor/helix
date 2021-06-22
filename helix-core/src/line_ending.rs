@@ -159,6 +159,12 @@ pub fn line_end_char_index(slice: &RopeSlice, line: usize) -> usize {
             .unwrap_or(0)
 }
 
+/// Returns the char index of the end of the given RopeSlice, not including
+/// any final line ending.
+pub fn rope_end_without_line_ending(slice: &RopeSlice) -> usize {
+    slice.len_chars() - get_line_ending(slice).map(|le| le.len_chars()).unwrap_or(0)
+}
+
 #[cfg(test)]
 mod line_ending_tests {
     use super::*;
