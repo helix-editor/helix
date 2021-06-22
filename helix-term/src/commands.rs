@@ -3352,7 +3352,15 @@ fn surround_add(cx: &mut Context) {
 
             let mut changes = Vec::new();
             for (i, range) in selection.iter().enumerate() {
-                let (from, to) = (range.from(), range.to() + 1);
+                let from = range.from();
+                let line = text.char_to_line(range.to());
+                let max_to = doc.text().len_chars().saturating_sub(
+                    get_line_ending(&text.line(line))
+                        .map(|le| le.len_chars())
+                        .unwrap_or(0),
+                );
+                let to = std::cmp::min(range.to() + 1, max_to);
+
                 changes.push((from, from, Some(Tendril::from_char(open))));
                 changes.push((to, to, Some(Tendril::from_char(close))));
             }
