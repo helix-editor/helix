@@ -201,16 +201,6 @@ impl Default for Keymaps {
 
 
             key!('m') => Command::surround,
-            // TODO: refactor into
-            // key!('m') => commands::select_to_matching,
-            // key!('M') => commands::back_select_to_matching,
-            // select mode extend equivalents
-
-            // key!('.') => commands::repeat_insert,
-            // repeat_select
-
-            // TODO: figure out what key to use
-            // key!('[') => Command::expand_selection, ??
             key!('[') => Command::left_bracket_mode,
             key!(']') => Command::right_bracket_mode,
 
