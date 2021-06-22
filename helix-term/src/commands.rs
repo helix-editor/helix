@@ -28,7 +28,7 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
-    compositor::{Callback, Component, Compositor},
+    compositor::{self, Callback, Component, Compositor},
     ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -1032,30 +1032,32 @@ mod cmd {
         pub alias: Option<&'static str>,
         pub doc: &'static str,
         // params, flags, helper, completer
-        pub fun: fn(&mut Editor, &[&str], PromptEvent),
+        pub fun: fn(&mut compositor::Context, &[&str], PromptEvent),
         pub completer: Option<Completer>,
     }
 
-    fn quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         // last view and we have unsaved changes
-        if editor.tree.views().count() == 1 && buffers_remaining_impl(editor) {
+        if cx.editor.tree.views().count() == 1 && buffers_remaining_impl(cx.editor) {
             return;
         }
-        editor.close(view!(editor).id, /* close_buffer */ false);
+        cx.editor
+            .close(view!(cx.editor).id, /* close_buffer */ false);
     }
 
-    fn force_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        editor.close(view!(editor).id, /* close_buffer */ false);
+    fn force_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        cx.editor
+            .close(view!(cx.editor).id, /* close_buffer */ false);
     }
 
-    fn open(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn open(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         match args.get(0) {
             Some(path) => {
                 // TODO: handle error
-                editor.open(path.into(), Action::Replace);
+                cx.editor.open(path.into(), Action::Replace);
             }
             None => {
-                editor.set_error("wrong argument count".to_string());
+                cx.editor.set_error("wrong argument count".to_string());
             }
         };
     }
@@ -1086,30 +1088,30 @@ mod cmd {
         Ok(())
     }
 
-    fn write(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(editor);
+    fn write(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        let (view, doc) = current!(cx.editor);
         if let Err(e) = write_impl(view, doc, args.first()) {
-            editor.set_error(e.to_string());
+            cx.editor.set_error(e.to_string());
         };
     }
 
-    fn new_file(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        editor.new_file(Action::Replace);
+    fn new_file(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        cx.editor.new_file(Action::Replace);
     }
 
-    fn format(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(editor);
+    fn format(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        let (view, doc) = current!(cx.editor);
 
         doc.format(view.id)
     }
 
-    fn set_indent_style(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn set_indent_style(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         use IndentStyle::*;
 
         // If no argument, report current indent style.
         if args.is_empty() {
-            let style = current!(editor).1.indent_style;
-            editor.set_status(match style {
+            let style = current!(cx.editor).1.indent_style;
+            cx.editor.set_status(match style {
                 Tabs => "tabs".into(),
                 Spaces(1) => "1 space".into(),
                 Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
@@ -1131,22 +1133,23 @@ mod cmd {
         };
 
         if let Some(s) = style {
-            let doc = doc_mut!(editor);
+            let doc = doc_mut!(cx.editor);
             doc.indent_style = s;
         } else {
             // Invalid argument.
-            editor.set_error(format!("invalid indent style '{}'", args[0],));
+            cx.editor
+                .set_error(format!("invalid indent style '{}'", args[0],));
         }
     }
 
     /// Sets or reports the current document's line ending setting.
-    fn set_line_ending(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn set_line_ending(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         use LineEnding::*;
 
         // If no argument, report current line ending setting.
         if args.is_empty() {
-            let line_ending = current!(editor).1.line_ending;
-            editor.set_status(match line_ending {
+            let line_ending = current!(cx.editor).1.line_ending;
+            cx.editor.set_status(match line_ending {
                 Crlf => "crlf".into(),
                 LF => "line feed".into(),
                 FF => "form feed".into(),
@@ -1171,49 +1174,50 @@ mod cmd {
         };
 
         if let Some(le) = line_ending {
-            doc_mut!(editor).line_ending = le;
+            doc_mut!(cx.editor).line_ending = le;
         } else {
             // Invalid argument.
-            editor.set_error(format!("invalid line ending '{}'", args[0],));
+            cx.editor
+                .set_error(format!("invalid line ending '{}'", args[0],));
         }
     }
 
-    fn earlier(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn earlier(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
             Err(msg) => {
-                editor.set_error(msg);
+                cx.editor.set_error(msg);
                 return;
             }
         };
-        let (view, doc) = current!(editor);
+        let (view, doc) = current!(cx.editor);
         doc.earlier(view.id, uk)
     }
 
-    fn later(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn later(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
             Err(msg) => {
-                editor.set_error(msg);
+                cx.editor.set_error(msg);
                 return;
             }
         };
-        let (view, doc) = current!(editor);
+        let (view, doc) = current!(cx.editor);
         doc.later(view.id, uk)
     }
 
-    fn write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(editor);
+    fn write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        let (view, doc) = current!(cx.editor);
         if let Err(e) = write_impl(view, doc, args.first()) {
-            editor.set_error(e.to_string());
+            cx.editor.set_error(e.to_string());
             return;
         };
-        quit(editor, &[], event)
+        quit(cx, &[], event)
     }
 
-    fn force_write_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        write(editor, args, event);
-        force_quit(editor, &[], event);
+    fn force_write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        write(cx, args, event);
+        force_quit(cx, &[], event);
     }
 
     /// Returns `true` if there are modified buffers remaining and sets editor error,
@@ -1273,16 +1277,16 @@ mod cmd {
         }
     }
 
-    fn write_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        write_all_impl(editor, args, event, false, false)
+    fn write_all(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        write_all_impl(&mut cx.editor, args, event, false, false)
     }
 
-    fn write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        write_all_impl(editor, args, event, true, false)
+    fn write_all_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        write_all_impl(&mut cx.editor, args, event, true, false)
     }
 
-    fn force_write_all_quit(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        write_all_impl(editor, args, event, true, true)
+    fn force_write_all_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        write_all_impl(&mut cx.editor, args, event, true, true)
     }
 
     fn quit_all_impl(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
@@ -1297,50 +1301,50 @@ mod cmd {
         }
     }
 
-    fn quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        quit_all_impl(editor, args, event, false)
+    fn quit_all(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        quit_all_impl(&mut cx.editor, args, event, false)
     }
 
-    fn force_quit_all(editor: &mut Editor, args: &[&str], event: PromptEvent) {
-        quit_all_impl(editor, args, event, true)
+    fn force_quit_all(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+        quit_all_impl(&mut cx.editor, args, event, true)
     }
 
-    fn theme(editor: &mut Editor, args: &[&str], event: PromptEvent) {
+    fn theme(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         let theme = if let Some(theme) = args.first() {
             theme
         } else {
-            editor.set_error("theme name not provided".into());
+            cx.editor.set_error("theme name not provided".into());
             return;
         };
 
-        editor.set_theme_from_name(theme);
+        cx.editor.set_theme_from_name(theme);
     }
 
-    fn yank_main_selection_to_clipboard(editor: &mut Editor, _: &[&str], _: PromptEvent) {
-        yank_main_selection_to_clipboard_impl(editor);
+    fn yank_main_selection_to_clipboard(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+        yank_main_selection_to_clipboard_impl(&mut cx.editor);
     }
 
-    fn yank_joined_to_clipboard(editor: &mut Editor, args: &[&str], _: PromptEvent) {
-        let (_, doc) = current!(editor);
+    fn yank_joined_to_clipboard(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
+        let (_, doc) = current!(cx.editor);
         let separator = args
             .first()
             .copied()
             .unwrap_or_else(|| doc.line_ending.as_str());
-        yank_joined_to_clipboard_impl(editor, separator);
+        yank_joined_to_clipboard_impl(&mut cx.editor, separator);
     }
 
-    fn paste_clipboard_after(editor: &mut Editor, _: &[&str], _: PromptEvent) {
-        paste_clipboard_impl(editor, Paste::After);
+    fn paste_clipboard_after(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+        paste_clipboard_impl(&mut cx.editor, Paste::After);
     }
 
-    fn paste_clipboard_before(editor: &mut Editor, _: &[&str], _: PromptEvent) {
-        paste_clipboard_impl(editor, Paste::After);
+    fn paste_clipboard_before(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+        paste_clipboard_impl(&mut cx.editor, Paste::After);
     }
 
-    fn replace_selections_with_clipboard(editor: &mut Editor, _: &[&str], _: PromptEvent) {
-        let (view, doc) = current!(editor);
+    fn replace_selections_with_clipboard(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+        let (view, doc) = current!(cx.editor);
 
-        match editor.clipboard_provider.get_contents() {
+        match cx.editor.clipboard_provider.get_contents() {
             Ok(contents) => {
                 let transaction =
                     Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
@@ -1356,8 +1360,9 @@ mod cmd {
         }
     }
 
-    fn show_clipboard_provider(editor: &mut Editor, _: &[&str], _: PromptEvent) {
-        editor.set_status(editor.clipboard_provider.name().into());
+    fn show_clipboard_provider(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+        cx.editor
+            .set_status(cx.editor.clipboard_provider.name().into());
     }
 
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -1584,7 +1589,7 @@ fn command_mode(cx: &mut Context) {
                 }
             }
         }, // completion
-        move |editor: &mut Editor, input: &str, event: PromptEvent| {
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             use helix_view::editor::Action;
 
             if event != PromptEvent::Validate {
@@ -1597,9 +1602,10 @@ fn command_mode(cx: &mut Context) {
             }
 
             if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
-                (cmd.fun)(editor, &parts[1..], event);
+                (cmd.fun)(cx, &parts[1..], event);
             } else {
-                editor.set_error(format!("no such command: '{}'", parts[0]));
+                cx.editor
+                    .set_error(format!("no such command: '{}'", parts[0]));
             };
         },
     );
