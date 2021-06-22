@@ -44,7 +44,7 @@ impl<T> Picker<T> {
         let prompt = Prompt::new(
             "".to_string(),
             |pattern: &str| Vec::new(),
-            |editor: &mut Editor, pattern: &str, event: PromptEvent| {
+            |editor: &mut Context, pattern: &str, event: PromptEvent| {
                 //
             },
         );

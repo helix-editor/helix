@@ -39,10 +39,10 @@ pub fn regex_prompt(
     Prompt::new(
         prompt,
         |input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
-        move |editor: &mut Editor, input: &str, event: PromptEvent| {
+        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
-                    let (view, doc) = current!(editor);
+                    let (view, doc) = current!(cx.editor);
                     doc.set_selection(view.id, snapshot.clone());
                 }
                 PromptEvent::Validate => {
@@ -56,8 +56,8 @@ pub fn regex_prompt(
 
                     match Regex::new(input) {
                         Ok(regex) => {
-                            let (view, doc) = current!(editor);
-                            let registers = &mut editor.registers;
+                            let (view, doc) = current!(cx.editor);
+                            let registers = &mut cx.editor.registers;
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());

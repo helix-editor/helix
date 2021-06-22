@@ -20,7 +20,7 @@ pub struct Prompt {
     completion: Vec<Completion>,
     selection: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
-    callback_fn: Box<dyn FnMut(&mut Editor, &str, PromptEvent)>,
+    callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
 }
 
@@ -54,7 +54,7 @@ impl Prompt {
     pub fn new(
         prompt: String,
         mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
-        callback_fn: impl FnMut(&mut Editor, &str, PromptEvent) + 'static,
+        callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
             prompt,
@@ -386,7 +386,7 @@ impl Component for Prompt {
                 modifiers: KeyModifiers::SHIFT,
             } => {
                 self.insert_char(c);
-                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             KeyEvent {
                 code: KeyCode::Char('c'),
@@ -395,7 +395,7 @@ impl Component for Prompt {
             | KeyEvent {
                 code: KeyCode::Esc, ..
             } => {
-                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Abort);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
                 return close_fn;
             }
             KeyEvent {
@@ -459,7 +459,7 @@ impl Component for Prompt {
                 modifiers: KeyModifiers::NONE,
             } => {
                 self.delete_char_backwards();
-                (self.callback_fn)(cx.editor, &self.line, PromptEvent::Update);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             KeyEvent {
                 code: KeyCode::Enter,
@@ -469,7 +469,7 @@ impl Component for Prompt {
                     self.completion = (self.completion_fn)(&self.line);
                     self.exit_selection();
                 } else {
-                    (self.callback_fn)(cx.editor, &self.line, PromptEvent::Validate);
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
                     return close_fn;
                 }
             }
