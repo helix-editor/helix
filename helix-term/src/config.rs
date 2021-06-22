@@ -1,47 +1,62 @@
 use anyhow::{Error, Result};
+use serde::Deserialize;
 use std::collections::HashMap;
 
-use serde::{de::Error as SerdeError, Deserialize, Serialize};
+use crate::commands::Command;
+use crate::keymap::Keymaps;
 
-use crate::keymap::{parse_keymaps, Keymaps};
-
-#[derive(Default)]
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 pub struct Config {
     pub theme: Option<String>,
+    #[serde(default)]
     pub lsp: LspConfig,
-    pub keymaps: Keymaps,
+    #[serde(default)]
+    pub keys: Keymaps,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LspConfig {
     pub display_messages: bool,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct TomlConfig {
-    theme: Option<String>,
-    #[serde(default)]
-    lsp: LspConfig,
-    keys: Option<HashMap<String, HashMap<String, String>>>,
-}
+#[test]
+fn parsing_keymaps_config_file() {
+    use helix_core::hashmap;
+    use helix_view::document::Mode;
+    use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
 
-impl<'de> Deserialize<'de> for Config {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let config = TomlConfig::deserialize(deserializer)?;
-        Ok(Self {
-            theme: config.theme,
-            lsp: config.lsp,
-            keymaps: config
-                .keys
-                .map(|r| parse_keymaps(&r))
-                .transpose()
-                .map_err(|e| D::Error::custom(format!("Error deserializing keymap: {}", e)))?
-                .unwrap_or_else(Keymaps::default),
-        })
-    }
+    let sample_keymaps = r#"
+            [keys.insert]
+            y = "move_line_down"
+            S-C-a = "delete_selection"
+
+            [keys.normal]
+            A-F12 = "move_next_word_end"
+        "#;
+
+    assert_eq!(
+        toml::from_str::<Config>(sample_keymaps).unwrap(),
+        Config {
+            keys: Keymaps(hashmap! {
+                Mode::Insert => hashmap! {
+                    KeyEvent {
+                        code: KeyCode::Char('y'),
+                        modifiers: KeyModifiers::NONE,
+                    } => Command::move_line_down,
+                    KeyEvent {
+                        code: KeyCode::Char('a'),
+                        modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL,
+                    } => Command::delete_selection,
+                },
+                Mode::Normal => hashmap! {
+                    KeyEvent {
+                        code: KeyCode::F(12),
+                        modifiers: KeyModifiers::ALT,
+                    } => Command::move_next_word_end,
+                },
+            }),
+            ..Default::default()
+        }
+    );
 }
