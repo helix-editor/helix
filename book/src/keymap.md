@@ -21,7 +21,6 @@
 | `F`          | Find previous char                                                         |
 | `Home`       | Move to the start of the line                                              |
 | `End`        | Move to the end of the line                                                |
-| `m`          | Jump to matching bracket                                                   |
 | `PageUp`     | Move page up                                                               |
 | `PageDown`   | Move page down                                                             |
 | `Ctrl-u`     | Move half page up                                                          |
@@ -30,6 +29,7 @@
 | `Ctrl-o`     | Jump backward on the jumplist                                              |
 | `v`          | Enter [select (extend) mode](#select--extend-mode)                         |
 | `g`          | Enter [goto mode](#goto-mode)                                              |
+| `m`          | Enter [match mode](#match-mode)
 | `:`          | Enter command mode                                                         |
 | `z`          | Enter [view mode](#view-mode)                                              |
 | `Ctrl-w`     | Enter [window mode](#window-mode) (maybe will be remove for spc w w later) |
@@ -70,7 +70,7 @@
 | `Alt-;`  | Flip selection cursor and anchor                                  |
 | `%`      | Select entire file                                                |
 | `x`      | Select current line, if already selected, extend to next line     |
-| ``       | Expand selection to parent syntax node TODO: pick a key           |
+|          | Expand selection to parent syntax node TODO: pick a key           |
 | `J`      | join lines inside selection                                       |
 | `K`      | keep selections matching the regex TODO: overlapped by hover help |
 | `Space`  | keep only the primary selection TODO: overlapped by space mode    |
@@ -143,6 +143,18 @@ Jumps to various locations.
 | `r`   | Go to references                                 |
 | `i`   | Go to implementation                             |
 | `a`   | Go to the last accessed/alternate file           |
+
+## Match mode
+
+Enter this mode using `m` from normal mode. See the relavant section
+in [Usage](./usage.md#surround) for an explanation about surround usage.
+
+| Key              | Description                                     |
+| -----            | -----------                                     |
+| `m`              | Goto matching bracket                           |
+| `s` `<char>`     | Surround current selection with `<char>`        |
+| `r` `<from><to>` | Replace surround character `<from>` with `<to>` |
+| `d` `<char>`     | Delete surround character `<char>`              |
 
 ## Object mode
 

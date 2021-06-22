@@ -3324,7 +3324,7 @@ fn surround(cx: &mut Context) {
             cx.count = count;
             match ch {
                 'm' => match_brackets(cx),
-                'a' => surround_add(cx),
+                's' => surround_add(cx),
                 'r' => surround_replace(cx),
                 'd' => {
                     surround_delete(cx);
