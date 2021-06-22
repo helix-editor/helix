@@ -152,14 +152,19 @@ impl Application {
                 break;
             }
 
-            use futures_util::StreamExt;
+            use futures_util::{FutureExt, StreamExt};
 
             tokio::select! {
                 event = reader.next() => {
                     self.handle_terminal_events(event)
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
-                    self.handle_language_server_message(call, id).await
+                    self.handle_language_server_message(call, id).await;
+                    // eagerly process any other available notifications/calls
+                    while let Some(Some((id, call))) = self.editor.language_servers.incoming.next().now_or_never() {
+                       self.handle_language_server_message(call, id).await;
+                    }
+                    self.render();
                 }
                 Some(callback) = &mut self.callbacks.next() => {
                     self.handle_language_server_callback(callback)
@@ -294,7 +299,6 @@ impl Application {
 
                             doc.set_diagnostics(diagnostics);
                             // TODO: we want to process all the events in queue, then render. publishDiagnostic tends to send a whole bunch of events
-                            self.render();
                         }
                     }
                     Notification::ShowMessage(params) => {
@@ -330,7 +334,6 @@ impl Application {
                                     self.editor.clear_status();
 
                                     // we want to render to clear any leftover spinners or messages
-                                    self.render();
                                     return;
                                 }
                             }
@@ -378,7 +381,6 @@ impl Application {
                         if self.config.lsp.display_messages {
                             self.editor.set_status(status);
                         }
-                        self.render();
                     }
                     _ => unreachable!(),
                 }
