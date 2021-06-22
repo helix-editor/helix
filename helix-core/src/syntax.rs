@@ -20,6 +20,22 @@ pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
+impl Configuration {
+    /// Merges two configurations by updating relevant values of `self` where
+    /// `other` has new or different values.
+    fn merge(&mut self, other: Configuration) {
+        other.language.into_iter().for_each(|other| {
+            if let Some(base) = self
+                .language
+                .iter_mut()
+                .find(|base| base.language_id == other.language_id)
+            {
+                base.patch(other);
+            }
+        })
+    }
+}
+
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -49,7 +65,7 @@ pub struct LanguageConfiguration {
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
     pub command: String,
@@ -58,11 +74,33 @@ pub struct LanguageServerConfiguration {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl LanguageServerConfiguration {
+    pub fn patch(&mut self, other: Self) {
+        if self.command != other.command {
+            self.command = other.command;
+        }
+        if self.args != other.args {
+            self.args = other.args;
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
     pub tab_width: usize,
     pub unit: String,
+}
+
+impl IndentationConfiguration {
+    pub fn patch(&mut self, other: Self) {
+        if self.tab_width != other.tab_width {
+            self.tab_width = other.tab_width;
+        }
+        if self.unit != other.unit {
+            self.unit = other.unit;
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -172,7 +210,7 @@ impl LanguageConfiguration {
         }
     }
 
-    pub fn reconfigure(&self, scopes: &[String]) {
+    pub fn reconfigure_highlight(&self, scopes: &[String]) {
         if let Some(Some(config)) = self.highlight_config.get() {
             config.configure(scopes);
         }
@@ -182,6 +220,43 @@ impl LanguageConfiguration {
         self.highlight_config
             .get_or_init(|| self.initialize_highlight(scopes))
             .clone()
+    }
+
+    pub fn patch(&mut self, other: Self) {
+        if self.scope != other.scope {
+            self.scope = other.scope;
+        }
+        if self.file_types != other.file_types {
+            self.file_types = other.file_types;
+        }
+        if self.roots != other.roots {
+            self.roots = other.roots;
+        }
+        if self.auto_format != other.auto_format {
+            self.auto_format = other.auto_format;
+        }
+        if self.language_server != other.language_server {
+            match (&mut self.language_server, other.language_server) {
+                (Some(base), Some(other)) => {
+                    base.patch(other);
+                }
+                (base @ None, Some(other)) => {
+                    *base = Some(other);
+                }
+                _ => {}
+            }
+        }
+        if self.indent != other.indent {
+            match (&mut self.indent, other.indent) {
+                (Some(base), Some(other)) => {
+                    base.patch(other);
+                }
+                (base @ None, Some(other)) => {
+                    *base = Some(other);
+                }
+                _ => {}
+            }
+        }
     }
 
     pub fn is_highlight_initialized(&self) -> bool {
