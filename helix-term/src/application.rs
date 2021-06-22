@@ -65,10 +65,15 @@ impl Application {
             std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
 
         // load $HOME/.config/helix/languages.toml, fallback to default config
-        let lang_conf = std::fs::read(conf_dir.join("languages.toml"));
-        let lang_conf = lang_conf
-            .as_deref()
-            .unwrap_or(include_bytes!("../../languages.toml"));
+        let lang_conf_ = include_bytes!("../../languages.toml");
+        let mut lang_conf: syntax::Configuration =
+            toml::from_slice(lang_conf_).expect("failed to deserialize languages configuration");
+        if let Ok(user_lang_conf) = std::fs::read(conf_dir.join("languages.toml")) {
+            let user_lang_conf =
+                toml::from_slice(lang_conf_).context("failed to deserialize languages.toml")?;
+
+            lang_conf.merge(user_lang_conf);
+        }
 
         let theme = if let Some(theme) = &config.theme {
             match theme_loader.load(theme) {
@@ -82,8 +87,7 @@ impl Application {
             theme_loader.default()
         };
 
-        let syn_loader_conf = toml::from_slice(lang_conf).expect("Could not parse languages.toml");
-        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+        let syn_loader = std::sync::Arc::new(syntax::Loader::new(lang_conf));
 
         let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
 

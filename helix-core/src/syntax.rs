@@ -23,7 +23,7 @@ pub struct Configuration {
 impl Configuration {
     /// Merges two configurations by updating relevant values of `self` where
     /// `other` has new or different values.
-    fn merge(&mut self, other: Configuration) {
+    pub fn merge(&mut self, other: Configuration) {
         other.language.into_iter().for_each(|other| {
             if let Some(base) = self
                 .language
