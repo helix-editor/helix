@@ -2,6 +2,8 @@
 
 We provide pre-built binaries on the [GitHub Releases page](https://github.com/helix-editor/helix/releases).
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+
 ## OSX
 
 A Homebrew tap is available:

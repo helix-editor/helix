@@ -55,10 +55,7 @@ it with:
 cargo install --path helix-term --features "embed_runtime"
 ```
 
-## Arch Linux
-There are two packages available from AUR:
- - `helix-bin`: contains prebuilt binary from GitHub releases
- - `helix-git`: builds the master branch of this repository
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
 ## MacOS
 Helix can be installed on MacOS through homebrew via:
