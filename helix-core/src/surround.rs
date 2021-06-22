@@ -39,8 +39,9 @@ pub fn find_nth_pairs_pos(
     n: usize,
 ) -> Option<(usize, usize)> {
     let (open, close) = get_pair(ch);
-    let open_pos = search::find_nth_prev(text, open, pos, n, true)?;
-    let close_pos = search::find_nth_next(text, close, pos, n, true)?;
+    // find_nth* do not consider current character; +1/-1 to include them
+    let open_pos = search::find_nth_prev(text, open, pos + 1, n, true)?;
+    let close_pos = search::find_nth_next(text, close, pos - 1, n, true)?;
 
     Some((open_pos, close_pos))
 }
@@ -86,7 +87,7 @@ mod test {
         // cursor on so[m]e
         assert_eq!(find_nth_pairs_pos(slice, '(', 2, 1), None);
         // cursor on bracket itself
-        // assert_eq!(find_nth_pairs_pos(slice, '(', 5, 1), Some((5, 10)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 5, 1), Some((5, 10)));
     }
 
     #[test]
@@ -134,10 +135,8 @@ mod test {
         let doc = Rope::from("[some]\n(chars)xx\n(newline)");
         let slice = doc.slice(..);
 
-        let selection = Selection::new(
-            SmallVec::from_slice(&[Range::point(2), Range::point(9)]),
-            0,
-        );
+        let selection =
+            Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(9)]), 0);
 
         // cursor on s[o]me, c[h]ars
         assert_eq!(
@@ -152,7 +151,7 @@ mod test {
         // cursor on [x]x, newli[n]e
         assert_eq!(
             get_surround_pos(slice, &selection, '(', 1),
-            None  // overlapping surround chars
+            None // overlapping surround chars
         );
     }
 }
