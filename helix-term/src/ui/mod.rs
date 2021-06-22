@@ -78,18 +78,26 @@ pub fn regex_prompt(
 
 pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
     use ignore::Walk;
+    use std::time;
     let files = Walk::new(root.clone()).filter_map(|entry| match entry {
         Ok(entry) => {
             // filter dirs, but we might need special handling for symlinks!
             if !entry.file_type().map_or(false, |entry| entry.is_dir()) {
-                let mut atime = None;
-                if let Ok(metadata) = entry.metadata() {
-                    if let Ok(atime_) = metadata.accessed() {
-                        atime = Some(atime_)
+                let time = if let Ok(metadata) = entry.metadata() {
+                    if let Ok(atime) = metadata.accessed() {
+                        atime
+                    } else if let Ok(mtime) = metadata.modified() {
+                        mtime
+                    } else if let Ok(ctime) = metadata.created() {
+                        ctime
+                    } else {
+                        time::UNIX_EPOCH
                     }
-                }
+                } else {
+                    time::UNIX_EPOCH
+                };
 
-                Some((entry.into_path(), atime))
+                Some((entry.into_path(), time))
             } else {
                 None
             }
@@ -104,15 +112,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         files.take(MAX).collect()
     };
 
-    files.sort_by(|(_, atime1), (_, atime2)| {
-        if let Some(atime1) = atime1 {
-            if let Some(atime2) = atime2 {
-                return atime2.cmp(atime1);
-            }
-        }
-
-        std::cmp::Ordering::Equal
-    });
+    files.sort_by(|(_, time1), (_, time2)| time1.cmp(time2));
 
     let files = files.into_iter().map(|(path, _)| path).collect();
 
