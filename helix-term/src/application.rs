@@ -44,6 +44,7 @@ pub struct Application {
     compositor: Compositor,
     editor: Editor,
 
+    // TODO should be separate to take only part of the config
     config: Config,
 
     theme_loader: Arc<theme::Loader>,
@@ -54,7 +55,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(mut args: Args, config: Config) -> Result<Self, Error> {
+    pub fn new(mut args: Args, mut config: Config) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
@@ -87,7 +88,7 @@ impl Application {
 
         let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
 
-        let mut editor_view = Box::new(ui::EditorView::new(config.keymaps.clone()));
+        let mut editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
         if !args.files.is_empty() {
