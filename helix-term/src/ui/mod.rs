@@ -112,7 +112,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         files.take(MAX).collect()
     };
 
-    files.sort_by(|(_, time1), (_, time2)| time1.cmp(time2));
+    files.sort_by_key(|file| file.1);
 
     let files = files.into_iter().map(|(path, _)| path).collect();
 
