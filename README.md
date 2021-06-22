@@ -74,7 +74,7 @@ Contributors are very welcome! **No contribution is too small and all contributi
 
 Some suggestions to get started:
 
-- You can look at the [good first issue](https://github.com/helix-editor/helix/labels/good%20first%20issue) label on the issue tracker.
+- You can look at the [good first issue](https://github.com/helix-editor/helix/labels/E-easy) label on the issue tracker.
 - Help with packaging on various distributions needed!
 - To use print debugging to the `~/.cache/helix/helix.log` file, you must:
   * Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
