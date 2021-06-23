@@ -352,7 +352,7 @@ pub fn select_on_matches(
 
             let start = text.byte_to_char(start_byte + mat.start());
             let end = text.byte_to_char(start_byte + mat.end());
-            result.push(Range::new(start, end - 1));
+            result.push(Range::new(start, end.saturating_sub(1)));
         }
     }
 
