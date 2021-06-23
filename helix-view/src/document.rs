@@ -11,13 +11,15 @@ use helix_core::{
     history::History,
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
 
 use crate::{DocumentId, Theme, ViewId};
 
 use std::collections::HashMap;
+
+const BUF_SIZE: usize = 8192;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
@@ -39,6 +41,7 @@ pub struct Document {
     pub(crate) selections: HashMap<ViewId, Selection>,
 
     path: Option<PathBuf>,
+    encoding: &'static encoding_rs::Encoding,
 
     /// Current editing mode.
     pub mode: Mode,
@@ -78,6 +81,7 @@ impl fmt::Debug for Document {
             .field("text", &self.text)
             .field("selections", &self.selections)
             .field("path", &self.path)
+            .field("encoding", &self.encoding)
             .field("mode", &self.mode)
             .field("restore_cursor", &self.restore_cursor)
             .field("syntax", &self.syntax)
@@ -114,6 +118,173 @@ impl FromStr for Mode {
             _ => Err(anyhow!("Invalid mode '{}'", s)),
         }
     }
+}
+
+// The documentation and implementation of this function should be up-to-date with
+// its sibling function, `to_writer()`.
+//
+/// Decodes a stream of bytes into UTF-8, returning a `Rope` and the
+/// encoding it was decoded as. The optional `encoding` parameter can
+/// be used to override encoding auto-detection.
+pub fn from_reader<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: Option<&'static encoding_rs::Encoding>,
+) -> Result<(Rope, &'static encoding_rs::Encoding), Error> {
+    // These two buffers are 8192 bytes in size each and are used as
+    // intermediaries during the decoding process. Text read into `buf`
+    // from `reader` is decoded into `buf_out` as UTF-8. Once either
+    // `buf_out` is full or the end of the reader was reached, the
+    // contents are appended to `builder`.
+    let mut buf = [0u8; BUF_SIZE];
+    let mut buf_out = [0u8; BUF_SIZE];
+    let mut builder = RopeBuilder::new();
+
+    // By default, the encoding of the text is auto-detected via the
+    // `chardetng` crate which requires sample data from the reader.
+    // As a manual override to this auto-detection is possible, the
+    // same data is read into `buf` to ensure symmetry in the upcoming
+    // loop.
+    let (encoding, mut decoder, mut slice, mut is_empty) = {
+        let read = reader.read(&mut buf)?;
+        let is_empty = read == 0;
+        let encoding = encoding.unwrap_or_else(|| {
+            let mut encoding_detector = chardetng::EncodingDetector::new();
+            encoding_detector.feed(&buf, is_empty);
+            encoding_detector.guess(None, true)
+        });
+        let decoder = encoding.new_decoder();
+
+        // If the amount of bytes read from the reader is less than
+        // `buf.len()`, it is undesirable to read the bytes afterwards.
+        let slice = &buf[..read];
+        (encoding, decoder, slice, is_empty)
+    };
+
+    // `RopeBuilder::append()` expects a `&str`, so this is the "real"
+    // output buffer. When decoding, the number of bytes in the output
+    // buffer will often exceed the number of bytes in the input buffer.
+    // The `result` returned by `decode_to_str()` will state whether or
+    // not that happened. The contents of `buf_str` is appended to
+    // `builder` and it is reused for the next iteration of the decoding
+    // loop.
+    //
+    // As it is possible to read less than the buffer's maximum from `read()`
+    // even when the end of the reader has yet to be reached, the end of
+    // the reader is determined only when a `read()` call returns `0`.
+    //
+    // SAFETY: `buf_out` is a zero-initialized array, thus it will always
+    // contain valid UTF-8.
+    let buf_str = unsafe { std::str::from_utf8_unchecked_mut(&mut buf_out[..]) };
+    let mut total_written = 0usize;
+    loop {
+        let mut total_read = 0usize;
+
+        loop {
+            let (result, read, written, ..) = decoder.decode_to_str(
+                &slice[total_read..],
+                &mut buf_str[total_written..],
+                is_empty,
+            );
+
+            // These variables act as the read and write cursors of `buf` and `buf_str` respectively.
+            // They are necessary in case the output buffer fills before decoding of the entire input
+            // loop is complete. Otherwise, the loop would endlessly iterate over the same `buf` and
+            // the data inside the output buffer would be overwritten.
+            total_read += read;
+            total_written += written;
+            match result {
+                encoding_rs::CoderResult::InputEmpty => {
+                    debug_assert_eq!(slice.len(), total_read);
+                    break;
+                }
+                encoding_rs::CoderResult::OutputFull => {
+                    debug_assert!(slice.len() > total_read);
+                    builder.append(&buf_str[..total_written]);
+                    total_written = 0;
+                }
+            }
+        }
+        // Once the end of the stream is reached, the output buffer is
+        // flushed and the loop terminates.
+        if is_empty {
+            debug_assert_eq!(reader.read(&mut buf)?, 0);
+            builder.append(&buf_str[..total_written]);
+            break;
+        }
+
+        // Once the previous input has been processed and decoded, the next set of
+        // data is fetched from the reader. The end of the reader is determined to
+        // be when exactly `0` bytes were read from the reader, as per the invariants
+        // of the `Read` trait.
+        let read = reader.read(&mut buf)?;
+        slice = &buf[..read];
+        is_empty = read == 0;
+    }
+    let rope = builder.finish();
+    Ok((rope, encoding))
+}
+
+// The documentation and implementation of this function should be up-to-date with
+// its sibling function, `from_reader()`.
+//
+/// Encodes the text inside `rope` into the given `encoding` and writes the
+/// encoded output into `writer.` As a `Rope` can only contain valid UTF-8,
+/// replacement characters may appear in the encoded text.
+pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
+    writer: &'a mut W,
+    encoding: &'static encoding_rs::Encoding,
+    rope: &'a Rope,
+) -> Result<(), Error> {
+    // Text inside a `Rope` is stored as non-contiguous blocks of data called
+    // chunks. The absolute size of each chunk is unknown, thus it is impossible
+    // to predict the end of the chunk iterator ahead of time. Instead, it is
+    // determined by filtering the iterator to remove all empty chunks and then
+    // appending an empty chunk to it. This is valuable for detecting when all
+    // chunks in the `Rope` have been iterated over in the subsequent loop.
+    let iter = rope
+        .chunks()
+        .filter(|c| !c.is_empty())
+        .chain(std::iter::once(""));
+    let mut buf = [0u8; BUF_SIZE];
+    let mut encoder = encoding.new_encoder();
+    let mut total_written = 0usize;
+    for chunk in iter {
+        let is_empty = chunk.is_empty();
+        let mut total_read = 0usize;
+
+        loop {
+            let (result, read, written, ..) =
+                encoder.encode_from_utf8(&chunk[total_read..], &mut buf[total_written..], is_empty);
+
+            // These variables act as the read and write cursors of `chunk` and `buf` respectively.
+            // They are necessary in case the output buffer fills before encoding of the entire input
+            // loop is complete. Otherwise, the loop would endlessly iterate over the same `chunk` and
+            // the data inside the output buffer would be overwritten.
+            total_read += read;
+            total_written += written;
+            match result {
+                encoding_rs::CoderResult::InputEmpty => {
+                    debug_assert_eq!(chunk.len(), total_read);
+                    debug_assert!(buf.len() >= total_written);
+                    break;
+                }
+                encoding_rs::CoderResult::OutputFull => {
+                    debug_assert!(chunk.len() > total_read);
+                    writer.write_all(&buf[..total_written]).await?;
+                    total_written = 0;
+                }
+            }
+        }
+
+        // Once the end of the iterator is reached, the output buffer is
+        // flushed and the outer loop terminates.
+        if is_empty {
+            writer.write_all(&buf[..total_written]).await?;
+            writer.flush().await?;
+            break;
+        }
+    }
+    Ok(())
 }
 
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
@@ -216,13 +387,15 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn new(text: Rope) -> Self {
+    pub fn from(text: Rope, encoding: Option<&'static encoding_rs::Encoding>) -> Self {
+        let encoding = encoding.unwrap_or(encoding_rs::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
 
         Self {
             id: DocumentId::default(),
             path: None,
+            encoding,
             text,
             selections: HashMap::default(),
             indent_style: IndentStyle::Spaces(4),
@@ -242,29 +415,31 @@ impl Document {
     }
 
     // TODO: async fn?
-    pub fn load(
+    /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
+    /// overwritten with the `encoding` parameter.
+    pub fn open(
         path: PathBuf,
+        encoding: Option<&'static encoding_rs::Encoding>,
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
-        use std::{fs::File, io::BufReader};
-
-        let mut doc = if !path.exists() {
-            Rope::from(DEFAULT_LINE_ENDING.as_str())
-        } else {
-            let file = File::open(&path).context(format!("unable to open {:?}", path))?;
-            Rope::from_reader(BufReader::new(file))?
-        };
-
-        // search for line endings
-        let line_ending = auto_detect_line_ending(&doc).unwrap_or(DEFAULT_LINE_ENDING);
-
-        // add missing newline at the end of file
-        if doc.len_bytes() == 0 || !char_is_line_ending(doc.char(doc.len_chars() - 1)) {
-            doc.insert(doc.len_chars(), line_ending.as_str());
+        if !path.exists() {
+            return Ok(Self::default());
         }
 
-        let mut doc = Self::new(doc);
+        let mut file = std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
+        let (mut rope, encoding) = from_reader(&mut file, encoding)?;
+
+        // search for line endings
+        let line_ending = auto_detect_line_ending(&rope).unwrap_or(DEFAULT_LINE_ENDING);
+
+        // add missing newline at the end of file
+        if rope.len_bytes() == 0 || !char_is_line_ending(rope.char(rope.len_chars() - 1)) {
+            rope.insert(rope.len_chars(), line_ending.as_str());
+        }
+
+        let mut doc = Self::from(rope, Some(encoding));
+
         // set the path and try detecting the language
         doc.set_path(&path)?;
         doc.detect_indent_style();
@@ -303,6 +478,8 @@ impl Document {
 
     // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
     // or is that handled by the OS/async layer
+    /// The `Document`'s text is encoded according to its encoding and written to the file located
+    /// at its `path()`.
     pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
@@ -320,8 +497,11 @@ impl Document {
         self.last_saved_revision = history.current_revision();
         self.history.set(history);
 
+        let encoding = self.encoding;
+
+        // We encode the file according to the `Document`'s encoding.
         async move {
-            use tokio::{fs::File, io::AsyncWriteExt};
+            use tokio::fs::File;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -330,13 +510,9 @@ impl Document {
                     ));
                 }
             }
-            let mut file = File::create(path).await?;
 
-            // write all the rope chunks to file
-            for chunk in text.chunks() {
-                file.write_all(chunk.as_bytes()).await?;
-            }
-            // TODO: flush?
+            let mut file = File::create(path).await?;
+            to_writer(&mut file, encoding, &text).await?;
 
             if let Some(language_server) = language_server {
                 language_server
@@ -531,7 +707,7 @@ impl Document {
         self.selections.insert(view_id, selection);
     }
 
-    fn _apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+    fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         let old_doc = self.text().clone();
 
         let success = transaction.changes().apply(&mut self.text);
@@ -594,7 +770,7 @@ impl Document {
             });
         }
 
-        let success = self._apply(transaction, view_id);
+        let success = self.apply_impl(transaction, view_id);
 
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
@@ -608,7 +784,7 @@ impl Document {
     pub fn undo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
-            self._apply(&transaction, view_id)
+            self.apply_impl(transaction, view_id)
         } else {
             false
         };
@@ -623,7 +799,7 @@ impl Document {
     pub fn redo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.redo() {
-            self._apply(&transaction, view_id)
+            self.apply_impl(transaction, view_id)
         } else {
             false
         };
@@ -638,14 +814,14 @@ impl Document {
     pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
         let txns = self.history.get_mut().earlier(uk);
         for txn in txns {
-            self._apply(&txn, view_id);
+            self.apply_impl(&txn, view_id);
         }
     }
 
     pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
         let txns = self.history.get_mut().later(uk);
         for txn in txns {
-            self._apply(&txn, view_id);
+            self.apply_impl(&txn, view_id);
         }
     }
 
@@ -670,12 +846,10 @@ impl Document {
         self.history.set(history);
     }
 
-    #[inline]
     pub fn id(&self) -> DocumentId {
         self.id
     }
 
-    #[inline]
     pub fn is_modified(&self) -> bool {
         let history = self.history.take();
         let current_revision = history.current_revision();
@@ -683,12 +857,10 @@ impl Document {
         current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
-    #[inline]
     pub fn mode(&self) -> Mode {
         self.mode
     }
 
-    #[inline]
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub fn language(&self) -> Option<&str> {
         self.language
@@ -696,21 +868,21 @@ impl Document {
             .map(|language| language.scope.as_str())
     }
 
-    #[inline]
     pub fn language_config(&self) -> Option<&LanguageConfiguration> {
         self.language.as_deref()
     }
 
-    #[inline]
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
     }
 
+    #[inline]
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         self.language_server.as_deref()
     }
 
+    #[inline]
     /// Tree-sitter AST tree
     pub fn syntax(&self) -> Option<&Syntax> {
         self.syntax.as_ref()
@@ -756,10 +928,12 @@ impl Document {
         self.path().map(|path| Url::from_file_path(path).unwrap())
     }
 
+    #[inline]
     pub fn text(&self) -> &Rope {
         &self.text
     }
 
+    #[inline]
     pub fn selection(&self, view_id: ViewId) -> &Selection {
         &self.selections[&view_id]
     }
@@ -787,6 +961,7 @@ impl Document {
 
     // -- LSP methods
 
+    #[inline]
     pub fn identifier(&self) -> lsp::TextDocumentIdentifier {
         lsp::TextDocumentIdentifier::new(self.url().unwrap())
     }
@@ -795,12 +970,20 @@ impl Document {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
 
+    #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
     }
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
+    }
+}
+
+impl Default for Document {
+    fn default() -> Self {
+        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        Self::from(text, None)
     }
 }
 
@@ -812,7 +995,7 @@ mod test {
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
-        let mut doc = Document::new(text);
+        let mut doc = Document::from(text, None);
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
 
@@ -921,4 +1104,94 @@ mod test {
             ]
         );
     }
+
+    #[test]
+    fn test_line_ending() {
+        if cfg!(windows) {
+            assert_eq!(Document::default().text().to_string(), "\r\n");
+        } else {
+            assert_eq!(Document::default().text().to_string(), "\n");
+        }
+    }
+
+    macro_rules! test_decode {
+        ($label:expr, $label_override:expr) => {
+            let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
+            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+            let path = base_path.join(format!("{}_in.txt", $label));
+            let ref_path = base_path.join(format!("{}_in_ref.txt", $label));
+            assert!(path.exists());
+            assert!(ref_path.exists());
+
+            let mut file = std::fs::File::open(path).unwrap();
+            let text = from_reader(&mut file, Some(encoding))
+                .unwrap()
+                .0
+                .to_string();
+            let expectation = std::fs::read_to_string(ref_path).unwrap();
+            assert_eq!(text[..], expectation[..]);
+        };
+    }
+
+    macro_rules! test_encode {
+        ($label:expr, $label_override:expr) => {
+            let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
+            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+            let path = base_path.join(format!("{}_out.txt", $label));
+            let ref_path = base_path.join(format!("{}_out_ref.txt", $label));
+            assert!(path.exists());
+            assert!(ref_path.exists());
+
+            let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
+            let mut buf: Vec<u8> = Vec::new();
+            helix_lsp::block_on(to_writer(&mut buf, encoding, &text)).unwrap();
+
+            let expectation = std::fs::read(ref_path).unwrap();
+            assert_eq!(buf, expectation);
+        };
+    }
+
+    macro_rules! test_decode_fn {
+        ($name:ident, $label:expr, $label_override:expr) => {
+            #[test]
+            fn $name() {
+                test_decode!($label, $label_override);
+            }
+        };
+        ($name:ident, $label:expr) => {
+            #[test]
+            fn $name() {
+                test_decode!($label, $label);
+            }
+        };
+    }
+
+    macro_rules! test_encode_fn {
+        ($name:ident, $label:expr, $label_override:expr) => {
+            #[test]
+            fn $name() {
+                test_encode!($label, $label_override);
+            }
+        };
+        ($name:ident, $label:expr) => {
+            #[test]
+            fn $name() {
+                test_encode!($label, $label);
+            }
+        };
+    }
+
+    test_decode_fn!(test_big5_decode, "big5");
+    test_encode_fn!(test_big5_encode, "big5");
+    test_decode_fn!(test_euc_kr_decode, "euc_kr", "EUC-KR");
+    test_encode_fn!(test_euc_kr_encode, "euc_kr", "EUC-KR");
+    test_decode_fn!(test_gb18030_decode, "gb18030");
+    test_encode_fn!(test_gb18030_encode, "gb18030");
+    test_decode_fn!(test_iso_2022_jp_decode, "iso_2022_jp", "ISO-2022-JP");
+    test_encode_fn!(test_iso_2022_jp_encode, "iso_2022_jp", "ISO-2022-JP");
+    test_decode_fn!(test_jis0208_decode, "jis0208", "EUC-JP");
+    test_encode_fn!(test_jis0208_encode, "jis0208", "EUC-JP");
+    test_decode_fn!(test_jis0212_decode, "jis0212", "EUC-JP");
+    test_decode_fn!(test_shift_jis_decode, "shift_jis");
+    test_encode_fn!(test_shift_jis_encode, "shift_jis");
 }
