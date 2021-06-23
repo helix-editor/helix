@@ -39,11 +39,99 @@ pub fn find_nth_pairs_pos(
     n: usize,
 ) -> Option<(usize, usize)> {
     let (open, close) = get_pair(ch);
-    // find_nth* do not consider current character; +1/-1 to include them
-    let open_pos = search::find_nth_prev(text, open, pos + 1, n, true)?;
-    let close_pos = search::find_nth_next(text, close, pos - 1, n, true)?;
+
+    let (open_pos, close_pos) = if open == close {
+        // find_nth* do not consider current character; +1/-1 to include them
+        (
+            search::find_nth_prev(text, open, pos + 1, n, true)?,
+            search::find_nth_next(text, close, pos - 1, n, true)?,
+        )
+    } else {
+        (
+            find_nth_open_pair(text, open, close, pos, n)?,
+            find_nth_close_pair(text, open, close, pos, n)?,
+        )
+    };
 
     Some((open_pos, close_pos))
+}
+
+fn find_nth_open_pair(
+    text: RopeSlice,
+    open: char,
+    close: char,
+    mut pos: usize,
+    n: usize,
+) -> Option<usize> {
+    let mut chars = text.chars_at(pos + 1);
+
+    // Adjusts pos for the first iteration, and handles the case of the
+    // cursor being *on* the close character which will get falsely stepped over
+    // if not skipped here
+    if chars.prev()? == open {
+        return Some(pos);
+    }
+
+    for _ in 0..n {
+        let mut step_over: usize = 0;
+
+        loop {
+            let c = chars.prev()?;
+            pos = pos.saturating_sub(1);
+
+            // ignore other surround pairs that are enclosed *within* our search scope
+            if c == close {
+                step_over += 1;
+            } else if c == open {
+                if step_over == 0 {
+                    break;
+                }
+
+                step_over = step_over.saturating_sub(1);
+            }
+        }
+    }
+
+    Some(pos)
+}
+
+fn find_nth_close_pair(
+    text: RopeSlice,
+    open: char,
+    close: char,
+    mut pos: usize,
+    n: usize,
+) -> Option<usize> {
+    if pos >= text.len_chars() {
+        return None;
+    }
+
+    let mut chars = text.chars_at(pos);
+
+    if chars.next()? == close {
+        return Some(pos);
+    }
+
+    for _ in 0..n {
+        let mut step_over: usize = 0;
+
+        loop {
+            let c = chars.next()?;
+            pos += 1;
+
+            if c == open {
+                step_over += 1;
+            } else if c == close {
+                if step_over == 0 {
+                    break;
+                }
+
+                step_over = step_over.saturating_sub(1);
+            }
+        }
+    }
+
+    Some(pos)
 }
 
 /// Find position of surround characters around every cursor. Returns None
@@ -99,6 +187,27 @@ mod test {
         assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((10, 15)));
         assert_eq!(find_nth_pairs_pos(slice, '(', 13, 2), Some((4, 21)));
         assert_eq!(find_nth_pairs_pos(slice, '(', 13, 3), Some((0, 27)));
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_same() {
+        let doc = Rope::from("'so 'many 'good' text' here'");
+        let slice = doc.slice(..);
+
+        // cursor on go[o]d
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 1), Some((10, 15)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 2), Some((4, 21)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 3), Some((0, 27)));
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_step() {
+        let doc = Rope::from("((so)((many) good (text))(here))");
+        let slice = doc.slice(..);
+
+        // cursor on go[o]d
+        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 1), Some((5, 24)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 2), Some((0, 31)));
     }
 
     #[test]
