@@ -13,6 +13,7 @@ pub struct Config {
 }
 
 #[derive(Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct LspConfig {
     pub display_messages: bool,
 }
