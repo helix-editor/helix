@@ -52,8 +52,11 @@
 "ui.text" = { fg = "#a4a0e8" } # lavender
 "ui.text.focus" = { fg = "#dbbfef"} # lilac
 
-"ui.selection" = { bg = "#44258b" }
+"ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
+"ui.cursor.select" = { bg = "#6F44F0" }
+"ui.cursor.insert" = { bg = "#802F00" }
+"ui.cursor.insert" = { bg = "#FFFFFF" }
 "ui.menu.selected" = { fg = "#281733", bg = "#ffffff" } # revolver
 
 "warning" = "#ffcd1c"
