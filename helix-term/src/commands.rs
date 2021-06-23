@@ -1826,7 +1826,7 @@ fn open(cx: &mut Context, open: Open) {
         };
 
         // insert newlines after this index for both Above and Below variants
-        let line_end_index = rope_end_without_line_ending(&doc.text().slice(..));
+        let line_end_index = line_end_char_index(&doc.text().slice(..), line);
 
         // TODO: share logic with insert_newline for indentation
         let indent_level = indent::suggested_indent_for_pos(
