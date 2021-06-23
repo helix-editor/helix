@@ -260,7 +260,7 @@ impl Document {
         let line_ending = auto_detect_line_ending(&doc).unwrap_or(DEFAULT_LINE_ENDING);
 
         // add missing newline at the end of file
-        if doc.len_bytes() == 0 || char_is_line_ending(doc.char(doc.len_chars() - 1)) {
+        if doc.len_bytes() == 0 || !char_is_line_ending(doc.char(doc.len_chars() - 1)) {
             doc.insert(doc.len_chars(), line_ending.as_str());
         }
 
