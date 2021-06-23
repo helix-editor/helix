@@ -293,7 +293,7 @@ impl<T: 'static> Component for Picker<T> {
                 inner.x + 3,
                 inner.y + 2 + i as u16,
                 (self.format_fn)(option),
-                inner.width as usize - 1,
+                (inner.width as usize).saturating_sub(3), // account for the " > "
                 if i == (self.cursor - offset) {
                     selected
                 } else {
