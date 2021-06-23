@@ -1826,18 +1826,14 @@ fn open(cx: &mut Context, open: Open) {
         };
 
         // insert newlines after this index for both Above and Below variants
-        let linend_index = doc.text().line_to_char(line).saturating_sub(
-            get_line_ending(&doc.text().line(line))
-                .map(|le| le.len_chars())
-                .unwrap_or(0),
-        );
+        let line_end_index = rope_end_without_line_ending(&doc.text().slice(..));
 
         // TODO: share logic with insert_newline for indentation
         let indent_level = indent::suggested_indent_for_pos(
             doc.language_config(),
             doc.syntax(),
             text,
-            linend_index,
+            line_end_index,
             true,
         );
         let indent = doc.indent_unit().repeat(indent_level);
@@ -1851,7 +1847,7 @@ fn open(cx: &mut Context, open: Open) {
         let pos = if line == 0 {
             0 // Required since text will have a min len of 1 (\n)
         } else {
-            offs + linend_index + 1
+            offs + line_end_index + 1
         };
         for i in 0..count {
             // pos                    -> beginning of reference line,
@@ -1862,7 +1858,7 @@ fn open(cx: &mut Context, open: Open) {
 
         offs += text.chars().count();
 
-        (linend_index, linend_index, Some(text.into()))
+        (line_end_index, line_end_index, Some(text.into()))
     });
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
