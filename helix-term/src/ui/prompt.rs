@@ -292,17 +292,21 @@ impl Prompt {
             let area = completion_area;
             let background = theme.get("ui.statusline");
 
+            let items = height as usize * cols as usize;
+
+            let offset = self
+                .selection
+                .map(|selection| selection / items * items)
+                .unwrap_or_default();
+
             surface.clear_with(area, background);
 
             let mut row = 0;
             let mut col = 0;
 
             // TODO: paginate
-            for (i, (_range, completion)) in self
-                .completion
-                .iter()
-                .enumerate()
-                .take(height as usize * cols as usize)
+            for (i, (_range, completion)) in
+                self.completion.iter().enumerate().skip(offset).take(items)
             {
                 let color = if Some(i) == self.selection {
                     // Style::default().bg(Color::Rgb(104, 60, 232))
