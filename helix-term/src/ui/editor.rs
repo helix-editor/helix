@@ -282,16 +282,28 @@ impl EditorView {
                 Range::new(start, end)
             };
 
+            let mode = doc.mode();
             let base_cursor_style = theme
                 .try_get("ui.cursor")
                 .unwrap_or_else(|| Style::default().add_modifier(Modifier::REVERSED));
-            let cursor_style = match doc.mode() {
+            let cursor_style = match mode {
                 Mode::Insert => theme.try_get("ui.cursor.insert"),
                 Mode::Select => theme.try_get("ui.cursor.select"),
                 Mode::Normal => Some(base_cursor_style),
             }
             .unwrap_or(base_cursor_style);
-            let primary_cursor_style = theme.try_get("ui.cursor.primary").unwrap_or(cursor_style);
+            let primary_cursor_style = theme
+                .try_get("ui.cursor.primary")
+                .map(|style| {
+                    if mode != Mode::Normal {
+                        // we want to make sure that the insert and select highlights
+                        // also affect the primary cursor if set
+                        style.patch(cursor_style)
+                    } else {
+                        style
+                    }
+                })
+                .unwrap_or(cursor_style);
 
             let selection_style = theme.get("ui.selection");
             let primary_selection_style = theme
