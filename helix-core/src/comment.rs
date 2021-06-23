@@ -51,7 +51,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection) -> Transaction {
         let lines = start..end + 1;
         let (commented, skipped, min) = find_line_comment(token, text, lines.clone());
 
-        changes.reserve(end - start - skipped.len());
+        changes.reserve((end - start).saturating_sub(skipped.len()));
 
         for line in lines {
             if skipped.contains(&line) {
