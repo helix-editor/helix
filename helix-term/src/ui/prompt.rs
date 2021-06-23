@@ -279,7 +279,7 @@ impl Prompt {
 
         let height = ((self.completion.len() as u16 + cols - 1) / cols)
             .min(10) // at most 10 rows (or less)
-            .min(area.height);
+            .min(area.height.saturating_sub(1));
 
         let completion_area = Rect::new(
             area.x,
@@ -331,7 +331,7 @@ impl Prompt {
             let viewport = area;
             let area = viewport.intersection(Rect::new(
                 completion_area.x,
-                completion_area.y - 3,
+                completion_area.y.saturating_sub(3),
                 BASE_WIDTH * 3,
                 3,
             ));
