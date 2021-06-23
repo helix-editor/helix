@@ -13,7 +13,7 @@ this:
 [keys.normal]
 a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
-C-S-esc = "select_line" # Maps Control-Shift-Escape to select_line
+C-S-esc = "extend_line" # Maps Control-Shift-Escape to extend_line
 
 [keys.insert]
 A-x = "normal_mode" # Maps Alt-X to enter normal mode
