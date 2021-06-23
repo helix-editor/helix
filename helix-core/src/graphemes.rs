@@ -207,6 +207,10 @@ impl<'a> Iterator for RopeGraphemes<'a> {
                     self.cur_chunk_start += self.cur_chunk.len();
                     self.cur_chunk = self.chunks.next().unwrap_or("");
                 }
+                Err(GraphemeIncomplete::PreContext(idx)) => {
+                    let (chunk, byte_idx, _, _) = self.text.chunk_at_byte(idx.saturating_sub(1));
+                    self.cursor.provide_context(chunk, byte_idx);
+                }
                 _ => unreachable!(),
             }
         }
