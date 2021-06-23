@@ -17,7 +17,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::{Position, DEFAULT_LINE_ENDING};
+use helix_core::Position;
 
 #[derive(Debug)]
 pub struct Editor {
@@ -171,8 +171,7 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        use helix_core::Rope;
-        let doc = Document::new(Rope::from(DEFAULT_LINE_ENDING.as_str()));
+        let doc = Document::default();
         let id = self.documents.insert(doc);
         self.documents[id].id = id;
         self.switch(id, action);
@@ -190,7 +189,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::load(path, Some(&self.theme), Some(&self.syn_loader))?;
+            let mut doc = Document::open(path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
             let language_server = doc

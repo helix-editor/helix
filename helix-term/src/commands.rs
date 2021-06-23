@@ -239,7 +239,6 @@ impl Command {
         join_selections,
         keep_selections,
         keep_primary_selection,
-        save,
         completion,
         hover,
         toggle_comments,
@@ -1080,7 +1079,7 @@ mod cmd {
         if autofmt {
             doc.format(view.id); // TODO: merge into save
         }
-        helix_lsp::block_on(doc.save());
+        helix_lsp::block_on(tokio::spawn(doc.save()));
         Ok(())
     }
 
@@ -1256,7 +1255,7 @@ mod cmd {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
             }
-            helix_lsp::block_on(doc.save());
+            helix_lsp::block_on(tokio::spawn(doc.save()));
         }
         editor.set_error(errors);
 
@@ -2948,15 +2947,6 @@ fn keep_primary_selection(cx: &mut Context) {
     let range = doc.selection(view.id).primary();
     let selection = Selection::single(range.anchor, range.head);
     doc.set_selection(view.id, selection);
-}
-
-//
-
-fn save(cx: &mut Context) {
-    // Spawns an async task to actually do the saving. This way we prevent blocking.
-
-    // TODO: handle save errors somehow?
-    tokio::spawn(doc_mut!(cx.editor).save());
 }
 
 fn completion(cx: &mut Context) {
