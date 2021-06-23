@@ -179,6 +179,10 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     loop {
         let mut total_read = 0usize;
 
+        // An inner loop is necessary as it is possible that the input buffer
+        // may not be completely decoded on the first `decode_to_str()` call
+        // which would happen in cases where the output buffer is filled to
+        // capacity.
         loop {
             let (result, read, written, ..) = decoder.decode_to_str(
                 &slice[total_read..],
@@ -252,6 +256,10 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
         let is_empty = chunk.is_empty();
         let mut total_read = 0usize;
 
+        // An inner loop is necessary as it is possible that the input buffer
+        // may not be completely encoded on the first `encode_from_utf8()` call
+        // which would happen in cases where the output buffer is filled to
+        // capacity.
         loop {
             let (result, read, written, ..) =
                 encoder.encode_from_utf8(&chunk[total_read..], &mut buf[total_written..], is_empty);
