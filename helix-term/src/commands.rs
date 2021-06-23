@@ -1826,10 +1826,11 @@ fn open(cx: &mut Context, open: Open) {
         };
 
         // insert newlines after this index for both Above and Below variants
-        let linend_index = doc.text().line_to_char(line)
-            - get_line_ending(&doc.text().line(line))
+        let linend_index = doc.text().line_to_char(line).saturating_sub(
+            get_line_ending(&doc.text().line(line))
                 .map(|le| le.len_chars())
-                .unwrap_or(0);
+                .unwrap_or(0),
+        );
 
         // TODO: share logic with insert_newline for indentation
         let indent_level = indent::suggested_indent_for_pos(
