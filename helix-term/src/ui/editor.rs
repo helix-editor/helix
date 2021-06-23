@@ -231,7 +231,7 @@ impl EditorView {
                             visual_x += width;
                         }
 
-                        char_index += 1;
+                        char_index += grapheme.chars().count();
                     }
                 }
             }
