@@ -16,6 +16,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
+use helix_lsp::util::LspFormatting;
 
 use crate::{DocumentId, Theme, ViewId};
 
@@ -472,39 +473,55 @@ impl Document {
         Ok(doc)
     }
 
-    // TODO: remove view_id dependency here
-    pub fn format(&mut self, view_id: ViewId) {
-        if let Some(language_server) = self.language_server() {
-            // TODO: await, no blocking
-            let transaction = helix_lsp::block_on(language_server.text_document_formatting(
-                self.identifier(),
-                lsp::FormattingOptions::default(),
-                None,
-            ))
-            .map(|edits| {
-                helix_lsp::util::generate_transaction_from_edits(
-                    self.text(),
+    pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
+        if let Some(language_server) = self.language_server.clone() {
+            let text = self.text.clone();
+            let id = self.identifier();
+            let fut = async move {
+                let edits = language_server
+                    .text_document_formatting(id, lsp::FormattingOptions::default(), None)
+                    .await
+                    .unwrap_or_else(|e| {
+                        log::warn!("LSP formatting failed: {}", e);
+                        Default::default()
+                    });
+                LspFormatting {
+                    doc: text,
                     edits,
-                    language_server.offset_encoding(),
-                )
-            });
-
-            if let Ok(transaction) = transaction {
-                self.apply(&transaction, view_id);
-                self.append_changes_to_history(view_id);
-            }
+                    offset_encoding: language_server.offset_encoding(),
+                }
+            };
+            Some(fut)
+        } else {
+            None
         }
+    }
+
+    pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
+        self.save_impl::<futures_util::future::Ready<_>>(None)
+    }
+
+    pub fn format_and_save(
+        &mut self,
+        formatting: Option<impl Future<Output = LspFormatting>>,
+    ) -> impl Future<Output = anyhow::Result<()>> {
+        self.save_impl(formatting)
     }
 
     // TODO: do we need some way of ensuring two save operations on the same doc can't run at once?
     // or is that handled by the OS/async layer
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
-    pub fn save(&mut self) -> impl Future<Output = Result<(), anyhow::Error>> {
+    ///
+    /// If `formatting` is present, it supplies some changes that we apply to the text before saving.
+    fn save_impl<F: Future<Output = LspFormatting>>(
+        &mut self,
+        formatting: Option<F>,
+    ) -> impl Future<Output = Result<(), anyhow::Error>> {
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
 
-        let text = self.text().clone();
+        let mut text = self.text().clone();
         let path = self.path.clone().expect("Can't save with no path set!"); // TODO: handle no path
         let identifier = self.identifier();
 
@@ -512,10 +529,7 @@ impl Document {
 
         let language_server = self.language_server.clone();
 
-        // reset the modified flag
-        let history = self.history.take();
-        self.last_saved_revision = history.current_revision();
-        self.history.set(history);
+        self.reset_modified();
 
         let encoding = self.encoding;
 
@@ -528,6 +542,15 @@ impl Document {
                     return Err(Error::msg(
                         "can't save file, parent directory does not exist",
                     ));
+                }
+            }
+
+            if let Some(fmt) = formatting {
+                let success = Transaction::from(fmt.await).changes().apply(&mut text);
+                if !success {
+                    // This shouldn't happen, because the transaction changes were generated
+                    // from the same text we're saving.
+                    log::error!("failed to apply format changes before saving");
                 }
             }
 
@@ -875,6 +898,13 @@ impl Document {
         let current_revision = history.current_revision();
         self.history.set(history);
         current_revision != self.last_saved_revision || !self.changes.is_empty()
+    }
+
+    pub fn reset_modified(&mut self) {
+        let history = self.history.take();
+        let current_revision = history.current_revision();
+        self.history.set(history);
+        self.last_saved_revision = current_revision;
     }
 
     pub fn mode(&self) -> Mode {
