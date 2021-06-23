@@ -900,14 +900,13 @@ fn extend_line(cx: &mut Context) {
     let text = doc.text();
 
     let line_start = text.char_to_line(pos.anchor);
-    let mut line = text.char_to_line(pos.head);
-    let line_end = line_end_char_index(&text.slice(..), line);
-    if line_start <= pos.anchor && pos.head == line_end && line < (text.len_lines() - 2) {
-        line += 1;
-    }
-
     let start = text.line_to_char(line_start);
-    let end = line_end_char_index(&text.slice(..), line);
+    let line_end = text.char_to_line(pos.head);
+    let mut end = line_end_char_index(&text.slice(..), line_end);
+
+    if pos.anchor == start && pos.head == end && line_end < (text.len_lines() - 2) {
+        end = line_end_char_index(&text.slice(..), line_end + 1);
+    }
 
     doc.set_selection(view.id, Selection::single(start, end));
 }
