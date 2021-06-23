@@ -35,7 +35,7 @@ use crate::{
     ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::application::{LspCallbackWrapper, LspCallbacks};
+use crate::application::{LspCallback, LspCallbackWrapper, LspCallbacks};
 use futures_util::FutureExt;
 use std::{fmt, future::Future, path::Display, str::FromStr};
 
@@ -1106,11 +1106,12 @@ mod cmd {
     }
 
     fn write_impl<P: AsRef<Path>>(
-        view: &View,
-        doc: &mut Document,
+        cx: &mut compositor::Context,
         path: Option<P>,
     ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
         use anyhow::anyhow;
+        let callbacks = &mut cx.callbacks;
+        let (view, doc) = current!(cx.editor);
 
         if let Some(path) = path {
             if let Err(err) = doc.set_path(path.as_ref()) {
@@ -1124,15 +1125,21 @@ mod cmd {
             .language_config()
             .map(|config| config.auto_format)
             .unwrap_or_default();
-        if autofmt {
-            doc.format(view.id); // TODO: merge into save
-        }
-        Ok(tokio::spawn(doc.save()))
+        let fmt = if autofmt {
+            doc.format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(doc.id(), doc.version(), true, shared.clone());
+                callbacks.push(callback);
+                shared
+            })
+        } else {
+            None
+        };
+        Ok(tokio::spawn(doc.format_and_save(fmt)))
     }
 
     fn write(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
-        if let Err(e) = write_impl(view, doc, args.first()) {
+        if let Err(e) = write_impl(cx, args.first()) {
             cx.editor.set_error(e.to_string());
         };
     }
@@ -1142,9 +1149,12 @@ mod cmd {
     }
 
     fn format(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
+        let (_, doc) = current!(cx.editor);
 
-        doc.format(view.id)
+        if let Some(format) = doc.format() {
+            let callback = make_format_callback(doc.id(), doc.version(), false, format);
+            cx.callbacks.push(callback);
+        }
     }
 
     fn set_indent_style(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
@@ -1249,8 +1259,7 @@ mod cmd {
     }
 
     fn write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
-        match write_impl(view, doc, args.first()) {
+        match write_impl(cx, args.first()) {
             Ok(handle) => {
                 if let Err(e) = helix_lsp::block_on(handle) {
                     cx.editor.set_error(e.to_string());
@@ -1266,7 +1275,7 @@ mod cmd {
 
     fn force_write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         let (view, doc) = current!(cx.editor);
-        match write_impl(view, doc, args.first()) {
+        match write_impl(cx, args.first()) {
             Ok(handle) => {
                 if let Err(e) = helix_lsp::block_on(handle) {
                     cx.editor.set_error(e.to_string());
@@ -1861,6 +1870,35 @@ fn append_to_line(cx: &mut Context) {
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
+}
+
+// Creates an LspCallback that waits for formatting changes to be computed. When they're done,
+// it applies them, but only if the doc hasn't changed.
+fn make_format_callback(
+    doc_id: DocumentId,
+    doc_version: i32,
+    set_unmodified: bool,
+    format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
+) -> LspCallback {
+    Box::pin(async move {
+        let format = format.await;
+        let call: LspCallbackWrapper =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let view_id = view!(editor).id;
+                if let Some(doc) = editor.document_mut(doc_id) {
+                    if doc.version() == doc_version {
+                        doc.apply(&Transaction::from(format), view_id);
+                        doc.append_changes_to_history(view_id);
+                        if set_unmodified {
+                            doc.reset_modified();
+                        }
+                    } else {
+                        log::info!("discarded formatting changes because the document changed");
+                    }
+                }
+            });
+        Ok(call)
+    })
 }
 
 enum Open {
