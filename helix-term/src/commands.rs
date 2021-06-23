@@ -1365,17 +1365,17 @@ mod cmd {
             .set_status(cx.editor.clipboard_provider.name().into());
     }
 
-    fn change_current_directory(editor: &mut Editor, args: &[&str], _: PromptEvent) {
+    fn change_current_directory(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
         let dir = match args.first() {
             Some(dir) => dir,
             None => {
-                editor.set_error("target directory not provided".into());
+                cx.editor.set_error("target directory not provided".into());
                 return;
             }
         };
 
         if let Err(e) = std::env::set_current_dir(dir) {
-            editor.set_error(format!(
+            cx.editor.set_error(format!(
                 "Couldn't change the current working directory: {:?}",
                 e
             ));
@@ -1383,20 +1383,24 @@ mod cmd {
         }
 
         match std::env::current_dir() {
-            Ok(cwd) => editor.set_status(format!(
+            Ok(cwd) => cx.editor.set_status(format!(
                 "Current working directory is now {}",
                 cwd.display()
             )),
-            Err(e) => editor.set_error(format!("Couldn't get the new working directory: {}", e)),
+            Err(e) => cx
+                .editor
+                .set_error(format!("Couldn't get the new working directory: {}", e)),
         }
     }
 
-    fn show_current_directory(editor: &mut Editor, args: &[&str], _: PromptEvent) {
+    fn show_current_directory(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
         match std::env::current_dir() {
-            Ok(cwd) => editor.set_status(format!("Current working directory is {}", cwd.display())),
-            Err(e) => {
-                editor.set_error(format!("Couldn't get the current working directory: {}", e))
-            }
+            Ok(cwd) => cx
+                .editor
+                .set_status(format!("Current working directory is {}", cwd.display())),
+            Err(e) => cx
+                .editor
+                .set_error(format!("Couldn't get the current working directory: {}", e)),
         }
     }
 
