@@ -1206,15 +1206,14 @@ mod cmd {
             Ok(handle) => {
                 if let Err(e) = helix_lsp::block_on(handle) {
                     cx.editor.set_error(e.to_string());
-                    return;
+                } else {
+                    quit(cx, &[], event);
                 }
             }
             Err(e) => {
                 cx.editor.set_error(e.to_string());
-                return;
             }
-        };
-        quit(cx, &[], event)
+        }
     }
 
     fn force_write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
