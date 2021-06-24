@@ -61,13 +61,13 @@ pub fn find_balanced_pairs_pos(text: RopeSlice, ch: char, pos: usize) -> Option<
     }?;
     let mut count = 1;
     for (i, c) in text.slice(open_pos + 1..).chars().enumerate() {
-        if c == open {
-            count += 1;
-        } else if c == close {
+        if c == close {
             count -= 1;
             if count == 0 {
                 return Some((open_pos, open_pos + 1 + i));
             }
+        } else if c == open {
+            count += 1;
         }
     }
     None
