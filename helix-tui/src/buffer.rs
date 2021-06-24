@@ -269,8 +269,27 @@ impl Buffer {
     where
         S: AsRef<str>,
     {
+        self.set_string_truncated(x, y, string, width, style, false)
+    }
+
+    /// Print at most the first `width` characters of a string if enough space is available
+    /// until the end of the line. If `markend` is true appends a `…` at the end of
+    /// truncated lines.
+    pub fn set_string_truncated<S>(
+        &mut self,
+        x: u16,
+        y: u16,
+        string: S,
+        width: usize,
+        style: Style,
+        ellipsis: bool,
+    ) -> (u16, u16)
+    where
+        S: AsRef<str>,
+    {
         let mut index = self.index_of(x, y);
         let mut x_offset = x as usize;
+        let width = if ellipsis { width - 1 } else { width };
         let graphemes = UnicodeSegmentation::graphemes(string.as_ref(), true);
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
         for s in graphemes {
@@ -292,6 +311,9 @@ impl Buffer {
             }
             index += width;
             x_offset += width;
+        }
+        if ellipsis && x_offset - (x as usize) < string.as_ref().chars().count() {
+            self.content[index].set_symbol("…");
         }
         (x_offset as u16, y)
     }
