@@ -1061,7 +1061,7 @@ mod cmd {
         view: &View,
         doc: &mut Document,
         path: Option<P>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
         use anyhow::anyhow;
 
         if let Some(path) = path {
@@ -1079,8 +1079,7 @@ mod cmd {
         if autofmt {
             doc.format(view.id); // TODO: merge into save
         }
-        helix_lsp::block_on(tokio::spawn(doc.save()));
-        Ok(())
+        Ok(tokio::spawn(doc.save()))
     }
 
     fn write(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
@@ -1203,15 +1202,35 @@ mod cmd {
 
     fn write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         let (view, doc) = current!(cx.editor);
-        if let Err(e) = write_impl(view, doc, args.first()) {
-            cx.editor.set_error(e.to_string());
-            return;
+        match write_impl(view, doc, args.first()) {
+            Ok(handle) => {
+                if let Err(e) = helix_lsp::block_on(handle) {
+                    cx.editor.set_error(e.to_string());
+                    return;
+                }
+            }
+            Err(e) => {
+                cx.editor.set_error(e.to_string());
+                return;
+            }
         };
         quit(cx, &[], event)
     }
 
     fn force_write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        write(cx, args, event);
+        let (view, doc) = current!(cx.editor);
+        match write_impl(view, doc, args.first()) {
+            Ok(handle) => {
+                if let Err(e) = helix_lsp::block_on(handle) {
+                    cx.editor.set_error(e.to_string());
+                    return;
+                }
+            }
+            Err(e) => {
+                cx.editor.set_error(e.to_string());
+                return;
+            }
+        };
         force_quit(cx, &[], event);
     }
 
