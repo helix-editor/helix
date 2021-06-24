@@ -351,6 +351,8 @@ fn move_line_end(cx: &mut Context) {
         let line = text.char_to_line(range.head);
 
         let pos = line_end_char_index(&text.slice(..), line);
+        let pos = graphemes::nth_prev_grapheme_boundary(text.slice(..), pos, 1);
+        let pos = range.head.max(pos).max(text.line_to_char(line));
 
         Range::new(pos, pos)
     });
@@ -787,6 +789,8 @@ fn extend_line_end(cx: &mut Context) {
         let line = text.char_to_line(range.head);
 
         let pos = line_end_char_index(&text.slice(..), line);
+        let pos = graphemes::nth_prev_grapheme_boundary(text.slice(..), pos, 1);
+        let pos = range.head.max(pos).max(text.line_to_char(line));
 
         Range::new(range.anchor, pos)
     });
