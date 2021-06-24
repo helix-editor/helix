@@ -371,6 +371,7 @@ dependencies = [
  "cassowary",
  "crossterm",
  "helix-core",
+ "helix-view",
  "serde",
  "unicode-segmentation",
  "unicode-width",
@@ -381,13 +382,13 @@ name = "helix-view"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "bitflags",
  "chardetng",
  "crossterm",
  "encoding_rs",
  "futures-util",
  "helix-core",
  "helix-lsp",
- "helix-tui",
  "log",
  "once_cell",
  "serde",

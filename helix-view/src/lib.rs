@@ -5,6 +5,7 @@ pub mod clipboard;
 pub mod document;
 pub mod editor;
 pub mod input;
+pub mod graphics;
 pub mod register_selection;
 pub mod theme;
 pub mod tree;

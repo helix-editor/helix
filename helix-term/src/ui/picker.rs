@@ -2,8 +2,6 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui::{
     buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Style},
     widgets::{Block, BorderType, Borders},
 };
 
@@ -14,9 +12,11 @@ use std::borrow::Cow;
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
-use helix_view::editor::Action;
-use helix_view::Editor;
-use tui::terminal::CursorKind;
+use helix_view::{
+    editor::Action,
+    graphics::{CursorKind, Rect, Color, Style},
+    Editor
+};
 
 pub struct Picker<T> {
     options: Vec<T>,

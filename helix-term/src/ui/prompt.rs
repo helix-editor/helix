@@ -1,14 +1,17 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::ui;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use helix_core::Position;
-use helix_view::{Editor, Theme};
 use std::{borrow::Cow, ops::RangeFrom};
-use tui::terminal::CursorKind;
+use tui::buffer::Buffer as Surface;
 
 use helix_core::{
+    Position,
     unicode::segmentation::{GraphemeCursor, GraphemeIncomplete},
     unicode::width::UnicodeWidthStr,
+};
+use helix_view::{
+    graphics::{CursorKind, Margin, Rect, Color, Modifier, Style},
+    Editor, Theme
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
@@ -251,12 +254,6 @@ impl Prompt {
     }
 }
 
-use tui::{
-    buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Modifier, Style},
-};
-
 const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
@@ -343,7 +340,6 @@ impl Prompt {
             let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
-            use tui::layout::Margin;
             text.render(
                 area.inner(&Margin {
                     vertical: 1,

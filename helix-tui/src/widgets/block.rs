@@ -1,11 +1,10 @@
 use crate::{
     buffer::Buffer,
-    layout::Rect,
-    style::Style,
     symbols::line,
     text::{Span, Spans},
     widgets::{Borders, Widget},
 };
+use helix_view::graphics::{Rect, Style};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BorderType {

@@ -2,8 +2,6 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui::{
     buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Style},
     widgets::Table,
 };
 
@@ -15,7 +13,10 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
 use helix_core::Position;
-use helix_view::Editor;
+use helix_view::{
+    graphics::{Rect, Color, Style},
+    Editor,
+};
 
 pub trait Item {
     // TODO: sort_text

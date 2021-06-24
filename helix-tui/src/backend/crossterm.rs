@@ -1,9 +1,6 @@
 use crate::{
     backend::Backend,
     buffer::Cell,
-    layout::Rect,
-    style::{Color, Modifier},
-    terminal::CursorKind,
 };
 use crossterm::{
     cursor::{CursorShape, Hide, MoveTo, SetCursorShape, Show},
@@ -15,6 +12,7 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
 };
 use std::io::{self, Write};
+use helix_view::graphics::{CursorKind, Rect, Color, Modifier};
 
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
@@ -131,32 +129,6 @@ where
 
 fn map_error(error: crossterm::Result<()>) -> io::Result<()> {
     error.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
-}
-
-impl From<Color> for CColor {
-    fn from(color: Color) -> Self {
-        match color {
-            Color::Reset => CColor::Reset,
-            Color::Black => CColor::Black,
-            Color::Red => CColor::DarkRed,
-            Color::Green => CColor::DarkGreen,
-            Color::Yellow => CColor::DarkYellow,
-            Color::Blue => CColor::DarkBlue,
-            Color::Magenta => CColor::DarkMagenta,
-            Color::Cyan => CColor::DarkCyan,
-            Color::Gray => CColor::Grey,
-            Color::DarkGray => CColor::DarkGrey,
-            Color::LightRed => CColor::Red,
-            Color::LightGreen => CColor::Green,
-            Color::LightBlue => CColor::Blue,
-            Color::LightYellow => CColor::Yellow,
-            Color::LightMagenta => CColor::Magenta,
-            Color::LightCyan => CColor::Cyan,
-            Color::White => CColor::White,
-            Color::Indexed(i) => CColor::AnsiValue(i),
-            Color::Rgb(r, g, b) => CColor::Rgb { r, g, b },
-        }
-    }
 }
 
 #[derive(Debug)]

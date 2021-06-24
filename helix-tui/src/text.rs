@@ -46,8 +46,8 @@
 //!     Span::raw(" title"),
 //! ]);
 //! ```
-use crate::style::Style;
 use helix_core::line_ending::str_is_line_ending;
+use helix_view::graphics::Style;
 use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;

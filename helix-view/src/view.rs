@@ -1,12 +1,14 @@
 use std::borrow::Cow;
 
-use crate::{Document, DocumentId, ViewId};
+use crate::{
+    graphics::Rect,
+    Document, DocumentId, ViewId
+};
 use helix_core::{
     coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
     Position, RopeSlice, Selection,
 };
-use tui::layout::Rect;
 
 pub const PADDING: usize = 5;
 

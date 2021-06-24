@@ -1,24 +1,12 @@
-use crate::{backend::Backend, buffer::Buffer, layout::Rect};
+use crate::{backend::Backend, buffer::Buffer};
 use std::io;
+use helix_view::graphics::{CursorKind, Rect};
 
 #[derive(Debug, Clone, PartialEq)]
 /// UNSTABLE
 enum ResizeBehavior {
     Fixed,
     Auto,
-}
-
-#[derive(Debug)]
-/// UNSTABLE
-pub enum CursorKind {
-    /// █
-    Block,
-    /// |
-    Bar,
-    /// _
-    Underline,
-    /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
-    Hidden,
 }
 
 #[derive(Debug, Clone, PartialEq)]

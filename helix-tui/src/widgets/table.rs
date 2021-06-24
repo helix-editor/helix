@@ -1,7 +1,6 @@
 use crate::{
     buffer::Buffer,
-    layout::{Constraint, Rect},
-    style::Style,
+    layout::Constraint,
     text::Text,
     widgets::{Block, Widget},
 };
@@ -15,6 +14,7 @@ use std::{
     iter::{self, Iterator},
 };
 use unicode_width::UnicodeWidthStr;
+use helix_view::graphics::{Rect, Style};
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
 ///

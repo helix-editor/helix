@@ -12,8 +12,12 @@ use helix_core::{
     LineEnding, Position, Range,
 };
 use helix_lsp::LspProgressMap;
-use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
-use helix_view::{document::Mode, Document, Editor, Theme, View};
+use helix_view::{
+    document::Mode, 
+    input::{KeyCode, KeyEvent, KeyModifiers}
+    graphics::{CursorKind, Rect, Color, Modifier, Style},
+    Document, Editor, Theme, View
+};
 use std::borrow::Cow;
 
 use crossterm::{
@@ -23,9 +27,6 @@ use crossterm::{
 use tui::{
     backend::CrosstermBackend,
     buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    terminal::CursorKind,
 };
 
 pub struct EditorView {

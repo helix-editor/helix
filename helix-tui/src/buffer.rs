@@ -1,11 +1,9 @@
-use crate::{
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    text::{Span, Spans},
-};
+use crate::text::{Span, Spans};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
+
+use helix_view::graphics::{Rect, Color, Modifier, Style};
 
 /// A buffer cell
 #[derive(Debug, Clone, PartialEq)]

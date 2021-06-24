@@ -1,15 +1,14 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use tui::{
-    buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Style},
-};
+use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
 
 use helix_core::{Position, Transaction};
-use helix_view::Editor;
+use helix_view::{
+    graphics::{Rect, Color, Style},
+    Editor
+};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};

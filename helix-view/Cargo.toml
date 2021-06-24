@@ -9,20 +9,18 @@ categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [features]
-term = ["tui", "crossterm"]
-default = ["term"]
+default = []
+term = ["crossterm"]
 
 [dependencies]
+bitflags = "1.0"
 anyhow = "1"
 helix-core = { version = "0.2", path = "../helix-core" }
 helix-lsp = { version = "0.2", path = "../helix-lsp"}
+crossterm = { version = "0.20", optional = true }
 
 # Conversion traits
-tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"], optional = true }
-crossterm = { version = "0.20", features = ["event-stream"], optional = true }
 once_cell = "1.8"
 url = "2"
 

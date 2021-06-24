@@ -1,15 +1,14 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use tui::{
-    buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Style},
-};
+use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
 
 use helix_core::Position;
-use helix_view::Editor;
+use helix_view::{
+    graphics::{Rect, Color, Style},
+    Editor
+};
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)

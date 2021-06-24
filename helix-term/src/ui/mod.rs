@@ -18,12 +18,12 @@ pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
-pub use tui::layout::Rect;
-pub use tui::style::{Color, Modifier, Style};
-
 use helix_core::regex::Regex;
 use helix_core::register::Registers;
-use helix_view::{Document, Editor, View};
+use helix_view::{
+    graphics::{Rect, Color, Modifier, Style},
+    Document, Editor, View
+};
 
 use std::path::{Path, PathBuf};
 

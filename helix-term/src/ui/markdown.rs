@@ -2,15 +2,16 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui::{
     buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Style},
     text::Text,
 };
 
 use std::{borrow::Cow, sync::Arc};
 
 use helix_core::{syntax, Position};
-use helix_view::{Editor, Theme};
+use helix_view::{
+    graphics::{Rect, Color, Style},
+    Editor, Theme
+};
 
 pub struct Markdown {
     contents: String,

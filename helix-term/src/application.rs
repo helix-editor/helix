@@ -1,6 +1,10 @@
 use helix_core::syntax;
 use helix_lsp::{lsp, LspProgressMap};
-use helix_view::{document::Mode, theme, Document, Editor, Theme, View};
+use helix_view::{
+    document::Mode, 
+    graphics::Rect,
+    theme, Document, Editor, Theme, View
+};
 
 use crate::{
     args::Args,
@@ -28,8 +32,6 @@ use crossterm::{
     event::{Event, EventStream},
     execute, terminal,
 };
-
-use tui::layout::Rect;
 
 use futures_util::{future, stream::FuturesUnordered};
 
