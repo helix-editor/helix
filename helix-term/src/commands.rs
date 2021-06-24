@@ -1825,8 +1825,16 @@ fn open(cx: &mut Context, open: Open) {
             Open::Above => line,
         };
 
-        // insert newlines after this index for both Above and Below variants
-        let line_end_index = line_end_char_index(&doc.text().slice(..), line.saturating_sub(1));
+        // Index to insert newlines after, as well as the char width
+        // to use to compensate for those inserted newlines.
+        let (line_end_index, line_end_offset_width) = if line == 0 {
+            (0, 0)
+        } else {
+            (
+                line_end_char_index(&doc.text().slice(..), line.saturating_sub(1)),
+                doc.line_ending.len_chars(),
+            )
+        };
 
         // TODO: share logic with insert_newline for indentation
         let indent_level = indent::suggested_indent_for_pos(
@@ -1844,11 +1852,7 @@ fn open(cx: &mut Context, open: Open) {
         let text = text.repeat(count);
 
         // calculate new selection ranges
-        let pos = if line == 0 {
-            0 // Required since text will have a min len of 1 (\n)
-        } else {
-            offs + line_end_index + 1
-        };
+        let pos = offs + line_end_index + line_end_offset_width;
         for i in 0..count {
             // pos                    -> beginning of reference line,
             // + (i * (1+indent_len)) -> beginning of i'th line from pos
