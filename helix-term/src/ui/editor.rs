@@ -14,8 +14,9 @@ use helix_core::{
 use helix_lsp::LspProgressMap;
 use helix_view::{
     document::Mode, 
-    input::{KeyCode, KeyEvent, KeyModifiers}
     graphics::{CursorKind, Rect, Color, Modifier, Style},
+    input::KeyEvent,
+    keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View
 };
 use std::borrow::Cow;

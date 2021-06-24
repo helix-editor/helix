@@ -192,7 +192,7 @@ bitflags! {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_tui::style::Modifier;
+    /// # use helix_view::graphics::Modifier;
     ///
     /// let m = Modifier::BOLD | Modifier::ITALIC;
     /// ```
@@ -213,7 +213,7 @@ bitflags! {
 /// Style let you control the main characteristics of the displayed elements.
 ///
 /// ```rust
-/// # use helix_tui::style::{Color, Modifier, Style};
+/// # use helix_view::graphics::{Color, Modifier, Style};
 /// Style::default()
 ///     .fg(Color::Black)
 ///     .bg(Color::Green)
@@ -225,9 +225,8 @@ bitflags! {
 /// just S3.
 ///
 /// ```rust
-/// # use helix_tui::style::{Color, Modifier, Style};
+/// # use helix_view::graphics::{Rect, Color, Modifier, Style};
 /// # use helix_tui::buffer::Buffer;
-/// # use helix_tui::layout::Rect;
 /// let styles = [
 ///     Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD | Modifier::ITALIC),
 ///     Style::default().bg(Color::Red),
@@ -252,9 +251,8 @@ bitflags! {
 /// reset all properties until that point use [`Style::reset`].
 ///
 /// ```
-/// # use helix_tui::style::{Color, Modifier, Style};
+/// # use helix_view::graphics::{Rect, Color, Modifier, Style};
 /// # use helix_tui::buffer::Buffer;
-/// # use helix_tui::layout::Rect;
 /// let styles = [
 ///     Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD | Modifier::ITALIC),
 ///     Style::reset().fg(Color::Yellow),
@@ -309,7 +307,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_tui::style::{Color, Style};
+    /// # use helix_view::graphics::{Color, Style};
     /// let style = Style::default().fg(Color::Blue);
     /// let diff = Style::default().fg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().fg(Color::Red));
@@ -324,7 +322,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_tui::style::{Color, Style};
+    /// # use helix_view::graphics::{Color, Style};
     /// let style = Style::default().bg(Color::Blue);
     /// let diff = Style::default().bg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().bg(Color::Red));
@@ -341,7 +339,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_tui::style::{Color, Modifier, Style};
+    /// # use helix_view::graphics::{Color, Modifier, Style};
     /// let style = Style::default().add_modifier(Modifier::BOLD);
     /// let diff = Style::default().add_modifier(Modifier::ITALIC);
     /// let patched = style.patch(diff);
@@ -361,7 +359,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_tui::style::{Color, Modifier, Style};
+    /// # use helix_view::graphics::{Color, Modifier, Style};
     /// let style = Style::default().add_modifier(Modifier::BOLD | Modifier::ITALIC);
     /// let diff = Style::default().remove_modifier(Modifier::ITALIC);
     /// let patched = style.patch(diff);
@@ -379,7 +377,7 @@ impl Style {
     ///
     /// ## Examples
     /// ```
-    /// # use helix_tui::style::{Color, Modifier, Style};
+    /// # use helix_view::graphics::{Color, Modifier, Style};
     /// let style_1 = Style::default().fg(Color::Yellow);
     /// let style_2 = Style::default().bg(Color::Red);
     /// let combined = style_1.patch(style_2);

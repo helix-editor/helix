@@ -37,3 +37,6 @@ toml = "0.5"
 log = "~0.4"
 
 which = "4.1"
+
+[dev-dependencies]
+helix-tui = { path = "../helix-tui" }

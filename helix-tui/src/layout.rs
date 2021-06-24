@@ -114,7 +114,8 @@ impl Layout {
     ///
     /// # Examples
     /// ```
-    /// # use helix_tui::layout::{Rect, Constraint, Direction, Layout};
+    /// # use helix_tui::layout::{Constraint, Direction, Layout};
+    /// # use helix_view::graphics::Rect;
     /// let chunks = Layout::default()
     ///     .direction(Direction::Vertical)
     ///     .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())

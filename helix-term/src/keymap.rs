@@ -3,8 +3,11 @@ pub use crate::commands::Command;
 use crate::config::Config;
 use anyhow::{anyhow, Error, Result};
 use helix_core::hashmap;
-use helix_view::document::Mode;
-use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
+use helix_view::{
+    document::Mode,
+    input::KeyEvent,
+    keyboard::{KeyCode, KeyModifiers}
+};
 use serde::Deserialize;
 use std::{
     collections::HashMap,

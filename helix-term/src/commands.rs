@@ -15,7 +15,8 @@ use helix_core::{
 
 use helix_view::{
     document::{IndentStyle, Mode},
-    input::{KeyCode, KeyEvent},
+    input::KeyEvent,
+    keyboard::KeyCode,
     view::{View, PADDING},
     Document, DocumentId, Editor, ViewId,
 };

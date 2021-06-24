@@ -1,10 +1,9 @@
 //! Input event handling, currently backed by crossterm.
 use anyhow::{anyhow, Error};
-use crossterm::event;
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
 
-pub use crossterm::event::{KeyCode, KeyModifiers};
+use crate::keyboard::{KeyCode, KeyModifiers};
 
 /// Represents a key event.
 // We use a newtype here because we want to customize Deserialize and Display.
@@ -132,9 +131,13 @@ impl<'de> Deserialize<'de> for KeyEvent {
     }
 }
 
-impl From<event::KeyEvent> for KeyEvent {
-    fn from(event::KeyEvent { code, modifiers }: event::KeyEvent) -> KeyEvent {
-        KeyEvent { code, modifiers }
+#[cfg(feature = "term")]
+impl From<crossterm::event::KeyEvent> for KeyEvent {
+    fn from(crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent) -> KeyEvent {
+        KeyEvent { 
+            code: code.into(), 
+            modifiers: modifiers.into() 
+        }
     }
 }
 
