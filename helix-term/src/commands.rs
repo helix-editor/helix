@@ -619,7 +619,7 @@ fn replace(cx: &mut Context) {
                 [open_range, close_range] => {
                     let open_char = text.char(open_range.from());
                     let close_char = text.char(close_range.from());
-                    let ch = ch.chars().nth(0).unwrap();
+                    let ch = ch.chars().next().unwrap();
                     let (open, close) = get_pair(open_char);
                     if open_char == open
                         && close_char == close
