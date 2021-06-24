@@ -76,6 +76,8 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             paste => "tmux", "save-buffer", "-";
             copy => "tmux", "load-buffer", "-";
         }
+    } else if cfg!(windows) {
+        Box::new(provider::WindowsProvider)
     } else {
         Box::new(provider::NopProvider)
     }
@@ -101,6 +103,7 @@ fn is_exit_success(program: &str, args: &[&str]) -> bool {
 mod provider {
     use super::ClipboardProvider;
     use anyhow::{bail, Context as _, Result};
+    use clipboard_win::{formats, get_clipboard, set_clipboard};
     use std::borrow::Cow;
 
     #[derive(Debug)]
@@ -116,6 +119,25 @@ mod provider {
         }
 
         fn set_contents(&self, _: String) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct WindowsProvider;
+
+    impl ClipboardProvider for WindowsProvider {
+        fn name(&self) -> Cow<str> {
+            Cow::Borrowed("Windows Clipboard")
+        }
+
+        fn get_contents(&self) -> Result<String> {
+            let contents = get_clipboard(formats::Unicode)?;
+            Ok(contents)
+        }
+
+        fn set_contents(&self, contents: String) -> Result<()> {
+            set_clipboard(formats::Unicode, contents)?;
             Ok(())
         }
     }
