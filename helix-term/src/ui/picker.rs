@@ -289,7 +289,7 @@ impl<T: 'static> Component for Picker<T> {
                 surface.set_string(inner.x + 1, inner.y + 2 + i as u16, ">", selected);
             }
 
-            surface.set_stringn(
+            surface.set_string_truncated(
                 inner.x + 3,
                 inner.y + 2 + i as u16,
                 (self.format_fn)(option),
@@ -299,6 +299,7 @@ impl<T: 'static> Component for Picker<T> {
                 } else {
                     style
                 },
+                true,
             );
         }
     }
