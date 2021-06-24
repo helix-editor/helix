@@ -461,7 +461,7 @@ impl Document {
         let mut file = std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
         let (mut rope, encoding) = from_reader(&mut file, encoding)?;
         let line_ending = with_newline_eof(&mut rope);
-        
+
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
@@ -570,7 +570,7 @@ impl Document {
             None => return Err(anyhow::anyhow!("can't find file to reload from")),
         };
 
-        if path.exists() {            
+        if path.exists() {
             let old = self.text().to_string();
             let new = {
                 let mut file = std::fs::File::open(path.clone())?;
