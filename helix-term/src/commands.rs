@@ -612,7 +612,43 @@ fn replace(cx: &mut Context) {
         };
 
         if let Some(ch) = ch {
-            let transaction =
+            let ranges = doc.selection(view.id).ranges();
+
+            let text = doc.text();
+            let transaction = match ranges {
+                [open_range, close_range] => {
+                    let open_char = text.char(open_range.from());
+                    let close_char = text.char(close_range.from());
+                    let ch = ch.chars().nth(0).unwrap();
+                    let (open, close) = get_pair(open_char);
+                    if open_char == open
+                        && close_char == close
+                        && open_range.len() == 1
+                        && close_range.len() == 1
+                    {
+                        let (open_replace, close_replace) = get_pair(ch);
+                        Some(Transaction::change(
+                            doc.text(),
+                            std::array::IntoIter::new([
+                                (
+                                    open_range.from(),
+                                    open_range.to() + 1,
+                                    Some(open_replace.to_string().into()),
+                                ),
+                                (
+                                    close_range.from(),
+                                    close_range.to() + 1,
+                                    Some(close_replace.to_string().into()),
+                                ),
+                            ]),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+            .unwrap_or_else(|| {
                 Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                     let max_to = doc.text().len_chars().saturating_sub(1);
                     let to = std::cmp::min(max_to, range.to() + 1);
@@ -628,7 +664,8 @@ fn replace(cx: &mut Context) {
                         .collect();
 
                     (range.from(), to, Some(text.into()))
-                });
+                })
+            });
 
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view.id);
@@ -3313,30 +3350,35 @@ fn right_bracket_mode(cx: &mut Context) {
 }
 
 fn match_mode(cx: &mut Context) {
-    let count = cx.count;
     cx.on_next_key(move |cx, event| {
         if let KeyEvent {
             code: KeyCode::Char(ch),
             ..
         } = event
         {
-            // FIXME: count gets reset because of cx.on_next_key()
-            cx.count = count;
-            match ch {
-                'm' => match_brackets(cx),
-                's' => surround_add(cx),
-                'r' => surround_replace(cx),
-                'd' => {
-                    surround_delete(cx);
-                    let (view, doc) = current!(cx.editor);
+            let count = cx.count();
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+            let selection = doc.selection(view.id);
+            let pos = selection.cursor();
+
+            let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
+                Some(c) => {
+                    let ranges: SmallVec<_> = c
+                        .chunks(2)
+                        .flat_map(|r| [Range::new(r[0], r[0]), Range::new(r[1], r[1])])
+                        .collect();
+                    doc.set_selection(view.id, Selection::new(ranges, 0));
                 }
-                _ => (),
-            }
+                None => return,
+            };
         }
     })
 }
 
 use helix_core::surround;
+use helix_core::surround::get_pair;
+use std::iter::FromIterator;
 
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {

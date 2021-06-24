@@ -128,6 +128,11 @@ impl Range {
     pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
         Cow::from(text.slice(self.from()..self.to() + 1))
     }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.from() + 1 - self.to()
+    }
 }
 
 /// A selection consists of one or more selection ranges.

@@ -29,6 +29,50 @@ pub fn get_pair(ch: char) -> (char, char) {
         .unwrap_or((ch, ch))
 }
 
+/// Find the position of balanced surround pairs of `ch` which can be either a closing
+/// or opening pair.
+pub fn find_balanced_pairs_pos(text: RopeSlice, ch: char, pos: usize) -> Option<(usize, usize)> {
+    let (open, close) = get_pair(ch);
+
+    let starting_pos = pos;
+    let mut pos = pos;
+    let mut skip = 0;
+    let mut chars = text.chars_at(pos);
+    let open_pos = if text.char(pos) == open {
+        Some(pos)
+    } else {
+        loop {
+            if let Some(c) = chars.prev() {
+                pos = pos.saturating_sub(1);
+
+                if c == open {
+                    if skip > 0 {
+                        skip -= 1;
+                    } else {
+                        break Some(pos);
+                    }
+                } else if c == close {
+                    skip += 1;
+                }
+            } else {
+                break None;
+            }
+        }
+    }?;
+    let mut count = 1;
+    for (i, c) in text.slice(open_pos + 1..).chars().enumerate() {
+        if c == open {
+            count += 1;
+        } else if c == close {
+            count -= 1;
+            if count == 0 {
+                return Some((open_pos, open_pos + 1 + i));
+            }
+        }
+    }
+    None
+}
+
 /// Find the position of surround pairs of `ch` which can be either a closing
 /// or opening pair. `n` will skip n - 1 pairs (eg. n=2 will discard (only)
 /// the first pair found and keep looking)
@@ -59,7 +103,7 @@ pub fn get_surround_pos(
     let mut change_pos = Vec::new();
 
     for range in selection {
-        let (open_pos, close_pos) = find_nth_pairs_pos(text, ch, range.head, skip)?;
+        let (open_pos, close_pos) = find_balanced_pairs_pos(text, ch, range.head)?;
         if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
             return None;
         }
@@ -88,6 +132,28 @@ mod test {
         assert_eq!(find_nth_pairs_pos(slice, '(', 2, 1), None);
         // cursor on bracket itself
         assert_eq!(find_nth_pairs_pos(slice, '(', 5, 1), Some((5, 10)));
+    }
+
+    #[test]
+    fn test_find_balanced_pairs_pos() {
+        let doc = Rope::from("some ((text) here)");
+        let slice = doc.slice(..);
+
+        // cursor on [t]ext
+        assert_eq!(find_balanced_pairs_pos(slice, '(', 7), Some((6, 11)));
+        assert_eq!(find_balanced_pairs_pos(slice, ')', 7), Some((6, 11)));
+        // cursor on so[m]e
+        assert_eq!(find_balanced_pairs_pos(slice, '(', 2), None);
+        // cursor on bracket itself
+        assert_eq!(find_balanced_pairs_pos(slice, '(', 6), Some((6, 11)));
+        // cursor on outer parens
+        assert_eq!(find_balanced_pairs_pos(slice, '(', 5), Some((5, 17)));
+
+        let doc = Rope::from("some (text (here))");
+        let slice = doc.slice(..);
+
+        // cursor on outer parens
+        assert_eq!(find_balanced_pairs_pos(slice, '(', 17), Some((5, 17)));
     }
 
     #[test]
