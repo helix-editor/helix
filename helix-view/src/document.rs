@@ -550,6 +550,110 @@ impl Document {
         }
     }
 
+    /// Reload buffer
+    ///
+    /// If `force` is true, then it will attempt to reload from the source file,
+    /// otherwise it will reload the buffer as-is, which is helpful when you need
+    /// to preserve changes.
+    pub fn reload(&mut self, view_id: ViewId) -> Result<(), Error> {
+        use helix_core::Change;
+        use similar::DiffableStr;
+
+        let encoding = &self.encoding;
+        let path = match self.path() {
+            Some(path) => path,
+            None => return Err(anyhow::anyhow!("can't find file to reload from")),
+        };
+
+        if path.exists() {
+            let mut file = std::fs::File::open(path.clone())?;
+            let (rope, ..) = from_reader(&mut file, Some(encoding))?;
+
+            let old = self.text().to_string();
+            let new = rope.to_string();
+
+            // `similar` diffs don't return byte or char offsets, so we need
+            // to map it back. Instead, we're tokenizing it ahead of time and
+            // then comparing the slices to make it more readable and allocate
+            // less.
+            let old_words = old.tokenize_lines();
+            let new_words = new.tokenize_lines();
+
+            let diff = similar::TextDiff::from_slices(&old_words, &new_words);
+            let changes: Vec<Change> = diff
+                .ops()
+                .iter()
+                .filter_map(|op| {
+                    // `range_old` and `range_old` are ranges that map to `old_words`
+                    // and `new_words`. We need to map them back to the source `String`.
+                    let (tag, range_old, range_new) = op.as_tag_tuple();
+                    let (start, end) = {
+                        let origin = old.as_ptr();
+                        let words = &old_words[range_old];
+                        let start = words[0];
+                        let end = *words.last().unwrap();
+
+                        // Always safe because the slices were already created safely.
+                        let start_offset = unsafe { start.as_ptr().offset_from(origin) } as usize;
+                        let between_offset = unsafe { end.as_ptr().offset_from(start.as_ptr()) }
+                            as usize
+                            + end.len();
+
+                        // We need to convert from byte indices to char indices since that's what
+                        // `ChangeSet` operates on.
+                        (
+                            self.text().byte_to_char(start_offset),
+                            self.text().byte_to_char(start_offset + between_offset),
+                        )
+                    };
+
+                    match tag {
+                        similar::DiffTag::Insert | similar::DiffTag::Replace => {
+                            let words = &new_words[range_new];
+                            // Because `words` is a slice of slices, we need to concat them
+                            // back into one `&str`. We're using `unsafe` to avoid an allocation
+                            // that would happen if we were using the `std::slice::concat()`.
+                            let text: &str = {
+                                let origin = new.as_ptr();
+                                let start = words[0];
+                                let end = *words.last().unwrap();
+
+                                // Always safe because the slices were already created safely.
+                                let start_offset =
+                                    unsafe { start.as_ptr().offset_from(origin) } as usize;
+                                let between_offset =
+                                    unsafe { end.as_ptr().offset_from(start.as_ptr()) } as usize
+                                        + end.len();
+                                &new[start_offset..start_offset + between_offset]
+                            };
+
+                            Some((start, end, Some(text.into())))
+                        }
+                        similar::DiffTag::Delete => Some((start, end, None)),
+                        similar::DiffTag::Equal => None,
+                    }
+                })
+                .collect();
+
+            let transaction = Transaction::change(self.text(), changes.into_iter());
+            self.apply(&transaction, view_id);
+            self.append_changes_to_history(view_id);
+        } else {
+            return Err(anyhow::anyhow!("can't find file to reload from"));
+        }
+
+        Ok(())
+    }
+
+    pub fn set_encoding(&mut self, label: &str) -> Result<(), Error> {
+        match encoding_rs::Encoding::for_label(label.as_bytes()) {
+            Some(encoding) => self.encoding = encoding,
+            None => return Err(anyhow::anyhow!("unknown encoding")),
+        }
+
+        Ok(())
+    }
+
     fn detect_indent_style(&mut self) {
         // Build a histogram of the indentation *increases* between
         // subsequent lines, ignoring lines that are all whitespace.
