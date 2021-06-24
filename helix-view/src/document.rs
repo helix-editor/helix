@@ -306,6 +306,18 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
+pub fn with_newline_eof(rope: &mut Rope) -> LineEnding {
+    // search for line endings
+    let line_ending = auto_detect_line_ending(&rope).unwrap_or(DEFAULT_LINE_ENDING);
+
+    // add missing newline at the end of file
+    if rope.len_bytes() == 0 || !char_is_line_ending(rope.char(rope.len_chars() - 1)) {
+        rope.insert(rope.len_chars(), line_ending.as_str());
+    }
+
+    line_ending
+}
+
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
 /// original value.
 fn take_with<T, F>(mut_ref: &mut T, closure: F)
@@ -448,15 +460,8 @@ impl Document {
 
         let mut file = std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
         let (mut rope, encoding) = from_reader(&mut file, encoding)?;
-
-        // search for line endings
-        let line_ending = auto_detect_line_ending(&rope).unwrap_or(DEFAULT_LINE_ENDING);
-
-        // add missing newline at the end of file
-        if rope.len_bytes() == 0 || !char_is_line_ending(rope.char(rope.len_chars() - 1)) {
-            rope.insert(rope.len_chars(), line_ending.as_str());
-        }
-
+        let line_ending = with_newline_eof(&mut rope);
+        
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
@@ -565,12 +570,14 @@ impl Document {
             None => return Err(anyhow::anyhow!("can't find file to reload from")),
         };
 
-        if path.exists() {
-            let mut file = std::fs::File::open(path.clone())?;
-            let (rope, ..) = from_reader(&mut file, Some(encoding))?;
-
+        if path.exists() {            
             let old = self.text().to_string();
-            let new = rope.to_string();
+            let new = {
+                let mut file = std::fs::File::open(path.clone())?;
+                let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
+                with_newline_eof(&mut rope);
+                rope.to_string()
+            };
 
             // `similar` diffs don't return byte or char offsets, so we need
             // to map it back. Instead, we're tokenizing it ahead of time and
