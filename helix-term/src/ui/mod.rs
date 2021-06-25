@@ -84,15 +84,11 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
             // filter dirs, but we might need special handling for symlinks!
             if !entry.file_type().map_or(false, |entry| entry.is_dir()) {
                 let time = if let Ok(metadata) = entry.metadata() {
-                    if let Ok(atime) = metadata.accessed() {
-                        atime
-                    } else if let Ok(mtime) = metadata.modified() {
-                        mtime
-                    } else if let Ok(ctime) = metadata.created() {
-                        ctime
-                    } else {
-                        time::UNIX_EPOCH
-                    }
+                    metadata
+                        .accessed()
+                        .or_else(|_| metadata.modified())
+                        .or_else(|_| metadata.created())
+                        .unwrap_or(time::UNIX_EPOCH)
                 } else {
                     time::UNIX_EPOCH
                 };
