@@ -18,16 +18,14 @@ impl From<KeyModifiers> for crossterm::event::KeyModifiers {
 
         let mut result = CKeyModifiers::NONE;
 
-        if key_modifiers & KeyModifiers::SHIFT != KeyModifiers::NONE {
-            result &= CKeyModifiers::SHIFT;
+        if key_modifiers.contains(KeyModifiers::SHIFT) {
+            result.insert(CKeyModifiers::SHIFT);
         }
-
-        if key_modifiers & KeyModifiers::CONTROL != KeyModifiers::NONE {
-            result &= CKeyModifiers::CONTROL;
+        if key_modifiers.contains(KeyModifiers::CONTROL) {
+            result.insert(CKeyModifiers::CONTROL);
         }
-
-        if key_modifiers & KeyModifiers::ALT != KeyModifiers::NONE {
-            result &= CKeyModifiers::ALT;
+        if key_modifiers.contains(KeyModifiers::ALT) {
+            result.insert(CKeyModifiers::ALT);
         }
 
         result
@@ -41,16 +39,14 @@ impl From<crossterm::event::KeyModifiers> for KeyModifiers {
 
         let mut result = KeyModifiers::NONE;
 
-        if val & CKeyModifiers::SHIFT != CKeyModifiers::NONE {
-            result &= KeyModifiers::SHIFT;
+        if val.contains(CKeyModifiers::SHIFT) {
+            result.insert(KeyModifiers::SHIFT);
         }
-
-        if val & CKeyModifiers::CONTROL != CKeyModifiers::NONE {
-            result &= KeyModifiers::CONTROL;
+        if val.contains(CKeyModifiers::CONTROL) {
+            result.insert(KeyModifiers::CONTROL);
         }
-
-        if val & CKeyModifiers::ALT != CKeyModifiers::NONE {
-            result &= KeyModifiers::ALT;
+        if val.contains(CKeyModifiers::ALT) {
+            result.insert(KeyModifiers::ALT);
         }
 
         result
