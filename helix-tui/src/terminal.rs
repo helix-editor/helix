@@ -1,6 +1,6 @@
 use crate::{backend::Backend, buffer::Buffer};
-use std::io;
 use helix_view::graphics::{CursorKind, Rect};
+use std::io;
 
 #[derive(Debug, Clone, PartialEq)]
 /// UNSTABLE

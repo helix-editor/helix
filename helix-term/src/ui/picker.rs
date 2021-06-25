@@ -14,8 +14,8 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::{
     editor::Action,
-    graphics::{CursorKind, Rect, Color, Style},
-    Editor
+    graphics::{Color, CursorKind, Rect, Style},
+    Editor,
 };
 
 pub struct Picker<T> {

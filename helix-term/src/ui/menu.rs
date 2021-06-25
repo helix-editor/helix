@@ -1,9 +1,6 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use tui::{
-    buffer::Buffer as Surface,
-    widgets::Table,
-};
+use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
@@ -14,7 +11,7 @@ use fuzzy_matcher::FuzzyMatcher;
 
 use helix_core::Position;
 use helix_view::{
-    graphics::{Rect, Color, Style},
+    graphics::{Color, Rect, Style},
     Editor,
 };
 

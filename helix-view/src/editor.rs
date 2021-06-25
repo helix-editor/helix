@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    graphics::{Rect, CursorKind},
+    graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
     Document, DocumentId, RegisterSelection, View, ViewId,
@@ -15,8 +15,8 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
 use helix_core::syntax;
+use helix_core::Position;
 
 #[derive(Debug)]
 pub struct Editor {

@@ -9,12 +9,12 @@ use cassowary::{
     WeightedRelation::*,
     {Expression, Solver},
 };
+use helix_view::graphics::{Rect, Style};
 use std::{
     collections::HashMap,
     iter::{self, Iterator},
 };
 use unicode_width::UnicodeWidthStr;
-use helix_view::graphics::{Rect, Style};
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
 ///

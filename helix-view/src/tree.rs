@@ -1,7 +1,4 @@
-use crate::{
-    graphics::Rect,
-    View, ViewId
-};
+use crate::{graphics::Rect, View, ViewId};
 use slotmap::HopSlotMap;
 
 // the dimensions are recomputed on windo resize/tree change.

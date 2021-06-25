@@ -21,8 +21,8 @@ pub use text::Text;
 use helix_core::regex::Regex;
 use helix_core::register::Registers;
 use helix_view::{
-    graphics::{Rect, Color, Modifier, Style},
-    Document, Editor, View
+    graphics::{Color, Modifier, Rect, Style},
+    Document, Editor, View,
 };
 
 use std::path::{Path, PathBuf};

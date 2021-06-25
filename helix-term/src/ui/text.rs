@@ -6,8 +6,8 @@ use std::borrow::Cow;
 
 use helix_core::Position;
 use helix_view::{
-    graphics::{Rect, Color, Style},
-    Editor
+    graphics::{Color, Rect, Style},
+    Editor,
 };
 
 pub struct Text {

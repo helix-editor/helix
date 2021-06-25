@@ -3,7 +3,7 @@ use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use helix_view::graphics::{Rect, Color, Modifier, Style};
+use helix_view::graphics::{Color, Modifier, Rect, Style};
 
 /// A buffer cell
 #[derive(Debug, Clone, PartialEq)]

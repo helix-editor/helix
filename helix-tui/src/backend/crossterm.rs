@@ -1,7 +1,4 @@
-use crate::{
-    backend::Backend,
-    buffer::Cell,
-};
+use crate::{backend::Backend, buffer::Cell};
 use crossterm::{
     cursor::{CursorShape, Hide, MoveTo, SetCursorShape, Show},
     execute, queue,
@@ -11,8 +8,8 @@ use crossterm::{
     },
     terminal::{self, Clear, ClearType},
 };
+use helix_view::graphics::{Color, CursorKind, Modifier, Rect};
 use std::io::{self, Write};
-use helix_view::graphics::{CursorKind, Rect, Color, Modifier};
 
 pub struct CrosstermBackend<W: Write> {
     buffer: W,

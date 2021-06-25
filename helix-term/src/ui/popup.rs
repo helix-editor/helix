@@ -6,8 +6,8 @@ use std::borrow::Cow;
 
 use helix_core::Position;
 use helix_view::{
-    graphics::{Rect, Color, Style},
-    Editor
+    graphics::{Color, Rect, Style},
+    Editor,
 };
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return

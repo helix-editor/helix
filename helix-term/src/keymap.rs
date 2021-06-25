@@ -6,7 +6,7 @@ use helix_core::hashmap;
 use helix_view::{
     document::Mode,
     input::KeyEvent,
-    keyboard::{KeyCode, KeyModifiers}
+    keyboard::{KeyCode, KeyModifiers},
 };
 use serde::Deserialize;
 use std::{

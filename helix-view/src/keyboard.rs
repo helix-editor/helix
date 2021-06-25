@@ -19,15 +19,15 @@ impl From<KeyModifiers> for crossterm::event::KeyModifiers {
         let mut result = CKeyModifiers::NONE;
 
         if key_modifiers & KeyModifiers::SHIFT != KeyModifiers::NONE {
-            result = result & CKeyModifiers::SHIFT;
+            result &= CKeyModifiers::SHIFT;
         }
 
         if key_modifiers & KeyModifiers::CONTROL != KeyModifiers::NONE {
-            result = result & CKeyModifiers::CONTROL;
+            result &= CKeyModifiers::CONTROL;
         }
 
         if key_modifiers & KeyModifiers::ALT != KeyModifiers::NONE {
-            result = result & CKeyModifiers::ALT;
+            result &= CKeyModifiers::ALT;
         }
 
         result
@@ -35,22 +35,22 @@ impl From<KeyModifiers> for crossterm::event::KeyModifiers {
 }
 
 #[cfg(feature = "term")]
-impl Into<KeyModifiers> for crossterm::event::KeyModifiers {
-    fn into(self) -> KeyModifiers {
+impl From<crossterm::event::KeyModifiers> for KeyModifiers {
+    fn from(val: crossterm::event::KeyModifiers) -> Self {
         use crossterm::event::KeyModifiers as CKeyModifiers;
 
         let mut result = KeyModifiers::NONE;
 
-        if self & CKeyModifiers::SHIFT != CKeyModifiers::NONE {
-            result = result & KeyModifiers::SHIFT;
+        if val & CKeyModifiers::SHIFT != CKeyModifiers::NONE {
+            result &= KeyModifiers::SHIFT;
         }
 
-        if self & CKeyModifiers::CONTROL != CKeyModifiers::NONE {
-            result = result & KeyModifiers::CONTROL;
+        if val & CKeyModifiers::CONTROL != CKeyModifiers::NONE {
+            result &= KeyModifiers::CONTROL;
         }
 
-        if self & CKeyModifiers::ALT != CKeyModifiers::NONE {
-            result = result & KeyModifiers::ALT;
+        if val & CKeyModifiers::ALT != CKeyModifiers::NONE {
+            result &= KeyModifiers::ALT;
         }
 
         result
@@ -132,11 +132,11 @@ impl From<KeyCode> for crossterm::event::KeyCode {
 }
 
 #[cfg(feature = "term")]
-impl Into<KeyCode> for crossterm::event::KeyCode {
-    fn into(self) -> KeyCode {
+impl From<crossterm::event::KeyCode> for KeyCode {
+    fn from(val: crossterm::event::KeyCode) -> Self {
         use crossterm::event::KeyCode as CKeyCode;
 
-        match self {
+        match val {
             CKeyCode::Backspace => KeyCode::Backspace,
             CKeyCode::Enter => KeyCode::Enter,
             CKeyCode::Left => KeyCode::Left,

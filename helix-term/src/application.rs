@@ -1,10 +1,6 @@
 use helix_core::syntax;
 use helix_lsp::{lsp, LspProgressMap};
-use helix_view::{
-    document::Mode, 
-    graphics::Rect,
-    theme, Document, Editor, Theme, View
-};
+use helix_view::{document::Mode, graphics::Rect, theme, Document, Editor, Theme, View};
 
 use crate::{
     args::Args,

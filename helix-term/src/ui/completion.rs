@@ -6,8 +6,8 @@ use std::borrow::Cow;
 
 use helix_core::{Position, Transaction};
 use helix_view::{
-    graphics::{Rect, Color, Style},
-    Editor
+    graphics::{Color, Rect, Style},
+    Editor,
 };
 
 use crate::commands;

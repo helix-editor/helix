@@ -133,10 +133,12 @@ impl<'de> Deserialize<'de> for KeyEvent {
 
 #[cfg(feature = "term")]
 impl From<crossterm::event::KeyEvent> for KeyEvent {
-    fn from(crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent) -> KeyEvent {
-        KeyEvent { 
-            code: code.into(), 
-            modifiers: modifiers.into() 
+    fn from(
+        crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent,
+    ) -> KeyEvent {
+        KeyEvent {
+            code: code.into(),
+            modifiers: modifiers.into(),
         }
     }
 }
