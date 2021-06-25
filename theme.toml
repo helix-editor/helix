@@ -52,9 +52,12 @@
 
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
+# TODO: namespace ui.cursor as ui.selection.cursor?
 "ui.cursor.select" = { bg = "#6F44F0" }
-"ui.cursor.insert" = { bg = "#802F00" }
+"ui.cursor.insert" = { bg = "#ffffff" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
+"ui.cursor" = { modifiers = ["reversed"] }
+
 "ui.menu.selected" = { fg = "#281733", bg = "#ffffff" } # revolver
 
 "warning" = "#ffcd1c"
