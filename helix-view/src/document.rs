@@ -1136,7 +1136,7 @@ mod test {
     macro_rules! test_decode {
         ($label:expr, $label_override:expr) => {
             let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
-            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/txts");
+            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
             let path = base_path.join(format!("{}_in.txt", $label));
             let ref_path = base_path.join(format!("{}_in_ref.txt", $label));
             assert!(path.exists());
@@ -1155,7 +1155,7 @@ mod test {
     macro_rules! test_encode {
         ($label:expr, $label_override:expr) => {
             let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
-            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/txts");
+            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
             let path = base_path.join(format!("{}_out.txt", $label));
             let ref_path = base_path.join(format!("{}_out_ref.txt", $label));
             assert!(path.exists());
