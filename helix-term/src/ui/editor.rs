@@ -12,21 +12,20 @@ use helix_core::{
     LineEnding, Position, Range,
 };
 use helix_lsp::LspProgressMap;
-use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
-use helix_view::{document::Mode, Document, Editor, Theme, View};
+use helix_view::{
+    document::Mode,
+    graphics::{Color, CursorKind, Modifier, Rect, Style},
+    input::KeyEvent,
+    keyboard::{KeyCode, KeyModifiers},
+    Document, Editor, Theme, View,
+};
 use std::borrow::Cow;
 
 use crossterm::{
     cursor,
     event::{read, Event, EventStream},
 };
-use tui::{
-    backend::CrosstermBackend,
-    buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    terminal::CursorKind,
-};
+use tui::{backend::CrosstermBackend, buffer::Buffer as Surface};
 
 pub struct EditorView {
     keymaps: Keymaps,

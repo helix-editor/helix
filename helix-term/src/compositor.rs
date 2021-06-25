@@ -3,9 +3,10 @@
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 use helix_core::Position;
 use helix_lsp::LspProgressMap;
+use helix_view::graphics::{CursorKind, Rect};
 
 use crossterm::event::Event;
-use tui::{buffer::Buffer as Surface, layout::Rect, terminal::CursorKind};
+use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
 

@@ -1,11 +1,10 @@
 use crate::{
     buffer::Buffer,
-    layout::Rect,
-    style::Style,
     symbols::line,
     text::{Span, Spans},
     widgets::{Borders, Widget},
 };
+use helix_view::graphics::{Rect, Style};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BorderType {
@@ -33,7 +32,7 @@ impl BorderType {
 ///
 /// ```
 /// # use helix_tui::widgets::{Block, BorderType, Borders};
-/// # use helix_tui::style::{Style, Color};
+/// # use helix_view::graphics::{Style, Color};
 /// Block::default()
 ///     .title("Block")
 ///     .borders(Borders::LEFT | Borders::RIGHT)
@@ -212,7 +211,6 @@ impl<'a> Widget for Block<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
 
     #[test]
     fn inner_takes_into_account_the_borders() {

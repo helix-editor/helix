@@ -23,8 +23,11 @@ pub struct LspConfig {
 #[test]
 fn parsing_keymaps_config_file() {
     use helix_core::hashmap;
-    use helix_view::document::Mode;
-    use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
+    use helix_view::{
+        document::Mode,
+        input::KeyEvent,
+        keyboard::{KeyCode, KeyModifiers},
+    };
 
     let sample_keymaps = r#"
             [keys.insert]

@@ -1,7 +1,6 @@
 use crate::{
     buffer::Buffer,
-    layout::{Constraint, Rect},
-    style::Style,
+    layout::Constraint,
     text::Text,
     widgets::{Block, Widget},
 };
@@ -10,6 +9,7 @@ use cassowary::{
     WeightedRelation::*,
     {Expression, Solver},
 };
+use helix_view::graphics::{Rect, Style};
 use std::{
     collections::HashMap,
     iter::{self, Iterator},
@@ -21,8 +21,8 @@ use unicode_width::UnicodeWidthStr;
 /// It can be created from anything that can be converted to a [`Text`].
 /// ```rust
 /// # use helix_tui::widgets::Cell;
-/// # use helix_tui::style::{Style, Modifier};
 /// # use helix_tui::text::{Span, Spans, Text};
+/// # use helix_view::graphics::{Style, Modifier};
 /// Cell::from("simple string");
 ///
 /// Cell::from(Span::from("span"));
@@ -74,7 +74,7 @@ where
 /// But if you need a bit more control over individual cells, you can explicity create [`Cell`]s:
 /// ```rust
 /// # use helix_tui::widgets::{Row, Cell};
-/// # use helix_tui::style::{Style, Color};
+/// # use helix_view::graphics::{Style, Color};
 /// Row::new(vec![
 ///     Cell::from("Cell1"),
 ///     Cell::from("Cell2").style(Style::default().fg(Color::Yellow)),
@@ -137,7 +137,7 @@ impl<'a> Row<'a> {
 /// ```rust
 /// # use helix_tui::widgets::{Block, Borders, Table, Row, Cell};
 /// # use helix_tui::layout::Constraint;
-/// # use helix_tui::style::{Style, Color, Modifier};
+/// # use helix_view::graphics::{Style, Color, Modifier};
 /// # use helix_tui::text::{Text, Spans, Span};
 /// Table::new(vec![
 ///     // Row can be created from simple strings.
