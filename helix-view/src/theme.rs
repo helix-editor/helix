@@ -215,6 +215,10 @@ impl Theme {
     pub fn scopes(&self) -> &[String] {
         &self.scopes
     }
+
+    pub fn find_scope_index(&self, scope: &str) -> Option<usize> {
+        self.scopes().iter().position(|s| s == scope)
+    }
 }
 
 #[test]
