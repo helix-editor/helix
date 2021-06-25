@@ -2069,9 +2069,11 @@ fn goto_impl(
         offset_encoding: OffsetEncoding,
         action: Action,
     ) {
-        let id = editor
-            .open(PathBuf::from(location.uri.path()), action)
-            .expect("editor.open failed");
+        let path = location
+            .uri
+            .to_file_path()
+            .expect("unable to convert URI to filepath");
+        let id = editor.open(path, action).expect("editor.open failed");
         let (view, doc) = current!(editor);
         let definition_pos = location.range.start;
         // TODO: convert inside server
