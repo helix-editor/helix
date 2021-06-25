@@ -1,5 +1,5 @@
-//! Selections are the primary editing construct. Even a single cursor is defined as an empty
-//! single selection range.
+//! Selections are the primary editing construct. Even a single cursor is
+//! defined as a single empty or 1-wide selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
 use crate::{Assoc, ChangeSet, Rope, RopeSlice};
@@ -15,16 +15,39 @@ fn abs_difference(x: usize, y: usize) -> usize {
     }
 }
 
-/// A single selection range. Anchor-inclusive, head-exclusive.
+/// A single selection range.
+///
+/// The range consists of an "anchor" and "head" position in
+/// the text.  The head is the part that the user moves when
+/// directly extending the selection.  The head and anchor
+/// can be in any order: either can precede or follow the
+/// other in the text, and they can share the same position
+/// for a zero-width range.
+///
+/// Below are some example `Range` configurations to better
+/// illustrate.  The anchor and head indices are show as
+/// "(anchor, head)", followed by example text with "[" and "]"
+/// inserted to visually represent the anchor and head positions:
+///
+/// - (0, 3): [Som]e text.
+/// - (3, 0): ]Som[e text.
+/// - (2, 7): So[me te]xt.
+/// - (1, 1): S[]ome text.
+///
+/// Ranges are considered to be inclusive on the left and
+/// exclusive on the right, regardless of anchor-head ordering.
+/// This means, for example, that non-zero-width ranges that
+/// are directly adjecent, sharing an edge, do not overlap.
+/// However, a zero-width range will overlap with the shared
+/// left-edge of another range.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Range {
-    // TODO: optimize into u32
     /// The anchor of the range: the side that doesn't move when extending.
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
     pub horiz: Option<u32>,
-} // TODO: might be cheaper to store normalized as from/to and an inverted flag
+}
 
 impl Range {
     pub fn new(anchor: usize, head: usize) -> Self {
@@ -62,25 +85,14 @@ impl Range {
     /// Check two ranges for overlap.
     #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {
-        // cursor overlap is checked differently
-        if self.is_empty() {
-            let pos = self.head;
-            pos >= other.from() && other.to() >= pos
-        } else {
-            self.to() > other.from() && other.to() > self.from()
-        }
+        // To my eye, it's non-obvious why this works, but I arrived
+        // at it after transforming the slower version that explicitly
+        // enumerated more cases.  The unit tests are thorough.
+        self.from() == other.from() || (self.to() > other.from() && other.to() > self.from())
     }
 
     pub fn contains(&self, pos: usize) -> bool {
-        if self.is_empty() {
-            return false;
-        }
-
-        if self.anchor < self.head {
-            self.anchor <= pos && pos < self.head
-        } else {
-            self.head < pos && pos <= self.anchor
-        }
+        self.from() <= pos && pos < self.to()
     }
 
     /// Map a range through a set of changes. Returns a new range representing the same position
@@ -89,10 +101,10 @@ impl Range {
         let anchor = changes.map_pos(self.anchor, Assoc::After);
         let head = changes.map_pos(self.head, Assoc::After);
 
-        // TODO: possibly unnecessary
-        if self.anchor == anchor && self.head == head {
-            return self;
-        }
+        // We want to return a new `Range` with `horiz == None` every time,
+        // even if the anchor and head haven't changed, because we don't
+        // know if the *visual* position hasn't changed due to
+        // character-width or grapheme changes earlier in the text.
         Self {
             anchor,
             head,
@@ -103,22 +115,20 @@ impl Range {
     /// Extend the range to cover at least `from` `to`.
     #[must_use]
     pub fn extend(&self, from: usize, to: usize) -> Self {
-        if from <= self.anchor && to >= self.anchor {
-            return Self {
-                anchor: from,
-                head: to,
-                horiz: None,
-            };
-        }
+        debug_assert!(from <= to);
 
-        Self {
-            anchor: self.anchor,
-            head: if abs_difference(from, self.anchor) > abs_difference(to, self.anchor) {
-                from
-            } else {
-                to
-            },
-            horiz: None,
+        if self.anchor <= self.head {
+            Self {
+                anchor: self.anchor.min(from),
+                head: self.head.max(to),
+                horiz: None,
+            }
+        } else {
+            Self {
+                anchor: self.anchor.max(to),
+                head: self.head.min(from),
+                horiz: None,
+            }
         }
     }
 
@@ -126,7 +136,7 @@ impl Range {
 
     #[inline]
     pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
-        Cow::from(text.slice(self.from()..self.to() + 1))
+        text.slice(self.from()..self.to()).into()
     }
 }
 
@@ -355,7 +365,7 @@ pub fn select_on_matches(
 
             let start = text.byte_to_char(start_byte + mat.start());
             let end = text.byte_to_char(start_byte + mat.end());
-            result.push(Range::new(start, end.saturating_sub(1)));
+            result.push(Range::new(start, end));
         }
     }
 
@@ -376,6 +386,12 @@ pub fn split_on_matches(
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
+        // Special case: zero-width selection.
+        if sel.from() == sel.to() {
+            result.push(*sel);
+            continue;
+        }
+
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
@@ -388,13 +404,12 @@ pub fn split_on_matches(
 
         for mat in regex.find_iter(&fragment) {
             // TODO: retain range direction
-
             let end = text.byte_to_char(start_byte + mat.start());
-            result.push(Range::new(start, end.saturating_sub(1)));
+            result.push(Range::new(start, end));
             start = text.byte_to_char(start_byte + mat.end());
         }
 
-        if start <= sel_end {
+        if start < sel_end {
             result.push(Range::new(start, sel_end));
         }
     }
@@ -475,7 +490,7 @@ mod test {
             .collect::<Vec<String>>()
             .join(",");
 
-        assert_eq!(res, "8/10,10/12");
+        assert_eq!(res, "8/10,10/12,12/12");
     }
 
     #[test]
@@ -489,35 +504,90 @@ mod test {
         assert_eq!(range.contains(13), false);
 
         let range = Range::new(9, 6);
-        assert_eq!(range.contains(9), true);
+        assert_eq!(range.contains(9), false);
         assert_eq!(range.contains(7), true);
-        assert_eq!(range.contains(6), false);
+        assert_eq!(range.contains(6), true);
+    }
+
+    #[test]
+    fn test_overlaps() {
+        // Two non-zero-width ranges, no overlap.
+        assert!(!Range::new(0, 3).overlaps(&Range::new(3, 6)));
+        assert!(!Range::new(0, 3).overlaps(&Range::new(6, 3)));
+        assert!(!Range::new(3, 0).overlaps(&Range::new(3, 6)));
+        assert!(!Range::new(3, 0).overlaps(&Range::new(6, 3)));
+        assert!(!Range::new(3, 6).overlaps(&Range::new(0, 3)));
+        assert!(!Range::new(3, 6).overlaps(&Range::new(3, 0)));
+        assert!(!Range::new(6, 3).overlaps(&Range::new(0, 3)));
+        assert!(!Range::new(6, 3).overlaps(&Range::new(3, 0)));
+
+        // Two non-zero-width ranges, overlap.
+        assert!(Range::new(0, 4).overlaps(&Range::new(3, 6)));
+        assert!(Range::new(0, 4).overlaps(&Range::new(6, 3)));
+        assert!(Range::new(4, 0).overlaps(&Range::new(3, 6)));
+        assert!(Range::new(4, 0).overlaps(&Range::new(6, 3)));
+        assert!(Range::new(3, 6).overlaps(&Range::new(0, 4)));
+        assert!(Range::new(3, 6).overlaps(&Range::new(4, 0)));
+        assert!(Range::new(6, 3).overlaps(&Range::new(0, 4)));
+        assert!(Range::new(6, 3).overlaps(&Range::new(4, 0)));
+
+        // Zero-width and non-zero-width range, no overlap.
+        assert!(!Range::new(0, 3).overlaps(&Range::new(3, 3)));
+        assert!(!Range::new(3, 0).overlaps(&Range::new(3, 3)));
+        assert!(!Range::new(3, 3).overlaps(&Range::new(0, 3)));
+        assert!(!Range::new(3, 3).overlaps(&Range::new(3, 0)));
+
+        // Zero-width and non-zero-width range, overlap.
+        assert!(Range::new(1, 4).overlaps(&Range::new(1, 1)));
+        assert!(Range::new(4, 1).overlaps(&Range::new(1, 1)));
+        assert!(Range::new(1, 1).overlaps(&Range::new(1, 4)));
+        assert!(Range::new(1, 1).overlaps(&Range::new(4, 1)));
+
+        assert!(Range::new(1, 4).overlaps(&Range::new(3, 3)));
+        assert!(Range::new(4, 1).overlaps(&Range::new(3, 3)));
+        assert!(Range::new(3, 3).overlaps(&Range::new(1, 4)));
+        assert!(Range::new(3, 3).overlaps(&Range::new(4, 1)));
+
+        // Two zero-width ranges, no overlap.
+        assert!(!Range::new(0, 0).overlaps(&Range::new(1, 1)));
+        assert!(!Range::new(1, 1).overlaps(&Range::new(0, 0)));
+
+        // Two zero-width ranges, overlap.
+        assert!(Range::new(1, 1).overlaps(&Range::new(1, 1)));
     }
 
     #[test]
     fn test_split_on_matches() {
         use crate::regex::Regex;
 
-        let text = Rope::from("abcd efg wrs   xyz 123 456");
+        let text = Rope::from(" abcd efg wrs   xyz 123 456");
 
-        let selection = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 19),], 0);
+        let selection = Selection::new(smallvec![Range::new(0, 9), Range::new(11, 20),], 0);
 
         let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
 
         assert_eq!(
             result.ranges(),
             &[
-                Range::new(0, 3),
-                Range::new(5, 7),
-                Range::new(10, 11),
-                Range::new(15, 17),
-                Range::new(19, 19),
+                // We get a leading zero-width range when there's
+                // a leading match because ranges are inclusive on
+                // the left.  Imagine, for example, if the entire
+                // selection range were matched: you'd still want
+                // at least one range to remain after the split.
+                Range::new(0, 0),
+                Range::new(1, 5),
+                Range::new(6, 9),
+                Range::new(11, 13),
+                Range::new(16, 19),
+                // In contrast to the comment above, there is no
+                // _trailing_ zero-width range despite the trailing
+                // match, because ranges are exclusive on the right.
             ]
         );
 
         assert_eq!(
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
-            &["abcd", "efg", "rs", "xyz", "1"]
+            &["", "abcd", "efg", "rs", "xyz"]
         );
     }
 }
