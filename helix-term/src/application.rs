@@ -159,9 +159,16 @@ impl Application {
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
                     self.handle_language_server_message(call, id).await;
+
                     // eagerly process any other available notifications/calls
+                    let now = std::time::Instant::now();
+                    let deadline = std::time::Duration::from_millis(10);
                     while let Some(Some((id, call))) = self.editor.language_servers.incoming.next().now_or_never() {
                        self.handle_language_server_message(call, id).await;
+
+                       if now.elapsed() > deadline { // use a deadline so we don't block too long
+                           break;
+                       }
                     }
                     self.render();
                 }
