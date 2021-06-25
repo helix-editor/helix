@@ -8,6 +8,7 @@ use crate::{
 
 use helix_core::{
     coords_at_pos,
+    graphemes::{ensure_grapheme_boundary, ensure_grapheme_boundary_byte},
     syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
@@ -141,7 +142,8 @@ impl EditorView {
 
         'outer: for event in highlights {
             match event.unwrap() {
-                HighlightEvent::HighlightStart(span) => {
+                HighlightEvent::HighlightStart(mut span) => {
+                    span.0 = ensure_grapheme_boundary_byte(text, span.0);
                     spans.push(span);
                 }
                 HighlightEvent::HighlightEnd => {
@@ -151,8 +153,8 @@ impl EditorView {
                     // TODO: filter out spans out of viewport for now..
 
                     // TODO: do these before iterating
-                    let start = text.byte_to_char(start);
-                    let end = text.byte_to_char(end);
+                    let start = ensure_grapheme_boundary(text, text.byte_to_char(start));
+                    let end = ensure_grapheme_boundary(text, text.byte_to_char(end));
 
                     let text = text.slice(start..end);
 
