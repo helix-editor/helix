@@ -180,13 +180,14 @@ pub trait AnyComponent {
     /// Returns a boxed any from a boxed self.
     ///
     /// Can be used before `Box::downcast()`.
-    //
-    // # Examples
-    //
-    // ```rust
-    // let boxed: Box<Component> = Box::new(TextComponent::new("text"));
-    // let text: Box<TextComponent> = boxed.as_boxed_any().downcast().unwrap();
-    // ```
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use helix_term::{ui::Text, compositor::Component};
+    /// let boxed: Box<Component> = Box::new(Text::new("text".to_string()));
+    /// let text: Box<Text> = boxed.as_boxed_any().downcast().unwrap();
+    /// ```
     fn as_boxed_any(self: Box<Self>) -> Box<dyn Any>;
 }
 
