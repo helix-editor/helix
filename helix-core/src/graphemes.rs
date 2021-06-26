@@ -123,11 +123,21 @@ pub fn next_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
 
 /// Returns the passed char index if it's already a grapheme boundary,
 /// or the next grapheme boundary char index if not.
-pub fn ensure_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
+pub fn ensure_grapheme_boundary_next(slice: RopeSlice, char_idx: usize) -> usize {
     if char_idx == 0 {
-        0
+        char_idx
     } else {
         next_grapheme_boundary(slice, char_idx - 1)
+    }
+}
+
+/// Returns the passed char index if it's already a grapheme boundary,
+/// or the prev grapheme boundary char index if not.
+pub fn ensure_grapheme_boundary_prev(slice: RopeSlice, char_idx: usize) -> usize {
+    if char_idx == slice.len_chars() {
+        char_idx
+    } else {
+        prev_grapheme_boundary(slice, char_idx + 1)
     }
 }
 

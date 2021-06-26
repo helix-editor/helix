@@ -2,7 +2,12 @@
 //! defined as a single empty or 1-wide selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
-use crate::{Assoc, ChangeSet, Rope, RopeSlice};
+use crate::{
+    graphemes::{
+        ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
+    },
+    Assoc, ChangeSet, Rope, RopeSlice,
+};
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 
@@ -129,6 +134,61 @@ impl Range {
                 head: self.head.min(from),
                 horiz: None,
             }
+        }
+    }
+
+    /// Compute the ends of the range, shifted (if needed) to align with
+    /// grapheme boundaries.
+    ///
+    /// This should generally be used for cursor validation.
+    ///
+    /// Always succeeds.
+    #[must_use]
+    pub fn aligned_range(&self, slice: RopeSlice) -> (usize, usize) {
+        if self.anchor == self.head {
+            let pos = ensure_grapheme_boundary_prev(slice, self.anchor);
+            (pos, pos)
+        } else {
+            (
+                ensure_grapheme_boundary_prev(slice, self.from()),
+                ensure_grapheme_boundary_next(slice, self.to()),
+            )
+        }
+    }
+
+    /// Same as `ensure_grapheme_validity()` + attempts to ensure a minimum
+    /// char width in the direction of the head.
+    ///
+    /// This should generally be used as a pre-pass for operations that
+    /// require a minimum selection width to achieve their intended behavior.
+    ///
+    /// This will fail at ensuring the minimum width only if the passed
+    /// `RopeSlice` is too short in the direction of the head, in which
+    /// case the range will fill the available length in that direction.
+    ///
+    /// Ensuring grapheme-boundary alignment always succeeds.
+    #[must_use]
+    pub fn min_width_range(&self, slice: RopeSlice, min_char_width: usize) -> (usize, usize) {
+        if min_char_width == 0 {
+            return self.aligned_range(slice);
+        }
+
+        if self.anchor <= self.head {
+            let anchor = ensure_grapheme_boundary_prev(slice, self.anchor);
+            let head = ensure_grapheme_boundary_next(
+                slice,
+                self.head
+                    .max(anchor + min_char_width)
+                    .min(slice.len_chars()),
+            );
+            (anchor, head)
+        } else {
+            let anchor = ensure_grapheme_boundary_next(slice, self.anchor);
+            let head = ensure_grapheme_boundary_prev(
+                slice,
+                self.head.min(anchor.saturating_sub(min_char_width)),
+            );
+            (head, anchor)
         }
     }
 
@@ -557,6 +617,54 @@ mod test {
     }
 
     #[test]
+    fn test_aligned_range() {
+        let r = Rope::from_str("\r\nHi\r\n");
+        let s = r.slice(..);
+
+        assert_eq!(Range::new(0, 0).aligned_range(s), (0, 0));
+        assert_eq!(Range::new(0, 1).aligned_range(s), (0, 2));
+        assert_eq!(Range::new(1, 1).aligned_range(s), (0, 0));
+        assert_eq!(Range::new(1, 2).aligned_range(s), (0, 2));
+        assert_eq!(Range::new(2, 2).aligned_range(s), (2, 2));
+        assert_eq!(Range::new(2, 3).aligned_range(s), (2, 3));
+        assert_eq!(Range::new(1, 3).aligned_range(s), (0, 3));
+        assert_eq!(Range::new(3, 5).aligned_range(s), (3, 6));
+        assert_eq!(Range::new(4, 5).aligned_range(s), (4, 6));
+        assert_eq!(Range::new(5, 5).aligned_range(s), (4, 4));
+        assert_eq!(Range::new(6, 6).aligned_range(s), (6, 6));
+    }
+
+    #[test]
+    fn test_min_width_range() {
+        let r = Rope::from_str("\r\nHi\r\n");
+        let s = r.slice(..);
+
+        assert_eq!(Range::new(0, 0).min_width_range(s, 1), (0, 2));
+        assert_eq!(Range::new(0, 1).min_width_range(s, 1), (0, 2));
+        assert_eq!(Range::new(1, 1).min_width_range(s, 1), (0, 2));
+        assert_eq!(Range::new(1, 2).min_width_range(s, 1), (0, 2));
+        assert_eq!(Range::new(2, 2).min_width_range(s, 1), (2, 3));
+        assert_eq!(Range::new(2, 3).min_width_range(s, 1), (2, 3));
+        assert_eq!(Range::new(1, 3).min_width_range(s, 1), (0, 3));
+        assert_eq!(Range::new(3, 5).min_width_range(s, 1), (3, 6));
+        assert_eq!(Range::new(4, 5).min_width_range(s, 1), (4, 6));
+        assert_eq!(Range::new(5, 5).min_width_range(s, 1), (4, 6));
+        assert_eq!(Range::new(6, 6).min_width_range(s, 1), (6, 6));
+
+        assert_eq!(Range::new(1, 0).min_width_range(s, 1), (0, 2));
+        assert_eq!(Range::new(2, 1).min_width_range(s, 1), (0, 2));
+        assert_eq!(Range::new(3, 2).min_width_range(s, 1), (2, 3));
+        assert_eq!(Range::new(3, 1).min_width_range(s, 1), (0, 3));
+        assert_eq!(Range::new(5, 3).min_width_range(s, 1), (3, 6));
+        assert_eq!(Range::new(5, 4).min_width_range(s, 1), (4, 6));
+
+        assert_eq!(Range::new(3, 4).min_width_range(s, 3), (3, 6));
+        assert_eq!(Range::new(4, 3).min_width_range(s, 3), (0, 4));
+        assert_eq!(Range::new(3, 4).min_width_range(s, 20), (3, 6));
+        assert_eq!(Range::new(4, 3).min_width_range(s, 20), (0, 4));
+    }
+
+    #[test]
     fn test_split_on_matches() {
         use crate::regex::Regex;
 
@@ -569,6 +677,9 @@ mod test {
         assert_eq!(
             result.ranges(),
             &[
+                // TODO: rather than this behavior, maybe we want it
+                // to be based on which side is the anchor?
+                //
                 // We get a leading zero-width range when there's
                 // a leading match because ranges are inclusive on
                 // the left.  Imagine, for example, if the entire

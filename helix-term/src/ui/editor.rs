@@ -8,7 +8,7 @@ use crate::{
 
 use helix_core::{
     coords_at_pos,
-    graphemes::ensure_grapheme_boundary,
+    graphemes::ensure_grapheme_boundary_next,
     syntax::{self, Highlight, HighlightEvent},
     LineEnding, Position, Range,
 };
@@ -144,8 +144,8 @@ impl EditorView {
         let highlights = highlights.into_iter().map(|event| match event.unwrap() {
             // convert byte offsets to char offset
             HighlightEvent::Source { start, end } => {
-                let start = ensure_grapheme_boundary(text, text.byte_to_char(start));
-                let end = ensure_grapheme_boundary(text, text.byte_to_char(end));
+                let start = ensure_grapheme_boundary_next(text, text.byte_to_char(start));
+                let end = ensure_grapheme_boundary_next(text, text.byte_to_char(end));
                 HighlightEvent::Source { start, end }
             }
             event => event,
