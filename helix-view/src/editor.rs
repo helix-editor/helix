@@ -97,16 +97,17 @@ impl Editor {
         self._refresh();
     }
 
-    pub fn set_theme_from_name(&mut self, theme: &str) {
+    pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
         let theme = match self.theme_loader.load(theme.as_ref()) {
             Ok(theme) => theme,
             Err(e) => {
                 log::warn!("failed setting theme `{}` - {}", theme, e);
-                return;
+                anyhow::bail!("failed setting theme `{}` - {}", theme, e);
             }
         };
 
         self.set_theme(theme);
+        Ok(())
     }
 
     fn _refresh(&mut self) {
