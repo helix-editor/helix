@@ -604,8 +604,6 @@ impl Document {
                     let end = *slices.last().unwrap();
 
                     // Always safe because the slices were already created safely.
-                    // let start_offset = ropey::str_utils::line_to_byte_idx(&from, from_range.start);
-                    // let between_offset = ropey::str_utils::line_to_byte_idx(&from, from_range.end);
                     let start_offset = unsafe { start.as_ptr().offset_from(origin) } as usize;
                     let between_offset =
                         unsafe { end.as_ptr().offset_from(start.as_ptr()) } as usize + end.len();
@@ -620,7 +618,6 @@ impl Document {
 
                 match tag {
                     similar::DiffTag::Insert | similar::DiffTag::Replace => {
-                        // let text: String = into.lines().skip(into_range.start).take(into_range.end - into_range.start).collect();
                         // Because `words` is a slice of slices, we need to concat them
                         // back into one `&str`. We're using `unsafe` to avoid an allocation
                         // that would happen if we were using the `std::slice::concat()`.
