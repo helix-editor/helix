@@ -60,6 +60,8 @@
 
 "ui.menu.selected" = { fg = "#281733", bg = "#ffffff" } # revolver
 
+"diagnostic" = { modifiers = ["underlined"] }
+
 "warning" = "#ffcd1c"
 "error" = "#f47868"
 "info" = "#6F44F0"
