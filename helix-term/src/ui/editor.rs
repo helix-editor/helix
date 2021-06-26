@@ -340,6 +340,20 @@ impl EditorView {
             Box::new(highlights)
         };
 
+        // diagnostic injection
+        let diagnostic_scope = theme.find_scope_index("diagnostic").unwrap_or(cursor_scope);
+        let spans_ = doc
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| {
+                (
+                    diagnostic_scope,
+                    diagnostic.range.start..diagnostic.range.end,
+                )
+            })
+            .collect();
+        let highlights = Box::new(merge(highlights, spans_));
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -411,18 +425,6 @@ impl EditorView {
                                 visual_x = visual_x.saturating_add(width);
                                 continue;
                             }
-
-                            // ugh,interleave highlight spans with diagnostic spans
-                            let is_diagnostic = doc.diagnostics().iter().any(|diagnostic| {
-                                diagnostic.range.start <= char_index
-                                    && diagnostic.range.end > char_index
-                            });
-
-                            let style = if is_diagnostic {
-                                style.add_modifier(Modifier::UNDERLINED)
-                            } else {
-                                style
-                            };
 
                             surface.set_string(
                                 viewport.x + visual_x - view.first_col as u16,
