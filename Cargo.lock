@@ -390,6 +390,7 @@ dependencies = [
  "helix-tui",
  "log",
  "once_cell",
+ "ropey",
  "serde",
  "similar",
  "slotmap",

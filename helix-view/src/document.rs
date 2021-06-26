@@ -565,92 +565,89 @@ impl Document {
         use similar::DiffableStr;
 
         let encoding = &self.encoding;
-        let path = match self.path() {
-            Some(path) => path,
-            None => return Err(anyhow::anyhow!("can't find file to reload from")),
+        let path = self.path().filter(|path| path.exists());
+
+        if path.is_none() {
+            return Err(anyhow!("can't find file to reload from"));
+        }
+
+        let from = self.text().to_string();
+        let into = {
+            let mut file = std::fs::File::open(path.unwrap())?;
+            let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
+            with_newline_eof(&mut rope);
+            rope.to_string()
         };
 
-        if path.exists() {
-            let old = self.text().to_string();
-            let new = {
-                let mut file = std::fs::File::open(path.clone())?;
-                let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
-                with_newline_eof(&mut rope);
-                rope.to_string()
-            };
+        let old = from.tokenize_lines();
+        let new = into.tokenize_lines();
 
-            // `similar` diffs don't return byte or char offsets, so we need
-            // to map it back. Instead, we're tokenizing it ahead of time and
-            // then comparing the slices to make it more readable and allocate
-            // less.
-            let old_words = old.tokenize_lines();
-            let new_words = new.tokenize_lines();
+        // `similar` diffs don't return byte or char offsets, so we need
+        // to map it back. Instead, we're tokenizing it ahead of time and
+        // then comparing the slices to make it more readable and allocate
+        // less.
 
-            let mut config = similar::TextDiff::configure();
-            config.timeout(std::time::Duration::new(10, 0));
+        let mut config = similar::TextDiff::configure();
+        config.timeout(std::time::Duration::new(10, 0));
 
-            let diff = config.diff_slices(&old_words, &new_words);
-            let changes: Vec<Change> = diff
-                .ops()
-                .iter()
-                .filter_map(|op| {
-                    // `range_old` and `range_old` are ranges that map to `old_words`
-                    // and `new_words`. We need to map them back to the source `String`.
-                    let (tag, range_old, range_new) = op.as_tag_tuple();
-                    let (start, end) = {
-                        let origin = old.as_ptr();
-                        let words = &old_words[range_old];
-                        let start = words[0];
-                        let end = *words.last().unwrap();
+        let diff = config.diff_slices(&old, &new);
+        let changes: Vec<Change> = diff
+            .ops()
+            .iter()
+            .filter_map(|op| {
+                // `range_old` and `range_old` are ranges that map to `old_words`
+                // and `new_words`. We need to map them back to the source `String`.
+                let (tag, from_range, into_range) = op.as_tag_tuple();
+                let (start, end) = {
+                    let origin = from.as_ptr();
+                    let slices = &old[from_range];
+                    let start = slices[0];
+                    let end = *slices.last().unwrap();
 
-                        // Always safe because the slices were already created safely.
-                        let start_offset = unsafe { start.as_ptr().offset_from(origin) } as usize;
-                        let between_offset = unsafe { end.as_ptr().offset_from(start.as_ptr()) }
-                            as usize
-                            + end.len();
+                    // Always safe because the slices were already created safely.
+                    let start_offset = unsafe { start.as_ptr().offset_from(origin) } as usize;
+                    let between_offset =
+                        unsafe { end.as_ptr().offset_from(start.as_ptr()) } as usize + end.len();
 
-                        // We need to convert from byte indices to char indices since that's what
-                        // `ChangeSet` operates on.
-                        (
-                            self.text().byte_to_char(start_offset),
-                            self.text().byte_to_char(start_offset + between_offset),
-                        )
-                    };
+                    // We need to convert from byte indices to char indices since that's what
+                    // `ChangeSet` operates on.
+                    (
+                        ropey::str_utils::byte_to_char_idx(&from, start_offset),
+                        ropey::str_utils::byte_to_char_idx(&from, start_offset + between_offset),
+                    )
+                };
 
-                    match tag {
-                        similar::DiffTag::Insert | similar::DiffTag::Replace => {
-                            let words = &new_words[range_new];
-                            // Because `words` is a slice of slices, we need to concat them
-                            // back into one `&str`. We're using `unsafe` to avoid an allocation
-                            // that would happen if we were using the `std::slice::concat()`.
-                            let text: &str = {
-                                let origin = new.as_ptr();
-                                let start = words[0];
-                                let end = *words.last().unwrap();
+                match tag {
+                    similar::DiffTag::Insert | similar::DiffTag::Replace => {
+                        // Because `words` is a slice of slices, we need to concat them
+                        // back into one `&str`. We're using `unsafe` to avoid an allocation
+                        // that would happen if we were using the `std::slice::concat()`.
+                        let text = {
+                            let origin = into.as_ptr();
+                            let slices = &new[into_range];
+                            let start = slices[0];
+                            let end = *slices.last().unwrap();
 
-                                // Always safe because the slices were already created safely.
-                                let start_offset =
-                                    unsafe { start.as_ptr().offset_from(origin) } as usize;
-                                let between_offset =
-                                    unsafe { end.as_ptr().offset_from(start.as_ptr()) } as usize
-                                        + end.len();
-                                &new[start_offset..start_offset + between_offset]
-                            };
+                            // Always safe because the slices were already created safely.
+                            let start_offset =
+                                unsafe { start.as_ptr().offset_from(origin) } as usize;
+                            let between_offset = unsafe { end.as_ptr().offset_from(start.as_ptr()) }
+                                as usize
+                                + end.len();
+                            &into[start_offset..start_offset + between_offset]
+                        };
 
-                            Some((start, end, Some(text.into())))
-                        }
-                        similar::DiffTag::Delete => Some((start, end, None)),
-                        similar::DiffTag::Equal => None,
+                        Some((start, end, Some(text.into())))
                     }
-                })
-                .collect();
+                    similar::DiffTag::Delete => Some((start, end, None)),
+                    similar::DiffTag::Equal => None,
+                }
+            })
+            .collect();
 
-            let transaction = Transaction::change(self.text(), changes.into_iter());
-            self.apply(&transaction, view_id);
-            self.append_changes_to_history(view_id);
-        } else {
-            return Err(anyhow::anyhow!("can't find file to reload from"));
-        }
+        let transaction = Transaction::change(self.text(), changes.into_iter());
+        self.apply(&transaction, view_id);
+        self.append_changes_to_history(view_id);
 
         Ok(())
     }
