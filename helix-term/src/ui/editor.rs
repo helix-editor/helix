@@ -8,7 +8,7 @@ use crate::{
 
 use helix_core::{
     coords_at_pos,
-    graphemes::{ensure_grapheme_boundary, ensure_grapheme_boundary_byte},
+    graphemes::ensure_grapheme_boundary,
     syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
@@ -143,7 +143,6 @@ impl EditorView {
         'outer: for event in highlights {
             match event.unwrap() {
                 HighlightEvent::HighlightStart(mut span) => {
-                    span.0 = ensure_grapheme_boundary_byte(text, span.0);
                     spans.push(span);
                 }
                 HighlightEvent::HighlightEnd => {
