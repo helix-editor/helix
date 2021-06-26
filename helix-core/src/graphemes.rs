@@ -131,20 +131,6 @@ pub fn ensure_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     }
 }
 
-/// Returns the passed byte index if it's already a grapheme boundary,
-/// or the next grapheme boundary byte index if not.
-pub fn ensure_grapheme_boundary_byte(slice: RopeSlice, byte_idx: usize) -> usize {
-    // TODO: we can avoid the byte/char conversions entirely
-    // if we also make byte versions of the other functions.
-    let char_idx = slice.byte_to_char(byte_idx);
-    let fixed_char_idx = ensure_grapheme_boundary(slice, char_idx);
-    if fixed_char_idx == char_idx {
-        byte_idx
-    } else {
-        slice.char_to_byte(fixed_char_idx)
-    }
-}
-
 /// Returns whether the given char position is a grapheme boundary.
 pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
     // Bounds check
