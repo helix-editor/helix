@@ -571,13 +571,12 @@ impl Document {
             return Err(anyhow!("can't find file to reload from"));
         }
 
+        let mut file = std::fs::File::open(path.unwrap())?;
+        let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
+        with_newline_eof(&mut rope);
+
         let from = self.text().to_string();
-        let into = {
-            let mut file = std::fs::File::open(path.unwrap())?;
-            let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
-            with_newline_eof(&mut rope);
-            rope.to_string()
-        };
+        let into = rope.to_string();
 
         let old = from.tokenize_lines();
         let new = into.tokenize_lines();
@@ -590,7 +589,7 @@ impl Document {
         let mut config = similar::TextDiff::configure();
         config.timeout(std::time::Duration::new(10, 0));
 
-        let diff = config.diff_slices(&old, &new);
+        let diff = config.diff_lines(&from, &into);
         let changes: Vec<Change> = diff
             .ops()
             .iter()
@@ -605,6 +604,8 @@ impl Document {
                     let end = *slices.last().unwrap();
 
                     // Always safe because the slices were already created safely.
+                    // let start_offset = ropey::str_utils::line_to_byte_idx(&from, from_range.start);
+                    // let between_offset = ropey::str_utils::line_to_byte_idx(&from, from_range.end);
                     let start_offset = unsafe { start.as_ptr().offset_from(origin) } as usize;
                     let between_offset =
                         unsafe { end.as_ptr().offset_from(start.as_ptr()) } as usize + end.len();
@@ -619,6 +620,7 @@ impl Document {
 
                 match tag {
                     similar::DiffTag::Insert | similar::DiffTag::Replace => {
+                        // let text: String = into.lines().skip(into_range.start).take(into_range.end - into_range.start).collect();
                         // Because `words` is a slice of slices, we need to concat them
                         // back into one `&str`. We're using `unsafe` to avoid an allocation
                         // that would happen if we were using the `std::slice::concat()`.
@@ -636,7 +638,6 @@ impl Document {
                                 + end.len();
                             &into[start_offset..start_offset + between_offset]
                         };
-
                         Some((start, end, Some(text.into())))
                     }
                     similar::DiffTag::Delete => Some((start, end, None)),
