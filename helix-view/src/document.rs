@@ -586,7 +586,10 @@ impl Document {
             let old_words = old.tokenize_lines();
             let new_words = new.tokenize_lines();
 
-            let diff = similar::TextDiff::from_slices(&old_words, &new_words);
+            let mut config = similar::TextDiff::configure();
+            config.timeout(std::time::Duration::new(10, 0));
+
+            let diff = config.diff_slices(&old_words, &new_words);
             let changes: Vec<Change> = diff
                 .ops()
                 .iter()
@@ -659,6 +662,10 @@ impl Document {
         }
 
         Ok(())
+    }
+
+    pub fn encoding(&self) -> &'static encoding_rs::Encoding {
+        self.encoding
     }
 
     fn detect_indent_style(&mut self) {
