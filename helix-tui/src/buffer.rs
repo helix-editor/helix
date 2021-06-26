@@ -309,7 +309,7 @@ impl Buffer {
             index += width;
             x_offset += width;
         }
-        if ellipsis && x_offset - (x as usize) < UnicodeWidthStr::width(string.as_ref()) {
+        if ellipsis && x_offset - (x as usize) < string.as_ref().width() {
             self.content[index].set_symbol("…");
         }
         (x_offset as u16, y)
