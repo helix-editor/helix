@@ -344,7 +344,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "crossterm",
- "dirs-next",
  "fern",
  "futures-util",
  "fuzzy-matcher",
