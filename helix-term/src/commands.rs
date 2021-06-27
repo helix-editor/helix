@@ -3386,6 +3386,9 @@ fn right_bracket_mode(cx: &mut Context) {
     })
 }
 
+use helix_core::surround;
+use helix_core::textobject;
+
 fn match_mode(cx: &mut Context) {
     let count = cx.count;
     cx.on_next_key(move |cx, event| {
@@ -3400,17 +3403,38 @@ fn match_mode(cx: &mut Context) {
                 'm' => match_brackets(cx),
                 's' => surround_add(cx),
                 'r' => surround_replace(cx),
-                'd' => {
-                    surround_delete(cx);
-                    let (view, doc) = current!(cx.editor);
-                }
+                'd' => surround_delete(cx),
+                'a' => select_textobject(cx, textobject::TextObject::Around),
+                'i' => select_textobject(cx, textobject::TextObject::Inner),
                 _ => (),
             }
         }
     })
 }
 
-use helix_core::surround;
+fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+    let count = cx.count();
+    cx.on_next_key(move |cx, event| {
+        if let KeyEvent {
+            code: KeyCode::Char(ch),
+            ..
+        } = event
+        {
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+
+            let selection = doc.selection(view.id).transform(|mut range| {
+                match ch {
+                    'w' => textobject::textobject_word(text, range, objtype, count),
+                    _ => range,
+                }
+            });
+
+            doc.set_selection(view.id, selection);
+        }
+    })
+
+}
 
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {

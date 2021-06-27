@@ -104,6 +104,23 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     word_move(slice, range, count, WordMotionTarget::PrevWordStart)
 }
 
+pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+}
+
+pub fn move_this_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::ThisWordStart)
+}
+
+pub fn move_this_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::ThisWordEnd)
+}
+
+pub fn move_this_word_prev_bound(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::ThisWordPrevBound)
+}
+
+
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
     (0..count).fold(range, |range, _| {
         slice.chars_at(range.head).range_to_target(target, range)
@@ -147,9 +164,14 @@ where
 /// Possible targets of a word motion
 #[derive(Copy, Clone, Debug)]
 pub enum WordMotionTarget {
+    ThisWordStart,
+    ThisWordEnd,
     NextWordStart,
     NextWordEnd,
     PrevWordStart,
+    PrevWordEnd,
+    // like PrevWordEnd but doesn't move if already on word end
+    ThisWordPrevBound,
 }
 
 pub trait CharHelpers {
@@ -167,7 +189,10 @@ impl CharHelpers for Chars<'_> {
         let range = origin;
         // Characters are iterated forward or backwards depending on the motion direction.
         let characters: Box<dyn Iterator<Item = char>> = match target {
-            WordMotionTarget::PrevWordStart => {
+            WordMotionTarget::PrevWordStart
+            | WordMotionTarget::ThisWordStart
+            | WordMotionTarget::PrevWordEnd
+            | WordMotionTarget::ThisWordPrevBound => {
                 self.next();
                 Box::new(from_fn(|| self.prev()))
             }
@@ -176,12 +201,22 @@ impl CharHelpers for Chars<'_> {
 
         // Index advancement also depends on the direction.
         let advance: &dyn Fn(&mut usize) = match target {
-            WordMotionTarget::PrevWordStart => &|u| *u = u.saturating_sub(1),
+            WordMotionTarget::PrevWordStart
+            | WordMotionTarget::ThisWordStart
+            | WordMotionTarget::PrevWordEnd
+            | WordMotionTarget::ThisWordPrevBound => &|u| *u = u.saturating_sub(1),
             _ => &|u| *u += 1,
         };
 
         let mut characters = characters.peekable();
-        let mut phase = WordMotionPhase::Start;
+        let mut phase = match target {
+            // curosr may already be at word end or word beginning, i.e. we may
+            // have already reached our target so check that first
+            WordMotionTarget::ThisWordEnd
+            | WordMotionTarget::ThisWordStart
+            | WordMotionTarget::ThisWordPrevBound => WordMotionPhase::ReachTarget,
+            _ => WordMotionPhase::Start,
+        };
         let mut head = origin.head;
         let mut anchor: Option<usize> = None;
         let is_boundary =
@@ -236,13 +271,21 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
     };
 
     match target {
-        WordMotionTarget::NextWordStart => {
+        WordMotionTarget::NextWordStart
+        | WordMotionTarget::PrevWordEnd
+        | WordMotionTarget::ThisWordPrevBound => {
             ((categorize_char(peek) != categorize_char(*next_peek))
                 && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
         }
         WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
             ((categorize_char(peek) != categorize_char(*next_peek))
                 && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
+        }
+        WordMotionTarget::ThisWordStart | WordMotionTarget::ThisWordEnd => {
+            categorize_char(peek) != categorize_char(*next_peek)
+                || peek.is_whitespace()
+                || char_is_line_ending(peek)
+                || char_is_line_ending(*next_peek)
         }
     }
 }

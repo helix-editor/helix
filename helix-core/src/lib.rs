@@ -18,6 +18,7 @@ pub mod selection;
 mod state;
 pub mod surround;
 pub mod syntax;
+pub mod textobject;
 mod transaction;
 
 pub mod unicode {
