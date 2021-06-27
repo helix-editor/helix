@@ -1469,9 +1469,7 @@ mod cmd {
         if let Some(label) = args.first() {
             doc.set_encoding(label)
                 .and_then(|_| doc.reload(view.id))
-                .unwrap_or_else(|e| {
-                    cx.editor.set_error(e.to_string());
-                });
+                .unwrap_or_else(|e| cx.editor.set_error(e.to_string()));
         } else {
             let encoding = doc.encoding().name().to_string();
             cx.editor.set_status(encoding)

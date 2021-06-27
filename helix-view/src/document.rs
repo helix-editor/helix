@@ -573,7 +573,7 @@ impl Document {
         let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
         with_line_ending(&mut rope);
 
-        let transaction = helix_core::diff::diff_ropes(self.text(), &rope);
+        let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
 
