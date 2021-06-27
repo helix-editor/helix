@@ -80,7 +80,7 @@ impl<T: Item> Menu<T> {
                     let text = option.filter_text();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     matcher
-                        .fuzzy_match(&text, pattern)
+                        .fuzzy_match(text, pattern)
                         .map(|score| (index, score))
                 }),
         );

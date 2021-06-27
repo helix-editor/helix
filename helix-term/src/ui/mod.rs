@@ -155,9 +155,7 @@ pub mod completers {
         let mut matches: Vec<_> = names
             .into_iter()
             .filter_map(|(range, name)| {
-                matcher
-                    .fuzzy_match(&name, &input)
-                    .map(|score| (name, score))
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
             })
             .collect();
 
