@@ -245,15 +245,10 @@ impl EditorView {
                         acc.patch(style)
                     });
 
-                    // TODO: we could render the text to a surface, then cache that, that
-                    // way if only the selection/cursor changes we can copy from cache
-                    // and paint the new cursor.
-                    // We could keep a single resizable surface on the View for that.
-
-                    // iterate over range char by char
                     for grapheme in RopeGraphemes::new(text) {
                         let out_of_bounds = visual_x < view.first_col as u16
                             || visual_x >= viewport.width + view.first_col as u16;
+
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
                                 // we still want to render an empty cell with the style
@@ -272,42 +267,30 @@ impl EditorView {
                             if line >= viewport.height {
                                 break 'outer;
                             }
-                        } else if grapheme == "\t" {
-                            if out_of_bounds {
-                                // if we're offscreen just keep going until we hit a new line
-                                visual_x = visual_x.saturating_add(tab_width as u16);
-                                continue;
-                            }
-
-                            // we still want to render an empty cell with the style
-                            surface.set_string(
-                                viewport.x + visual_x - view.first_col as u16,
-                                viewport.y + line,
-                                &tab,
-                                style,
-                            );
-
-                            visual_x = visual_x.saturating_add(tab_width as u16);
                         } else {
-                            // Cow will prevent allocations if span contained in a single slice
-                            // which should really be the majority case
                             let grapheme = Cow::from(grapheme);
-                            let width = grapheme_width(&grapheme) as u16;
 
-                            if out_of_bounds {
+                            let (grapheme, width) = if grapheme == "\t" {
+                                // make sure we display tab as appropriate amount of spaces
+                                (tab.as_str(), tab_width)
+                            } else {
+                                // Cow will prevent allocations if span contained in a single slice
+                                // which should really be the majority case
+                                let width = grapheme_width(&grapheme);
+                                (grapheme.as_ref(), width)
+                            };
+
+                            if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
-                                visual_x = visual_x.saturating_add(width);
-                                continue;
+                                surface.set_string(
+                                    viewport.x + visual_x - view.first_col as u16,
+                                    viewport.y + line,
+                                    grapheme,
+                                    style,
+                                );
                             }
 
-                            surface.set_string(
-                                viewport.x + visual_x - view.first_col as u16,
-                                viewport.y + line,
-                                grapheme,
-                                style,
-                            );
-
-                            visual_x += width;
+                            visual_x = visual_x.saturating_add(width as u16);
                         }
                     }
                 }
