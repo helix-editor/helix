@@ -96,11 +96,11 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
         match (self.next_event, &self.next_span) {
             (Some(HighlightStart(i)), _) => {
                 self.next_event = self.iter.next();
-                return Some(HighlightStart(i));
+                Some(HighlightStart(i))
             }
             (Some(HighlightEnd), _) => {
                 self.next_event = self.iter.next();
-                return Some(HighlightEnd);
+                Some(HighlightEnd)
             }
             (Some(Source { start, end }), Some((span, range))) if start < range.start => {
                 let intersect = range.start.min(end);
@@ -154,9 +154,9 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
             }
             (Some(event), None) => {
                 self.next_event = self.iter.next();
-                return Some(event);
+                Some(event)
             }
-            (None, None) => return None,
+            (None, None) => None,
             e => unreachable!("{:?}", e),
         }
     }
