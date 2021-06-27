@@ -139,6 +139,7 @@ impl EditorView {
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
+        let tab = " ".repeat(tab_width);
 
         let highlights = highlights.into_iter().map(|event| match event.unwrap() {
             // convert byte offsets to char offset
@@ -235,7 +236,6 @@ impl EditorView {
                     spans.pop();
                 }
                 HighlightEvent::Source { start, end } => {
-                    // TODO: filter out spans out of viewport for now..
                     let text = text.slice(start..end);
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
@@ -285,7 +285,7 @@ impl EditorView {
                             surface.set_string(
                                 viewport.x + visual_x - view.first_col as u16,
                                 viewport.y + line,
-                                " ".repeat(tab_width),
+                                &tab,
                                 style,
                             );
 
