@@ -170,6 +170,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80df024fbc5ac80f87dfef0d9f5209a252f2a497f7f42944cff24d8253cac065"
 dependencies = [
  "cfg-if 1.0.0",
+ "packed_simd_2",
 ]
 
 [[package]]
@@ -300,6 +301,7 @@ dependencies = [
  "ropey",
  "rust-embed",
  "serde",
+ "similar",
  "smallvec",
  "tendril",
  "toml",
@@ -390,9 +392,7 @@ dependencies = [
  "helix-tui",
  "log",
  "once_cell",
- "ropey",
  "serde",
- "similar",
  "slotmap",
  "tokio",
  "toml",
@@ -486,6 +486,12 @@ name = "libc"
 version = "0.2.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
+
+[[package]]
+name = "libm"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
 
 [[package]]
 name = "lock_api"
@@ -607,6 +613,16 @@ name = "once_cell"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
+
+[[package]]
+name = "packed_simd_2"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e64858a2d3733fdd61adfdd6da89aa202f7ff0e741d2fc7ed1e452ba9dc99d7"
+dependencies = [
+ "cfg-if 0.1.10",
+ "libm",
+]
 
 [[package]]
 name = "parking_lot"

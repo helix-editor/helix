@@ -306,9 +306,9 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
-pub fn with_newline_eof(rope: &mut Rope) -> LineEnding {
+pub fn with_line_ending(rope: &mut Rope) -> LineEnding {
     // search for line endings
-    let line_ending = auto_detect_line_ending(&rope).unwrap_or(DEFAULT_LINE_ENDING);
+    let line_ending = auto_detect_line_ending(rope).unwrap_or(DEFAULT_LINE_ENDING);
 
     // add missing newline at the end of file
     if rope.len_bytes() == 0 || !char_is_line_ending(rope.char(rope.len_chars() - 1)) {
@@ -460,7 +460,7 @@ impl Document {
 
         let mut file = std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
         let (mut rope, encoding) = from_reader(&mut file, encoding)?;
-        let line_ending = with_newline_eof(&mut rope);
+        let line_ending = with_line_ending(&mut rope);
 
         let mut doc = Self::from(rope, Some(encoding));
 
@@ -561,9 +561,6 @@ impl Document {
     /// otherwise it will reload the buffer as-is, which is helpful when you need
     /// to preserve changes.
     pub fn reload(&mut self, view_id: ViewId) -> Result<(), Error> {
-        use helix_core::Change;
-        use similar::DiffableStr;
-
         let encoding = &self.encoding;
         let path = self.path().filter(|path| path.exists());
 
@@ -573,77 +570,9 @@ impl Document {
 
         let mut file = std::fs::File::open(path.unwrap())?;
         let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
-        with_newline_eof(&mut rope);
+        with_line_ending(&mut rope);
 
-        let from = self.text().to_string();
-        let into = rope.to_string();
-
-        let old = from.tokenize_lines();
-        let new = into.tokenize_lines();
-
-        // `similar` diffs don't return byte or char offsets, so we need
-        // to map it back. Instead, we're tokenizing it ahead of time and
-        // then comparing the slices to make it more readable and allocate
-        // less.
-
-        let mut config = similar::TextDiff::configure();
-        config.timeout(std::time::Duration::new(10, 0));
-
-        let diff = config.diff_lines(&from, &into);
-        let changes: Vec<Change> = diff
-            .ops()
-            .iter()
-            .filter_map(|op| {
-                // `range_old` and `range_old` are ranges that map to `old_words`
-                // and `new_words`. We need to map them back to the source `String`.
-                let (tag, from_range, into_range) = op.as_tag_tuple();
-                let (start, end) = {
-                    let origin = from.as_ptr();
-                    let slices = &old[from_range];
-                    let start = slices[0];
-                    let end = *slices.last().unwrap();
-
-                    // Always safe because the slices were already created safely.
-                    let start_offset = unsafe { start.as_ptr().offset_from(origin) } as usize;
-                    let between_offset =
-                        unsafe { end.as_ptr().offset_from(start.as_ptr()) } as usize + end.len();
-
-                    // We need to convert from byte indices to char indices since that's what
-                    // `ChangeSet` operates on.
-                    (
-                        ropey::str_utils::byte_to_char_idx(&from, start_offset),
-                        ropey::str_utils::byte_to_char_idx(&from, start_offset + between_offset),
-                    )
-                };
-
-                match tag {
-                    similar::DiffTag::Insert | similar::DiffTag::Replace => {
-                        // Because `words` is a slice of slices, we need to concat them
-                        // back into one `&str`. We're using `unsafe` to avoid an allocation
-                        // that would happen if we were using the `std::slice::concat()`.
-                        let text = {
-                            let origin = into.as_ptr();
-                            let slices = &new[into_range];
-                            let start = slices[0];
-                            let end = *slices.last().unwrap();
-
-                            // Always safe because the slices were already created safely.
-                            let start_offset =
-                                unsafe { start.as_ptr().offset_from(origin) } as usize;
-                            let between_offset = unsafe { end.as_ptr().offset_from(start.as_ptr()) }
-                                as usize
-                                + end.len();
-                            &into[start_offset..start_offset + between_offset]
-                        };
-                        Some((start, end, Some(text.into())))
-                    }
-                    similar::DiffTag::Delete => Some((start, end, None)),
-                    similar::DiffTag::Equal => None,
-                }
-            })
-            .collect();
-
-        let transaction = Transaction::change(self.text(), changes.into_iter());
+        let transaction = helix_core::diff::diff_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
 
