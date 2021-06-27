@@ -1,11 +1,9 @@
-use crate::{
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    text::{Span, Spans},
-};
+use crate::text::{Span, Spans};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
+
+use helix_view::graphics::{Color, Modifier, Rect, Style};
 
 /// A buffer cell
 #[derive(Debug, Clone, PartialEq)]
@@ -89,8 +87,7 @@ impl Default for Cell {
 ///
 /// ```
 /// use helix_tui::buffer::{Buffer, Cell};
-/// use helix_tui::layout::Rect;
-/// use helix_tui::style::{Color, Style, Modifier};
+/// use helix_view::graphics::{Rect, Color, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
 /// buf.get_mut(0, 2).set_symbol("x");
@@ -193,7 +190,7 @@ impl Buffer {
     ///
     /// ```
     /// # use helix_tui::buffer::Buffer;
-    /// # use helix_tui::layout::Rect;
+    /// # use helix_view::graphics::Rect;
     /// let rect = Rect::new(200, 100, 10, 10);
     /// let buffer = Buffer::empty(rect);
     /// // Global coordinates to the top corner of this buffer's area
@@ -225,7 +222,7 @@ impl Buffer {
     ///
     /// ```
     /// # use helix_tui::buffer::Buffer;
-    /// # use helix_tui::layout::Rect;
+    /// # use helix_view::graphics::Rect;
     /// let rect = Rect::new(200, 100, 10, 10);
     /// let buffer = Buffer::empty(rect);
     /// assert_eq!(buffer.pos_of(0), (200, 100));
@@ -269,8 +266,27 @@ impl Buffer {
     where
         S: AsRef<str>,
     {
+        self.set_string_truncated(x, y, string, width, style, false)
+    }
+
+    /// Print at most the first `width` characters of a string if enough space is available
+    /// until the end of the line. If `markend` is true appends a `…` at the end of
+    /// truncated lines.
+    pub fn set_string_truncated<S>(
+        &mut self,
+        x: u16,
+        y: u16,
+        string: S,
+        width: usize,
+        style: Style,
+        ellipsis: bool,
+    ) -> (u16, u16)
+    where
+        S: AsRef<str>,
+    {
         let mut index = self.index_of(x, y);
         let mut x_offset = x as usize;
+        let width = if ellipsis { width - 1 } else { width };
         let graphemes = UnicodeSegmentation::graphemes(string.as_ref(), true);
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
         for s in graphemes {
@@ -292,6 +308,9 @@ impl Buffer {
             }
             index += width;
             x_offset += width;
+        }
+        if ellipsis && x_offset - (x as usize) < string.as_ref().width() {
+            self.content[index].set_symbol("…");
         }
         (x_offset as u16, y)
     }

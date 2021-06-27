@@ -20,8 +20,10 @@ pub use self::block::{Block, BorderType};
 pub use self::paragraph::{Paragraph, Wrap};
 pub use self::table::{Cell, Row, Table, TableState};
 
-use crate::{buffer::Buffer, layout::Rect};
+use crate::buffer::Buffer;
 use bitflags::bitflags;
+
+use helix_view::graphics::Rect;
 
 bitflags! {
     /// Bitflags that can be composed to set the visible borders essentially on the block widget.

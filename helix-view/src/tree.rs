@@ -1,6 +1,5 @@
-use crate::{View, ViewId};
+use crate::{graphics::Rect, View, ViewId};
 use slotmap::HopSlotMap;
-use tui::layout::Rect;
 
 // the dimensions are recomputed on windo resize/tree change.
 //

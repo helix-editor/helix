@@ -1,11 +1,6 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use tui::{
-    buffer::Buffer as Surface,
-    layout::Rect,
-    style::{Color, Style},
-    widgets::Table,
-};
+use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
@@ -15,7 +10,10 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
 use helix_core::Position;
-use helix_view::Editor;
+use helix_view::{
+    graphics::{Color, Rect, Style},
+    Editor,
+};
 
 pub trait Item {
     // TODO: sort_text
@@ -82,7 +80,7 @@ impl<T: Item> Menu<T> {
                     let text = option.filter_text();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     matcher
-                        .fuzzy_match(&text, pattern)
+                        .fuzzy_match(text, pattern)
                         .map(|score| (index, score))
                 }),
         );

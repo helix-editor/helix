@@ -15,7 +15,8 @@ use helix_core::{
 
 use helix_view::{
     document::{IndentStyle, Mode},
-    input::{KeyCode, KeyEvent},
+    input::KeyEvent,
+    keyboard::KeyCode,
     view::{View, PADDING},
     Document, DocumentId, Editor, ViewId,
 };
@@ -351,6 +352,8 @@ fn move_line_end(cx: &mut Context) {
         let line = text.char_to_line(range.head);
 
         let pos = line_end_char_index(&text.slice(..), line);
+        let pos = graphemes::nth_prev_grapheme_boundary(text.slice(..), pos, 1);
+        let pos = range.head.max(pos).max(text.line_to_char(line));
 
         Range::new(pos, pos)
     });
@@ -787,6 +790,8 @@ fn extend_line_end(cx: &mut Context) {
         let line = text.char_to_line(range.head);
 
         let pos = line_end_char_index(&text.slice(..), line);
+        let pos = graphemes::nth_prev_grapheme_boundary(text.slice(..), pos, 1);
+        let pos = range.head.max(pos).max(text.line_to_char(line));
 
         Range::new(range.anchor, pos)
     });
@@ -2097,9 +2102,11 @@ fn goto_impl(
         offset_encoding: OffsetEncoding,
         action: Action,
     ) {
-        let id = editor
-            .open(PathBuf::from(location.uri.path()), action)
-            .expect("editor.open failed");
+        let path = location
+            .uri
+            .to_file_path()
+            .expect("unable to convert URI to filepath");
+        let id = editor.open(path, action).expect("editor.open failed");
         let (view, doc) = current!(editor);
         let definition_pos = location.range.start;
         // TODO: convert inside server

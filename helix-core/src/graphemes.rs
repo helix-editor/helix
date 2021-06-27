@@ -121,6 +121,16 @@ pub fn next_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     nth_next_grapheme_boundary(slice, char_idx, 1)
 }
 
+/// Returns the passed char index if it's already a grapheme boundary,
+/// or the next grapheme boundary char index if not.
+pub fn ensure_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
+    if char_idx == 0 {
+        0
+    } else {
+        next_grapheme_boundary(slice, char_idx - 1)
+    }
+}
+
 /// Returns whether the given char position is a grapheme boundary.
 pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
     // Bounds check

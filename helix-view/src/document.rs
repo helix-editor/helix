@@ -466,12 +466,13 @@ impl Document {
 
         // set the path and try detecting the language
         doc.set_path(&path)?;
-        doc.detect_indent_style();
-        doc.line_ending = line_ending;
-
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
         }
+
+        // Detect indentation style and set line ending.
+        doc.detect_indent_style();
+        doc.line_ending = line_ending;
 
         Ok(doc)
     }
@@ -1178,7 +1179,7 @@ mod test {
     macro_rules! test_decode {
         ($label:expr, $label_override:expr) => {
             let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
-            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
             let path = base_path.join(format!("{}_in.txt", $label));
             let ref_path = base_path.join(format!("{}_in_ref.txt", $label));
             assert!(path.exists());
@@ -1197,7 +1198,7 @@ mod test {
     macro_rules! test_encode {
         ($label:expr, $label_override:expr) => {
             let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
-            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+            let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
             let path = base_path.join(format!("{}_out.txt", $label));
             let ref_path = base_path.join(format!("{}_out_ref.txt", $label));
             assert!(path.exists());

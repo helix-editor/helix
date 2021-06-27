@@ -17,7 +17,7 @@ impl Args {
 
         iter.next(); // skip the program, we don't care about that
 
-        while let Some(arg) = iter.next() {
+        for arg in &mut iter {
             match arg.as_str() {
                 "--" => break, // stop parsing at this point treat the remaining as files
                 "--version" => args.display_version = true,
