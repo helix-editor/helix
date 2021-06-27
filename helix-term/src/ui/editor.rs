@@ -250,8 +250,6 @@ impl EditorView {
                     // and paint the new cursor.
                     // We could keep a single resizable surface on the View for that.
 
-                    let mut char_index = start;
-
                     // iterate over range char by char
                     for grapheme in RopeGraphemes::new(text) {
                         let out_of_bounds = visual_x < view.first_col as u16
@@ -311,8 +309,6 @@ impl EditorView {
 
                             visual_x += width;
                         }
-
-                        char_index += grapheme.chars().count();
                     }
                 }
             }
