@@ -131,7 +131,7 @@ mod provider {
     #[cfg(target_os = "windows")]
     impl ClipboardProvider for WindowsProvider {
         fn name(&self) -> Cow<str> {
-            Cow::Borrowed("Windows Clipboard")
+            Cow::Borrowed("clipboard-win")
         }
 
         fn get_contents(&self) -> Result<String> {

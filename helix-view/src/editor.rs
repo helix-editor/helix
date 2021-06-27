@@ -1,12 +1,10 @@
-use crate::clipboard::{get_clipboard_provider, ClipboardProvider};
 use crate::{
+    clipboard::{get_clipboard_provider, ClipboardProvider},
+    graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
     Document, DocumentId, RegisterSelection, View, ViewId,
 };
-use helix_core::syntax;
-use tui::layout::Rect;
-use tui::terminal::CursorKind;
 
 use futures_util::future;
 use std::{path::PathBuf, sync::Arc, time::Duration};
@@ -17,6 +15,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
+use helix_core::syntax;
 use helix_core::Position;
 
 #[derive(Debug)]
@@ -45,7 +44,7 @@ pub enum Action {
 
 impl Editor {
     pub fn new(
-        mut area: tui::layout::Rect,
+        mut area: Rect,
         themes: Arc<theme::Loader>,
         config_loader: Arc<syntax::Loader>,
     ) -> Self {

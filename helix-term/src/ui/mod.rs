@@ -18,12 +18,12 @@ pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
-pub use tui::layout::Rect;
-pub use tui::style::{Color, Modifier, Style};
-
 use helix_core::regex::Regex;
 use helix_core::register::Registers;
-use helix_view::{Document, Editor, View};
+use helix_view::{
+    graphics::{Color, Modifier, Rect, Style},
+    Document, Editor, View,
+};
 
 use std::path::{Path, PathBuf};
 
@@ -76,11 +76,22 @@ pub fn regex_prompt(
 
 pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
     use ignore::Walk;
+    use std::time;
     let files = Walk::new(root.clone()).filter_map(|entry| match entry {
         Ok(entry) => {
             // filter dirs, but we might need special handling for symlinks!
             if !entry.file_type().map_or(false, |entry| entry.is_dir()) {
-                Some(entry.into_path())
+                let time = if let Ok(metadata) = entry.metadata() {
+                    metadata
+                        .accessed()
+                        .or_else(|_| metadata.modified())
+                        .or_else(|_| metadata.created())
+                        .unwrap_or(time::UNIX_EPOCH)
+                } else {
+                    time::UNIX_EPOCH
+                };
+
+                Some((entry.into_path(), time))
             } else {
                 None
             }
@@ -88,12 +99,16 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         Err(_err) => None,
     });
 
-    let files = if root.join(".git").is_dir() {
+    let mut files: Vec<_> = if root.join(".git").is_dir() {
         files.collect()
     } else {
         const MAX: usize = 8192;
         files.take(MAX).collect()
     };
+
+    files.sort_by_key(|file| file.1);
+
+    let files = files.into_iter().map(|(path, _)| path).collect();
 
     Picker::new(
         files,
@@ -140,9 +155,7 @@ pub mod completers {
         let mut matches: Vec<_> = names
             .into_iter()
             .filter_map(|(range, name)| {
-                matcher
-                    .fuzzy_match(&name, &input)
-                    .map(|score| (name, score))
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
             })
             .collect();
 

@@ -326,7 +326,7 @@ impl ProgressStatus {
     pub fn progress(&self) -> Option<&lsp::WorkDoneProgress> {
         match &self {
             ProgressStatus::Created => None,
-            ProgressStatus::Started(progress) => Some(&progress),
+            ProgressStatus::Started(progress) => Some(progress),
         }
     }
 }

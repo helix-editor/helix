@@ -1,9 +1,8 @@
 use crate::{
     backend::Backend,
     buffer::{Buffer, Cell},
-    layout::Rect,
-    terminal::CursorKind,
 };
+use helix_view::graphics::{CursorKind, Rect};
 use std::{fmt::Write, io};
 use unicode_width::UnicodeWidthStr;
 
