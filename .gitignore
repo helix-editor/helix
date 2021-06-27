@@ -3,4 +3,5 @@ target
 helix-term/rustfmt.toml
 helix-syntax/languages/
 result
-
+bool
+helix-core/proptest-regressions
