@@ -44,124 +44,6 @@ impl Default for EditorView {
     }
 }
 
-struct Merge<I> {
-    iter: I,
-    spans: Box<dyn Iterator<Item = (usize, std::ops::Range<usize>)>>,
-
-    next_event: Option<HighlightEvent>,
-    next_span: Option<(usize, std::ops::Range<usize>)>,
-
-    queue: Vec<HighlightEvent>,
-}
-
-fn merge<I: Iterator<Item = HighlightEvent>>(
-    iter: I,
-    spans: Vec<(usize, std::ops::Range<usize>)>,
-) -> impl Iterator<Item = HighlightEvent> {
-    let spans = Box::new(spans.into_iter());
-    let mut merge = Merge {
-        iter,
-        spans,
-        next_event: None,
-        next_span: None,
-        queue: Vec::new(),
-    };
-    merge.next_event = merge.iter.next();
-    merge.next_span = merge.spans.next();
-    merge
-}
-
-impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
-    type Item = HighlightEvent;
-    fn next(&mut self) -> Option<Self::Item> {
-        use HighlightEvent::*;
-        if let Some(event) = self.queue.pop() {
-            return Some(event);
-        }
-
-        loop {
-            match (self.next_event, &self.next_span) {
-                // this happens when range is partially or fully offscreen
-                (Some(Source { start, end }), Some((span, range))) if start > range.start => {
-                    if start > range.end {
-                        self.next_span = self.spans.next();
-                    } else {
-                        self.next_span = Some((*span, start..range.end));
-                    };
-                }
-                _ => break,
-            }
-        }
-
-        match (self.next_event, &self.next_span) {
-            (Some(HighlightStart(i)), _) => {
-                self.next_event = self.iter.next();
-                Some(HighlightStart(i))
-            }
-            (Some(HighlightEnd), _) => {
-                self.next_event = self.iter.next();
-                Some(HighlightEnd)
-            }
-            (Some(Source { start, end }), Some((span, range))) if start < range.start => {
-                let intersect = range.start.min(end);
-                let event = Source {
-                    start,
-                    end: intersect,
-                };
-
-                if end == intersect {
-                    // the event is complete
-                    self.next_event = self.iter.next();
-                } else {
-                    // subslice the event
-                    self.next_event = Some(Source {
-                        start: intersect,
-                        end,
-                    });
-                };
-
-                Some(event)
-            }
-            (Some(Source { start, end }), Some((span, range))) if start == range.start => {
-                let intersect = range.end.min(end);
-                let event = HighlightStart(Highlight(*span));
-
-                // enqueue in reverse order
-                self.queue.push(HighlightEnd);
-                self.queue.push(Source {
-                    start,
-                    end: intersect,
-                });
-
-                if end == intersect {
-                    // the event is complete
-                    self.next_event = self.iter.next();
-                } else {
-                    // subslice the event
-                    self.next_event = Some(Source {
-                        start: intersect,
-                        end,
-                    });
-                };
-
-                if intersect == range.end {
-                    self.next_span = self.spans.next();
-                } else {
-                    self.next_span = Some((*span, intersect..range.end));
-                }
-
-                Some(event)
-            }
-            (Some(event), None) => {
-                self.next_event = self.iter.next();
-                Some(event)
-            }
-            (None, None) => None,
-            e => unreachable!("{:?}", e),
-        }
-    }
-}
-
 impl EditorView {
     pub fn new(keymaps: Keymaps) -> Self {
         Self {
@@ -290,27 +172,16 @@ impl EditorView {
             .find_scope_index("ui.selection.primary")
             .unwrap_or(selection_scope);
 
-        // TODO: primary + insert mode patching
-        // let primary_cursor_style = theme
-        //     .try_get("ui.cursor.primary")
-        //     .map(|style| {
-        //         if mode != Mode::Normal {
-        //             // we want to make sure that the insert and select highlights
-        //             // also affect the primary cursor if set
-        //             style.patch(cursor_style)
-        //         } else {
-        //             style
-        //         }
-        //     })
-        //     .unwrap_or(cursor_style);
-
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
-
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             // inject selections as highlight scopes
-            let mut spans_: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+            let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+
+            // TODO: primary + insert mode patching:
+            // (ui.cursor.primary).patch(mode).unwrap_or(cursor)
+
+            let primary_cursor_scope = theme
+                .find_scope_index("ui.cursor.primary")
+                .unwrap_or(cursor_scope);
 
             for (i, range) in selections.iter().enumerate() {
                 let (cursor_scope, selection_scope) = if i == primary_idx {
@@ -320,39 +191,40 @@ impl EditorView {
                 };
 
                 if range.head == range.anchor {
-                    spans_.push((cursor_scope, range.head..range.head + 1));
+                    spans.push((cursor_scope, range.head..range.head + 1));
                     continue;
                 }
 
                 let reverse = range.head < range.anchor;
 
                 if reverse {
-                    spans_.push((cursor_scope, range.head..range.head + 1));
-                    spans_.push((selection_scope, range.head + 1..range.anchor + 1));
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                    spans.push((selection_scope, range.head + 1..range.anchor + 1));
                 } else {
-                    spans_.push((selection_scope, range.anchor..range.head));
-                    spans_.push((cursor_scope, range.head..range.head + 1));
+                    spans.push((selection_scope, range.anchor..range.head));
+                    spans.push((cursor_scope, range.head..range.head + 1));
                 }
             }
 
-            Box::new(merge(highlights, spans_))
+            Box::new(syntax::merge(highlights, spans))
         } else {
             Box::new(highlights)
         };
 
         // diagnostic injection
         let diagnostic_scope = theme.find_scope_index("diagnostic").unwrap_or(cursor_scope);
-        let spans_ = doc
-            .diagnostics()
-            .iter()
-            .map(|diagnostic| {
-                (
-                    diagnostic_scope,
-                    diagnostic.range.start..diagnostic.range.end,
-                )
-            })
-            .collect();
-        let highlights = Box::new(merge(highlights, spans_));
+        let highlights = Box::new(syntax::merge(
+            highlights,
+            doc.diagnostics()
+                .iter()
+                .map(|diagnostic| {
+                    (
+                        diagnostic_scope,
+                        diagnostic.range.start..diagnostic.range.end,
+                    )
+                })
+                .collect(),
+        ));
 
         'outer: for event in highlights {
             match event {
@@ -403,15 +275,19 @@ impl EditorView {
                                 break 'outer;
                             }
                         } else if grapheme == "\t" {
-                            if !out_of_bounds {
-                                // we still want to render an empty cell with the style
-                                surface.set_string(
-                                    viewport.x + visual_x - view.first_col as u16,
-                                    viewport.y + line,
-                                    " ".repeat(tab_width),
-                                    style,
-                                );
+                            if out_of_bounds {
+                                // if we're offscreen just keep going until we hit a new line
+                                visual_x = visual_x.saturating_add(tab_width as u16);
+                                continue;
                             }
+
+                            // we still want to render an empty cell with the style
+                            surface.set_string(
+                                viewport.x + visual_x - view.first_col as u16,
+                                viewport.y + line,
+                                " ".repeat(tab_width),
+                                style,
+                            );
 
                             visual_x = visual_x.saturating_add(tab_width as u16);
                         } else {
