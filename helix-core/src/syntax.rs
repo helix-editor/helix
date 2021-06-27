@@ -194,7 +194,7 @@ impl LanguageConfiguration {
                 let language = get_language_name(self.language_id).to_ascii_lowercase();
 
                 let toml = load_runtime_file(&language, "indents.toml").ok()?;
-                toml::from_slice(&toml.as_bytes()).ok()
+                toml::from_slice(toml.as_bytes()).ok()
             })
             .as_ref()
     }
