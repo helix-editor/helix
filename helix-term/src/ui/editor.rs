@@ -361,27 +361,26 @@ impl EditorView {
                     if let Some(syntax) = doc.syntax() {
                         use helix_core::match_brackets;
                         let pos = doc.selection(view.id).cursor();
-                        let pos = match_brackets::find(syntax, doc.text(), pos);
-                        if let Some(pos) = pos {
-                            let pos = view.screen_coords_at_pos(doc, text, pos);
-                            if let Some(pos) = pos {
-                                if (pos.col as u16) < viewport.width + view.first_col as u16
-                                    && pos.col >= view.first_col
-                                {
-                                    let style =
-                                        theme.try_get("ui.cursor.match").unwrap_or_else(|| {
-                                            Style::default()
-                                                .add_modifier(Modifier::REVERSED)
-                                                .add_modifier(Modifier::DIM)
-                                        });
+                        let pos = match_brackets::find(syntax, doc.text(), pos)
+                            .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
-                                    surface
-                                        .get_mut(
-                                            viewport.x + pos.col as u16,
-                                            viewport.y + pos.row as u16,
-                                        )
-                                        .set_style(style);
-                                }
+                        if let Some(pos) = pos {
+                            // ensure col is on screen
+                            if (pos.col as u16) < viewport.width + view.first_col as u16
+                                && pos.col >= view.first_col
+                            {
+                                let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
+                                    Style::default()
+                                        .add_modifier(Modifier::REVERSED)
+                                        .add_modifier(Modifier::DIM)
+                                });
+
+                                surface
+                                    .get_mut(
+                                        viewport.x + pos.col as u16,
+                                        viewport.y + pos.row as u16,
+                                    )
+                                    .set_style(style);
                             }
                         }
                     }
