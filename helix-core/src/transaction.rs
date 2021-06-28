@@ -193,9 +193,10 @@ impl ChangeSet {
                             head_b = changes_b.next();
                         }
                         Ordering::Greater => {
+                            // TODO: cover this with a test
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(len - j).unwrap();
-                            s.pop_front(s.len() as u32 - pos as u32);
+                            s.pop_front(pos as u32);
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }
