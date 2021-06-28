@@ -33,7 +33,7 @@ impl Job {
         f: F,
     ) -> Job {
         Job {
-            future: f.map(|r| r.map(|x| Some(x))).boxed(),
+            future: f.map(|r| r.map(Some)).boxed(),
             wait: false,
         }
     }
@@ -77,9 +77,9 @@ impl Jobs {
         }
     }
 
-    pub fn next<'a>(
-        &'a mut self,
-    ) -> impl Future<Output = Option<anyhow::Result<Option<Callback>>>> + 'a {
+    pub fn next_job(
+        &mut self,
+    ) -> impl Future<Output = Option<anyhow::Result<Option<Callback>>>> + '_ {
         future::select(self.futures.next(), self.wait_futures.next())
             .map(|either| either.factor_first().0)
     }
