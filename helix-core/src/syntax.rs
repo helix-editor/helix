@@ -1765,6 +1765,11 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
                 self.next_event = self.iter.next();
                 Some(event)
             }
+            // can happen if deleting and cursor at EOF, and diagnostic reaches past the end
+            (None, Some((span, range))) => {
+                self.next_span = None;
+                None
+            }
             (None, None) => None,
             e => unreachable!("{:?}", e),
         }
