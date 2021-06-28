@@ -1878,31 +1878,28 @@ fn append_to_line(cx: &mut Context) {
 
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
 // it applies them, but only if the doc hasn't changed.
-fn make_format_callback(
+async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
     set_unmodified: bool,
     format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
-) -> impl Future<Output = anyhow::Result<job::Callback>> {
-    async move {
-        let format = format.await;
-        let call: job::Callback =
-            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
-                let view_id = view!(editor).id;
-                if let Some(doc) = editor.document_mut(doc_id) {
-                    if doc.version() == doc_version {
-                        doc.apply(&Transaction::from(format), view_id);
-                        doc.append_changes_to_history(view_id);
-                        if set_unmodified {
-                            doc.reset_modified();
-                        }
-                    } else {
-                        log::info!("discarded formatting changes because the document changed");
-                    }
+) -> anyhow::Result<job::Callback> {
+    let format = format.await;
+    let call: job::Callback = Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+        let view_id = view!(editor).id;
+        if let Some(doc) = editor.document_mut(doc_id) {
+            if doc.version() == doc_version {
+                doc.apply(&Transaction::from(format), view_id);
+                doc.append_changes_to_history(view_id);
+                if set_unmodified {
+                    doc.reset_modified();
                 }
-            });
-        Ok(call)
-    }
+            } else {
+                log::info!("discarded formatting changes because the document changed");
+            }
+        }
+    });
+    Ok(call)
 }
 
 enum Open {

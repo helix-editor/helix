@@ -167,7 +167,7 @@ impl Application {
                     }
                     self.render();
                 }
-                Some(callback) = self.jobs.next() => {
+                Some(callback) = self.jobs.next_job() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
