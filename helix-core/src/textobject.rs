@@ -30,12 +30,12 @@ pub fn textobject_word(
         TextObject::Around => {
             if slice
                 .get_char(this_word_end + 1)
-                .map_or(true, |c| char_is_line_ending(c))
+                .map_or(true, char_is_line_ending)
             {
                 head = this_word_end;
                 if slice
                     .get_char(this_word_start - 1)
-                    .map_or(true, |c| char_is_line_ending(c))
+                    .map_or(true, char_is_line_ending)
                 {
                     // single word on a line
                     anchor = this_word_start;
