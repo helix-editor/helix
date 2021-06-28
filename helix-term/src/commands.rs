@@ -2511,7 +2511,7 @@ pub mod insert {
             } else {
                 contents.char(pos - 1)
             };
-            let curr = contents.char(pos);
+            let curr = contents.get_char(pos).unwrap_or(' ');
 
             // TODO: offset range.head by 1? when calculating?
             let indent_level = indent::suggested_indent_for_pos(
