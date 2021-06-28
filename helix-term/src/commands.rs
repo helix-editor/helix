@@ -3426,6 +3426,10 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             let selection = doc.selection(view.id).transform(|mut range| {
                 match ch {
                     'w' => textobject::textobject_word(text, range, objtype, count),
+                    // TODO: cancel new ranges if inconsistent surround matches across lines
+                    ch if !ch.is_ascii_alphanumeric() => {
+                        textobject::textobject_surround(text, range, objtype, ch, count)
+                    }
                     _ => range,
                 }
             });
@@ -3433,7 +3437,6 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             doc.set_selection(view.id, selection);
         }
     })
-
 }
 
 fn surround_add(cx: &mut Context) {

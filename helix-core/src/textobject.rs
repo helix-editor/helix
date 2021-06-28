@@ -2,6 +2,7 @@ use ropey::{Rope, RopeSlice};
 
 use crate::chars::{char_is_line_ending, char_is_whitespace};
 use crate::movement;
+use crate::surround;
 use crate::Range;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -71,7 +72,12 @@ pub fn textobject_surround(
     ch: char,
     count: usize,
 ) -> Range {
-    Range::point(0)
+    surround::find_nth_pairs_pos(slice, ch, range.head, count)
+        .map(|(anchor, head)| match textobject {
+            TextObject::Inner => Range::new(anchor + 1, head - 1),
+            TextObject::Around => Range::new(anchor, head),
+        })
+        .unwrap_or(range)
 }
 
 #[cfg(test)]
@@ -90,10 +96,10 @@ mod test {
         // initial, textobject, final
         let cases = &[
             // cursor at w[i]th
-            ((6, 6), Inner, (5, 8)), // [with]
+            ((6, 6), Inner, (5, 8)),  // [with]
             ((6, 6), Around, (5, 9)), // [with ]
             // cursor at text[ ]with
-            ((4, 4), Inner, (4, 4)), // no change
+            ((4, 4), Inner, (4, 4)),  // no change
             ((4, 4), Around, (4, 8)), // [ with]
             // cursor at [c]hars
             ((10, 10), Inner, (10, 14)), // [chars]
@@ -102,16 +108,16 @@ mod test {
             ((14, 14), Inner, (10, 14)), // [chars]
             ((14, 14), Around, (9, 14)), // [ chars]
             // cursor at chars[\n]more
-            ((15, 15), Inner, (15, 15)), // no change
+            ((15, 15), Inner, (15, 15)),  // no change
             ((15, 15), Around, (15, 20)), // [\nmore ]
             // cursor at [m]ore
-            ((16, 16), Inner, (16, 19)), // [more]
+            ((16, 16), Inner, (16, 19)),  // [more]
             ((16, 16), Around, (16, 20)), // [more ]
             // cursor at $!@[%]
             ((30, 30), Inner, (27, 30)), // [$!@%]
             // ((30, 30), Around, (27, 30)), // [$!@%]
             // cursor at word [ ] next
-            ((36, 36), Inner, (36, 36)), // no change
+            ((36, 36), Inner, (36, 36)),  // no change
             ((36, 36), Around, (35, 41)), // word[   next]
         ];
 

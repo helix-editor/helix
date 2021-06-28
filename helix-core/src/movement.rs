@@ -120,7 +120,6 @@ pub fn move_this_word_prev_bound(slice: RopeSlice, range: Range, count: usize) -
     word_move(slice, range, count, WordMotionTarget::ThisWordPrevBound)
 }
 
-
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
     (0..count).fold(range, |range, _| {
         slice.chars_at(range.head).range_to_target(target, range)
