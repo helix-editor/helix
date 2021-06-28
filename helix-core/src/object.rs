@@ -6,7 +6,7 @@ use smallvec::smallvec;
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
     let tree = syntax.tree();
 
-    selection.transform(|range| {
+    selection.clone().transformed(|range| {
         let from = text.char_to_byte(range.from());
         let to = text.char_to_byte(range.to());
 

@@ -137,6 +137,27 @@ impl Range {
         }
     }
 
+    /// Returns a range that encompasses both input ranges.
+    ///
+    /// This is like `extend()`, but tries to negotiate the
+    /// anchor/head ordering between the two input ranges.
+    #[must_use]
+    pub fn merge(&self, other: Self) -> Self {
+        if self.anchor > self.head && other.anchor > other.head {
+            Range {
+                anchor: self.anchor.max(other.anchor),
+                head: self.head.min(other.head),
+                horiz: None,
+            }
+        } else {
+            Range {
+                anchor: self.from().min(other.from()),
+                head: self.to().max(other.to()),
+                horiz: None,
+            }
+        }
+    }
+
     /// Compute a possibly new range from this range, attempting to ensure
     /// a minimum range width of 1 char by shifting the head in the forward
     /// direction as needed.
@@ -170,19 +191,20 @@ impl Range {
     /// ranges will never collapse to zero-width.
     #[must_use]
     pub fn grapheme_aligned(&self, slice: RopeSlice) -> Self {
-        let (new_anchor, new_head) = if self.anchor == self.head {
-            let pos = ensure_grapheme_boundary_prev(slice, self.anchor);
-            (pos, pos)
-        } else if self.anchor < self.head {
-            (
+        use std::cmp::Ordering;
+        let (new_anchor, new_head) = match self.anchor.cmp(&self.head) {
+            Ordering::Equal => {
+                let pos = ensure_grapheme_boundary_prev(slice, self.anchor);
+                (pos, pos)
+            }
+            Ordering::Less => (
                 ensure_grapheme_boundary_prev(slice, self.anchor),
                 ensure_grapheme_boundary_next(slice, self.head),
-            )
-        } else {
-            (
+            ),
+            Ordering::Greater => (
                 ensure_grapheme_boundary_next(slice, self.anchor),
                 ensure_grapheme_boundary_prev(slice, self.head),
-            )
+            ),
         };
         Range {
             anchor: new_anchor,
@@ -238,10 +260,8 @@ impl Selection {
     }
 
     pub fn push(mut self, range: Range) -> Self {
-        let index = self.ranges.len();
         self.ranges.push(range);
-
-        Self::normalize(self.ranges, index)
+        self.normalized()
     }
     // replace_range
 
@@ -287,80 +307,80 @@ impl Selection {
         Self::single(pos, pos)
     }
 
-    fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Self {
-        let primary = ranges[primary_index];
-        ranges.sort_unstable_by_key(Range::from);
-        primary_index = ranges.iter().position(|&range| range == primary).unwrap();
+    /// Normalizes a `Selection`.
+    pub fn normalize(&mut self) -> &mut Self {
+        let primary = self.ranges[self.primary_index];
+        self.ranges.sort_unstable_by_key(Range::from);
+        self.primary_index = self
+            .ranges
+            .iter()
+            .position(|&range| range == primary)
+            .unwrap();
 
-        let mut result = SmallVec::with_capacity(ranges.len()); // approx
-
-        // TODO: we could do with one vec by removing elements as we mutate
-
-        let mut i = 0;
-
-        for range in ranges.into_iter() {
-            // if previous value exists
-            if let Some(prev) = result.last_mut() {
-                // and we overlap it
-
-                // TODO: we used to simply check range.from() <(=) prev.to()
-                // avoiding two comparisons
-                if range.overlaps(prev) {
-                    let from = prev.from();
-                    let to = std::cmp::max(range.to(), prev.to());
-
-                    if i <= primary_index {
-                        primary_index -= 1
-                    }
-
-                    // merge into previous
-                    if range.anchor > range.head {
-                        prev.anchor = to;
-                        prev.head = from;
-                    } else {
-                        prev.anchor = from;
-                        prev.head = to;
-                    }
-                    continue;
+        let mut prev_i = 0;
+        for i in 1..self.ranges.len() {
+            if self.ranges[prev_i].overlaps(&self.ranges[i]) {
+                if i == self.primary_index {
+                    self.primary_index = prev_i;
                 }
+                self.ranges[prev_i] = self.ranges[prev_i].merge(self.ranges[i]);
+            } else {
+                prev_i += 1;
+                self.ranges[prev_i] = self.ranges[i];
             }
-
-            result.push(range);
-            i += 1
         }
 
-        Self {
-            ranges: result,
-            primary_index,
-        }
+        self.ranges.truncate(prev_i + 1);
+
+        self
+    }
+
+    /// Normalizes a `Selection`.
+    #[must_use]
+    pub fn normalized(mut self) -> Self {
+        self.normalize();
+        self
     }
 
     // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
         assert!(!ranges.is_empty());
+        debug_assert!(primary_index < ranges.len());
 
-        // fast path for a single selection (cursor)
-        if ranges.len() == 1 {
-            return Self {
-                ranges,
-                primary_index: 0,
-            };
+        let mut selection = Self {
+            ranges,
+            primary_index,
+        };
+
+        if selection.ranges.len() > 1 {
+            // TODO: only normalize if needed (any ranges out of order)
+            selection.normalize();
         }
 
-        // TODO: only normalize if needed (any ranges out of order)
-        Self::normalize(ranges, primary_index)
+        selection
     }
 
-    /// Takes a closure and maps each selection over the closure.
-    pub fn transform<F>(&self, f: F) -> Self
+    /// Takes a closure and maps each `Range` over the closure.
+    pub fn transform<F>(&mut self, f: F) -> &mut Self
     where
         F: Fn(Range) -> Range,
     {
-        Self::new(
-            self.ranges.iter().copied().map(f).collect(),
-            self.primary_index,
-        )
+        for range in self.ranges.iter_mut() {
+            *range = f(*range)
+        }
+
+        self
+    }
+
+    /// Takes a closure and maps each `Range` over the closure.
+    #[must_use]
+    pub fn transformed<F>(mut self, f: F) -> Self
+    where
+        F: Fn(Range) -> Range,
+    {
+        self.transform(f);
+        self
     }
 
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
