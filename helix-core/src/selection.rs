@@ -137,58 +137,61 @@ impl Range {
         }
     }
 
-    /// Compute the ends of the range, shifted (if needed) to align with
-    /// grapheme boundaries.
+    /// Compute a possibly new range from this range, attempting to ensure
+    /// a minimum range width of 1 char by shifting the head in the forward
+    /// direction as needed.
     ///
-    /// This should generally be used for cursor validation.
+    /// This method will never shift the anchor, and will only shift the
+    /// head in the forward direction.  Therefore, this method can fail
+    /// at ensuring the minimum width if and only if the passed range is
+    /// both zero-width and at the end of the `RopeSlice`.
     ///
-    /// Always succeeds.
+    /// If the input range is grapheme-boundary aligned, the returned range
+    /// will also be.  Specifically, if the head needs to shift to achieve
+    /// the minimum width, it will shift to the next grapheme boundary.
     #[must_use]
-    pub fn aligned_range(&self, slice: RopeSlice) -> (usize, usize) {
+    #[inline]
+    pub fn min_width_1(&self, slice: RopeSlice) -> Self {
         if self.anchor == self.head {
-            let pos = ensure_grapheme_boundary_prev(slice, self.anchor);
-            (pos, pos)
+            Range {
+                anchor: self.anchor,
+                head: next_grapheme_boundary(slice, self.head),
+                horiz: self.horiz,
+            }
         } else {
-            (
-                ensure_grapheme_boundary_prev(slice, self.from()),
-                ensure_grapheme_boundary_next(slice, self.to()),
-            )
+            *self
         }
     }
 
-    /// Same as `ensure_grapheme_validity()` + attempts to ensure a minimum
-    /// char width in the direction of the head.
+    /// Compute a possibly new range from this range, with its ends
+    /// shifted as needed to align with grapheme boundaries.
     ///
-    /// This should generally be used as a pre-pass for operations that
-    /// require a minimum selection width to achieve their intended behavior.
-    ///
-    /// This will fail at ensuring the minimum width only if the passed
-    /// `RopeSlice` is too short in the direction of the head, in which
-    /// case the range will fill the available length in that direction.
-    ///
-    /// Ensuring grapheme-boundary alignment always succeeds.
+    /// Zero-width ranges will always stay zero-width, and non-zero-width
+    /// ranges will never collapse to zero-width.
     #[must_use]
-    pub fn min_width_range(&self, slice: RopeSlice, min_char_width: usize) -> (usize, usize) {
-        if min_char_width == 0 {
-            return self.aligned_range(slice);
-        }
-
-        if self.anchor <= self.head {
-            let anchor = ensure_grapheme_boundary_prev(slice, self.anchor);
-            let head = ensure_grapheme_boundary_next(
-                slice,
-                self.head
-                    .max(anchor + min_char_width)
-                    .min(slice.len_chars()),
-            );
-            (anchor, head)
+    pub fn grapheme_aligned(&self, slice: RopeSlice) -> Self {
+        let (new_anchor, new_head) = if self.anchor == self.head {
+            let pos = ensure_grapheme_boundary_prev(slice, self.anchor);
+            (pos, pos)
+        } else if self.anchor < self.head {
+            (
+                ensure_grapheme_boundary_prev(slice, self.anchor),
+                ensure_grapheme_boundary_next(slice, self.head),
+            )
         } else {
-            let anchor = ensure_grapheme_boundary_next(slice, self.anchor);
-            let head = ensure_grapheme_boundary_prev(
-                slice,
-                self.head.min(anchor.saturating_sub(min_char_width)),
-            );
-            (head, anchor)
+            (
+                ensure_grapheme_boundary_next(slice, self.anchor),
+                ensure_grapheme_boundary_prev(slice, self.head),
+            )
+        };
+        Range {
+            anchor: new_anchor,
+            head: new_head,
+            horiz: if new_anchor == self.anchor {
+                self.horiz
+            } else {
+                None
+            },
         }
     }
 
@@ -571,97 +574,127 @@ mod test {
 
     #[test]
     fn test_overlaps() {
+        fn overlaps(a: (usize, usize), b: (usize, usize)) -> bool {
+            Range::new(a.0, a.1).overlaps(&Range::new(b.0, b.1))
+        }
+
         // Two non-zero-width ranges, no overlap.
-        assert!(!Range::new(0, 3).overlaps(&Range::new(3, 6)));
-        assert!(!Range::new(0, 3).overlaps(&Range::new(6, 3)));
-        assert!(!Range::new(3, 0).overlaps(&Range::new(3, 6)));
-        assert!(!Range::new(3, 0).overlaps(&Range::new(6, 3)));
-        assert!(!Range::new(3, 6).overlaps(&Range::new(0, 3)));
-        assert!(!Range::new(3, 6).overlaps(&Range::new(3, 0)));
-        assert!(!Range::new(6, 3).overlaps(&Range::new(0, 3)));
-        assert!(!Range::new(6, 3).overlaps(&Range::new(3, 0)));
+        assert!(!overlaps((0, 3), (3, 6)));
+        assert!(!overlaps((0, 3), (6, 3)));
+        assert!(!overlaps((3, 0), (3, 6)));
+        assert!(!overlaps((3, 0), (6, 3)));
+        assert!(!overlaps((3, 6), (0, 3)));
+        assert!(!overlaps((3, 6), (3, 0)));
+        assert!(!overlaps((6, 3), (0, 3)));
+        assert!(!overlaps((6, 3), (3, 0)));
 
         // Two non-zero-width ranges, overlap.
-        assert!(Range::new(0, 4).overlaps(&Range::new(3, 6)));
-        assert!(Range::new(0, 4).overlaps(&Range::new(6, 3)));
-        assert!(Range::new(4, 0).overlaps(&Range::new(3, 6)));
-        assert!(Range::new(4, 0).overlaps(&Range::new(6, 3)));
-        assert!(Range::new(3, 6).overlaps(&Range::new(0, 4)));
-        assert!(Range::new(3, 6).overlaps(&Range::new(4, 0)));
-        assert!(Range::new(6, 3).overlaps(&Range::new(0, 4)));
-        assert!(Range::new(6, 3).overlaps(&Range::new(4, 0)));
+        assert!(overlaps((0, 4), (3, 6)));
+        assert!(overlaps((0, 4), (6, 3)));
+        assert!(overlaps((4, 0), (3, 6)));
+        assert!(overlaps((4, 0), (6, 3)));
+        assert!(overlaps((3, 6), (0, 4)));
+        assert!(overlaps((3, 6), (4, 0)));
+        assert!(overlaps((6, 3), (0, 4)));
+        assert!(overlaps((6, 3), (4, 0)));
 
         // Zero-width and non-zero-width range, no overlap.
-        assert!(!Range::new(0, 3).overlaps(&Range::new(3, 3)));
-        assert!(!Range::new(3, 0).overlaps(&Range::new(3, 3)));
-        assert!(!Range::new(3, 3).overlaps(&Range::new(0, 3)));
-        assert!(!Range::new(3, 3).overlaps(&Range::new(3, 0)));
+        assert!(!overlaps((0, 3), (3, 3)));
+        assert!(!overlaps((3, 0), (3, 3)));
+        assert!(!overlaps((3, 3), (0, 3)));
+        assert!(!overlaps((3, 3), (3, 0)));
 
         // Zero-width and non-zero-width range, overlap.
-        assert!(Range::new(1, 4).overlaps(&Range::new(1, 1)));
-        assert!(Range::new(4, 1).overlaps(&Range::new(1, 1)));
-        assert!(Range::new(1, 1).overlaps(&Range::new(1, 4)));
-        assert!(Range::new(1, 1).overlaps(&Range::new(4, 1)));
+        assert!(overlaps((1, 4), (1, 1)));
+        assert!(overlaps((4, 1), (1, 1)));
+        assert!(overlaps((1, 1), (1, 4)));
+        assert!(overlaps((1, 1), (4, 1)));
 
-        assert!(Range::new(1, 4).overlaps(&Range::new(3, 3)));
-        assert!(Range::new(4, 1).overlaps(&Range::new(3, 3)));
-        assert!(Range::new(3, 3).overlaps(&Range::new(1, 4)));
-        assert!(Range::new(3, 3).overlaps(&Range::new(4, 1)));
+        assert!(overlaps((1, 4), (3, 3)));
+        assert!(overlaps((4, 1), (3, 3)));
+        assert!(overlaps((3, 3), (1, 4)));
+        assert!(overlaps((3, 3), (4, 1)));
 
         // Two zero-width ranges, no overlap.
-        assert!(!Range::new(0, 0).overlaps(&Range::new(1, 1)));
-        assert!(!Range::new(1, 1).overlaps(&Range::new(0, 0)));
+        assert!(!overlaps((0, 0), (1, 1)));
+        assert!(!overlaps((1, 1), (0, 0)));
 
         // Two zero-width ranges, overlap.
-        assert!(Range::new(1, 1).overlaps(&Range::new(1, 1)));
+        assert!(overlaps((1, 1), (1, 1)));
     }
 
     #[test]
-    fn test_aligned_range() {
+    fn test_graphem_aligned() {
         let r = Rope::from_str("\r\nHi\r\n");
         let s = r.slice(..);
 
-        assert_eq!(Range::new(0, 0).aligned_range(s), (0, 0));
-        assert_eq!(Range::new(0, 1).aligned_range(s), (0, 2));
-        assert_eq!(Range::new(1, 1).aligned_range(s), (0, 0));
-        assert_eq!(Range::new(1, 2).aligned_range(s), (0, 2));
-        assert_eq!(Range::new(2, 2).aligned_range(s), (2, 2));
-        assert_eq!(Range::new(2, 3).aligned_range(s), (2, 3));
-        assert_eq!(Range::new(1, 3).aligned_range(s), (0, 3));
-        assert_eq!(Range::new(3, 5).aligned_range(s), (3, 6));
-        assert_eq!(Range::new(4, 5).aligned_range(s), (4, 6));
-        assert_eq!(Range::new(5, 5).aligned_range(s), (4, 4));
-        assert_eq!(Range::new(6, 6).aligned_range(s), (6, 6));
+        // Zero-width.
+        assert_eq!(Range::new(0, 0).grapheme_aligned(s), Range::new(0, 0));
+        assert_eq!(Range::new(1, 1).grapheme_aligned(s), Range::new(0, 0));
+        assert_eq!(Range::new(2, 2).grapheme_aligned(s), Range::new(2, 2));
+        assert_eq!(Range::new(3, 3).grapheme_aligned(s), Range::new(3, 3));
+        assert_eq!(Range::new(4, 4).grapheme_aligned(s), Range::new(4, 4));
+        assert_eq!(Range::new(5, 5).grapheme_aligned(s), Range::new(4, 4));
+        assert_eq!(Range::new(6, 6).grapheme_aligned(s), Range::new(6, 6));
+
+        // Forward.
+        assert_eq!(Range::new(0, 1).grapheme_aligned(s), Range::new(0, 2));
+        assert_eq!(Range::new(1, 2).grapheme_aligned(s), Range::new(0, 2));
+        assert_eq!(Range::new(2, 3).grapheme_aligned(s), Range::new(2, 3));
+        assert_eq!(Range::new(3, 4).grapheme_aligned(s), Range::new(3, 4));
+        assert_eq!(Range::new(4, 5).grapheme_aligned(s), Range::new(4, 6));
+        assert_eq!(Range::new(5, 6).grapheme_aligned(s), Range::new(4, 6));
+
+        assert_eq!(Range::new(0, 2).grapheme_aligned(s), Range::new(0, 2));
+        assert_eq!(Range::new(1, 3).grapheme_aligned(s), Range::new(0, 3));
+        assert_eq!(Range::new(2, 4).grapheme_aligned(s), Range::new(2, 4));
+        assert_eq!(Range::new(3, 5).grapheme_aligned(s), Range::new(3, 6));
+        assert_eq!(Range::new(4, 6).grapheme_aligned(s), Range::new(4, 6));
+
+        // Reverse.
+        assert_eq!(Range::new(1, 0).grapheme_aligned(s), Range::new(2, 0));
+        assert_eq!(Range::new(2, 1).grapheme_aligned(s), Range::new(2, 0));
+        assert_eq!(Range::new(3, 2).grapheme_aligned(s), Range::new(3, 2));
+        assert_eq!(Range::new(4, 3).grapheme_aligned(s), Range::new(4, 3));
+        assert_eq!(Range::new(5, 4).grapheme_aligned(s), Range::new(6, 4));
+        assert_eq!(Range::new(6, 5).grapheme_aligned(s), Range::new(6, 4));
+
+        assert_eq!(Range::new(2, 0).grapheme_aligned(s), Range::new(2, 0));
+        assert_eq!(Range::new(3, 1).grapheme_aligned(s), Range::new(3, 0));
+        assert_eq!(Range::new(4, 2).grapheme_aligned(s), Range::new(4, 2));
+        assert_eq!(Range::new(5, 3).grapheme_aligned(s), Range::new(6, 3));
+        assert_eq!(Range::new(6, 4).grapheme_aligned(s), Range::new(6, 4));
     }
 
     #[test]
-    fn test_min_width_range() {
+    fn test_min_width_1() {
         let r = Rope::from_str("\r\nHi\r\n");
         let s = r.slice(..);
 
-        assert_eq!(Range::new(0, 0).min_width_range(s, 1), (0, 2));
-        assert_eq!(Range::new(0, 1).min_width_range(s, 1), (0, 2));
-        assert_eq!(Range::new(1, 1).min_width_range(s, 1), (0, 2));
-        assert_eq!(Range::new(1, 2).min_width_range(s, 1), (0, 2));
-        assert_eq!(Range::new(2, 2).min_width_range(s, 1), (2, 3));
-        assert_eq!(Range::new(2, 3).min_width_range(s, 1), (2, 3));
-        assert_eq!(Range::new(1, 3).min_width_range(s, 1), (0, 3));
-        assert_eq!(Range::new(3, 5).min_width_range(s, 1), (3, 6));
-        assert_eq!(Range::new(4, 5).min_width_range(s, 1), (4, 6));
-        assert_eq!(Range::new(5, 5).min_width_range(s, 1), (4, 6));
-        assert_eq!(Range::new(6, 6).min_width_range(s, 1), (6, 6));
+        // Zero-width.
+        assert_eq!(Range::new(0, 0).min_width_1(s), Range::new(0, 2));
+        assert_eq!(Range::new(1, 1).min_width_1(s), Range::new(1, 2));
+        assert_eq!(Range::new(2, 2).min_width_1(s), Range::new(2, 3));
+        assert_eq!(Range::new(3, 3).min_width_1(s), Range::new(3, 4));
+        assert_eq!(Range::new(4, 4).min_width_1(s), Range::new(4, 6));
+        assert_eq!(Range::new(5, 5).min_width_1(s), Range::new(5, 6));
+        assert_eq!(Range::new(6, 6).min_width_1(s), Range::new(6, 6));
 
-        assert_eq!(Range::new(1, 0).min_width_range(s, 1), (0, 2));
-        assert_eq!(Range::new(2, 1).min_width_range(s, 1), (0, 2));
-        assert_eq!(Range::new(3, 2).min_width_range(s, 1), (2, 3));
-        assert_eq!(Range::new(3, 1).min_width_range(s, 1), (0, 3));
-        assert_eq!(Range::new(5, 3).min_width_range(s, 1), (3, 6));
-        assert_eq!(Range::new(5, 4).min_width_range(s, 1), (4, 6));
+        // Forward.
+        assert_eq!(Range::new(0, 1).min_width_1(s), Range::new(0, 1));
+        assert_eq!(Range::new(1, 2).min_width_1(s), Range::new(1, 2));
+        assert_eq!(Range::new(2, 3).min_width_1(s), Range::new(2, 3));
+        assert_eq!(Range::new(3, 4).min_width_1(s), Range::new(3, 4));
+        assert_eq!(Range::new(4, 5).min_width_1(s), Range::new(4, 5));
+        assert_eq!(Range::new(5, 6).min_width_1(s), Range::new(5, 6));
 
-        assert_eq!(Range::new(3, 4).min_width_range(s, 3), (3, 6));
-        assert_eq!(Range::new(4, 3).min_width_range(s, 3), (0, 4));
-        assert_eq!(Range::new(3, 4).min_width_range(s, 20), (3, 6));
-        assert_eq!(Range::new(4, 3).min_width_range(s, 20), (0, 4));
+        // Reverse.
+        assert_eq!(Range::new(1, 0).min_width_1(s), Range::new(1, 0));
+        assert_eq!(Range::new(2, 1).min_width_1(s), Range::new(2, 1));
+        assert_eq!(Range::new(3, 2).min_width_1(s), Range::new(3, 2));
+        assert_eq!(Range::new(4, 3).min_width_1(s), Range::new(4, 3));
+        assert_eq!(Range::new(5, 4).min_width_1(s), Range::new(5, 4));
+        assert_eq!(Range::new(6, 5).min_width_1(s), Range::new(6, 5));
     }
 
     #[test]
