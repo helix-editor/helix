@@ -35,8 +35,8 @@ use crate::{
     ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::application::{LspCallback, LspCallbackWrapper, LspCallbacks};
-use futures_util::FutureExt;
+use crate::job::{self, Job, JobFuture, Jobs};
+use futures_util::{FutureExt, TryFutureExt};
 use std::{fmt, future::Future, path::Display, str::FromStr};
 
 use std::{
@@ -54,7 +54,7 @@ pub struct Context<'a> {
 
     pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
-    pub callbacks: &'a mut LspCallbacks,
+    pub jobs: &'a mut Jobs,
 }
 
 impl<'a> Context<'a> {
@@ -85,13 +85,13 @@ impl<'a> Context<'a> {
         let callback = Box::pin(async move {
             let json = call.await?;
             let response = serde_json::from_value(json)?;
-            let call: LspCallbackWrapper =
+            let call: job::Callback =
                 Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                     callback(editor, compositor, response)
                 });
             Ok(call)
         });
-        self.callbacks.push(callback);
+        self.jobs.callback(callback);
     }
 
     /// Returns 1 if no explicit count was provided
@@ -1149,7 +1149,7 @@ mod cmd {
         path: Option<P>,
     ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
         use anyhow::anyhow;
-        let callbacks = &mut cx.callbacks;
+        let jobs = &mut cx.jobs;
         let (view, doc) = current!(cx.editor);
 
         if let Some(path) = path {
@@ -1168,7 +1168,7 @@ mod cmd {
             doc.format().map(|fmt| {
                 let shared = fmt.shared();
                 let callback = make_format_callback(doc.id(), doc.version(), true, shared.clone());
-                callbacks.push(callback);
+                jobs.callback(callback);
                 shared
             })
         } else {
@@ -1178,8 +1178,12 @@ mod cmd {
     }
 
     fn write(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        if let Err(e) = write_impl(cx, args.first()) {
-            cx.editor.set_error(e.to_string());
+        match write_impl(cx, args.first()) {
+            Err(e) => cx.editor.set_error(e.to_string()),
+            Ok(handle) => {
+                cx.jobs
+                    .add(Job::new(handle.unwrap_or_else(|e| Err(e.into()))).wait_before_exiting());
+            }
         };
     }
 
@@ -1192,7 +1196,7 @@ mod cmd {
 
         if let Some(format) = doc.format() {
             let callback = make_format_callback(doc.id(), doc.version(), false, format);
-            cx.callbacks.push(callback);
+            cx.jobs.callback(callback);
         }
     }
 
@@ -1918,10 +1922,10 @@ fn make_format_callback(
     doc_version: i32,
     set_unmodified: bool,
     format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
-) -> LspCallback {
-    Box::pin(async move {
+) -> impl Future<Output = anyhow::Result<job::Callback>> {
+    async move {
         let format = format.await;
-        let call: LspCallbackWrapper =
+        let call: job::Callback =
             Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                 let view_id = view!(editor).id;
                 if let Some(doc) = editor.document_mut(doc_id) {
@@ -1937,7 +1941,7 @@ fn make_format_callback(
                 }
             });
         Ok(call)
-    })
+    }
 }
 
 enum Open {

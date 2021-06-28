@@ -26,12 +26,12 @@ pub enum EventResult {
 
 use helix_view::Editor;
 
-use crate::application::LspCallbacks;
+use crate::job::Jobs;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
     pub scroll: Option<usize>,
-    pub callbacks: &'a mut LspCallbacks,
+    pub jobs: &'a mut Jobs,
 }
 
 pub trait Component: Any + AnyComponent {
