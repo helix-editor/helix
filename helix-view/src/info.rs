@@ -1,6 +1,6 @@
 use crate::input::KeyEvent;
+use helix_core::unicode::width::UnicodeWidthStr;
 use std::fmt::Write;
-use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.

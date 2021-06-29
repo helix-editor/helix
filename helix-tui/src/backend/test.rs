@@ -2,9 +2,9 @@ use crate::{
     backend::Backend,
     buffer::{Buffer, Cell},
 };
+use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{CursorKind, Rect};
 use std::{fmt::Write, io};
-use unicode_width::UnicodeWidthStr;
 
 /// A backend used for the integration tests.
 #[derive(Debug)]

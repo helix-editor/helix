@@ -9,9 +9,9 @@ use cassowary::{
     WeightedRelation::*,
     {Expression, Solver},
 };
+use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
 use std::collections::HashMap;
-use unicode_width::UnicodeWidthStr;
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
 ///
