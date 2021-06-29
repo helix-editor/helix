@@ -7,9 +7,9 @@ use crate::{
         Block, Widget,
     },
 };
+use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
 use std::iter;
-use unicode_width::UnicodeWidthStr;
 
 fn get_line_offset(line_width: u16, text_area_width: u16, alignment: Alignment) -> u16 {
     match alignment {

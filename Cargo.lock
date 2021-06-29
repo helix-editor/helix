@@ -396,7 +396,6 @@ dependencies = [
  "helix-view",
  "serde",
  "unicode-segmentation",
- "unicode-width",
 ]
 
 [[package]]
@@ -419,7 +418,6 @@ dependencies = [
  "slotmap",
  "tokio",
  "toml",
- "unicode-width",
  "url",
  "which",
 ]

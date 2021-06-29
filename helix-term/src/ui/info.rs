@@ -11,11 +11,7 @@ impl Component for Info {
         let (w, h) = (*width + 2, *height + 2);
         // -2 to subtract command line + statusline. a bit of a hack, because of splits.
         let area = Rect::new(viewport.width - w, viewport.height - h - 2, w, h);
-        let margin = Margin {
-            vertical: 1,
-            horizontal: 1,
-        };
-        let Rect { x, y, .. } = area.inner(&margin);
+        let Rect { x, y, .. } = block.inner(area);
         for (y, line) in (y..).zip(self.text.lines()) {
             surface.set_string(x, y, line, Style::default());
         }
