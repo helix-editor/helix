@@ -224,6 +224,7 @@ impl Selection {
         // TODO: we could do with one vec by removing elements as we mutate
 
         for (i, range) in ranges.into_iter().enumerate() {
+            let result_len = result.len();
             // if previous value exists
             if let Some(prev) = result.last_mut() {
                 // and we overlap it
@@ -234,8 +235,8 @@ impl Selection {
                     let from = prev.from();
                     let to = std::cmp::max(range.to(), prev.to());
 
-                    if i <= primary_index {
-                        primary_index -= 1
+                    if range == primary {
+                        primary_index = result_len - 1;
                     }
 
                     // merge into previous
