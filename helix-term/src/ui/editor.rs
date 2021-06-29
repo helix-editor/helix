@@ -85,8 +85,8 @@ impl EditorView {
             for y in area.top()..area.bottom() {
                 surface
                     .get_mut(x, y)
-                    // .set_symbol(tui::symbols::line::VERTICAL)
-                    .set_symbol(" ")
+                    .set_symbol(tui::symbols::line::VERTICAL)
+                    //.set_symbol(" ")
                     .set_style(border_style);
             }
         }
