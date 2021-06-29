@@ -102,12 +102,13 @@ impl<'de> Deserialize<'de> for Theme {
     {
         let mut styles = HashMap::new();
 
-        if let Ok(colors) = HashMap::<String, Value>::deserialize(deserializer) {
+        if let Ok(mut colors) = HashMap::<String, Value>::deserialize(deserializer) {
+            let palette = parse_palette(colors.remove("palette"));
             // scopes.reserve(colors.len());
             styles.reserve(colors.len());
             for (name, style_value) in colors {
                 let mut style = Style::default();
-                parse_style(&mut style, style_value);
+                parse_style(&mut style, style_value, &palette);
                 // scopes.push(name);
                 styles.insert(name, style);
             }
@@ -118,18 +119,32 @@ impl<'de> Deserialize<'de> for Theme {
     }
 }
 
-fn parse_style(style: &mut Style, value: Value) {
+fn parse_palette(value: Option<Value>) -> HashMap<String, Color> {
+    if let Some(Value::Table(entries)) = value {
+        let mut result = HashMap::new();
+        for (name, value) in entries {
+            if let Some(color) = parse_color(value, &HashMap::default()) {
+                result.insert(name, color);
+            }
+        }
+        result
+    } else {
+        HashMap::new()
+    }
+}
+
+fn parse_style(style: &mut Style, value: Value, palette: &HashMap<String, Color>) {
     //TODO: alert user of parsing failures
     if let Value::Table(entries) = value {
         for (name, value) in entries {
             match name.as_str() {
                 "fg" => {
-                    if let Some(color) = parse_color(value) {
+                    if let Some(color) = parse_color(value, palette) {
                         *style = style.fg(color);
                     }
                 }
                 "bg" => {
-                    if let Some(color) = parse_color(value) {
+                    if let Some(color) = parse_color(value, palette) {
                         *style = style.bg(color);
                     }
                 }
@@ -143,7 +158,7 @@ fn parse_style(style: &mut Style, value: Value) {
                 _ => (),
             }
         }
-    } else if let Some(color) = parse_color(value) {
+    } else if let Some(color) = parse_color(value, palette) {
         *style = style.fg(color);
     }
 }
@@ -164,9 +179,11 @@ fn hex_string_to_rgb(s: &str) -> Option<(u8, u8, u8)> {
     }
 }
 
-fn parse_color(value: Value) -> Option<Color> {
+fn parse_color(value: Value, palette: &HashMap<String, Color>) -> Option<Color> {
     if let Value::String(s) = value {
-        if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
+        if let Some(color) = palette.get(&s) {
+            Some(color.clone())
+        } else if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
             Some(Color::Rgb(red, green, blue))
         } else {
             warn!("malformed hexcode in theme: {}", s);
@@ -226,7 +243,23 @@ fn test_parse_style_string() {
     let fg = Value::String("#ffffff".to_string());
 
     let mut style = Style::default();
-    parse_style(&mut style, fg);
+    parse_style(&mut style, fg, &HashMap::default());
+
+    assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
+}
+
+#[test]
+fn test_palette() {
+    let fg = Value::String("my_color".to_string());
+
+    let mut style = Style::default();
+    parse_style(
+        &mut style,
+        fg,
+        &vec![("my_color".to_string(), Color::Rgb(255, 255, 255))]
+            .into_iter()
+            .collect(),
+    );
 
     assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
 }
@@ -244,7 +277,7 @@ fn test_parse_style_table() {
     let mut style = Style::default();
     if let Value::Table(entries) = table {
         for (_name, value) in entries {
-            parse_style(&mut style, value);
+            parse_style(&mut style, value, &HashMap::default());
         }
     }
 
