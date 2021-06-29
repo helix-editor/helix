@@ -3406,18 +3406,18 @@ macro_rules! mode_info {
     // TODO: how to use one expr for both pat and expr?
     // TODO: how to use replaced function name as str at compile time?
     // TODO: extend to support multiple keys, but first solve the other two
-    {$name:literal, $cx:expr, $($key:expr => $func:expr; $funcs:literal),+,} => {
+    {$name:literal, $cx:expr, $($key:expr => $func:expr; $desc:literal),+,} => {
         mode_info! {
             $name, $cx,
-            $($key; $key => $func; $funcs,)+
+            $($key; $key => $func; $desc,)+
         }
     };
-    {$name:literal, $cx:expr, $($key:expr; $keyp:pat => $func:expr; $funcs:literal),+,} => {
+    {$name:literal, $cx:expr, $($key:expr; $keyp:pat => $func:expr; $desc:literal),+,} => {
         $cx.editor.autoinfo = Some(Info::key(
             $name,
             vec![
                 $(
-                (vec![$key], $funcs),
+                (vec![$key], $desc),
                 )+
             ],
         ));

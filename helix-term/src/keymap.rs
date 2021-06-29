@@ -105,14 +105,14 @@ use std::{
 macro_rules! key {
     ($key:ident) => {
         KeyEvent {
-            code: helix_view::keyboard::KeyCode::$key,
-            modifiers: helix_view::keyboard::KeyModifiers::NONE,
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
     };
     ($($ch:tt)*) => {
         KeyEvent {
-            code: helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: helix_view::keyboard::KeyModifiers::NONE,
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
     };
 }
@@ -120,8 +120,8 @@ macro_rules! key {
 macro_rules! ctrl {
     ($($ch:tt)*) => {
         KeyEvent {
-            code: helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: helix_view::keyboard::KeyModifiers::CONTROL,
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
         }
     };
 }
@@ -129,8 +129,8 @@ macro_rules! ctrl {
 macro_rules! alt {
     ($($ch:tt)*) => {
         KeyEvent {
-            code: helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: helix_view::keyboard::KeyModifiers::ALT,
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
         }
     };
 }
