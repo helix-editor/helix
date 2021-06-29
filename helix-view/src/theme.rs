@@ -120,17 +120,16 @@ impl<'de> Deserialize<'de> for Theme {
 }
 
 fn parse_palette(value: Option<Value>) -> HashMap<String, Color> {
-    if let Some(Value::Table(entries)) = value {
-        let mut result = HashMap::new();
-        for (name, value) in entries {
-            if let Some(color) = parse_color(value, &HashMap::default()) {
-                result.insert(name, color);
-            }
-        }
-        result
-    } else {
-        HashMap::new()
+    match value {
+        Some(Value::Table(entries)) => entries,
+        _ => return HashMap::default(),
     }
+    .into_iter()
+    .filter_map(|(name, value)| {
+        let color = parse_color(value, &HashMap::default())?;
+        Some((name, color))
+    })
+    .collect()
 }
 
 fn parse_style(style: &mut Style, value: Value, palette: &HashMap<String, Color>) {
