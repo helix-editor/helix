@@ -158,6 +158,9 @@ impl Command {
         move_next_word_start,
         move_prev_word_start,
         move_next_word_end,
+        move_next_long_word_start,
+        move_prev_long_word_start,
+        move_next_long_word_end,
         move_file_start,
         move_file_end,
         extend_next_word_start,
@@ -430,6 +433,42 @@ fn move_next_word_end(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .transform(|range| movement::move_next_word_end(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+fn move_next_long_word_start(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_next_long_word_start(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+fn move_prev_long_word_start(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_prev_long_word_start(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+fn move_next_long_word_end(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_next_long_word_end(text, range, count));
 
     doc.set_selection(view.id, selection);
 }
