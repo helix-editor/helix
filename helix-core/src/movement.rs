@@ -194,7 +194,9 @@ impl CharHelpers for Chars<'_> {
 
         // Index advancement also depends on the direction.
         let advance: &dyn Fn(&mut usize) = match target {
-            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart => &|u| *u = u.saturating_sub(1),
+            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart => {
+                &|u| *u = u.saturating_sub(1)
+            }
             _ => &|u| *u += 1,
         };
 
@@ -254,9 +256,9 @@ fn is_word_boundary(a: char, b: char) -> bool {
 fn is_long_word_boundary(a: char, b: char) -> bool {
     match (categorize_char(a), categorize_char(b)) {
         (CharCategory::Word, CharCategory::Punctuation)
-            | (CharCategory::Punctuation, CharCategory::Word) => false,
+        | (CharCategory::Punctuation, CharCategory::Word) => false,
         (a, b) if a != b => true,
-        _ => false
+        _ => false,
     }
 }
 
