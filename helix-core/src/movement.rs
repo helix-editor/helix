@@ -104,6 +104,18 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     word_move(slice, range, count, WordMotionTarget::PrevWordStart)
 }
 
+pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextLongWordStart)
+}
+
+pub fn move_next_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextLongWordEnd)
+}
+
+pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
+}
+
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
     (0..count).fold(range, |range, _| {
         slice.chars_at(range.head).range_to_target(target, range)
@@ -150,6 +162,12 @@ pub enum WordMotionTarget {
     NextWordStart,
     NextWordEnd,
     PrevWordStart,
+    // A "Long word" (also known as a WORD in vim/kakoune) is strictly
+    // delimited by whitespace, and can consist of punctuation as well
+    // as alphanumerics.
+    NextLongWordStart,
+    NextLongWordEnd,
+    PrevLongWordStart,
 }
 
 pub trait CharHelpers {
@@ -167,7 +185,7 @@ impl CharHelpers for Chars<'_> {
         let range = origin;
         // Characters are iterated forward or backwards depending on the motion direction.
         let characters: Box<dyn Iterator<Item = char>> = match target {
-            WordMotionTarget::PrevWordStart => {
+            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart => {
                 self.next();
                 Box::new(from_fn(|| self.prev()))
             }
@@ -176,7 +194,7 @@ impl CharHelpers for Chars<'_> {
 
         // Index advancement also depends on the direction.
         let advance: &dyn Fn(&mut usize) = match target {
-            WordMotionTarget::PrevWordStart => &|u| *u = u.saturating_sub(1),
+            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart => &|u| *u = u.saturating_sub(1),
             _ => &|u| *u += 1,
         };
 
@@ -229,6 +247,19 @@ impl CharHelpers for Chars<'_> {
     }
 }
 
+fn is_word_boundary(a: char, b: char) -> bool {
+    categorize_char(a) != categorize_char(b)
+}
+
+fn is_long_word_boundary(a: char, b: char) -> bool {
+    match (categorize_char(a), categorize_char(b)) {
+        (CharCategory::Word, CharCategory::Punctuation)
+            | (CharCategory::Punctuation, CharCategory::Word) => false,
+        (a, b) if a != b => true,
+        _ => false
+    }
+}
+
 fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>) -> bool {
     let next_peek = match next_peek {
         Some(next_peek) => next_peek,
@@ -237,11 +268,19 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
 
     match target {
         WordMotionTarget::NextWordStart => {
-            ((categorize_char(peek) != categorize_char(*next_peek))
+            (is_word_boundary(peek, *next_peek)
                 && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
         }
         WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
-            ((categorize_char(peek) != categorize_char(*next_peek))
+            (is_word_boundary(peek, *next_peek)
+                && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
+        }
+        WordMotionTarget::NextLongWordStart => {
+            (is_long_word_boundary(peek, *next_peek)
+                && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
+        }
+        WordMotionTarget::NextLongWordEnd | WordMotionTarget::PrevLongWordStart => {
+            (is_long_word_boundary(peek, *next_peek)
                 && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
         }
     }
