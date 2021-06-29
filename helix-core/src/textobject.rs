@@ -46,7 +46,7 @@ pub fn textobject_word(
             } else if char_is_whitespace(slice.char(range.head)) {
                 // select whole whitespace and next word
                 head = movement::move_next_word_end(slice, range, count).head;
-                anchor = movement::move_this_word_prev_bound(slice, range, count).head;
+                anchor = movement::move_prev_word_end_sticky(slice, range, count).head;
             } else {
                 head = movement::move_next_word_start(slice, range, count).head;
                 anchor = movement::move_this_word_start(slice, range, count).head;

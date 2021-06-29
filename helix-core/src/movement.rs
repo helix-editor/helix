@@ -105,7 +105,22 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 }
 
 pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+    word_move(
+        slice,
+        range,
+        count,
+        WordMotionTarget::PrevWordEnd { sticky: false },
+    )
+}
+
+/// Similar to [move_prev_word_end] but does not move if already on word end.
+pub fn move_prev_word_end_sticky(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(
+        slice,
+        range,
+        count,
+        WordMotionTarget::PrevWordEnd { sticky: true },
+    )
 }
 
 pub fn move_this_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
@@ -114,10 +129,6 @@ pub fn move_this_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
 
 pub fn move_this_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
     word_move(slice, range, count, WordMotionTarget::ThisWordEnd)
-}
-
-pub fn move_this_word_prev_bound(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::ThisWordPrevBound)
 }
 
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
@@ -168,9 +179,10 @@ pub enum WordMotionTarget {
     NextWordStart,
     NextWordEnd,
     PrevWordStart,
-    PrevWordEnd,
-    // like PrevWordEnd but doesn't move if already on word end
-    ThisWordPrevBound,
+    /// if sticky, does not move if already on word end
+    PrevWordEnd {
+        sticky: bool,
+    },
 }
 
 pub trait CharHelpers {
@@ -190,8 +202,7 @@ impl CharHelpers for Chars<'_> {
         let characters: Box<dyn Iterator<Item = char>> = match target {
             WordMotionTarget::PrevWordStart
             | WordMotionTarget::ThisWordStart
-            | WordMotionTarget::PrevWordEnd
-            | WordMotionTarget::ThisWordPrevBound => {
+            | WordMotionTarget::PrevWordEnd { .. } => {
                 self.next();
                 Box::new(from_fn(|| self.prev()))
             }
@@ -202,8 +213,7 @@ impl CharHelpers for Chars<'_> {
         let advance: &dyn Fn(&mut usize) = match target {
             WordMotionTarget::PrevWordStart
             | WordMotionTarget::ThisWordStart
-            | WordMotionTarget::PrevWordEnd
-            | WordMotionTarget::ThisWordPrevBound => &|u| *u = u.saturating_sub(1),
+            | WordMotionTarget::PrevWordEnd { .. } => &|u| *u = u.saturating_sub(1),
             _ => &|u| *u += 1,
         };
 
@@ -213,7 +223,7 @@ impl CharHelpers for Chars<'_> {
             // have already reached our target so check that first
             WordMotionTarget::ThisWordEnd
             | WordMotionTarget::ThisWordStart
-            | WordMotionTarget::ThisWordPrevBound => WordMotionPhase::ReachTarget,
+            | WordMotionTarget::PrevWordEnd { sticky: true } => WordMotionPhase::ReachTarget,
             _ => WordMotionPhase::Start,
         };
         let mut head = origin.head;
@@ -270,9 +280,7 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
     };
 
     match target {
-        WordMotionTarget::NextWordStart
-        | WordMotionTarget::PrevWordEnd
-        | WordMotionTarget::ThisWordPrevBound => {
+        WordMotionTarget::NextWordStart | WordMotionTarget::PrevWordEnd { .. } => {
             ((categorize_char(peek) != categorize_char(*next_peek))
                 && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
         }
