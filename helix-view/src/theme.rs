@@ -182,7 +182,7 @@ fn hex_string_to_rgb(s: &str) -> Option<(u8, u8, u8)> {
 fn parse_color(value: Value, palette: &HashMap<String, Color>) -> Option<Color> {
     if let Value::String(s) = value {
         if let Some(color) = palette.get(&s) {
-            Some(color.clone())
+            Some(*color)
         } else if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
             Some(Color::Rgb(red, green, blue))
         } else {
