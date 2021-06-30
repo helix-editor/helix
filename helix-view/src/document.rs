@@ -473,6 +473,18 @@ impl Document {
         Ok(doc)
     }
 
+    /// The same as [`format`], but only returns formatting changes if auto-formatting
+    /// is configured.
+    pub fn auto_format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
+        if self.language_config().map(|c| c.auto_format) == Some(true) {
+            self.format()
+        } else {
+            None
+        }
+    }
+
+    /// If supported, returns the changes that should be applied to this document in order
+    /// to format it nicely.
     pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
         if let Some(language_server) = self.language_server.clone() {
             let text = self.text.clone();

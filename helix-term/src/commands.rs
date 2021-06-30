@@ -1160,20 +1160,12 @@ mod cmd {
         if doc.path().is_none() {
             return Err(anyhow!("cannot write a buffer without a filename"));
         }
-        let autofmt = doc
-            .language_config()
-            .map(|config| config.auto_format)
-            .unwrap_or_default();
-        let fmt = if autofmt {
-            doc.format().map(|fmt| {
-                let shared = fmt.shared();
-                let callback = make_format_callback(doc.id(), doc.version(), true, shared.clone());
-                jobs.callback(callback);
-                shared
-            })
-        } else {
-            None
-        };
+        let fmt = doc.auto_format().map(|fmt| {
+            let shared = fmt.shared();
+            let callback = make_format_callback(doc.id(), doc.version(), true, shared.clone());
+            jobs.callback(callback);
+            shared
+        });
         Ok(tokio::spawn(doc.format_and_save(fmt)))
     }
 
@@ -1917,6 +1909,9 @@ fn append_to_line(cx: &mut Context) {
 
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
 // it applies them, but only if the doc hasn't changed.
+//
+// TODO: provide some way to cancel this, probably as part of a more general job cancellation
+// scheme
 async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
