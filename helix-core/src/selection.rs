@@ -223,7 +223,9 @@ impl Selection {
 
         // TODO: we could do with one vec by removing elements as we mutate
 
-        for (i, range) in ranges.into_iter().enumerate() {
+        let mut i = 0;
+
+        for range in ranges.into_iter() {
             // if previous value exists
             if let Some(prev) = result.last_mut() {
                 // and we overlap it
@@ -250,7 +252,8 @@ impl Selection {
                 }
             }
 
-            result.push(range)
+            result.push(range);
+            i += 1
         }
 
         Self {
@@ -434,6 +437,22 @@ mod test {
             .join(",");
 
         assert_eq!(res, "0/6,6/7,7/8,9/13,13/14");
+
+        // it correctly calculates a new primary index
+        let sel = Selection::new(
+            smallvec![Range::new(0, 2), Range::new(1, 5), Range::new(4, 7)],
+            2,
+        );
+
+        let res = sel
+            .ranges
+            .into_iter()
+            .map(|range| format!("{}/{}", range.anchor, range.head))
+            .collect::<Vec<String>>()
+            .join(",");
+
+        assert_eq!(res, "0/7");
+        assert_eq!(sel.primary_index, 0);
     }
 
     #[test]
