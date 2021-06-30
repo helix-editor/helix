@@ -1162,7 +1162,12 @@ mod cmd {
         }
         let fmt = doc.auto_format().map(|fmt| {
             let shared = fmt.shared();
-            let callback = make_format_callback(doc.id(), doc.version(), true, shared.clone());
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                Modified::SetUnmodified,
+                shared.clone(),
+            );
             jobs.callback(callback);
             shared
         });
@@ -1187,7 +1192,8 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
 
         if let Some(format) = doc.format() {
-            let callback = make_format_callback(doc.id(), doc.version(), false, format);
+            let callback =
+                make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
             cx.jobs.callback(callback);
         }
     }
@@ -1907,6 +1913,13 @@ fn append_to_line(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+/// Sometimes when applying formatting changes we want to mark the buffer as unmodified, for
+/// example because we just applied the same changes while saving.
+enum Modified {
+    SetUnmodified,
+    LeaveModified,
+}
+
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
 // it applies them, but only if the doc hasn't changed.
 //
@@ -1915,7 +1928,7 @@ fn append_to_line(cx: &mut Context) {
 async fn make_format_callback(
     doc_id: DocumentId,
     doc_version: i32,
-    set_unmodified: bool,
+    modified: Modified,
     format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await;
@@ -1925,7 +1938,7 @@ async fn make_format_callback(
             if doc.version() == doc_version {
                 doc.apply(&Transaction::from(format), view_id);
                 doc.append_changes_to_history(view_id);
-                if set_unmodified {
+                if let Modified::SetUnmodified = modified {
                     doc.reset_modified();
                 }
             } else {
