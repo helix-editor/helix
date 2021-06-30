@@ -46,7 +46,7 @@ pub fn compare_ropes(old: &Rope, new: &Rope) -> Transaction {
             }
         })
         .collect();
-
+    std::fs::write("derp.txt", format!("{:#?}", diff)).unwrap();
     Transaction::change(old, changes.into_iter())
 }
 
@@ -64,7 +64,7 @@ mod tests {
             let mut old = Rope::from(a);
             let new = Rope::from(b);
             compare_ropes(&old, &new).apply(&mut old);
-            prop_assert_eq!(old.to_string(), new.to_string())
+            prop_assert_eq!(old.to_string(), new.to_string());
         }
     }
 }

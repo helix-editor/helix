@@ -1,0 +1,28 @@
+[
+    Replace {
+        old_index: 0,
+        old_len: 16,
+        new_index: 0,
+        new_len: 7,
+    },
+    Equal {
+        old_index: 16,
+        new_index: 7,
+        len: 1,
+    },
+    Delete {
+        old_index: 17,
+        old_len: 1,
+        new_index: 12,
+    },
+    Equal {
+        old_index: 18,
+        new_index: 8,
+        len: 1,
+    },
+    Insert {
+        old_index: 18,
+        new_index: 9,
+        new_len: 8,
+    },
+]
