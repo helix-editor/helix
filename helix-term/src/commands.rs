@@ -3422,6 +3422,7 @@ macro_rules! mode_info {
             ],
         ));
         $cx.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
             match event {
                 $(
                 $keyp => $func(cx),
@@ -3441,8 +3442,8 @@ fn space_mode(cx: &mut Context) {
         key!('w'); key!('w') => window_mode; "window mode",
         key!('y'); key!('y') => yank_joined_to_clipboard; "yank joined to clipboard",
         key!('Y'); key!('Y') => yank_main_selection_to_clipboard; "yank main selection to clipboard",
-        key!('p'); key!('p') => paste_clipboard_after; "paste clipboard after",
-        key!('P'); key!('P') => paste_clipboard_before; "paste clipboard before",
+        key!('p'); key!('p') => paste_clipboard_after; "paste system clipboard after selections",
+        key!('P'); key!('P') => paste_clipboard_before; "paste system clipboard before selections",
         key!('R'); key!('R') => replace_selections_with_clipboard; "replace selections with clipboard",
         key!(' '); key!(' ') => keep_primary_selection; "keep primary selection",
     }
@@ -3466,6 +3467,7 @@ fn space_mode(cx: &mut Context) {
 //         ],
 //     ));
 //     cx.on_next_key(move |cx, event| {
+//         cx.editor.autoinfo = None;
 //         match event {
 //             key!('f') => file_picker(cx),
 //             key!('b') => buffer_picker(cx),
