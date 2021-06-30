@@ -636,7 +636,7 @@ impl LanguageLayer {
                 Insert(s) => {
                     let (start_byte, start_position) = point_at_pos(old_text, old_pos);
 
-                    let ins = s.chars().count();
+                    let ins = ropey::str_utils::byte_to_char_idx(s, s.len());
 
                     // a subsequent delete means a replace, consume it
                     if let Some(Delete(len)) = iter.peek() {

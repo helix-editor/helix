@@ -1964,7 +1964,7 @@ fn open(cx: &mut Context, open: Open) {
             ranges.push(Range::point(pos + (i * (1 + indent_len)) + indent_len));
         }
 
-        offs += text.chars().count();
+        offs += helix_core::str_utils::byte_to_char_idx(&text, text.len());
 
         (line_end_index, line_end_index, Some(text.into()))
     });
@@ -2565,7 +2565,7 @@ pub mod insert {
             text.push_str(doc.line_ending.as_str());
             text.push_str(&indent);
 
-            let head = pos + offs + text.chars().count();
+            let head = pos + offs + helix_core::str_utils::byte_to_char_idx(&text, text.len());
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
@@ -2587,7 +2587,7 @@ pub mod insert {
                 text.push_str(&indent);
             }
 
-            offs += text.chars().count();
+            offs += helix_core::str_utils::byte_to_char_idx(&text, text.len());
 
             (pos, pos, Some(text.into()))
         });

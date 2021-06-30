@@ -101,7 +101,7 @@ pub use etcetera::home_dir;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 
-pub use ropey::{Rope, RopeBuilder, RopeSlice};
+pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
 
 pub use tendril::StrTendril as Tendril;
 

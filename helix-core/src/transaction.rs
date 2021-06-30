@@ -91,7 +91,7 @@ impl ChangeSet {
         }
 
         // Avoiding std::str::len() to account for UTF-8 characters.
-        self.len_after += fragment.chars().count();
+        self.len_after += ropey::str_utils::byte_to_char_idx(&fragment, fragment.len());
 
         let new_last = match self.changes.as_mut_slice() {
             [.., Insert(prev)] | [.., Insert(prev), Delete(_)] => {
@@ -182,7 +182,7 @@ impl ChangeSet {
                     }
                 },
                 (Some(Insert(mut s)), Some(Delete(j))) => {
-                    let len = s.chars().count();
+                    let len = ropey::str_utils::byte_to_char_idx(&s, s.len());
                     match len.cmp(&j) {
                         Ordering::Less => {
                             head_a = changes_a.next();
@@ -203,7 +203,7 @@ impl ChangeSet {
                     }
                 }
                 (Some(Insert(mut s)), Some(Retain(j))) => {
-                    let len = s.chars().count();
+                    let len = ropey::str_utils::byte_to_char_idx(&s, s.len());
                     match len.cmp(&j) {
                         Ordering::Less => {
                             changes.insert(s);
@@ -289,7 +289,7 @@ impl ChangeSet {
                     pos += n;
                 }
                 Insert(s) => {
-                    let chars = s.chars().count();
+                    let chars = ropey::str_utils::byte_to_char_idx(s, s.len());
                     changes.delete(chars);
                 }
             }
@@ -318,7 +318,7 @@ impl ChangeSet {
                 }
                 Insert(s) => {
                     text.insert(pos, s);
-                    pos += s.chars().count();
+                    pos += ropey::str_utils::byte_to_char_idx(s, s.len());
                 }
             }
         }
@@ -365,7 +365,7 @@ impl ChangeSet {
                     }
                 }
                 Insert(s) => {
-                    let ins = s.chars().count();
+                    let ins = ropey::str_utils::byte_to_char_idx(s, s.len());
 
                     // a subsequent delete means a replace, consume it
                     if let Some(Delete(len)) = iter.peek() {
