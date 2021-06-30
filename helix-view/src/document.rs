@@ -13,8 +13,8 @@ use helix_core::{
     history::History,
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, RopeSlice, Selection, State, Syntax,
-    Transaction, DEFAULT_LINE_ENDING,
+    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
+    DEFAULT_LINE_ENDING,
 };
 use helix_lsp::util::LspFormatting;
 
@@ -998,22 +998,6 @@ impl Document {
     #[inline]
     pub fn selection(&self, view_id: ViewId) -> &Selection {
         &self.selections[&view_id]
-    }
-
-    #[inline]
-    pub fn selection_mut(&mut self, view_id: ViewId) -> &mut Selection {
-        self.selections
-            .get_mut(&view_id)
-            .expect("No selection set with the given ViewId")
-    }
-
-    pub fn text_and_mut_selection(&mut self, view_id: ViewId) -> (RopeSlice, &mut Selection) {
-        (
-            self.text.slice(..),
-            self.selections
-                .get_mut(&view_id)
-                .expect("No selection set with the given ViewId"),
-        )
     }
 
     pub fn relative_path(&self) -> Option<PathBuf> {

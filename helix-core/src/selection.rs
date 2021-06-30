@@ -261,7 +261,7 @@ impl Selection {
 
     pub fn push(mut self, range: Range) -> Self {
         self.ranges.push(range);
-        self.normalized()
+        self.normalize()
     }
     // replace_range
 
@@ -308,7 +308,7 @@ impl Selection {
     }
 
     /// Normalizes a `Selection`.
-    pub fn normalize(&mut self) -> &mut Self {
+    pub fn normalize(mut self) -> Self {
         let primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
         self.primary_index = self
@@ -335,13 +335,6 @@ impl Selection {
         self
     }
 
-    /// Normalizes a `Selection`.
-    #[must_use]
-    pub fn normalized(mut self) -> Self {
-        self.normalize();
-        self
-    }
-
     // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
@@ -355,14 +348,14 @@ impl Selection {
 
         if selection.ranges.len() > 1 {
             // TODO: only normalize if needed (any ranges out of order)
-            selection.normalize();
+            selection = selection.normalize();
         }
 
         selection
     }
 
     /// Takes a closure and maps each `Range` over the closure.
-    pub fn transform<F>(&mut self, f: F) -> &mut Self
+    pub fn transform<F>(mut self, f: F) -> Self
     where
         F: Fn(Range) -> Range,
     {
@@ -370,16 +363,6 @@ impl Selection {
             *range = f(*range)
         }
 
-        self
-    }
-
-    /// Takes a closure and maps each `Range` over the closure.
-    #[must_use]
-    pub fn transformed<F>(mut self, f: F) -> Self
-    where
-        F: Fn(Range) -> Range,
-    {
-        self.transform(f);
         self
     }
 
