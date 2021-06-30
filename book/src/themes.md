@@ -99,3 +99,21 @@ Possible keys:
 These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We half-follow the common scopes from [macromates language grammars](https://macromates.com/manual/en/language_grammars) with some differences.
 
 For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight `function.macro` and `function.builtin` as well, but you can use more specific scopes to highlight specific cases differently.
+
+## Color palettes
+
+You can define a palette of named colors, and refer to them from the
+configuration values in your theme. To do this, add a table called
+`palette` to your theme file:
+
+```toml
+ui.background = "white"
+ui.text = "black"
+
+[palette]
+white = "#ffffff"
+black = "#000000"
+```
+
+Remember that the `[palette]` table includes all keys after its header,
+so you should define the palette after normal theme options.
