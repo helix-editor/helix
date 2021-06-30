@@ -719,6 +719,7 @@ impl Component for EditorView {
 
         if let Some(info) = std::mem::take(&mut cx.editor.autoinfo) {
             info.render(area, surface, cx);
+            cx.editor.autoinfo = Some(info);
         }
 
         // render status msg
