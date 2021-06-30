@@ -3161,6 +3161,12 @@ fn completion(cx: &mut Context) {
         move |editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CompletionResponse>| {
+            let (_, doc) = current!(editor);
+            if doc.mode() != Mode::Insert {
+                // we're not in insert mode anymore
+                return;
+            }
+
             let items = match response {
                 Some(lsp::CompletionResponse::Array(items)) => items,
                 // TODO: do something with is_incomplete
