@@ -80,8 +80,8 @@ mod test {
 
     #[test]
     fn test_coords_at_pos() {
-        let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        let slice = text.slice(..);
+        // let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
+        // let slice = text.slice(..);
         // assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
         // assert_eq!(coords_at_pos(slice, 5), (0, 5).into()); // position on \n
         // assert_eq!(coords_at_pos(slice, 6), (1, 0).into()); // position on w

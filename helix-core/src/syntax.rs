@@ -166,7 +166,7 @@ impl LanguageConfiguration {
             None
         } else {
             let language = get_language(self.language_id);
-            let mut config = HighlightConfiguration::new(
+            let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
                 &injections_query,
@@ -332,7 +332,8 @@ impl Syntax {
 
         // update root layer
         PARSER.with(|ts_parser| {
-            syntax.root_layer.parse(
+            // TODO: handle the returned `Result` properly.
+            let _ = syntax.root_layer.parse(
                 &mut ts_parser.borrow_mut(),
                 &syntax.config,
                 source,
@@ -387,7 +388,7 @@ impl Syntax {
         source: RopeSlice<'a>,
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
-        mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
+        injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
     ) -> impl Iterator<Item = Result<HighlightEvent, Error>> + 'a {
         // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
         // prevents them from being moved. But both of these values are really just
@@ -494,8 +495,8 @@ impl LanguageLayer {
         ts_parser: &mut TsParser,
         config: &HighlightConfiguration,
         source: &Rope,
-        mut depth: usize,
-        mut ranges: Vec<Range>,
+        _depth: usize,
+        ranges: Vec<Range>,
     ) -> Result<(), Error> {
         if ts_parser.parser.set_included_ranges(&ranges).is_ok() {
             ts_parser
@@ -1644,13 +1645,13 @@ fn injection_for_match<'a>(
     (language_name, content_node, include_children)
 }
 
-fn shrink_and_clear<T>(vec: &mut Vec<T>, capacity: usize) {
-    if vec.len() > capacity {
-        vec.truncate(capacity);
-        vec.shrink_to_fit();
-    }
-    vec.clear();
-}
+// fn shrink_and_clear<T>(vec: &mut Vec<T>, capacity: usize) {
+//     if vec.len() > capacity {
+//         vec.truncate(capacity);
+//         vec.shrink_to_fit();
+//     }
+//     vec.clear();
+// }
 
 pub struct Merge<I> {
     iter: I,
@@ -1691,7 +1692,7 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
         loop {
             match (self.next_event, &self.next_span) {
                 // this happens when range is partially or fully offscreen
-                (Some(Source { start, end }), Some((span, range))) if start > range.start => {
+                (Some(Source { start, .. }), Some((span, range))) if start > range.start => {
                     if start > range.end {
                         self.next_span = self.spans.next();
                     } else {
@@ -1711,7 +1712,7 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
                 self.next_event = self.iter.next();
                 Some(HighlightEnd)
             }
-            (Some(Source { start, end }), Some((span, range))) if start < range.start => {
+            (Some(Source { start, end }), Some((_, range))) if start < range.start => {
                 let intersect = range.start.min(end);
                 let event = Source {
                     start,
@@ -1766,7 +1767,7 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
                 Some(event)
             }
             // can happen if deleting and cursor at EOF, and diagnostic reaches past the end
-            (None, Some((span, range))) => {
+            (None, Some((_, _))) => {
                 self.next_span = None;
                 None
             }
@@ -1809,7 +1810,7 @@ mod test {
         .collect();
 
         let language = get_language(Lang::Rust);
-        let mut config = HighlightConfiguration::new(
+        let config = HighlightConfiguration::new(
             language,
             &std::fs::read_to_string(
                 "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
@@ -1853,7 +1854,7 @@ mod test {
         use crate::State;
         use tree_sitter::InputEdit;
 
-        let mut state = State::new("hello world!\ntest 123".into());
+        let state = State::new("hello world!\ntest 123".into());
         let transaction = Transaction::change(
             &state.doc,
             vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
