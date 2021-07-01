@@ -1,7 +1,6 @@
 use crate::{ChangeSet, Rope, State, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use smallvec::{smallvec, SmallVec};
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 

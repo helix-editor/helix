@@ -1,5 +1,5 @@
-use crate::{Range, Rope, Selection, State, Tendril};
-use std::{borrow::Cow, convert::TryFrom};
+use crate::{Range, Rope, Selection, Tendril};
+use std::borrow::Cow;
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
@@ -581,6 +581,7 @@ impl<'a> Iterator for ChangeIterator<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::State;
 
     #[test]
     fn composition() {

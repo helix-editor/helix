@@ -1,8 +1,8 @@
 use crate::{
     find_first_non_whitespace_char,
     syntax::{IndentQuery, LanguageConfiguration, Syntax},
-    tree_sitter::{Node, Tree},
-    Rope, RopeSlice,
+    tree_sitter::Node,
+    RopeSlice,
 };
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
@@ -150,6 +150,7 @@ pub fn suggested_indent_for_pos(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Rope;
 
     #[test]
     fn test_indent_level() {

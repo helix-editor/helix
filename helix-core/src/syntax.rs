@@ -1,4 +1,10 @@
-use crate::{chars::char_is_line_ending, regex::Regex, Change, Rope, RopeSlice, Transaction};
+use crate::{
+    chars::char_is_line_ending,
+    regex::Regex,
+    transaction::{ChangeSet, Operation},
+    Rope, RopeSlice, Tendril,
+};
+
 pub use helix_syntax::{get_language, get_language_name, Lang};
 
 use arc_swap::ArcSwap;
@@ -8,7 +14,7 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     fmt,
-    path::{Path, PathBuf},
+    path::Path,
     sync::Arc,
 };
 
@@ -472,12 +478,6 @@ pub struct LanguageLayer {
     // depth
     pub(crate) tree: Option<Tree>,
 }
-
-use crate::{
-    coords_at_pos,
-    transaction::{ChangeSet, Operation},
-    Tendril,
-};
 
 impl LanguageLayer {
     // pub fn new() -> Self {
@@ -1776,135 +1776,141 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
     }
 }
 
-#[test]
-fn test_parser() {
-    let highlight_names: Vec<String> = [
-        "attribute",
-        "constant",
-        "function.builtin",
-        "function",
-        "keyword",
-        "operator",
-        "property",
-        "punctuation",
-        "punctuation.bracket",
-        "punctuation.delimiter",
-        "string",
-        "string.special",
-        "tag",
-        "type",
-        "type.builtin",
-        "variable",
-        "variable.builtin",
-        "variable.parameter",
-    ]
-    .iter()
-    .cloned()
-    .map(String::from)
-    .collect();
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{Rope, Transaction};
 
-    let language = get_language(Lang::Rust);
-    let mut config = HighlightConfiguration::new(
-        language,
-        &std::fs::read_to_string(
-            "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-        )
-        .unwrap(),
-        &std::fs::read_to_string(
-            "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-        )
-        .unwrap(),
-        "", // locals.scm
-    )
-    .unwrap();
-    config.configure(&highlight_names);
-
-    let source = Rope::from_str(
-        "
-        struct Stuff {}
-        fn main() {}
-    ",
-    );
-    let syntax = Syntax::new(&source, Arc::new(config));
-    let tree = syntax.tree();
-    let root = tree.root_node();
-    assert_eq!(root.kind(), "source_file");
-
-    assert_eq!(
-        root.to_sexp(),
-        concat!(
-            "(source_file ",
-            "(struct_item name: (type_identifier) body: (field_declaration_list)) ",
-            "(function_item name: (identifier) parameters: (parameters) body: (block)))"
-        )
-    );
-
-    let struct_node = root.child(0).unwrap();
-    assert_eq!(struct_node.kind(), "struct_item");
-}
-
-#[test]
-fn test_input_edits() {
-    use crate::State;
-    use tree_sitter::InputEdit;
-
-    let mut state = State::new("hello world!\ntest 123".into());
-    let transaction = Transaction::change(
-        &state.doc,
-        vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
-    );
-    let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
-    // transaction.apply(&mut state);
-
-    assert_eq!(
-        edits,
-        &[
-            InputEdit {
-                start_byte: 6,
-                old_end_byte: 11,
-                new_end_byte: 10,
-                start_position: Point { row: 0, column: 6 },
-                old_end_position: Point { row: 0, column: 11 },
-                new_end_position: Point { row: 0, column: 10 }
-            },
-            InputEdit {
-                start_byte: 12,
-                old_end_byte: 17,
-                new_end_byte: 12,
-                start_position: Point { row: 0, column: 12 },
-                old_end_position: Point { row: 1, column: 4 },
-                new_end_position: Point { row: 0, column: 12 }
-            }
+    #[test]
+    fn test_parser() {
+        let highlight_names: Vec<String> = [
+            "attribute",
+            "constant",
+            "function.builtin",
+            "function",
+            "keyword",
+            "operator",
+            "property",
+            "punctuation",
+            "punctuation.bracket",
+            "punctuation.delimiter",
+            "string",
+            "string.special",
+            "tag",
+            "type",
+            "type.builtin",
+            "variable",
+            "variable.builtin",
+            "variable.parameter",
         ]
-    );
+        .iter()
+        .cloned()
+        .map(String::from)
+        .collect();
 
-    // Testing with the official example from tree-sitter
-    let mut state = State::new("fn test() {}".into());
-    let transaction =
-        Transaction::change(&state.doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-    let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
-    transaction.apply(&mut state.doc);
+        let language = get_language(Lang::Rust);
+        let mut config = HighlightConfiguration::new(
+            language,
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
+            )
+            .unwrap(),
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
+            )
+            .unwrap(),
+            "", // locals.scm
+        )
+        .unwrap();
+        config.configure(&highlight_names);
 
-    assert_eq!(state.doc, "fn test(a: u32) {}");
-    assert_eq!(
-        edits,
-        &[InputEdit {
-            start_byte: 8,
-            old_end_byte: 8,
-            new_end_byte: 14,
-            start_position: Point { row: 0, column: 8 },
-            old_end_position: Point { row: 0, column: 8 },
-            new_end_position: Point { row: 0, column: 14 }
-        }]
-    );
-}
+        let source = Rope::from_str(
+            "
+            struct Stuff {}
+            fn main() {}
+        ",
+        );
+        let syntax = Syntax::new(&source, Arc::new(config));
+        let tree = syntax.tree();
+        let root = tree.root_node();
+        assert_eq!(root.kind(), "source_file");
 
-#[test]
-fn test_load_runtime_file() {
-    // Test to make sure we can load some data from the runtime directory.
-    let contents = load_runtime_file("rust", "indents.toml").unwrap();
-    assert!(!contents.is_empty());
+        assert_eq!(
+            root.to_sexp(),
+            concat!(
+                "(source_file ",
+                "(struct_item name: (type_identifier) body: (field_declaration_list)) ",
+                "(function_item name: (identifier) parameters: (parameters) body: (block)))"
+            )
+        );
 
-    let results = load_runtime_file("rust", "does-not-exist");
-    assert!(results.is_err());
+        let struct_node = root.child(0).unwrap();
+        assert_eq!(struct_node.kind(), "struct_item");
+    }
+
+    #[test]
+    fn test_input_edits() {
+        use crate::State;
+        use tree_sitter::InputEdit;
+
+        let mut state = State::new("hello world!\ntest 123".into());
+        let transaction = Transaction::change(
+            &state.doc,
+            vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
+        );
+        let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
+        // transaction.apply(&mut state);
+
+        assert_eq!(
+            edits,
+            &[
+                InputEdit {
+                    start_byte: 6,
+                    old_end_byte: 11,
+                    new_end_byte: 10,
+                    start_position: Point { row: 0, column: 6 },
+                    old_end_position: Point { row: 0, column: 11 },
+                    new_end_position: Point { row: 0, column: 10 }
+                },
+                InputEdit {
+                    start_byte: 12,
+                    old_end_byte: 17,
+                    new_end_byte: 12,
+                    start_position: Point { row: 0, column: 12 },
+                    old_end_position: Point { row: 1, column: 4 },
+                    new_end_position: Point { row: 0, column: 12 }
+                }
+            ]
+        );
+
+        // Testing with the official example from tree-sitter
+        let mut state = State::new("fn test() {}".into());
+        let transaction =
+            Transaction::change(&state.doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
+        let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
+        transaction.apply(&mut state.doc);
+
+        assert_eq!(state.doc, "fn test(a: u32) {}");
+        assert_eq!(
+            edits,
+            &[InputEdit {
+                start_byte: 8,
+                old_end_byte: 8,
+                new_end_byte: 14,
+                start_position: Point { row: 0, column: 8 },
+                old_end_position: Point { row: 0, column: 8 },
+                new_end_position: Point { row: 0, column: 14 }
+            }]
+        );
+    }
+
+    #[test]
+    fn test_load_runtime_file() {
+        // Test to make sure we can load some data from the runtime directory.
+        let contents = load_runtime_file("rust", "indents.toml").unwrap();
+        assert!(!contents.is_empty());
+
+        let results = load_runtime_file("rust", "does-not-exist");
+        assert!(results.is_err());
+    }
 }
