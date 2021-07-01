@@ -5,13 +5,11 @@ use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 
 use helix_core::{
-    unicode::segmentation::{GraphemeCursor, GraphemeIncomplete},
-    unicode::width::UnicodeWidthStr,
-    Position,
+    unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
 };
 use helix_view::{
-    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
-    Editor, Theme,
+    graphics::{CursorKind, Margin, Rect},
+    Editor,
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);

@@ -4,16 +4,10 @@ use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use std::borrow::Cow;
-
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
-use helix_core::Position;
-use helix_view::{
-    graphics::{Color, Rect, Style},
-    Editor,
-};
+use helix_view::{graphics::Rect, Editor};
 
 pub trait Item {
     // TODO: sort_text

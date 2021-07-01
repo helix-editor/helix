@@ -20,12 +20,9 @@ pub use text::Text;
 
 use helix_core::regex::Regex;
 use helix_core::register::Registers;
-use helix_view::{
-    graphics::{Color, Modifier, Rect, Style},
-    Document, Editor, View,
-};
+use helix_view::{Document, Editor, View};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
@@ -133,8 +130,8 @@ pub mod completers {
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
     use helix_view::theme;
+    use std::borrow::Cow;
     use std::cmp::Reverse;
-    use std::{borrow::Cow, sync::Arc};
 
     pub type Completer = fn(&str) -> Vec<Completion>;
 
@@ -208,7 +205,7 @@ pub mod completers {
         // Rust's filename handling is really annoying.
 
         use ignore::WalkBuilder;
-        use std::path::{Path, PathBuf};
+        use std::path::Path;
 
         let is_tilde = input.starts_with('~') && input.len() == 1;
         let path = helix_view::document::expand_tilde(Path::new(input));

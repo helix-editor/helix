@@ -1,32 +1,28 @@
 use crate::{
     commands,
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Component, Context, EventResult},
     key,
-    keymap::{self, Keymaps},
+    keymap::Keymaps,
     ui::{Completion, ProgressSpinners},
 };
 
 use helix_core::{
     coords_at_pos,
     graphemes::ensure_grapheme_boundary,
-    syntax::{self, Highlight, HighlightEvent},
+    syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
-use helix_lsp::LspProgressMap;
 use helix_view::{
     document::Mode,
-    graphics::{Color, CursorKind, Modifier, Rect, Style},
+    graphics::{CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
 use std::borrow::Cow;
 
-use crossterm::{
-    cursor,
-    event::{read, Event, EventStream},
-};
-use tui::{backend::CrosstermBackend, buffer::Buffer as Surface};
+use crossterm::event::Event;
+use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     keymaps: Keymaps,

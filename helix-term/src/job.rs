@@ -3,7 +3,7 @@ use helix_view::Editor;
 use crate::compositor::Compositor;
 
 use futures_util::future::{self, BoxFuture, Future, FutureExt};
-use futures_util::stream::{self, FuturesUnordered, Select, StreamExt};
+use futures_util::stream::{FuturesUnordered, StreamExt};
 
 pub type Callback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;
