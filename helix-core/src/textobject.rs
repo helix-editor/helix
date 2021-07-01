@@ -1,9 +1,48 @@
 use ropey::{Rope, RopeSlice};
 
-use crate::chars::{char_is_line_ending, char_is_whitespace};
+use crate::chars::{categorize_char, char_is_line_ending, char_is_whitespace, CharCategory};
 use crate::movement;
 use crate::surround;
 use crate::Range;
+
+fn this_word_end_pos(slice: RopeSlice, mut pos: usize) -> usize {
+    match categorize_char(slice.char(pos)) {
+        CharCategory::Eol | CharCategory::Whitespace => pos,
+        category => {
+            for c in slice.chars_at(pos) {
+                let curr_category = categorize_char(c);
+                if curr_category != category
+                    || curr_category == CharCategory::Eol
+                    || curr_category == CharCategory::Whitespace
+                {
+                    return pos.saturating_sub(1);
+                }
+                pos += 1;
+            }
+            pos.saturating_sub(1)
+        }
+    }
+}
+
+fn this_word_start_pos(slice: RopeSlice, mut pos: usize) -> usize {
+    match categorize_char(slice.char(pos)) {
+        CharCategory::Eol | CharCategory::Whitespace => pos,
+        category => {
+            let mut iter = slice.chars_at(pos + 1);
+            for c in std::iter::from_fn(|| iter.prev()) {
+                let curr_category = categorize_char(c);
+                if curr_category != category
+                    || curr_category == CharCategory::Eol
+                    || curr_category == CharCategory::Whitespace
+                {
+                    return pos + 1;
+                }
+                pos = pos.saturating_sub(1);
+            }
+            pos
+        }
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TextObject {
@@ -18,8 +57,8 @@ pub fn textobject_word(
     textobject: TextObject,
     count: usize,
 ) -> Range {
-    let this_word_start = movement::move_this_word_start(slice, range, count).head;
-    let this_word_end = movement::move_this_word_end(slice, range, count).head;
+    let this_word_start = this_word_start_pos(slice, range.head);
+    let this_word_end = this_word_end_pos(slice, range.head);
 
     let (anchor, head);
     match textobject {
@@ -46,10 +85,12 @@ pub fn textobject_word(
             } else if char_is_whitespace(slice.char(range.head)) {
                 // select whole whitespace and next word
                 head = movement::move_next_word_end(slice, range, count).head;
-                anchor = movement::move_prev_word_end_sticky(slice, range, count).head;
+                anchor = movement::backwards_skip_while(slice, range.head, |c| c.is_whitespace())
+                    .map(|p| p + 1) // p is first *non* whitespace char, so +1 to get whitespace pos
+                    .unwrap_or(0);
             } else {
                 head = movement::move_next_word_start(slice, range, count).head;
-                anchor = movement::move_this_word_start(slice, range, count).head;
+                anchor = this_word_start;
             }
         }
     };
@@ -90,11 +131,14 @@ mod test {
 
     #[test]
     fn test_textobject_word() {
-        let doc = Rope::from("text with chars\nmore lines\n$!@%word   next ");
+        let doc = Rope::from("text with chars\nmore lines\n$!@%word   next some");
         let slice = doc.slice(..);
 
         // initial, textobject, final
         let cases = &[
+            // cursor at [t]ext
+            ((0, 0), Inner, (0, 3)),  // [with]
+            ((0, 0), Around, (0, 4)), // [with ]
             // cursor at w[i]th
             ((6, 6), Inner, (5, 8)),  // [with]
             ((6, 6), Around, (5, 9)), // [with ]
@@ -119,6 +163,9 @@ mod test {
             // cursor at word [ ] next
             ((36, 36), Inner, (36, 36)),  // no change
             ((36, 36), Around, (35, 41)), // word[   next]
+            // cursor at som[e]
+            ((46, 46), Inner, (43, 46)),  // [some]
+            ((46, 46), Around, (42, 46)), // [ some]
         ];
 
         for &case in cases {
