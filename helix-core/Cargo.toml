@@ -37,4 +37,4 @@ etcetera = "0.3"
 rust-embed = { version = "5.9.0", optional = true }
 
 [dev-dependencies]
-quickcheck = "1"
+quickcheck = { version = "1", default-features = false }
