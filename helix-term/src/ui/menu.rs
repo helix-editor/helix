@@ -58,7 +58,6 @@ impl<T: Item> Menu<T> {
     pub fn score(&mut self, pattern: &str) {
         // need to borrow via pattern match otherwise it complains about simultaneous borrow
         let Self {
-            ref mut options,
             ref mut matcher,
             ref mut matches,
             ..
@@ -291,7 +290,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         //     )
         // }
 
-        for (i, option) in (scroll..(scroll + win_height).min(len)).enumerate() {
+        for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if is_marked {

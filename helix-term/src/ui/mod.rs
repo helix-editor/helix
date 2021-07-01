@@ -35,7 +35,7 @@ pub fn regex_prompt(
 
     Prompt::new(
         prompt,
-        |input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
+        |_input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
@@ -118,7 +118,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
                 .into()
         },
         move |editor: &mut Editor, path: &PathBuf, action| {
-            let document_id = editor
+            editor
                 .open(path.into(), action)
                 .expect("editor.open failed");
         },
@@ -151,7 +151,7 @@ pub mod completers {
 
         let mut matches: Vec<_> = names
             .into_iter()
-            .filter_map(|(range, name)| {
+            .filter_map(|(_range, name)| {
                 matcher.fuzzy_match(&name, input).map(|score| (name, score))
             })
             .collect();
@@ -226,7 +226,7 @@ pub mod completers {
             (path, file_name)
         };
 
-        let end = (input.len()..);
+        let end = input.len()..;
 
         let mut files: Vec<_> = WalkBuilder::new(dir.clone())
             .max_depth(Some(1))
@@ -239,7 +239,7 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+                    //let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
@@ -271,14 +271,14 @@ pub mod completers {
             // inefficient, but we need to calculate the scores, filter out None, then sort.
             let mut matches: Vec<_> = files
                 .into_iter()
-                .filter_map(|(range, file)| {
+                .filter_map(|(_range, file)| {
                     matcher
                         .fuzzy_match(&file, &file_name)
                         .map(|score| (file, score))
                 })
                 .collect();
 
-            let range = ((input.len().saturating_sub(file_name.len()))..);
+            let range = (input.len().saturating_sub(file_name.len()))..;
 
             matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
             files = matches
