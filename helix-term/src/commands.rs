@@ -1135,7 +1135,7 @@ mod cmd {
         match args.get(0) {
             Some(path) => {
                 // TODO: handle error
-                cx.editor.open(path.into(), Action::Replace);
+                let _ = cx.editor.open(path.into(), Action::Replace);
             }
             None => {
                 cx.editor.set_error("wrong argument count".to_string());
@@ -1367,7 +1367,9 @@ mod cmd {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
             }
-            helix_lsp::block_on(tokio::spawn(doc.save()));
+
+            // TODO: handle error.
+            let _ = helix_lsp::block_on(tokio::spawn(doc.save()));
         }
         editor.set_error(errors);
 
