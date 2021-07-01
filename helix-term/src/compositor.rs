@@ -141,7 +141,7 @@ impl Compositor {
         let (pos, kind) = self.cursor(area, cx.editor);
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
 
-        self.terminal.draw(pos, kind);
+        self.terminal.draw(pos, kind).unwrap();
     }
 
     pub fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {

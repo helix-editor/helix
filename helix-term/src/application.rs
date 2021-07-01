@@ -447,17 +447,20 @@ impl Application {
         // Exit the alternate screen and disable raw mode before panicking
         let hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
-            execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
-            terminal::disable_raw_mode();
+            // We can't handle errors properly inside this closure.  And it's
+            // probably not a good idea to `unwrap()` inside a panic handler.
+            // So we just ignore the `Result`s.
+            let _ = execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
+            let _ = terminal::disable_raw_mode();
             hook(info);
         }));
 
         self.event_loop().await;
 
-        self.editor.close_language_servers(None).await;
+        self.editor.close_language_servers(None).await?;
 
         // reset cursor shape
-        write!(stdout, "\x1B[2 q");
+        write!(stdout, "\x1B[2 q")?;
 
         execute!(stdout, terminal::LeaveAlternateScreen)?;
 
