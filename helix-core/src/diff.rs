@@ -11,60 +11,58 @@ pub fn compare_ropes(old: &Rope, new: &Rope) -> Transaction {
     let old_as_chars: Vec<_> = old.chars().collect();
     let new_as_chars: Vec<_> = new.chars().collect();
 
-    // A timeout is set so after 2 seconds, the algorithm will start
+    // A timeout is set so after 5 seconds, the algorithm will start
     // approximating. This is especially important for big `Rope`s or
     // `Rope`s that are extremely dissimilar so the diff will be
     // created in a reasonable amount of time.
-    // let mut config = similar::TextDiff::configure();
-    // config.timeout(std::time::Duration::new(2, 0));
-
+    //
     // Note: Ignore the clippy warning, as the trait bounds of
     // `Transaction::change()` require an iterator implementing
     // `ExactIterator`.
-
-    let time = std::time::Instant::now() + std::time::Duration::new(10, 0);
+    let time = std::time::Instant::now() + std::time::Duration::from_secs(5);
     let diff = similar::capture_diff_slices_deadline(
         similar::Algorithm::Myers,
         &old_as_chars,
         &new_as_chars,
         Some(time),
     );
+
+    // The current position of the change needs to be tracked to
+    // construct the `Change`s.
+    let mut pos = 0;
     let changes: Vec<Change> = diff
         .iter()
-        .filter_map(|op| {
-            let (tag, old_range, new_range) = op.as_tag_tuple();
+        .map(|op| op.as_tag_tuple())
+        .filter_map(|(tag, old_range, new_range)| {
+            let old_pos = pos;
+            pos += old_range.end - old_range.start;
+
             match tag {
                 // Semantically, inserts and replacements are the same thing.
                 similar::DiffTag::Insert | similar::DiffTag::Replace => {
                     // This is the text from the `new` rope that should be
                     // inserted into `old`.
                     let text: String = new_as_chars[new_range].iter().collect();
-                    Some((old_range.start, old_range.end, Some(text.into())))
+                    Some((old_pos, pos, Some(text.into())))
                 }
-                similar::DiffTag::Delete => Some((old_range.start, old_range.end, None)),
+                similar::DiffTag::Delete => Some((old_pos, pos, None)),
                 similar::DiffTag::Equal => None,
             }
         })
         .collect();
-    std::fs::write("derp.txt", format!("{:#?}", diff)).unwrap();
     Transaction::change(old, changes.into_iter())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use proptest::prelude::*;
 
-    proptest! {
-        #![proptest_config(ProptestConfig {
-            cases: 10000, .. ProptestConfig::default()
-        })]
-        #[test]
-        fn test_compare_ropes(a: String, b: String) {
+    quickcheck::quickcheck! {
+        fn test_compare_ropes(a: String, b: String) -> bool {
             let mut old = Rope::from(a);
             let new = Rope::from(b);
             compare_ropes(&old, &new).apply(&mut old);
-            prop_assert_eq!(old.to_string(), new.to_string());
+            old.to_string() == new.to_string()
         }
     }
 }
