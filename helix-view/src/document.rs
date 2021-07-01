@@ -307,6 +307,7 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
+/// Inserts the final line ending into `rope` if it's missing. [Why?](https://stackoverflow.com/questions/729692/why-should-text-files-end-with-a-newline)
 pub fn with_line_ending(rope: &mut Rope) -> LineEnding {
     // search for line endings
     let line_ending = auto_detect_line_ending(rope).unwrap_or(DEFAULT_LINE_ENDING);
@@ -600,6 +601,7 @@ impl Document {
         let encoding = &self.encoding;
         let path = self.path().filter(|path| path.exists());
 
+        // If there is no path or the path no longer exists.
         if path.is_none() {
             return Err(anyhow!("can't find file to reload from"));
         }
@@ -615,6 +617,7 @@ impl Document {
         Ok(())
     }
 
+    /// Sets the [`Document`]'s encoding with the encoding correspondent to `label`.
     pub fn set_encoding(&mut self, label: &str) -> Result<(), Error> {
         match encoding_rs::Encoding::for_label(label.as_bytes()) {
             Some(encoding) => self.encoding = encoding,
@@ -624,6 +627,7 @@ impl Document {
         Ok(())
     }
 
+    /// Returns the [`Document`]'s current encoding.
     pub fn encoding(&self) -> &'static encoding_rs::Encoding {
         self.encoding
     }

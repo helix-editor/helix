@@ -5,11 +5,13 @@ use crate::{Change, Transaction};
 /// Compares `old` and `new` to generate a [`Transaction`] describing
 /// the steps required to get from `old` to `new`.
 pub fn compare_ropes(old: &Rope, new: &Rope) -> Transaction {
+    use std::borrow::Cow;
+
     // `similar` only works on contiguous data, so a `Rope` has
-    // to be temporarily converted into a `String` until the diff
+    // to be temporarily converted into a vec until the diff
     // is created.
-    let old_as_chars: Vec<_> = old.chars().collect();
-    let new_as_chars: Vec<_> = new.chars().collect();
+    let old_vec: Vec<_> = old.lines().map(Cow::from).collect();
+    let new_vec: Vec<_> = new.lines().map(Cow::from).collect();
 
     // A timeout is set so after 5 seconds, the algorithm will start
     // approximating. This is especially important for big `Rope`s or
@@ -22,8 +24,8 @@ pub fn compare_ropes(old: &Rope, new: &Rope) -> Transaction {
     let time = std::time::Instant::now() + std::time::Duration::from_secs(5);
     let diff = similar::capture_diff_slices_deadline(
         similar::Algorithm::Myers,
-        &old_as_chars,
-        &new_as_chars,
+        &old_vec,
+        &new_vec,
         Some(time),
     );
 
@@ -34,15 +36,17 @@ pub fn compare_ropes(old: &Rope, new: &Rope) -> Transaction {
         .iter()
         .map(|op| op.as_tag_tuple())
         .filter_map(|(tag, old_range, new_range)| {
+            // `old_pos..pos` is equivalent to `start..end` for where
+            // the change should be applied.
             let old_pos = pos;
-            pos += old_range.end - old_range.start;
+            pos += old.line_to_char(old_range.end - old_range.start);
 
             match tag {
                 // Semantically, inserts and replacements are the same thing.
                 similar::DiffTag::Insert | similar::DiffTag::Replace => {
                     // This is the text from the `new` rope that should be
                     // inserted into `old`.
-                    let text: String = new_as_chars[new_range].iter().collect();
+                    let text: String = new_vec[new_range].concat();
                     Some((old_pos, pos, Some(text.into())))
                 }
                 similar::DiffTag::Delete => Some((old_pos, pos, None)),

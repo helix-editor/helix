@@ -1514,18 +1514,18 @@ mod cmd {
         }
     }
 
+    /// Sets the [`Document`]'s encoding and [reloads](`reload()`) if possible.
     fn set_encoding(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
         let (view, doc) = current!(cx.editor);
         if let Some(label) = args.first() {
-            doc.set_encoding(label)
-                .and_then(|_| doc.reload(view.id))
-                .unwrap_or_else(|e| cx.editor.set_error(e.to_string()));
+            doc.set_encoding(label).and_then(|_| doc.reload(view.id));
         } else {
             let encoding = doc.encoding().name().to_string();
             cx.editor.set_status(encoding)
         }
     }
 
+    /// Reload the [`Document`] from its source file.
     fn reload(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
         let (view, doc) = current!(cx.editor);
         doc.reload(view.id).unwrap();
