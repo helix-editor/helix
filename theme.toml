@@ -44,7 +44,7 @@
 "ui.statusline" = { fg = "#dbbfef", bg = "#281733" } # revolver
 "ui.statusline.inactive" = { fg = "#a4a0e8", bg = "#281733" } # revolver
 "ui.popup" = { bg = "#281733" } # revolver
-"ui.window" = { bg = "#452859" } # bossa nova
+"ui.window" = { fg = "#452859" } # bossa nova
 "ui.help" = { bg = "#7958DC", fg = "#171452" }
 
 "ui.text" = { fg = "#a4a0e8" } # lavender

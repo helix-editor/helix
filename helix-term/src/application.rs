@@ -6,6 +6,7 @@ use crate::{
     args::Args,
     compositor::Compositor,
     config::Config,
+    job::Jobs,
     keymap::Keymaps,
     ui::{self, Spinner},
 };
@@ -31,13 +32,6 @@ use crossterm::{
 
 use futures_util::{future, stream::FuturesUnordered};
 
-type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
-pub type LspCallback =
-    BoxFuture<Result<Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>, anyhow::Error>>;
-
-pub type LspCallbacks = FuturesUnordered<LspCallback>;
-pub type LspCallbackWrapper = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
-
 pub struct Application {
     compositor: Compositor,
     editor: Editor,
@@ -48,7 +42,7 @@ pub struct Application {
     theme_loader: Arc<theme::Loader>,
     syn_loader: Arc<syntax::Loader>,
 
-    callbacks: LspCallbacks,
+    jobs: Jobs,
     lsp_progress: LspProgressMap,
 }
 
@@ -120,7 +114,7 @@ impl Application {
             theme_loader,
             syn_loader,
 
-            callbacks: FuturesUnordered::new(),
+            jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
         };
 
@@ -130,11 +124,11 @@ impl Application {
     fn render(&mut self) {
         let editor = &mut self.editor;
         let compositor = &mut self.compositor;
-        let callbacks = &mut self.callbacks;
+        let jobs = &mut self.jobs;
 
         let mut cx = crate::compositor::Context {
             editor,
-            callbacks,
+            jobs,
             scroll: None,
         };
 
@@ -148,6 +142,7 @@ impl Application {
 
         loop {
             if self.editor.should_close() {
+                self.jobs.finish();
                 break;
             }
 
@@ -172,27 +167,18 @@ impl Application {
                     }
                     self.render();
                 }
-                Some(callback) = &mut self.callbacks.next() => {
-                    self.handle_language_server_callback(callback)
+                Some(callback) = self.jobs.next_job() => {
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.render();
                 }
             }
-        }
-    }
-    pub fn handle_language_server_callback(
-        &mut self,
-        callback: Result<LspCallbackWrapper, anyhow::Error>,
-    ) {
-        if let Ok(callback) = callback {
-            // TODO: handle Err()
-            callback(&mut self.editor, &mut self.compositor);
-            self.render();
         }
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
-            callbacks: &mut self.callbacks,
+            jobs: &mut self.jobs,
             scroll: None,
         };
         // Handle key events

@@ -104,6 +104,18 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     word_move(slice, range, count, WordMotionTarget::PrevWordStart)
 }
 
+pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextLongWordStart)
+}
+
+pub fn move_next_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextLongWordEnd)
+}
+
+pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
+}
+
 fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
     (0..count).fold(range, |range, _| {
         slice.chars_at(range.head).range_to_target(target, range)
@@ -150,6 +162,12 @@ pub enum WordMotionTarget {
     NextWordStart,
     NextWordEnd,
     PrevWordStart,
+    // A "Long word" (also known as a WORD in vim/kakoune) is strictly
+    // delimited by whitespace, and can consist of punctuation as well
+    // as alphanumerics.
+    NextLongWordStart,
+    NextLongWordEnd,
+    PrevLongWordStart,
 }
 
 pub trait CharHelpers {
@@ -167,7 +185,7 @@ impl CharHelpers for Chars<'_> {
         let range = origin;
         // Characters are iterated forward or backwards depending on the motion direction.
         let characters: Box<dyn Iterator<Item = char>> = match target {
-            WordMotionTarget::PrevWordStart => {
+            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart => {
                 self.next();
                 Box::new(from_fn(|| self.prev()))
             }
@@ -176,7 +194,9 @@ impl CharHelpers for Chars<'_> {
 
         // Index advancement also depends on the direction.
         let advance: &dyn Fn(&mut usize) = match target {
-            WordMotionTarget::PrevWordStart => &|u| *u = u.saturating_sub(1),
+            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart => {
+                &|u| *u = u.saturating_sub(1)
+            }
             _ => &|u| *u += 1,
         };
 
@@ -229,6 +249,19 @@ impl CharHelpers for Chars<'_> {
     }
 }
 
+fn is_word_boundary(a: char, b: char) -> bool {
+    categorize_char(a) != categorize_char(b)
+}
+
+fn is_long_word_boundary(a: char, b: char) -> bool {
+    match (categorize_char(a), categorize_char(b)) {
+        (CharCategory::Word, CharCategory::Punctuation)
+        | (CharCategory::Punctuation, CharCategory::Word) => false,
+        (a, b) if a != b => true,
+        _ => false,
+    }
+}
+
 fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>) -> bool {
     let next_peek = match next_peek {
         Some(next_peek) => next_peek,
@@ -237,11 +270,19 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
 
     match target {
         WordMotionTarget::NextWordStart => {
-            ((categorize_char(peek) != categorize_char(*next_peek))
+            (is_word_boundary(peek, *next_peek)
                 && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
         }
         WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
-            ((categorize_char(peek) != categorize_char(*next_peek))
+            (is_word_boundary(peek, *next_peek)
+                && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
+        }
+        WordMotionTarget::NextLongWordStart => {
+            (is_long_word_boundary(peek, *next_peek)
+                && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
+        }
+        WordMotionTarget::NextLongWordEnd | WordMotionTarget::PrevLongWordStart => {
+            (is_long_word_boundary(peek, *next_peek)
                 && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
         }
     }
@@ -551,6 +592,90 @@ mod test {
     }
 
     #[test]
+    fn test_behaviour_when_moving_to_start_of_next_long_words() {
+        let tests = array::IntoIter::new([
+            ("Basic forward motion stops at the first space",
+                vec![(1, Range::new(0, 0), Range::new(0, 5))]),
+            (" Starting from a boundary advances the anchor",
+                vec![(1, Range::new(0, 0), Range::new(1, 9))]),
+            ("Long       whitespace gap is bridged by the head",
+                vec![(1, Range::new(0, 0), Range::new(0, 10))]),
+            ("Previous anchor is irrelevant for forward motions",
+                vec![(1, Range::new(12, 0), Range::new(0, 8))]),
+            ("    Starting from whitespace moves to last space in sequence",
+                vec![(1, Range::new(0, 0), Range::new(0, 3))]),
+            ("Starting from mid-word leaves anchor at start position and moves head",
+                vec![(1, Range::new(3, 3), Range::new(3, 8))]),
+            ("Identifiers_with_underscores are considered a single word",
+                vec![(1, Range::new(0, 0), Range::new(0, 28))]),
+            ("Jumping\n    into starting whitespace selects the spaces before 'into'",
+                vec![(1, Range::new(0, 6), Range::new(8, 11))]),
+            ("alphanumeric.!,and.?=punctuation are not treated any differently than alphanumerics",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 32)),
+                ]),
+            ("...   ... punctuation and spaces behave as expected",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(0, 5), Range::new(6, 9)),
+                ]),
+            (".._.._ punctuation is joined by underscores into a single word, as it behaves like alphanumerics",
+                vec![(1, Range::new(0, 0), Range::new(0, 6))]),
+            ("Newlines\n\nare bridged seamlessly.",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 7)),
+                    (1, Range::new(0, 7), Range::new(10, 13)),
+                ]),
+            ("Jumping\n\n\n\n\n\n   from newlines to whitespace selects whitespace.",
+                vec![
+                    (1, Range::new(0, 8), Range::new(13, 15)),
+                ]),
+            ("A failed motion does not modify the range",
+                vec![
+                    (3, Range::new(37, 41), Range::new(37, 41)),
+                ]),
+            ("oh oh oh two character words!",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 2)),
+                    (1, Range::new(0, 2), Range::new(3, 5)),
+                    (1, Range::new(0, 1), Range::new(2, 2)),
+                ]),
+            ("Multiple motions at once resolve correctly",
+                vec![
+                    (3, Range::new(0, 0), Range::new(17, 19)),
+                ]),
+            ("Excessive motions are performed partially",
+                vec![
+                    (999, Range::new(0, 0), Range::new(32, 40)),
+                ]),
+            ("", // Edge case of moving forward in empty string
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 0)),
+                ]),
+            ("\n\n\n\n\n", // Edge case of moving forward in all newlines
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                ]),
+            ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
+                vec![
+                    (1, Range::new(0, 0), Range::new(1, 3)),
+                    (1, Range::new(1, 3), Range::new(5, 7)),
+                ]),
+            ("ヒー..リクス multibyte characters behave as normal characters, including their interaction with punctuation",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 7)),
+                ]),
+        ]);
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_next_long_word_start(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
     fn test_behaviour_when_moving_to_start_of_previous_words() {
         let tests = array::IntoIter::new([
             ("Basic backward motion from the middle of a word",
@@ -633,6 +758,86 @@ mod test {
     }
 
     #[test]
+    fn test_behaviour_when_moving_to_start_of_previous_long_words() {
+        let tests = array::IntoIter::new([
+            ("Basic backward motion from the middle of a word",
+                vec![(1, Range::new(3, 3), Range::new(3, 0))]),
+            ("Starting from after boundary retreats the anchor",
+                vec![(1, Range::new(0, 8), Range::new(7, 0))]),
+            ("    Jump to start of a word preceded by whitespace",
+                vec![(1, Range::new(5, 5), Range::new(5, 4))]),
+            ("    Jump to start of line from start of word preceded by whitespace",
+                vec![(1, Range::new(4, 4), Range::new(3, 0))]),
+            ("Previous anchor is irrelevant for backward motions",
+                vec![(1, Range::new(12, 5), Range::new(5, 0))]),
+            ("    Starting from whitespace moves to first space in sequence",
+                vec![(1, Range::new(0, 3), Range::new(3, 0))]),
+            ("Identifiers_with_underscores are considered a single word",
+                vec![(1, Range::new(0, 20), Range::new(20, 0))]),
+            ("Jumping\n    \nback through a newline selects whitespace",
+                vec![(1, Range::new(0, 13), Range::new(11, 8))]),
+            ("Jumping to start of word from the end selects the word",
+                vec![(1, Range::new(6, 6), Range::new(6, 0))]),
+            ("alphanumeric.!,and.?=punctuation are treated exactly the same",
+                vec![
+                    (1, Range::new(30, 30), Range::new(30, 0)),
+                ]),
+
+            ("...   ... punctuation and spaces behave as expected",
+                vec![
+                    (1, Range::new(0, 10), Range::new(9, 6)),
+                    (1, Range::new(9, 6), Range::new(5, 0)),
+                ]),
+            (".._.._ punctuation is joined by underscores into a single block",
+                vec![(1, Range::new(0, 5), Range::new(4, 0))]),
+            ("Newlines\n\nare bridged seamlessly.",
+                vec![
+                    (1, Range::new(0, 10), Range::new(7, 0)),
+                ]),
+            ("Jumping    \n\n\n\n\nback from within a newline group selects previous block",
+                vec![
+                    (1, Range::new(0, 13), Range::new(10, 0)),
+                ]),
+            ("Failed motions do not modify the range",
+                vec![
+                    (0, Range::new(3, 0), Range::new(3, 0)),
+                ]),
+            ("Multiple motions at once resolve correctly",
+                vec![
+                    (3, Range::new(18, 18), Range::new(8, 0)),
+                ]),
+            ("Excessive motions are performed partially",
+                vec![
+                    (999, Range::new(40, 40), Range::new(9, 0)),
+                ]),
+            ("", // Edge case of moving backwards in empty string
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 0)),
+                ]),
+            ("\n\n\n\n\n", // Edge case of moving backwards in all newlines
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 0)),
+                ]),
+            ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
+                vec![
+                    (1, Range::new(0, 7), Range::new(6, 4)),
+                    (1, Range::new(6, 4), Range::new(2, 0)),
+                ]),
+            ("ヒーリ..クス multibyte characters behave as normal characters, including when interacting with punctuation",
+                vec![
+                    (1, Range::new(0, 7), Range::new(6, 0)),
+                ]),
+        ]);
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_prev_long_word_start(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
     fn test_behaviour_when_moving_to_end_of_next_words() {
         let tests = array::IntoIter::new([
             ("Basic forward motion from the start of a word to the end of it",
@@ -707,6 +912,84 @@ mod test {
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
                 let range = move_next_word_end(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_end_of_next_long_words() {
+        let tests = array::IntoIter::new([
+            ("Basic forward motion from the start of a word to the end of it",
+                vec![(1, Range::new(0, 0), Range::new(0, 4))]),
+            ("Basic forward motion from the end of a word to the end of the next",
+                vec![(1, Range::new(0, 4), Range::new(5, 12))]),
+            ("Basic forward motion from the middle of a word to the end of it",
+                vec![(1, Range::new(2, 2), Range::new(2, 4))]),
+            ("    Jumping to end of a word preceded by whitespace",
+                vec![(1, Range::new(0, 0), Range::new(0, 10))]),
+            (" Starting from a boundary advances the anchor",
+                vec![(1, Range::new(0, 0), Range::new(1, 8))]),
+            ("Previous anchor is irrelevant for end of word motion",
+                vec![(1, Range::new(12, 2), Range::new(2, 7))]),
+            ("Identifiers_with_underscores are considered a single word",
+                vec![(1, Range::new(0, 0), Range::new(0, 27))]),
+            ("Jumping\n    into starting whitespace selects up to the end of next word",
+                vec![(1, Range::new(0, 6), Range::new(8, 15))]),
+            ("alphanumeric.!,and.?=punctuation are treated the same way",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 31)),
+                ]),
+            ("...   ... punctuation and spaces behave as expected",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 2)),
+                    (1, Range::new(0, 2), Range::new(3, 8)),
+                ]),
+            (".._.._ punctuation is joined by underscores into a single block",
+                vec![(1, Range::new(0, 0), Range::new(0, 5))]),
+            ("Newlines\n\nare bridged seamlessly.",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 7)),
+                    (1, Range::new(0, 7), Range::new(10, 12)),
+                ]),
+            ("Jumping\n\n\n\n\n\n   from newlines to whitespace selects to end of next word.",
+                vec![
+                    (1, Range::new(0, 8), Range::new(13, 19)),
+                ]),
+            ("A failed motion does not modify the range",
+                vec![
+                    (3, Range::new(37, 41), Range::new(37, 41)),
+                ]),
+            ("Multiple motions at once resolve correctly",
+                vec![
+                    (3, Range::new(0, 0), Range::new(16, 18)),
+                ]),
+            ("Excessive motions are performed partially",
+                vec![
+                    (999, Range::new(0, 0), Range::new(31, 40)),
+                ]),
+            ("", // Edge case of moving forward in empty string
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 0)),
+                ]),
+            ("\n\n\n\n\n", // Edge case of moving forward in all newlines
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                ]),
+            ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
+                vec![
+                    (1, Range::new(0, 0), Range::new(1, 3)),
+                    (1, Range::new(1, 3), Range::new(5, 7)),
+                ]),
+            ("ヒーリ..クス multibyte characters behave as normal characters, including  when they interact with punctuation",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 6)),
+                ]),
+        ]);
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }

@@ -85,8 +85,8 @@ impl EditorView {
             for y in area.top()..area.bottom() {
                 surface
                     .get_mut(x, y)
-                    // .set_symbol(tui::symbols::line::VERTICAL)
-                    .set_symbol(" ")
+                    .set_symbol(tui::symbols::line::VERTICAL)
+                    //.set_symbol(" ")
                     .set_style(border_style);
             }
         }
@@ -621,7 +621,7 @@ impl Component for EditorView {
                     count: None,
                     callback: None,
                     on_next_key_callback: None,
-                    callbacks: cx.callbacks,
+                    jobs: cx.jobs,
                 };
 
                 if let Some(on_next_key) = self.on_next_key.take() {
@@ -639,7 +639,7 @@ impl Component for EditorView {
                                 // use a fake context here
                                 let mut cx = Context {
                                     editor: cxt.editor,
-                                    callbacks: cxt.callbacks,
+                                    jobs: cxt.jobs,
                                     scroll: None,
                                 };
                                 let res = completion.handle_event(event, &mut cx);

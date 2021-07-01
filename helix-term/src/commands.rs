@@ -35,8 +35,8 @@ use crate::{
     ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::application::{LspCallbackWrapper, LspCallbacks};
-use futures_util::FutureExt;
+use crate::job::{self, Job, JobFuture, Jobs};
+use futures_util::{FutureExt, TryFutureExt};
 use std::{fmt, future::Future, path::Display, str::FromStr};
 
 use std::{
@@ -54,7 +54,7 @@ pub struct Context<'a> {
 
     pub callback: Option<crate::compositor::Callback>,
     pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
-    pub callbacks: &'a mut LspCallbacks,
+    pub jobs: &'a mut Jobs,
 }
 
 impl<'a> Context<'a> {
@@ -85,13 +85,13 @@ impl<'a> Context<'a> {
         let callback = Box::pin(async move {
             let json = call.await?;
             let response = serde_json::from_value(json)?;
-            let call: LspCallbackWrapper =
+            let call: job::Callback =
                 Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                     callback(editor, compositor, response)
                 });
             Ok(call)
         });
-        self.callbacks.push(callback);
+        self.jobs.callback(callback);
     }
 
     /// Returns 1 if no explicit count was provided
@@ -158,6 +158,9 @@ impl Command {
         move_next_word_start,
         move_prev_word_start,
         move_next_word_end,
+        move_next_long_word_start,
+        move_prev_long_word_start,
+        move_next_long_word_end,
         move_file_start,
         move_file_end,
         extend_next_word_start,
@@ -430,6 +433,42 @@ fn move_next_word_end(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .transform(|range| movement::move_next_word_end(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+fn move_next_long_word_start(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_next_long_word_start(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+fn move_prev_long_word_start(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_prev_long_word_start(text, range, count));
+
+    doc.set_selection(view.id, selection);
+}
+
+fn move_next_long_word_end(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .transform(|range| movement::move_next_long_word_end(text, range, count));
 
     doc.set_selection(view.id, selection);
 }
@@ -1106,11 +1145,12 @@ mod cmd {
     }
 
     fn write_impl<P: AsRef<Path>>(
-        view: &View,
-        doc: &mut Document,
+        cx: &mut compositor::Context,
         path: Option<P>,
     ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
         use anyhow::anyhow;
+        let jobs = &mut cx.jobs;
+        let (view, doc) = current!(cx.editor);
 
         if let Some(path) = path {
             if let Err(err) = doc.set_path(path.as_ref()) {
@@ -1120,20 +1160,27 @@ mod cmd {
         if doc.path().is_none() {
             return Err(anyhow!("cannot write a buffer without a filename"));
         }
-        let autofmt = doc
-            .language_config()
-            .map(|config| config.auto_format)
-            .unwrap_or_default();
-        if autofmt {
-            doc.format(view.id); // TODO: merge into save
-        }
-        Ok(tokio::spawn(doc.save()))
+        let fmt = doc.auto_format().map(|fmt| {
+            let shared = fmt.shared();
+            let callback = make_format_callback(
+                doc.id(),
+                doc.version(),
+                Modified::SetUnmodified,
+                shared.clone(),
+            );
+            jobs.callback(callback);
+            shared
+        });
+        Ok(tokio::spawn(doc.format_and_save(fmt)))
     }
 
     fn write(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
-        if let Err(e) = write_impl(view, doc, args.first()) {
-            cx.editor.set_error(e.to_string());
+        match write_impl(cx, args.first()) {
+            Err(e) => cx.editor.set_error(e.to_string()),
+            Ok(handle) => {
+                cx.jobs
+                    .add(Job::new(handle.unwrap_or_else(|e| Err(e.into()))).wait_before_exiting());
+            }
         };
     }
 
@@ -1142,9 +1189,13 @@ mod cmd {
     }
 
     fn format(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
+        let (_, doc) = current!(cx.editor);
 
-        doc.format(view.id)
+        if let Some(format) = doc.format() {
+            let callback =
+                make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
+            cx.jobs.callback(callback);
+        }
     }
 
     fn set_indent_style(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
@@ -1249,8 +1300,7 @@ mod cmd {
     }
 
     fn write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
-        match write_impl(view, doc, args.first()) {
+        match write_impl(cx, args.first()) {
             Ok(handle) => {
                 if let Err(e) = helix_lsp::block_on(handle) {
                     cx.editor.set_error(e.to_string());
@@ -1266,7 +1316,7 @@ mod cmd {
 
     fn force_write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
         let (view, doc) = current!(cx.editor);
-        match write_impl(view, doc, args.first()) {
+        match write_impl(cx, args.first()) {
             Ok(handle) => {
                 if let Err(e) = helix_lsp::block_on(handle) {
                     cx.editor.set_error(e.to_string());
@@ -1892,6 +1942,42 @@ fn append_to_line(cx: &mut Context) {
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
+}
+
+/// Sometimes when applying formatting changes we want to mark the buffer as unmodified, for
+/// example because we just applied the same changes while saving.
+enum Modified {
+    SetUnmodified,
+    LeaveModified,
+}
+
+// Creates an LspCallback that waits for formatting changes to be computed. When they're done,
+// it applies them, but only if the doc hasn't changed.
+//
+// TODO: provide some way to cancel this, probably as part of a more general job cancellation
+// scheme
+async fn make_format_callback(
+    doc_id: DocumentId,
+    doc_version: i32,
+    modified: Modified,
+    format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
+) -> anyhow::Result<job::Callback> {
+    let format = format.await;
+    let call: job::Callback = Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+        let view_id = view!(editor).id;
+        if let Some(doc) = editor.document_mut(doc_id) {
+            if doc.version() == doc_version {
+                doc.apply(&Transaction::from(format), view_id);
+                doc.append_changes_to_history(view_id);
+                if let Modified::SetUnmodified = modified {
+                    doc.reset_modified();
+                }
+            } else {
+                log::info!("discarded formatting changes because the document changed");
+            }
+        }
+    });
+    Ok(call)
 }
 
 enum Open {
@@ -2542,7 +2628,7 @@ pub mod insert {
             } else {
                 contents.char(pos - 1)
             };
-            let curr = contents.char(pos);
+            let curr = contents.get_char(pos).unwrap_or(' ');
 
             // TODO: offset range.head by 1? when calculating?
             let indent_level = indent::suggested_indent_for_pos(
@@ -3106,6 +3192,12 @@ fn completion(cx: &mut Context) {
         move |editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CompletionResponse>| {
+            let (_, doc) = current!(editor);
+            if doc.mode() != Mode::Insert {
+                // we're not in insert mode anymore
+                return;
+            }
+
             let items = match response {
                 Some(lsp::CompletionResponse::Array(items)) => items,
                 // TODO: do something with is_incomplete

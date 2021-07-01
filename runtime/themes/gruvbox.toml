@@ -1,0 +1,83 @@
+# Author : Jakub Bartodziej <kubabartodziej@gmail.com>
+# The theme uses the gruvbox dark palette with standard contrast: github.com/morhetz/gruvbox
+
+"attribute" = "fg2"
+"keyword" = { fg = "red1" }
+"keyword.directive" = "red0"
+"namespace" = "yellow0"
+"punctuation" = "fg4"
+"punctuation.delimiter" = "fg4"
+"operator" = "orange0"
+"special" = "purple0"
+"property" = "fg2"
+"variable" = "fg2"
+"variable.builtin" = "fg3"
+"variable.parameter" = "fg2"
+"type" = "orange1"
+"type.builtin" = "orange0"
+"constructor" = "fg2"
+"function" = "green0"
+"function.macro" = "aqua1"
+"function.builtin" = "yellow1"
+"comment" = "gray1"
+"constant" = { fg = "fg2", modifiers = ["bold"] }
+"constant.builtin" = { fg = "fg1", modifiers = ["bold"] }
+"string" = "green1"
+"number" = "purple1"
+"escape" = { fg = "fg2", modifiers = ["bold"] }
+"label" = "aqua1"
+"module" = "yellow1"
+
+"warning" = "orange0"
+"error" = "red0"
+"info" = "purple0"
+"hint" = "blue0"
+
+"ui.background" = { bg = "bg0" }
+"ui.linenr" = { fg = "fg3" }
+"ui.linenr.selected" = { fg = "fg1", modifiers = ["bold"] }
+"ui.statusline" = { fg = "fg2", bg = "bg2" }
+"ui.statusline.inactive" = { fg = "fg3", bg = "bg4" }
+"ui.popup" = { bg = "bg1" }
+"ui.window" = { bg = "bg1" }
+"ui.help" = { bg = "bg1", fg = "fg1" }
+"ui.text" = { fg = "fg1" }
+"ui.text.focus" = { fg = "fg1", modifiers = ["bold"] }
+"ui.selection" = { bg = "bg3" }
+"ui.cursor.primary" = { bg = "bg3" }
+"ui.cursor.match" = { bg = "bg4" }
+"ui.menu" = { fg = "fg1" }
+"ui.menu.selected" = { fg = "fg3", bg = "bg3" }
+
+"diagnostic" = { modifiers = ["underlined"] }
+
+[palette]
+bg0 = "#282828" # main background
+bg1 = "#3c3836"
+bg2 = "#504945"
+bg3 = "#665c54"
+bg4 = "#7c6f64"
+
+fg0 = "#fbf1c7"
+fg1 = "#ebdbb2" # main foreground
+fg2 = "#d5c4a1"
+fg3 = "#bdae93"
+fg4 = "#a89984" # gray0
+
+gray0 = "#a89984"
+gray1 = "#928374"
+
+red0 = "#cc241d" # neutral
+red1 = "#fb4934" # bright
+green0 = "#98971a"
+green1 = "#b8bb26"
+yellow0 = "#d79921"
+yellow1 = "#fabd2f"
+blue0 = "#458588"
+blue1 = "#83a598"
+purple0 = "#b16286"
+purple1 = "#d3869b"
+aqua0 = "#689d6a"
+aqua1 = "#8ec07c"
+orange0 = "#d65d0e"
+orange1 = "#fe8019"

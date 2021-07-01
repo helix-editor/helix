@@ -163,7 +163,7 @@ impl ChangeSet {
                     head_a = a;
                     head_b = changes_b.next();
                 }
-                (None, _) | (_, None) => return unreachable!(),
+                (None, val) | (val, None) => return unreachable!("({:?})", val),
                 (Some(Retain(i)), Some(Retain(j))) => match i.cmp(&j) {
                     Ordering::Less => {
                         changes.retain(i);
@@ -193,9 +193,10 @@ impl ChangeSet {
                             head_b = changes_b.next();
                         }
                         Ordering::Greater => {
+                            // TODO: cover this with a test
                             // figure out the byte index of the truncated string end
-                            let (pos, _) = s.char_indices().nth(len - j).unwrap();
-                            s.pop_front(s.len() as u32 - pos as u32);
+                            let (pos, _) = s.char_indices().nth(j).unwrap();
+                            s.pop_front(pos as u32);
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }
@@ -598,7 +599,7 @@ mod test {
         };
 
         let b = ChangeSet {
-            changes: vec![Delete(10), Insert("world".into()), Retain(5)],
+            changes: vec![Delete(10), Insert("世orld".into()), Retain(5)],
             len: 15,
             len_after: 10,
         };
@@ -609,7 +610,7 @@ mod test {
         let composed = a.compose(b);
         assert_eq!(composed.len, 8);
         assert!(composed.apply(&mut text));
-        assert_eq!(text, "world! abc");
+        assert_eq!(text, "世orld! abc");
     }
 
     #[test]

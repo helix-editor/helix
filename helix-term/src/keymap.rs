@@ -186,6 +186,10 @@ impl Default for Keymaps {
             key!('b') => Command::move_prev_word_start,
             key!('e') => Command::move_next_word_end,
 
+            key!('W') => Command::move_next_long_word_start,
+            key!('B') => Command::move_prev_long_word_start,
+            key!('E') => Command::move_next_long_word_end,
+
             key!('v') => Command::select_mode,
             key!('g') => Command::goto_mode,
             key!(':') => Command::command_mode,

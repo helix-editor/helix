@@ -39,5 +39,8 @@ log = "~0.4"
 
 which = "4.1"
 
+[target.'cfg(windows)'.dependencies]
+clipboard-win = { version = "4.2", features = ["std"] }
+
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }
