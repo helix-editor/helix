@@ -3426,7 +3426,13 @@ macro_rules! mode_info {
         #[doc = "<table><tr><th>key</th><th>desc</th></tr><tbody>"]
         $(
         #[doc = "<tr><td>"]
-        #[doc = mode_info!(@join $($key),+)]
+        // TODO switch to this once we use rust 1.54
+        // right now it will produce multiple rows
+        // #[doc = mode_info!(@join $($key),+)]
+        $(
+        #[doc = $key]
+        )+
+        // <-
         #[doc = "</td><td>"]
         #[doc = $desc]
         #[doc = "</td></tr>"]
