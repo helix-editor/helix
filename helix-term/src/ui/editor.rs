@@ -392,7 +392,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
-        is_focused: bool,
+        _is_focused: bool,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -402,7 +402,6 @@ impl EditorView {
         };
 
         let cursor = doc.selection(view.id).cursor();
-        let line = doc.text().char_to_line(cursor);
 
         let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
@@ -608,7 +607,7 @@ impl Component for EditorView {
                 // clear status
                 cx.editor.status_msg = None;
 
-                let (view, doc) = current!(cx.editor);
+                let (_, doc) = current!(cx.editor);
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
@@ -705,7 +704,7 @@ impl Component for EditorView {
         }
     }
 
-    fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
 
@@ -741,7 +740,7 @@ impl Component for EditorView {
         }
     }
 
-    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         // match view.doc.mode() {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),

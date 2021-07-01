@@ -13,11 +13,9 @@ impl Text {
     }
 }
 impl Component for Text {
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&self, area: Rect, surface: &mut Surface, _cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
         let contents = tui::text::Text::from(self.contents.clone());
-
-        let style = cx.editor.theme.get("ui.text");
 
         let par = Paragraph::new(contents).wrap(Wrap { trim: false });
         // .scroll(x, y) offsets

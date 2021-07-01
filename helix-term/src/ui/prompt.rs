@@ -397,6 +397,22 @@ impl Component for Prompt {
                 return close_fn;
             }
             KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('b'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::BackwardWord(1)),
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::ForwardWord(1)),
+            KeyEvent {
                 code: KeyCode::Char('f'),
                 modifiers: KeyModifiers::CONTROL,
             }
@@ -428,22 +444,6 @@ impl Component for Prompt {
                 code: KeyCode::Char('a'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_start(),
-            KeyEvent {
-                code: KeyCode::Left,
-                modifiers: KeyModifiers::ALT,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('b'),
-                modifiers: KeyModifiers::ALT,
-            } => self.move_cursor(Movement::BackwardWord(1)),
-            KeyEvent {
-                code: KeyCode::Right,
-                modifiers: KeyModifiers::ALT,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('f'),
-                modifiers: KeyModifiers::ALT,
-            } => self.move_cursor(Movement::ForwardWord(1)),
             KeyEvent {
                 code: KeyCode::Char('w'),
                 modifiers: KeyModifiers::CONTROL,
@@ -492,7 +492,7 @@ impl Component for Prompt {
         self.render_prompt(area, surface, cx)
     }
 
-    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
         let line = area.height as usize - 1;
         (
             Some(Position::new(

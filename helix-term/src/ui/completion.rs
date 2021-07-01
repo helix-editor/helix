@@ -76,7 +76,7 @@ impl Completion {
         trigger_offset: usize,
     ) -> Self {
         // let items: Vec<CompletionItem> = Vec::new();
-        let mut menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
             match event {
                 PromptEvent::Abort => {}
                 PromptEvent::Validate => {

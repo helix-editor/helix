@@ -25,7 +25,14 @@ pub struct Application {
     // TODO should be separate to take only part of the config
     config: Config,
 
+    // Currently never read from.  Remove the `allow(dead_code)` when
+    // that changes.
+    #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
+
+    // Currently never read from.  Remove the `allow(dead_code)` when
+    // that changes.
+    #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
 
     jobs: Jobs,
@@ -33,7 +40,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(mut args: Args, mut config: Config) -> Result<Self, Error> {
+    pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
@@ -66,7 +73,7 @@ impl Application {
 
         let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
 
-        let mut editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
+        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
         if !args.files.is_empty() {
@@ -91,7 +98,7 @@ impl Application {
 
         editor.set_theme(theme);
 
-        let mut app = Self {
+        let app = Self {
             compositor,
             editor,
 
@@ -357,14 +364,10 @@ impl Application {
                             self.editor.set_status(status);
                         }
                     }
-                    _ => unreachable!(),
                 }
             }
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
-                method,
-                params,
-                jsonrpc,
-                id,
+                method, params, id, ..
             }) => {
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
