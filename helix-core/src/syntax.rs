@@ -1481,7 +1481,6 @@ where
                 // local scope at the top of the scope stack.
                 else if Some(capture.index) == layer.config.local_def_capture_index {
                     reference_highlight = None;
-                    definition_highlight = None;
                     let scope = layer.scope_stack.last_mut().unwrap();
 
                     let mut value_range = 0..0;
