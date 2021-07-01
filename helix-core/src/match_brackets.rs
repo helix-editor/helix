@@ -12,7 +12,7 @@ pub fn find(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
     // most naive implementation: find the innermost syntax node, if we're at the edge of a node,
     // return the other edge.
 
-    let mut node = match tree
+    let node = match tree
         .root_node()
         .named_descendant_for_byte_range(byte_pos, byte_pos)
     {

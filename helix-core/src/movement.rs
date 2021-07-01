@@ -113,7 +113,7 @@ pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -
     word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
 }
 
-fn word_move(slice: RopeSlice, mut range: Range, count: usize, target: WordMotionTarget) -> Range {
+fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
     (0..count).fold(range, |range, _| {
         slice.chars_at(range.head).range_to_target(target, range)
     })
@@ -179,7 +179,6 @@ enum WordMotionPhase {
 
 impl CharHelpers for Chars<'_> {
     fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
-        let range = origin;
         // Characters are iterated forward or backwards depending on the motion direction.
         let characters: Box<dyn Iterator<Item = char>> = match target {
             WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart => {

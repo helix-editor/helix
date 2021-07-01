@@ -7,7 +7,7 @@ use crate::{
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
 /// of the previous line.
-
+#[allow(dead_code)]
 fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
     let mut len = 0;
     for ch in line.chars() {
@@ -98,12 +98,13 @@ fn calculate_indentation(query: &IndentQuery, node: Option<Node>, newline: bool)
     increment as usize
 }
 
+#[allow(dead_code)]
 fn suggested_indent_for_line(
     language_config: &LanguageConfiguration,
     syntax: Option<&Syntax>,
     text: RopeSlice,
     line_num: usize,
-    tab_width: usize,
+    _tab_width: usize,
 ) -> usize {
     if let Some(start) = find_first_non_whitespace_char(text.line(line_num)) {
         return suggested_indent_for_pos(
