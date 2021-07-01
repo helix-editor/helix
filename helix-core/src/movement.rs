@@ -1,12 +1,9 @@
-use std::iter::{self, from_fn, Peekable, SkipWhile};
+use std::iter::{self, from_fn};
 
 use ropey::iter::Chars;
 
 use crate::{
-    chars::{
-        categorize_char, char_is_line_ending, char_is_punctuation, char_is_whitespace,
-        char_is_word, CharCategory,
-    },
+    chars::{categorize_char, char_is_line_ending, CharCategory},
     coords_at_pos,
     graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary},
     line_ending::{get_line_ending, line_end_char_index},
@@ -270,20 +267,20 @@ fn reached_target(target: WordMotionTarget, peek: char, next_peek: Option<&char>
 
     match target {
         WordMotionTarget::NextWordStart => {
-            (is_word_boundary(peek, *next_peek)
-                && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
+            is_word_boundary(peek, *next_peek)
+                && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace())
         }
         WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
-            (is_word_boundary(peek, *next_peek)
-                && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
+            is_word_boundary(peek, *next_peek)
+                && (!peek.is_whitespace() || char_is_line_ending(*next_peek))
         }
         WordMotionTarget::NextLongWordStart => {
-            (is_long_word_boundary(peek, *next_peek)
-                && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace()))
+            is_long_word_boundary(peek, *next_peek)
+                && (char_is_line_ending(*next_peek) || !next_peek.is_whitespace())
         }
         WordMotionTarget::NextLongWordEnd | WordMotionTarget::PrevLongWordStart => {
-            (is_long_word_boundary(peek, *next_peek)
-                && (!peek.is_whitespace() || char_is_line_ending(*next_peek)))
+            is_long_word_boundary(peek, *next_peek)
+                && (!peek.is_whitespace() || char_is_line_ending(*next_peek))
         }
     }
 }

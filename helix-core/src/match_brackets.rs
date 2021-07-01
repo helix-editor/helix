@@ -1,4 +1,4 @@
-use crate::{Range, Rope, Selection, Syntax};
+use crate::{Rope, Syntax};
 
 const PAIRS: &[(char, char)] = &[('(', ')'), ('{', '}'), ('[', ']'), ('<', '>')];
 // limit matching pairs to only ( ) { } [ ] < >

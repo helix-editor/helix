@@ -2,7 +2,7 @@
 //! single selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
-use crate::{Assoc, ChangeSet, Rope, RopeSlice};
+use crate::{Assoc, ChangeSet, RopeSlice};
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 
@@ -406,6 +406,7 @@ pub fn split_on_matches(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Rope;
 
     #[test]
     #[should_panic]
