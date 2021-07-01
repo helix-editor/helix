@@ -623,7 +623,6 @@ impl Document {
             Some(encoding) => self.encoding = encoding,
             None => return Err(anyhow::anyhow!("unknown encoding")),
         }
-
         Ok(())
     }
 
