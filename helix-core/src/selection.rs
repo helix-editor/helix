@@ -308,7 +308,7 @@ impl Selection {
     }
 
     /// Normalizes a `Selection`.
-    pub fn normalize(mut self) -> Self {
+    fn normalize(mut self) -> Self {
         let primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
         self.primary_index = self
@@ -363,7 +363,12 @@ impl Selection {
             *range = f(*range)
         }
 
-        self
+        self.normalize()
+    }
+
+    /// A convenience short-cut for `transform(|r| r.min_width_1(text))`.
+    pub fn min_width_1(mut self, text: RopeSlice) -> Self {
+        self.transform(|r| r.min_width_1(text))
     }
 
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {

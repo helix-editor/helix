@@ -718,24 +718,30 @@ fn replace(cx: &mut Context) {
             _ => None,
         };
 
-        if let Some(ch) = ch {
-            let transaction =
-                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    let max_to = rope_end_without_line_ending(&doc.text().slice(..));
-                    let to = std::cmp::min(max_to, range.to() + 1);
-                    let text: String = RopeGraphemes::new(doc.text().slice(range.from()..to))
-                        .map(|g| {
-                            let cow: Cow<str> = g.into();
-                            if str_is_line_ending(&cow) {
-                                cow
-                            } else {
-                                ch.into()
-                            }
-                        })
-                        .collect();
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().min_width_1(text);
 
-                    (range.from(), to, Some(text.into()))
-                });
+        if let Some(ch) = ch {
+            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+                if !range.is_empty() {
+                    let text: String =
+                        RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
+                            .map(|g| {
+                                let cow: Cow<str> = g.into();
+                                if str_is_line_ending(&cow) {
+                                    cow
+                                } else {
+                                    ch.into()
+                                }
+                            })
+                            .collect();
+
+                    (range.from(), range.to(), Some(text.into()))
+                } else {
+                    // No change.
+                    (range.from(), range.to(), None)
+                }
+            });
 
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view.id);
@@ -1050,24 +1056,18 @@ fn extend_line(cx: &mut Context) {
 }
 
 fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
-    // first yank the selection
-    let values: Vec<String> = doc
-        .selection(view_id)
-        .fragments(doc.text().slice(..))
-        .map(Cow::into_owned)
-        .collect();
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view_id).clone().min_width_1(text);
 
+    // first yank the selection
+    let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
     reg.write(values);
 
     // then delete
-    let transaction =
-        Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
-            let alltext = doc.text().slice(..);
-            let line = alltext.char_to_line(range.head);
-            let max_to = rope_end_without_line_ending(&alltext);
-            let to = std::cmp::min(max_to, range.to() + 1);
-            (range.from(), to, None)
-        });
+    let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+        let line = text.char_to_line(range.head);
+        (range.from(), range.to(), None)
+    });
     doc.apply(&transaction, view_id);
 }
 
@@ -1513,11 +1513,13 @@ mod cmd {
 
         match cx.editor.clipboard_provider.get_contents() {
             Ok(contents) => {
+                let selection = doc
+                    .selection(view.id)
+                    .clone()
+                    .min_width_1(doc.text().slice(..));
                 let transaction =
-                    Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                        let max_to = rope_end_without_line_ending(&doc.text().slice(..));
-                        let to = std::cmp::min(max_to, range.to() + 1);
-                        (range.from(), to, Some(contents.as_str().into()))
+                    Transaction::change_by_selection(doc.text(), &selection, |range| {
+                        (range.from(), range.to(), Some(contents.as_str().into()))
                     });
 
                 doc.apply(&transaction, view.id);
@@ -2864,17 +2866,18 @@ fn paste_impl(
     let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 
     let text = doc.text();
+    let selection = doc.selection(view.id).clone().min_width_1(text.slice(..));
 
-    let transaction = Transaction::change_by_selection(text, doc.selection(view.id), |range| {
+    let transaction = Transaction::change_by_selection(text, &selection, |range| {
         let pos = match (action, linewise) {
             // paste linewise before
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
             // paste linewise after
-            (Paste::After, true) => text.line_to_char(text.char_to_line(range.to()) + 1),
+            (Paste::After, true) => text.line_to_char(text.char_to_line(range.to())),
             // paste insert
             (Paste::Before, false) => range.from(),
             // paste append
-            (Paste::After, false) => range.to() + 1,
+            (Paste::After, false) => range.to(),
         };
         (pos, pos, Some(values.next().unwrap()))
     });
@@ -2914,12 +2917,17 @@ fn replace_with_yanked(cx: &mut Context) {
 
     if let Some(values) = registers.read(reg_name) {
         if let Some(yank) = values.first() {
-            let transaction =
-                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    let max_to = rope_end_without_line_ending(&doc.text().slice(..));
-                    let to = std::cmp::min(max_to, range.to() + 1);
-                    (range.from(), to, Some(yank.as_str().into()))
-                });
+            let selection = doc
+                .selection(view.id)
+                .clone()
+                .min_width_1(doc.text().slice(..));
+            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+                if !range.is_empty() {
+                    (range.from(), range.to(), Some(yank.as_str().into()))
+                } else {
+                    (range.from(), range.to(), None)
+                }
+            });
 
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view.id);
@@ -2932,12 +2940,13 @@ fn replace_selections_with_clipboard_impl(editor: &mut Editor) {
 
     match editor.clipboard_provider.get_contents() {
         Ok(contents) => {
-            let transaction =
-                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                    let max_to = rope_end_without_line_ending(&doc.text().slice(..));
-                    let to = std::cmp::min(max_to, range.to() + 1);
-                    (range.from(), to, Some(contents.as_str().into()))
-                });
+            let selection = doc
+                .selection(view.id)
+                .clone()
+                .min_width_1(doc.text().slice(..));
+            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+                (range.from(), range.to(), Some(contents.as_str().into()))
+            });
 
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view.id);
@@ -3575,18 +3584,13 @@ fn surround_add(cx: &mut Context) {
         {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
-            let selection = doc.selection(view.id);
+            let selection = doc.selection(view.id).clone().min_width_1(text);
             let (open, close) = surround::get_pair(ch);
 
             let mut changes = Vec::new();
             for (i, range) in selection.iter().enumerate() {
-                let from = range.from();
-                let line = text.char_to_line(range.to());
-                let max_to = rope_end_without_line_ending(&text);
-                let to = std::cmp::min(range.to() + 1, max_to);
-
-                changes.push((from, from, Some(Tendril::from_char(open))));
-                changes.push((to, to, Some(Tendril::from_char(close))));
+                changes.push((range.from(), range.from(), Some(Tendril::from_char(open))));
+                changes.push((range.to(), range.to(), Some(Tendril::from_char(close))));
             }
 
             let transaction = Transaction::change(doc.text(), changes.into_iter());
@@ -3612,9 +3616,9 @@ fn surround_replace(cx: &mut Context) {
                 {
                     let (view, doc) = current!(cx.editor);
                     let text = doc.text().slice(..);
-                    let selection = doc.selection(view.id);
+                    let selection = doc.selection(view.id).clone().min_width_1(text);
 
-                    let change_pos = match surround::get_surround_pos(text, selection, from, count)
+                    let change_pos = match surround::get_surround_pos(text, &selection, from, count)
                     {
                         Some(c) => c,
                         None => return,
@@ -3646,9 +3650,9 @@ fn surround_delete(cx: &mut Context) {
         {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
-            let selection = doc.selection(view.id);
+            let selection = doc.selection(view.id).clone().min_width_1(text);
 
-            let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
+            let change_pos = match surround::get_surround_pos(text, &selection, ch, count) {
                 Some(c) => c,
                 None => return,
             };
