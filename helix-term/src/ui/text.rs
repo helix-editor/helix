@@ -1,14 +1,7 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::compositor::{Component, Context};
 use tui::buffer::Buffer as Surface;
 
-use std::borrow::Cow;
-
-use helix_core::Position;
-use helix_view::{
-    graphics::{Color, Rect, Style},
-    Editor,
-};
+use helix_view::graphics::Rect;
 
 pub struct Text {
     contents: String,

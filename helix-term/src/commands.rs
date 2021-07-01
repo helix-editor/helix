@@ -1,20 +1,21 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
     line_ending::{
-        get_line_ending, get_line_ending_of_str, line_end_char_index, rope_end_without_line_ending,
+        get_line_ending_of_str, line_end_char_index, rope_end_without_line_ending,
         str_is_line_ending,
     },
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register::{self, Register, Registers},
-    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction, DEFAULT_LINE_ENDING,
+    register::Register,
+    search, selection, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
     document::{IndentStyle, Mode},
+    editor::Action,
     input::KeyEvent,
     keyboard::KeyCode,
     view::{View, PADDING},
@@ -25,19 +26,19 @@ use anyhow::anyhow;
 use helix_lsp::{
     lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
-    LspProgressMap, OffsetEncoding,
+    OffsetEncoding,
 };
 use insert::*;
 use movement::Movement;
 
 use crate::{
-    compositor::{self, Callback, Component, Compositor},
-    ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
+    compositor::{self, Component, Compositor},
+    ui::{self, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::job::{self, Job, JobFuture, Jobs};
+use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, TryFutureExt};
-use std::{fmt, future::Future, path::Display, str::FromStr};
+use std::{fmt, future::Future};
 
 use std::{
     borrow::Cow,
@@ -1148,7 +1149,6 @@ mod cmd {
         cx: &mut compositor::Context,
         path: Option<P>,
     ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
-        use anyhow::anyhow;
         let jobs = &mut cx.jobs;
         let (view, doc) = current!(cx.editor);
 
@@ -1723,7 +1723,6 @@ fn command_mode(cx: &mut Context) {
             // simple heuristic: if there's no just one part, complete command name.
             // if there's a space, per command completion kicks in.
             if parts.len() <= 1 {
-                use std::{borrow::Cow, ops::Range};
                 let end = 0..;
                 cmd::TYPABLE_COMMAND_LIST
                     .iter()
@@ -1753,8 +1752,6 @@ fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            use helix_view::editor::Action;
-
             if event != PromptEvent::Validate {
                 return;
             }
@@ -1792,7 +1789,6 @@ fn file_picker(cx: &mut Context) {
 }
 
 fn buffer_picker(cx: &mut Context) {
-    use std::path::{Path, PathBuf};
     let current = view!(cx.editor).doc;
 
     let picker = Picker::new(
@@ -1815,7 +1811,6 @@ fn buffer_picker(cx: &mut Context) {
             }
         },
         |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
-            use helix_view::editor::Action;
             editor.switch(*id, Action::Replace);
         },
     );
@@ -2145,8 +2140,6 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    use helix_view::editor::Action;
-
     push_jump(editor);
 
     fn jump_to(
@@ -3181,7 +3174,6 @@ fn completion(cx: &mut Context) {
             if items.is_empty() {
                 return;
             }
-            use crate::compositor::AnyComponent;
             let size = compositor.size();
             let ui = compositor
                 .find(std::any::type_name::<ui::EditorView>())
@@ -3332,11 +3324,7 @@ fn rotate_view(cx: &mut Context) {
 }
 
 // split helper, clear it later
-use helix_view::editor::Action;
-
-use self::cmd::TypableCommand;
 fn split(cx: &mut Context, action: Action) {
-    use helix_view::editor::Action;
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();

@@ -1,36 +1,22 @@
 use helix_core::syntax;
-use helix_lsp::{lsp, LspProgressMap};
-use helix_view::{document::Mode, graphics::Rect, theme, Document, Editor, Theme, View};
+use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_view::{theme, Editor};
 
-use crate::{
-    args::Args,
-    compositor::Compositor,
-    config::Config,
-    job::Jobs,
-    keymap::Keymaps,
-    ui::{self, Spinner},
-};
+use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
-use log::{error, info};
+use log::error;
 
 use std::{
-    collections::HashMap,
-    future::Future,
-    io::{self, stdout, Stdout, Write},
-    path::PathBuf,
-    pin::Pin,
+    io::{stdout, Write},
     sync::Arc,
-    time::Duration,
 };
 
-use anyhow::{Context, Error};
+use anyhow::Error;
 
 use crossterm::{
     event::{Event, EventStream},
     execute, terminal,
 };
-
-use futures_util::{future, stream::FuturesUnordered};
 
 pub struct Application {
     compositor: Compositor,
@@ -239,10 +225,9 @@ impl Application {
                                 .into_iter()
                                 .filter_map(|diagnostic| {
                                     use helix_core::{
-                                        diagnostic::{Range, Severity, Severity::*},
+                                        diagnostic::{Range, Severity::*},
                                         Diagnostic,
                                     };
-                                    use helix_lsp::{lsp, util::lsp_pos_to_pos};
                                     use lsp::DiagnosticSeverity;
 
                                     let language_server = doc.language_server().unwrap();
