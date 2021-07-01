@@ -40,6 +40,7 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, TryFutureExt};
+use std::collections::HashMap;
 use std::{fmt, future::Future};
 
 use std::{
@@ -74,6 +75,16 @@ impl<'a> Context<'a> {
         on_next_key_callback: impl FnOnce(&mut Context, KeyEvent) + 'static,
     ) {
         self.on_next_key_callback = Some(Box::new(on_next_key_callback));
+    }
+
+    #[inline]
+    pub fn on_next_key_mode(&mut self, map: HashMap<KeyEvent, fn(&mut Context)>) {
+        self.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
+            if let Some(func) = map.get(&event) {
+                func(cx);
+            }
+        });
     }
 
     #[inline]
@@ -3406,84 +3417,95 @@ macro_rules! mode_info {
     // TODO: how to use one expr for both pat and expr?
     // TODO: how to use replaced function name as str at compile time?
     // TODO: extend to support multiple keys, but first solve the other two
-    {$name:literal, $cx:expr, $($key:expr => $func:expr; $desc:literal),+,} => {
-        mode_info! {
-            $name, $cx,
-            $($key; $key => $func; $desc,)+
+    (@join $first:expr $(,$rest:expr)*) => {
+        concat!($first, $(", ", $rest),*)
+    };
+    {$mode:ident, $name:literal, $(#[doc = $desc:literal] $($key:expr),+ => $func:expr),+,} => {
+        #[doc = $name]
+        #[doc = ""]
+        #[doc = "<table><tr><th>key</th><th>desc</th></tr><tbody>"]
+        $(
+        #[doc = "<tr><td>"]
+        #[doc = mode_info!(@join $($key),+)]
+        #[doc = "</td><td>"]
+        #[doc = $desc]
+        #[doc = "</td></tr>"]
+        )+
+        #[doc = "</tbody></table>"]
+        pub fn $mode(cx: &mut Context) {
+            cx.editor.autoinfo = Some(Info::key(
+                $name,
+                vec![$((vec![$($key.parse().unwrap()),+], $desc)),+],
+            ));
+            use helix_core::hashmap;
+            let mut map = hashmap! {
+                $($($key.parse::<KeyEvent>().unwrap() => $func as for<'r, 's> fn(&'r mut Context<'s>)),+),*
+            };
+            cx.on_next_key_mode(map);
         }
     };
-    {$name:literal, $cx:expr, $($key:expr; $keyp:pat => $func:expr; $desc:literal),+,} => {
-        $cx.editor.autoinfo = Some(Info::key(
-            $name,
-            vec![
-                $(
-                (vec![$key], $desc),
-                )+
-            ],
-        ));
-        $cx.on_next_key(move |cx, event| {
-            cx.editor.autoinfo = None;
-            match event {
-                $(
-                $keyp => $func(cx),
-                )+
-                _ => {}
-            }
-        })
-    }
 }
 
-fn space_mode(cx: &mut Context) {
-    mode_info! {
-        "space mode", cx,
-        key!('f'); key!('f') => file_picker; "file picker",
-        key!('b'); key!('b') => buffer_picker; "buffer picker",
-        key!('s'); key!('s') => symbol_picker; "symbol picker",
-        key!('w'); key!('w') => window_mode; "window mode",
-        key!('y'); key!('y') => yank_joined_to_clipboard; "yank joined to clipboard",
-        key!('Y'); key!('Y') => yank_main_selection_to_clipboard; "yank main selection to clipboard",
-        key!('p'); key!('p') => paste_clipboard_after; "paste system clipboard after selections",
-        key!('P'); key!('P') => paste_clipboard_before; "paste system clipboard before selections",
-        key!('R'); key!('R') => replace_selections_with_clipboard; "replace selections with clipboard",
-        key!(' '); key!(' ') => keep_primary_selection; "keep primary selection",
-    }
+mode_info! {
+    space_mode, "space mode",
+    /// file picker
+    "f" => file_picker,
+    /// buffer picker
+    "b" => buffer_picker,
+    /// symbol picker
+    "s" => symbol_picker,
+    /// window mode
+    "w" => window_mode,
+    /// yank joined to clipboard
+    "y" => yank_joined_to_clipboard,
+    /// yank main selection to clipboard
+    "Y" => yank_main_selection_to_clipboard,
+    /// paste system clipboard after selections
+    "p" => paste_clipboard_after,
+    /// paste system clipboard before selections
+    "P" => paste_clipboard_before,
+    /// replace selections with clipboard
+    "R" => replace_selections_with_clipboard,
+    /// keep primary selection
+    "space" => keep_primary_selection,
 }
 
 // TODO: generated, delete it later
-// fn space_mode(cx: &mut Context) {
+// /// space mode
+// ///
+// /// | key | desc |
+// /// |-----|------|
+// /// | f   | file picker |
+// /// | b   | buffer picker |
+// /// ...
+// pub fn space_mode(cx: &mut Context) {
 //     cx.editor.autoinfo = Some(Info::key(
-//         "space",
+//         "space mode",
 //         vec![
-//             (vec![key!('f')], "file picker"),
-//             (vec![key!('b')], "buffer picker"),
-//             (vec![key!('s')], "symbol picker"),
-//             (vec![key!('w')], "window mode"),
-//             (vec![key!('y')], "yank joined to clipboard"),
-//             (vec![key!('Y')], "yank main selection to clipboard"),
-//             (vec![key!('p')], "paste clipboard after"),
-//             (vec![key!('P')], "paste clipboard before"),
-//             (vec![key!('R')], "replace selections with clipboard"),
-//             (vec![key!(' ')], "keep primary selection"),
+//             (vec!["f".parse().unwrap()], "file picker"),
+//             (vec!["b".parse().unwrap()], "buffer picker"),
+//             (vec!["s".parse().unwrap()], "symbol picker"),
+//             (vec!["w".parse().unwrap()], "window mode"),
+//             (vec!["y".parse().unwrap()], "yank joined to clipboard"),
+//             (vec!["Y".parse().unwrap()], "yank main selection to clipboard"),
+//             (vec!["p".parse().unwrap()], "paste system clipboard after selections"),
+//             (vec!["P".parse().unwrap()], "paste system clipboard before selections"),
+//             (vec!["R".parse().unwrap()], "replace selections with clipboard"),
+//             (vec![" ".parse().unwrap()], "keep primary selection"),
 //         ],
 //     ));
-//     cx.on_next_key(move |cx, event| {
-//         cx.editor.autoinfo = None;
-//         match event {
-//             key!('f') => file_picker(cx),
-//             key!('b') => buffer_picker(cx),
-//             key!('s') => symbol_picker(cx),
-//             key!('w') => window_mode(cx),
-//             key!('y') => yank_joined_to_clipboard(cx),
-//             key!('Y') => yank_main_selection_to_clipboard(cx),
-//             key!('p') => paste_clipboard_after(cx),
-//             key!('P') => paste_clipboard_before(cx),
-//             key!('R') => replace_selections_with_clipboard(cx),
-//             // key!(' ') => toggle_alternate_buffer(cx),
-//             // TODO: temporary since space mode took its old key
-//             key!(' ') => keep_primary_selection(cx),
-//             _ => {}
-//         }
-//     })
+//     let mut map: HashMap<KeyEvent, fn(&mut Context)> = HashMap::with_capacity(10);
+//     map.insert("f".parse().unwrap(), file_picker);
+//     map.insert("b".parse().unwrap(), buffer_picker);
+//     map.insert("s".parse().unwrap(), symbol_picker);
+//     map.insert("w".parse().unwrap(), window_mode);
+//     map.insert("y".parse().unwrap(), yank_joined_to_clipboard);
+//     map.insert("Y".parse().unwrap(), yank_main_selection_to_clipboard);
+//     map.insert("p".parse().unwrap(), paste_clipboard_after);
+//     map.insert("P".parse().unwrap(), paste_clipboard_before);
+//     map.insert("R".parse().unwrap(), replace_selections_with_clipboard);
+//     map.insert(" ".parse().unwrap(), keep_primary_selection);
+//     cx.on_next_key_mode(map);
 // }
 
 fn view_mode(cx: &mut Context) {
