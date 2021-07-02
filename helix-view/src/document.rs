@@ -592,11 +592,7 @@ impl Document {
         }
     }
 
-    /// Reload buffer
-    ///
-    /// If `force` is true, then it will attempt to reload from the source file,
-    /// otherwise it will reload the buffer as-is, which is helpful when you need
-    /// to preserve changes.
+    /// Reload the document from its path.
     pub fn reload(&mut self, view_id: ViewId) -> Result<(), Error> {
         let encoding = &self.encoding;
         let path = self.path().filter(|path| path.exists());
