@@ -16,7 +16,7 @@ pub struct Info {
 }
 
 impl Info {
-    pub fn key(title: &'static str, body: Vec<(Vec<KeyEvent>, &'static str)>) -> Info {
+    pub fn key(title: &'static str, body: Vec<(&[KeyEvent], &'static str)>) -> Info {
         let keymaps_width: u16 = body
             .iter()
             .map(|r| r.0.iter().map(|e| e.width() as u16 + 2).sum::<u16>() - 2)
@@ -25,11 +25,11 @@ impl Info {
         let mut text = String::new();
         let mut width = 0;
         let height = body.len() as u16;
-        for (mut keyevents, desc) in body {
-            let keyevent = keyevents.remove(0);
+        for (keyevents, desc) in body {
+            let keyevent = keyevents[0];
             let mut left = keymaps_width - keyevent.width() as u16;
             write!(text, "{}", keyevent).ok();
-            for keyevent in keyevents {
+            for keyevent in &keyevents[1..] {
                 write!(text, ", {}", keyevent).ok();
                 left -= 2 + keyevent.width() as u16;
             }

@@ -1,11 +1,7 @@
 pub use crate::commands::Command;
 use crate::config::Config;
 use helix_core::hashmap;
-use helix_view::{
-    document::Mode,
-    input::KeyEvent,
-    keyboard::{KeyCode, KeyModifiers},
-};
+use helix_view::{document::Mode, input::KeyEvent};
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -352,6 +348,7 @@ pub fn merge_keys(mut config: Config) -> Config {
 
 #[test]
 fn merge_partial_keys() {
+    use helix_view::keyboard::{KeyCode, KeyModifiers};
     let config = Config {
         keys: Keymaps(hashmap! {
             Mode::Normal => hashmap! {
