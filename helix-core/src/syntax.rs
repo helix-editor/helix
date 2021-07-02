@@ -567,7 +567,6 @@ impl LanguageLayer {
     ) -> Vec<tree_sitter::InputEdit> {
         use Operation::*;
         let mut old_pos = 0;
-        let mut new_pos = 0;
 
         let mut edits = Vec::new();
 
@@ -611,9 +610,7 @@ impl LanguageLayer {
             let mut old_end = old_pos + len;
 
             match change {
-                Retain(_) => {
-                    new_pos += len;
-                }
+                Retain(_) => {}
                 Delete(_) => {
                     let (start_byte, start_position) = point_at_pos(old_text, old_pos);
                     let (old_end_byte, old_end_position) = point_at_pos(old_text, old_end);
@@ -636,8 +633,6 @@ impl LanguageLayer {
                 }
                 Insert(s) => {
                     let (start_byte, start_position) = point_at_pos(old_text, old_pos);
-
-                    let ins = s.chars().count();
 
                     // a subsequent delete means a replace, consume it
                     if let Some(Delete(len)) = iter.peek() {
@@ -666,8 +661,6 @@ impl LanguageLayer {
                             new_end_position: traverse(start_position, s), // old pos + chars, newlines matter too (iter over)
                         });
                     }
-
-                    new_pos += ins;
                 }
             }
             old_pos = old_end;
