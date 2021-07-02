@@ -1,15 +1,15 @@
-use ropey::{Rope, RopeSlice};
+use ropey::RopeSlice;
 
 use crate::chars::{categorize_char, char_is_line_ending, char_is_whitespace, CharCategory};
 use crate::movement::{self, Direction};
 use crate::surround;
 use crate::Range;
 
-fn this_word_end_pos(slice: RopeSlice, mut pos: usize) -> usize {
+fn this_word_end_pos(slice: RopeSlice, pos: usize) -> usize {
     this_word_bound_pos(slice, pos, Direction::Forward)
 }
 
-fn this_word_start_pos(slice: RopeSlice, mut pos: usize) -> usize {
+fn this_word_start_pos(slice: RopeSlice, pos: usize) -> usize {
     this_word_bound_pos(slice, pos, Direction::Backward)
 }
 
@@ -95,15 +95,6 @@ pub fn textobject_word(
         }
     };
     Range::new(anchor, head)
-}
-
-pub fn textobject_paragraph(
-    slice: RopeSlice,
-    range: Range,
-    textobject: TextObject,
-    count: usize,
-) -> Range {
-    Range::point(0)
 }
 
 pub fn textobject_surround(

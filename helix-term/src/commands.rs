@@ -3507,7 +3507,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
 
-            let selection = doc.selection(view.id).transform(|mut range| {
+            let selection = doc.selection(view.id).transform(|range| {
                 match ch {
                     'w' => textobject::textobject_word(text, range, objtype, count),
                     // TODO: cancel new ranges if inconsistent surround matches across lines

@@ -186,7 +186,9 @@ impl CharHelpers for Chars<'_> {
     fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
         // Characters are iterated forward or backwards depending on the motion direction.
         let characters: Box<dyn Iterator<Item = char>> = match target {
-            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart | WordMotionTarget::PrevWordEnd => {
+            WordMotionTarget::PrevWordStart
+            | WordMotionTarget::PrevLongWordStart
+            | WordMotionTarget::PrevWordEnd => {
                 self.next();
                 Box::new(from_fn(|| self.prev()))
             }
@@ -195,9 +197,9 @@ impl CharHelpers for Chars<'_> {
 
         // Index advancement also depends on the direction.
         let advance: &dyn Fn(&mut usize) = match target {
-            WordMotionTarget::PrevWordStart | WordMotionTarget::PrevLongWordStart | WordMotionTarget::PrevWordEnd => {
-                &|u| *u = u.saturating_sub(1)
-            }
+            WordMotionTarget::PrevWordStart
+            | WordMotionTarget::PrevLongWordStart
+            | WordMotionTarget::PrevWordEnd => &|u| *u = u.saturating_sub(1),
             _ => &|u| *u += 1,
         };
 
