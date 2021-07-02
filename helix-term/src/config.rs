@@ -1,9 +1,9 @@
-use anyhow::{Error, Result};
 use serde::Deserialize;
-use std::collections::HashMap;
 
-use crate::commands::Command;
 use crate::keymap::Keymaps;
+
+#[cfg(test)]
+use crate::commands::Command;
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 pub struct Config {

@@ -1,20 +1,21 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
     line_ending::{
-        get_line_ending, get_line_ending_of_str, line_end_char_index, rope_end_without_line_ending,
+        get_line_ending_of_str, line_end_char_index, rope_end_without_line_ending,
         str_is_line_ending,
     },
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    register::{self, Register, Registers},
-    search, selection, Change, ChangeSet, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction, DEFAULT_LINE_ENDING,
+    register::Register,
+    search, selection, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
+    SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
     document::{IndentStyle, Mode},
+    editor::Action,
     input::KeyEvent,
     keyboard::KeyCode,
     view::{View, PADDING},
@@ -25,19 +26,19 @@ use anyhow::anyhow;
 use helix_lsp::{
     lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
-    LspProgressMap, OffsetEncoding,
+    OffsetEncoding,
 };
 use insert::*;
 use movement::Movement;
 
 use crate::{
-    compositor::{self, Callback, Component, Compositor},
-    ui::{self, Completion, Picker, Popup, Prompt, PromptEvent},
+    compositor::{self, Component, Compositor},
+    ui::{self, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::job::{self, Job, JobFuture, Jobs};
+use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, TryFutureExt};
-use std::{fmt, future::Future, path::Display, str::FromStr};
+use std::{fmt, future::Future};
 
 use std::{
     borrow::Cow,
@@ -59,7 +60,7 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     /// Push a new component onto the compositor.
-    pub fn push_layer(&mut self, mut component: Box<dyn Component>) {
+    pub fn push_layer(&mut self, component: Box<dyn Component>) {
         self.callback = Some(Box::new(|compositor: &mut Compositor| {
             compositor.push(component)
         }));
@@ -492,7 +493,7 @@ fn extend_next_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).transform(|mut range| {
+    let selection = doc.selection(view.id).transform(|range| {
         let word = movement::move_next_word_start(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
@@ -506,7 +507,7 @@ fn extend_prev_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).transform(|mut range| {
+    let selection = doc.selection(view.id).transform(|range| {
         let word = movement::move_prev_word_start(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
@@ -519,7 +520,7 @@ fn extend_next_word_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).transform(|mut range| {
+    let selection = doc.selection(view.id).transform(|range| {
         let word = movement::move_next_word_end(text, range, count);
         let pos = word.head;
         Range::new(range.anchor, pos)
@@ -570,7 +571,7 @@ where
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
 
-        let selection = doc.selection(view.id).transform(|mut range| {
+        let selection = doc.selection(view.id).transform(|range| {
             search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
                 if extend {
                     Range::new(range.anchor, pos)
@@ -928,7 +929,7 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
 
 // TODO: use one function for search vs extend
 fn search(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    let (_, doc) = current!(cx.editor);
 
     // TODO: could probably share with select_on_matches?
 
@@ -936,7 +937,6 @@ fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let view_id = view.id;
     let prompt = ui::regex_prompt(
         cx,
         "search:".to_string(),
@@ -988,7 +988,7 @@ fn extend_line(cx: &mut Context) {
     let line_start = text.char_to_line(pos.anchor);
     let start = text.line_to_char(line_start);
     let line_end = text.char_to_line(pos.head);
-    let mut end = line_end_char_index(&text.slice(..), line_end);
+    let mut end = line_end_char_index(&text.slice(..), line_end + count.saturating_sub(1));
 
     if pos.anchor == start && pos.head == end && line_end < (text.len_lines() - 2) {
         end = line_end_char_index(&text.slice(..), line_end + 1);
@@ -1011,7 +1011,6 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
             let alltext = doc.text().slice(..);
-            let line = alltext.char_to_line(range.head);
             let max_to = rope_end_without_line_ending(&alltext);
             let to = std::cmp::min(max_to, range.to() + 1);
             (range.from(), to, None)
@@ -1118,7 +1117,7 @@ mod cmd {
         pub completer: Option<Completer>,
     }
 
-    fn quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn quit(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         // last view and we have unsaved changes
         if cx.editor.tree.views().count() == 1 && buffers_remaining_impl(cx.editor) {
             return;
@@ -1127,16 +1126,16 @@ mod cmd {
             .close(view!(cx.editor).id, /* close_buffer */ false);
     }
 
-    fn force_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn force_quit(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         cx.editor
             .close(view!(cx.editor).id, /* close_buffer */ false);
     }
 
-    fn open(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn open(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         match args.get(0) {
             Some(path) => {
                 // TODO: handle error
-                cx.editor.open(path.into(), Action::Replace);
+                let _ = cx.editor.open(path.into(), Action::Replace);
             }
             None => {
                 cx.editor.set_error("wrong argument count".to_string());
@@ -1148,9 +1147,8 @@ mod cmd {
         cx: &mut compositor::Context,
         path: Option<P>,
     ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
-        use anyhow::anyhow;
         let jobs = &mut cx.jobs;
-        let (view, doc) = current!(cx.editor);
+        let (_, doc) = current!(cx.editor);
 
         if let Some(path) = path {
             if let Err(err) = doc.set_path(path.as_ref()) {
@@ -1174,7 +1172,7 @@ mod cmd {
         Ok(tokio::spawn(doc.format_and_save(fmt)))
     }
 
-    fn write(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn write(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         match write_impl(cx, args.first()) {
             Err(e) => cx.editor.set_error(e.to_string()),
             Ok(handle) => {
@@ -1184,11 +1182,11 @@ mod cmd {
         };
     }
 
-    fn new_file(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn new_file(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         cx.editor.new_file(Action::Replace);
     }
 
-    fn format(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn format(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         let (_, doc) = current!(cx.editor);
 
         if let Some(format) = doc.format() {
@@ -1198,7 +1196,7 @@ mod cmd {
         }
     }
 
-    fn set_indent_style(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn set_indent_style(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         use IndentStyle::*;
 
         // If no argument, report current indent style.
@@ -1236,7 +1234,7 @@ mod cmd {
     }
 
     /// Sets or reports the current document's line ending setting.
-    fn set_line_ending(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn set_line_ending(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         use LineEnding::*;
 
         // If no argument, report current line ending setting.
@@ -1275,7 +1273,7 @@ mod cmd {
         }
     }
 
-    fn earlier(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn earlier(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
             Err(msg) => {
@@ -1287,7 +1285,7 @@ mod cmd {
         doc.earlier(view.id, uk)
     }
 
-    fn later(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn later(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         let uk = match args.join(" ").parse::<helix_core::history::UndoKind>() {
             Ok(uk) => uk,
             Err(msg) => {
@@ -1315,7 +1313,6 @@ mod cmd {
     }
 
     fn force_write_quit(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
         match write_impl(cx, args.first()) {
             Ok(handle) => {
                 if let Err(e) = helix_lsp::block_on(handle) {
@@ -1357,20 +1354,22 @@ mod cmd {
 
     fn write_all_impl(
         editor: &mut Editor,
-        args: &[&str],
-        event: PromptEvent,
+        _args: &[&str],
+        _event: PromptEvent,
         quit: bool,
         force: bool,
     ) {
         let mut errors = String::new();
 
         // save all documents
-        for (id, mut doc) in &mut editor.documents {
+        for (_, doc) in &mut editor.documents {
             if doc.path().is_none() {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
             }
-            helix_lsp::block_on(tokio::spawn(doc.save()));
+
+            // TODO: handle error.
+            let _ = helix_lsp::block_on(tokio::spawn(doc.save()));
         }
         editor.set_error(errors);
 
@@ -1399,7 +1398,7 @@ mod cmd {
         write_all_impl(&mut cx.editor, args, event, true, true)
     }
 
-    fn quit_all_impl(editor: &mut Editor, args: &[&str], event: PromptEvent, force: bool) {
+    fn quit_all_impl(editor: &mut Editor, _args: &[&str], _event: PromptEvent, force: bool) {
         if !force && buffers_remaining_impl(editor) {
             return;
         }
@@ -1419,7 +1418,7 @@ mod cmd {
         quit_all_impl(&mut cx.editor, args, event, true)
     }
 
-    fn theme(cx: &mut compositor::Context, args: &[&str], event: PromptEvent) {
+    fn theme(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         let theme = if let Some(theme) = args.first() {
             theme
         } else {
@@ -1430,11 +1429,15 @@ mod cmd {
         cx.editor.set_theme_from_name(theme);
     }
 
-    fn yank_main_selection_to_clipboard(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+    fn yank_main_selection_to_clipboard(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) {
         yank_main_selection_to_clipboard_impl(&mut cx.editor);
     }
 
-    fn yank_joined_to_clipboard(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
+    fn yank_joined_to_clipboard(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         let (_, doc) = current!(cx.editor);
         let separator = args
             .first()
@@ -1443,15 +1446,19 @@ mod cmd {
         yank_joined_to_clipboard_impl(&mut cx.editor, separator);
     }
 
-    fn paste_clipboard_after(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+    fn paste_clipboard_after(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         paste_clipboard_impl(&mut cx.editor, Paste::After);
     }
 
-    fn paste_clipboard_before(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+    fn paste_clipboard_before(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         paste_clipboard_impl(&mut cx.editor, Paste::After);
     }
 
-    fn replace_selections_with_clipboard(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+    fn replace_selections_with_clipboard(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) {
         let (view, doc) = current!(cx.editor);
 
         match cx.editor.clipboard_provider.get_contents() {
@@ -1470,12 +1477,12 @@ mod cmd {
         }
     }
 
-    fn show_clipboard_provider(cx: &mut compositor::Context, _: &[&str], _: PromptEvent) {
+    fn show_clipboard_provider(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         cx.editor
             .set_status(cx.editor.clipboard_provider.name().into());
     }
 
-    fn change_current_directory(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
+    fn change_current_directory(cx: &mut compositor::Context, args: &[&str], _event: PromptEvent) {
         let dir = match args.first() {
             Some(dir) => dir,
             None => {
@@ -1503,7 +1510,7 @@ mod cmd {
         }
     }
 
-    fn show_current_directory(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
+    fn show_current_directory(cx: &mut compositor::Context, _args: &[&str], _event: PromptEvent) {
         match std::env::current_dir() {
             Ok(cwd) => cx
                 .editor
@@ -1754,7 +1761,6 @@ fn command_mode(cx: &mut Context) {
             // simple heuristic: if there's no just one part, complete command name.
             // if there's a space, per command completion kicks in.
             if parts.len() <= 1 {
-                use std::{borrow::Cow, ops::Range};
                 let end = 0..;
                 cmd::TYPABLE_COMMAND_LIST
                     .iter()
@@ -1784,8 +1790,6 @@ fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            use helix_view::editor::Action;
-
             if event != PromptEvent::Validate {
                 return;
             }
@@ -1823,7 +1827,6 @@ fn file_picker(cx: &mut Context) {
 }
 
 fn buffer_picker(cx: &mut Context) {
-    use std::path::{Path, PathBuf};
     let current = view!(cx.editor).doc;
 
     let picker = Picker::new(
@@ -1846,7 +1849,6 @@ fn buffer_picker(cx: &mut Context) {
             }
         },
         |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
-            use helix_view::editor::Action;
             editor.switch(*id, Action::Replace);
         },
     );
@@ -1872,7 +1874,7 @@ fn symbol_picker(cx: &mut Context) {
             nested_to_flat(list, file, child);
         }
     }
-    let (view, doc) = current!(cx.editor);
+    let (_, doc) = current!(cx.editor);
 
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
@@ -1963,7 +1965,7 @@ async fn make_format_callback(
     format: impl Future<Output = helix_lsp::util::LspFormatting> + Send + 'static,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await;
-    let call: job::Callback = Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+    let call: job::Callback = Box::new(move |editor: &mut Editor, _compositor: &mut Compositor| {
         let view_id = view!(editor).id;
         if let Some(doc) = editor.document_mut(doc_id) {
             if doc.version() == doc_version {
@@ -2137,9 +2139,6 @@ fn goto_mode(cx: &mut Context) {
                 (_, 't') | (_, 'm') | (_, 'b') => {
                     let (view, doc) = current!(cx.editor);
 
-                    let pos = doc.selection(view.id).cursor();
-                    let line = doc.text().char_to_line(pos);
-
                     let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
 
                     let last_line = view.last_line(doc);
@@ -2176,8 +2175,6 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    use helix_view::editor::Action;
-
     push_jump(editor);
 
     fn jump_to(
@@ -2190,7 +2187,7 @@ fn goto_impl(
             .uri
             .to_file_path()
             .expect("unable to convert URI to filepath");
-        let id = editor.open(path, action).expect("editor.open failed");
+        let _id = editor.open(path, action).expect("editor.open failed");
         let (view, doc) = current!(editor);
         let definition_pos = location.range.start;
         // TODO: convert inside server
@@ -2212,7 +2209,7 @@ fn goto_impl(
             editor.set_error("No definition found.".to_string());
         }
         _locations => {
-            let mut picker = ui::Picker::new(
+            let picker = ui::Picker::new(
                 locations,
                 |location| {
                     let file = location.uri.as_str();
@@ -2379,9 +2376,8 @@ fn goto_pos(editor: &mut Editor, pos: usize) {
 
 fn goto_first_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
-    let (view, doc) = current!(editor);
+    let (_, doc) = current!(editor);
 
-    let cursor_pos = doc.selection(view.id).cursor();
     let diag = if let Some(diag) = doc.diagnostics().first() {
         diag.range.start
     } else {
@@ -2393,9 +2389,8 @@ fn goto_first_diag(cx: &mut Context) {
 
 fn goto_last_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
-    let (view, doc) = current!(editor);
+    let (_, doc) = current!(editor);
 
-    let cursor_pos = doc.selection(view.id).cursor();
     let diag = if let Some(diag) = doc.diagnostics().last() {
         diag.range.start
     } else {
@@ -2467,8 +2462,8 @@ fn signature_help(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
+        move |_editor: &mut Editor,
+              _compositor: &mut Compositor,
               response: Option<lsp::SignatureHelp>| {
             if let Some(signature_help) = response {
                 log::info!("{:?}", signature_help);
@@ -3040,8 +3035,10 @@ fn format_selections(cx: &mut Context) {
         .map(|range| range_to_lsp_range(doc.text(), *range, language_server.offset_encoding()))
         .collect();
 
-    for range in ranges {
-        let language_server = match doc.language_server() {
+    // TODO: all of the TODO's and commented code inside the loop,
+    // to make this actually work.
+    for _range in ranges {
+        let _language_server = match doc.language_server() {
             Some(language_server) => language_server,
             None => return,
         };
@@ -3089,7 +3086,7 @@ fn join_selections(cx: &mut Context) {
         changes.reserve(lines.len());
 
         for line in lines {
-            let mut start = line_end_char_index(&slice, line);
+            let start = line_end_char_index(&slice, line);
             let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
@@ -3212,7 +3209,6 @@ fn completion(cx: &mut Context) {
             if items.is_empty() {
                 return;
             }
-            use crate::compositor::AnyComponent;
             let size = compositor.size();
             let ui = compositor
                 .find(std::any::type_name::<ui::EditorView>())
@@ -3266,7 +3262,7 @@ fn hover(cx: &mut Context) {
                 // skip if contents empty
 
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let mut popup = Popup::new(contents);
+                let popup = Popup::new(contents);
                 compositor.push(Box::new(popup));
             }
         },
@@ -3310,7 +3306,7 @@ fn match_brackets(cx: &mut Context) {
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
-    let (view, doc) = current!(cx.editor);
+    let (view, _doc) = current!(cx.editor);
 
     if let Some((id, selection)) = view.jumps.forward(count) {
         view.doc = *id;
@@ -3363,11 +3359,7 @@ fn rotate_view(cx: &mut Context) {
 }
 
 // split helper, clear it later
-use helix_view::editor::Action;
-
-use self::cmd::TypableCommand;
 fn split(cx: &mut Context, action: Action) {
-    use helix_view::editor::Action;
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
@@ -3523,10 +3515,7 @@ fn match_mode(cx: &mut Context) {
                 'm' => match_brackets(cx),
                 's' => surround_add(cx),
                 'r' => surround_replace(cx),
-                'd' => {
-                    surround_delete(cx);
-                    let (view, doc) = current!(cx.editor);
-                }
+                'd' => surround_delete(cx),
                 _ => (),
             }
         }
@@ -3548,9 +3537,8 @@ fn surround_add(cx: &mut Context) {
             let (open, close) = surround::get_pair(ch);
 
             let mut changes = Vec::new();
-            for (i, range) in selection.iter().enumerate() {
+            for range in selection.iter() {
                 let from = range.from();
-                let line = text.char_to_line(range.to());
                 let max_to = rope_end_without_line_ending(&text);
                 let to = std::cmp::min(range.to() + 1, max_to);
 

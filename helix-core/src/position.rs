@@ -1,7 +1,7 @@
 use crate::{
     chars::char_is_line_ending,
     graphemes::{nth_next_grapheme_boundary, RopeGraphemes},
-    Rope, RopeSlice,
+    RopeSlice,
 };
 
 /// Represents a single point in a text buffer. Zero indexed.
@@ -70,6 +70,7 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position) -> usize {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Rope;
 
     #[test]
     fn test_ordering() {
@@ -79,8 +80,8 @@ mod test {
 
     #[test]
     fn test_coords_at_pos() {
-        let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
-        let slice = text.slice(..);
+        // let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
+        // let slice = text.slice(..);
         // assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
         // assert_eq!(coords_at_pos(slice, 5), (0, 5).into()); // position on \n
         // assert_eq!(coords_at_pos(slice, 6), (1, 0).into()); // position on w

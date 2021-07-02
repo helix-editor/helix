@@ -1,36 +1,22 @@
 use helix_core::syntax;
-use helix_lsp::{lsp, LspProgressMap};
-use helix_view::{document::Mode, graphics::Rect, theme, Document, Editor, Theme, View};
+use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_view::{theme, Editor};
 
-use crate::{
-    args::Args,
-    compositor::Compositor,
-    config::Config,
-    job::Jobs,
-    keymap::Keymaps,
-    ui::{self, Spinner},
-};
+use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
-use log::{error, info};
+use log::error;
 
 use std::{
-    collections::HashMap,
-    future::Future,
-    io::{self, stdout, Stdout, Write},
-    path::PathBuf,
-    pin::Pin,
+    io::{stdout, Write},
     sync::Arc,
-    time::Duration,
 };
 
-use anyhow::{Context, Error};
+use anyhow::Error;
 
 use crossterm::{
     event::{Event, EventStream},
     execute, terminal,
 };
-
-use futures_util::{future, stream::FuturesUnordered};
 
 pub struct Application {
     compositor: Compositor,
@@ -39,7 +25,14 @@ pub struct Application {
     // TODO should be separate to take only part of the config
     config: Config,
 
+    // Currently never read from.  Remove the `allow(dead_code)` when
+    // that changes.
+    #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
+
+    // Currently never read from.  Remove the `allow(dead_code)` when
+    // that changes.
+    #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
 
     jobs: Jobs,
@@ -47,7 +40,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(mut args: Args, mut config: Config) -> Result<Self, Error> {
+    pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
@@ -80,7 +73,7 @@ impl Application {
 
         let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
 
-        let mut editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
+        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
         if !args.files.is_empty() {
@@ -105,7 +98,7 @@ impl Application {
 
         editor.set_theme(theme);
 
-        let mut app = Self {
+        let app = Self {
             compositor,
             editor,
 
@@ -239,10 +232,9 @@ impl Application {
                                 .into_iter()
                                 .filter_map(|diagnostic| {
                                     use helix_core::{
-                                        diagnostic::{Range, Severity, Severity::*},
+                                        diagnostic::{Range, Severity::*},
                                         Diagnostic,
                                     };
-                                    use helix_lsp::{lsp, util::lsp_pos_to_pos};
                                     use lsp::DiagnosticSeverity;
 
                                     let language_server = doc.language_server().unwrap();
@@ -372,14 +364,10 @@ impl Application {
                             self.editor.set_status(status);
                         }
                     }
-                    _ => unreachable!(),
                 }
             }
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
-                method,
-                params,
-                jsonrpc,
-                id,
+                method, params, id, ..
             }) => {
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
@@ -459,17 +447,20 @@ impl Application {
         // Exit the alternate screen and disable raw mode before panicking
         let hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
-            execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
-            terminal::disable_raw_mode();
+            // We can't handle errors properly inside this closure.  And it's
+            // probably not a good idea to `unwrap()` inside a panic handler.
+            // So we just ignore the `Result`s.
+            let _ = execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
+            let _ = terminal::disable_raw_mode();
             hook(info);
         }));
 
         self.event_loop().await;
 
-        self.editor.close_language_servers(None).await;
+        self.editor.close_language_servers(None).await?;
 
         // reset cursor shape
-        write!(stdout, "\x1B[2 q");
+        write!(stdout, "\x1B[2 q")?;
 
         execute!(stdout, terminal::LeaveAlternateScreen)?;
 

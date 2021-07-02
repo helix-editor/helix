@@ -2,7 +2,7 @@
 //! single selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
-use crate::{Assoc, ChangeSet, Rope, RopeSlice};
+use crate::{Assoc, ChangeSet, RopeSlice};
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 
@@ -345,10 +345,8 @@ pub fn select_on_matches(
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
-        let mut sel_start = sel.from();
-        let sel_end = sel.to();
-
-        let mut start_byte = text.char_to_byte(sel_start);
+        let sel_start = sel.from();
+        let start_byte = text.char_to_byte(sel_start);
 
         for mat in regex.find_iter(&fragment) {
             // TODO: retain range direction
@@ -379,10 +377,10 @@ pub fn split_on_matches(
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
-        let mut sel_start = sel.from();
+        let sel_start = sel.from();
         let sel_end = sel.to();
 
-        let mut start_byte = text.char_to_byte(sel_start);
+        let start_byte = text.char_to_byte(sel_start);
 
         let mut start = sel_start;
 
@@ -406,11 +404,12 @@ pub fn split_on_matches(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Rope;
 
     #[test]
     #[should_panic]
     fn test_new_empty() {
-        let sel = Selection::new(smallvec![], 0);
+        let _ = Selection::new(smallvec![], 0);
     }
 
     #[test]

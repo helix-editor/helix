@@ -1,7 +1,5 @@
-use crate::commands;
 pub use crate::commands::Command;
 use crate::config::Config;
-use anyhow::{anyhow, Error, Result};
 use helix_core::hashmap;
 use helix_view::{
     document::Mode,
@@ -11,9 +9,7 @@ use helix_view::{
 use serde::Deserialize;
 use std::{
     collections::HashMap,
-    fmt::Display,
     ops::{Deref, DerefMut},
-    str::FromStr,
 };
 
 // Kakoune-inspired:
