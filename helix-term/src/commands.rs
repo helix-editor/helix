@@ -1521,6 +1521,24 @@ mod cmd {
         }
     }
 
+    /// Sets the [`Document`]'s encoding..
+    fn set_encoding(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
+        let (_, doc) = current!(cx.editor);
+        if let Some(label) = args.first() {
+            doc.set_encoding(label)
+                .unwrap_or_else(|e| cx.editor.set_error(e.to_string()));
+        } else {
+            let encoding = doc.encoding().name().to_string();
+            cx.editor.set_status(encoding)
+        }
+    }
+
+    /// Reload the [`Document`] from its source file.
+    fn reload(cx: &mut compositor::Context, _args: &[&str], _: PromptEvent) {
+        let (view, doc) = current!(cx.editor);
+        doc.reload(view.id).unwrap();
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1704,6 +1722,20 @@ mod cmd {
             fun: show_current_directory,
             completer: None,
         },
+        TypableCommand {
+            name: "encoding",
+            alias: None,
+            doc: "Set encoding based on `https://encoding.spec.whatwg.org`",
+            fun: set_encoding,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reload",
+            alias: None,
+            doc: "Discard changes and reload from the source file.",
+            fun: reload,
+            completer: None,
+        }
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
