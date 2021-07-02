@@ -134,46 +134,107 @@ mod test {
         let doc = Rope::from("text with chars\nmore lines\n$!@%word   next some");
         let slice = doc.slice(..);
 
-        // initial, textobject, final
-        let cases = &[
-            // cursor at [t]ext
-            ((0, 0), Inner, (0, 3)),  // [with]
-            ((0, 0), Around, (0, 4)), // [with ]
-            // cursor at w[i]th
-            ((6, 6), Inner, (5, 8)),  // [with]
-            ((6, 6), Around, (5, 9)), // [with ]
-            // cursor at text[ ]with
-            ((4, 4), Inner, (4, 4)),  // no change
-            ((4, 4), Around, (4, 8)), // [ with]
-            // cursor at [c]hars
-            ((10, 10), Inner, (10, 14)), // [chars]
-            ((10, 10), Around, (9, 14)), // [ chars]
-            // cursor at char[s]
-            ((14, 14), Inner, (10, 14)), // [chars]
-            ((14, 14), Around, (9, 14)), // [ chars]
-            // cursor at chars[\n]more
-            ((15, 15), Inner, (15, 15)),  // no change
-            ((15, 15), Around, (15, 20)), // [\nmore ]
-            // cursor at [m]ore
-            ((16, 16), Inner, (16, 19)),  // [more]
-            ((16, 16), Around, (16, 20)), // [more ]
-            // cursor at $!@[%]
-            ((30, 30), Inner, (27, 30)), // [$!@%]
-            // ((30, 30), Around, (27, 30)), // [$!@%]
-            // cursor at word [ ] next
-            ((36, 36), Inner, (36, 36)),  // no change
-            ((36, 36), Around, (35, 41)), // word[   next]
-            // cursor at som[e]
-            ((46, 46), Inner, (43, 46)),  // [some]
-            ((46, 46), Around, (42, 46)), // [ some]
+        // text, cursor head, textobject, final range
+        let tests = &[
+            (
+                "cursor at beginning of doc",
+                vec![(0, Inner, (0, 5)), (0, Around, (0, 6))],
+            ),
+            (
+                "cursor at middle of word",
+                vec![
+                    (13, Inner, (10, 15)),
+                    (10, Inner, (10, 15)),
+                    (15, Inner, (10, 15)),
+                    (13, Around, (10, 16)),
+                    (10, Around, (10, 16)),
+                    (15, Around, (10, 16)),
+                ],
+            ),
+            (
+                "cursor between word whitespace",
+                vec![(6, Inner, (6, 6)), (6, Around, (6, 13))],
+            ),
+            (
+                "cursor on word before newline\n",
+                vec![
+                    (22, Inner, (22, 28)),
+                    (28, Inner, (22, 28)),
+                    (25, Inner, (22, 28)),
+                    (22, Around, (21, 28)),
+                    (28, Around, (21, 28)),
+                    (25, Around, (21, 28)),
+                ],
+            ),
+            (
+                "cursor on newline\nnext line",
+                vec![(17, Inner, (17, 17)), (17, Around, (17, 22))],
+            ),
+            (
+                "cursor on word after newline\nnext line",
+                vec![
+                    (29, Inner, (29, 32)),
+                    (30, Inner, (29, 32)),
+                    (32, Inner, (29, 32)),
+                    (29, Around, (29, 33)),
+                    (30, Around, (29, 33)),
+                    (32, Around, (29, 33)),
+                ],
+            ),
+            (
+                "cursor on #$%:;* punctuation",
+                vec![
+                    (13, Inner, (10, 15)),
+                    (10, Inner, (10, 15)),
+                    (15, Inner, (10, 15)),
+                    (13, Around, (10, 16)),
+                    (10, Around, (10, 16)),
+                    (15, Around, (10, 16)),
+                ],
+            ),
+            (
+                "cursor on punc%^#$:;.tuation",
+                vec![
+                    (14, Inner, (14, 20)),
+                    (20, Inner, (14, 20)),
+                    (17, Inner, (14, 20)),
+                    (14, Around, (14, 20)),
+                    // FIXME: edge case
+                    // (20, Around, (14, 20)),
+                    (17, Around, (14, 20)),
+                ],
+            ),
+            (
+                "cursor in   extra whitespace",
+                vec![
+                    (9, Inner, (9, 9)),
+                    (10, Inner, (10, 10)),
+                    (11, Inner, (11, 11)),
+                    (9, Around, (9, 16)),
+                    (10, Around, (9, 16)),
+                    (11, Around, (9, 16)),
+                ],
+            ),
+            (
+                "cursor at end of doc",
+                vec![(19, Inner, (17, 19)), (19, Around, (16, 19))],
+            ),
         ];
 
-        for &case in cases {
-            let (before, textobject, after) = case;
-            let before = Range::new(before.0, before.1);
-            let expected = Range::new(after.0, after.1);
-            let result = textobject_word(slice, before, textobject, 1);
-            assert_eq!(expected, result, "\n{:?}", case);
+        for (sample, scenario) in tests {
+            let doc = Rope::from(*sample);
+            let slice = doc.slice(..);
+            for &case in scenario {
+                let (pos, objtype, expected_range) = case;
+                let result = textobject_word(slice, Range::point(pos), objtype, 1);
+                assert_eq!(
+                    result,
+                    expected_range.into(),
+                    "\nCase failed: {:?} - {:?}",
+                    sample,
+                    case
+                );
+            }
         }
     }
 }
