@@ -131,10 +131,7 @@ mod test {
 
     #[test]
     fn test_textobject_word() {
-        let doc = Rope::from("text with chars\nmore lines\n$!@%word   next some");
-        let slice = doc.slice(..);
-
-        // text, cursor head, textobject, final range
+        // (text, [(cursor position, textobject, final range), ...])
         let tests = &[
             (
                 "cursor at beginning of doc",
@@ -227,6 +224,97 @@ mod test {
             for &case in scenario {
                 let (pos, objtype, expected_range) = case;
                 let result = textobject_word(slice, Range::point(pos), objtype, 1);
+                assert_eq!(
+                    result,
+                    expected_range.into(),
+                    "\nCase failed: {:?} - {:?}",
+                    sample,
+                    case
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_textobject_surround() {
+        // (text, [(cursor position, textobject, final range, count), ...])
+        let tests = &[
+            (
+                "simple (single) surround pairs",
+                vec![
+                    (3, Inner, (3, 3), '(', 1),
+                    (7, Inner, (8, 13), ')', 1),
+                    (10, Inner, (8, 13), '(', 1),
+                    (14, Inner, (8, 13), ')', 1),
+                    (3, Around, (3, 3), '(', 1),
+                    (7, Around, (7, 14), ')', 1),
+                    (10, Around, (7, 14), '(', 1),
+                    (14, Around, (7, 14), ')', 1),
+                ],
+            ),
+            (
+                "samexx 'single' surround pairs",
+                vec![
+                    (3, Inner, (3, 3), '\'', 1),
+                    // FIXME: surround doesn't work when *on* same chars pair
+                    // (7, Inner, (8, 13), '\'', 1),
+                    (10, Inner, (8, 13), '\'', 1),
+                    // (14, Inner, (8, 13), '\'', 1),
+                    (3, Around, (3, 3), '\'', 1),
+                    // (7, Around, (7, 14), '\'', 1),
+                    (10, Around, (7, 14), '\'', 1),
+                    // (14, Around, (7, 14), '\'', 1),
+                ],
+            ),
+            (
+                "(nested (surround (pairs)) 3 levels)",
+                vec![
+                    (0, Inner, (1, 34), '(', 1),
+                    (6, Inner, (1, 34), ')', 1),
+                    (8, Inner, (9, 24), '(', 1),
+                    (8, Inner, (9, 34), ')', 2),
+                    (20, Inner, (9, 24), '(', 2),
+                    (20, Inner, (1, 34), ')', 3),
+                    (0, Around, (0, 35), '(', 1),
+                    (6, Around, (0, 35), ')', 1),
+                    (8, Around, (8, 25), '(', 1),
+                    (8, Around, (8, 35), ')', 2),
+                    (20, Around, (8, 25), '(', 2),
+                    (20, Around, (0, 35), ')', 3),
+                ],
+            ),
+            (
+                "(mixed {surround [pair] same} line)",
+                vec![
+                    (2, Inner, (1, 33), '(', 1),
+                    (9, Inner, (8, 27), '{', 1),
+                    (18, Inner, (18, 21), '[', 1),
+                    (2, Around, (0, 34), '(', 1),
+                    (9, Around, (7, 28), '{', 1),
+                    (18, Around, (17, 22), '[', 1),
+                ],
+            ),
+            (
+                "(stepped (surround) pairs (should) skip)",
+                vec![(22, Inner, (1, 38), '(', 1), (22, Around, (0, 39), '(', 1)],
+            ),
+            (
+                "[surround pairs{\non different]\nlines}",
+                vec![
+                    (7, Inner, (1, 28), '[', 1),
+                    (15, Inner, (16, 35), '{', 1),
+                    (7, Around, (0, 29), '[', 1),
+                    (15, Around, (15, 36), '{', 1),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            let doc = Rope::from(*sample);
+            let slice = doc.slice(..);
+            for &case in scenario {
+                let (pos, objtype, expected_range, ch, count) = case;
+                let result = textobject_surround(slice, Range::point(pos), objtype, ch, count);
                 assert_eq!(
                     result,
                     expected_range.into(),
