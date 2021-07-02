@@ -1161,11 +1161,7 @@ mod test {
 
     #[test]
     fn test_line_ending() {
-        if cfg!(windows) {
-            assert_eq!(Document::default().text().to_string(), "\r\n");
-        } else {
-            assert_eq!(Document::default().text().to_string(), "\n");
-        }
+        assert_eq!(Document::default().text().to_string(), "");
     }
 
     macro_rules! test_decode {
