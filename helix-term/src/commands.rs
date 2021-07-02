@@ -1521,11 +1521,12 @@ mod cmd {
         }
     }
 
-    /// Sets the [`Document`]'s encoding and [reloads](`reload()`) if possible.
+    /// Sets the [`Document`]'s encoding..
     fn set_encoding(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
-        let (view, doc) = current!(cx.editor);
+        let (_, doc) = current!(cx.editor);
         if let Some(label) = args.first() {
-            doc.set_encoding(label).and_then(|_| doc.reload(view.id));
+            doc.set_encoding(label)
+                .unwrap_or_else(|e| cx.editor.set_error(e.to_string()));
         } else {
             let encoding = doc.encoding().name().to_string();
             cx.editor.set_status(encoding)
