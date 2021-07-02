@@ -1,6 +1,6 @@
 [package]
 name = "helix-view"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2018"
 license = "MPL-2.0"
@@ -16,8 +16,8 @@ term = ["crossterm"]
 [dependencies]
 bitflags = "1.0"
 anyhow = "1"
-helix-core = { version = "0.2", path = "../helix-core" }
-helix-lsp = { version = "0.2", path = "../helix-lsp"}
+helix-core = { version = "0.3", path = "../helix-core" }
+helix-lsp = { version = "0.3", path = "../helix-lsp"}
 crossterm = { version = "0.20", optional = true }
 
 # Conversion traits
@@ -37,6 +37,9 @@ toml = "0.5"
 log = "~0.4"
 
 which = "4.1"
+
+[target.'cfg(windows)'.dependencies]
+clipboard-win = { version = "4.2", features = ["std"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }

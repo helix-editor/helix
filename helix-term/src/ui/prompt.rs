@@ -5,13 +5,11 @@ use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 
 use helix_core::{
-    unicode::segmentation::{GraphemeCursor, GraphemeIncomplete},
-    unicode::width::UnicodeWidthStr,
-    Position,
+    unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
 };
 use helix_view::{
-    graphics::{Color, CursorKind, Margin, Modifier, Rect, Style},
-    Editor, Theme,
+    graphics::{CursorKind, Margin, Rect},
+    Editor,
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
@@ -399,6 +397,22 @@ impl Component for Prompt {
                 return close_fn;
             }
             KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('b'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::BackwardWord(1)),
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::ALT,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: KeyModifiers::ALT,
+            } => self.move_cursor(Movement::ForwardWord(1)),
+            KeyEvent {
                 code: KeyCode::Char('f'),
                 modifiers: KeyModifiers::CONTROL,
             }
@@ -430,22 +444,6 @@ impl Component for Prompt {
                 code: KeyCode::Char('a'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.move_start(),
-            KeyEvent {
-                code: KeyCode::Left,
-                modifiers: KeyModifiers::ALT,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('b'),
-                modifiers: KeyModifiers::ALT,
-            } => self.move_cursor(Movement::BackwardWord(1)),
-            KeyEvent {
-                code: KeyCode::Right,
-                modifiers: KeyModifiers::ALT,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('f'),
-                modifiers: KeyModifiers::ALT,
-            } => self.move_cursor(Movement::ForwardWord(1)),
             KeyEvent {
                 code: KeyCode::Char('w'),
                 modifiers: KeyModifiers::CONTROL,
@@ -494,7 +492,7 @@ impl Component for Prompt {
         self.render_prompt(area, surface, cx)
     }
 
-    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
         let line = area.height as usize - 1;
         (
             Some(Position::new(

@@ -4,16 +4,10 @@ use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use std::borrow::Cow;
-
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
-use helix_core::Position;
-use helix_view::{
-    graphics::{Color, Rect, Style},
-    Editor,
-};
+use helix_view::{graphics::Rect, Editor};
 
 pub trait Item {
     // TODO: sort_text
@@ -64,7 +58,6 @@ impl<T: Item> Menu<T> {
     pub fn score(&mut self, pattern: &str) {
         // need to borrow via pattern match otherwise it complains about simultaneous borrow
         let Self {
-            ref mut options,
             ref mut matcher,
             ref mut matches,
             ..
@@ -80,7 +73,7 @@ impl<T: Item> Menu<T> {
                     let text = option.filter_text();
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
                     matcher
-                        .fuzzy_match(&text, pattern)
+                        .fuzzy_match(text, pattern)
                         .map(|score| (index, score))
                 }),
         );
@@ -297,7 +290,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         //     )
         // }
 
-        for (i, option) in (scroll..(scroll + win_height).min(len)).enumerate() {
+        for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if is_marked {

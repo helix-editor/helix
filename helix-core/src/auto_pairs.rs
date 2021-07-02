@@ -139,7 +139,7 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
 }
 
 // handle cases where open and close is the same, or in triples ("""docstring""")
-fn handle_same(doc: &Rope, selection: &Selection, token: char) -> Option<Transaction> {
+fn handle_same(_doc: &Rope, _selection: &Selection, _token: char) -> Option<Transaction> {
     // if not cursor but selection, wrap
     // let next = next char
 

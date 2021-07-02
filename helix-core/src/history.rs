@@ -1,7 +1,6 @@
 use crate::{ChangeSet, Rope, State, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use smallvec::{smallvec, SmallVec};
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 
@@ -127,7 +126,6 @@ impl History {
         let last_child = current_revision.last_child?;
         self.current = last_child.get();
 
-        let last_child_revision = &self.revisions[last_child.get()];
         Some(&self.revisions[last_child.get()].transaction)
     }
 
@@ -377,21 +375,21 @@ mod test {
             if let Some(transaction) = history.undo() {
                 transaction.apply(&mut state.doc);
             }
-        };
+        }
 
         fn earlier(history: &mut History, state: &mut State, uk: UndoKind) {
             let txns = history.earlier(uk);
             for txn in txns {
                 txn.apply(&mut state.doc);
             }
-        };
+        }
 
         fn later(history: &mut History, state: &mut State, uk: UndoKind) {
             let txns = history.later(uk);
             for txn in txns {
                 txn.apply(&mut state.doc);
             }
-        };
+        }
 
         fn commit_change(
             history: &mut History,
@@ -402,7 +400,7 @@ mod test {
             let txn = Transaction::change(&state.doc, vec![change.clone()].into_iter());
             history.commit_revision_at_timestamp(&txn, &state, instant);
             txn.apply(&mut state.doc);
-        };
+        }
 
         let t0 = Instant::now();
         let t = |n| t0.checked_add(Duration::from_secs(n)).unwrap();

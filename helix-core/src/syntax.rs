@@ -1,4 +1,10 @@
-use crate::{chars::char_is_line_ending, regex::Regex, Change, Rope, RopeSlice, Transaction};
+use crate::{
+    chars::char_is_line_ending,
+    regex::Regex,
+    transaction::{ChangeSet, Operation},
+    Rope, RopeSlice, Tendril,
+};
+
 pub use helix_syntax::{get_language, get_language_name, Lang};
 
 use arc_swap::ArcSwap;
@@ -8,7 +14,7 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     fmt,
-    path::{Path, PathBuf},
+    path::Path,
     sync::Arc,
 };
 
@@ -88,6 +94,7 @@ fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::
 #[cfg(feature = "embed_runtime")]
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
     use std::fmt;
+    use std::path::PathBuf;
 
     #[derive(rust_embed::RustEmbed)]
     #[folder = "../runtime/"]
@@ -160,7 +167,7 @@ impl LanguageConfiguration {
             None
         } else {
             let language = get_language(self.language_id);
-            let mut config = HighlightConfiguration::new(
+            let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
                 &injections_query,
@@ -194,7 +201,7 @@ impl LanguageConfiguration {
                 let language = get_language_name(self.language_id).to_ascii_lowercase();
 
                 let toml = load_runtime_file(&language, "indents.toml").ok()?;
-                toml::from_slice(&toml.as_bytes()).ok()
+                toml::from_slice(toml.as_bytes()).ok()
             })
             .as_ref()
     }
@@ -326,7 +333,8 @@ impl Syntax {
 
         // update root layer
         PARSER.with(|ts_parser| {
-            syntax.root_layer.parse(
+            // TODO: handle the returned `Result` properly.
+            let _ = syntax.root_layer.parse(
                 &mut ts_parser.borrow_mut(),
                 &syntax.config,
                 source,
@@ -381,7 +389,7 @@ impl Syntax {
         source: RopeSlice<'a>,
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
-        mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
+        injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
     ) -> impl Iterator<Item = Result<HighlightEvent, Error>> + 'a {
         // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
         // prevents them from being moved. But both of these values are really just
@@ -473,12 +481,6 @@ pub struct LanguageLayer {
     pub(crate) tree: Option<Tree>,
 }
 
-use crate::{
-    coords_at_pos,
-    transaction::{ChangeSet, Operation},
-    Tendril,
-};
-
 impl LanguageLayer {
     // pub fn new() -> Self {
     //     Self { tree: None }
@@ -494,8 +496,8 @@ impl LanguageLayer {
         ts_parser: &mut TsParser,
         config: &HighlightConfiguration,
         source: &Rope,
-        mut depth: usize,
-        mut ranges: Vec<Range>,
+        _depth: usize,
+        ranges: Vec<Range>,
     ) -> Result<(), Error> {
         if ts_parser.parser.set_included_ranges(&ranges).is_ok() {
             ts_parser
@@ -566,7 +568,6 @@ impl LanguageLayer {
     ) -> Vec<tree_sitter::InputEdit> {
         use Operation::*;
         let mut old_pos = 0;
-        let mut new_pos = 0;
 
         let mut edits = Vec::new();
 
@@ -610,9 +611,7 @@ impl LanguageLayer {
             let mut old_end = old_pos + len;
 
             match change {
-                Retain(_) => {
-                    new_pos += len;
-                }
+                Retain(_) => {}
                 Delete(_) => {
                     let (start_byte, start_position) = point_at_pos(old_text, old_pos);
                     let (old_end_byte, old_end_position) = point_at_pos(old_text, old_end);
@@ -635,8 +634,6 @@ impl LanguageLayer {
                 }
                 Insert(s) => {
                     let (start_byte, start_position) = point_at_pos(old_text, old_pos);
-
-                    let ins = s.chars().count();
 
                     // a subsequent delete means a replace, consume it
                     if let Some(Delete(len)) = iter.peek() {
@@ -665,8 +662,6 @@ impl LanguageLayer {
                             new_end_position: traverse(start_position, s), // old pos + chars, newlines matter too (iter over)
                         });
                     }
-
-                    new_pos += ins;
                 }
             }
             old_pos = old_end;
@@ -1480,7 +1475,6 @@ where
                 // local scope at the top of the scope stack.
                 else if Some(capture.index) == layer.config.local_def_capture_index {
                     reference_highlight = None;
-                    definition_highlight = None;
                     let scope = layer.scope_stack.last_mut().unwrap();
 
                     let mut value_range = 0..0;
@@ -1644,143 +1638,273 @@ fn injection_for_match<'a>(
     (language_name, content_node, include_children)
 }
 
-fn shrink_and_clear<T>(vec: &mut Vec<T>, capacity: usize) {
-    if vec.len() > capacity {
-        vec.truncate(capacity);
-        vec.shrink_to_fit();
-    }
-    vec.clear();
+// fn shrink_and_clear<T>(vec: &mut Vec<T>, capacity: usize) {
+//     if vec.len() > capacity {
+//         vec.truncate(capacity);
+//         vec.shrink_to_fit();
+//     }
+//     vec.clear();
+// }
+
+pub struct Merge<I> {
+    iter: I,
+    spans: Box<dyn Iterator<Item = (usize, std::ops::Range<usize>)>>,
+
+    next_event: Option<HighlightEvent>,
+    next_span: Option<(usize, std::ops::Range<usize>)>,
+
+    queue: Vec<HighlightEvent>,
 }
 
-#[test]
-fn test_parser() {
-    let highlight_names: Vec<String> = [
-        "attribute",
-        "constant",
-        "function.builtin",
-        "function",
-        "keyword",
-        "operator",
-        "property",
-        "punctuation",
-        "punctuation.bracket",
-        "punctuation.delimiter",
-        "string",
-        "string.special",
-        "tag",
-        "type",
-        "type.builtin",
-        "variable",
-        "variable.builtin",
-        "variable.parameter",
-    ]
-    .iter()
-    .cloned()
-    .map(String::from)
-    .collect();
-
-    let language = get_language(Lang::Rust);
-    let mut config = HighlightConfiguration::new(
-        language,
-        &std::fs::read_to_string(
-            "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
-        )
-        .unwrap(),
-        &std::fs::read_to_string(
-            "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
-        )
-        .unwrap(),
-        "", // locals.scm
-    )
-    .unwrap();
-    config.configure(&highlight_names);
-
-    let source = Rope::from_str(
-        "
-        struct Stuff {}
-        fn main() {}
-    ",
-    );
-    let syntax = Syntax::new(&source, Arc::new(config));
-    let tree = syntax.tree();
-    let root = tree.root_node();
-    assert_eq!(root.kind(), "source_file");
-
-    assert_eq!(
-        root.to_sexp(),
-        concat!(
-            "(source_file ",
-            "(struct_item name: (type_identifier) body: (field_declaration_list)) ",
-            "(function_item name: (identifier) parameters: (parameters) body: (block)))"
-        )
-    );
-
-    let struct_node = root.child(0).unwrap();
-    assert_eq!(struct_node.kind(), "struct_item");
+/// Merge a list of spans into the highlight event stream.
+pub fn merge<I: Iterator<Item = HighlightEvent>>(
+    iter: I,
+    spans: Vec<(usize, std::ops::Range<usize>)>,
+) -> Merge<I> {
+    let spans = Box::new(spans.into_iter());
+    let mut merge = Merge {
+        iter,
+        spans,
+        next_event: None,
+        next_span: None,
+        queue: Vec::new(),
+    };
+    merge.next_event = merge.iter.next();
+    merge.next_span = merge.spans.next();
+    merge
 }
 
-#[test]
-fn test_input_edits() {
-    use crate::State;
-    use tree_sitter::InputEdit;
+impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
+    type Item = HighlightEvent;
+    fn next(&mut self) -> Option<Self::Item> {
+        use HighlightEvent::*;
+        if let Some(event) = self.queue.pop() {
+            return Some(event);
+        }
 
-    let mut state = State::new("hello world!\ntest 123".into());
-    let transaction = Transaction::change(
-        &state.doc,
-        vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
-    );
-    let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
-    // transaction.apply(&mut state);
-
-    assert_eq!(
-        edits,
-        &[
-            InputEdit {
-                start_byte: 6,
-                old_end_byte: 11,
-                new_end_byte: 10,
-                start_position: Point { row: 0, column: 6 },
-                old_end_position: Point { row: 0, column: 11 },
-                new_end_position: Point { row: 0, column: 10 }
-            },
-            InputEdit {
-                start_byte: 12,
-                old_end_byte: 17,
-                new_end_byte: 12,
-                start_position: Point { row: 0, column: 12 },
-                old_end_position: Point { row: 1, column: 4 },
-                new_end_position: Point { row: 0, column: 12 }
+        loop {
+            match (self.next_event, &self.next_span) {
+                // this happens when range is partially or fully offscreen
+                (Some(Source { start, .. }), Some((span, range))) if start > range.start => {
+                    if start > range.end {
+                        self.next_span = self.spans.next();
+                    } else {
+                        self.next_span = Some((*span, start..range.end));
+                    };
+                }
+                _ => break,
             }
-        ]
-    );
+        }
 
-    // Testing with the official example from tree-sitter
-    let mut state = State::new("fn test() {}".into());
-    let transaction =
-        Transaction::change(&state.doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-    let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
-    transaction.apply(&mut state.doc);
+        match (self.next_event, &self.next_span) {
+            (Some(HighlightStart(i)), _) => {
+                self.next_event = self.iter.next();
+                Some(HighlightStart(i))
+            }
+            (Some(HighlightEnd), _) => {
+                self.next_event = self.iter.next();
+                Some(HighlightEnd)
+            }
+            (Some(Source { start, end }), Some((_, range))) if start < range.start => {
+                let intersect = range.start.min(end);
+                let event = Source {
+                    start,
+                    end: intersect,
+                };
 
-    assert_eq!(state.doc, "fn test(a: u32) {}");
-    assert_eq!(
-        edits,
-        &[InputEdit {
-            start_byte: 8,
-            old_end_byte: 8,
-            new_end_byte: 14,
-            start_position: Point { row: 0, column: 8 },
-            old_end_position: Point { row: 0, column: 8 },
-            new_end_position: Point { row: 0, column: 14 }
-        }]
-    );
+                if end == intersect {
+                    // the event is complete
+                    self.next_event = self.iter.next();
+                } else {
+                    // subslice the event
+                    self.next_event = Some(Source {
+                        start: intersect,
+                        end,
+                    });
+                };
+
+                Some(event)
+            }
+            (Some(Source { start, end }), Some((span, range))) if start == range.start => {
+                let intersect = range.end.min(end);
+                let event = HighlightStart(Highlight(*span));
+
+                // enqueue in reverse order
+                self.queue.push(HighlightEnd);
+                self.queue.push(Source {
+                    start,
+                    end: intersect,
+                });
+
+                if end == intersect {
+                    // the event is complete
+                    self.next_event = self.iter.next();
+                } else {
+                    // subslice the event
+                    self.next_event = Some(Source {
+                        start: intersect,
+                        end,
+                    });
+                };
+
+                if intersect == range.end {
+                    self.next_span = self.spans.next();
+                } else {
+                    self.next_span = Some((*span, intersect..range.end));
+                }
+
+                Some(event)
+            }
+            (Some(event), None) => {
+                self.next_event = self.iter.next();
+                Some(event)
+            }
+            // can happen if deleting and cursor at EOF, and diagnostic reaches past the end
+            (None, Some((_, _))) => {
+                self.next_span = None;
+                None
+            }
+            (None, None) => None,
+            e => unreachable!("{:?}", e),
+        }
+    }
 }
 
-#[test]
-fn test_load_runtime_file() {
-    // Test to make sure we can load some data from the runtime directory.
-    let contents = load_runtime_file("rust", "indents.toml").unwrap();
-    assert!(!contents.is_empty());
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{Rope, Transaction};
 
-    let results = load_runtime_file("rust", "does-not-exist");
-    assert!(results.is_err());
+    #[test]
+    fn test_parser() {
+        let highlight_names: Vec<String> = [
+            "attribute",
+            "constant",
+            "function.builtin",
+            "function",
+            "keyword",
+            "operator",
+            "property",
+            "punctuation",
+            "punctuation.bracket",
+            "punctuation.delimiter",
+            "string",
+            "string.special",
+            "tag",
+            "type",
+            "type.builtin",
+            "variable",
+            "variable.builtin",
+            "variable.parameter",
+        ]
+        .iter()
+        .cloned()
+        .map(String::from)
+        .collect();
+
+        let language = get_language(Lang::Rust);
+        let config = HighlightConfiguration::new(
+            language,
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/highlights.scm",
+            )
+            .unwrap(),
+            &std::fs::read_to_string(
+                "../helix-syntax/languages/tree-sitter-rust/queries/injections.scm",
+            )
+            .unwrap(),
+            "", // locals.scm
+        )
+        .unwrap();
+        config.configure(&highlight_names);
+
+        let source = Rope::from_str(
+            "
+            struct Stuff {}
+            fn main() {}
+        ",
+        );
+        let syntax = Syntax::new(&source, Arc::new(config));
+        let tree = syntax.tree();
+        let root = tree.root_node();
+        assert_eq!(root.kind(), "source_file");
+
+        assert_eq!(
+            root.to_sexp(),
+            concat!(
+                "(source_file ",
+                "(struct_item name: (type_identifier) body: (field_declaration_list)) ",
+                "(function_item name: (identifier) parameters: (parameters) body: (block)))"
+            )
+        );
+
+        let struct_node = root.child(0).unwrap();
+        assert_eq!(struct_node.kind(), "struct_item");
+    }
+
+    #[test]
+    fn test_input_edits() {
+        use crate::State;
+        use tree_sitter::InputEdit;
+
+        let state = State::new("hello world!\ntest 123".into());
+        let transaction = Transaction::change(
+            &state.doc,
+            vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
+        );
+        let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
+        // transaction.apply(&mut state);
+
+        assert_eq!(
+            edits,
+            &[
+                InputEdit {
+                    start_byte: 6,
+                    old_end_byte: 11,
+                    new_end_byte: 10,
+                    start_position: Point { row: 0, column: 6 },
+                    old_end_position: Point { row: 0, column: 11 },
+                    new_end_position: Point { row: 0, column: 10 }
+                },
+                InputEdit {
+                    start_byte: 12,
+                    old_end_byte: 17,
+                    new_end_byte: 12,
+                    start_position: Point { row: 0, column: 12 },
+                    old_end_position: Point { row: 1, column: 4 },
+                    new_end_position: Point { row: 0, column: 12 }
+                }
+            ]
+        );
+
+        // Testing with the official example from tree-sitter
+        let mut state = State::new("fn test() {}".into());
+        let transaction =
+            Transaction::change(&state.doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
+        let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
+        transaction.apply(&mut state.doc);
+
+        assert_eq!(state.doc, "fn test(a: u32) {}");
+        assert_eq!(
+            edits,
+            &[InputEdit {
+                start_byte: 8,
+                old_end_byte: 8,
+                new_end_byte: 14,
+                start_position: Point { row: 0, column: 8 },
+                old_end_position: Point { row: 0, column: 8 },
+                new_end_position: Point { row: 0, column: 14 }
+            }]
+        );
+    }
+
+    #[test]
+    fn test_load_runtime_file() {
+        // Test to make sure we can load some data from the runtime directory.
+        let contents = load_runtime_file("rust", "indents.toml").unwrap();
+        assert!(!contents.is_empty());
+
+        let results = load_runtime_file("rust", "does-not-exist");
+        assert!(results.is_err());
+    }
 }

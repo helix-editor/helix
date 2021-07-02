@@ -1,8 +1,8 @@
 use crate::{
     commands,
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Component, Context, EventResult},
     key,
-    keymap::{self, Keymaps},
+    keymap::Keymaps,
     ui::{Completion, ProgressSpinners},
 };
 
@@ -12,21 +12,17 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
-use helix_lsp::LspProgressMap;
 use helix_view::{
     document::Mode,
-    graphics::{Color, CursorKind, Modifier, Rect, Style},
+    graphics::{CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
 use std::borrow::Cow;
 
-use crossterm::{
-    cursor,
-    event::{read, Event, EventStream},
-};
-use tui::{backend::CrosstermBackend, buffer::Buffer as Surface};
+use crossterm::event::Event;
+use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     keymaps: Keymaps,
@@ -85,8 +81,8 @@ impl EditorView {
             for y in area.top()..area.bottom() {
                 surface
                     .get_mut(x, y)
-                    // .set_symbol(tui::symbols::line::VERTICAL)
-                    .set_symbol(" ")
+                    .set_symbol(tui::symbols::line::VERTICAL)
+                    //.set_symbol(" ")
                     .set_style(border_style);
             }
         }
@@ -139,51 +135,127 @@ impl EditorView {
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
+        let tab = " ".repeat(tab_width);
+
+        let highlights = highlights.into_iter().map(|event| match event.unwrap() {
+            // convert byte offsets to char offset
+            HighlightEvent::Source { start, end } => {
+                let start = ensure_grapheme_boundary(text, text.byte_to_char(start));
+                let end = ensure_grapheme_boundary(text, text.byte_to_char(end));
+                HighlightEvent::Source { start, end }
+            }
+            event => event,
+        });
+
+        let selections = doc.selection(view.id);
+        let primary_idx = selections.primary_index();
+
+        let selection_scope = theme
+            .find_scope_index("ui.selection")
+            .expect("no selection scope found!");
+
+        let base_cursor_scope = theme
+            .find_scope_index("ui.cursor")
+            .unwrap_or(selection_scope);
+
+        let cursor_scope = match doc.mode() {
+            Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
+            Mode::Select => theme.find_scope_index("ui.cursor.select"),
+            Mode::Normal => Some(base_cursor_scope),
+        }
+        .unwrap_or(base_cursor_scope);
+
+        let primary_selection_scope = theme
+            .find_scope_index("ui.selection.primary")
+            .unwrap_or(selection_scope);
+
+        let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
+            // inject selections as highlight scopes
+            let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+
+            // TODO: primary + insert mode patching:
+            // (ui.cursor.primary).patch(mode).unwrap_or(cursor)
+
+            let primary_cursor_scope = theme
+                .find_scope_index("ui.cursor.primary")
+                .unwrap_or(cursor_scope);
+
+            for (i, range) in selections.iter().enumerate() {
+                let (cursor_scope, selection_scope) = if i == primary_idx {
+                    (primary_cursor_scope, primary_selection_scope)
+                } else {
+                    (cursor_scope, selection_scope)
+                };
+
+                if range.head == range.anchor {
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                    continue;
+                }
+
+                let reverse = range.head < range.anchor;
+
+                if reverse {
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                    spans.push((selection_scope, range.head + 1..range.anchor + 1));
+                } else {
+                    spans.push((selection_scope, range.anchor..range.head));
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                }
+            }
+
+            Box::new(syntax::merge(highlights, spans))
+        } else {
+            Box::new(highlights)
+        };
+
+        // diagnostic injection
+        let diagnostic_scope = theme.find_scope_index("diagnostic").unwrap_or(cursor_scope);
+        let highlights = Box::new(syntax::merge(
+            highlights,
+            doc.diagnostics()
+                .iter()
+                .map(|diagnostic| {
+                    (
+                        diagnostic_scope,
+                        diagnostic.range.start..diagnostic.range.end,
+                    )
+                })
+                .collect(),
+        ));
 
         'outer: for event in highlights {
-            match event.unwrap() {
-                HighlightEvent::HighlightStart(mut span) => {
+            match event {
+                HighlightEvent::HighlightStart(span) => {
                     spans.push(span);
                 }
                 HighlightEvent::HighlightEnd => {
                     spans.pop();
                 }
                 HighlightEvent::Source { start, end } => {
-                    // TODO: filter out spans out of viewport for now..
-
-                    // TODO: do these before iterating
-                    let start = ensure_grapheme_boundary(text, text.byte_to_char(start));
-                    let end = ensure_grapheme_boundary(text, text.byte_to_char(end));
-
                     let text = text.slice(start..end);
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    // TODO: scope matching: biggest union match? [string] & [html, string], [string, html] & [ string, html]
-                    // can do this by sorting our theme matches based on array len (longest first) then stopping at the
-                    // first rule that matches (rule.all(|scope| scopes.contains(scope)))
-                    // log::info!(
-                    //     "scopes: {:?}",
-                    //     spans
-                    //         .iter()
-                    //         .map(|span| theme.scopes()[span.0].as_str())
-                    //         .collect::<Vec<_>>()
-                    // );
-                    let style = match spans.first() {
-                        Some(span) => theme.get(theme.scopes()[span.0].as_str()),
-                        None => theme.get("ui.text"),
-                    };
+                    let style = spans.iter().fold(theme.get("ui.text"), |acc, span| {
+                        let style = theme.get(theme.scopes()[span.0].as_str());
+                        acc.patch(style)
+                    });
 
-                    // TODO: we could render the text to a surface, then cache that, that
-                    // way if only the selection/cursor changes we can copy from cache
-                    // and paint the new cursor.
-                    // We could keep a single resizable surface on the View for that.
-
-                    let mut char_index = start;
-
-                    // iterate over range char by char
                     for grapheme in RopeGraphemes::new(text) {
+                        let out_of_bounds = visual_x < view.first_col as u16
+                            || visual_x >= viewport.width + view.first_col as u16;
+
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
+                            if !out_of_bounds {
+                                // we still want to render an empty cell with the style
+                                surface.set_string(
+                                    viewport.x + visual_x - view.first_col as u16,
+                                    viewport.y + line,
+                                    " ",
+                                    style,
+                                );
+                            }
+
                             visual_x = 0;
                             line += 1;
 
@@ -191,46 +263,31 @@ impl EditorView {
                             if line >= viewport.height {
                                 break 'outer;
                             }
-                        } else if grapheme == "\t" {
-                            visual_x = visual_x.saturating_add(tab_width as u16);
                         } else {
-                            let out_of_bounds = visual_x < view.first_col as u16
-                                || visual_x >= viewport.width + view.first_col as u16;
-
-                            // Cow will prevent allocations if span contained in a single slice
-                            // which should really be the majority case
                             let grapheme = Cow::from(grapheme);
-                            let width = grapheme_width(&grapheme) as u16;
 
-                            if out_of_bounds {
-                                // if we're offscreen just keep going until we hit a new line
-                                visual_x = visual_x.saturating_add(width);
-                                continue;
-                            }
-
-                            // ugh,interleave highlight spans with diagnostic spans
-                            let is_diagnostic = doc.diagnostics().iter().any(|diagnostic| {
-                                diagnostic.range.start <= char_index
-                                    && diagnostic.range.end > char_index
-                            });
-
-                            let style = if is_diagnostic {
-                                style.add_modifier(Modifier::UNDERLINED)
+                            let (grapheme, width) = if grapheme == "\t" {
+                                // make sure we display tab as appropriate amount of spaces
+                                (tab.as_str(), tab_width)
                             } else {
-                                style
+                                // Cow will prevent allocations if span contained in a single slice
+                                // which should really be the majority case
+                                let width = grapheme_width(&grapheme);
+                                (grapheme.as_ref(), width)
                             };
 
-                            surface.set_string(
-                                viewport.x + visual_x - view.first_col as u16,
-                                viewport.y + line,
-                                grapheme,
-                                style,
-                            );
+                            if !out_of_bounds {
+                                // if we're offscreen just keep going until we hit a new line
+                                surface.set_string(
+                                    viewport.x + visual_x - view.first_col as u16,
+                                    viewport.y + line,
+                                    grapheme,
+                                    style,
+                                );
+                            }
 
-                            visual_x += width;
+                            visual_x = visual_x.saturating_add(width as u16);
                         }
-
-                        char_index += grapheme.chars().count();
                     }
                 }
             }
@@ -283,126 +340,11 @@ impl EditorView {
                 Range::new(start, end)
             };
 
-            let mode = doc.mode();
-            let base_cursor_style = theme
-                .try_get("ui.cursor")
-                .unwrap_or_else(|| Style::default().add_modifier(Modifier::REVERSED));
-            let cursor_style = match mode {
-                Mode::Insert => theme.try_get("ui.cursor.insert"),
-                Mode::Select => theme.try_get("ui.cursor.select"),
-                Mode::Normal => Some(base_cursor_style),
-            }
-            .unwrap_or(base_cursor_style);
-            let primary_cursor_style = theme
-                .try_get("ui.cursor.primary")
-                .map(|style| {
-                    if mode != Mode::Normal {
-                        // we want to make sure that the insert and select highlights
-                        // also affect the primary cursor if set
-                        style.patch(cursor_style)
-                    } else {
-                        style
-                    }
-                })
-                .unwrap_or(cursor_style);
-
-            let selection_style = theme.get("ui.selection");
-            let primary_selection_style = theme
-                .try_get("ui.selection.primary")
-                .unwrap_or(selection_style);
-
             let selection = doc.selection(view.id);
-            let primary_idx = selection.primary_index();
 
-            for (i, selection) in selection
-                .iter()
-                .enumerate()
-                .filter(|(_, range)| range.overlaps(&screen))
-            {
-                // TODO: render also if only one of the ranges is in viewport
-                let mut start = view.screen_coords_at_pos(doc, text, selection.anchor);
-                let mut end = view.screen_coords_at_pos(doc, text, selection.head);
-
-                let (cursor_style, selection_style) = if i == primary_idx {
-                    (primary_cursor_style, primary_selection_style)
-                } else {
-                    (cursor_style, selection_style)
-                };
-
-                let head = end;
-
-                if selection.head < selection.anchor {
-                    std::mem::swap(&mut start, &mut end);
-                }
-                let start = start.unwrap_or_else(|| Position::new(0, 0));
-                let end = end.unwrap_or_else(|| {
-                    Position::new(viewport.height as usize, viewport.width as usize)
-                });
-
-                if start.row == end.row {
-                    surface.set_style(
-                        Rect::new(
-                            viewport.x + start.col as u16,
-                            viewport.y + start.row as u16,
-                            // .min is important, because set_style does a
-                            // for i in area.left()..area.right() and
-                            // area.right = x + width !!! which shouldn't be > then surface.area.right()
-                            // This is checked by a debug_assert! in Buffer::index_of
-                            ((end.col - start.col) as u16 + 1).min(
-                                surface
-                                    .area
-                                    .width
-                                    .saturating_sub(viewport.x + start.col as u16),
-                            ),
-                            1,
-                        ),
-                        selection_style,
-                    );
-                } else {
-                    surface.set_style(
-                        Rect::new(
-                            viewport.x + start.col as u16,
-                            viewport.y + start.row as u16,
-                            // text.line(view.first_line).len_chars() as u16 - start.col as u16,
-                            viewport.width.saturating_sub(start.col as u16),
-                            1,
-                        ),
-                        selection_style,
-                    );
-                    for i in start.row + 1..end.row {
-                        surface.set_style(
-                            Rect::new(
-                                viewport.x,
-                                viewport.y + i as u16,
-                                // text.line(view.first_line + i).len_chars() as u16,
-                                viewport.width,
-                                1,
-                            ),
-                            selection_style,
-                        );
-                    }
-                    surface.set_style(
-                        Rect::new(
-                            viewport.x,
-                            viewport.y + end.row as u16,
-                            (end.col as u16).min(viewport.width),
-                            1,
-                        ),
-                        selection_style,
-                    );
-                }
-
-                // cursor
+            for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
+                let head = view.screen_coords_at_pos(doc, text, selection.head);
                 if let Some(head) = head {
-                    surface.set_style(
-                        Rect::new(
-                            viewport.x + head.col as u16,
-                            viewport.y + head.row as u16,
-                            1,
-                            1,
-                        ),
-                        cursor_style,
-                    );
                     surface.set_stringn(
                         viewport.x + 1 - OFFSET,
                         viewport.y + head.row as u16,
@@ -410,31 +352,31 @@ impl EditorView {
                         5,
                         linenr_select,
                     );
+
                     // TODO: set cursor position for IME
                     if let Some(syntax) = doc.syntax() {
                         use helix_core::match_brackets;
                         let pos = doc.selection(view.id).cursor();
-                        let pos = match_brackets::find(syntax, doc.text(), pos);
-                        if let Some(pos) = pos {
-                            let pos = view.screen_coords_at_pos(doc, text, pos);
-                            if let Some(pos) = pos {
-                                if (pos.col as u16) < viewport.width + view.first_col as u16
-                                    && pos.col >= view.first_col
-                                {
-                                    let style =
-                                        theme.try_get("ui.cursor.match").unwrap_or_else(|| {
-                                            Style::default()
-                                                .add_modifier(Modifier::REVERSED)
-                                                .add_modifier(Modifier::DIM)
-                                        });
+                        let pos = match_brackets::find(syntax, doc.text(), pos)
+                            .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
-                                    surface
-                                        .get_mut(
-                                            viewport.x + pos.col as u16,
-                                            viewport.y + pos.row as u16,
-                                        )
-                                        .set_style(style);
-                                }
+                        if let Some(pos) = pos {
+                            // ensure col is on screen
+                            if (pos.col as u16) < viewport.width + view.first_col as u16
+                                && pos.col >= view.first_col
+                            {
+                                let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
+                                    Style::default()
+                                        .add_modifier(Modifier::REVERSED)
+                                        .add_modifier(Modifier::DIM)
+                                });
+
+                                surface
+                                    .get_mut(
+                                        viewport.x + pos.col as u16,
+                                        viewport.y + pos.row as u16,
+                                    )
+                                    .set_style(style);
                             }
                         }
                     }
@@ -450,7 +392,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
-        is_focused: bool,
+        _is_focused: bool,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -460,7 +402,6 @@ impl EditorView {
         };
 
         let cursor = doc.selection(view.id).cursor();
-        let line = doc.text().char_to_line(cursor);
 
         let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
@@ -666,7 +607,7 @@ impl Component for EditorView {
                 // clear status
                 cx.editor.status_msg = None;
 
-                let (view, doc) = current!(cx.editor);
+                let (_, doc) = current!(cx.editor);
                 let mode = doc.mode();
 
                 let mut cxt = commands::Context {
@@ -675,7 +616,7 @@ impl Component for EditorView {
                     count: None,
                     callback: None,
                     on_next_key_callback: None,
-                    callbacks: cx.callbacks,
+                    jobs: cx.jobs,
                 };
 
                 if let Some(on_next_key) = self.on_next_key.take() {
@@ -693,7 +634,7 @@ impl Component for EditorView {
                                 // use a fake context here
                                 let mut cx = Context {
                                     editor: cxt.editor,
-                                    callbacks: cxt.callbacks,
+                                    jobs: cxt.jobs,
                                     scroll: None,
                                 };
                                 let res = completion.handle_event(event, &mut cx);
@@ -763,7 +704,7 @@ impl Component for EditorView {
         }
     }
 
-    fn render(&self, mut area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
 
@@ -799,7 +740,7 @@ impl Component for EditorView {
         }
     }
 
-    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         // match view.doc.mode() {
         //     Mode::Insert => write!(stdout, "\x1B[6 q"),
         //     mode => write!(stdout, "\x1B[2 q"),

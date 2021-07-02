@@ -1,7 +1,5 @@
-use crate::commands;
 pub use crate::commands::Command;
 use crate::config::Config;
-use anyhow::{anyhow, Error, Result};
 use helix_core::hashmap;
 use helix_view::{
     document::Mode,
@@ -11,9 +9,7 @@ use helix_view::{
 use serde::Deserialize;
 use std::{
     collections::HashMap,
-    fmt::Display,
     ops::{Deref, DerefMut},
-    str::FromStr,
 };
 
 // Kakoune-inspired:
@@ -185,6 +181,10 @@ impl Default for Keymaps {
             key!('w') => Command::move_next_word_start,
             key!('b') => Command::move_prev_word_start,
             key!('e') => Command::move_next_word_end,
+
+            key!('W') => Command::move_next_long_word_start,
+            key!('B') => Command::move_prev_long_word_start,
+            key!('E') => Command::move_next_long_word_end,
 
             key!('v') => Command::select_mode,
             key!('g') => Command::goto_mode,

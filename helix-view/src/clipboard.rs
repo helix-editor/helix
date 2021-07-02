@@ -77,7 +77,11 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             copy => "tmux", "load-buffer", "-";
         }
     } else {
-        Box::new(provider::NopProvider)
+        #[cfg(target_os = "windows")]
+        return Box::new(provider::WindowsProvider);
+
+        #[cfg(not(target_os = "windows"))]
+        return Box::new(provider::NopProvider);
     }
 }
 
@@ -116,6 +120,27 @@ mod provider {
         }
 
         fn set_contents(&self, _: String) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    #[derive(Debug)]
+    pub struct WindowsProvider;
+
+    #[cfg(target_os = "windows")]
+    impl ClipboardProvider for WindowsProvider {
+        fn name(&self) -> Cow<str> {
+            Cow::Borrowed("clipboard-win")
+        }
+
+        fn get_contents(&self) -> Result<String> {
+            let contents = clipboard_win::get_clipboard(clipboard_win::formats::Unicode)?;
+            Ok(contents)
+        }
+
+        fn set_contents(&self, contents: String) -> Result<()> {
+            clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
             Ok(())
         }
     }

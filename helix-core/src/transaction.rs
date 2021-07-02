@@ -1,5 +1,5 @@
-use crate::{Range, Rope, Selection, State, Tendril};
-use std::{borrow::Cow, convert::TryFrom};
+use crate::{Range, Rope, Selection, Tendril};
+use std::borrow::Cow;
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
@@ -163,7 +163,7 @@ impl ChangeSet {
                     head_a = a;
                     head_b = changes_b.next();
                 }
-                (None, _) | (_, None) => return unreachable!(),
+                (None, val) | (val, None) => unreachable!("({:?})", val),
                 (Some(Retain(i)), Some(Retain(j))) => match i.cmp(&j) {
                     Ordering::Less => {
                         changes.retain(i);
@@ -193,15 +193,16 @@ impl ChangeSet {
                             head_b = changes_b.next();
                         }
                         Ordering::Greater => {
+                            // TODO: cover this with a test
                             // figure out the byte index of the truncated string end
-                            let (pos, _) = s.char_indices().nth(len - j).unwrap();
-                            s.pop_front(s.len() as u32 - pos as u32);
+                            let (pos, _) = s.char_indices().nth(j).unwrap();
+                            s.pop_front(pos as u32);
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }
                     }
                 }
-                (Some(Insert(mut s)), Some(Retain(j))) => {
+                (Some(Insert(s)), Some(Retain(j))) => {
                     let len = s.chars().count();
                     match len.cmp(&j) {
                         Ordering::Less => {
@@ -273,7 +274,6 @@ impl ChangeSet {
         let mut changes = Self::with_capacity(self.changes.len());
 
         let mut pos = 0;
-        let mut len = 0;
 
         for change in &self.changes {
             use Operation::*;
@@ -580,6 +580,7 @@ impl<'a> Iterator for ChangeIterator<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::State;
 
     #[test]
     fn composition() {
@@ -598,7 +599,7 @@ mod test {
         };
 
         let b = ChangeSet {
-            changes: vec![Delete(10), Insert("world".into()), Retain(5)],
+            changes: vec![Delete(10), Insert("世orld".into()), Retain(5)],
             len: 15,
             len_after: 10,
         };
@@ -609,7 +610,7 @@ mod test {
         let composed = a.compose(b);
         assert_eq!(composed.len, 8);
         assert!(composed.apply(&mut text));
-        assert_eq!(text, "world! abc");
+        assert_eq!(text, "世orld! abc");
     }
 
     #[test]
@@ -698,7 +699,7 @@ mod test {
 
     #[test]
     fn changes_iter() {
-        let mut state = State::new("hello world!\ntest 123".into());
+        let state = State::new("hello world!\ntest 123".into());
         let changes = vec![(6, 11, Some("void".into())), (12, 17, None)];
         let transaction = Transaction::change(&state.doc, changes.clone().into_iter());
         assert_eq!(transaction.changes_iter().collect::<Vec<_>>(), changes);
@@ -730,7 +731,7 @@ mod test {
         // retain 1, e
         // retain 2, l
 
-        let mut changes = t1
+        let changes = t1
             .changes
             .compose(t2.changes)
             .compose(t3.changes)
@@ -745,7 +746,7 @@ mod test {
     #[test]
     fn combine_with_empty() {
         let empty = Rope::from("");
-        let mut a = ChangeSet::new(&empty);
+        let a = ChangeSet::new(&empty);
 
         let mut b = ChangeSet::new(&empty);
         b.insert("a".into());
@@ -761,7 +762,7 @@ mod test {
         const TEST_CASE: &'static str = "Hello, これはヘリックスエディターです！";
 
         let empty = Rope::from("");
-        let mut a = ChangeSet::new(&empty);
+        let a = ChangeSet::new(&empty);
 
         let mut b = ChangeSet::new(&empty);
         b.insert(TEST_CASE.into());

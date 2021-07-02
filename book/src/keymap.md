@@ -15,6 +15,9 @@
 | `w`          | Move next word start                                                       |
 | `b`          | Move previous word start                                                   |
 | `e`          | Move next word end                                                         |
+| `W`          | Move next WORD start                                                       |
+| `B`          | Move previous WORD start                                                   |
+| `E`          | Move next WORD end                                                         |
 | `t`          | Find 'till next char                                                       |
 | `f`          | Find next char                                                             |
 | `T`          | Find 'till previous char                                                   |
@@ -29,7 +32,7 @@
 | `Ctrl-o`     | Jump backward on the jumplist                                              |
 | `v`          | Enter [select (extend) mode](#select--extend-mode)                         |
 | `g`          | Enter [goto mode](#goto-mode)                                              |
-| `m`          | Enter [match mode](#match-mode)
+| `m`          | Enter [match mode](#match-mode)                                            |
 | `:`          | Enter command mode                                                         |
 | `z`          | Enter [view mode](#view-mode)                                              |
 | `Ctrl-w`     | Enter [window mode](#window-mode) (maybe will be remove for spc w w later) |
