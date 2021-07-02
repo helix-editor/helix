@@ -11,15 +11,6 @@ use crate::{
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 
-#[inline]
-fn abs_difference(x: usize, y: usize) -> usize {
-    if x < y {
-        y - x
-    } else {
-        x - y
-    }
-}
-
 /// A single selection range.
 ///
 /// The range consists of an "anchor" and "head" position in
@@ -367,7 +358,7 @@ impl Selection {
     }
 
     /// A convenience short-cut for `transform(|r| r.min_width_1(text))`.
-    pub fn min_width_1(mut self, text: RopeSlice) -> Self {
+    pub fn min_width_1(self, text: RopeSlice) -> Self {
         self.transform(|r| r.min_width_1(text))
     }
 
