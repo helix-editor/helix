@@ -604,11 +604,15 @@ impl Document {
 
         let mut file = std::fs::File::open(path.unwrap())?;
         let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
-        with_line_ending(&mut rope);
+        let line_ending = with_line_ending(&mut rope);
 
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
+
+        // Detect indentation style and set line ending.
+        self.detect_indent_style();
+        self.line_ending = line_ending;
 
         Ok(())
     }
