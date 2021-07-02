@@ -1036,7 +1036,7 @@ impl Document {
 
 impl Default for Document {
     fn default() -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        let text = Rope::from("");
         Self::from(text, None)
     }
 }
