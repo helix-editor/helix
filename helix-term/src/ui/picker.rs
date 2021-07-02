@@ -43,8 +43,8 @@ impl<T> Picker<T> {
     ) -> Self {
         let prompt = Prompt::new(
             "".to_string(),
-            |pattern: &str| Vec::new(),
-            |editor: &mut Context, pattern: &str, event: PromptEvent| {
+            |_pattern: &str| Vec::new(),
+            |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {
                 //
             },
         );
@@ -69,7 +69,6 @@ impl<T> Picker<T> {
     pub fn score(&mut self) {
         // need to borrow via pattern match otherwise it complains about simultaneous borrow
         let Self {
-            ref mut options,
             ref mut matcher,
             ref mut matches,
             ref filters,

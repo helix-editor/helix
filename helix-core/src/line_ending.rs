@@ -1,4 +1,4 @@
-use crate::{Rope, RopeGraphemes, RopeSlice};
+use crate::{Rope, RopeSlice};
 
 #[cfg(target_os = "windows")]
 pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;

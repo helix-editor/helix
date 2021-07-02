@@ -2,7 +2,6 @@
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 use helix_core::Position;
-use helix_lsp::LspProgressMap;
 use helix_view::graphics::{CursorKind, Rect};
 
 use crossterm::event::Event;
@@ -36,7 +35,7 @@ pub struct Context<'a> {
 
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored
     }
     // , args: ()
@@ -50,13 +49,13 @@ pub trait Component: Any + AnyComponent {
     fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
     /// Get cursor position and cursor kind.
-    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
         (None, CursorKind::Hidden)
     }
 
     /// May be used by the parent component to compute the child area.
     /// viewport is the maximum allowed area, and the child should stay within those bounds.
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+    fn required_size(&mut self, _viewport: (u16, u16)) -> Option<(u16, u16)> {
         // TODO: for scrolling, the scroll wrapper should place a size + offset on the Context
         // that way render can use it
         None
@@ -80,7 +79,7 @@ pub struct Compositor {
 impl Compositor {
     pub fn new() -> Result<Self, Error> {
         let backend = CrosstermBackend::new(stdout());
-        let mut terminal = Terminal::new(backend)?;
+        let terminal = Terminal::new(backend)?;
         Ok(Self {
             layers: Vec::new(),
             terminal,
@@ -125,8 +124,7 @@ impl Compositor {
     }
 
     pub fn render(&mut self, cx: &mut Context) {
-        let area = self
-            .terminal
+        self.terminal
             .autoresize()
             .expect("Unable to determine terminal size");
 
@@ -143,7 +141,7 @@ impl Compositor {
         let (pos, kind) = self.cursor(area, cx.editor);
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
 
-        self.terminal.draw(pos, kind);
+        self.terminal.draw(pos, kind).unwrap();
     }
 
     pub fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {

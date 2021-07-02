@@ -1,19 +1,16 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::compositor::{Component, Context, EventResult};
+use crossterm::event::{Event, KeyCode, KeyEvent};
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
 
-use helix_core::{Position, Transaction};
-use helix_view::{
-    graphics::{Color, Rect, Style},
-    Editor,
-};
+use helix_core::Transaction;
+use helix_view::{graphics::Rect, Editor};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
-use helix_lsp::lsp;
+use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
@@ -79,7 +76,7 @@ impl Completion {
         trigger_offset: usize,
     ) -> Self {
         // let items: Vec<CompletionItem> = Vec::new();
-        let mut menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
             match event {
                 PromptEvent::Abort => {}
                 PromptEvent::Validate => {
@@ -87,8 +84,6 @@ impl Completion {
 
                     // always present here
                     let item = item.unwrap();
-
-                    use helix_lsp::{lsp, util};
 
                     // if more text was entered, remove it
                     let cursor = doc.selection(view.id).cursor();
@@ -100,7 +95,6 @@ impl Completion {
                         doc.apply(&remove, view.id);
                     }
 
-                    use helix_lsp::OffsetEncoding;
                     let transaction = if let Some(edit) = &item.text_edit {
                         let edit = match edit {
                             lsp::CompletionTextEdit::Edit(edit) => edit.clone(),

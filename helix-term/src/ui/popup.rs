@@ -2,13 +2,8 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui::buffer::Buffer as Surface;
 
-use std::borrow::Cow;
-
 use helix_core::Position;
-use helix_view::{
-    graphics::{Color, Rect, Style},
-    Editor,
-};
+use helix_view::graphics::Rect;
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -57,7 +52,7 @@ impl<T: Component> Component for Popup<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key = match event {
             Event::Key(event) => event,
-            Event::Resize(width, height) => {
+            Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
                 return EventResult::Ignored;
             }
@@ -99,7 +94,7 @@ impl<T: Component> Component for Popup<T> {
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
     }
 
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+    fn required_size(&mut self, _viewport: (u16, u16)) -> Option<(u16, u16)> {
         let (width, height) = self
             .contents
             .required_size((120, 26)) // max width, max height
@@ -135,7 +130,6 @@ impl<T: Component> Component for Popup<T> {
             rel_y += 1 // position below point
         }
 
-        let area = Rect::new(rel_x, rel_y, width, height);
         // clip to viewport
         let area = viewport.intersection(Rect::new(rel_x, rel_y, width, height));
 

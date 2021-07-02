@@ -1,5 +1,4 @@
 use crate::{Range, RopeSlice, Selection, Syntax};
-use smallvec::smallvec;
 
 // TODO: to contract_selection we'd need to store the previous ranges before expand.
 // Maybe just contract to the first child node?
