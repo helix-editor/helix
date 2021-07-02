@@ -2193,7 +2193,25 @@ fn goto_mode(cx: &mut Context) {
 }
 
 fn select_mode(cx: &mut Context) {
-    doc_mut!(cx.editor).mode = Mode::Select;
+    let (view, doc) = current!(cx.editor);
+
+    // Make sure all selections are at least 1-wide.
+    // (With the exception of being in an empty document, of course.)
+    doc.set_selection(
+        view.id,
+        doc.selection(view.id).clone().transform(|range| {
+            if range.is_empty() && range.head == doc.text().len_chars() {
+                Range::new(
+                    graphemes::prev_grapheme_boundary(doc.text().slice(..), range.anchor),
+                    range.head,
+                )
+            } else {
+                range.min_width_1(doc.text().slice(..))
+            }
+        }),
+    );
+
+    doc.mode = Mode::Select;
 }
 
 fn exit_select_mode(cx: &mut Context) {

@@ -5,8 +5,11 @@ use ropey::iter::Chars;
 use crate::{
     chars::{categorize_char, char_is_line_ending, CharCategory},
     coords_at_pos,
-    graphemes::{nth_next_grapheme_boundary, nth_prev_grapheme_boundary},
-    line_ending::{get_line_ending, line_end_char_index},
+    graphemes::{
+        next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
+        prev_grapheme_boundary,
+    },
+    line_ending::get_line_ending,
     pos_at_coords, Position, Range, RopeSlice,
 };
 
@@ -29,25 +32,60 @@ pub fn move_horizontally(
     count: usize,
     behaviour: Movement,
 ) -> Range {
-    let pos = range.head;
-    let line = slice.char_to_line(pos);
-    // TODO: we can optimize clamping by passing in RopeSlice limited to current line. that way
-    // we stop calculating past start/end of line.
-    let pos = match dir {
-        Direction::Backward => {
-            let start = slice.line_to_char(line);
-            nth_prev_grapheme_boundary(slice, pos, count).max(start)
+    match (behaviour, dir) {
+        (Movement::Move, Direction::Backward) => {
+            let count = if range.anchor < range.head {
+                count + 1
+            } else {
+                count
+            };
+            let pos = nth_prev_grapheme_boundary(slice, range.head, count);
+            Range::new(pos, pos)
         }
-        Direction::Forward => {
-            let end_char_idx = line_end_char_index(&slice, line);
-            nth_next_grapheme_boundary(slice, pos, count).min(end_char_idx)
+        (Movement::Move, Direction::Forward) => {
+            let count = if range.anchor < range.head {
+                count - 1
+            } else {
+                count
+            };
+            let pos = nth_next_grapheme_boundary(slice, range.head, count);
+            Range::new(pos, pos)
         }
-    };
-    let anchor = match behaviour {
-        Movement::Extend => range.anchor,
-        Movement::Move => pos,
-    };
-    Range::new(anchor, pos)
+        (Movement::Extend, Direction::Backward) => {
+            // Ensure a valid initial selection state.
+            let range = range.min_width_1(slice);
+
+            // Do the main movement.
+            let mut head = nth_prev_grapheme_boundary(slice, range.head, count);
+            let mut anchor = range.anchor;
+
+            // If the head and anchor crossed over each other, we need to
+            // fiddle around to make it behave like a 1-wide cursor.
+            if head <= anchor && range.head > range.anchor {
+                anchor = next_grapheme_boundary(slice, anchor);
+                head = prev_grapheme_boundary(slice, head);
+            }
+
+            Range::new(anchor, head)
+        }
+        (Movement::Extend, Direction::Forward) => {
+            // Ensure a valid initial selection state.
+            let range = range.min_width_1(slice);
+
+            // Do the main movement.
+            let mut head = nth_next_grapheme_boundary(slice, range.head, count);
+            let mut anchor = range.anchor;
+
+            // If the head and anchor crossed over each other, we need to
+            // fiddle around to make it behave like a 1-wide cursor.
+            if head >= anchor && range.head < range.anchor {
+                anchor = prev_grapheme_boundary(slice, anchor);
+                head = next_grapheme_boundary(slice, head);
+            }
+
+            Range::new(anchor, head)
+        }
+    }
 }
 
 pub fn move_vertically(
@@ -323,7 +361,7 @@ mod test {
     }
 
     #[test]
-    fn horizontal_moves_through_single_line_in_single_line_text() {
+    fn horizontal_moves_through_single_line_text() {
         let text = Rope::from(SINGLE_LINE_SAMPLE);
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
@@ -346,7 +384,7 @@ mod test {
     }
 
     #[test]
-    fn horizontal_moves_through_single_line_in_multiline_text() {
+    fn horizontal_moves_through_multiline_text() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
@@ -354,15 +392,15 @@ mod test {
         let mut range = Range::point(position);
 
         let moves_and_expected_coordinates = IntoIter::new([
-            ((Direction::Forward, 1usize), (0, 1)),    // M|ultiline\n
-            ((Direction::Forward, 2usize), (0, 3)),    // Mul|tiline\n
-            ((Direction::Backward, 6usize), (0, 0)),   // |Multiline\n
-            ((Direction::Backward, 999usize), (0, 0)), // |Multiline\n
-            ((Direction::Forward, 3usize), (0, 3)),    // Mul|tiline\n
-            ((Direction::Forward, 0usize), (0, 3)),    // Mul|tiline\n
-            ((Direction::Backward, 0usize), (0, 3)),   // Mul|tiline\n
-            ((Direction::Forward, 999usize), (0, 9)),  // Multiline|\n
-            ((Direction::Forward, 999usize), (0, 9)),  // Multiline|\n
+            ((Direction::Forward, 11usize), (1, 1)), // Multiline\nt|ext sample\n...
+            ((Direction::Backward, 1usize), (1, 0)), // Multiline\n|text sample\n...
+            ((Direction::Backward, 5usize), (0, 5)), // Multi|line\ntext sample\n...
+            ((Direction::Backward, 999usize), (0, 0)), // |Multiline\ntext sample\n...
+            ((Direction::Forward, 3usize), (0, 3)),  // Mul|tiline\ntext sample\n...
+            ((Direction::Forward, 0usize), (0, 3)),  // Mul|tiline\ntext sample\n...
+            ((Direction::Backward, 0usize), (0, 3)), // Mul|tiline\ntext sample\n...
+            ((Direction::Forward, 999usize), (5, 0)), // ...and whitespaced\n|
+            ((Direction::Forward, 999usize), (5, 0)), // ...and whitespaced\n|
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
