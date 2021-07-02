@@ -3405,7 +3405,7 @@ fn match_mode(cx: &mut Context) {
                 'r' => surround_replace(cx),
                 'd' => surround_delete(cx),
                 'a' => select_textobject(cx, textobject::TextObject::Around),
-                'i' => select_textobject(cx, textobject::TextObject::Inner),
+                'i' => select_textobject(cx, textobject::TextObject::Inside),
                 _ => (),
             }
         }
