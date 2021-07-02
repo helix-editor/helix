@@ -94,6 +94,7 @@ fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::
 #[cfg(feature = "embed_runtime")]
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
     use std::fmt;
+    use std::path::PathBuf;
 
     #[derive(rust_embed::RustEmbed)]
     #[folder = "../runtime/"]
