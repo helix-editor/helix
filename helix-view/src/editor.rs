@@ -33,7 +33,7 @@ pub struct Editor {
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
 
-    pub autoinfo: Option<Info>,
+    pub autoinfo: Option<&'static Info>,
     pub status_msg: Option<(String, Severity)>,
 }
 

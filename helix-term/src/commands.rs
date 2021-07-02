@@ -34,7 +34,6 @@ use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
-    key,
     ui::{self, Picker, Popup, Prompt, PromptEvent},
 };
 
@@ -48,7 +47,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 use serde::de::{self, Deserialize, Deserializer};
 
 pub struct Context<'a> {
@@ -3414,13 +3413,11 @@ fn select_register(cx: &mut Context) {
 }
 
 macro_rules! mode_info {
-    // TODO: how to use one expr for both pat and expr?
-    // TODO: how to use replaced function name as str at compile time?
-    // TODO: extend to support multiple keys, but first solve the other two
+    // TODO: reuse $mode for $stat
     (@join $first:expr $(,$rest:expr)*) => {
         concat!($first, $(", ", $rest),*)
     };
-    {$mode:ident, $name:literal, $(#[doc = $desc:literal] $($key:expr),+ => $func:expr),+,} => {
+    {$mode:ident, $stat:ident, $name:literal, $(#[doc = $desc:literal] $($key:tt)|+ => $func:expr),+,} => {
         #[doc = $name]
         #[doc = ""]
         #[doc = "<table><tr><th>key</th><th>desc</th></tr><tbody>"]
@@ -3439,12 +3436,14 @@ macro_rules! mode_info {
         )+
         #[doc = "</tbody></table>"]
         pub fn $mode(cx: &mut Context) {
-            cx.editor.autoinfo = Some(Info::key(
+            static $stat: OnceCell<Info> = OnceCell::new();
+            cx.editor.autoinfo = Some($stat.get_or_init(|| Info::key(
                 $name,
-                vec![$((vec![$($key.parse().unwrap()),+], $desc)),+],
-            ));
+                vec![$((&[$($key.parse().unwrap()),+], $desc)),+],
+            )));
             use helix_core::hashmap;
-            let mut map = hashmap! {
+            // TODO: try and convert this to match later
+            let map = hashmap! {
                 $($($key.parse::<KeyEvent>().unwrap() => $func as for<'r, 's> fn(&'r mut Context<'s>)),+),*
             };
             cx.on_next_key_mode(map);
@@ -3453,7 +3452,7 @@ macro_rules! mode_info {
 }
 
 mode_info! {
-    space_mode, "space mode",
+    space_mode, SPACE_MODE, "space mode",
     /// file picker
     "f" => file_picker,
     /// buffer picker

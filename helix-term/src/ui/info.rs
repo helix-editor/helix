@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Context};
-use helix_view::graphics::{Margin, Rect, Style};
+use helix_view::graphics::Rect;
 use helix_view::info::Info;
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
