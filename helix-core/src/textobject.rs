@@ -73,7 +73,7 @@ pub fn textobject_word(
             {
                 head = this_word_end;
                 if slice
-                    .get_char(this_word_start - 1)
+                    .get_char(this_word_start.saturating_sub(1))
                     .map_or(true, char_is_line_ending)
                 {
                     // single word on a line
@@ -106,7 +106,7 @@ pub fn textobject_surround(
 ) -> Range {
     surround::find_nth_pairs_pos(slice, ch, range.head, count)
         .map(|(anchor, head)| match textobject {
-            TextObject::Inside => Range::new(anchor + 1, head - 1),
+            TextObject::Inside => Range::new(anchor + 1, head.saturating_sub(1)),
             TextObject::Around => Range::new(anchor, head),
         })
         .unwrap_or(range)
