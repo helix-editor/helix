@@ -65,7 +65,7 @@ pub fn move_vertically(
         Direction::Backward => row.saturating_sub(count),
         Direction::Forward => std::cmp::min(
             row.saturating_add(count),
-            slice.len_lines().saturating_sub(2),
+            slice.len_lines().saturating_sub(1),
         ),
     };
 
@@ -402,12 +402,13 @@ mod test {
         let moves_and_expected_coordinates = IntoIter::new([
             ((Direction::Forward, 1usize), (1, 0)),
             ((Direction::Forward, 2usize), (3, 0)),
+            ((Direction::Forward, 1usize), (4, 0)),
             ((Direction::Backward, 999usize), (0, 0)),
-            ((Direction::Forward, 3usize), (3, 0)),
-            ((Direction::Forward, 0usize), (3, 0)),
-            ((Direction::Backward, 0usize), (3, 0)),
-            ((Direction::Forward, 5), (4, 0)),
-            ((Direction::Forward, 999usize), (4, 0)),
+            ((Direction::Forward, 4usize), (4, 0)),
+            ((Direction::Forward, 0usize), (4, 0)),
+            ((Direction::Backward, 0usize), (4, 0)),
+            ((Direction::Forward, 5), (5, 0)),
+            ((Direction::Forward, 999usize), (5, 0)),
         ]);
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
@@ -439,7 +440,8 @@ mod test {
             ((Axis::V, Direction::Forward, 1usize), (3, 8)),
             // Behaviour is preserved even through long jumps
             ((Axis::V, Direction::Backward, 999usize), (0, 8)),
-            ((Axis::V, Direction::Forward, 999usize), (4, 8)),
+            ((Axis::V, Direction::Forward, 4usize), (4, 8)),
+            ((Axis::V, Direction::Forward, 999usize), (5, 0)),
         ]);
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {

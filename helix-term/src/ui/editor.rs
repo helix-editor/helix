@@ -8,7 +8,7 @@ use crate::{
 
 use helix_core::{
     coords_at_pos,
-    graphemes::ensure_grapheme_boundary_next,
+    graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
     syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
@@ -165,21 +165,18 @@ impl EditorView {
         }
         .unwrap_or(base_cursor_scope);
 
-        let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
-            .unwrap_or(selection_scope);
-
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
-            // inject selections as highlight scopes
-            let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
-
             // TODO: primary + insert mode patching:
             // (ui.cursor.primary).patch(mode).unwrap_or(cursor)
-
             let primary_cursor_scope = theme
                 .find_scope_index("ui.cursor.primary")
                 .unwrap_or(cursor_scope);
+            let primary_selection_scope = theme
+                .find_scope_index("ui.selection.primary")
+                .unwrap_or(selection_scope);
 
+            // inject selections as highlight scopes
+            let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
             for (i, range) in selections.iter().enumerate() {
                 let (cursor_scope, selection_scope) = if i == primary_idx {
                     (primary_cursor_scope, primary_selection_scope)
@@ -187,19 +184,23 @@ impl EditorView {
                     (cursor_scope, selection_scope)
                 };
 
-                if range.head == range.anchor {
+                // Special-case: cursor at end of the rope.
+                if range.head == range.anchor && range.head == text.len_chars() {
                     spans.push((cursor_scope, range.head..range.head + 1));
                     continue;
                 }
 
-                let reverse = range.head < range.anchor;
-
-                if reverse {
-                    spans.push((cursor_scope, range.head..range.head + 1));
-                    spans.push((selection_scope, range.head + 1..range.anchor + 1));
+                let range = range.min_width_1(text);
+                if range.head > range.anchor {
+                    // Standard case.
+                    let cursor_start = prev_grapheme_boundary(text, range.head);
+                    spans.push((selection_scope, range.anchor..cursor_start));
+                    spans.push((cursor_scope, cursor_start..range.head));
                 } else {
-                    spans.push((selection_scope, range.anchor..range.head));
-                    spans.push((cursor_scope, range.head..range.head + 1));
+                    // Reverse case.
+                    let cursor_end = next_grapheme_boundary(text, range.head);
+                    spans.push((cursor_scope, range.head..cursor_end));
+                    spans.push((selection_scope, cursor_end..range.anchor));
                 }
             }
 
@@ -232,7 +233,10 @@ impl EditorView {
                     spans.pop();
                 }
                 HighlightEvent::Source { start, end } => {
-                    let text = text.slice(start..end);
+                    // `unwrap_or_else` part is for off-the-end indices of
+                    // the rope, to allow cursor highlighting at the end
+                    // of the rope.
+                    let text = text.get_slice(start..end).unwrap_or_else(|| " ".into());
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
@@ -301,7 +305,11 @@ impl EditorView {
         let info: Style = theme.get("info");
         let hint: Style = theme.get("hint");
 
-        for (i, line) in (view.first_line..last_line).enumerate() {
+        // Whether to draw the line number for the last line of the
+        // document or not.  We only draw it if it's not an empty line.
+        let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+
+        for (i, line) in (view.first_line..=last_line).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
@@ -318,11 +326,17 @@ impl EditorView {
                 );
             }
 
-            // line numbers having selections are rendered differently
+            // Line numbers having selections are rendered
+            // differently, further below.
+            let line_number_text = if line == last_line && !draw_last {
+                "    ~".into()
+            } else {
+                format!("{:>5}", line + 1)
+            };
             surface.set_stringn(
                 viewport.x + 1 - OFFSET,
                 viewport.y + i as u16,
-                format!("{:>5}", line + 1),
+                line_number_text,
                 5,
                 linenr,
             );
@@ -336,7 +350,7 @@ impl EditorView {
         if is_focused {
             let screen = {
                 let start = text.line_to_char(view.first_line);
-                let end = text.line_to_char(last_line + 1);
+                let end = text.line_to_char(last_line + 1) + 1; // +1 for cursor at end of text.
                 Range::new(start, end)
             };
 
@@ -345,10 +359,17 @@ impl EditorView {
             for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
                 let head = view.screen_coords_at_pos(doc, text, selection.head);
                 if let Some(head) = head {
+                    // Draw line number for selected lines.
+                    let line_number = view.first_line + head.row;
+                    let line_number_text = if line_number == last_line && !draw_last {
+                        "    ~".into()
+                    } else {
+                        format!("{:>5}", line_number + 1)
+                    };
                     surface.set_stringn(
                         viewport.x + 1 - OFFSET,
                         viewport.y + head.row as u16,
-                        format!("{:>5}", view.first_line + head.row + 1),
+                        line_number_text,
                         5,
                         linenr_select,
                     );

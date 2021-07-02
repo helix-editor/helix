@@ -448,15 +448,7 @@ impl Document {
         }
 
         let mut file = std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
-        let (mut rope, encoding) = from_reader(&mut file, encoding)?;
-
-        // search for line endings
-        let line_ending = auto_detect_line_ending(&rope).unwrap_or(DEFAULT_LINE_ENDING);
-
-        // add missing newline at the end of file
-        if rope.len_bytes() == 0 || !char_is_line_ending(rope.char(rope.len_chars() - 1)) {
-            rope.insert(rope.len_chars(), line_ending.as_str());
-        }
+        let (rope, encoding) = from_reader(&mut file, encoding)?;
 
         let mut doc = Self::from(rope, Some(encoding));
 
@@ -466,9 +458,9 @@ impl Document {
             doc.detect_language(theme, loader);
         }
 
-        // Detect indentation style and set line ending.
+        // Detect indentation style and line ending.
         doc.detect_indent_style();
-        doc.line_ending = line_ending;
+        doc.line_ending = auto_detect_line_ending(&doc.text).unwrap_or(DEFAULT_LINE_ENDING);
 
         Ok(doc)
     }
