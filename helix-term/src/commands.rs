@@ -1526,7 +1526,7 @@ mod cmd {
     }
 
     /// Reload the [`Document`] from its source file.
-    fn reload(cx: &mut compositor::Context, args: &[&str], _: PromptEvent) {
+    fn reload(cx: &mut compositor::Context, _args: &[&str], _: PromptEvent) {
         let (view, doc) = current!(cx.editor);
         doc.reload(view.id).unwrap();
     }
