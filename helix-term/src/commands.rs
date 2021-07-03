@@ -165,17 +165,12 @@ impl Command {
         move_char_right,
         move_line_up,
         move_line_down,
-        move_line_end,
-        move_line_start,
-        move_first_nonwhitespace,
         move_next_word_start,
         move_prev_word_start,
         move_next_word_end,
         move_next_long_word_start,
         move_prev_long_word_start,
         move_next_long_word_end,
-        move_file_start,
-        move_file_end,
         extend_next_word_start,
         extend_prev_word_start,
         extend_next_word_end,
@@ -187,7 +182,6 @@ impl Command {
         find_prev_char,
         extend_till_prev_char,
         extend_prev_char,
-        extend_first_nonwhitespace,
         replace,
         page_up,
         page_down,
@@ -197,8 +191,6 @@ impl Command {
         extend_char_right,
         extend_line_up,
         extend_line_down,
-        extend_line_end,
-        extend_line_start,
         select_all,
         select_regex,
         split_selection,
@@ -229,11 +221,17 @@ impl Command {
         goto_definition,
         goto_type_definition,
         goto_implementation,
+        goto_file_start,
+        goto_file_end,
         goto_reference,
         goto_first_diag,
         goto_last_diag,
         goto_next_diag,
         goto_prev_diag,
+        goto_line_start,
+        goto_line_end,
+        goto_line_end_newline,
+        goto_first_nonwhitespace,
         signature_help,
         insert_tab,
         insert_newline,
@@ -360,7 +358,7 @@ fn move_line_down(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn move_line_end(cx: &mut Context) {
+fn goto_line_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id).transform(|range| {
@@ -371,13 +369,33 @@ fn move_line_end(cx: &mut Context) {
         let pos = graphemes::nth_prev_grapheme_boundary(text.slice(..), pos, 1);
         let pos = range.head.max(pos).max(text.line_to_char(line));
 
+        Range::new(
+            match doc.mode {
+                Mode::Normal | Mode::Insert => pos,
+                Mode::Select => range.anchor,
+            },
+            pos,
+        )
+    });
+
+    doc.set_selection(view.id, selection);
+}
+
+fn goto_line_end_newline(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let selection = doc.selection(view.id).transform(|range| {
+        let text = doc.text();
+        let line = text.char_to_line(range.head);
+
+        let pos = line_end_char_index(&text.slice(..), line);
         Range::new(pos, pos)
     });
 
     doc.set_selection(view.id, selection);
 }
 
-fn move_line_start(cx: &mut Context) {
+fn goto_line_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id).transform(|range| {
@@ -386,13 +404,19 @@ fn move_line_start(cx: &mut Context) {
 
         // adjust to start of the line
         let pos = text.line_to_char(line);
-        Range::new(pos, pos)
+        Range::new(
+            match doc.mode {
+                Mode::Normal => range.anchor,
+                Mode::Select | Mode::Insert => pos,
+            },
+            pos,
+        )
     });
 
     doc.set_selection(view.id, selection);
 }
 
-fn move_first_nonwhitespace(cx: &mut Context) {
+fn goto_first_nonwhitespace(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id).transform(|range| {
@@ -401,13 +425,51 @@ fn move_first_nonwhitespace(cx: &mut Context) {
 
         if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
             let pos = pos + text.line_to_char(line_idx);
-            Range::new(pos, pos)
+            Range::new(
+                match doc.mode {
+                    Mode::Normal => pos,
+                    Mode::Select => range.anchor,
+                    Mode::Insert => unreachable!(),
+                },
+                pos,
+            )
         } else {
             range
         }
     });
 
     doc.set_selection(view.id, selection);
+}
+
+fn goto_window_top(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+    let line = (view.first_line + scrolloff).min(view.last_line(doc).saturating_sub(scrolloff));
+    let pos = doc.text().line_to_char(line);
+
+    doc.set_selection(view.id, Selection::point(pos));
+}
+
+fn goto_window_center(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+    let line = view.first_line + (view.area.height as usize / 2);
+    let line = line.min(view.last_line(doc).saturating_sub(scrolloff));
+    let pos = doc.text().line_to_char(line);
+
+    doc.set_selection(view.id, Selection::point(pos));
+}
+
+fn goto_window_bottom(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+    let line = view.last_line(doc).saturating_sub(scrolloff);
+    let pos = doc.text().line_to_char(line);
+
+    doc.set_selection(view.id, Selection::point(pos));
 }
 
 // TODO: move vs extend could take an extra type Extend/Move that would
@@ -486,13 +548,13 @@ fn move_next_long_word_end(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn move_file_start(cx: &mut Context) {
+fn goto_file_start(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = current!(cx.editor);
     doc.set_selection(view.id, Selection::point(0));
 }
 
-fn move_file_end(cx: &mut Context) {
+fn goto_file_end(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
@@ -671,24 +733,6 @@ fn extend_prev_char(cx: &mut Context) {
     )
 }
 
-fn extend_first_nonwhitespace(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    let selection = doc.selection(view.id).transform(|range| {
-        let text = doc.text();
-        let line_idx = text.char_to_line(range.head);
-
-        if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
-            let pos = pos + text.line_to_char(line_idx);
-            Range::new(range.anchor, pos)
-        } else {
-            range
-        }
-    });
-
-    doc.set_selection(view.id, selection);
-}
-
 fn replace(cx: &mut Context) {
     let mut buf = [0u8; 4]; // To hold utf8 encoded char.
 
@@ -831,38 +875,6 @@ fn extend_line_down(cx: &mut Context) {
     let selection = doc.selection(view.id).transform(|range| {
         movement::move_vertically(text, range, Direction::Forward, count, Movement::Extend)
     });
-    doc.set_selection(view.id, selection);
-}
-
-fn extend_line_end(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    let selection = doc.selection(view.id).transform(|range| {
-        let text = doc.text();
-        let line = text.char_to_line(range.head);
-
-        let pos = line_end_char_index(&text.slice(..), line);
-        let pos = graphemes::nth_prev_grapheme_boundary(text.slice(..), pos, 1);
-        let pos = range.head.max(pos).max(text.line_to_char(line));
-
-        Range::new(range.anchor, pos)
-    });
-
-    doc.set_selection(view.id, selection);
-}
-
-fn extend_line_start(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    let selection = doc.selection(view.id).transform(|range| {
-        let text = doc.text();
-        let line = text.char_to_line(range.head);
-
-        // adjust to start of the line
-        let pos = text.line_to_char(line);
-        Range::new(range.anchor, pos)
-    });
-
     doc.set_selection(view.id, selection);
 }
 
@@ -1940,7 +1952,7 @@ fn symbol_picker(cx: &mut Context) {
 
 // I inserts at the first nonwhitespace character of each line with a selection
 fn prepend_to_line(cx: &mut Context) {
-    move_first_nonwhitespace(cx);
+    goto_first_nonwhitespace(cx);
     let doc = doc_mut!(cx.editor);
     enter_insert_mode(doc);
 }
@@ -2106,7 +2118,7 @@ fn push_jump(editor: &mut Editor) {
     view.jumps.push(jump);
 }
 
-fn switch_to_last_accessed_file(cx: &mut Context) {
+fn goto_last_accessed_file(cx: &mut Context) {
     let alternate_file = view!(cx.editor).last_accessed_doc;
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
@@ -2115,7 +2127,15 @@ fn switch_to_last_accessed_file(cx: &mut Context) {
     }
 }
 
-fn goto_mode(cx: &mut Context) {
+fn select_mode(cx: &mut Context) {
+    doc_mut!(cx.editor).mode = Mode::Select;
+}
+
+fn exit_select_mode(cx: &mut Context) {
+    doc_mut!(cx.editor).mode = Mode::Normal;
+}
+
+fn goto_prehook(cx: &mut Context) -> bool {
     if let Some(count) = cx.count {
         push_jump(cx.editor);
 
@@ -2123,63 +2143,10 @@ fn goto_mode(cx: &mut Context) {
         let line_idx = std::cmp::min(count.get() - 1, doc.text().len_lines().saturating_sub(2));
         let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
-        return;
+        true
+    } else {
+        false
     }
-
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            // TODO: temporarily show GOTO in the mode list
-            let doc = doc_mut!(cx.editor);
-            match (doc.mode, ch) {
-                (_, 'g') => move_file_start(cx),
-                (_, 'e') => move_file_end(cx),
-                (_, 'a') => switch_to_last_accessed_file(cx),
-                (Mode::Normal, 'h') => move_line_start(cx),
-                (Mode::Normal, 'l') => move_line_end(cx),
-                (Mode::Select, 'h') => extend_line_start(cx),
-                (Mode::Select, 'l') => extend_line_end(cx),
-                (_, 'd') => goto_definition(cx),
-                (_, 'y') => goto_type_definition(cx),
-                (_, 'r') => goto_reference(cx),
-                (_, 'i') => goto_implementation(cx),
-                (Mode::Normal, 's') => move_first_nonwhitespace(cx),
-                (Mode::Select, 's') => extend_first_nonwhitespace(cx),
-
-                (_, 't') | (_, 'm') | (_, 'b') => {
-                    let (view, doc) = current!(cx.editor);
-
-                    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
-
-                    let last_line = view.last_line(doc);
-
-                    let line = match ch {
-                        't' => (view.first_line + scrolloff),
-                        'm' => (view.first_line + (view.area.height as usize / 2)),
-                        'b' => last_line.saturating_sub(scrolloff),
-                        _ => unreachable!(),
-                    }
-                    .min(last_line.saturating_sub(scrolloff));
-
-                    let pos = doc.text().line_to_char(line);
-
-                    doc.set_selection(view.id, Selection::point(pos));
-                }
-                _ => (),
-            }
-        }
-    })
-}
-
-fn select_mode(cx: &mut Context) {
-    doc_mut!(cx.editor).mode = Mode::Select;
-}
-
-fn exit_select_mode(cx: &mut Context) {
-    doc_mut!(cx.editor).mode = Mode::Normal;
 }
 
 fn goto_impl(
@@ -3412,107 +3379,6 @@ fn select_register(cx: &mut Context) {
     })
 }
 
-macro_rules! mode_info {
-    // TODO: reuse $mode for $stat
-    (@join $first:expr $(,$rest:expr)*) => {
-        concat!($first, $(", ", $rest),*)
-    };
-    {$mode:ident, $stat:ident, $name:literal, $(#[doc = $desc:literal] $($key:tt)|+ => $func:expr),+,} => {
-        #[doc = $name]
-        #[doc = ""]
-        #[doc = "<table><tr><th>key</th><th>desc</th></tr><tbody>"]
-        $(
-        #[doc = "<tr><td>"]
-        // TODO switch to this once we use rust 1.54
-        // right now it will produce multiple rows
-        // #[doc = mode_info!(@join $($key),+)]
-        $(
-        #[doc = $key]
-        )+
-        // <-
-        #[doc = "</td><td>"]
-        #[doc = $desc]
-        #[doc = "</td></tr>"]
-        )+
-        #[doc = "</tbody></table>"]
-        pub fn $mode(cx: &mut Context) {
-            static $stat: OnceCell<Info> = OnceCell::new();
-            cx.editor.autoinfo = Some($stat.get_or_init(|| Info::key(
-                $name,
-                vec![$((&[$($key.parse().unwrap()),+], $desc)),+],
-            )));
-            use helix_core::hashmap;
-            // TODO: try and convert this to match later
-            let map = hashmap! {
-                $($($key.parse::<KeyEvent>().unwrap() => $func as for<'r, 's> fn(&'r mut Context<'s>)),+),*
-            };
-            cx.on_next_key_mode(map);
-        }
-    };
-}
-
-mode_info! {
-    space_mode, SPACE_MODE, "space mode",
-    /// file picker
-    "f" => file_picker,
-    /// buffer picker
-    "b" => buffer_picker,
-    /// symbol picker
-    "s" => symbol_picker,
-    /// window mode
-    "w" => window_mode,
-    /// yank joined to clipboard
-    "y" => yank_joined_to_clipboard,
-    /// yank main selection to clipboard
-    "Y" => yank_main_selection_to_clipboard,
-    /// paste system clipboard after selections
-    "p" => paste_clipboard_after,
-    /// paste system clipboard before selections
-    "P" => paste_clipboard_before,
-    /// replace selections with clipboard
-    "R" => replace_selections_with_clipboard,
-    /// keep primary selection
-    "space" => keep_primary_selection,
-}
-
-// TODO: generated, delete it later
-// /// space mode
-// ///
-// /// | key | desc |
-// /// |-----|------|
-// /// | f   | file picker |
-// /// | b   | buffer picker |
-// /// ...
-// pub fn space_mode(cx: &mut Context) {
-//     cx.editor.autoinfo = Some(Info::key(
-//         "space mode",
-//         vec![
-//             (vec!["f".parse().unwrap()], "file picker"),
-//             (vec!["b".parse().unwrap()], "buffer picker"),
-//             (vec!["s".parse().unwrap()], "symbol picker"),
-//             (vec!["w".parse().unwrap()], "window mode"),
-//             (vec!["y".parse().unwrap()], "yank joined to clipboard"),
-//             (vec!["Y".parse().unwrap()], "yank main selection to clipboard"),
-//             (vec!["p".parse().unwrap()], "paste system clipboard after selections"),
-//             (vec!["P".parse().unwrap()], "paste system clipboard before selections"),
-//             (vec!["R".parse().unwrap()], "replace selections with clipboard"),
-//             (vec![" ".parse().unwrap()], "keep primary selection"),
-//         ],
-//     ));
-//     let mut map: HashMap<KeyEvent, fn(&mut Context)> = HashMap::with_capacity(10);
-//     map.insert("f".parse().unwrap(), file_picker);
-//     map.insert("b".parse().unwrap(), buffer_picker);
-//     map.insert("s".parse().unwrap(), symbol_picker);
-//     map.insert("w".parse().unwrap(), window_mode);
-//     map.insert("y".parse().unwrap(), yank_joined_to_clipboard);
-//     map.insert("Y".parse().unwrap(), yank_main_selection_to_clipboard);
-//     map.insert("p".parse().unwrap(), paste_clipboard_after);
-//     map.insert("P".parse().unwrap(), paste_clipboard_before);
-//     map.insert("R".parse().unwrap(), replace_selections_with_clipboard);
-//     map.insert(" ".parse().unwrap(), keep_primary_selection);
-//     cx.on_next_key_mode(map);
-// }
-
 fn view_mode(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let KeyEvent {
@@ -3733,4 +3599,133 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+/// Do nothing, just for modeinfo.
+fn noop(_cx: &mut Context) -> bool {
+    false
+}
+
+/// Generate modeinfo.
+///
+/// If prehook returns true then it will stop the rest.
+macro_rules! mode_info {
+    // TODO: reuse $mode for $stat
+    (@join $first:expr $(,$rest:expr)*) => {
+        concat!($first, $(", ", $rest),*)
+    };
+    (@name #[doc = $name:literal] $(#[$rest:meta])*) => {
+        $name
+    };
+    {
+        #[doc = $name:literal] $(#[$doc:meta])* $mode:ident, $stat:ident,
+        $(#[doc = $desc:literal] $($key:tt)|+ => $func:expr),+,
+    } => {
+        mode_info! {
+            #[doc = $name]
+            $(#[$doc])*
+            $mode, $stat, noop,
+            $(
+            #[doc = $desc]
+            $($key)|+ => $func
+            ),+,
+        }
+    };
+    {
+        #[doc = $name:literal] $(#[$doc:meta])* $mode:ident, $stat:ident, $prehook:expr,
+        $(#[doc = $desc:literal] $($key:tt)|+ => $func:expr),+,
+    } => {
+        #[doc = $name]
+        $(#[$doc])*
+        #[doc = ""]
+        #[doc = "<table><tr><th>key</th><th>desc</th></tr><tbody>"]
+        $(
+        #[doc = "<tr><td>"]
+        // TODO switch to this once we use rust 1.54
+        // right now it will produce multiple rows
+        // #[doc = mode_info!(@join $($key),+)]
+        $(
+        #[doc = $key]
+        )+
+        // <-
+        #[doc = "</td><td>"]
+        #[doc = $desc]
+        #[doc = "</td></tr>"]
+        )+
+        #[doc = "</tbody></table>"]
+        pub fn $mode(cx: &mut Context) {
+            if $prehook(cx) {
+                return;
+            }
+            static $stat: OnceCell<Info> = OnceCell::new();
+            cx.editor.autoinfo = Some($stat.get_or_init(|| Info::key(
+                $name.trim(),
+                vec![$((&[$($key.parse().unwrap()),+], $desc)),+],
+            )));
+            use helix_core::hashmap;
+            // TODO: try and convert this to match later
+            let map = hashmap! {
+                $($($key.parse::<KeyEvent>().unwrap() => $func as for<'r, 's> fn(&'r mut Context<'s>)),+),*
+            };
+            cx.on_next_key_mode(map);
+        }
+    };
+}
+
+mode_info! {
+    /// space mode
+    space_mode, SPACE_MODE,
+    /// file picker
+    "f" => file_picker,
+    /// buffer picker
+    "b" => buffer_picker,
+    /// symbol picker
+    "s" => symbol_picker,
+    /// window mode
+    "w" => window_mode,
+    /// yank joined to clipboard
+    "y" => yank_joined_to_clipboard,
+    /// yank main selection to clipboard
+    "Y" => yank_main_selection_to_clipboard,
+    /// paste system clipboard after selections
+    "p" => paste_clipboard_after,
+    /// paste system clipboard before selections
+    "P" => paste_clipboard_before,
+    /// replace selections with clipboard
+    "R" => replace_selections_with_clipboard,
+    /// keep primary selection
+    "space" => keep_primary_selection,
+}
+
+mode_info! {
+    /// goto mode
+    ///
+    /// When specified with a count, it will go to that line without entering the mode.
+    goto_mode, GOTO_MODE, goto_prehook,
+    /// file start
+    "g" => goto_file_start,
+    /// file end
+    "e" => goto_file_end,
+    /// line start
+    "h" => goto_line_start,
+    /// line end
+    "l" => goto_line_end,
+    /// line first non blank
+    "s" => goto_first_nonwhitespace,
+    /// definition
+    "d" => goto_definition,
+    /// type references
+    "y" => goto_type_definition,
+    /// references
+    "r" => goto_reference,
+    /// implementation
+    "i" => goto_implementation,
+    /// window top
+    "t" => goto_window_top,
+    /// window center
+    "c" => goto_window_center,
+    /// window bottom
+    "b" => goto_window_bottom,
+    /// last accessed file
+    "a" => goto_last_accessed_file,
 }
