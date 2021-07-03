@@ -9,6 +9,7 @@ use log::error;
 use std::{
     io::{stdout, Write},
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 use anyhow::Error;
@@ -130,6 +131,8 @@ impl Application {
 
     pub async fn event_loop(&mut self) {
         let mut reader = EventStream::new();
+        let mut last_render = Instant::now();
+        let deadline = Duration::from_secs(1) / 60;
 
         self.render();
 
@@ -139,26 +142,22 @@ impl Application {
                 break;
             }
 
-            use futures_util::{FutureExt, StreamExt};
+            use futures_util::StreamExt;
 
             tokio::select! {
+                biased;
+
                 event = reader.next() => {
                     self.handle_terminal_events(event)
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
                     self.handle_language_server_message(call, id).await;
-
-                    // eagerly process any other available notifications/calls
-                    let now = std::time::Instant::now();
-                    let deadline = std::time::Duration::from_millis(10);
-                    while let Some(Some((id, call))) = self.editor.language_servers.incoming.next().now_or_never() {
-                       self.handle_language_server_message(call, id).await;
-
-                       if now.elapsed() > deadline { // use a deadline so we don't block too long
-                           break;
-                       }
+                    // limit render calls for fast language server messages
+                    let last = self.editor.language_servers.incoming.is_empty();
+                    if last || last_render.elapsed() > deadline {
+                        self.render();
+                        last_render = Instant::now();
                     }
-                    self.render();
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
