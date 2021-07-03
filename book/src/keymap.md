@@ -150,7 +150,8 @@ Jumps to various locations.
 ## Match mode
 
 Enter this mode using `m` from normal mode. See the relavant section
-in [Usage](./usage.md#surround) for an explanation about surround usage.
+in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
+and [textobject](./usage.md#textobject) usage.
 
 | Key              | Description                                     |
 | -----            | -----------                                     |
@@ -158,6 +159,8 @@ in [Usage](./usage.md#surround) for an explanation about surround usage.
 | `s` `<char>`     | Surround current selection with `<char>`        |
 | `r` `<from><to>` | Replace surround character `<from>` with `<to>` |
 | `d` `<char>`     | Delete surround character `<char>`              |
+| `a` `<object>`   | Select around textobject                        |
+| `i` `<object>`   | Select inside textobject                        |
 
 ## Object mode
 

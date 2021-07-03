@@ -24,3 +24,19 @@ It can also act on multiple seletions (yay!). For example, to change every occur
 - `mr([` to replace the parens with square brackets
 
 Multiple characters are currently not supported, but planned.
+
+## Textobjects
+
+Currently supported: `word`, `surround`.
+
+![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
+
+- `ma` - Select around the object (`va` in vim, `<alt-a>` in kakoune)
+- `mi` - Select inside the object (`vi` in vim, `<alt-i>` in kakoune)
+
+| Key after `mi` or `ma` | Textobject selected      |
+| ---                    | ---                      |
+| `w`                    | Word                     |
+| `(`, `[`, `'`, etc     | Specified surround pairs |
+
+Textobjects based on treesitter, like `function`, `class`, etc are planned.
