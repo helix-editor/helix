@@ -171,8 +171,8 @@ impl Default for Keymaps {
             key!('r') => Command::replace,
             key!('R') => Command::replace_with_yanked,
 
-            key!(Home) => Command::move_line_start,
-            key!(End) => Command::move_line_end,
+            key!(Home) => Command::goto_line_start,
+            key!(End) => Command::goto_line_end,
 
             key!('w') => Command::move_next_word_start,
             key!('b') => Command::move_prev_word_start,
@@ -303,8 +303,8 @@ impl Default for Keymaps {
 
                 key!('T') => Command::extend_till_prev_char,
                 key!('F') => Command::extend_prev_char,
-                key!(Home) => Command::extend_line_start,
-                key!(End) => Command::extend_line_end,
+                key!(Home) => Command::goto_line_start,
+                key!(End) => Command::goto_line_end,
                 key!(Esc) => Command::exit_select_mode,
             )
             .into_iter(),
@@ -327,8 +327,8 @@ impl Default for Keymaps {
                 key!(Right) => Command::move_char_right,
                 key!(PageUp) => Command::page_up,
                 key!(PageDown) => Command::page_down,
-                key!(Home) => Command::move_line_start,
-                key!(End) => Command::move_line_end,
+                key!(Home) => Command::goto_line_start,
+                key!(End) => Command::goto_line_end_newline,
                 ctrl!('x') => Command::completion,
                 ctrl!('w') => Command::delete_word_backward,
             ),
