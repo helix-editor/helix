@@ -16,9 +16,9 @@ pub struct Job {
 
 #[derive(Default)]
 pub struct Jobs {
-    futures: FuturesUnordered<JobFuture>,
+    pub futures: FuturesUnordered<JobFuture>,
     /// These are the ones that need to complete before we exit.
-    wait_futures: FuturesUnordered<JobFuture>,
+    pub wait_futures: FuturesUnordered<JobFuture>,
 }
 
 impl Job {
@@ -77,11 +77,11 @@ impl Jobs {
         }
     }
 
-    pub fn next_job(
-        &mut self,
-    ) -> impl Future<Output = Option<anyhow::Result<Option<Callback>>>> + '_ {
-        future::select(self.futures.next(), self.wait_futures.next())
-            .map(|either| either.factor_first().0)
+    pub async fn next_job(&mut self) -> Option<anyhow::Result<Option<Callback>>> {
+        tokio::select! {
+            event = self.futures.next() => {  event }
+            event = self.wait_futures.next() => { event }
+        }
     }
 
     pub fn add(&mut self, j: Job) {
