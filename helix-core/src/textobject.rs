@@ -247,14 +247,13 @@ mod test {
                 "samexx 'single' surround pairs",
                 vec![
                     (3, Inside, (3, 3), '\'', 1),
-                    // FIXME: surround doesn't work when *on* same chars pair
-                    // (7, Inner, (8, 13), '\'', 1),
+                    (7, Inside, (8, 13), '\'', 1),
                     (10, Inside, (8, 13), '\'', 1),
-                    // (14, Inner, (8, 13), '\'', 1),
+                    (14, Inside, (8, 13), '\'', 1),
                     (3, Around, (3, 3), '\'', 1),
-                    // (7, Around, (7, 14), '\'', 1),
+                    (7, Around, (7, 14), '\'', 1),
                     (10, Around, (7, 14), '\'', 1),
-                    // (14, Around, (7, 14), '\'', 1),
+                    (14, Around, (7, 14), '\'', 1),
                 ],
             ),
             (
