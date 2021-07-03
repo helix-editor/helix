@@ -81,6 +81,7 @@ Possible keys:
 | `ui.cursor.match`        | Matching bracket etc.               |
 | `ui.cursor.primary`      | Cursor with primary selection       |
 | `ui.linenr`              |                                     |
+| `ui.linenr.selected`     |                                     |
 | `ui.statusline`          |                                     |
 | `ui.statusline.inactive` |                                     |
 | `ui.popup`               |                                     |
