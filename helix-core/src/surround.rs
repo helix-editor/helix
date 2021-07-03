@@ -44,7 +44,7 @@ pub fn find_nth_pairs_pos(
         let prev = search::find_nth_prev(text, open, pos, n, true);
         let next = search::find_nth_next(text, close, pos, n, true);
         if text.char(pos) == open {
-            // curosr is *on* a pair
+            // cursor is *on* a pair
             next.map(|n| (pos, n)).or_else(|| prev.map(|p| (p, pos)))?
         } else {
             (prev?, next?)
