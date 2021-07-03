@@ -41,11 +41,14 @@ pub fn find_nth_pairs_pos(
     let (open, close) = get_pair(ch);
 
     let (open_pos, close_pos) = if open == close {
-        // find_nth* do not consider current character; +1/-1 to include them
-        (
-            search::find_nth_prev(text, open, pos + 1, n, true)?,
-            search::find_nth_next(text, close, pos - 1, n, true)?,
-        )
+        let prev = search::find_nth_prev(text, open, pos, n, true);
+        let next = search::find_nth_next(text, close, pos, n, true);
+        if text.char(pos) == open {
+            // curosr is *on* a pair
+            next.map(|n| (pos, n)).or_else(|| prev.map(|p| (p, pos)))?
+        } else {
+            (prev?, next?)
+        }
     } else {
         (
             find_nth_open_pair(text, open, close, pos, n)?,
@@ -198,6 +201,11 @@ mod test {
         assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 1), Some((10, 15)));
         assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 2), Some((4, 21)));
         assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 3), Some((0, 27)));
+        // cursor on the quotes
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 10, 1), Some((10, 15)));
+        // this is the best we can do since opening and closing pairs are same
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 0, 1), Some((0, 4)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 27, 1), Some((21, 27)));
     }
 
     #[test]
