@@ -1,0 +1,76 @@
+# Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
+
+"attribute" = { fg = "type" }
+"namespace" = { fg = "type" }
+"module" = { fg = "type" }
+"property" = { fg = "type" }
+"type" = { fg = "type" }
+"type.builtin" = { fg = "type" }
+"constructor" = { fg = "type" }
+
+"keyword" = { fg = "keyword" }
+"keyword.directive" = { fg = "keyword" }
+
+"punctuation" = { fg = "regex" }
+"punctuation.delimiter" = { fg = "regex" }
+
+"operator" = { fg = "special" }
+"special" = { fg = "special" }
+"label" = { fg = "special" }
+
+"variable" = { fg = "variable" }
+"variable.parameter" = { fg = "variable" }
+"variable.builtin" = { fg = "variable" }
+
+"function" = { fg = "fn_declaration" }
+"function.macro" = { fg = "fn_declaration" }
+"function.builtin" = { fg = "fn_declaration" }
+
+"comment" = { fg = "#6A9955" }
+
+"constant" = { fg = "constant" }
+"constant.builtin" = { fg = "constant" }
+
+"string" = { fg = "#ce9178" }
+"number" = { fg = "#b5cea8" }
+"escape" = { fg = "#d7ba7d" }
+
+"ui.background" = { fg = "#d4d4d4", bg = "#1e1e1e" }
+
+"ui.help" = { bg = "widget" }
+"ui.popup" = { bg = "widget" }
+"ui.window" = { bg = "widget" }
+"ui.menu.selected" = { bg = "widget" }
+
+"ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "cursor", modifiers = ['underlined'] }
+
+"ui.selection" = { bg = "#3a3d41" }
+"ui.selection.primary" = { bg = "#add6ff26" }
+
+"ui.linenr" = { fg = "#858585" }
+"ui.linenr.selected" = { fg = "#c6c6c6" }
+
+"ui.statusline" = { fg = "#ffffff", bg = "#007acc" }
+
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "#ffffff" }
+
+"warning" = { fg = "#cca700" }
+"error" = { fg = "#f48771" }
+"info" = { fg = "#75beff" }
+"hint" = { fg = "#eeeeeeb3" }
+
+[palette]
+type = "#4EC9B0"
+keyword = "#569CD6"
+regex = "#CE917"
+special = "#C586C0"
+variable = "#9CDCFE"
+fn_declaration = "#DCDCAA"
+constant = "#4FC1FF"
+
+text = "#d4d4d4"
+cursor = "#a6a6a6"
+widget = "#252526"
