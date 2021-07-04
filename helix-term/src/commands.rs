@@ -441,35 +441,35 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn goto_window_top(cx: &mut Context) {
+fn goto_window(cx: &mut Context, align: Align) {
     let (view, doc) = current!(cx.editor);
 
     let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
-    let line = (view.first_line + scrolloff).min(view.last_line(doc).saturating_sub(scrolloff));
+
+    let last_line = view.last_line(doc);
+
+    let line = match align {
+        Align::Top => (view.first_line + scrolloff),
+        Align::Center => (view.first_line + (view.area.height as usize / 2)),
+        Align::Bottom => last_line.saturating_sub(scrolloff),
+    }
+    .min(last_line.saturating_sub(scrolloff));
+
     let pos = doc.text().line_to_char(line);
 
     doc.set_selection(view.id, Selection::point(pos));
+}
+
+fn goto_window_top(cx: &mut Context) {
+    goto_window(cx, Align::Top)
 }
 
 fn goto_window_middle(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
-    let line = view.first_line + (view.area.height as usize / 2);
-    let line = line.min(view.last_line(doc).saturating_sub(scrolloff));
-    let pos = doc.text().line_to_char(line);
-
-    doc.set_selection(view.id, Selection::point(pos));
+    goto_window(cx, Align::Center)
 }
 
 fn goto_window_bottom(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
-    let line = view.last_line(doc).saturating_sub(scrolloff);
-    let pos = doc.text().line_to_char(line);
-
-    doc.set_selection(view.id, Selection::point(pos));
+    goto_window(cx, Align::Bottom)
 }
 
 // TODO: move vs extend could take an extra type Extend/Move that would
@@ -3722,7 +3722,7 @@ mode_info! {
     "i" => goto_implementation,
     /// window top
     "t" => goto_window_top,
-    /// window center
+    /// window middle
     "m" => goto_window_middle,
     /// window bottom
     "b" => goto_window_bottom,
