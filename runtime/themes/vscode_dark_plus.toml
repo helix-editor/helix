@@ -1,35 +1,36 @@
 # Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
 
-"attribute" = { fg = "type" }
 "namespace" = { fg = "type" }
 "module" = { fg = "type" }
-"property" = { fg = "type" }
 "type" = { fg = "type" }
 "type.builtin" = { fg = "type" }
 "constructor" = { fg = "type" }
 
 "keyword" = { fg = "keyword" }
 "keyword.directive" = { fg = "keyword" }
+"function.macro" = { fg = "keyword" }
+"variable.builtin" = { fg = "keyword" }
+"label" = { fg = "keyword" }
+"constant.builtin" = { fg = "keyword" }
 
 "punctuation" = { fg = "regex" }
 "punctuation.delimiter" = { fg = "regex" }
 
-"operator" = { fg = "special" }
 "special" = { fg = "special" }
-"label" = { fg = "special" }
+"operator" = { fg = "special" }
 
 "variable" = { fg = "variable" }
 "variable.parameter" = { fg = "variable" }
-"variable.builtin" = { fg = "variable" }
+"property" = { fg = "variable" }
 
+"attribute" = { fg = "fn_declaration" }
 "function" = { fg = "fn_declaration" }
-"function.macro" = { fg = "fn_declaration" }
 "function.builtin" = { fg = "fn_declaration" }
 
 "comment" = { fg = "#6A9955" }
 
 "constant" = { fg = "constant" }
-"constant.builtin" = { fg = "constant" }
+"variant" = { fg = "constant" } 
 
 "string" = { fg = "#ce9178" }
 "number" = { fg = "#b5cea8" }
@@ -55,6 +56,7 @@
 "ui.statusline" = { fg = "#ffffff", bg = "#007acc" }
 
 "ui.text" = { fg = "text" }
+
 "ui.text.focus" = { fg = "#ffffff" }
 
 "warning" = { fg = "#cca700" }
@@ -66,7 +68,7 @@
 type = "#4EC9B0"
 keyword = "#569CD6"
 regex = "#CE917"
-special = "#C586C0"
+special = "#d4d4d4"
 variable = "#9CDCFE"
 fn_declaration = "#DCDCAA"
 constant = "#4FC1FF"

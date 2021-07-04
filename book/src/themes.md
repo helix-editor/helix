@@ -62,6 +62,7 @@ Possible keys:
 | `type`                   |                                     |
 | `type.builtin`           |                                     |
 | `constructor`            |                                     |
+| `variant`                |                                     |
 | `function`               |                                     |
 | `function.macro`         |                                     |
 | `function.builtin`       |                                     |
