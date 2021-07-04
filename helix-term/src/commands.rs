@@ -451,7 +451,7 @@ fn goto_window_top(cx: &mut Context) {
     doc.set_selection(view.id, Selection::point(pos));
 }
 
-fn goto_window_center(cx: &mut Context) {
+fn goto_window_middle(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
@@ -3723,7 +3723,7 @@ mode_info! {
     /// window top
     "t" => goto_window_top,
     /// window center
-    "c" => goto_window_center,
+    "m" => goto_window_middle,
     /// window bottom
     "b" => goto_window_bottom,
     /// last accessed file
