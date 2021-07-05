@@ -55,8 +55,7 @@
 
 "ui.statusline" = { fg = "#ffffff", bg = "#007acc" }
 
-"ui.text" = { fg = "text" }
-
+"ui.text" = { fg = "text", bg = "background" }
 "ui.text.focus" = { fg = "#ffffff" }
 
 "warning" = { fg = "#cca700" }
@@ -67,12 +66,13 @@
 [palette]
 type = "#4EC9B0"
 keyword = "#569CD6"
-regex = "#CE917"
+regex = "#CE9178"
 special = "#d4d4d4"
 variable = "#9CDCFE"
 fn_declaration = "#DCDCAA"
 constant = "#4FC1FF"
 
+background = "#1e1e1e"
 text = "#d4d4d4"
 cursor = "#a6a6a6"
 widget = "#252526"
