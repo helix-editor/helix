@@ -2,6 +2,7 @@
 pub mod macros;
 
 pub mod clipboard;
+pub mod decorations;
 pub mod document;
 pub mod editor;
 pub mod graphics;

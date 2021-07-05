@@ -18,7 +18,7 @@ use helix_core::{
 };
 use helix_lsp::util::LspFormatting;
 
-use crate::{DocumentId, Theme, ViewId};
+use crate::{decorations::TextAnnotation, DocumentId, Theme, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -104,6 +104,7 @@ pub struct Document {
     version: i32, // should be usize?
 
     diagnostics: Vec<Diagnostic>,
+    text_annotations: Vec<TextAnnotation>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
@@ -337,6 +338,7 @@ impl Document {
             language: None,
             changes,
             old_state,
+            text_annotations: vec![],
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
@@ -910,6 +912,22 @@ impl Document {
         self.path
             .as_deref()
             .map(helix_core::path::get_relative_path)
+    }
+
+    pub fn text_annotations(&self) -> &[TextAnnotation] {
+        &self.text_annotations
+    }
+
+    pub fn extend_text_annotations(&mut self, annots: Vec<TextAnnotation>) {
+        self.text_annotations.extend(annots)
+    }
+
+    /// Remove annotations that return true for the given predicate
+    pub fn remove_text_annotations<F>(&mut self, predicate: F)
+    where
+        F: Fn(&TextAnnotation) -> bool,
+    {
+        self.text_annotations.retain(|t| !predicate(t))
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

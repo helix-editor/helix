@@ -16,6 +16,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection,
 };
 use helix_view::{
+    decorations::{TextAnnotation, TextAnnotationKind},
     document::Mode,
     editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
@@ -280,6 +281,11 @@ impl EditorView {
         highlights: H,
     ) {
         let text = doc.text().slice(..);
+        let last_line = std::cmp::min(
+            // Saturating subs to make it inclusive zero indexing.
+            (offset.row + viewport.height as usize).saturating_sub(1),
+            doc.text().len_lines().saturating_sub(1),
+        );
 
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
@@ -288,6 +294,33 @@ impl EditorView {
         let tab = " ".repeat(tab_width);
 
         let text_style = theme.get("ui.text");
+
+        let out_of_bounds = |visual_x: u16| {
+            visual_x < offset.col as u16 || visual_x >= viewport.width + offset.col as u16
+        };
+
+        let render_annotation =
+            |annot: &TextAnnotation, line: u16, pos: u16, surface: &mut Surface| {
+                let mut visual_x = pos;
+                for grapheme in annot.text.graphemes(true) {
+                    if out_of_bounds(visual_x) {
+                        break;
+                    }
+                    surface.set_string(
+                        viewport.x + visual_x - offset.col as u16,
+                        viewport.y + line,
+                        grapheme,
+                        annot.style,
+                    );
+                    visual_x = visual_x.saturating_add(grapheme.width() as u16);
+                }
+            };
+
+        let text_annotations = doc
+            .text_annotations()
+            .iter()
+            .filter(|t| (offset.row..last_line).contains(&t.line))
+            .collect::<Vec<_>>();
 
         'outer: for event in highlights {
             match event {
@@ -311,11 +344,8 @@ impl EditorView {
                     });
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < offset.col as u16
-                            || visual_x >= viewport.width + offset.col as u16;
-
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
-                            if !out_of_bounds {
+                            if !out_of_bounds(visual_x) {
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -323,6 +353,14 @@ impl EditorView {
                                     " ",
                                     style,
                                 );
+                                visual_x += 1;
+                            }
+
+                            if let Some(annot) = text_annotations
+                                .iter()
+                                .find(|t| t.kind.is_eol() && t.line == offset.row + line as usize)
+                            {
+                                render_annotation(annot, line, visual_x, surface);
                             }
 
                             visual_x = 0;
@@ -345,7 +383,7 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
-                            if !out_of_bounds {
+                            if !out_of_bounds(visual_x) {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -359,6 +397,13 @@ impl EditorView {
                         }
                     }
                 }
+            }
+        }
+
+        for annot in &text_annotations {
+            if let TextAnnotationKind::Overlay(visual_x) = annot.kind {
+                let line = (annot.line - offset.row) as u16;
+                render_annotation(annot, line, visual_x as u16, surface);
             }
         }
     }
@@ -390,7 +435,6 @@ impl EditorView {
                             .add_modifier(Modifier::REVERSED)
                             .add_modifier(Modifier::DIM)
                     });
-
                     surface
                         .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
                         .set_style(style);
