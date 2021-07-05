@@ -13,8 +13,8 @@
 "label" = { fg = "keyword" }
 "constant.builtin" = { fg = "keyword" }
 
-"punctuation" = { fg = "regex" }
-"punctuation.delimiter" = { fg = "regex" }
+"punctuation" = { fg = "text" }
+"punctuation.delimiter" = { fg = "text" }
 
 "special" = { fg = "special" }
 "operator" = { fg = "special" }
