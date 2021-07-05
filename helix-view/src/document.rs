@@ -70,7 +70,6 @@ pub enum IndentStyle {
 }
 
 pub struct Document {
-    // rope + selection
     pub(crate) id: DocumentId,
     text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
@@ -408,12 +407,13 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 /// This function is used instead of `std::fs::canonicalize` because we don't want to verify
 /// here if the path exists, just normalize it's components.
 pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
-    let normalized = normalize_path(path);
-    if normalized.is_absolute() {
-        Ok(normalized)
+    let path = if path.is_relative() {
+        std::env::current_dir().map(|current_dir| current_dir.join(path))?
     } else {
-        std::env::current_dir().map(|current_dir| current_dir.join(normalized))
-    }
+        path.to_path_buf()
+    };
+
+    Ok(normalize_path(&path))
 }
 
 use helix_lsp::lsp;
