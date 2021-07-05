@@ -1049,10 +1049,9 @@ impl Document {
         let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
         self.path.as_ref().map(|path| {
-            let path = if path.is_relative() {
-                path.as_path()
-            } else {
-                path.strip_prefix(cwdir).unwrap_or(path.as_path())
+            let mut path = path.as_path();
+            if path.is_absolute() {
+                path = path.strip_prefix(cwdir).unwrap_or(path)
             };
             fold_home_dir(path)
         })
