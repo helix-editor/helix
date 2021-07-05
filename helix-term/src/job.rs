@@ -48,14 +48,12 @@ impl<'a, T, St1: Stream<Item = T> + Unpin, St2: Stream<Item = T> + Unpin> Future
             } else {
                 Poll::Pending
             }
+        } else if let Poll::Ready(Some(x)) = self.st2.poll_next_unpin(cx) {
+            Poll::Ready(x)
+        } else if let Poll::Ready(Some(x)) = self.st1.poll_next_unpin(cx) {
+            Poll::Ready(x)
         } else {
-            if let Poll::Ready(Some(x)) = self.st2.poll_next_unpin(cx) {
-                Poll::Ready(x)
-            } else if let Poll::Ready(Some(x)) = self.st1.poll_next_unpin(cx) {
-                Poll::Ready(x)
-            } else {
-                Poll::Pending
-            }
+            Poll::Pending
         }
     }
 }
