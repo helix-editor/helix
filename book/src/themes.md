@@ -62,7 +62,7 @@ Possible keys:
 | `type`                   |                                     |
 | `type.builtin`           |                                     |
 | `constructor`            |                                     |
-| `variant`                |                                     |
+| `variant`                | Enum variants                       |
 | `function`               |                                     |
 | `function.macro`         |                                     |
 | `function.builtin`       |                                     |
