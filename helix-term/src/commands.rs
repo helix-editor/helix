@@ -200,6 +200,7 @@ impl Command {
         extend_search_next,
         search_selection,
         extend_line,
+        extend_to_line_bounds,
         delete_selection,
         change_selection,
         collapse_selection,
@@ -1019,6 +1020,26 @@ fn extend_line(cx: &mut Context) {
     }
 
     doc.set_selection(view.id, Selection::single(start, end));
+}
+
+fn extend_to_line_bounds(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text();
+    let selection = doc.selection(view.id).transform(|range| {
+        let start = text.line_to_char(text.char_to_line(range.from()));
+        let end = text
+            .line_to_char(text.char_to_line(range.to()) + 1)
+            .saturating_sub(1);
+
+        if range.anchor < range.head {
+            Range::new(start, end)
+        } else {
+            Range::new(end, start)
+        }
+    });
+
+    doc.set_selection(view.id, selection);
 }
 
 fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
