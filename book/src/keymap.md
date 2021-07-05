@@ -73,6 +73,7 @@
 | `Alt-;`  | Flip selection cursor and anchor                                  |
 | `%`      | Select entire file                                                |
 | `x`      | Select current line, if already selected, extend to next line     |
+| `X`      | Extend selection to line bounds (line-wise selection)             |
 |          | Expand selection to parent syntax node TODO: pick a key           |
 | `J`      | join lines inside selection                                       |
 | `K`      | keep selections matching the regex TODO: overlapped by hover help |

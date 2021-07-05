@@ -8,7 +8,7 @@ use crate::{
 
 use helix_core::{
     coords_at_pos,
-    graphemes::ensure_grapheme_boundary,
+    graphemes::{ensure_grapheme_boundary, next_grapheme_boundary},
     syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
@@ -187,19 +187,24 @@ impl EditorView {
                     (cursor_scope, selection_scope)
                 };
 
+                let cursor_end = next_grapheme_boundary(text, range.head); // Used in every case below.
+
                 if range.head == range.anchor {
-                    spans.push((cursor_scope, range.head..range.head + 1));
+                    spans.push((cursor_scope, range.head..cursor_end));
                     continue;
                 }
 
                 let reverse = range.head < range.anchor;
 
                 if reverse {
-                    spans.push((cursor_scope, range.head..range.head + 1));
-                    spans.push((selection_scope, range.head + 1..range.anchor + 1));
+                    spans.push((cursor_scope, range.head..cursor_end));
+                    spans.push((
+                        selection_scope,
+                        cursor_end..next_grapheme_boundary(text, range.anchor),
+                    ));
                 } else {
                     spans.push((selection_scope, range.anchor..range.head));
-                    spans.push((cursor_scope, range.head..range.head + 1));
+                    spans.push((cursor_scope, range.head..cursor_end));
                 }
             }
 

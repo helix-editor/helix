@@ -70,7 +70,6 @@ pub enum IndentStyle {
 }
 
 pub struct Document {
-    // rope + selection
     pub(crate) id: DocumentId,
     text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
@@ -408,12 +407,13 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 /// This function is used instead of `std::fs::canonicalize` because we don't want to verify
 /// here if the path exists, just normalize it's components.
 pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
-    let normalized = normalize_path(path);
-    if normalized.is_absolute() {
-        Ok(normalized)
+    let path = if path.is_relative() {
+        std::env::current_dir().map(|current_dir| current_dir.join(path))?
     } else {
-        std::env::current_dir().map(|current_dir| current_dir.join(normalized))
-    }
+        path.to_path_buf()
+    };
+
+    Ok(normalize_path(&path))
 }
 
 use helix_lsp::lsp;
@@ -1049,14 +1049,11 @@ impl Document {
         let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
         self.path.as_ref().map(|path| {
-            let path = fold_home_dir(path);
-            if path.is_relative() {
-                path
-            } else {
-                path.strip_prefix(cwdir)
-                    .map(|p| p.to_path_buf())
-                    .unwrap_or(path)
-            }
+            let mut path = path.as_path();
+            if path.is_absolute() {
+                path = path.strip_prefix(cwdir).unwrap_or(path)
+            };
+            fold_home_dir(path)
         })
     }
 

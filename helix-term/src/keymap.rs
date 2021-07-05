@@ -8,95 +8,6 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-// Kakoune-inspired:
-// mode = {
-//      normal = {
-//          q = record_macro
-//          w = (next) word
-//          W = next WORD
-//          e = end of word
-//          E = end of WORD
-//          r = replace
-//          R = replace with yanked
-//          t = 'till char
-//          y = yank
-//          u = undo
-//          U = redo
-//          i = insert
-//          I = INSERT (start of line)
-//          o = open below (insert on new line below)
-//          O = open above (insert on new line above)
-//          p = paste (before cursor)
-//          P = PASTE (after cursor)
-//          ` =
-//          [ = select to text object start (alt = select whole object)
-//          ] = select to text object end
-//          { = extend to inner object start
-//          } = extend to inner object end
-//          a = append
-//          A = APPEND (end of line)
-//          s = split
-//          S = select
-//          d = delete()
-//          f = find_char()
-//          g = goto (gg, G, gc, gd, etc)
-//
-//          h = move_char_left(n)   || arrow-left  = move_char_left(n)
-//          j = move_line_down(n)   || arrow-down  = move_line_down(n)
-//          k = move_line_up(n)     || arrow_up    = move_line_up(n)
-//          l = move_char_right(n)  || arrow-right = move_char_right(n)
-//          : = command line
-//          ; = collapse selection to cursor
-//          " = use register
-//          ` = convert case? (to lower) (alt = swap case)
-//          ~ = convert to upper case
-//          . = repeat last command
-//          \ = disable hook?
-//          / = search
-//          > = indent
-//          < = deindent
-//          % = select whole buffer (in vim = jump to matching bracket)
-//          * = search pattern in selection
-//          ( = rotate main selection backward
-//          ) = rotate main selection forward
-//          - = trim selections? (alt = merge contiguous sel together)
-//          @ = convert tabs to spaces
-//          & = align cursor
-//          ? = extend to next given regex match (alt = to prev)
-//
-//          in kakoune these are alt-h alt-l / gh gl
-//                              select from curs to begin end / move curs to begin end
-//          0 = start of line
-//          ^ = start of line(first non blank char) || Home  = start of line(first non blank char)
-//          $ = end of line                         || End   = end of line
-//
-//          z = save selections
-//          Z = restore selections
-//          x = select line
-//          X = extend line
-//          c = change selected text
-//          C = copy selection?
-//          v = view menu (viewport manipulation)
-//          b = select to previous word start
-//          B = select to previous WORD start
-//
-//
-//
-//
-//
-//
-//          = = align?
-//          + =
-//      }
-//
-//      gd = goto definition
-//      gr = goto reference
-//      [d = previous diagnostic
-//      d] = next diagnostic
-//      [D = first diagnostic
-//      D] = last diagnostic
-// }
-
 #[macro_export]
 macro_rules! key {
     ($key:ident) => {
@@ -209,7 +120,9 @@ impl Default for Keymaps {
             alt!(';') => Command::flip_selections,
             key!('%') => Command::select_all,
             key!('x') => Command::extend_line,
-            // extend_to_whole_line, crop_to_whole_line
+            key!('x') => Command::extend_line,
+            key!('X') => Command::extend_to_line_bounds,
+            // crop_to_whole_line
 
 
             key!('m') => Command::match_mode,
