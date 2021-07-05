@@ -23,7 +23,8 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::{DocumentId, Editor, ViewId};
+use crate::Editor;
+use crate::{decorations::TextAnnotation, DocumentId, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -119,6 +120,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
+    text_annotations: Vec<TextAnnotation>,
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
@@ -351,6 +353,7 @@ impl Document {
             language: None,
             changes,
             old_state,
+            text_annotations: vec![],
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
@@ -1037,6 +1040,26 @@ impl Document {
             .as_deref()
             .map(helix_core::path::get_relative_path)
     }
+
+    pub fn text_annotations(&self) -> &[TextAnnotation] {
+        &self.text_annotations
+    }
+
+    pub fn extend_text_annotations(&mut self, annots: Vec<TextAnnotation>) {
+        self.text_annotations.extend(annots)
+    }
+
+    /// Remove annotations that return true for the given predicate
+    pub fn remove_text_annotations<F>(&mut self, predicate: F)
+    where
+        F: Fn(&TextAnnotation) -> bool,
+    {
+        self.text_annotations.retain(|t| !predicate(t))
+    }
+
+    // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {
+    //     self.state.doc.slice
+    // }
 
     // transact(Fn) ?
 
