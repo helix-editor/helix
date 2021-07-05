@@ -19,7 +19,7 @@ helix-syntax = { version = "0.3", path = "../helix-syntax" }
 ropey = "1.3"
 smallvec = "1.4"
 tendril = "0.4.2"
-unicode-segmentation = "1.7"
+unicode-segmentation = "1.8"
 unicode-width = "0.1"
 unicode-general-category = "0.4"
 # slab = "0.4.2"
