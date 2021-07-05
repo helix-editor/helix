@@ -1049,14 +1049,12 @@ impl Document {
         let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 
         self.path.as_ref().map(|path| {
-            let path = fold_home_dir(path);
-            if path.is_relative() {
-                path
+            let path = if path.is_relative() {
+                path.as_path()
             } else {
-                path.strip_prefix(cwdir)
-                    .map(|p| p.to_path_buf())
-                    .unwrap_or(path)
-            }
+                path.strip_prefix(cwdir).unwrap_or(path.as_path())
+            };
+            fold_home_dir(path)
         })
     }
 
