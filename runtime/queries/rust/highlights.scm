@@ -157,7 +157,8 @@
     ((identifier) @function.macro)
     (scoped_identifier
       name: (identifier) @function.macro)
-  ])
+  ]
+  "!" @function.macro)
 
 (metavariable) @variable.parameter
 (fragment_specifier) @variable.parameter
