@@ -79,10 +79,10 @@ impl Jobs {
 
     pub async fn next_job(&mut self) -> Option<anyhow::Result<Option<Callback>>> {
         futures_util::select! {
-            event = self.futures.select_next_some() => { return Some(event); }
-            event = self.wait_futures.select_next_some() => { return Some(event); }
-            complete => { return None; }
-        };
+            event = self.futures.select_next_some() => Some(event),
+            event = self.wait_futures.select_next_some() => Some(event),
+            complete => None,
+        }
     }
 
     pub fn add(&mut self, j: Job) {
