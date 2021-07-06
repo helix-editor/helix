@@ -1,15 +1,48 @@
-; Bottom-up approach, granular to broad.
+; -------
+; Tree-Sitter doesn't allow overrides in regards to captures,
+; though it is possible to affect the child node of a captured
+; node. Thus, the approach here is to flip the order so that
+; overrides are unnecessary.
+; -------
 
-; Guaranteed Global
 
-"$" @punctuation.delimiter
-"::" @punctuation.delimiter
-"." @punctuation.delimiter
-";" @punctuation.delimiter
 
-( "#" "!" ) @punctuation.delimiter
-"#" @punctuation.delimiter
-"?" @punctuation.delimiter
+; -------
+; Types
+; -------
+
+; ---
+; Primitives
+; ---
+
+(escape_sequence) @escape
+(primitive_type) @type.builtin
+(boolean_literal) @constant.builtin
+[
+  (integer_literal)
+  (float_literal)
+] @number
+[
+  (char_literal)
+  (string_literal)
+  (raw_string_literal)
+] @string
+[
+  (line_comment)
+  (block_comment)
+] @comment
+
+; ---
+; Extraneous
+; ---
+
+(self) @variable.builtin
+(type_identifier) @type
+(enum_variant (identifier) @type.variant)
+
+(field_initializer
+  (field_identifier) @property)
+(shorthand_field_initializer) @variable
 
 (lifetime
   "'" @label
@@ -17,38 +50,80 @@
 (loop_label
   (identifier) @type)
 
-(line_comment) @comment
-(block_comment) @comment
-
-(self) @variable.builtin
-(primitive_type) @type.builtin
+; ---
+; Punctuation
+; ---
 
 [
-(char_literal)
-(string_literal)
-(raw_string_literal)
-] @string
+  "::"
+  "."
+  ";"
+] @punctuation.delimiter
 
-(boolean_literal) @constant.builtin
-(integer_literal) @number
-(float_literal) @number
-
-(escape_sequence) @escape
-
-(attribute_item) @attribute
-(inner_attribute_item) @attribute
-
-"(" @punctuation.bracket
-")" @punctuation.bracket
-"[" @punctuation.bracket
-"]" @punctuation.bracket
-
+[
+  "("
+  ")"
+  "["
+  "]"
+] @punctuation.bracket
 (type_arguments
-  "<" @punctuation.bracket
-  ">" @punctuation.bracket)
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
 (type_parameters
-  "<" @punctuation.bracket
-  ">" @punctuation.bracket)
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+; ---
+; Operators
+; ---
+
+[
+  "*"
+  "'"
+  "->"
+  "=>"
+  "<="
+  "="
+  "=="
+  "!"
+  "!="
+  "%"
+  "%="
+  "&"
+  "&="
+  "&&"
+  "|"
+  "|="
+  "||"
+  "^"
+  "^="
+  "*"
+  "*="
+  "-"
+  "-="
+  "+"
+  "+="
+  "/"
+  "/="
+  ">"
+  "<"
+  ">="
+  ">>"
+  "<<"
+  ">>="
+  "@"
+  ".."
+  "..="
+  "'"
+] @operator
+
+; ---
+; Parameters
+; ---
 
 (parameter
 	pattern: (identifier) @variable.parameter)
@@ -56,114 +131,109 @@
 	(identifier) @variable.parameter)
 
 
-; Other Global
 
+; -------
+; Keywords
+; -------
 
-(impl_item
-  "for" @keyword)
+[
+  (crate)
+  (super)
+  "as"
+  "use"
+  "pub"
+  "mod"
+  "extern"
 
-"loop" @special
-"for" @special
-"in" @special
-"break" @special
-"continue" @special
-"while" @special
+  "fn"
+  "struct"
+  "enum"
+  "impl"
+  "where"
+  "trait"
 
-"match" @special
-"if" @special
-"else" @special
-"await" @special
-"return" @special
+  "type"
+  "union"
+  "unsafe"
+  "default"
+  "macro_rules!"
 
-(crate) @keyword
-"extern" @keyword
-"async" @keyword
-"dyn" @keyword
-"const" @keyword
-"pub" @keyword
-"static" @keyword
+  "let"
+  "ref"
+  "move"
 
-"mod" @keyword
-"fn" @keyword
-"enum" @keyword
-"impl" @keyword
-"where" @keyword
-"struct" @keyword
+  "dyn"
+  "static"
+  "const"
+  "async"
+] @keyword
 
-"default" @keyword
-
-"let" @keyword
-"ref" @keyword
-"move" @keyword
-
-"macro_rules!" @keyword
-"trait" @keyword
-"type" @keyword
-"union" @keyword
-"unsafe" @keyword
-"use" @keyword
+(impl_item "for" @keyword)
 (mutable_specifier) @keyword.mut
-(super) @keyword
-"as" @keyword
+
+; ---
+; Control Flow
+; ---
+
+[
+  "for"
+  "while"
+  "loop"
+  "in"
+  "break"
+  "continue"
+
+  "match"
+  "if"
+  "else"
+  "return"
+
+  "await"
+] @keyword.control
 
 
-; Types
 
-; Match identifiers that are enum variants so they don't
-; get incorrectly highlighted by another query.
-(enum_variant (identifier) @variant)
+; -------
+; Guess Other Types
+; -------
 
-; Match statement for enums and tuple structs, since it's
-; difficult to tell them apart, but enums are more common.
-(match_pattern
-  [
-    (scoped_identifier
-      name: (identifier) @variant)
-    (tuple_struct_pattern
-      (scoped_identifier
-        name: (identifier) @variant))
-  ])
-
-(type_identifier) @type
-(field_initializer
-  (field_identifier) @property)
-(shorthand_field_initializer) @variable
-
-; Assume SCREAM_CASE identifiers are constants
 ((identifier) @constant
  (#match? @constant "^[A-Z](_|[A-Z])+$"))
 
-; PascalCase identifiers in call_expressions are assumed
-; to be enum constructors, everything else is assumed to be
-; a type.
+; ---
+; PascalCase identifiers in call_expressions (e.g. `Ok()`)
+; are assumed to be enum constructors.
+; ---
+
 (call_expression
   ((identifier) @constructor
     (#match? @constructor "^[A-Z]")))
+
+; ---
+; Other PascalCase identifiers are assumed to be structs.
+; ---
+
 ((identifier) @type
   (#match? @type "^[A-Z]"))
 
-(meta_item
-  (identifier) @attribute)
-
-
-; Functions
-
-
-; Macros
-(macro_definition
-  name: (identifier) @function.macro)
-(macro_invocation
-  macro: [
-    ((identifier) @function.macro)
+; ---
+; Assume that types in match arms are enums and not
+; tuple structs.
+; ---
+(match_pattern
+  [
     (scoped_identifier
-      name: (identifier) @function.macro)
-  ]
-  "!" @function.macro)
+      name: (identifier) @type.variant)
+    (tuple_struct_pattern
+      (scoped_identifier
+        name: (identifier) @type.variant))
+  ])
 
-(metavariable) @variable.parameter
-(fragment_specifier) @variable.parameter
 
-; Others
+
+; -------
+; Functions
+; -------
 
 (call_expression
   function: [
@@ -185,9 +255,37 @@
 (function_item
   name: (identifier) @function)
 
+; ---
+; Macros
+; ---
 
+(meta_item
+  (identifier) @attribute)
+(attribute_item) @attribute
+(inner_attribute_item) @attribute
+
+(macro_definition
+  name: (identifier) @function.macro)
+(macro_invocation
+  macro: [
+    ((identifier) @function.macro)
+    (scoped_identifier
+      name: (identifier) @function.macro)
+  ]
+  "!" @function.macro)
+
+(metavariable) @variable.parameter
+(fragment_specifier) @variable.parameter
+
+
+
+; -------
 ; Paths
+; -------
 
+; ---
+; Imports
+; ---
 
 (use_declaration
   argument: (identifier) @namespace)
@@ -205,7 +303,9 @@
   path: (identifier)? @namespace
   alias: (identifier) @namespace)
 
-; Global Paths
+; ---
+; Remaining Paths
+; ---
 
 (scoped_identifier
   path: (identifier)? @namespace
@@ -215,51 +315,17 @@
   name: (type_identifier) @type)
 
 
-; Remaining Globals
 
+; -------
+; Remaining Identifiers
+; -------
 
-[
-"*"
-"'"
-"->"
-"=>"
-"<="
-"="
-"=="
-"!"
-"!="
-"%"
-"%="
-"&"
-"&="
-"&&"
-"|"
-"|="
-"||"
-"^"
-"^="
-"*"
-"*="
-"-"
-"-="
-"+"
-"+="
-"/"
-"/="
-">"
-"<"
-">="
-">>"
-"<<"
-">>="
-"@"
-".."
-"..="
-"'"
-] @operator
+"?" @special
 
-; Not sure why I have to rewrite it here,
-; but this duplicate is needed.
+; ---
+; Not sure why, but there needs to be a duplicated
+; type_identifier capture.
+; ---
 (type_identifier) @type
 (identifier) @variable
 (field_identifier) @variable
