@@ -15,7 +15,8 @@
 "punctuation" = { fg = "text" }
 "punctuation.delimiter" = { fg = "text" }
 
-"special" = { fg = "special" }
+"keyword.control" = { fg = "special" }
+"special" = { fg = "text" }
 "operator" = { fg = "text" }
 
 "variable" = { fg = "variable" }
