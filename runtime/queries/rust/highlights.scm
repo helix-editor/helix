@@ -2,7 +2,7 @@
 
 ; Guaranteed Global
 
-
+"$" @punctuation.delimiter
 "::" @punctuation.delimiter
 "." @punctuation.delimiter
 ";" @punctuation.delimiter
@@ -145,16 +145,29 @@
 (meta_item
   (identifier) @attribute)
 
+
 ; Functions
 
 
+; Macros
+(macro_definition
+  name: (identifier) @function.macro)
 (macro_invocation
   macro: [
     ((identifier) @function.macro)
     (scoped_identifier
       name: (identifier) @function.macro)
-  ]
-  "!" @function.macro)
+  ])
+(token_tree
+  (
+    (identifier) @function
+    (token_tree)
+  ))
+
+(metavariable) @variable.parameter
+(fragment_specifier) @variable.parameter
+
+; Others
 
 (call_expression
   function: [
