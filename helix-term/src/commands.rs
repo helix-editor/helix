@@ -9,8 +9,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     register::Register,
-    search, selection, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
-    SmallVec, Tendril, Transaction,
+    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
+    RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -78,7 +78,9 @@ impl<'a> Context<'a> {
 
     #[inline]
     pub fn on_next_key_mode(&mut self, map: HashMap<KeyEvent, fn(&mut Context)>) {
+        let count = self.count;
         self.on_next_key(move |cx, event| {
+            cx.count = count;
             cx.editor.autoinfo = None;
             if let Some(func) = map.get(&event) {
                 func(cx);
@@ -3337,24 +3339,6 @@ fn jump_backward(cx: &mut Context) {
     };
 }
 
-fn window_mode(cx: &mut Context) {
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            match ch {
-                'w' => rotate_view(cx),
-                'h' => hsplit(cx),
-                'v' => vsplit(cx),
-                'q' => wclose(cx),
-                _ => {}
-            }
-        }
-    })
-}
-
 fn rotate_view(cx: &mut Context) {
     cx.editor.focus_next()
 }
@@ -3443,62 +3427,12 @@ fn view_mode(cx: &mut Context) {
     })
 }
 
-fn left_bracket_mode(cx: &mut Context) {
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            match ch {
-                'd' => goto_prev_diag(cx),
-                'D' => goto_first_diag(cx),
-                _ => (),
-            }
-        }
-    })
+fn select_textobject_around(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around);
 }
 
-fn right_bracket_mode(cx: &mut Context) {
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            match ch {
-                'd' => goto_next_diag(cx),
-                'D' => goto_last_diag(cx),
-                _ => (),
-            }
-        }
-    })
-}
-
-use helix_core::surround;
-use helix_core::textobject;
-
-fn match_mode(cx: &mut Context) {
-    let count = cx.count;
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            // FIXME: count gets reset because of cx.on_next_key()
-            cx.count = count;
-            match ch {
-                'm' => match_brackets(cx),
-                's' => surround_add(cx),
-                'r' => surround_replace(cx),
-                'd' => surround_delete(cx),
-                'a' => select_textobject(cx, textobject::TextObject::Around),
-                'i' => select_textobject(cx, textobject::TextObject::Inside),
-                _ => (),
-            }
-        }
-    })
+fn select_textobject_inner(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside);
 }
 
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
@@ -3719,7 +3653,7 @@ mode_info! {
 }
 
 mode_info! {
-    /// goto mode
+    /// goto
     ///
     /// When specified with a count, it will go to that line without entering the mode.
     goto_mode, GOTO_MODE, goto_prehook,
@@ -3749,4 +3683,52 @@ mode_info! {
     "b" => goto_window_bottom,
     /// last accessed file
     "a" => goto_last_accessed_file,
+}
+
+mode_info! {
+   /// window
+   window_mode, WINDOW_MODE,
+   /// rotate
+   "w" => rotate_view,
+   /// horizontal split
+   "h" => hsplit,
+   /// vertical split
+   "v" => vsplit,
+   /// close
+   "q" => wclose,
+}
+
+mode_info! {
+    /// match
+    match_mode, MATCH_MODE,
+    /// matching character
+    "m" => match_brackets,
+    /// surround add
+    "s" => surround_add,
+    /// surround replace
+    "r" => surround_replace,
+    /// surround delete
+    "d" => surround_delete,
+    /// around object
+    "a" => select_textobject_around,
+    /// inside object
+    "i" => select_textobject_inner,
+}
+
+mode_info! {
+    /// select to previous
+    left_bracket_mode, LEFT_BRACKET_MODE,
+    /// previous diagnostic
+    "d" => goto_prev_diag,
+    /// diagnostic (first)
+    "D" => goto_first_diag,
+}
+
+mode_info! {
+    /// select to next
+    right_bracket_mode, RIGHT_BRACKET_MODE,
+    /// diagnostic
+    "d" => goto_next_diag,
+    /// diagnostic (last)
+    "D" => goto_last_diag,
 }
