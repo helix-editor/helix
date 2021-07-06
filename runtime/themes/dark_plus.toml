@@ -4,7 +4,6 @@
 "module" = { fg = "type" }
 "type" = { fg = "type" }
 "type.builtin" = { fg = "type" }
-"constructor" = { fg = "type" }
 
 "keyword" = { fg = "keyword" }
 "keyword.directive" = { fg = "keyword" }
@@ -17,7 +16,7 @@
 "punctuation.delimiter" = { fg = "text" }
 
 "special" = { fg = "special" }
-"operator" = { fg = "special" }
+"operator" = { fg = "text" }
 
 "variable" = { fg = "variable" }
 "variable.parameter" = { fg = "variable" }
@@ -31,6 +30,7 @@
 
 "constant" = { fg = "constant" }
 "variant" = { fg = "constant" } 
+"constructor" = { fg = "constant" }
 
 "string" = { fg = "#ce9178" }
 "number" = { fg = "#b5cea8" }
@@ -67,7 +67,7 @@
 type = "#4EC9B0"
 keyword = "#569CD6"
 regex = "#CE9178"
-special = "#d4d4d4"
+special = "#C586C0"
 variable = "#9CDCFE"
 fn_declaration = "#DCDCAA"
 constant = "#4FC1FF"
