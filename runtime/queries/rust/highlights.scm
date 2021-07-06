@@ -1,159 +1,27 @@
-; Identifier conventions
+; Bottom-up approach, granular to broad.
 
+; Guaranteed Global
 
-; Assume all-caps names are constants
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z\\d_]+$'"))
-
-; Assume other uppercase names are enum constructors
-((identifier) @constructor
- (#match? @constructor "^[A-Z]"))
-
-; Assume that uppercase names in paths are types
-(mod_item
- name: (identifier) @namespace)
-(scoped_identifier
-  path: (identifier) @namespace)
-(scoped_identifier
- (scoped_identifier
-  name: (identifier) @namespace))
-(scoped_type_identifier
-  path: (identifier) @namespace)
-(scoped_type_identifier
- (scoped_identifier
-  name: (identifier) @namespace))
-
-((scoped_identifier
-  path: (identifier) @type)
- (#match? @type "^[A-Z]"))
-((scoped_identifier
-  path: (scoped_identifier
-    name: (identifier) @type))
- (#match? @type "^[A-Z]"))
-
-; Namespaces
-
-(crate) @namespace
-(extern_crate_declaration
-    (crate)
-    name: (identifier) @namespace)
-(scoped_use_list
-  path: (identifier) @namespace)
-(scoped_use_list
-  path: (scoped_identifier
-            (identifier) @namespace))
-(use_list (scoped_identifier (identifier) @namespace . (_)))
-
-; Function calls
-
-(call_expression
-  function: (identifier) @function)
-(call_expression
-  function: (field_expression
-    field: (field_identifier) @function.method))
-(call_expression
-  function: (scoped_identifier
-    "::"
-    name: (identifier) @function))
-
-(generic_function
-  function: (identifier) @function)
-(generic_function
-  function: (scoped_identifier
-    name: (identifier) @function))
-(generic_function
-  function: (field_expression
-    field: (field_identifier) @function.method))
-
-(macro_invocation
-  macro: (identifier) @function.macro
-  "!" @function.macro)
-(macro_invocation
-  macro: (scoped_identifier
-           (identifier) @function.macro .))
-
-; (metavariable) @variable
-(metavariable) @function.macro
-
-"$" @function.macro
-
-; Function definitions
-
-(function_item (identifier) @function)
-(function_signature_item (identifier) @function)
-
-; Other identifiers
-
-(type_identifier) @type
-(primitive_type) @type.builtin
-(field_identifier) @property
-
-(line_comment) @comment
-(block_comment) @comment
-
-"(" @punctuation.bracket
-")" @punctuation.bracket
-"[" @punctuation.bracket
-"]" @punctuation.bracket
-
-(type_arguments
-  "<" @punctuation.bracket
-  ">" @punctuation.bracket)
-(type_parameters
-  "<" @punctuation.bracket
-  ">" @punctuation.bracket)
 
 "::" @punctuation.delimiter
 "." @punctuation.delimiter
 ";" @punctuation.delimiter
 
-(parameter (identifier) @variable.parameter)
-(closure_parameters (_) @variable.parameter)
+( "#" "!" ) @punctuation.delimiter
+"#" @punctuation.delimiter
+"?" @punctuation.delimiter
 
-(lifetime (identifier) @label)
+(lifetime
+  "'" @label
+  (identifier) @label)
+(loop_label
+  (identifier) @type)
 
-"async" @keyword
-"break" @keyword
-"const" @keyword
-"continue" @keyword
-(crate) @keyword
-"default" @keyword
-"dyn" @keyword
-"else" @keyword
-"enum" @keyword
-"extern" @keyword
-"fn" @keyword
-"for" @keyword
-"if" @keyword
-"impl" @keyword
-"in" @keyword
-"let" @keyword
-"let" @keyword
-"loop" @keyword
-"macro_rules!" @keyword
-"match" @keyword
-"mod" @keyword
-"move" @keyword
-"pub" @keyword
-"ref" @keyword
-"return" @keyword
-"static" @keyword
-"struct" @keyword
-"trait" @keyword
-"type" @keyword
-"union" @keyword
-"unsafe" @keyword
-"use" @keyword
-"where" @keyword
-"while" @keyword
-(mutable_specifier) @keyword.mut
-(use_list (self) @keyword)
-(scoped_use_list (self) @keyword)
-(scoped_identifier (self) @keyword)
-(super) @keyword
-"as" @keyword
+(line_comment) @comment
+(block_comment) @comment
 
 (self) @variable.builtin
+(primitive_type) @type.builtin
 
 [
 (char_literal)
@@ -169,6 +37,173 @@
 
 (attribute_item) @attribute
 (inner_attribute_item) @attribute
+
+"(" @punctuation.bracket
+")" @punctuation.bracket
+"[" @punctuation.bracket
+"]" @punctuation.bracket
+
+(type_arguments
+  "<" @punctuation.bracket
+  ">" @punctuation.bracket)
+(type_parameters
+  "<" @punctuation.bracket
+  ">" @punctuation.bracket)
+
+(parameter
+	pattern: (identifier) @variable.parameter)
+(closure_parameters
+	(identifier) @variable.parameter)
+
+
+; Other Global
+
+
+"loop" @special
+"for" @special
+"in" @special
+"break" @special
+"continue" @special
+"while" @special
+
+"match" @special
+"if" @special
+"else" @special
+"await" @special
+"return" @special
+
+(crate) @keyword
+"extern" @keyword
+"async" @keyword
+"dyn" @keyword
+"const" @keyword
+"pub" @keyword
+"static" @keyword
+
+"mod" @keyword
+"fn" @keyword
+"enum" @keyword
+"impl" @keyword
+"where" @keyword
+"struct" @keyword
+
+"default" @keyword
+
+"let" @keyword
+"ref" @keyword
+"move" @keyword
+
+"macro_rules!" @keyword
+"trait" @keyword
+"type" @keyword
+"union" @keyword
+"unsafe" @keyword
+"use" @keyword
+(mutable_specifier) @keyword.mut
+(use_list (self) @keyword)
+(scoped_use_list (self) @keyword)
+(scoped_identifier (self) @keyword)
+(super) @keyword
+"as" @keyword
+
+
+; Types
+
+; Match identifiers that are enum variants so they don't
+; get incorrectly highlighted by another query.
+(enum_variant (identifier) @variant)
+
+; Match statement for enums and tuple structs, since it's
+; difficult to tell them apart, but enums are more common.
+(match_pattern
+  [
+    (scoped_identifier
+      name: (identifier) @variant)
+    (tuple_struct_pattern
+      (scoped_identifier
+        name: (identifier) @variant))
+  ])
+
+(type_identifier) @type
+(field_initializer
+  (field_identifier) @property)
+(shorthand_field_initializer) @variable
+
+; Assume SCREAM_CASE identifiers are constants
+((identifier) @constant
+ (#match? @constant "^[A-Z](_|[A-Z])+$"))
+
+; PascalCase identifiers in call_expressions are assumed
+; to be enum constructors, everything else is assumed to be
+; a type.
+(call_expression
+  ((identifier) @constructor
+    (#match? @constructor "^[A-Z]")))
+((identifier) @type
+  (#match? @type "^[A-Z]"))
+
+(meta_item
+  (identifier) @attribute)
+
+; Functions
+
+
+(macro_invocation
+  macro: [
+    ((identifier) @function.macro)
+    (scoped_identifier
+      name: (identifier) @function.macro)
+  ]
+  "!" @function.macro)
+
+(call_expression
+  function: [
+    ((identifier) @function)
+    (scoped_identifier
+      name: (identifier) @function)
+    (field_expression
+      field: (field_identifier) @function)
+  ])
+(generic_function
+  function: [
+    ((identifier) @function)
+    (scoped_identifier
+      name: (identifier) @function)
+    (field_expression
+      field: (field_identifier) @function.method)
+  ])
+
+(function_item
+  name: (identifier) @function)
+
+
+; Paths
+
+
+(use_declaration
+  argument: (identifier) @namespace)
+(mod_item
+  name: (identifier) @namespace)
+(scoped_use_list
+  path: (identifier)? @namespace)
+(use_list
+  (identifier) @namespace)
+(use_as_clause
+  path: (identifier)? @namespace
+  alias: (identifier) @namespace)
+
+; Global Paths
+
+(scoped_identifier
+  path: (identifier) @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace
+  name: (type_identifier) @type)
+
+
+; Remaining Globals
+
 
 [
 "*"
@@ -210,4 +245,5 @@
 "'"
 ] @operator
 
-"?" @special
+(identifier) @variable
+(field_identifier) @variable

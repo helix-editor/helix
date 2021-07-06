@@ -161,7 +161,7 @@ impl LanguageConfiguration {
 
         let injections_query = read_query(&language, "injections.scm");
 
-        let locals_query = "";
+        let locals_query = read_query(&language, "locals.scm");
 
         if highlights_query.is_empty() {
             None
@@ -171,7 +171,7 @@ impl LanguageConfiguration {
                 language,
                 &highlights_query,
                 &injections_query,
-                locals_query,
+                &locals_query,
             )
             .unwrap(); // TODO: no unwrap
             config.configure(scopes);
