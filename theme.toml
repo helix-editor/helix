@@ -1,68 +1,81 @@
-"attribute" = "#dbbfef" # lilac
-"keyword" = "#eccdba" # almond
-"keyword.directive" = "#dbbfef" # lilac -- preprocessor comments (#if in C)
-"namespace" = "#dbbfef" # lilac
-"punctuation" = "#a4a0e8" # lavender
-"punctuation.delimiter" = "#a4a0e8" # lavender
-"operator" = "#dbbfef" # lilac
-"special" = "#efba5d" # honey
-# "property" = "#a4a0e8" # lavender
-"property" = "#ffffff" # white
-"variable" = "#a4a0e8" # lavender
-# "variable" = "#eccdba" # almond TODO: metavariables only
-"variable.parameter" = "#a4a0e8" # lavender
-# TODO distinguish type from type.builtin?
-"type" = "#ffffff" # white
-"type.builtin" = "#ffffff" # white
-"constructor" = "#dbbfef" # lilac
-"function" = "#ffffff" # white
-"function.macro" = "#dbbfef" # lilac
-"function.builtin" = "#ffffff" # white
-"comment" = "#697C81" # sirocco
-"variable.builtin" = "#9ff28f" # mint
-"constant" = "#ffffff" # white
-"constant.builtin" = "#ffffff" # white
-"string" = "#cccccc" # silver
-"number" = "#e8dca0" # chamois
-"escape" = "#efba5d" # honey
+attribute = "lilac"
+keyword = "almond"
+"keyword.directive" = "lilac" # -- preprocessor comments (#if in C)
+namespace = "lilac"
+punctuation = "lavender"
+"punctuation.delimiter" = "lavender"
+operator = "lilac"
+special = "honey"
+property = "white"
+variable = "lavender"
+# variable = "almond" # TODO: metavariables only
+"variable.parameter" = "lavender"
+"variable.builtin" = "mint"
+type = "white"
+"type.builtin" = "white" # TODO: distinguish?
+constructor = "lilac"
+function = "white"
+"function.macro" = "lilac"
+"function.builtin" = "white"
+comment = "sirocco"
+constant = "white"
+"constant.builtin" = "white"
+string = "silver"
+number = "chamois"
+escape = "honey"
 # used for lifetimes
-"label" = "#efba5d" # honey
+label = "honey"
 
-# TODO: diferentiate number builtin
 # TODO: diferentiate doc comment
-# TODO: variable as lilac
-# TODO: mod/use statements as white
-# TODO: mod stuff as chamois
-#
 # concat (ERROR) @syntax-error and "MISSING ;" selectors for errors
 
-"module" = "#ff0000"
+module = "#ff0000"
 
-"ui.background" = { bg = "#3b224c" } # midnight
-"ui.linenr" = { fg = "#5a5977" } # comet
-"ui.linenr.selected" = { fg = "#dbbfef" } # lilac
-"ui.statusline" = { fg = "#dbbfef", bg = "#281733" } # revolver
-"ui.statusline.inactive" = { fg = "#a4a0e8", bg = "#281733" } # revolver
-"ui.popup" = { bg = "#281733" } # revolver
-"ui.window" = { fg = "#452859" } # bossa nova
+"ui.background" = { bg = "midnight" }
+"ui.linenr" = { fg = "comet" }
+"ui.linenr.selected" = { fg = "lilac" }
+"ui.statusline" = { fg = "lilac", bg = "revolver" }
+"ui.statusline.inactive" = { fg = "lavender", bg = "revolver" }
+"ui.popup" = { bg = "revolver" }
+"ui.window" = { fg = "bossanova" }
 "ui.help" = { bg = "#7958DC", fg = "#171452" }
 
-"ui.text" = { fg = "#a4a0e8" } # lavender
-"ui.text.focus" = { fg = "#dbbfef" } # lilac
+"ui.text" = { fg = "lavender" }
+"ui.text.focus" = { fg = "lilac" }
 
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
-"ui.cursor.select" = { bg = "#6F44F0" }
-"ui.cursor.insert" = { bg = "#ffffff" }
+"ui.cursor.select" = { bg = "delta" }
+"ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
 
-"ui.menu.selected" = { fg = "#281733", bg = "#ffffff" } # revolver
+"ui.menu.selected" = { fg = "revolver", bg = "white" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+diagnostic = { modifiers = ["underlined"] }
 
-"warning" = "#ffcd1c"
-"error" = "#f47868"
-"info" = "#6F44F0"
-"hint" = "#cccccc"
+warning = "lightning"
+error = "apricot"
+info = "delta"
+hint = "silver"
+
+[palette]
+white = "#ffffff"
+lilac = "#dbbfef"
+lavender = "#a4a0e8"
+comet = "#5a5977"
+bossanova = "#452859"
+midnight = "#3b224c"
+revolver = "#281733"
+
+silver = "#cccccc"
+sirocco = "#697C81"
+mint = "#9ff28f"
+almond = "#eccdba"
+chamois = "#a4a0e8"
+honey = "#efba5d"
+
+apricot = "#f47868"
+lightning = "#ffcd1c"
+delta = "#6F44F0"
