@@ -59,6 +59,9 @@
 ; Other Global
 
 
+(impl_item
+  "for" @keyword)
+
 "loop" @special
 "for" @special
 "in" @special
@@ -155,11 +158,6 @@
     (scoped_identifier
       name: (identifier) @function.macro)
   ])
-(token_tree
-  (
-    (identifier) @function
-    (token_tree)
-  ))
 
 (metavariable) @variable.parameter
 (fragment_specifier) @variable.parameter
@@ -255,5 +253,6 @@
 "'"
 ] @operator
 
+(type_identifier) @type
 (identifier) @variable
 (field_identifier) @variable
