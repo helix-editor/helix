@@ -176,6 +176,7 @@
 ; Assume that types in match arms are enums and not
 ; tuple structs.
 ; ---
+
 (match_pattern
   [
     (scoped_identifier
