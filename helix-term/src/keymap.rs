@@ -1,118 +1,25 @@
 pub use crate::commands::Command;
 use crate::config::Config;
 use helix_core::hashmap;
-use helix_view::{
-    document::Mode,
-    input::KeyEvent,
-    keyboard::{KeyCode, KeyModifiers},
-};
+use helix_view::{document::Mode, input::KeyEvent};
 use serde::Deserialize;
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
 };
 
-// Kakoune-inspired:
-// mode = {
-//      normal = {
-//          q = record_macro
-//          w = (next) word
-//          W = next WORD
-//          e = end of word
-//          E = end of WORD
-//          r = replace
-//          R = replace with yanked
-//          t = 'till char
-//          y = yank
-//          u = undo
-//          U = redo
-//          i = insert
-//          I = INSERT (start of line)
-//          o = open below (insert on new line below)
-//          O = open above (insert on new line above)
-//          p = paste (before cursor)
-//          P = PASTE (after cursor)
-//          ` =
-//          [ = select to text object start (alt = select whole object)
-//          ] = select to text object end
-//          { = extend to inner object start
-//          } = extend to inner object end
-//          a = append
-//          A = APPEND (end of line)
-//          s = split
-//          S = select
-//          d = delete()
-//          f = find_char()
-//          g = goto (gg, G, gc, gd, etc)
-//
-//          h = move_char_left(n)   || arrow-left  = move_char_left(n)
-//          j = move_line_down(n)   || arrow-down  = move_line_down(n)
-//          k = move_line_up(n)     || arrow_up    = move_line_up(n)
-//          l = move_char_right(n)  || arrow-right = move_char_right(n)
-//          : = command line
-//          ; = collapse selection to cursor
-//          " = use register
-//          ` = convert case? (to lower) (alt = swap case)
-//          ~ = convert to upper case
-//          . = repeat last command
-//          \ = disable hook?
-//          / = search
-//          > = indent
-//          < = deindent
-//          % = select whole buffer (in vim = jump to matching bracket)
-//          * = search pattern in selection
-//          ( = rotate main selection backward
-//          ) = rotate main selection forward
-//          - = trim selections? (alt = merge contiguous sel together)
-//          @ = convert tabs to spaces
-//          & = align cursor
-//          ? = extend to next given regex match (alt = to prev)
-//
-//          in kakoune these are alt-h alt-l / gh gl
-//                              select from curs to begin end / move curs to begin end
-//          0 = start of line
-//          ^ = start of line(first non blank char) || Home  = start of line(first non blank char)
-//          $ = end of line                         || End   = end of line
-//
-//          z = save selections
-//          Z = restore selections
-//          x = select line
-//          X = extend line
-//          c = change selected text
-//          C = copy selection?
-//          v = view menu (viewport manipulation)
-//          b = select to previous word start
-//          B = select to previous WORD start
-//
-//
-//
-//
-//
-//
-//          = = align?
-//          + =
-//      }
-//
-//      gd = goto definition
-//      gr = goto reference
-//      [d = previous diagnostic
-//      d] = next diagnostic
-//      [D = first diagnostic
-//      D] = last diagnostic
-// }
-
 #[macro_export]
 macro_rules! key {
     ($key:ident) => {
         KeyEvent {
-            code: KeyCode::$key,
-            modifiers: KeyModifiers::NONE,
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
     };
     ($($ch:tt)*) => {
         KeyEvent {
-            code: KeyCode::Char($($ch)*),
-            modifiers: KeyModifiers::NONE,
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
     };
 }
@@ -120,8 +27,8 @@ macro_rules! key {
 macro_rules! ctrl {
     ($($ch:tt)*) => {
         KeyEvent {
-            code: KeyCode::Char($($ch)*),
-            modifiers: KeyModifiers::CONTROL,
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
         }
     };
 }
@@ -129,8 +36,8 @@ macro_rules! ctrl {
 macro_rules! alt {
     ($($ch:tt)*) => {
         KeyEvent {
-            code: KeyCode::Char($($ch)*),
-            modifiers: KeyModifiers::ALT,
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
         }
     };
 }
@@ -175,8 +82,8 @@ impl Default for Keymaps {
             key!('r') => Command::replace,
             key!('R') => Command::replace_with_yanked,
 
-            key!(Home) => Command::move_line_start,
-            key!(End) => Command::move_line_end,
+            key!(Home) => Command::goto_line_start,
+            key!(End) => Command::goto_line_end,
 
             key!('w') => Command::move_next_word_start,
             key!('b') => Command::move_prev_word_start,
@@ -213,7 +120,9 @@ impl Default for Keymaps {
             alt!(';') => Command::flip_selections,
             key!('%') => Command::select_all,
             key!('x') => Command::extend_line,
-            // extend_to_whole_line, crop_to_whole_line
+            key!('x') => Command::extend_line,
+            key!('X') => Command::extend_to_line_bounds,
+            // crop_to_whole_line
 
 
             key!('m') => Command::match_mode,
@@ -307,8 +216,8 @@ impl Default for Keymaps {
 
                 key!('T') => Command::extend_till_prev_char,
                 key!('F') => Command::extend_prev_char,
-                key!(Home) => Command::extend_line_start,
-                key!(End) => Command::extend_line_end,
+                key!(Home) => Command::goto_line_start,
+                key!(End) => Command::goto_line_end,
                 key!(Esc) => Command::exit_select_mode,
             )
             .into_iter(),
@@ -331,8 +240,8 @@ impl Default for Keymaps {
                 key!(Right) => Command::move_char_right,
                 key!(PageUp) => Command::page_up,
                 key!(PageDown) => Command::page_down,
-                key!(Home) => Command::move_line_start,
-                key!(End) => Command::move_line_end,
+                key!(Home) => Command::goto_line_start,
+                key!(End) => Command::goto_line_end_newline,
                 ctrl!('x') => Command::completion,
                 ctrl!('w') => Command::delete_word_backward,
             ),
@@ -352,6 +261,7 @@ pub fn merge_keys(mut config: Config) -> Config {
 
 #[test]
 fn merge_partial_keys() {
+    use helix_view::keyboard::{KeyCode, KeyModifiers};
     let config = Config {
         keys: Keymaps(hashmap! {
             Mode::Normal => hashmap! {

@@ -216,6 +216,16 @@ impl Range {
     }
 }
 
+impl From<(usize, usize)> for Range {
+    fn from(tuple: (usize, usize)) -> Self {
+        Self {
+            anchor: tuple.0,
+            head: tuple.1,
+            horiz: None,
+        }
+    }
+}
+
 /// A selection consists of one or more selection ranges.
 /// invariant: A selection can never be empty (always contains at least primary range).
 #[derive(Debug, Clone, PartialEq, Eq)]

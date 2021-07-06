@@ -1,5 +1,6 @@
 mod completion;
 mod editor;
+mod info;
 mod markdown;
 mod menu;
 mod picker;

@@ -2,6 +2,7 @@ pub mod auto_pairs;
 pub mod chars;
 pub mod comment;
 pub mod diagnostic;
+pub mod diff;
 pub mod graphemes;
 pub mod history;
 pub mod indent;
@@ -17,6 +18,7 @@ pub mod selection;
 mod state;
 pub mod surround;
 pub mod syntax;
+pub mod textobject;
 mod transaction;
 
 pub mod unicode {

@@ -1,7 +1,7 @@
 use crate::text::{Span, Spans};
+use helix_core::unicode::width::UnicodeWidthStr;
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
 
 use helix_view::graphics::{Color, Modifier, Rect, Style};
 
