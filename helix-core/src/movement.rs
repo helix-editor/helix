@@ -7,9 +7,9 @@ use crate::{
     coords_at_pos,
     graphemes::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
-        prev_grapheme_boundary,
+        prev_grapheme_boundary, RopeGraphemes,
     },
-    line_ending::get_line_ending,
+    line_ending::line_without_line_ending,
     pos_at_coords, Position, Range, RopeSlice,
 };
 
@@ -95,36 +95,61 @@ pub fn move_vertically(
     count: usize,
     behaviour: Movement,
 ) -> Range {
-    let Position { row, col } = coords_at_pos(slice, range.head);
+    // Shift back one grapheme if needed, to account for
+    // the cursor being visually 1-width.
+    let pos = if range.head > range.anchor {
+        prev_grapheme_boundary(slice, range.head)
+    } else {
+        range.head
+    };
 
+    // Compute the current position's 2d coordinates.
+    let Position { row, col } = coords_at_pos(slice, pos);
     let horiz = range.horiz.unwrap_or(col as u32);
 
-    let new_line = match dir {
-        Direction::Backward => row.saturating_sub(count),
-        Direction::Forward => std::cmp::min(
-            row.saturating_add(count),
-            slice.len_lines().saturating_sub(1),
-        ),
+    // Compute the new position.
+    let new_pos = {
+        let new_row = if dir == Direction::Backward {
+            row.saturating_sub(count)
+        } else {
+            (row + count).min(slice.len_lines().saturating_sub(1))
+        };
+        let max_col = RopeGraphemes::new(line_without_line_ending(&slice, new_row)).count();
+        let new_col = col.max(horiz as usize).min(max_col);
+
+        pos_at_coords(slice, Position::new(new_row, new_col))
     };
 
-    // Length of the line sans line-ending.
-    let new_line_len = {
-        let line = slice.line(new_line);
-        line.len_chars() - get_line_ending(&line).map(|le| le.len_chars()).unwrap_or(0)
-    };
+    // Compute the new range according to the type of movement.
+    match behaviour {
+        Movement::Move => Range {
+            anchor: new_pos,
+            head: new_pos,
+            horiz: Some(horiz),
+        },
 
-    let new_col = std::cmp::min(horiz as usize, new_line_len);
+        Movement::Extend => {
+            let new_head = if new_pos >= range.anchor {
+                next_grapheme_boundary(slice, new_pos)
+            } else {
+                new_pos
+            };
 
-    let pos = pos_at_coords(slice, Position::new(new_line, new_col));
+            let new_anchor = if range.anchor <= range.head && range.anchor > new_head {
+                next_grapheme_boundary(slice, range.anchor)
+            } else if range.anchor > range.head && range.anchor < new_head {
+                prev_grapheme_boundary(slice, range.anchor)
+            } else {
+                range.anchor
+            };
 
-    let anchor = match behaviour {
-        Movement::Extend => range.anchor,
-        Movement::Move => pos,
-    };
-
-    let mut range = Range::new(anchor, pos);
-    range.horiz = Some(horiz);
-    range
+            Range {
+                anchor: new_anchor,
+                head: new_head,
+                horiz: Some(horiz),
+            }
+        }
+    }
 }
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {

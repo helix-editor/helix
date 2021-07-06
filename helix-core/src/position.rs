@@ -53,6 +53,8 @@ impl From<Position> for tree_sitter::Point {
 }
 /// Convert a character index to (line, column) coordinates.
 pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
+    // TODO: this isn't correct.  This needs to work in terms of
+    // visual horizontal position, not graphemes.
     let line = text.char_to_line(pos);
     let line_start = text.line_to_char(line);
     let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
@@ -61,6 +63,8 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 
 /// Convert (line, column) coordinates to a character index.
 pub fn pos_at_coords(text: RopeSlice, coords: Position) -> usize {
+    // TODO: this isn't correct.  This needs to work in terms of
+    // visual horizontal position, not graphemes.
     let Position { row, col } = coords;
     let line_start = text.line_to_char(row);
     // line_start + col
