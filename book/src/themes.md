@@ -51,6 +51,7 @@ Possible keys:
 | `attribute`              |                                     |
 | `keyword`                |                                     |
 | `keyword.directive`      | Preprocessor directives (\#if in C) |
+| `keyword.control`        | Control flow                        |
 | `namespace`              |                                     |
 | `punctuation`            |                                     |
 | `punctuation.delimiter`  |                                     |
