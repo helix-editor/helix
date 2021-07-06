@@ -26,6 +26,7 @@
 "escape" = { fg = "#7fdc59", modifiers = ["bold"] }
 "label" = "#59c0dc"
 # "variant" TODO
+
 "module" = "#d32c5d"
 
 "ui.background" = { bg = "#161c23" }
