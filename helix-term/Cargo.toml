@@ -34,7 +34,7 @@ num_cpus = "1"
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.20", features = ["event-stream"] }
 
-futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
+futures-util = { version = "0.3", features = ["std", "async-await", "async-await-macro"], default-features = false }
 
 # Logging
 fern = "0.6"

@@ -159,11 +159,7 @@ impl Application {
                         last_render = Instant::now();
                     }
                 }
-                Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
-                }
-                Some(callback) = self.jobs.wait_futures.next() => {
+                Some(callback) = self.jobs.next_job() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
