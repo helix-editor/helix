@@ -100,9 +100,6 @@
 "unsafe" @keyword
 "use" @keyword
 (mutable_specifier) @keyword.mut
-(use_list (self) @keyword)
-(scoped_use_list (self) @keyword)
-(scoped_identifier (self) @keyword)
 (super) @keyword
 "as" @keyword
 
@@ -208,10 +205,10 @@
 ; Global Paths
 
 (scoped_identifier
-  path: (identifier) @namespace
+  path: (identifier)? @namespace
   name: (identifier) @namespace)
 (scoped_type_identifier
-  path: (identifier) @namespace
+  path: (identifier)? @namespace
   name: (type_identifier) @type)
 
 
