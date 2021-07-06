@@ -124,6 +124,7 @@
         name: (identifier) @variant))
   ])
 
+(type_identifier) @type
 (field_initializer
   (field_identifier) @property)
 (shorthand_field_initializer) @variable
@@ -256,6 +257,8 @@
 "'"
 ] @operator
 
+; Not sure why I have to rewrite it here,
+; but this duplicate is needed.
 (type_identifier) @type
 (identifier) @variable
 (field_identifier) @variable
