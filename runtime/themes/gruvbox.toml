@@ -27,7 +27,6 @@
 "escape" = { fg = "fg2", modifiers = ["bold"] }
 "label" = "aqua1"
 "module" = "yellow1"
-# "variant" TODO
 
 "warning" = "orange0"
 "error" = "red0"

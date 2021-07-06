@@ -29,7 +29,7 @@
 "comment" = { fg = "#6A9955" }
 
 "constant" = { fg = "constant" }
-"variant" = { fg = "constant" } 
+"type.variant" = { fg = "constant" } 
 "constructor" = { fg = "constant" }
 
 "string" = { fg = "#ce9178" }

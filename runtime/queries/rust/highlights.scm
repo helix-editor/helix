@@ -6,7 +6,7 @@
  (#match? @constant "^[A-Z](_|[A-Z])+$"))
 
 ; Assume other uppercase names are enum constructors
-(enum_variant) @variant
+(enum_variant) @type.variant
 ((identifier) @constructor
  (#match? @constructor "^[A-Z]"))
 

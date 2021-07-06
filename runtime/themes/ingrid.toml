@@ -25,7 +25,6 @@
 "number" = "#D74E50"
 "escape" = { fg = "#D74E50", modifiers = ["bold"] }
 "label" = "#D68482"
-# "variant" TODO
 
 "module" = "#839A53"
 

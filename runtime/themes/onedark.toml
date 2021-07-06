@@ -23,7 +23,6 @@
 "variable" = { fg = "#61AFEF" }
 "variable.builtin" = { fg = "#61AFEF" }
 "variable.parameter" = { fg = "#E06C75" }
-# "variant" TODO
 
 "info" = { fg = "#61afef", modifiers = ['bold'] }
 "hint" = { fg = "#98c379", modifiers = ['bold'] }
