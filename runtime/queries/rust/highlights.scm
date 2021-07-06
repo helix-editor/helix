@@ -124,7 +124,6 @@
         name: (identifier) @variant))
   ])
 
-(type_identifier) @type
 (field_initializer
   (field_identifier) @property)
 (shorthand_field_initializer) @variable
@@ -190,6 +189,10 @@
 
 (use_declaration
   argument: (identifier) @namespace)
+(use_wildcard
+  (identifier) @namespace)
+(extern_crate_declaration
+  name: (identifier) @namespace)
 (mod_item
   name: (identifier) @namespace)
 (scoped_use_list
