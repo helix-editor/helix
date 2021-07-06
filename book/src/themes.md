@@ -61,8 +61,8 @@ Possible keys:
 | `variable.parameter`     |                                     |
 | `type`                   |                                     |
 | `type.builtin`           |                                     |
+| `type.variant`           | Enum variants                       |
 | `constructor`            |                                     |
-| `variant`                | Enum variants                       |
 | `function`               |                                     |
 | `function.macro`         |                                     |
 | `function.builtin`       |                                     |
