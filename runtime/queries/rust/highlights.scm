@@ -43,6 +43,7 @@
 (field_initializer
   (field_identifier) @property)
 (shorthand_field_initializer) @variable
+(shorthand_field_identifier) @variable
 
 (lifetime
   "'" @label
@@ -162,8 +163,29 @@
 ; ---
 
 (call_expression
-  ((identifier) @constructor
-    (#match? @constructor "^[A-Z]")))
+  function: [
+    ((identifier) @type.variant
+      (#match? @type.variant "^[A-Z]"))
+    (scoped_identifier
+      name: ((identifier) @type.variant
+        (#match? @type.variant "^[A-Z]")))
+  ])
+
+; ---
+; Assume that types in match arms are enums and not
+; tuple structs. Same for `if let` expressions.
+; ---
+
+(match_pattern
+  [
+    (scoped_identifier
+      name: (identifier) @constructor)
+    (tuple_struct_pattern
+      (scoped_identifier
+        name: (identifier) @constructor))
+  ])
+(tuple_struct_pattern
+    type: (identifier) @constructor)
 
 ; ---
 ; Other PascalCase identifiers are assumed to be structs.
@@ -171,20 +193,6 @@
 
 ((identifier) @type
   (#match? @type "^[A-Z]"))
-
-; ---
-; Assume that types in match arms are enums and not
-; tuple structs.
-; ---
-
-(match_pattern
-  [
-    (scoped_identifier
-      name: (identifier) @type.variant)
-    (tuple_struct_pattern
-      (scoped_identifier
-        name: (identifier) @type.variant))
-  ])
 
 
 
