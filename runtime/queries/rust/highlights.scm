@@ -37,7 +37,6 @@
 ; ---
 
 (self) @variable.builtin
-(type_identifier) @type
 (enum_variant (identifier) @type.variant)
 
 (field_initializer
@@ -186,6 +185,8 @@
   ])
 (tuple_struct_pattern
     type: (identifier) @constructor)
+(struct_pattern
+  type: (type_identifier) @constructor)
 
 ; ---
 ; Other PascalCase identifiers are assumed to be structs.
@@ -342,6 +343,7 @@
 ; type_identifier capture.
 ; ---
 
+(type_identifier) @type
 (type_identifier) @type
 
 (identifier) @variable
