@@ -54,7 +54,7 @@
 "." @punctuation.delimiter
 ";" @punctuation.delimiter
 
-(enumerator) @variant
+(enumerator) @type.enum.variant
 
 (string_literal) @string
 (system_lib_string) @string
