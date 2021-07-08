@@ -40,6 +40,7 @@ use crate::{
 use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, TryFutureExt};
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
 use std::{
@@ -52,7 +53,7 @@ use serde::de::{self, Deserialize, Deserializer};
 
 pub struct Context<'a> {
     pub selected_register: helix_view::RegisterSelection,
-    pub count: Option<std::num::NonZeroUsize>,
+    pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
@@ -3384,47 +3385,38 @@ fn select_register(cx: &mut Context) {
     })
 }
 
-fn view_mode(cx: &mut Context) {
-    cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            // if lock, call cx again
-            // TODO: temporarily show VIE in the mode list
-            match ch {
-                // center
-                'z' | 'c'
-                // top
-                | 't'
-                // bottom
-                | 'b' => {
-                    let (view, doc) = current!(cx.editor);
+fn align_view_top(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    align_view(doc, view, Align::Top);
+}
 
-                    align_view(doc, view, match ch {
-                        'z' | 'c' => Align::Center,
-                        't' => Align::Top,
-                        'b' => Align::Bottom,
-                        _ => unreachable!()
-                    });
-                }
-                'm' => {
-                    let (view, doc) = current!(cx.editor);
-                    let pos = doc.selection(view.id).cursor();
-                    let pos = coords_at_pos(doc.text().slice(..), pos);
+fn align_view_center(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    align_view(doc, view, Align::Center);
+}
 
-                    const OFFSET: usize = 7; // gutters
-                    view.first_col = pos.col.saturating_sub(((view.area.width as usize).saturating_sub(OFFSET)) / 2);
-                },
-                'h' => (),
-                'j' => scroll(cx, 1, Direction::Forward),
-                'k' => scroll(cx, 1, Direction::Backward),
-                'l' => (),
-                _ => (),
-            }
-        }
-    })
+fn align_view_bottom(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    align_view(doc, view, Align::Bottom);
+}
+
+fn align_view_middle(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let pos = doc.selection(view.id).cursor();
+    let pos = coords_at_pos(doc.text().slice(..), pos);
+
+    const OFFSET: usize = 7; // gutters
+    view.first_col = pos
+        .col
+        .saturating_sub(((view.area.width as usize).saturating_sub(OFFSET)) / 2);
+}
+
+fn scroll_up(cx: &mut Context) {
+    scroll(cx, cx.count(), Direction::Backward);
+}
+
+fn scroll_down(cx: &mut Context) {
+    scroll(cx, cx.count(), Direction::Forward);
 }
 
 fn select_textobject_around(cx: &mut Context) {
@@ -3731,4 +3723,21 @@ mode_info! {
     "d" => goto_next_diag,
     /// diagnostic (last)
     "D" => goto_last_diag,
+}
+
+mode_info! {
+    /// view
+    view_mode, VIEW_MODE,
+    /// align view top
+    "t" => align_view_top,
+    /// align view center
+    "z" | "c" => align_view_center,
+    /// align view bottom
+    "b" => align_view_bottom,
+    /// align view middle
+    "m" => align_view_middle,
+    /// scroll up
+    "k" => scroll_up,
+    /// scroll down
+    "j" => scroll_down,
 }
