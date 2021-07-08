@@ -94,6 +94,8 @@
 
 (for_expression
   "for" @keyword.control)
+((identifier) @keyword.control
+  (#matches? "yield"))
 [
   "while"
   "loop"
