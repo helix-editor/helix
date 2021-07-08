@@ -92,6 +92,23 @@
 ; Keywords
 ; -------
 
+(for_expression
+  "for" @keyword.control)
+[
+  "while"
+  "loop"
+  "in"
+  "break"
+  "continue"
+
+  "match"
+  "if"
+  "else"
+  "return"
+
+  "await"
+] @keyword.control
+
 [
   (crate)
   (super)
@@ -107,6 +124,7 @@
   "impl"
   "where"
   "trait"
+  "for"
 
   "type"
   "union"
@@ -124,28 +142,7 @@
   "async"
 ] @keyword
 
-(impl_item "for" @keyword)
 (mutable_specifier) @keyword.mut
-
-; ---
-; Control Flow
-; ---
-
-[
-  "for"
-  "while"
-  "loop"
-  "in"
-  "break"
-  "continue"
-
-  "match"
-  "if"
-  "else"
-  "return"
-
-  "await"
-] @keyword.control
 
 
 
