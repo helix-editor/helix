@@ -321,8 +321,7 @@
   path: (identifier)? @namespace
   name: (identifier) @namespace)
 (scoped_type_identifier
-  path: (identifier)? @namespace
-  name: (type_identifier) @type)
+  path: (identifier) @namespace)
 
 
 
