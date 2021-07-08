@@ -6,21 +6,10 @@
 ; -------
 
 
-<<<<<<< HEAD
 
 ; -------
 ; Types
 ; -------
-=======
-; Assume all-caps names are constants
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z\\d_]+$"))
-
-; Assume other uppercase names are enum constructors
-(enum_variant) @type.enum.variant
-((identifier) @constructor
- (#match? @constructor "^[A-Z]"))
->>>>>>> c7aa7bf4baf8e0ac4eca3ebdca065ab2a7bea95c
 
 ; ---
 ; Primitives
