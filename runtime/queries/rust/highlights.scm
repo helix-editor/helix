@@ -3,9 +3,10 @@
 
 ; Assume all-caps names are constants
 ((identifier) @constant
- (#match? @constant "^[A-Z][A-Z\\d_]+$'"))
+ (#match? @constant "^[A-Z][A-Z\\d_]+$"))
 
 ; Assume other uppercase names are enum constructors
+(enum_variant) @type.enum.variant
 ((identifier) @constructor
  (#match? @constructor "^[A-Z]"))
 
