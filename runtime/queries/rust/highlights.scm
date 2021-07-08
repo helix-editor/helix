@@ -37,7 +37,7 @@
 ; ---
 
 (self) @variable.builtin
-(enum_variant (identifier) @type.variant)
+(enum_variant (identifier) @type.enum.variant)
 
 (field_initializer
   (field_identifier) @property)
@@ -154,7 +154,7 @@
 ; -------
 
 ((identifier) @constant
- (#match? @constant "^[A-Z](_|[A-Z])+$"))
+ (#match? @constant "^[A-Z][A-Z\\d_]+$"))
 
 ; ---
 ; PascalCase identifiers in call_expressions (e.g. `Ok()`)
