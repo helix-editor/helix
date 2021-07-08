@@ -5,6 +5,7 @@
 use crate::{
     graphemes::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
+        prev_grapheme_boundary,
     },
     Assoc, ChangeSet, RopeSlice,
 };
@@ -206,6 +207,28 @@ impl Range {
                 None
             },
         }
+    }
+
+    /// Moves the `Range` to `char_idx`.  If `extend == true`, then only the head
+    /// is moved to `char_idx`, and the anchor is adjusted only as needed to
+    /// preserve 1-width range semantics.
+    ///
+    /// This method assumes that the range and `char_idx` are already properly
+    /// grapheme-aligned.
+    #[must_use]
+    #[inline]
+    pub fn put(self, text: RopeSlice, extend: bool, char_idx: usize) -> Range {
+        let anchor = if !extend {
+            char_idx
+        } else if self.head >= self.anchor && char_idx < self.anchor {
+            next_grapheme_boundary(text, self.anchor)
+        } else if self.head < self.anchor && char_idx >= self.anchor {
+            prev_grapheme_boundary(text, self.anchor)
+        } else {
+            self.anchor
+        };
+
+        Range::new(anchor, char_idx)
     }
 
     // groupAt

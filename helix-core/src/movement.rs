@@ -32,60 +32,31 @@ pub fn move_horizontally(
     count: usize,
     behaviour: Movement,
 ) -> Range {
-    match (behaviour, dir) {
-        (Movement::Move, Direction::Backward) => {
-            let count = if range.anchor < range.head {
-                count + 1
-            } else {
-                count
-            };
-            let pos = nth_prev_grapheme_boundary(slice, range.head, count);
-            Range::new(pos, pos)
-        }
-        (Movement::Move, Direction::Forward) => {
-            let count = if range.anchor < range.head {
-                count - 1
-            } else {
-                count
-            };
-            let pos = nth_next_grapheme_boundary(slice, range.head, count);
-            Range::new(pos, pos)
-        }
-        (Movement::Extend, Direction::Backward) => {
-            // Ensure a valid initial selection state.
-            let range = range.min_width_1(slice);
+    use Movement::Extend;
 
-            // Do the main movement.
-            let mut head = nth_prev_grapheme_boundary(slice, range.head, count);
-            let mut anchor = range.anchor;
+    // Shift back one grapheme if needed, to account for
+    // the cursor being visually 1-width.
+    let pos = if range.head > range.anchor {
+        prev_grapheme_boundary(slice, range.head)
+    } else {
+        range.head
+    };
 
-            // If the head and anchor crossed over each other, we need to
-            // fiddle around to make it behave like a 1-wide cursor.
-            if head <= anchor && range.head > range.anchor {
-                anchor = next_grapheme_boundary(slice, anchor);
-                head = prev_grapheme_boundary(slice, head);
-            }
+    // Compute the new position.
+    let mut new_pos = if dir == Direction::Backward {
+        nth_prev_grapheme_boundary(slice, pos, count)
+    } else {
+        nth_next_grapheme_boundary(slice, pos, count)
+    };
 
-            Range::new(anchor, head)
-        }
-        (Movement::Extend, Direction::Forward) => {
-            // Ensure a valid initial selection state.
-            let range = range.min_width_1(slice);
+    // Shift forward one grapheme if needed, for the
+    // visual 1-width cursor.
+    if behaviour == Extend && new_pos >= range.anchor {
+        new_pos = next_grapheme_boundary(slice, new_pos);
+    };
 
-            // Do the main movement.
-            let mut head = nth_next_grapheme_boundary(slice, range.head, count);
-            let mut anchor = range.anchor;
-
-            // If the head and anchor crossed over each other, we need to
-            // fiddle around to make it behave like a 1-wide cursor.
-            if head >= anchor && range.head < range.anchor {
-                anchor = prev_grapheme_boundary(slice, anchor);
-                head = next_grapheme_boundary(slice, head);
-            }
-
-            Range::new(anchor, head)
-        }
-    }
+    // Compute the final new range.
+    range.put(slice, behaviour == Extend, new_pos)
 }
 
 pub fn move_vertically(
@@ -135,19 +106,9 @@ pub fn move_vertically(
                 new_pos
             };
 
-            let new_anchor = if range.anchor <= range.head && range.anchor > new_head {
-                next_grapheme_boundary(slice, range.anchor)
-            } else if range.anchor > range.head && range.anchor < new_head {
-                prev_grapheme_boundary(slice, range.anchor)
-            } else {
-                range.anchor
-            };
-
-            Range {
-                anchor: new_anchor,
-                head: new_head,
-                horiz: Some(horiz),
-            }
+            let mut new_range = range.put(slice, true, new_head);
+            new_range.horiz = Some(horiz);
+            new_range
         }
     }
 }
