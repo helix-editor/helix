@@ -341,13 +341,6 @@
 
 "?" @special
 
-; ---
-; Not sure why, but there needs to be a duplicated
-; type_identifier capture.
-; ---
-
 (type_identifier) @type
-(type_identifier) @type
-
 (identifier) @variable
 (field_identifier) @variable
