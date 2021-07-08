@@ -176,17 +176,20 @@
 ; ---
 
 (match_pattern
-  [
     (scoped_identifier
-      name: (identifier) @constructor)
-    (tuple_struct_pattern
-      (scoped_identifier
-        name: (identifier) @constructor))
-  ])
+      name: (identifier) @constructor))
 (tuple_struct_pattern
-    type: (identifier) @constructor)
+    type: [
+      ((identifier) @constructor)
+      (scoped_identifier  
+        name: (identifier) @constructor)
+      ])
 (struct_pattern
-  type: (type_identifier) @constructor)
+  type: [
+    ((type_identifier) @constructor)
+    (scoped_type_identifier
+      name: (type_identifier) @constructor)
+    ])
 
 ; ---
 ; Other PascalCase identifiers are assumed to be structs.
