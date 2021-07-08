@@ -217,7 +217,7 @@ impl Range {
     /// grapheme-aligned.
     #[must_use]
     #[inline]
-    pub fn put(self, text: RopeSlice, extend: bool, char_idx: usize) -> Range {
+    pub fn put(self, text: RopeSlice, char_idx: usize, extend: bool) -> Range {
         let anchor = if !extend {
             char_idx
         } else if self.head >= self.anchor && char_idx < self.anchor {

@@ -56,7 +56,7 @@ pub fn move_horizontally(
     };
 
     // Compute the final new range.
-    range.put(slice, behaviour == Extend, new_pos)
+    range.put(slice, new_pos, behaviour == Extend)
 }
 
 pub fn move_vertically(
@@ -106,7 +106,7 @@ pub fn move_vertically(
                 new_pos
             };
 
-            let mut new_range = range.put(slice, true, new_head);
+            let mut new_range = range.put(slice, new_head, true);
             new_range.horiz = Some(horiz);
             new_range
         }
@@ -427,7 +427,7 @@ mod test {
     #[test]
     fn vertical_moves_in_single_column() {
         let text = Rope::from(MULTILINE_SAMPLE);
-        let slice = dbg!(&text).slice(..);
+        let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into());
         let mut range = Range::point(position);
         let moves_and_expected_coordinates = IntoIter::new([

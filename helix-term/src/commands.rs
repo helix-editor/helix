@@ -1,9 +1,6 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
-    line_ending::{
-        get_line_ending_of_str, line_end_char_index, rope_end_without_line_ending,
-        str_is_line_ending,
-    },
+    line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
@@ -392,20 +389,14 @@ fn goto_line_end(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text();
+            let text = doc.text().slice(..);
             let line = text.char_to_line(range.head);
 
-            let pos = line_end_char_index(&text.slice(..), line);
-            let pos = graphemes::nth_prev_grapheme_boundary(text.slice(..), pos, 1);
+            let pos = line_end_char_index(&text, line);
+            let pos = graphemes::nth_prev_grapheme_boundary(text, pos, 1);
             let pos = range.head.max(pos).max(text.line_to_char(line));
 
-            Range::new(
-                match doc.mode {
-                    Mode::Normal | Mode::Insert => pos,
-                    Mode::Select => range.anchor,
-                },
-                pos,
-            )
+            range.put(text, pos, doc.mode == Mode::Select)
         }),
     );
 }
@@ -416,11 +407,11 @@ fn goto_line_end_newline(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text();
+            let text = doc.text().slice(..);
             let line = text.char_to_line(range.head);
 
-            let pos = line_end_char_index(&text.slice(..), line);
-            Range::new(pos, pos)
+            let pos = line_end_char_index(&text, line);
+            range.put(text, pos, doc.mode == Mode::Select)
         }),
     );
 }
@@ -430,18 +421,12 @@ fn goto_line_start(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text();
+            let text = doc.text().slice(..);
             let line = text.char_to_line(range.head);
 
             // adjust to start of the line
             let pos = text.line_to_char(line);
-            Range::new(
-                match doc.mode {
-                    Mode::Normal | Mode::Insert => pos,
-                    Mode::Select => range.anchor,
-                },
-                pos,
-            )
+            range.put(text, pos, doc.mode == Mode::Select)
         }),
     );
 }
@@ -451,18 +436,12 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text();
+            let text = doc.text().slice(..);
             let line_idx = text.char_to_line(range.head);
 
             if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
                 let pos = pos + text.line_to_char(line_idx);
-                Range::new(
-                    match doc.mode {
-                        Mode::Normal | Mode::Insert => pos,
-                        Mode::Select => range.anchor,
-                    },
-                    pos,
-                )
+                range.put(text, pos, doc.mode == Mode::Select)
             } else {
                 range
             }
@@ -581,9 +560,7 @@ fn goto_file_start(cx: &mut Context) {
 fn goto_file_end(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = current!(cx.editor);
-    let text = doc.text();
-    let last_line = text.line_to_char(text.len_lines().saturating_sub(2));
-    doc.set_selection(view.id, Selection::point(last_line));
+    doc.set_selection(view.id, Selection::point(doc.text().len_chars()));
 }
 
 fn extend_next_word_start(cx: &mut Context) {
@@ -592,9 +569,10 @@ fn extend_next_word_start(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let word = movement::move_next_word_start(doc.text().slice(..), range, count);
+            let text = doc.text().slice(..);
+            let word = movement::move_next_word_start(text, range, count);
             let pos = word.head;
-            Range::new(range.anchor, pos)
+            range.put(text, pos, true)
         }),
     );
 }
@@ -605,9 +583,10 @@ fn extend_prev_word_start(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let word = movement::move_prev_word_start(doc.text().slice(..), range, count);
+            let text = doc.text().slice(..);
+            let word = movement::move_prev_word_start(text, range, count);
             let pos = word.head;
-            Range::new(range.anchor, pos)
+            range.put(text, pos, true)
         }),
     );
 }
@@ -618,9 +597,10 @@ fn extend_next_word_end(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let word = movement::move_next_word_end(doc.text().slice(..), range, count);
+            let text = doc.text().slice(..);
+            let word = movement::move_next_word_end(text, range, count);
             let pos = word.head;
-            Range::new(range.anchor, pos)
+            range.put(text, pos, true)
         }),
     );
 }
@@ -669,18 +649,9 @@ where
         doc.set_selection(
             view.id,
             doc.selection(view.id).clone().transform(|range| {
-                search_fn(doc.text().slice(..), ch, range.head, count, inclusive).map_or(
-                    range,
-                    |pos| {
-                        if extend {
-                            Range::new(range.anchor, pos)
-                        } else {
-                            // select
-                            Range::new(range.head, pos)
-                        }
-                        // or (pos, pos) to move to found val
-                    },
-                )
+                let text = doc.text().slice(..);
+                search_fn(text, ch, range.head, count, inclusive)
+                    .map_or(range, |pos| range.put(text, pos, extend))
             }),
         );
     })
@@ -940,7 +911,7 @@ fn extend_line_down(cx: &mut Context) {
 fn select_all(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    let end = rope_end_without_line_ending(&doc.text().slice(..));
+    let end = doc.text().len_chars();
     doc.set_selection(view.id, Selection::single(0, end))
 }
 
@@ -997,12 +968,10 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
             return;
         }
 
-        let head = end - 1;
-
         let selection = if extend {
-            selection.clone().push(Range::new(start, head))
+            selection.clone().push(Range::new(start, end))
         } else {
-            Selection::single(start, head)
+            Selection::single(start, end)
         };
 
         doc.set_selection(view.id, selection);
@@ -1143,9 +1112,15 @@ fn collapse_selection(cx: &mut Context) {
 
     doc.set_selection(
         view.id,
-        doc.selection(view.id)
-            .clone()
-            .transform(|range| Range::new(range.head, range.head)),
+        doc.selection(view.id).clone().transform(|range| {
+            let pos = if range.head > range.anchor {
+                // For 1-width cursor semantics.
+                graphemes::prev_grapheme_boundary(doc.text().slice(..), range.head)
+            } else {
+                range.head
+            };
+            Range::new(pos, pos)
+        }),
     );
 }
 
@@ -1184,10 +1159,13 @@ fn append_mode(cx: &mut Context) {
     doc.restore_cursor = true;
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        Range::new(
-            range.from(),
-            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()), // to() + next char
-        )
+        let to = if range.to() == range.from() {
+            // For 1-width cursor semantics.
+            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to())
+        } else {
+            range.to()
+        };
+        Range::new(range.from(), to)
     });
 
     let end = doc.text().len_chars();
