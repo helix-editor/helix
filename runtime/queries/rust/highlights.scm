@@ -107,7 +107,6 @@
   "return"
 
   "await"
-  "yield"
 ] @keyword.control
 
 [
