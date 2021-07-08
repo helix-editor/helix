@@ -252,10 +252,6 @@
 ; Operators
 ; -------
 
-; ---
-; Operators
-; ---
-
 [
   "*"
   "'"
@@ -301,10 +297,6 @@
 ; -------
 ; Paths
 ; -------
-
-; ---
-; Imports
-; ---
 
 (use_declaration
   argument: (identifier) @namespace)
