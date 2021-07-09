@@ -123,18 +123,17 @@ impl EditorView {
         };
 
         // TODO: range doesn't actually restrict source, just highlight range
-        let highlights: Vec<_> =
-            match doc.syntax() {
-                Some(syntax) => {
-                    let scopes = theme.scopes();
-                    syntax
-                        .highlight_iter(text.slice(..), Some(range), None, |language| {
-                            loader
+        let highlights: Vec<_> = match doc.syntax() {
+            Some(syntax) => {
+                let scopes = theme.scopes();
+                syntax
+                    .highlight_iter(text.slice(..), Some(range), None, |language| {
+                        loader
                                 .language_config_for_scope(&format!("source.{}", language))
                                 .and_then(|language_config| {
                                     let config = language_config.highlight_config(scopes)?;
                                     let config_ref = config.as_ref();
-                                    // Safe because the referenced `HighglightConfiguration` is behind
+                                    // Safe because the referenced `HighlightConfiguration` is behind
                                     // an `Arc` that will never be dropped in this function.
                                     let config_ref = unsafe {
                                         std::mem::transmute::<
@@ -144,14 +143,14 @@ impl EditorView {
                                     };
                                     Some(config_ref)
                                 })
-                        })
-                        .collect() // TODO: we collect here to avoid holding the lock, fix later
-                }
-                None => vec![Ok(HighlightEvent::Source {
-                    start: range.start,
-                    end: range.end,
-                })],
-            };
+                    })
+                    .collect() // TODO: we collect here to avoid holding the lock, fix later
+            }
+            None => vec![Ok(HighlightEvent::Source {
+                start: range.start,
+                end: range.end,
+            })],
+        };
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
         let mut line = 0u16;
