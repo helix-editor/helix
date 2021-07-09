@@ -19,7 +19,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr, sync::Arc};
 
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
@@ -64,6 +64,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
+        loader: Arc<syntax::Loader>,
     ) {
         let area = Rect::new(
             view.area.x + OFFSET,
@@ -72,7 +73,7 @@ impl EditorView {
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
 
-        self.render_buffer(doc, view, area, surface, theme, is_focused);
+        self.render_buffer(doc, view, area, surface, theme, is_focused, loader);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -106,6 +107,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
+        loader: Arc<syntax::Loader>,
     ) {
         let text = doc.text().slice(..);
 
@@ -122,8 +124,19 @@ impl EditorView {
         // TODO: range doesn't actually restrict source, just highlight range
         let highlights: Vec<_> = match doc.syntax() {
             Some(syntax) => {
+                let scopes = theme.scopes();
+                let configs: Vec<_> = loader
+                    .language_configs_iter()
+                    .map(|x| (x, x.highlight_config(scopes).unwrap()))
+                    .collect();
                 syntax
-                    .highlight_iter(text.slice(..), Some(range), None, |_| None)
+                    .highlight_iter(text.slice(..), Some(range), None, |language| {
+                        let language = syntax::Lang::from_str(language).unwrap();
+                        let (.., highlight_config) = configs
+                            .iter()
+                            .find(|(config, ..)| config.language_id == language)?;
+                        Some(highlight_config)
+                    })
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
             None => vec![Ok(HighlightEvent::Source {
@@ -719,7 +732,16 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(doc, view, area, surface, &cx.editor.theme, is_focused);
+            let loader = cx.editor.syn_loader.clone();
+            self.render_view(
+                doc,
+                view,
+                area,
+                surface,
+                &cx.editor.theme,
+                is_focused,
+                loader,
+            );
         }
 
         if let Some(info) = std::mem::take(&mut cx.editor.autoinfo) {
