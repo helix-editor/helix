@@ -99,6 +99,7 @@ impl EditorView {
         self.render_statusline(doc, view, area, surface, theme, is_focused);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render_buffer(
         &self,
         doc: &Document,
@@ -133,6 +134,8 @@ impl EditorView {
                                 let config = language_config.highlight_config(scopes)?;
                                 let config_ref = {
                                     let reference = config.as_ref();
+                                    // Safe because the referenced `HighglightConfiguration` is behind
+                                    // an `Arc` that will never be dropped in this function.
                                     unsafe {
                                         std::mem::transmute::<
                                             _,
