@@ -127,13 +127,21 @@ impl EditorView {
                 let scopes = theme.scopes();
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |language| {
-                        loader.language_config_for_scope(&format!("source.{}", language)).and_then(|language_config| {
-                            let config = language_config.highlight_config(scopes);
-                            let config_ref = unsafe {
-                                std::mem::transmute::<_, &'static syntax::HighlightConfiguration>(config.as_ref())
-                            };
-                            Some(config_ref)
-                        })
+                        loader
+                            .language_config_for_scope(&format!("source.{}", language))
+                            .and_then(|language_config| {
+                                let config = language_config.highlight_config(scopes)?;
+                                let config_ref = {
+                                    let reference = config.as_ref();
+                                    unsafe {
+                                        std::mem::transmute::<
+                                            _,
+                                            &'static syntax::HighlightConfiguration,
+                                        >(reference)
+                                    }
+                                };
+                                Some(config_ref)
+                            })
                     })
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
