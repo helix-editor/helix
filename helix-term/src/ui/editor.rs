@@ -19,7 +19,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
 
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
@@ -64,7 +64,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        loader: Arc<syntax::Loader>,
+        loader: &syntax::Loader,
     ) {
         let area = Rect::new(
             view.area.x + OFFSET,
@@ -108,7 +108,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        loader: Arc<syntax::Loader>,
+        loader: &syntax::Loader,
     ) {
         let text = doc.text().slice(..);
 
@@ -739,7 +739,7 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            let loader = cx.editor.syn_loader.clone();
+            let loader = &cx.editor.syn_loader;
             self.render_view(
                 doc,
                 view,
