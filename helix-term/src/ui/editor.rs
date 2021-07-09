@@ -19,7 +19,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, str::FromStr, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
@@ -125,17 +125,15 @@ impl EditorView {
         let highlights: Vec<_> = match doc.syntax() {
             Some(syntax) => {
                 let scopes = theme.scopes();
-                let configs: Vec<_> = loader
-                    .language_configs_iter()
-                    .map(|x| (x, x.highlight_config(scopes).unwrap()))
-                    .collect();
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |language| {
-                        let language = syntax::Lang::from_str(language).unwrap();
-                        let (.., highlight_config) = configs
-                            .iter()
-                            .find(|(config, ..)| config.language_id == language)?;
-                        Some(highlight_config)
+                        loader.language_config_for_scope(&format!("source.{}", language)).and_then(|language_config| {
+                            let config = language_config.highlight_config(scopes);
+                            let config_ref = unsafe {
+                                std::mem::transmute::<_, &'static syntax::HighlightConfiguration>(config.as_ref())
+                            };
+                            Some(config_ref)
+                        })
                     })
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
