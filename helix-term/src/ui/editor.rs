@@ -133,8 +133,9 @@ impl EditorView {
                                 .and_then(|language_config| {
                                     let config = language_config.highlight_config(scopes)?;
                                     let config_ref = config.as_ref();
-                                    // Safe because the referenced `HighlightConfiguration` is behind
-                                    // an `Arc` that will never be dropped in this function.
+                                    // SAFETY: the referenced `HighlightConfiguration` behind
+                                    // the `Arc` is guaranteed to remain valid throughout the
+                                    // duration of the highlight.
                                     let config_ref = unsafe {
                                         std::mem::transmute::<
                                             _,
