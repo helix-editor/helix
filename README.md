@@ -66,22 +66,7 @@ brew install helix
 ```
  
 # Contributing
-
-Contributors are very welcome! **No contribution is too small and all contributions are valued.**
-
-Some suggestions to get started:
-
-- You can look at the [good first issue](https://github.com/helix-editor/helix/labels/E-easy) label on the issue tracker.
-- Help with packaging on various distributions needed!
-- To use print debugging to the `~/.cache/helix/helix.log` file, you must:
-  * Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
-  * Pass the appropriate verbosity level option for the desired log level. (`hx -v <file>` for info, more `v`s for higher severity inclusive)
-- If your preferred language is missing, integrating a tree-sitter grammar for
-    it and defining syntax highlight queries for it is straight forward and
-    doesn't require much knowledge of the internals.
-
-We provide an [architecture.md](./docs/architecture.md) that should give you
-a good overview of the internals.
+Please see [CONTRIBUTING.md](https://github.com/python128/helix/blob/patch-1/CONTRIBUTING.md).
 
 # Getting help
 
