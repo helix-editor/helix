@@ -7,7 +7,8 @@ use std::sync::mpsc::channel;
 
 fn collect_tree_sitter_dirs(ignore: &[String]) -> Vec<String> {
     let mut dirs = Vec::new();
-    for entry in fs::read_dir("languages").unwrap().flatten() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("languages");
+    for entry in fs::read_dir(path).unwrap().flatten() {
         let path = entry.path();
         let dir = path.file_name().unwrap().to_str().unwrap().to_string();
         if !ignore.contains(&dir) {
@@ -54,13 +55,14 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
     if !recompile {
         return Ok(());
     }
-
+    let build_dir = std::env::var("OUT_DIR").unwrap();
     let mut config = cc::Build::new();
     config.cpp(true).opt_level(2).cargo_metadata(false);
     // .target(BUILD_TARGET)
     // .host(BUILD_TARGET);
     let compiler = config.get_compiler();
     let mut command = Command::new(compiler.path());
+    command.current_dir(build_dir);
     for (key, value) in compiler.env() {
         command.env(key, value);
     }
@@ -185,7 +187,10 @@ fn build_dir(dir: &str, language: &str) {
         std::process::exit(1);
     }
 
-    let path = Path::new("languages").join(dir).join("src");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("languages")
+        .join(dir)
+        .join("src");
     build_library(&path, language).unwrap();
 }
 
