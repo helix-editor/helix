@@ -253,14 +253,14 @@ where
 
         let doc = Rope::from(doc);
         use crate::syntax::{
-            Configuration, IndentationConfiguration, Lang, LanguageConfiguration, Loader,
+            Configuration, IndentationConfiguration, LanguageConfiguration, Loader,
         };
         use once_cell::sync::OnceCell;
         let loader = Loader::new(Configuration {
             language: vec![LanguageConfiguration {
                 scope: "source.rust".to_string(),
                 file_types: vec!["rs".to_string()],
-                language_id: Lang::Rust,
+                language_id: "Rust".to_string(),
                 highlight_config: OnceCell::new(),
                 //
                 roots: vec![],
