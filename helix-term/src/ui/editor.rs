@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::Keymaps,
+    keymap::{KeyNode, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -560,7 +560,7 @@ impl EditorView {
     }
 
     fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(command) = self.keymaps[&Mode::Insert].get(&event) {
+        if let Some(KeyNode::KeyCommand(command)) = self.keymaps[&Mode::Insert].get(&event) {
             command.execute(cx);
         } else if let KeyEvent {
             code: KeyCode::Char(ch),
@@ -598,7 +598,7 @@ impl EditorView {
                 // set the register
                 cxt.selected_register = cxt.editor.selected_register.take();
 
-                if let Some(command) = self.keymaps[&mode].get(&event) {
+                if let Some(KeyNode::KeyCommand(command)) = self.keymaps[&mode].get(&event) {
                     command.execute(cxt);
                 }
             }
@@ -714,7 +714,12 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = self.keymaps[&mode][&key];
+                        // self.last_insert.0 = self.keymaps[&mode][&key];
+                        match self.keymaps[&mode][&key] {
+                            KeyNode::KeyCommand(command) => self.last_insert.0 = command,
+                            // FIXME: insert mode can only be entered through single KeyCodes
+                            KeyNode::SubKeymap(_) => unimplemented!(),
+                        }
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

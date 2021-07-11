@@ -22,6 +22,7 @@ pub struct LspConfig {
 
 #[test]
 fn parsing_keymaps_config_file() {
+    use crate::keymap::KeyNode;
     use helix_core::hashmap;
     use helix_view::{
         document::Mode,
@@ -46,17 +47,17 @@ fn parsing_keymaps_config_file() {
                     KeyEvent {
                         code: KeyCode::Char('y'),
                         modifiers: KeyModifiers::NONE,
-                    } => Command::move_line_down,
+                    } => KeyNode::KeyCommand(Command::move_line_down),
                     KeyEvent {
                         code: KeyCode::Char('a'),
                         modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL,
-                    } => Command::delete_selection,
+                    } => KeyNode::KeyCommand(Command::delete_selection),
                 },
                 Mode::Normal => hashmap! {
                     KeyEvent {
                         code: KeyCode::F(12),
                         modifiers: KeyModifiers::ALT,
-                    } => Command::move_next_word_end,
+                    } => KeyNode::KeyCommand(Command::move_next_word_end),
                 },
             }),
             ..Default::default()
