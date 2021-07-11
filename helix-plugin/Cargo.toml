@@ -1,0 +1,14 @@
+[package]
+name = "helix-plugin"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+wasmtime = "0.28"
+wasmtime-wasi = { version = "0.28", features = ["tokio"] }
+anyhow = "1"
+futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
+
+[dev-dependencies]
+tokio-macros = "1.3"
+tokio = "1.8"

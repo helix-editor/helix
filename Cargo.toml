@@ -6,6 +6,7 @@ members = [
   "helix-tui",
   "helix-syntax",
   "helix-lsp",
+  "helix-plugin",
 ]
 
 # Build helix-syntax in release mode to make the code path faster in development.
