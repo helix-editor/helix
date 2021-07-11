@@ -3750,7 +3750,7 @@ mode_info! {
    /// window
    window_mode, WINDOW_MODE,
    /// rotate
-   "w" => rotate_view,
+   "w" | "C-w" => rotate_view,
    /// horizontal split
    "h" => hsplit,
    /// vertical split
