@@ -71,12 +71,13 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
         command
             .args(&["/nologo", "/LD", "/I"])
             .arg(header_path)
-            .arg("/Od")
-            .arg(parser_path);
+            .arg("/Od");
         if let Some(scanner_path) = scanner_path.as_ref() {
             command.arg(scanner_path);
         }
+
         command
+            .arg(parser_path)
             .arg("/link")
             .arg(format!("/out:{}", library_path.to_str().unwrap()));
     } else {
