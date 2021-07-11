@@ -23,7 +23,7 @@ use helix_view::{
     Document, DocumentId, Editor, ViewId,
 };
 
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context as _};
 use helix_lsp::{
     lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
@@ -1197,16 +1197,9 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        match args.get(0) {
-            Some(path) => {
-                let _ = cx.editor.open(path.into(), Action::Replace)?;
-
-                Ok(())
-            }
-            None => {
-                bail!("wrong argument count");
-            }
-        }
+        let path = args.get(0).context("wrong argument count")?;
+        let _ = cx.editor.open(path.into(), Action::Replace)?;
+        Ok(())
     }
 
     fn write_impl<P: AsRef<Path>>(
@@ -1217,9 +1210,7 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
 
         if let Some(path) = path {
-            if let Err(err) = doc.set_path(path.as_ref()) {
-                bail!("invalid filepath: {}", err);
-            };
+            doc.set_path(path.as_ref()).context("invalid filepath")?;
         }
         if doc.path().is_none() {
             bail!("cannot write a buffer without a filename");
@@ -1306,14 +1297,11 @@ mod cmd {
             _ => None,
         };
 
-        if let Some(s) = style {
-            let doc = doc_mut!(cx.editor);
-            doc.indent_style = s;
+        let style = style.context("invalid indent style")?;
+        let doc = doc_mut!(cx.editor);
+        doc.indent_style = style;
 
-            Ok(())
-        } else {
-            bail!("invalid indent style '{}'", args[0]);
-        }
+        Ok(())
     }
 
     /// Sets or reports the current document's line ending setting.
@@ -1352,12 +1340,9 @@ mod cmd {
             _ => None,
         };
 
-        if let Some(le) = line_ending {
-            doc_mut!(cx.editor).line_ending = le;
-            Ok(())
-        } else {
-            bail!("invalid line ending '{}'", args[0]);
-        }
+        let line_ending = line_ending.context("invalid line ending")?;
+        doc_mut!(cx.editor).line_ending = line_ending;
+        Ok(())
     }
 
     fn earlier(
@@ -1397,7 +1382,7 @@ mod cmd {
         event: PromptEvent,
     ) -> anyhow::Result<()> {
         let handle = write_impl(cx, args.first())?;
-        helix_lsp::block_on(handle)?;
+        let _ = helix_lsp::block_on(handle)?;
         quit(cx, &[], event)
     }
 
@@ -1407,7 +1392,7 @@ mod cmd {
         event: PromptEvent,
     ) -> anyhow::Result<()> {
         let handle = write_impl(cx, args.first())?;
-        helix_lsp::block_on(handle)?;
+        let _ = helix_lsp::block_on(handle)?;
         force_quit(cx, &[], event)
     }
 
@@ -1532,12 +1517,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let theme = if let Some(theme) = args.first() {
-            theme
-        } else {
-            bail!("theme name not provided");
-        };
-
+        let theme = args.first().context("theme not provided")?;
         cx.editor.set_theme_from_name(theme)
     }
 
@@ -1598,10 +1578,7 @@ mod cmd {
                 doc.append_changes_to_history(view.id);
                 Ok(())
             }
-            Err(e) => {
-                log::error!("Couldn't get system clipboard contents: {:?}", e);
-                bail!("Couldn't get system clipboard contents: {:?}", e);
-            }
+            Err(e) => Err(e.context("Couldn't get system clipboard contents")),
         }
     }
 
@@ -1620,24 +1597,18 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let dir = args
-            .first()
-            .ok_or_else(|| anyhow!("target directory not provided"))?;
+        let dir = args.first().context("target directory not provided")?;
 
         if let Err(e) = std::env::set_current_dir(dir) {
             bail!("Couldn't change the current working directory: {:?}", e);
         }
 
-        match std::env::current_dir() {
-            Ok(cwd) => {
-                cx.editor.set_status(format!(
-                    "Current working directory is now {}",
-                    cwd.display()
-                ));
-                Ok(())
-            }
-            Err(e) => bail!("Couldn't get the new working directory: {}", e),
-        }
+        let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
+        cx.editor.set_status(format!(
+            "Current working directory is now {}",
+            cwd.display()
+        ));
+        Ok(())
     }
 
     fn show_current_directory(
@@ -1645,14 +1616,10 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        match std::env::current_dir() {
-            Ok(cwd) => {
-                cx.editor
-                    .set_status(format!("Current working directory is {}", cwd.display()));
-                Ok(())
-            }
-            Err(e) => bail!("Couldn't get the current working directory: {}", e),
-        }
+        let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
+        cx.editor
+            .set_status(format!("Current working directory is {}", cwd.display()));
+        Ok(())
     }
 
     /// Sets the [`Document`]'s encoding..
@@ -2870,10 +2837,10 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow
 
     let joined = values.join(separator);
 
-    if let Err(e) = editor.clipboard_provider.set_contents(joined) {
-        log::error!("Couldn't set system clipboard content: {:?}", e);
-        bail!("Couldn't set system clipboard content: {:?}", e);
-    }
+    editor
+        .clipboard_provider
+        .set_contents(joined)
+        .context("Couldn't set system clipboard content")?;
 
     editor.set_status(msg);
 
@@ -2894,7 +2861,6 @@ fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<
         .fragment(doc.text().slice(..));
 
     if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
-        log::error!("Couldn't set system clipboard content: {:?}", e);
         bail!("Couldn't set system clipboard content: {:?}", e);
     }
 
@@ -2965,10 +2931,7 @@ fn paste_clipboard_impl(editor: &mut Editor, action: Paste) -> anyhow::Result<()
             Ok(())
         }
         Ok(None) => Ok(()),
-        Err(e) => {
-            log::error!("Couldn't get system clipboard contents: {:?}", e);
-            bail!("Couldn't get system clipboard contents: {:?}", e);
-        }
+        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
     }
 }
 
@@ -3000,7 +2963,7 @@ fn replace_with_yanked(cx: &mut Context) {
     }
 }
 
-fn replace_selections_with_clipboard_impl(editor: &mut Editor) {
+fn replace_selections_with_clipboard_impl(editor: &mut Editor) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
 
     match editor.clipboard_provider.get_contents() {
@@ -3014,13 +2977,14 @@ fn replace_selections_with_clipboard_impl(editor: &mut Editor) {
 
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view.id);
+            Ok(())
         }
-        Err(e) => log::error!("Couldn't get system clipboard contents: {:?}", e),
+        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
     }
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    replace_selections_with_clipboard_impl(&mut cx.editor);
+    let _ = replace_selections_with_clipboard_impl(&mut cx.editor);
 }
 
 fn paste_after(cx: &mut Context) {

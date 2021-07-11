@@ -98,14 +98,11 @@ impl Editor {
     }
 
     pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
-        let theme = match self.theme_loader.load(theme.as_ref()) {
-            Ok(theme) => theme,
-            Err(e) => {
-                log::warn!("failed setting theme `{}` - {}", theme, e);
-                anyhow::bail!("failed setting theme `{}` - {}", theme, e);
-            }
-        };
-
+        use anyhow::Context;
+        let theme = self
+            .theme_loader
+            .load(theme.as_ref())
+            .with_context(|| format!("failed setting theme `{}`", theme))?;
         self.set_theme(theme);
         Ok(())
     }
