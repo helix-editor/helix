@@ -66,7 +66,7 @@ brew install helix
 ```
  
 # Contributing
-Please see [CONTRIBUTING.md](https://github.com/python128/helix/blob/patch-1/CONTRIBUTING.md).
+Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 # Getting help
 
