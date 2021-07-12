@@ -22,7 +22,7 @@ a good overview of the internals.
 - If you have a question or a doubt. Please *DO NOT* open an issue. The [discussions](https://github.com/helix-editor/helix/discussions) tab is exactly for that.
 
 ## Coding Conventions:
-**Please use [rustfmt](https://github.com/rust-lang/rustfmt#on-the-stable-toolchain) to format the entire code according to rust guidelines before opening a pull request.**
+Please use [rustfmt](https://github.com/rust-lang/rustfmt#on-the-stable-toolchain) to format the entire code according to rust guidelines before opening a pull request.
 
 ## Pull Requests:
 - Please explain what your code does. Make sure you have tested your code, so that it works. 
