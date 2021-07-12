@@ -22,21 +22,7 @@ a good overview of the internals.
 - If you have a question or a doubt. Please *DO NOT* open an issue. The [discussions](https://github.com/helix-editor/helix/discussions) tab is exactly for that.
 
 ## Coding Conventions:
-- Please do indentations with 4 spaces(soft tabs).
-- Please give a space between operators [Not(x=3); (x = 3)].
-- Give space before every curly bracket `{}`.
-- As much as possible, give comments in seperate lines, and give a space to seperate the slash and the comment. i.e. `// My comment`.
-- Please explain all your code with necessary comments. Remember, it should be understandable to a beginner also!
-- Please give a new line for each function you use for a variable. Eg:
-  ```rs
-  let g1 = line
-      .slice(line.len_chars().saturating_sub(1)..)
-      .as_str()
-      .unwrap();
-   ```
-- Give necessary new lines for each function, or different parts of your code.
-- Try to fix all warnings from your code before making a pull request.
-- Finally, use [rustfmt](https://github.com/rust-lang/rustfmt#on-the-stable-toolchain) to format the entire code according to rust guidelines.
+**Please use [rustfmt](https://github.com/rust-lang/rustfmt#on-the-stable-toolchain) to format the entire code according to rust guidelines before opening a pull request.**
 
 ## Pull Requests:
 - Please explain what your code does. Make sure you have tested your code, so that it works. 
