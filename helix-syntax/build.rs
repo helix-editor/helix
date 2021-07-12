@@ -55,14 +55,13 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
     if !recompile {
         return Ok(());
     }
-    let build_dir = std::env::var("OUT_DIR").unwrap();
     let mut config = cc::Build::new();
     config.cpp(true).opt_level(2).cargo_metadata(false);
     // .target(BUILD_TARGET)
     // .host(BUILD_TARGET);
     let compiler = config.get_compiler();
     let mut command = Command::new(compiler.path());
-    command.current_dir(build_dir);
+    command.current_dir(src_path);
     for (key, value) in compiler.env() {
         command.env(key, value);
     }
