@@ -1,21 +1,35 @@
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use std::fs;
-use std::path::PathBuf;
 use std::time::SystemTime;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use std::sync::mpsc::channel;
 
-fn collect_tree_sitter_dirs(ignore: &[String]) -> Vec<String> {
+fn collect_tree_sitter_dirs(ignore: &[String]) -> Result<Vec<String>> {
     let mut dirs = Vec::new();
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("languages");
-    for entry in fs::read_dir(path).unwrap().flatten() {
+
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
         let path = entry.path();
-        let dir = path.file_name().unwrap().to_str().unwrap().to_string();
-        if !ignore.contains(&dir) {
-            dirs.push(dir);
+
+        if !entry.file_type()?.is_dir() {
+            continue;
         }
+
+        let dir = path.file_name().unwrap().to_str().unwrap().to_string();
+
+        // filter ignores
+        if ignore.contains(&dir) {
+            continue;
+        }
+        dirs.push(dir)
     }
-    dirs
+
+    Ok(dirs)
 }
 
 #[cfg(unix)]
@@ -23,11 +37,6 @@ const DYLIB_EXTENSION: &str = "so";
 
 #[cfg(windows)]
 const DYLIB_EXTENSION: &str = "dll";
-
-// const BUILD_TARGET: &'static str = env!("BUILD_TARGET");
-
-use anyhow::{anyhow, Context};
-use std::{path::Path, process::Command};
 
 fn build_library(src_path: &Path, language: &str) -> Result<()> {
     let header_path = src_path;
@@ -57,8 +66,6 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
     }
     let mut config = cc::Build::new();
     config.cpp(true).opt_level(2).cargo_metadata(false);
-    // .target(BUILD_TARGET)
-    // .host(BUILD_TARGET);
     let compiler = config.get_compiler();
     let mut command = Command::new(compiler.path());
     command.current_dir(src_path);
@@ -137,39 +144,6 @@ fn mtime(path: &Path) -> Result<SystemTime> {
     Ok(fs::metadata(path)?.modified()?)
 }
 
-// fn build_c(files: Vec<String>, language: &str) {
-//     let mut build = cc::Build::new();
-//     for file in files {
-//         build
-//             .file(&file)
-//             .include(PathBuf::from(file).parent().unwrap())
-//             .pic(true)
-//             .warnings(false);
-//     }
-//     build.compile(&format!("tree-sitter-{}-c", language));
-// }
-
-// fn build_cpp(files: Vec<String>, language: &str) {
-//     let mut build = cc::Build::new();
-
-//     let flag = if build.get_compiler().is_like_msvc() {
-//         "/std:c++17"
-//     } else {
-//         "-std=c++14"
-//     };
-
-//     for file in files {
-//         build
-//             .file(&file)
-//             .include(PathBuf::from(file).parent().unwrap())
-//             .pic(true)
-//             .warnings(false)
-//             .cpp(true)
-//             .flag_if_supported(flag);
-//     }
-//     build.compile(&format!("tree-sitter-{}-cpp", language));
-// }
-
 fn build_dir(dir: &str, language: &str) {
     println!("Build language {}", language);
     if PathBuf::from("languages")
@@ -191,6 +165,7 @@ fn build_dir(dir: &str, language: &str) {
         .join("languages")
         .join(dir)
         .join("src");
+
     build_library(&path, language).unwrap();
 }
 
@@ -198,9 +173,8 @@ fn main() {
     let ignore = vec![
         "tree-sitter-typescript".to_string(),
         "tree-sitter-haskell".to_string(), // aarch64 failures: https://github.com/tree-sitter/tree-sitter-haskell/issues/34
-        ".DS_Store".to_string(),
     ];
-    let dirs = collect_tree_sitter_dirs(&ignore);
+    let dirs = collect_tree_sitter_dirs(&ignore).unwrap();
 
     let mut n_jobs = 0;
     let pool = threadpool::Builder::new().build(); // by going through the builder, it'll use num_cpus
@@ -211,7 +185,7 @@ fn main() {
         n_jobs += 1;
 
         pool.execute(move || {
-            let language = &dir[12..]; // skip tree-sitter- prefix
+            let language = &dir.strip_prefix("tree-sitter-").unwrap();
             build_dir(&dir, language);
 
             // report progress
@@ -222,6 +196,6 @@ fn main() {
     // drop(tx);
     assert_eq!(rx.try_iter().sum::<usize>(), n_jobs);
 
-    // build_dir("tree-sitter-typescript/tsx", "tsx");
-    // build_dir("tree-sitter-typescript/typescript", "typescript");
+    build_dir("tree-sitter-typescript/tsx", "tsx");
+    build_dir("tree-sitter-typescript/typescript", "typescript");
 }
