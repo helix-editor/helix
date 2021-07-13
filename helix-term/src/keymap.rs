@@ -80,6 +80,7 @@ impl Default for Keymaps {
             // and matching set for select mode (extend)
             //
             key!('r') => Command::replace,
+            key!('~') => Command::change_case,
             key!('R') => Command::replace_with_yanked,
 
             key!(Home) => Command::goto_line_start,

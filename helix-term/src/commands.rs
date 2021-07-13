@@ -186,6 +186,7 @@ impl Command {
         extend_till_prev_char,
         extend_prev_char,
         replace,
+        change_case,
         page_up,
         page_down,
         half_page_up,
@@ -778,6 +779,35 @@ fn replace(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+fn change_case(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let max_to = rope_end_without_line_ending(&doc.text().slice(..));
+            let to = std::cmp::min(max_to, range.to() + 1);
+            let text: String = RopeGraphemes::new(doc.text().slice(range.from()..to))
+                .map(|g| {
+                    let mut buffer: String = String::with_capacity(g.len_bytes());
+                    g.chars().for_each(|ch| {
+                        if ch.is_lowercase() {
+                            buffer.extend(ch.to_uppercase());
+                        } else if ch.is_uppercase() {
+                            buffer.extend(ch.to_lowercase());
+                        } else {
+                            buffer.push(ch);
+                        }
+                    });
+                    buffer
+                })
+                .collect();
+
+            (range.from(), to, Some(text.into()))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }
 
 fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
