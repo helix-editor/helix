@@ -42,7 +42,6 @@ macro_rules! alt {
     };
 }
 
-
 pub type Keymap = HashMap<KeyEvent, KeyNode>;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -51,7 +50,6 @@ pub enum KeyNode {
     KeyCommand(Command),
     SubKeymap(Keymap),
 }
-
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(transparent)]
@@ -270,8 +268,8 @@ pub fn merge_keys(mut config: Config) -> Config {
 
 #[test]
 fn merge_partial_keys() {
-    use KeyNode::*;
     use helix_view::keyboard::{KeyCode, KeyModifiers};
+    use KeyNode::*;
     let config = Config {
         keys: Keymaps(hashmap! {
             Mode::Normal => hashmap! {

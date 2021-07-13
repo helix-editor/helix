@@ -27,6 +27,7 @@ use tui::buffer::Buffer as Surface;
 pub struct EditorView {
     keymaps: Keymaps,
     current_subkeymap: Option<Keymap>,
+    subkeymap_level: usize,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -46,6 +47,7 @@ impl EditorView {
         Self {
             keymaps,
             current_subkeymap: None,
+            subkeymap_level: 0,
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
@@ -561,15 +563,68 @@ impl EditorView {
         );
     }
 
-    fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(KeyNode::KeyCommand(command)) = self.keymaps[&Mode::Insert].get(&event) {
-            command.execute(cx);
-        } else if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            commands::insert::insert_char(cx, ch);
+    /// Handle events by looking them up in self.keymaps. Note that the event
+    /// may be at the top level or any nested subkeymap inside keymaps. Because of
+    /// this, handling an event does not necessarily mean that a command was
+    /// executed; it may be a multi keystroke mapping. Returns None if event was
+    /// handled, Some(n) otherwise where n denotes number of pending events to
+    /// be handled
+    fn handle_keymap_event(
+        &mut self,
+        mode: Mode,
+        cxt: &mut commands::Context,
+        event: KeyEvent,
+    ) -> Option<usize> {
+        let keymap = match self.current_subkeymap {
+            Some(ref keymap) => keymap,
+            None => &self.keymaps[&mode],
+        };
+        if let Some(keynode) = keymap.get(&event) {
+            match keynode {
+                KeyNode::KeyCommand(command) => {
+                    command.execute(cxt);
+                    self.current_subkeymap = None;
+                    self.subkeymap_level = 0;
+                }
+                KeyNode::SubKeymap(subkeymap) => {
+                    self.current_subkeymap = Some(subkeymap.clone());
+                    self.subkeymap_level += 1;
+                }
+            }
+            None
+        } else {
+            // previous events activated nested subkeymaps but current event
+            // cancelled it, so return the earlier swallowed events + current event
+            // only current event is pending if no subkeymaps were activated earlier
+            let pending_events = self.subkeymap_level + 1;
+            self.current_subkeymap = None;
+            self.subkeymap_level = 0;
+            Some(pending_events)
+        }
+    }
+
+    fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
+        if let Some(pending_events) = self.handle_keymap_event(Mode::Insert, cx, event) {
+            let event = &[event];
+            let pending = if pending_events == 1 {
+                event
+            } else {
+                let history = &self.last_insert.1;
+                &history[history.len() - pending_events..]
+            };
+
+            for ev in pending {
+                match ev.char() {
+                    Some(ch) => commands::insert::insert_char(cx, ch),
+                    None => {
+                        if let Some(KeyNode::KeyCommand(command)) =
+                            self.keymaps[&Mode::Insert].get(ev)
+                        {
+                            command.execute(cx);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -586,8 +641,8 @@ impl EditorView {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
-                for key in &self.last_insert.1 {
-                    self.insert_mode(cxt, *key)
+                for &key in &self.last_insert.1.clone() {
+                    self.insert_mode(cxt, key)
                 }
             }
             _ => {
@@ -600,26 +655,7 @@ impl EditorView {
                 // set the register
                 cxt.selected_register = cxt.editor.selected_register.take();
 
-                // if self.current_subkeymap.is_none() {
-                //     self.current_subkeymap = self.keymaps.get(&mode).cloned();
-                // }
-                let keymap = match self.current_subkeymap {
-                    Some(ref keymap) => keymap,
-                    None => &self.keymaps[&mode],
-                };
-                if let Some(keynode) = keymap.get(&event) {
-                    match keynode {
-                        KeyNode::KeyCommand(command) => {
-                            command.execute(cxt);
-                            self.current_subkeymap = None
-                        }
-                        KeyNode::SubKeymap(subkeymap) => {
-                            self.current_subkeymap = Some(subkeymap.clone())
-                        }
-                    }
-                } else {
-                    self.current_subkeymap = None
-                }
+                self.handle_keymap_event(mode, cxt, event);
             }
         }
     }

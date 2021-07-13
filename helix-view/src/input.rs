@@ -14,6 +14,16 @@ pub struct KeyEvent {
     pub modifiers: KeyModifiers,
 }
 
+impl KeyEvent {
+    /// Get only the character involved in this event
+    pub fn char(&self) -> Option<char> {
+        match self.code {
+            KeyCode::Char(ch) => Some(ch),
+            _ => None,
+        }
+    }
+}
+
 pub(crate) mod keys {
     pub(crate) const BACKSPACE: &str = "backspace";
     pub(crate) const ENTER: &str = "ret";
