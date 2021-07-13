@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::{KeyNode, Keymaps},
+    keymap::{KeyNode, Keymap, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -26,6 +26,7 @@ use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     keymaps: Keymaps,
+    current_subkeymap: Option<Keymap>,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -44,6 +45,7 @@ impl EditorView {
     pub fn new(keymaps: Keymaps) -> Self {
         Self {
             keymaps,
+            current_subkeymap: None,
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
@@ -571,7 +573,7 @@ impl EditorView {
         }
     }
 
-    fn command_mode(&self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
+    fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match event {
             // count handling
             key!(i @ '0'..='9') => {
@@ -598,8 +600,25 @@ impl EditorView {
                 // set the register
                 cxt.selected_register = cxt.editor.selected_register.take();
 
-                if let Some(KeyNode::KeyCommand(command)) = self.keymaps[&mode].get(&event) {
-                    command.execute(cxt);
+                // if self.current_subkeymap.is_none() {
+                //     self.current_subkeymap = self.keymaps.get(&mode).cloned();
+                // }
+                let keymap = match self.current_subkeymap {
+                    Some(ref keymap) => keymap,
+                    None => &self.keymaps[&mode],
+                };
+                if let Some(keynode) = keymap.get(&event) {
+                    match keynode {
+                        KeyNode::KeyCommand(command) => {
+                            command.execute(cxt);
+                            self.current_subkeymap = None
+                        }
+                        KeyNode::SubKeymap(subkeymap) => {
+                            self.current_subkeymap = Some(subkeymap.clone())
+                        }
+                    }
+                } else {
+                    self.current_subkeymap = None
                 }
             }
         }

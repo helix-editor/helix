@@ -43,7 +43,7 @@ macro_rules! alt {
 }
 
 
-type Keymap = HashMap<KeyEvent, KeyNode>;
+pub type Keymap = HashMap<KeyEvent, KeyNode>;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
@@ -235,8 +235,6 @@ impl Default for Keymaps {
         );
 
         Keymaps(hashmap!(
-            // as long as you cast the first item, rust is able to infer the other cases
-            // TODO: select could be normal mode with some bindings merged over
             Mode::Normal => normal,
             Mode::Select => select,
             Mode::Insert => hashmap!(
