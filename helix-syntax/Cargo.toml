@@ -12,8 +12,10 @@ include = ["src/**/*", "languages/**/*", "build.rs", "!**/docs/**/*", "!**/test/
 
 [dependencies]
 tree-sitter = "0.19"
-serde = { version = "1.0", features = ["derive"] }
+libloading = "0.7"
+anyhow = "1"
 
 [build-dependencies]
-cc = { version = "1",  features = ["parallel"] }
+cc = { version = "1" }
 threadpool = { version = "1.0" }
+anyhow = "1"

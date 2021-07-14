@@ -3,3 +3,4 @@ target
 helix-term/rustfmt.toml
 helix-syntax/languages/
 result
+runtime/grammars
