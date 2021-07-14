@@ -461,7 +461,7 @@ impl Document {
                 std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
-            (Rope::default(), encoding_rs::UTF_8)
+            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding_rs::UTF_8)
         };
 
         let line_ending = with_line_ending(&mut rope);
