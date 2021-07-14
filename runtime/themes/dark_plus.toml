@@ -55,6 +55,7 @@
 "ui.linenr.selected" = { fg = "#c6c6c6" }
 
 "ui.statusline" = { fg = "#ffffff", bg = "#007acc" }
+"ui.statusline.inactive" = { fg = "#ffffff", bg = "#007acc" }
 
 "ui.text" = { fg = "text", bg = "background" }
 "ui.text.focus" = { fg = "#ffffff" }
