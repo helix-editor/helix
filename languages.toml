@@ -174,6 +174,14 @@ roots = []
 language-server = { command = "julia", args = [ "--startup-file=no", "--history-file=no", "-e", "using LanguageServer;using Pkg;import StaticLint;import SymbolServer;env_path = dirname(Pkg.Types.Context().env.project_file);server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, \"\");server.runlinter = true;run(server);" ] }
 indent = { tab-width = 2, unit = "  " }
 
+[[language]]
+name = "java"
+scope = "source.java"
+injection-regex = "java"
+file-types = ["java"]
+roots = []
+indent = { tab-width = 4, unit = "    " }
+
 # [[language]]
 # name = "haskell"
 # scope = "source.haskell"
