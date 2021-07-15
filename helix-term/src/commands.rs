@@ -812,7 +812,7 @@ fn switch_to_uppercase(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let transaction =
         Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-            let text: Tendril = range.fragment(doc.text().slice(..)).to_lowercase().into();
+            let text: Tendril = range.fragment(doc.text().slice(..)).to_uppercase().into();
 
             (range.from(), range.to() + 1, Some(text))
         });
