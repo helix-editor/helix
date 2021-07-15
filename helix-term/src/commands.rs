@@ -790,7 +790,7 @@ fn switch_case(cx: &mut Context) {
             let text: Tendril = range
                 .fragment(doc.text().slice(..))
                 .chars()
-                .map(|ch| {
+                .flat_map(|ch| {
                     if ch.is_lowercase() {
                         ch.to_uppercase().collect()
                     } else if ch.is_uppercase() {
@@ -799,7 +799,6 @@ fn switch_case(cx: &mut Context) {
                         vec![ch]
                     }
                 })
-                .flatten()
                 .collect();
 
             (range.from(), range.to() + 1, Some(text))
