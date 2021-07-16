@@ -82,6 +82,10 @@ impl Default for Keymaps {
             key!('r') => Command::replace,
             key!('R') => Command::replace_with_yanked,
 
+            key!('~') => Command::switch_case,
+            alt!('`') => Command::switch_to_uppercase,
+            key!('`') => Command::switch_to_lowercase,
+
             key!(Home) => Command::goto_line_start,
             key!(End) => Command::goto_line_end,
 

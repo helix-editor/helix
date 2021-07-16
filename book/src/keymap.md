@@ -41,26 +41,29 @@
 
 ### Changes
 
-| Key   | Description                                     |
-| ----- | -----------                                     |
-| `r`   | Replace with a character                        |
-| `R`   | Replace with yanked text                        |
-| `i`   | Insert before selection                         |
-| `a`   | Insert after selection (append)                 |
-| `I`   | Insert at the start of the line                 |
-| `A`   | Insert at the end of the line                   |
-| `o`   | Open new line below selection                   |
-| `o`   | Open new line above selection                   |
-| `u`   | Undo change                                     |
-| `U`   | Redo change                                     |
-| `y`   | Yank selection                                  |
-| `p`   | Paste after selection                           |
-| `P`   | Paste before selection                          |
-| `>`   | Indent selection                                |
-| `<`   | Unindent selection                              |
-| `=`   | Format selection                                |
-| `d`   | Delete selection                                |
-| `c`   | Change selection (delete and enter insert mode) |
+| Key      | Description                                     |
+| -----    | -----------                                     |
+| `r`      | Replace with a character                        |
+| `R`      | Replace with yanked text                        |
+| `~`      | Switch case of the selected text                |
+| `\``     | Set the selected text to upper case             |
+| `Alt-\`` | Set the selected text to lower case             |
+| `i`      | Insert before selection                         |
+| `a`      | Insert after selection (append)                 |
+| `I`      | Insert at the start of the line                 |
+| `A`      | Insert at the end of the line                   |
+| `o`      | Open new line below selection                   |
+| `o`      | Open new line above selection                   |
+| `u`      | Undo change                                     |
+| `U`      | Redo change                                     |
+| `y`      | Yank selection                                  |
+| `p`      | Paste after selection                           |
+| `P`      | Paste before selection                          |
+| `>`      | Indent selection                                |
+| `<`      | Unindent selection                              |
+| `=`      | Format selection                                |
+| `d`      | Delete selection                                |
+| `c`      | Change selection (delete and enter insert mode) |
 
 ### Selection manipulation
 

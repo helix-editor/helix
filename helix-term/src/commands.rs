@@ -186,6 +186,9 @@ impl Command {
         extend_till_prev_char,
         extend_prev_char,
         replace,
+        switch_case,
+        switch_to_uppercase,
+        switch_to_lowercase,
         page_up,
         page_down,
         half_page_up,
@@ -778,6 +781,57 @@ fn replace(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+fn switch_case(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range
+                .fragment(doc.text().slice(..))
+                .chars()
+                .flat_map(|ch| {
+                    if ch.is_lowercase() {
+                        ch.to_uppercase().collect()
+                    } else if ch.is_uppercase() {
+                        ch.to_lowercase().collect()
+                    } else {
+                        vec![ch]
+                    }
+                })
+                .collect();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_to_uppercase(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range.fragment(doc.text().slice(..)).to_uppercase().into();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_to_lowercase(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range.fragment(doc.text().slice(..)).to_lowercase().into();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }
 
 fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
