@@ -120,7 +120,7 @@ impl Default for Keymaps {
             alt!(';') => Command::flip_selections,
             key!('%') => Command::select_all,
             key!('x') => Command::extend_line,
-            key!('X') => Command::extend_to_line_bounds,
+            key!('X') => Command::extend_line_up,
             // crop_to_whole_line
 
 
