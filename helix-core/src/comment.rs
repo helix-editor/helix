@@ -46,7 +46,7 @@ pub fn toggle_line_comments(
     let text = doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();
 
-    let token = token.unwrap_or("//".to_owned());
+    let token = token.unwrap_or_else(|| "//".to_owned());
     let comment = Tendril::from(format!("{} ", token));
 
     for selection in selection {
