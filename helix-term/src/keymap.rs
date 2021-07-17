@@ -502,6 +502,7 @@ impl Default for Keymaps {
             },
 
             "\"" => select_register,
+            "C-z" => suspend,
         });
         // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
         // we keep this separate select mode. More keys can fit into normal mode then, but it's weird

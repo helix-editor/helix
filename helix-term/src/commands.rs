@@ -291,7 +291,8 @@ impl Command {
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object"
+        select_textobject_inner, "Select inside object",
+        suspend, "Suspend"
     );
 }
 
@@ -3876,4 +3877,9 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+fn suspend(_cx: &mut Context) {
+    #[cfg(not(windows))]
+    signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
 }
