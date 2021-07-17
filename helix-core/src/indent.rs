@@ -264,6 +264,7 @@ where
                 highlight_config: OnceCell::new(),
                 //
                 roots: vec![],
+                comment_token: None,
                 auto_format: false,
                 language_server: None,
                 indent: Some(IndentationConfiguration {

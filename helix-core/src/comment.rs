@@ -99,14 +99,14 @@ mod test {
         assert_eq!(res, (false, vec![1], 2));
 
         // comment
-        let transaction = toggle_line_comments(&state.doc, &state.selection);
+        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
         transaction.apply(&mut state.doc);
         state.selection = state.selection.clone().map(transaction.changes());
 
         assert_eq!(state.doc, "  // 1\n\n  // 2\n  // 3");
 
         // uncomment
-        let transaction = toggle_line_comments(&state.doc, &state.selection);
+        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
         transaction.apply(&mut state.doc);
         state.selection = state.selection.clone().map(transaction.changes());
         assert_eq!(state.doc, "  1\n\n  2\n  3");
