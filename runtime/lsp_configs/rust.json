@@ -1,9 +1,0 @@
-{
-  "cargo": {
-    "loadOutDirsFromCheck": true
-  },
-  "procMacro": {
-    "enable": false
-  }
-}
-

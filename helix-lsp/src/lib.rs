@@ -19,7 +19,6 @@ use std::{
     },
 };
 
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -316,17 +315,10 @@ impl Registry {
                     let (mut client, incoming) = Client::start(
                         &config.command,
                         &config.args,
-                        match load_lsp_config_file(&language_config.language_id) {
-                            Ok(c) => c,
-                            Err(e) => {
-                                log::info!(
-                                    "Loading lsp config file for {} failed => {}",
-                                    language_config.language_id,
-                                    e
-                                );
-                                None
-                            }
-                        },
+                        serde_json::from_str(
+                            language_config.custom_config.as_deref().unwrap_or(""),
+                        )
+                        .ok(),
                         id,
                     )?;
                     // TODO: run this async without blocking
@@ -424,17 +416,6 @@ impl LspProgressMap {
             .or_default()
             .insert(token, ProgressStatus::Started(status))
     }
-}
-
-fn load_lsp_config_file(language: &str) -> anyhow::Result<Option<serde_json::Value>> {
-    let path = helix_core::RUNTIME_DIR
-        .join("lsp_configs")
-        .join(language.to_owned() + ".json");
-
-    let file = std::fs::File::open(&path)?;
-    let reader = std::io::BufReader::new(file);
-    let config = serde_json::from_reader(reader);
-    config.context(format!("Reading lsp config file {:?} failed.", path))
 }
 
 // REGISTRY = HashMap<LanguageId, Lazy/OnceCell<Arc<RwLock<Client>>>
