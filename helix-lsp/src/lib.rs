@@ -312,7 +312,14 @@ impl Registry {
                 Entry::Vacant(entry) => {
                     // initialize a new client
                     let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                    let (mut client, incoming) = Client::start(&config.command, &config.args, id)?;
+                    let (mut client, incoming) = Client::start(
+                        &config.command,
+                        &config.args,
+                        load_lsp_config_file(&language_config.language_id)
+                            .ok()
+                            .flatten(),
+                        id,
+                    )?;
                     // TODO: run this async without blocking
                     futures_executor::block_on(client.initialize())?;
                     s_incoming.push(UnboundedReceiverStream::new(incoming));
@@ -408,6 +415,34 @@ impl LspProgressMap {
             .or_default()
             .insert(token, ProgressStatus::Started(status))
     }
+}
+
+fn load_lsp_config_file(language: &str) -> Result<Option<serde_json::Value>> {
+    let path = helix_core::RUNTIME_DIR
+        .join("lsp_configs")
+        .join(language.to_owned() + ".json");
+
+    let file = match std::fs::File::open(&path) {
+        Ok(f) => f,
+        Err(e) => {
+            log::info!(
+                "Tried to read lsp config file {:?} for {} => {:?}",
+                path,
+                language,
+                e,
+            );
+            return Err(Error::IO(e));
+        }
+    };
+    let reader = std::io::BufReader::new(file);
+    let config = serde_json::from_reader(reader);
+    log::info!(
+        "Read lsp config file {:?} for {} => {:?}",
+        path,
+        language,
+        config,
+    );
+    Ok(config.ok())
 }
 
 // REGISTRY = HashMap<LanguageId, Lazy/OnceCell<Arc<RwLock<Client>>>
