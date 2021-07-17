@@ -27,7 +27,7 @@ pub mod unicode {
     pub use unicode_width as width;
 }
 
-pub static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
+static RUNTIME_DIR: once_cell::sync::Lazy<std::path::PathBuf> =
     once_cell::sync::Lazy::new(runtime_dir);
 
 pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
