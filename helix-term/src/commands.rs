@@ -1144,11 +1144,14 @@ fn change_selection(cx: &mut Context) {
 
 fn collapse_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = doc
-        .selection(view.id)
-        .transform(|range| Range::new(range.head, range.head));
+    let selection = doc.selection(view.id).clone();
 
-    doc.set_selection(view.id, selection);
+    doc.set_selection(
+        view.id,
+        selection
+            .into_single()
+            .transform(|r| Range::new(r.head, r.head)),
+    );
 }
 
 fn flip_selections(cx: &mut Context) {
