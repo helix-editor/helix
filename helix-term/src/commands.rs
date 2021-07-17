@@ -172,6 +172,8 @@ impl Command {
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
+        copy_selection_on_next_line, "Copy selection on next line",
+        copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to beginning of next word",
         move_prev_word_start, "Move to beginning of previous word",
         move_next_word_end, "Move to end of next word",
@@ -956,6 +958,34 @@ fn extend_char_right(cx: &mut Context) {
         movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
+}
+
+fn copy_selection_on_prev_line(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let old_selection = doc.selection(view.id).clone();
+    let mut ranges: SmallVec<_> = old_selection.ranges().into();
+    for r in old_selection.iter() {
+        ranges.push(Range::point(
+            movement::move_vertically(text, *r, Direction::Backward, count, Movement::Extend).head,
+        ));
+    }
+    doc.set_selection(view.id, Selection::new(ranges, old_selection.cursor()));
+}
+
+fn copy_selection_on_next_line(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let old_selection = doc.selection(view.id).clone();
+    let mut ranges: SmallVec<_> = old_selection.ranges().into();
+    for r in old_selection.iter() {
+        ranges.push(Range::point(
+            movement::move_vertically(text, *r, Direction::Forward, count, Movement::Extend).head,
+        ));
+    }
+    doc.set_selection(view.id, Selection::new(ranges, old_selection.cursor()));
 }
 
 fn extend_line_up(cx: &mut Context) {
