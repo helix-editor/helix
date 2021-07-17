@@ -38,18 +38,22 @@ fn find_line_comment(
 }
 
 #[must_use]
-pub fn toggle_line_comments(doc: &Rope, selection: &Selection) -> Transaction {
+pub fn toggle_line_comments(
+    doc: &Rope,
+    selection: &Selection,
+    token: Option<String>,
+) -> Transaction {
     let text = doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();
 
-    let token = "//";
+    let token = token.unwrap_or("//".to_owned());
     let comment = Tendril::from(format!("{} ", token));
 
     for selection in selection {
         let start = text.char_to_line(selection.from());
         let end = text.char_to_line(selection.to());
         let lines = start..end + 1;
-        let (commented, skipped, min) = find_line_comment(token, text, lines.clone());
+        let (commented, skipped, min) = find_line_comment(&token, text, lines.clone());
 
         changes.reserve((end - start).saturating_sub(skipped.len()));
 
