@@ -1146,12 +1146,21 @@ fn collapse_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id).clone();
 
-    doc.set_selection(
-        view.id,
-        selection
-            .into_single()
-            .transform(|r| Range::new(r.head, r.head)),
-    );
+    if selection.ranges().iter().any(|r| r.from() != r.to()) {
+        // if there is any range larger than a single point, collapse all ranges individually.
+        doc.set_selection(
+            view.id,
+            selection.transform(|range| Range::new(range.head, range.head)),
+        );
+    } else {
+        // else collapse the whole selection.
+        doc.set_selection(
+            view.id,
+            selection
+                .into_single()
+                .transform(|r| Range::new(r.head, r.head)),
+        );
+    }
 }
 
 fn flip_selections(cx: &mut Context) {
