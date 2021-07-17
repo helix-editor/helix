@@ -456,14 +456,16 @@ impl Document {
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
-        if !path.exists() {
-            return Ok(Self::default());
-        }
+        let (mut rope, encoding) = if path.exists() {
+            let mut file =
+                std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
+            from_reader(&mut file, encoding)?
+        } else {
+            let encoding = encoding.unwrap_or(encoding_rs::UTF_8);
+            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
+        };
 
-        let mut file = std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
-        let (mut rope, encoding) = from_reader(&mut file, encoding)?;
         let line_ending = with_line_ending(&mut rope);
-
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language

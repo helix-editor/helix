@@ -18,7 +18,7 @@ default = ["crossterm"]
 [dependencies]
 bitflags = "1.0"
 cassowary = "0.3"
-unicode-segmentation = "1.2"
+unicode-segmentation = "1.8"
 crossterm = { version = "0.20", optional = true }
 serde = { version = "1", "optional" = true, features = ["derive"]}
 helix-view = { version = "0.3", path = "../helix-view", features = ["term"] }

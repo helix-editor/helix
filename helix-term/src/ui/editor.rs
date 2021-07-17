@@ -64,6 +64,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
+        loader: &syntax::Loader,
     ) {
         let area = Rect::new(
             view.area.x + OFFSET,
@@ -72,7 +73,7 @@ impl EditorView {
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
 
-        self.render_buffer(doc, view, area, surface, theme, is_focused);
+        self.render_buffer(doc, view, area, surface, theme, is_focused, loader);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -98,6 +99,7 @@ impl EditorView {
         self.render_statusline(doc, view, area, surface, theme, is_focused);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render_buffer(
         &self,
         doc: &Document,
@@ -106,6 +108,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
+        loader: &syntax::Loader,
     ) {
         let text = doc.text().slice(..);
 
@@ -122,8 +125,26 @@ impl EditorView {
         // TODO: range doesn't actually restrict source, just highlight range
         let highlights: Vec<_> = match doc.syntax() {
             Some(syntax) => {
+                let scopes = theme.scopes();
                 syntax
-                    .highlight_iter(text.slice(..), Some(range), None, |_| None)
+                    .highlight_iter(text.slice(..), Some(range), None, |language| {
+                        loader
+                                .language_config_for_scope(&format!("source.{}", language))
+                                .and_then(|language_config| {
+                                    let config = language_config.highlight_config(scopes)?;
+                                    let config_ref = config.as_ref();
+                                    // SAFETY: the referenced `HighlightConfiguration` behind
+                                    // the `Arc` is guaranteed to remain valid throughout the
+                                    // duration of the highlight.
+                                    let config_ref = unsafe {
+                                        std::mem::transmute::<
+                                            _,
+                                            &'static syntax::HighlightConfiguration,
+                                        >(config_ref)
+                                    };
+                                    Some(config_ref)
+                                })
+                    })
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
             None => vec![Ok(HighlightEvent::Source {
@@ -735,7 +756,16 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(doc, view, area, surface, &cx.editor.theme, is_focused);
+            let loader = &cx.editor.syn_loader;
+            self.render_view(
+                doc,
+                view,
+                area,
+                surface,
+                &cx.editor.theme,
+                is_focused,
+                loader,
+            );
         }
 
         if let Some(info) = std::mem::take(&mut cx.editor.autoinfo) {

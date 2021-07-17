@@ -5,7 +5,7 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
-pub use helix_syntax::{get_language, get_language_name, Lang};
+pub use helix_syntax::get_language;
 
 use arc_swap::ArcSwap;
 
@@ -31,7 +31,7 @@ pub struct Configuration {
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub(crate) language_id: Lang,
+    pub(crate) language_id: String,
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
@@ -153,7 +153,7 @@ fn read_query(language: &str, filename: &str) -> String {
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let language = get_language_name(self.language_id).to_ascii_lowercase();
+        let language = self.language_id.to_ascii_lowercase();
 
         let highlights_query = read_query(&language, "highlights.scm");
         // always highlight syntax errors
@@ -161,17 +161,17 @@ impl LanguageConfiguration {
 
         let injections_query = read_query(&language, "injections.scm");
 
-        let locals_query = "";
+        let locals_query = read_query(&language, "locals.scm");
 
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(self.language_id);
+            let language = get_language(&crate::RUNTIME_DIR, &self.language_id).ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
                 &injections_query,
-                locals_query,
+                &locals_query,
             )
             .unwrap(); // TODO: no unwrap
             config.configure(scopes);
@@ -198,7 +198,7 @@ impl LanguageConfiguration {
     pub fn indent_query(&self) -> Option<&IndentQuery> {
         self.indent_query
             .get_or_init(|| {
-                let language = get_language_name(self.language_id).to_ascii_lowercase();
+                let language = self.language_id.to_ascii_lowercase();
 
                 let toml = load_runtime_file(&language, "indents.toml").ok()?;
                 toml::from_slice(toml.as_bytes()).ok()
@@ -1812,7 +1812,7 @@ mod test {
         .map(String::from)
         .collect();
 
-        let language = get_language(Lang::Rust);
+        let language = get_language(&crate::RUNTIME_DIR, "Rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
             &std::fs::read_to_string(
