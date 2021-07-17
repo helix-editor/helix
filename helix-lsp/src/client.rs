@@ -218,9 +218,12 @@ impl Client {
         let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
 
         if self.custom_config.is_some() {
-            log::info!("Using custom LSP config: {}", self.custom_config.as_ref().unwrap() );
+            log::info!(
+                "Using custom LSP config: {}",
+                self.custom_config.as_ref().unwrap()
+            );
         }
-        
+
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
