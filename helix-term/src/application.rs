@@ -18,6 +18,10 @@ use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute, terminal,
 };
+#[cfg(not(windows))]
+use signal_hook::{consts::signal, low_level};
+#[cfg(not(windows))]
+use signal_hook_tokio::Signals;
 
 pub struct Application {
     compositor: Compositor,
@@ -36,6 +40,8 @@ pub struct Application {
     #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
 
+    #[cfg(not(windows))]
+    signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
 }
@@ -102,6 +108,9 @@ impl Application {
 
         editor.set_theme(theme);
 
+        #[cfg(not(windows))]
+        let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT])?;
+
         let app = Self {
             compositor,
             editor,
@@ -111,6 +120,8 @@ impl Application {
             theme_loader,
             syn_loader,
 
+            #[cfg(not(windows))]
+            signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
         };
@@ -147,6 +158,51 @@ impl Application {
 
             use futures_util::StreamExt;
 
+            #[cfg(not(windows))]
+            tokio::select! {
+                biased;
+
+                event = reader.next() => {
+                    self.handle_terminal_events(event)
+                }
+                Some(signal) = self.signals.next() => {
+                    use helix_view::graphics::Rect;
+                    match signal {
+                        signal::SIGTSTP => {
+                            self.compositor.save_cursor();
+                            self.restore_term().unwrap();
+                            low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
+                        }
+                        signal::SIGCONT => {
+                            self.claim_term().await.unwrap();
+                            // redraw the terminal
+                            let Rect { width, height, .. } = self.compositor.size();
+                            self.compositor.resize(width, height);
+                            self.compositor.load_cursor();
+                            self.render();
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                Some((id, call)) = self.editor.language_servers.incoming.next() => {
+                    self.handle_language_server_message(call, id).await;
+                    // limit render calls for fast language server messages
+                    let last = self.editor.language_servers.incoming.is_empty();
+                    if last || last_render.elapsed() > deadline {
+                        self.render();
+                        last_render = Instant::now();
+                    }
+                }
+                Some(callback) = self.jobs.futures.next() => {
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.render();
+                }
+                Some(callback) = self.jobs.wait_futures.next() => {
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.render();
+                }
+            }
+            #[cfg(windows)]
             tokio::select! {
                 biased;
 
@@ -443,15 +499,29 @@ impl Application {
         }
     }
 
-    pub async fn run(&mut self) -> Result<(), Error> {
+    async fn claim_term(&mut self) -> Result<(), Error> {
         terminal::enable_raw_mode()?;
-
         let mut stdout = stdout();
-
         execute!(stdout, terminal::EnterAlternateScreen)?;
+        self.editor.close_language_servers(None).await?;
         if self.config.terminal.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
+        Ok(())
+    }
+
+    fn restore_term(&mut self) -> Result<(), Error> {
+        let mut stdout = stdout();
+        // reset cursor shape
+        write!(stdout, "\x1B[2 q")?;
+        execute!(stdout, DisableMouseCapture)?;
+        execute!(stdout, terminal::LeaveAlternateScreen)?;
+        terminal::disable_raw_mode()?;
+        Ok(())
+    }
+
+    pub async fn run(&mut self) -> Result<(), Error> {
+        self.claim_term().await?;
 
         // Exit the alternate screen and disable raw mode before panicking
         let hook = std::panic::take_hook();
@@ -469,13 +539,7 @@ impl Application {
 
         self.editor.close_language_servers(None).await?;
 
-        // reset cursor shape
-        write!(stdout, "\x1B[2 q")?;
-
-        execute!(stdout, DisableMouseCapture)?;
-        execute!(stdout, terminal::LeaveAlternateScreen)?;
-
-        terminal::disable_raw_mode()?;
+        self.restore_term()?;
 
         Ok(())
     }
