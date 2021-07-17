@@ -1100,16 +1100,18 @@ fn extend_line(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
 
-    let pos = doc.selection(view.id).primary();
     let text = doc.text();
+    let pos = doc.selection(view.id).primary().min_width_1(text.slice(..));
 
-    let line_start = text.char_to_line(pos.anchor);
-    let start = text.line_to_char(line_start);
-    let line_end = text.char_to_line(pos.head);
-    let mut end = line_end_char_index(&text.slice(..), line_end + count.saturating_sub(1));
+    let line_max = text.len_lines();
+    let start_line = text.char_to_line(pos.from()).min(line_max);
+    let end_line = (text.char_to_line(pos.to()) + count).min(line_max);
 
-    if pos.anchor == start && pos.head == end && line_end < (text.len_lines() - 2) {
-        end = line_end_char_index(&text.slice(..), line_end + 1);
+    let start = text.line_to_char(start_line);
+    let mut end = text.line_to_char(end_line);
+
+    if pos.from() == start && pos.to() == end {
+        end = text.line_to_char((end_line + 1).min(line_max));
     }
 
     doc.set_selection(view.id, Selection::single(start, end));
