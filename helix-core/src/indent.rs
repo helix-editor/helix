@@ -262,7 +262,7 @@ where
                 file_types: vec!["rs".to_string()],
                 language_id: "Rust".to_string(),
                 highlight_config: OnceCell::new(),
-                custom_config: None,
+                config: None,
                 //
                 roots: vec![],
                 auto_format: false,

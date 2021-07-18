@@ -315,10 +315,7 @@ impl Registry {
                     let (mut client, incoming) = Client::start(
                         &config.command,
                         &config.args,
-                        serde_json::from_str(
-                            language_config.custom_config.as_deref().unwrap_or(""),
-                        )
-                        .ok(),
+                        serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
                         id,
                     )?;
                     // TODO: run this async without blocking

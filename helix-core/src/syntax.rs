@@ -35,7 +35,7 @@ pub struct LanguageConfiguration {
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
-    pub custom_config: Option<String>,
+    pub config: Option<String>,
 
     #[serde(default)]
     pub auto_format: bool,

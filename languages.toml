@@ -5,7 +5,7 @@ injection-regex = "rust"
 file-types = ["rs"]
 roots = []
 auto-format = true
-custom-config = """
+config = """
 {
   "cargo": {
     "loadOutDirsFromCheck": true
