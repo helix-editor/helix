@@ -5,6 +5,16 @@ injection-regex = "rust"
 file-types = ["rs"]
 roots = []
 auto-format = true
+config = """
+{
+  "cargo": {
+    "loadOutDirsFromCheck": true
+  },
+  "procMacro": {
+    "enable": false
+  }
+}
+"""
 
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
