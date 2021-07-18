@@ -18,6 +18,7 @@ bitflags = "1.0"
 anyhow = "1"
 helix-core = { version = "0.3", path = "../helix-core" }
 helix-lsp = { version = "0.3", path = "../helix-lsp"}
+helix-vcs = { version = "0.3", path = "../helix-vcs"}
 crossterm = { version = "0.20", optional = true }
 
 # Conversion traits

@@ -60,6 +60,11 @@ error = "apricot"
 info = "delta"
 hint = "silver"
 
+line_added = "#35BF86"
+line_removed_above = "#F22C86"
+line_removed_below = "#F22C86"
+line_modified = "#6F44F0"
+
 [palette]
 white = "#ffffff"
 lilac = "#dbbfef"

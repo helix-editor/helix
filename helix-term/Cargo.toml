@@ -25,6 +25,7 @@ path = "src/main.rs"
 helix-core = { version = "0.3", path = "../helix-core" }
 helix-view = { version = "0.3", path = "../helix-view" }
 helix-lsp = { version = "0.3", path = "../helix-lsp" }
+helix-vcs = { version = "0.3", path = "../helix-vcs"}
 
 anyhow = "1"
 once_cell = "1.8"

@@ -17,6 +17,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 use helix_lsp::util::LspFormatting;
+use helix_vcs::{LineChanges, VCS};
 
 use crate::{DocumentId, Theme, ViewId};
 
@@ -105,6 +106,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+    version_control: Option<VCS>,
 }
 
 use std::fmt;
@@ -444,6 +446,7 @@ impl Document {
             last_saved_revision: 0,
             language_server: None,
             line_ending: DEFAULT_LINE_ENDING,
+            version_control: None,
         }
     }
 
@@ -472,6 +475,16 @@ impl Document {
         doc.set_path(&path)?;
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
+        }
+
+        // detect version control
+        if let Some(path) = &doc.path {
+            doc.version_control = VCS::from_path(path);
+
+            //set initial changes
+            if let Some(vcs) = &mut doc.version_control {
+                vcs.diff();
+            }
         }
 
         // Detect indentation style and set line ending.
@@ -548,6 +561,9 @@ impl Document {
         // TODO: mark changes up to now as saved
 
         let language_server = self.language_server.clone();
+        if let Some(vcs) = &mut self.version_control {
+            vcs.diff();
+        }
 
         self.reset_modified();
 
@@ -1079,6 +1095,15 @@ impl Document {
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
+    }
+
+    #[inline]
+    pub fn vcs_line_changes(&self) -> Option<&LineChanges> {
+        if let Some(vcs) = &self.version_control {
+            vcs.get_line_changes()
+        } else {
+            None
+        }
     }
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {

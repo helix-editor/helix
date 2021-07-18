@@ -12,6 +12,7 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     LineEnding, Position, Range,
 };
+use helix_vcs::LineChange;
 use helix_view::{
     document::Mode,
     graphics::{CursorKind, Modifier, Rect, Style},
@@ -327,8 +328,30 @@ impl EditorView {
         let info: Style = theme.get("info");
         let hint: Style = theme.get("hint");
 
+        let line_added: Style = theme.get("line_added");
+        let line_removed_above: Style = theme.get("line_removed_above");
+        let line_removed_below: Style = theme.get("line_removed_below");
+        let line_modified: Style = theme.get("line_modified");
+
         for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
+            if let Some(line_changes) = doc.vcs_line_changes() {
+                if let Some(line_change) = line_changes.get(&(line + 1)) {
+                    surface.set_stringn(
+                        viewport.x - OFFSET,
+                        viewport.y + i as u16,
+                        // TODO: set this in a theme
+                        line_change.as_str(),
+                        1,
+                        match line_change {
+                            LineChange::Added => line_added,
+                            LineChange::RemovedAbove => line_removed_above,
+                            LineChange::RemovedBelow => line_removed_below,
+                            LineChange::Modified => line_modified,
+                        },
+                    );
+                }
+            }
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
                     viewport.x - OFFSET,
