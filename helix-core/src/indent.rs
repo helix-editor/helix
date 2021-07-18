@@ -265,6 +265,7 @@ where
                 config: None,
                 //
                 roots: vec![],
+                comment_token: None,
                 auto_format: false,
                 language_server: None,
                 indent: Some(IndentationConfiguration {
