@@ -100,3 +100,7 @@ impl Git {
         self.line_changes = Some(line_changes);
     }
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> d1c25e5 (Shows line changes relative to VCS)
