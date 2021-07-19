@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::{KeyNode, Keymap, Keymaps},
+    keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -26,8 +26,6 @@ use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     keymaps: Keymaps,
-    current_subkeymap: Option<Keymap>,
-    subkeymap_level: usize,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -46,8 +44,6 @@ impl EditorView {
     pub fn new(keymaps: Keymaps) -> Self {
         Self {
             keymaps,
-            current_subkeymap: None,
-            subkeymap_level: 0,
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
@@ -563,67 +559,47 @@ impl EditorView {
         );
     }
 
-    /// Handle events by looking them up in self.keymaps. Note that the event
-    /// may be at the top level or any nested subkeymap inside keymaps. Because of
-    /// this, handling an event does not necessarily mean that a command was
-    /// executed; it may be a multi keystroke mapping. Returns None if event was
-    /// handled, Some(n) otherwise where n denotes number of pending events to
-    /// be handled
+    /// Handle events by looking them up in `self.keymaps`. Returns None
+    /// if event was handled (a command was executed or a subkeymap was
+    /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
+    /// otherwise.
     fn handle_keymap_event(
         &mut self,
         mode: Mode,
         cxt: &mut commands::Context,
         event: KeyEvent,
-    ) -> Option<usize> {
-        let keymap = match self.current_subkeymap {
-            Some(ref keymap) => keymap,
-            None => &self.keymaps[&mode],
-        };
-        if let Some(keynode) = keymap.get(&event) {
-            match keynode {
-                KeyNode::KeyCommand(command) => {
-                    command.execute(cxt);
-                    self.current_subkeymap = None;
-                    self.subkeymap_level = 0;
-                }
-                KeyNode::SubKeymap(subkeymap) => {
-                    self.current_subkeymap = Some(subkeymap.clone());
-                    self.subkeymap_level += 1;
-                }
-            }
-            None
-        } else {
-            // previous events activated nested subkeymaps but current event
-            // cancelled it, so return the earlier swallowed events + current event
-            // only current event is pending if no subkeymaps were activated earlier
-            let pending_events = self.subkeymap_level + 1;
-            self.current_subkeymap = None;
-            self.subkeymap_level = 0;
-            Some(pending_events)
+    ) -> Option<KeymapResult> {
+        match self.keymaps.get_mut(&mode).unwrap().get(event) {
+            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Pending(_map) => { /* render infobox */ }
+            k @ KeymapResult::NotFound | k @ KeymapResult::Cancelled(_) => return Some(k),
         }
+        None
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(pending_events) = self.handle_keymap_event(Mode::Insert, cx, event) {
-            let event = &[event];
-            let pending = if pending_events == 1 {
-                event
-            } else {
-                let history = &self.last_insert.1;
-                &history[history.len() - pending_events..]
-            };
-
-            for ev in pending {
-                match ev.char() {
-                    Some(ch) => commands::insert::insert_char(cx, ch),
-                    None => {
-                        if let Some(KeyNode::KeyCommand(command)) =
-                            self.keymaps[&Mode::Insert].get(ev)
-                        {
-                            command.execute(cx);
+        if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
+            match keyresult {
+                KeymapResult::NotFound => {
+                    if let Some(ch) = event.char() {
+                        commands::insert::insert_char(cx, ch)
+                    }
+                }
+                KeymapResult::Cancelled(pending) => {
+                    for ev in pending {
+                        match ev.char() {
+                            Some(ch) => commands::insert::insert_char(cx, ch),
+                            None => {
+                                if let KeymapResult::Matched(command) =
+                                    self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev)
+                                {
+                                    command.execute(cx);
+                                }
+                            }
                         }
                     }
                 }
+                _ => unreachable!(),
             }
         }
     }
@@ -770,11 +746,11 @@ impl Component for EditorView {
                         // we can repeat the side effect.
 
                         // self.last_insert.0 = self.keymaps[&mode][&key];
-                        match self.keymaps[&mode][&key] {
-                            KeyNode::KeyCommand(command) => self.last_insert.0 = command,
+                        self.last_insert.0 = match self.keymaps.get_mut(&mode).unwrap().get(key) {
+                            KeymapResult::Matched(command) => command,
                             // FIXME: insert mode can only be entered through single KeyCodes
-                            KeyNode::SubKeymap(_) => unimplemented!(),
-                        }
+                            _ => unimplemented!(),
+                        };
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

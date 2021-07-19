@@ -22,7 +22,7 @@ pub struct LspConfig {
 
 #[test]
 fn parsing_keymaps_config_file() {
-    use crate::keymap::KeyNode;
+    use crate::keymap::{KeyTrie, Keymap};
     use helix_core::hashmap;
     use helix_view::{
         document::Mode,
@@ -43,22 +43,22 @@ fn parsing_keymaps_config_file() {
         toml::from_str::<Config>(sample_keymaps).unwrap(),
         Config {
             keys: Keymaps(hashmap! {
-                Mode::Insert => hashmap! {
+                Mode::Insert => Keymap::new(hashmap! {
                     KeyEvent {
                         code: KeyCode::Char('y'),
                         modifiers: KeyModifiers::NONE,
-                    } => KeyNode::KeyCommand(Command::move_line_down),
+                    } => KeyTrie::Leaf(Command::move_line_down),
                     KeyEvent {
                         code: KeyCode::Char('a'),
                         modifiers: KeyModifiers::SHIFT | KeyModifiers::CONTROL,
-                    } => KeyNode::KeyCommand(Command::delete_selection),
-                },
-                Mode::Normal => hashmap! {
+                    } => KeyTrie::Leaf(Command::delete_selection),
+                }),
+                Mode::Normal => Keymap::new(hashmap! {
                     KeyEvent {
                         code: KeyCode::F(12),
                         modifiers: KeyModifiers::ALT,
-                    } => KeyNode::KeyCommand(Command::move_next_word_end),
-                },
+                    } => KeyTrie::Leaf(Command::move_next_word_end),
+                }),
             }),
             ..Default::default()
         }

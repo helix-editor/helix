@@ -42,13 +42,95 @@ macro_rules! alt {
     };
 }
 
-pub type Keymap = HashMap<KeyEvent, KeyNode>;
+type KeyTrieNode = HashMap<KeyEvent, KeyTrie>;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
-pub enum KeyNode {
-    KeyCommand(Command),
-    SubKeymap(Keymap),
+pub enum KeyTrie {
+    Leaf(Command),
+    Node(KeyTrieNode),
+}
+
+impl KeyTrie {
+    pub fn search(&self, keys: &[KeyEvent]) -> Option<&KeyTrie> {
+        let mut trie = self;
+        for key in keys {
+            trie = match trie {
+                KeyTrie::Node(map) => map.get(key),
+                // leaf encountered while keys left to process
+                KeyTrie::Leaf(_) => None,
+            }?
+        }
+        Some(trie)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum KeymapResult {
+    /// Needs more keys to execute a command. Contains valid keys for next keystroke.
+    Pending(KeyTrieNode),
+    Matched(Command),
+    /// Key was not found in the root keymap
+    NotFound,
+    /// Key is invalid in combination with previous keys. Contains keys leading upto
+    /// and including current (invalid) key.
+    Cancelled(Vec<KeyEvent>),
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct Keymap {
+    #[serde(flatten)]
+    pub root: KeyTrieNode,
+    #[serde(skip)]
+    state: Vec<KeyEvent>,
+}
+
+impl Keymap {
+    pub fn new(root: KeyTrieNode) -> Self {
+        Keymap {
+            root,
+            state: Vec::new(),
+        }
+    }
+
+    /// Lookup `key` in the keymap to try and find a command to execute
+    pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
+        let first = self.state.get(0).unwrap_or(&key);
+        let trie = match self.root.get(first) {
+            Some(&KeyTrie::Leaf(cmd)) => return KeymapResult::Matched(cmd),
+            None => return KeymapResult::NotFound,
+            Some(t) => t,
+        };
+        self.state.push(key);
+        match trie.search(&self.state[1..]) {
+            Some(&KeyTrie::Node(ref map)) => KeymapResult::Pending(map.clone()),
+            Some(&KeyTrie::Leaf(command)) => {
+                self.state.clear();
+                KeymapResult::Matched(command)
+            }
+            None => KeymapResult::Cancelled(self.state.drain(..).collect()),
+        }
+    }
+}
+
+impl Deref for Keymap {
+    type Target = KeyTrieNode;
+
+    fn deref(&self) -> &Self::Target {
+        &self.root
+    }
+}
+
+impl DerefMut for Keymap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.root
+    }
+}
+
+impl Default for Keymap {
+    fn default() -> Self {
+        Self::new(HashMap::new())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -71,99 +153,99 @@ impl DerefMut for Keymaps {
 
 impl Default for Keymaps {
     fn default() -> Keymaps {
-        use KeyNode::*;
+        use KeyTrie::*;
         let normal = hashmap!(
-            key!('h') => KeyCommand(Command::move_char_left),
-            key!('j') => KeyCommand(Command::move_line_down),
-            key!('k') => KeyCommand(Command::move_line_up),
-            key!('l') => KeyCommand(Command::move_char_right),
+            key!('h') => Leaf(Command::move_char_left),
+            key!('j') => Leaf(Command::move_line_down),
+            key!('k') => Leaf(Command::move_line_up),
+            key!('l') => Leaf(Command::move_char_right),
 
-            key!(Left) => KeyCommand(Command::move_char_left),
-            key!(Down) => KeyCommand(Command::move_line_down),
-            key!(Up) => KeyCommand(Command::move_line_up),
-            key!(Right) => KeyCommand(Command::move_char_right),
+            key!(Left) => Leaf(Command::move_char_left),
+            key!(Down) => Leaf(Command::move_line_down),
+            key!(Up) => Leaf(Command::move_line_up),
+            key!(Right) => Leaf(Command::move_char_right),
 
-            key!('t') => KeyCommand(Command::find_till_char),
-            key!('f') => KeyCommand(Command::find_next_char),
-            key!('T') => KeyCommand(Command::till_prev_char),
-            key!('F') => KeyCommand(Command::find_prev_char),
+            key!('t') => Leaf(Command::find_till_char),
+            key!('f') => Leaf(Command::find_next_char),
+            key!('T') => Leaf(Command::till_prev_char),
+            key!('F') => Leaf(Command::find_prev_char),
             // and matching set for select mode (extend)
             //
-            key!('r') => KeyCommand(Command::replace),
-            key!('R') => KeyCommand(Command::replace_with_yanked),
+            key!('r') => Leaf(Command::replace),
+            key!('R') => Leaf(Command::replace_with_yanked),
 
-            key!(Home) => KeyCommand(Command::goto_line_start),
-            key!(End) => KeyCommand(Command::goto_line_end),
+            key!(Home) => Leaf(Command::goto_line_start),
+            key!(End) => Leaf(Command::goto_line_end),
 
-            key!('w') => KeyCommand(Command::move_next_word_start),
-            key!('b') => KeyCommand(Command::move_prev_word_start),
-            key!('e') => KeyCommand(Command::move_next_word_end),
+            key!('w') => Leaf(Command::move_next_word_start),
+            key!('b') => Leaf(Command::move_prev_word_start),
+            key!('e') => Leaf(Command::move_next_word_end),
 
-            key!('W') => KeyCommand(Command::move_next_long_word_start),
-            key!('B') => KeyCommand(Command::move_prev_long_word_start),
-            key!('E') => KeyCommand(Command::move_next_long_word_end),
+            key!('W') => Leaf(Command::move_next_long_word_start),
+            key!('B') => Leaf(Command::move_prev_long_word_start),
+            key!('E') => Leaf(Command::move_next_long_word_end),
 
-            key!('v') => KeyCommand(Command::select_mode),
-            key!('g') => KeyCommand(Command::goto_mode),
-            key!(':') => KeyCommand(Command::command_mode),
+            key!('v') => Leaf(Command::select_mode),
+            key!('g') => Leaf(Command::goto_mode),
+            key!(':') => Leaf(Command::command_mode),
 
-            key!('i') => KeyCommand(Command::insert_mode),
-            key!('I') => KeyCommand(Command::prepend_to_line),
-            key!('a') => KeyCommand(Command::append_mode),
-            key!('A') => KeyCommand(Command::append_to_line),
-            key!('o') => KeyCommand(Command::open_below),
-            key!('O') => KeyCommand(Command::open_above),
+            key!('i') => Leaf(Command::insert_mode),
+            key!('I') => Leaf(Command::prepend_to_line),
+            key!('a') => Leaf(Command::append_mode),
+            key!('A') => Leaf(Command::append_to_line),
+            key!('o') => Leaf(Command::open_below),
+            key!('O') => Leaf(Command::open_above),
             // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
 
-            key!('d') => KeyCommand(Command::delete_selection),
+            key!('d') => Leaf(Command::delete_selection),
             // TODO: also delete without yanking
-            key!('c') => KeyCommand(Command::change_selection),
+            key!('c') => Leaf(Command::change_selection),
             // TODO: also change delete without yanking
 
             // key!('r') KeyCommand(ommand)::replace_with_char,
 
-            key!('s') => KeyCommand(Command::select_regex),
-            alt!('s') => KeyCommand(Command::split_selection_on_newline),
-            key!('S') => KeyCommand(Command::split_selection),
-            key!(';') => KeyCommand(Command::collapse_selection),
-            alt!(';') => KeyCommand(Command::flip_selections),
-            key!('%') => KeyCommand(Command::select_all),
-            key!('x') => KeyCommand(Command::extend_line),
-            key!('X') => KeyCommand(Command::extend_to_line_bounds),
+            key!('s') => Leaf(Command::select_regex),
+            alt!('s') => Leaf(Command::split_selection_on_newline),
+            key!('S') => Leaf(Command::split_selection),
+            key!(';') => Leaf(Command::collapse_selection),
+            alt!(';') => Leaf(Command::flip_selections),
+            key!('%') => Leaf(Command::select_all),
+            key!('x') => Leaf(Command::extend_line),
+            key!('X') => Leaf(Command::extend_to_line_bounds),
             // crop_to_whole_line
 
 
-            key!('m') => KeyCommand(Command::match_mode),
-            key!('[') => KeyCommand(Command::left_bracket_mode),
-            key!(']') => KeyCommand(Command::right_bracket_mode),
+            key!('m') => Leaf(Command::match_mode),
+            key!('[') => Leaf(Command::left_bracket_mode),
+            key!(']') => Leaf(Command::right_bracket_mode),
 
-            key!('/') => KeyCommand(Command::search),
+            key!('/') => Leaf(Command::search),
             // ? for search_reverse
-            key!('n') => KeyCommand(Command::search_next),
-            key!('N') => KeyCommand(Command::extend_search_next),
+            key!('n') => Leaf(Command::search_next),
+            key!('N') => Leaf(Command::extend_search_next),
             // N for search_prev
-            key!('*') => KeyCommand(Command::search_selection),
+            key!('*') => Leaf(Command::search_selection),
 
-            key!('u') => KeyCommand(Command::undo),
-            key!('U') => KeyCommand(Command::redo),
+            key!('u') => Leaf(Command::undo),
+            key!('U') => Leaf(Command::redo),
 
-            key!('y') => KeyCommand(Command::yank),
+            key!('y') => Leaf(Command::yank),
             // yank_all
-            key!('p') => KeyCommand(Command::paste_after),
+            key!('p') => Leaf(Command::paste_after),
             // paste_all
-            key!('P') => KeyCommand(Command::paste_before),
+            key!('P') => Leaf(Command::paste_before),
 
-            key!('>') => KeyCommand(Command::indent),
-            key!('<') => KeyCommand(Command::unindent),
-            key!('=') => KeyCommand(Command::format_selections),
-            key!('J') => KeyCommand(Command::join_selections),
+            key!('>') => Leaf(Command::indent),
+            key!('<') => Leaf(Command::unindent),
+            key!('=') => Leaf(Command::format_selections),
+            key!('J') => Leaf(Command::join_selections),
             // TODO: conflicts hover/doc
-            key!('K') => KeyCommand(Command::keep_selections),
+            key!('K') => Leaf(Command::keep_selections),
             // TODO: and another method for inverse
 
             // TODO: clashes with space mode
-            key!(' ') => KeyCommand(Command::keep_primary_selection),
+            key!(' ') => Leaf(Command::keep_primary_selection),
 
             // key!('q') KeyCommand(ommand)::record_macro,
             // key!('Q') KeyCommand(ommand)::replay_macro,
@@ -174,31 +256,31 @@ impl Default for Keymaps {
 
             // C / altC = copy (repeat) selections on prev/next lines
 
-            key!(Esc) => KeyCommand(Command::normal_mode),
-            key!(PageUp) => KeyCommand(Command::page_up),
-            key!(PageDown) => KeyCommand(Command::page_down),
-            ctrl!('b') => KeyCommand(Command::page_up),
-            ctrl!('f') => KeyCommand(Command::page_down),
-            ctrl!('u') => KeyCommand(Command::half_page_up),
-            ctrl!('d') => KeyCommand(Command::half_page_down),
+            key!(Esc) => Leaf(Command::normal_mode),
+            key!(PageUp) => Leaf(Command::page_up),
+            key!(PageDown) => Leaf(Command::page_down),
+            ctrl!('b') => Leaf(Command::page_up),
+            ctrl!('f') => Leaf(Command::page_down),
+            ctrl!('u') => Leaf(Command::half_page_up),
+            ctrl!('d') => Leaf(Command::half_page_down),
 
-            ctrl!('w') => KeyCommand(Command::window_mode),
+            ctrl!('w') => Leaf(Command::window_mode),
 
             // move under <space>c
-            ctrl!('c') => KeyCommand(Command::toggle_comments),
-            key!('K') => KeyCommand(Command::hover),
+            ctrl!('c') => Leaf(Command::toggle_comments),
+            key!('K') => Leaf(Command::hover),
 
             // z family for save/restore/combine from/to sels from register
 
             // supposedly ctrl!('i') but did not work
-            key!(Tab) => KeyCommand(Command::jump_forward),
-            ctrl!('o') => KeyCommand(Command::jump_backward),
+            key!(Tab) => Leaf(Command::jump_forward),
+            ctrl!('o') => Leaf(Command::jump_backward),
             // ctrl!('s') KeyCommand(ommand)::save_selection,
 
-            key!(' ') => KeyCommand(Command::space_mode),
-            key!('z') => KeyCommand(Command::view_mode),
+            key!(' ') => Leaf(Command::space_mode),
+            key!('z') => Leaf(Command::view_mode),
 
-            key!('"') => KeyCommand(Command::select_register),
+            key!('"') => Leaf(Command::select_register),
         );
         // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
         // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
@@ -206,52 +288,52 @@ impl Default for Keymaps {
         let mut select = normal.clone();
         select.extend(
             hashmap!(
-                key!('h') => KeyCommand(Command::extend_char_left),
-                key!('j') => KeyCommand(Command::extend_line_down),
-                key!('k') => KeyCommand(Command::extend_line_up),
-                key!('l') => KeyCommand(Command::extend_char_right),
+                key!('h') => Leaf(Command::extend_char_left),
+                key!('j') => Leaf(Command::extend_line_down),
+                key!('k') => Leaf(Command::extend_line_up),
+                key!('l') => Leaf(Command::extend_char_right),
 
-                key!(Left) => KeyCommand(Command::extend_char_left),
-                key!(Down) => KeyCommand(Command::extend_line_down),
-                key!(Up) => KeyCommand(Command::extend_line_up),
-                key!(Right) => KeyCommand(Command::extend_char_right),
+                key!(Left) => Leaf(Command::extend_char_left),
+                key!(Down) => Leaf(Command::extend_line_down),
+                key!(Up) => Leaf(Command::extend_line_up),
+                key!(Right) => Leaf(Command::extend_char_right),
 
-                key!('w') => KeyCommand(Command::extend_next_word_start),
-                key!('b') => KeyCommand(Command::extend_prev_word_start),
-                key!('e') => KeyCommand(Command::extend_next_word_end),
+                key!('w') => Leaf(Command::extend_next_word_start),
+                key!('b') => Leaf(Command::extend_prev_word_start),
+                key!('e') => Leaf(Command::extend_next_word_end),
 
-                key!('t') => KeyCommand(Command::extend_till_char),
-                key!('f') => KeyCommand(Command::extend_next_char),
+                key!('t') => Leaf(Command::extend_till_char),
+                key!('f') => Leaf(Command::extend_next_char),
 
-                key!('T') => KeyCommand(Command::extend_till_prev_char),
-                key!('F') => KeyCommand(Command::extend_prev_char),
-                key!(Home) => KeyCommand(Command::goto_line_start),
-                key!(End) => KeyCommand(Command::goto_line_end),
-                key!(Esc) => KeyCommand(Command::exit_select_mode),
+                key!('T') => Leaf(Command::extend_till_prev_char),
+                key!('F') => Leaf(Command::extend_prev_char),
+                key!(Home) => Leaf(Command::goto_line_start),
+                key!(End) => Leaf(Command::goto_line_end),
+                key!(Esc) => Leaf(Command::exit_select_mode),
             )
             .into_iter(),
         );
-
+        let insert = hashmap!(
+            key!(Esc) => Leaf(Command::normal_mode),
+            key!(Backspace) => Leaf(Command::delete_char_backward),
+            key!(Delete) => Leaf(Command::delete_char_forward),
+            key!(Enter) => Leaf(Command::insert_newline),
+            key!(Tab) => Leaf(Command::insert_tab),
+            key!(Left) => Leaf(Command::move_char_left),
+            key!(Down) => Leaf(Command::move_line_down),
+            key!(Up) => Leaf(Command::move_line_up),
+            key!(Right) => Leaf(Command::move_char_right),
+            key!(PageUp) => Leaf(Command::page_up),
+            key!(PageDown) => Leaf(Command::page_down),
+            key!(Home) => Leaf(Command::goto_line_start),
+            key!(End) => Leaf(Command::goto_line_end_newline),
+            ctrl!('x') => Leaf(Command::completion),
+            ctrl!('w') => Leaf(Command::delete_word_backward),
+        );
         Keymaps(hashmap!(
-            Mode::Normal => normal,
-            Mode::Select => select,
-            Mode::Insert => hashmap!(
-                key!(Esc) => KeyCommand(Command::normal_mode),
-                key!(Backspace) => KeyCommand(Command::delete_char_backward),
-                key!(Delete) => KeyCommand(Command::delete_char_forward),
-                key!(Enter) => KeyCommand(Command::insert_newline),
-                key!(Tab) => KeyCommand(Command::insert_tab),
-                key!(Left) => KeyCommand(Command::move_char_left),
-                key!(Down) => KeyCommand(Command::move_line_down),
-                key!(Up) => KeyCommand(Command::move_line_up),
-                key!(Right) => KeyCommand(Command::move_char_right),
-                key!(PageUp) => KeyCommand(Command::page_up),
-                key!(PageDown) => KeyCommand(Command::page_down),
-                key!(Home) => KeyCommand(Command::goto_line_start),
-                key!(End) => KeyCommand(Command::goto_line_end_newline),
-                ctrl!('x') => KeyCommand(Command::completion),
-                ctrl!('w') => KeyCommand(Command::delete_word_backward),
-            ),
+            Mode::Normal => Keymap::new(normal),
+            Mode::Select => Keymap::new(select),
+            Mode::Insert => Keymap::new(insert),
         ))
     }
 }
@@ -261,7 +343,7 @@ impl Default for Keymaps {
 pub fn merge_keys(mut config: Config) -> Config {
     let mut delta = std::mem::take(&mut config.keys);
     for (mode, keys) in &mut *config.keys {
-        keys.extend(delta.remove(mode).unwrap_or_default());
+        keys.extend(delta.remove(mode).unwrap_or_default().root)
     }
     config
 }
@@ -269,49 +351,47 @@ pub fn merge_keys(mut config: Config) -> Config {
 #[test]
 fn merge_partial_keys() {
     use helix_view::keyboard::{KeyCode, KeyModifiers};
-    use KeyNode::*;
+    use KeyTrie::*;
     let config = Config {
         keys: Keymaps(hashmap! {
-            Mode::Normal => hashmap! {
+            Mode::Normal => Keymap::new(hashmap! {
                 KeyEvent {
                     code: KeyCode::Char('i'),
                     modifiers: KeyModifiers::NONE,
-                } => KeyCommand(Command::normal_mode),
+                } => Leaf(Command::normal_mode),
                 KeyEvent { // key that does not exist
                     code: KeyCode::Char('无'),
                     modifiers: KeyModifiers::NONE,
-                } => KeyCommand(Command::insert_mode),
-            },
+                } => Leaf(Command::insert_mode),
+            }),
         }),
         ..Default::default()
     };
-    let merged_config = merge_keys(config.clone());
+    let mut merged_config = merge_keys(config.clone());
     assert_ne!(config, merged_config);
     assert_eq!(
-        *merged_config
+        merged_config
             .keys
             .0
-            .get(&Mode::Normal)
+            .get_mut(&Mode::Normal)
             .unwrap()
-            .get(&KeyEvent {
+            .get(KeyEvent {
                 code: KeyCode::Char('i'),
                 modifiers: KeyModifiers::NONE
-            })
-            .unwrap(),
-        KeyCommand(Command::normal_mode)
+            }),
+        KeymapResult::Matched(Command::normal_mode)
     );
     assert_eq!(
-        *merged_config
+        merged_config
             .keys
             .0
-            .get(&Mode::Normal)
+            .get_mut(&Mode::Normal)
             .unwrap()
-            .get(&KeyEvent {
+            .get(KeyEvent {
                 code: KeyCode::Char('无'),
                 modifiers: KeyModifiers::NONE
-            })
-            .unwrap(),
-        KeyCommand(Command::insert_mode)
+            }),
+        KeymapResult::Matched(Command::insert_mode)
     );
     assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
     assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
