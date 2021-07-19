@@ -267,8 +267,15 @@ impl Selection {
     }
 
     #[must_use]
-    pub fn cursor(&self) -> usize {
-        self.primary().head
+    pub fn cursor(&self, text: RopeSlice) -> usize {
+        let range = self.primary();
+
+        // For 1-width cursor semantics.
+        if range.anchor < range.head {
+            prev_grapheme_boundary(text, range.head)
+        } else {
+            range.head
+        }
     }
 
     /// Ensure selection containing only the primary selection.

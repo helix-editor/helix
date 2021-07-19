@@ -121,7 +121,7 @@ enum Align {
 }
 
 fn align_view(doc: &Document, view: &mut View, align: Align) {
-    let pos = doc.selection(view.id).cursor();
+    let pos = doc.selection(view.id).cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
     let relative = match align {
@@ -868,7 +868,10 @@ fn switch_to_lowercase(cx: &mut Context) {
 fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     use Direction::*;
     let (view, doc) = current!(cx.editor);
-    let cursor = coords_at_pos(doc.text().slice(..), doc.selection(view.id).cursor());
+    let cursor = coords_at_pos(
+        doc.text().slice(..),
+        doc.selection(view.id).cursor(doc.text().slice(..)),
+    );
     let doc_last_line = doc.text().len_lines() - 1;
 
     let last_line = view.last_line(doc);
@@ -1038,7 +1041,7 @@ fn split_selection_on_newline(cx: &mut Context) {
 fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
     let selection = doc.selection(view.id);
-    let start = text.char_to_byte(selection.cursor());
+    let start = text.char_to_byte(selection.cursor(text.slice(..)));
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
@@ -2446,7 +2449,11 @@ fn goto_definition(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = pos_to_lsp_pos(
+        doc.text(),
+        doc.selection(view.id).cursor(doc.text().slice(..)),
+        offset_encoding,
+    );
 
     // TODO: handle fails
     let future = language_server.goto_definition(doc.identifier(), pos, None);
@@ -2483,7 +2490,11 @@ fn goto_type_definition(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = pos_to_lsp_pos(
+        doc.text(),
+        doc.selection(view.id).cursor(doc.text().slice(..)),
+        offset_encoding,
+    );
 
     // TODO: handle fails
     let future = language_server.goto_type_definition(doc.identifier(), pos, None);
@@ -2520,7 +2531,11 @@ fn goto_implementation(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = pos_to_lsp_pos(
+        doc.text(),
+        doc.selection(view.id).cursor(doc.text().slice(..)),
+        offset_encoding,
+    );
 
     // TODO: handle fails
     let future = language_server.goto_implementation(doc.identifier(), pos, None);
@@ -2557,7 +2572,11 @@ fn goto_reference(cx: &mut Context) {
 
     let offset_encoding = language_server.offset_encoding();
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = pos_to_lsp_pos(
+        doc.text(),
+        doc.selection(view.id).cursor(doc.text().slice(..)),
+        offset_encoding,
+    );
 
     // TODO: handle fails
     let future = language_server.goto_reference(doc.identifier(), pos, None);
@@ -2616,7 +2635,7 @@ fn goto_next_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
 
-    let cursor_pos = doc.selection(view.id).cursor();
+    let cursor_pos = doc.selection(view.id).cursor(doc.text().slice(..));
     let diag = if let Some(diag) = doc
         .diagnostics()
         .iter()
@@ -2637,7 +2656,7 @@ fn goto_prev_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
 
-    let cursor_pos = doc.selection(view.id).cursor();
+    let cursor_pos = doc.selection(view.id).cursor(doc.text().slice(..));
     let diag = if let Some(diag) = doc
         .diagnostics()
         .iter()
@@ -2665,7 +2684,7 @@ fn signature_help(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(),
+        doc.selection(view.id).cursor(doc.text().slice(..)),
         language_server.offset_encoding(),
     );
 
@@ -3403,13 +3422,14 @@ fn completion(cx: &mut Context) {
     };
 
     let offset_encoding = language_server.offset_encoding();
+    let cursor = doc.selection(view.id).cursor(doc.text().slice(..));
 
-    let pos = pos_to_lsp_pos(doc.text(), doc.selection(view.id).cursor(), offset_encoding);
+    let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
 
     // TODO: handle fails
     let future = language_server.completion(doc.identifier(), pos, None);
 
-    let trigger_offset = doc.selection(view.id).cursor();
+    let trigger_offset = cursor;
 
     cx.callback(
         future,
@@ -3459,7 +3479,7 @@ fn hover(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(),
+        doc.selection(view.id).cursor(doc.text().slice(..)),
         language_server.offset_encoding(),
     );
 
@@ -3525,7 +3545,7 @@ fn match_brackets(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     if let Some(syntax) = doc.syntax() {
-        let pos = doc.selection(view.id).cursor();
+        let pos = doc.selection(view.id).cursor(doc.text().slice(..));
         if let Some(pos) = match_brackets::find(syntax, doc.text(), pos) {
             let selection = Selection::point(pos);
             doc.set_selection(view.id, selection);
@@ -3629,7 +3649,7 @@ fn align_view_bottom(cx: &mut Context) {
 
 fn align_view_middle(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let pos = doc.selection(view.id).cursor();
+    let pos = doc.selection(view.id).cursor(doc.text().slice(..));
     let pos = coords_at_pos(doc.text().slice(..), pos);
 
     const OFFSET: usize = 7; // gutters
