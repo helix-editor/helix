@@ -285,7 +285,7 @@ impl CharHelpers for Chars<'_> {
         // Find our target position(s).
         let head_start = head;
         while let Some(next_ch) = self.next() {
-            if reached_target(target, prev_ch.unwrap_or(next_ch), next_ch) {
+            if prev_ch.is_none() || reached_target(target, prev_ch.unwrap(), next_ch) {
                 if head == head_start {
                     anchor = head;
                 } else {
