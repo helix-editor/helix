@@ -51,6 +51,11 @@
 
 "diagnostic" = { modifiers = ["underlined"] }
 
+"line_added" = "#35BF86"
+"line_removed_above" = "#F22C86"
+"line_removed_below" = "#F22C86"
+"line_modified" = "#6F44F0" 
+
 [palette]
 bg0 = "#282828" # main background
 bg1 = "#3c3836"

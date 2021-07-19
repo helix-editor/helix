@@ -48,3 +48,8 @@
 "error" = "#D74E50"
 "info" = "#839A53"
 "hint" = "#A6B6CE"
+
+"line_added" = "#35BF86"
+"line_removed_above" = "#F22C86"
+"line_removed_below" = "#F22C86"
+"line_modified" = "#6F44F0" 
