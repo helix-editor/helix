@@ -330,16 +330,7 @@ impl EditorView {
         // document or not.  We only draw it if it's not an empty line.
         let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
-        // This is a little confuding: We can't use the `last_line` variable for
-        // our iteration below, because there's a mismatch between the
-        // inclusive/exclusiveness of the screen-based last line and the
-        // text-based last line.  So we compute what we actually need specially here.
-        let last_line_number = std::cmp::min(
-            view.first_line + view.area.height.saturating_sub(1) as usize,
-            doc.text().len_lines(),
-        );
-
-        for (i, line) in (view.first_line..last_line_number).enumerate() {
+        for (i, line) in (view.first_line..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(

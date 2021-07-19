@@ -119,8 +119,9 @@ impl View {
     pub fn last_line(&self, doc: &Document) -> usize {
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
         std::cmp::min(
-            self.first_line + height as usize,
-            doc.text().len_lines() - 1,
+            // Saturating subs to make it inclusive zero indexing.
+            (self.first_line + height as usize).saturating_sub(1),
+            doc.text().len_lines().saturating_sub(1),
         )
     }
 
