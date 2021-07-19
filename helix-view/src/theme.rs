@@ -147,7 +147,7 @@ fn parse_glyphs(value: Option<Value>) -> HashMap<String, String> {
         _ => return HashMap::default(),
     }
     .into_iter()
-    .filter_map(|(name, value)| Some((name, value.as_str().unwrap_or("!").to_owned())))
+    .map(|(name, value)| (name, value.as_str().unwrap_or("!").to_owned()))
     .collect()
 }
 
@@ -256,13 +256,13 @@ impl Theme {
     }
 
     pub fn get_glyph(&self, glyph: &str) -> &str {
-        let g = self.try_get_glyph(glyph).unwrap_or_else(|| "!");
+        let g = self.try_get_glyph(glyph).unwrap_or("!");
         log::info!("got glyph {} => {}", glyph, g);
         g
     }
 
     pub fn try_get_glyph(&self, glyph: &str) -> Option<&str> {
-        let g = self.glyphs.get(glyph).and_then(|s| Some(s.as_str()));
+        let g = self.glyphs.get(glyph).map(|s| s.as_str());
         log::info!("try got glyph {} => {:?}", glyph, g);
         g
     }

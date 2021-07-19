@@ -340,16 +340,16 @@ impl EditorView {
 
         let glyph_added: &str = theme
             .try_get_glyph("diff.added")
-            .unwrap_or(LineChange::Added.as_str());
+            .unwrap_or_else(|| LineChange::Added.as_str());
         let glyph_removed_above: &str = theme
             .try_get_glyph("diff.removed.above")
-            .unwrap_or(LineChange::Added.as_str());
+            .unwrap_or_else(|| LineChange::Added.as_str());
         let glyph_removed_below: &str = theme
             .try_get_glyph("diff.removed.below")
-            .unwrap_or(LineChange::Added.as_str());
+            .unwrap_or_else(|| LineChange::Added.as_str());
         let glyph_modified: &str = theme
             .try_get_glyph("diff.modified")
-            .unwrap_or(LineChange::Added.as_str());
+            .unwrap_or_else(|| LineChange::Added.as_str());
 
         for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
