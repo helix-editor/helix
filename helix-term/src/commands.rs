@@ -498,6 +498,7 @@ fn move_next_word_start(cx: &mut Context) {
         view.id,
         doc.selection(view.id)
             .clone()
+            .min_width_1(doc.text().slice(..))
             .transform(|range| movement::move_next_word_start(doc.text().slice(..), range, count)),
     );
 }
@@ -509,6 +510,7 @@ fn move_prev_word_start(cx: &mut Context) {
         view.id,
         doc.selection(view.id)
             .clone()
+            .min_width_1(doc.text().slice(..))
             .transform(|range| movement::move_prev_word_start(doc.text().slice(..), range, count)),
     );
 }
@@ -520,6 +522,7 @@ fn move_next_word_end(cx: &mut Context) {
         view.id,
         doc.selection(view.id)
             .clone()
+            .min_width_1(doc.text().slice(..))
             .transform(|range| movement::move_next_word_end(doc.text().slice(..), range, count)),
     );
 }
@@ -529,9 +532,12 @@ fn move_next_long_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     doc.set_selection(
         view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_next_long_word_start(doc.text().slice(..), range, count)
-        }),
+        doc.selection(view.id)
+            .clone()
+            .min_width_1(doc.text().slice(..))
+            .transform(|range| {
+                movement::move_next_long_word_start(doc.text().slice(..), range, count)
+            }),
     );
 }
 
@@ -540,9 +546,12 @@ fn move_prev_long_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     doc.set_selection(
         view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_prev_long_word_start(doc.text().slice(..), range, count)
-        }),
+        doc.selection(view.id)
+            .clone()
+            .min_width_1(doc.text().slice(..))
+            .transform(|range| {
+                movement::move_prev_long_word_start(doc.text().slice(..), range, count)
+            }),
     );
 }
 
@@ -551,9 +560,12 @@ fn move_next_long_word_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     doc.set_selection(
         view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_next_long_word_end(doc.text().slice(..), range, count)
-        }),
+        doc.selection(view.id)
+            .clone()
+            .min_width_1(doc.text().slice(..))
+            .transform(|range| {
+                movement::move_next_long_word_end(doc.text().slice(..), range, count)
+            }),
     );
 }
 
@@ -574,12 +586,15 @@ fn extend_next_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     doc.set_selection(
         view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let word = movement::move_next_word_start(text, range, count);
-            let pos = word.head;
-            range.put(text, pos, true)
-        }),
+        doc.selection(view.id)
+            .clone()
+            .min_width_1(doc.text().slice(..))
+            .transform(|range| {
+                let text = doc.text().slice(..);
+                let word = movement::move_next_word_start(text, range, count);
+                let pos = word.head;
+                range.put(text, pos, true)
+            }),
     );
 }
 
@@ -588,12 +603,15 @@ fn extend_prev_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     doc.set_selection(
         view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let word = movement::move_prev_word_start(text, range, count);
-            let pos = word.head;
-            range.put(text, pos, true)
-        }),
+        doc.selection(view.id)
+            .clone()
+            .min_width_1(doc.text().slice(..))
+            .transform(|range| {
+                let text = doc.text().slice(..);
+                let word = movement::move_prev_word_start(text, range, count);
+                let pos = word.head;
+                range.put(text, pos, true)
+            }),
     );
 }
 
@@ -602,12 +620,15 @@ fn extend_next_word_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     doc.set_selection(
         view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let word = movement::move_next_word_end(text, range, count);
-            let pos = word.head;
-            range.put(text, pos, true)
-        }),
+        doc.selection(view.id)
+            .clone()
+            .min_width_1(doc.text().slice(..))
+            .transform(|range| {
+                let text = doc.text().slice(..);
+                let word = movement::move_next_word_end(text, range, count);
+                let pos = word.head;
+                range.put(text, pos, true)
+            }),
     );
 }
 
