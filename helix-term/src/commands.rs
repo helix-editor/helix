@@ -3499,7 +3499,11 @@ fn hover(cx: &mut Context) {
 // comments
 fn toggle_comments(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id));
+    let token = doc
+        .language_config()
+        .and_then(|lc| lc.comment_token.as_ref())
+        .map(|tc| tc.as_ref());
+    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);

@@ -5,6 +5,17 @@ injection-regex = "rust"
 file-types = ["rs"]
 roots = []
 auto-format = true
+comment_token = "//"
+config = """
+{
+  "cargo": {
+    "loadOutDirsFromCheck": true
+  },
+  "procMacro": {
+    "enable": false
+  }
+}
+"""
 
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
@@ -15,6 +26,7 @@ scope = "source.toml"
 injection-regex = "toml"
 file-types = ["toml"]
 roots = []
+comment_token = "#"
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -42,6 +54,7 @@ scope = "source.c"
 injection-regex = "c"
 file-types = ["c"] # TODO: ["h"]
 roots = []
+comment_token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
@@ -52,6 +65,7 @@ scope = "source.cpp"
 injection-regex = "cpp"
 file-types = ["cc", "cpp", "hpp", "h"]
 roots = []
+comment_token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
@@ -63,6 +77,7 @@ injection-regex = "go"
 file-types = ["go"]
 roots = ["Gopkg.toml", "go.mod"]
 auto-format = true
+comment_token = "//"
 
 language-server = { command = "gopls" }
 # TODO: gopls needs utf-8 offsets?
@@ -74,6 +89,7 @@ scope = "source.js"
 injection-regex = "^(js|javascript)$"
 file-types = ["js"]
 roots = []
+comment_token = "//"
 # TODO: highlights-jsx, highlights-params
 
 indent = { tab-width = 2, unit = "  " }
@@ -113,6 +129,7 @@ scope = "source.python"
 injection-regex = "python"
 file-types = ["py"]
 roots = []
+comment_token = "#"
 
 language-server = { command = "pyls" }
 # TODO: pyls needs utf-8 offsets
@@ -133,6 +150,7 @@ scope = "source.ruby"
 injection-regex = "ruby"
 file-types = ["rb"]
 roots = []
+comment_token = "#"
 
 language-server = { command = "solargraph", args = ["stdio"] }
 indent = { tab-width = 2, unit = "  " }
@@ -143,6 +161,7 @@ scope = "source.bash"
 injection-regex = "bash"
 file-types = ["sh", "bash"]
 roots = []
+comment_token = "#"
 
 language-server = { command = "bash-language-server", args = ["start"] }
 indent = { tab-width = 2, unit = "  " }
@@ -162,6 +181,7 @@ scope = "source.tex"
 injection-regex = "tex"
 file-types = ["tex"]
 roots = []
+comment_token = "%"
 
 indent = { tab-width = 4, unit = "\t" }
 
@@ -171,6 +191,7 @@ scope = "source.julia"
 injection-regex = "julia"
 file-types = ["jl"]
 roots = []
+comment_token = "#"
 language-server = { command = "julia", args = [ "--startup-file=no", "--history-file=no", "-e", "using LanguageServer;using Pkg;import StaticLint;import SymbolServer;env_path = dirname(Pkg.Types.Context().env.project_file);server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, \"\");server.runlinter = true;run(server);" ] }
 indent = { tab-width = 2, unit = "  " }
 
@@ -180,5 +201,6 @@ indent = { tab-width = 2, unit = "  " }
 # injection-regex = "haskell"
 # file-types = ["hs"]
 # roots = []
+# comment_token = "--"
 #
 # indent = { tab-width = 2, unit = "  " }
