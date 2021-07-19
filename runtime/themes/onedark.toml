@@ -52,7 +52,7 @@
 "ui.window" = { bg = "#3E4452" }
 "ui.menu.selected" = { fg = "#282C34", bg = "#61AFEF" }
 
-"line_added" = "#35BF86"
-"line_removed_above" = "#F22C86"
-"line_removed_below" = "#F22C86"
-"line_modified" = "#6F44F0" 
+"diff.added" = "#35BF86"
+"diff.removed.above" = "#F22C86"
+"diff.removed.below" = "#F22C86"
+"diff.modified" = "#6F44F0" 
