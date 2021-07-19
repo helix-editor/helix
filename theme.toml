@@ -60,10 +60,10 @@ error = "apricot"
 info = "delta"
 hint = "silver"
 
-diff.added = "#35BF86"
-diff.removed.above = "#F22C86"
-diff.removed.below = "#F22C86"
-diff.modified = "#6F44F0"
+"diff.added = "#35BF86"
+"diff.removed.above" = "#F22C86"
+"diff.removed.below" = "#F22C86"
+"diff.modified" = "#6F44F0"
 
 [palette]
 white = "#ffffff"
@@ -84,3 +84,13 @@ honey = "#efba5d"
 apricot = "#f47868"
 lightning = "#ffcd1c"
 delta = "#6F44F0"
+
+[glyphs]
+"diff.added" = '▌'
+"diff.removed.above" = '▘'
+"diff.removed.below" = '▖'
+"diff.modified" = '▐'
+diagnostic_hint = "●"
+diagnostic_info = "●"
+diagnostic_warning = "●"
+diagnostic_error = "●"

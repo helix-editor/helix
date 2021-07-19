@@ -328,10 +328,28 @@ impl EditorView {
         let info: Style = theme.get("info");
         let hint: Style = theme.get("hint");
 
+        let glyph_warning: &str = theme.try_get_glyph("diagnostic_warning").unwrap_or("●");
+        let glyph_error: &str = theme.try_get_glyph("diagnostic_error").unwrap_or("●");
+        let glyph_info: &str = theme.try_get_glyph("diagnostic_info").unwrap_or("●");
+        let glyph_hint: &str = theme.try_get_glyph("diagnostic_hint").unwrap_or("●");
+
         let line_added: Style = theme.get("diff.added");
         let line_removed_above: Style = theme.get("diff.removed.above");
         let line_removed_below: Style = theme.get("diff.removed.below");
         let line_modified: Style = theme.get("diff.modified");
+
+        let glyph_added: &str = theme
+            .try_get_glyph("diff.added")
+            .unwrap_or(LineChange::Added.as_str());
+        let glyph_removed_above: &str = theme
+            .try_get_glyph("diff.removed.above")
+            .unwrap_or(LineChange::Added.as_str());
+        let glyph_removed_below: &str = theme
+            .try_get_glyph("diff.removed.below")
+            .unwrap_or(LineChange::Added.as_str());
+        let glyph_modified: &str = theme
+            .try_get_glyph("diff.modified")
+            .unwrap_or(LineChange::Added.as_str());
 
         for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
@@ -340,8 +358,12 @@ impl EditorView {
                     surface.set_stringn(
                         viewport.x - OFFSET,
                         viewport.y + i as u16,
-                        // TODO: set this in a theme
-                        line_change.as_str(),
+                        match line_change {
+                            LineChange::Added => glyph_added,
+                            LineChange::RemovedAbove => glyph_removed_above,
+                            LineChange::RemovedBelow => glyph_removed_below,
+                            LineChange::Modified => glyph_modified,
+                        },
                         1,
                         match line_change {
                             LineChange::Added => line_added,
@@ -356,7 +378,12 @@ impl EditorView {
                 surface.set_stringn(
                     viewport.x - OFFSET,
                     viewport.y + i as u16,
-                    "●",
+                    match diagnostic.severity {
+                        Some(Severity::Error) => glyph_error,
+                        Some(Severity::Warning) | None => glyph_warning,
+                        Some(Severity::Info) => glyph_info,
+                        Some(Severity::Hint) => glyph_hint,
+                    },
                     1,
                     match diagnostic.severity {
                         Some(Severity::Error) => error,

@@ -93,6 +93,7 @@ impl Loader {
 pub struct Theme {
     scopes: Vec<String>,
     styles: HashMap<String, Style>,
+    glyphs: HashMap<String, String>,
 }
 
 impl<'de> Deserialize<'de> for Theme {
@@ -101,9 +102,12 @@ impl<'de> Deserialize<'de> for Theme {
         D: Deserializer<'de>,
     {
         let mut styles = HashMap::new();
+        let mut glyphs = HashMap::new();
 
         if let Ok(mut colors) = HashMap::<String, Value>::deserialize(deserializer) {
             let palette = parse_palette(colors.remove("palette"));
+            glyphs.extend(parse_glyphs(colors.remove("glyphs")));
+
             // scopes.reserve(colors.len());
             styles.reserve(colors.len());
             for (name, style_value) in colors {
@@ -115,7 +119,11 @@ impl<'de> Deserialize<'de> for Theme {
         }
 
         let scopes = styles.keys().map(ToString::to_string).collect();
-        Ok(Self { scopes, styles })
+        Ok(Self {
+            scopes,
+            styles,
+            glyphs,
+        })
     }
 }
 
@@ -129,6 +137,17 @@ fn parse_palette(value: Option<Value>) -> HashMap<String, Color> {
         let color = parse_color(value, &HashMap::default())?;
         Some((name, color))
     })
+    .collect()
+}
+
+fn parse_glyphs(value: Option<Value>) -> HashMap<String, String> {
+    log::info!("glyphs: {:?}", value);
+    match value {
+        Some(Value::Table(entries)) => entries,
+        _ => return HashMap::default(),
+    }
+    .into_iter()
+    .filter_map(|(name, value)| Some((name, value.as_str().unwrap_or("!").to_owned())))
     .collect()
 }
 
@@ -234,6 +253,18 @@ impl Theme {
 
     pub fn find_scope_index(&self, scope: &str) -> Option<usize> {
         self.scopes().iter().position(|s| s == scope)
+    }
+
+    pub fn get_glyph(&self, glyph: &str) -> &str {
+        let g = self.try_get_glyph(glyph).unwrap_or_else(|| "!");
+        log::info!("got glyph {} => {}", glyph, g);
+        g
+    }
+
+    pub fn try_get_glyph(&self, glyph: &str) -> Option<&str> {
+        let g = self.glyphs.get(glyph).and_then(|s| Some(s.as_str()));
+        log::info!("try got glyph {} => {:?}", glyph, g);
+        g
     }
 }
 
