@@ -49,7 +49,7 @@
 "info" = "#839A53"
 "hint" = "#A6B6CE"
 
-"line_added" = "#35BF86"
-"line_removed_above" = "#F22C86"
-"line_removed_below" = "#F22C86"
-"line_modified" = "#6F44F0" 
+"diff.added" = "#35BF86"
+"diff.removed.above" = "#F22C86"
+"diff.removed.below" = "#F22C86"
+"diff.modified" = "#6F44F0" 

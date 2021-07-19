@@ -328,10 +328,10 @@ impl EditorView {
         let info: Style = theme.get("info");
         let hint: Style = theme.get("hint");
 
-        let line_added: Style = theme.get("line_added");
-        let line_removed_above: Style = theme.get("line_removed_above");
-        let line_removed_below: Style = theme.get("line_removed_below");
-        let line_modified: Style = theme.get("line_modified");
+        let line_added: Style = theme.get("diff.added");
+        let line_removed_above: Style = theme.get("diff.removed.above");
+        let line_removed_below: Style = theme.get("diff.removed.below");
+        let line_modified: Style = theme.get("diff.modified");
 
         for (i, line) in (view.first_line..last_line).enumerate() {
             use helix_core::diagnostic::Severity;
