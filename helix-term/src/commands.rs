@@ -1041,7 +1041,25 @@ fn split_selection_on_newline(cx: &mut Context) {
 fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text();
     let selection = doc.selection(view.id);
-    let start = text.char_to_byte(selection.cursor(text.slice(..)));
+    let start = {
+        let range = selection.primary();
+
+        // This is a little bit weird.  Due to 1-width cursor semantics, we
+        // would typically want the search to always begin at the visual left-side
+        // of the head.  However, when there's already a selection from e.g. a
+        // previous search result, we don't want to include any of that selection
+        // in the subsequent search.  The code below makes a compromise between the
+        // two behaviors that hopefully behaves the way most people expect most of
+        // the time.
+        if range.anchor <= range.head {
+            text.char_to_byte(range.head)
+        } else {
+            text.char_to_byte(graphemes::next_grapheme_boundary(
+                text.slice(..),
+                range.head,
+            ))
+        }
+    };
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
