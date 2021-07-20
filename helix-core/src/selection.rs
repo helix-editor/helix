@@ -357,13 +357,13 @@ impl Selection {
         let mut prev_i = 0;
         for i in 1..self.ranges.len() {
             if self.ranges[prev_i].overlaps(&self.ranges[i]) {
-                if i == self.primary_index {
-                    self.primary_index = prev_i;
-                }
                 self.ranges[prev_i] = self.ranges[prev_i].merge(self.ranges[i]);
             } else {
                 prev_i += 1;
                 self.ranges[prev_i] = self.ranges[i];
+            }
+            if i == self.primary_index {
+                self.primary_index = prev_i;
             }
         }
 

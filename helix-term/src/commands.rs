@@ -396,11 +396,19 @@ fn goto_line_end(cx: &mut Context) {
         view.id,
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text().slice(..);
-            let line = text.char_to_line(range.head);
 
-            let pos = line_end_char_index(&text, line);
-            let pos = graphemes::nth_prev_grapheme_boundary(text, pos, 1);
-            let pos = range.head.max(pos).max(text.line_to_char(line));
+            let head = if range.anchor < range.head {
+                graphemes::prev_grapheme_boundary(text, range.head)
+            } else {
+                range.head
+            };
+            let line = text.char_to_line(head);
+
+            let mut pos = line_end_char_index(&text, line);
+            if doc.mode != Mode::Select {
+                pos = graphemes::prev_grapheme_boundary(text, pos);
+            }
+            pos = head.max(pos).max(text.line_to_char(line));
 
             range.put(text, pos, doc.mode == Mode::Select)
         }),
@@ -414,9 +422,18 @@ fn goto_line_end_newline(cx: &mut Context) {
         view.id,
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text().slice(..);
-            let line = text.char_to_line(range.head);
 
-            let pos = line_end_char_index(&text, line);
+            let head = if range.anchor < range.head {
+                graphemes::prev_grapheme_boundary(text, range.head)
+            } else {
+                range.head
+            };
+            let line = text.char_to_line(head);
+
+            let mut pos = text.line_to_char((line + 1).min(text.len_lines()));
+            if doc.mode != Mode::Select {
+                pos = graphemes::prev_grapheme_boundary(text, pos);
+            }
             range.put(text, pos, doc.mode == Mode::Select)
         }),
     );
