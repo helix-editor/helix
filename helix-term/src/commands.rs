@@ -1162,15 +1162,12 @@ fn extend_line(cx: &mut Context) {
     let text = doc.text();
     let range = doc.selection(view.id).primary().min_width_1(text.slice(..));
 
-    let start_line = text.char_to_line(range.from());
-    let end_line = (text.char_to_line(range.to().saturating_sub(1).max(range.from())) + count)
-        .min(text.len_lines());
-
+    let (start_line, end_line) = range.line_range(text.slice(..));
     let start = text.line_to_char(start_line);
-    let mut end = text.line_to_char(end_line);
+    let mut end = text.line_to_char((end_line + count).min(text.len_lines()));
 
     if range.from() == start && range.to() == end {
-        end = text.line_to_char((end_line + 1).min(text.len_lines()));
+        end = text.line_to_char((end_line + count + 1).min(text.len_lines()));
     }
 
     doc.set_selection(view.id, Selection::single(start, end));
@@ -1184,12 +1181,9 @@ fn extend_to_line_bounds(cx: &mut Context) {
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text();
 
-            let start_line = text.char_to_line(range.from());
-            let end_line = (text.char_to_line(range.to().saturating_sub(1).max(range.from())) + 1)
-                .min(text.len_lines());
-
+            let (start_line, end_line) = range.line_range(text.slice(..));
             let start = text.line_to_char(start_line);
-            let end = text.line_to_char(end_line);
+            let end = text.line_to_char((end_line + 1).min(text.len_lines()));
 
             if range.anchor <= range.head {
                 Range::new(start, end)
@@ -3111,8 +3105,8 @@ fn paste_impl(
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
             // paste linewise after
             (Paste::After, true) => {
-                let idx = range.to().saturating_sub(1).max(range.from());
-                text.line_to_char((text.char_to_line(idx) + 1).min(text.len_lines()))
+                let line = range.line_range(text.slice(..)).1;
+                text.line_to_char((line + 1).min(text.len_lines()))
             }
             // paste insert
             (Paste::Before, false) => range.from(),
