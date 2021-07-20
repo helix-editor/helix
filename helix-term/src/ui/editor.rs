@@ -378,7 +378,15 @@ impl EditorView {
             let selection = doc.selection(view.id);
 
             for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
-                let head = view.screen_coords_at_pos(doc, text, selection.head);
+                let head = view.screen_coords_at_pos(
+                    doc,
+                    text,
+                    if selection.head > selection.anchor {
+                        selection.head - 1
+                    } else {
+                        selection.head
+                    },
+                );
                 if let Some(head) = head {
                     // Draw line number for selected lines.
                     let line_number = view.first_line + head.row;
