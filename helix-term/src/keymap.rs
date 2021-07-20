@@ -24,20 +24,21 @@ macro_rules! key {
     };
 }
 
-macro_rules! ctrl {
-    ($($ch:tt)*) => {
-        KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
-        }
+macro_rules! keymap {
+    (@trie $cmd:ident) => { KeyTrie::Leaf(Command::$cmd) };
+    (@trie { $($key:literal => $value:tt),* }) => {
+        KeyTrie::Node(keymap!($($key => $value),*))
     };
-}
-
-macro_rules! alt {
-    ($($ch:tt)*) => {
-        KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+    ($($key:literal => $value:tt),*) => {
+        {
+            // taken from the hashmap! macro since a macro cannot
+            // take output of another macro as input
+            let _cap = hashmap!(@count $($key),*);
+            let mut _map = ::std::collections::HashMap::with_capacity(_cap);
+            $(
+                let _ = _map.insert($key.parse::<KeyEvent>().unwrap(), keymap!(@trie $value));
+            )*
+            _map
         }
     };
 }
@@ -153,182 +154,235 @@ impl DerefMut for Keymaps {
 
 impl Default for Keymaps {
     fn default() -> Keymaps {
-        use KeyTrie::*;
-        let normal = hashmap!(
-            key!('h') => Leaf(Command::move_char_left),
-            key!('j') => Leaf(Command::move_line_down),
-            key!('k') => Leaf(Command::move_line_up),
-            key!('l') => Leaf(Command::move_char_right),
+        let normal = keymap!(
+            "h" => move_char_left,
+            "j" => move_line_down,
+            "k" => move_line_up,
+            "l" => move_char_right,
 
-            key!(Left) => Leaf(Command::move_char_left),
-            key!(Down) => Leaf(Command::move_line_down),
-            key!(Up) => Leaf(Command::move_line_up),
-            key!(Right) => Leaf(Command::move_char_right),
+            "left" => move_char_left,
+            "down" => move_line_down,
+            "up" => move_line_up,
+            "right" => move_char_right,
 
-            key!('t') => Leaf(Command::find_till_char),
-            key!('f') => Leaf(Command::find_next_char),
-            key!('T') => Leaf(Command::till_prev_char),
-            key!('F') => Leaf(Command::find_prev_char),
-            // and matching set for select mode (extend)
-            //
-            key!('r') => Leaf(Command::replace),
-            key!('R') => Leaf(Command::replace_with_yanked),
+            "t" => find_till_char,
+            "f" => find_next_char,
+            "T" => till_prev_char,
+            "F" => find_prev_char,
+            "r" => replace,
+            "R" => replace_with_yanked,
 
-            key!(Home) => Leaf(Command::goto_line_start),
-            key!(End) => Leaf(Command::goto_line_end),
+            "home" => goto_line_start,
+            "end" => goto_line_end,
 
-            key!('w') => Leaf(Command::move_next_word_start),
-            key!('b') => Leaf(Command::move_prev_word_start),
-            key!('e') => Leaf(Command::move_next_word_end),
+            "w" => move_next_word_start,
+            "b" => move_prev_word_start,
+            "e" => move_next_word_end,
 
-            key!('W') => Leaf(Command::move_next_long_word_start),
-            key!('B') => Leaf(Command::move_prev_long_word_start),
-            key!('E') => Leaf(Command::move_next_long_word_end),
+            "W" => move_next_long_word_start,
+            "B" => move_prev_long_word_start,
+            "E" => move_next_long_word_end,
 
-            key!('v') => Leaf(Command::select_mode),
-            key!('g') => Leaf(Command::goto_mode),
-            key!(':') => Leaf(Command::command_mode),
+            "v" => select_mode,
+            "g" => {
+                "g" => goto_file_start,
+                "e" => goto_file_end,
+                "h" => goto_line_start,
+                "l" => goto_line_end,
+                "s" => goto_first_nonwhitespace,
+                "d" => goto_definition,
+                "y" => goto_type_definition,
+                "r" => goto_reference,
+                "i" => goto_implementation,
+                "t" => goto_window_top,
+                "m" => goto_window_middle,
+                "b" => goto_window_bottom,
+                "a" => goto_last_accessed_file
+            },
+            ":" => command_mode,
 
-            key!('i') => Leaf(Command::insert_mode),
-            key!('I') => Leaf(Command::prepend_to_line),
-            key!('a') => Leaf(Command::append_mode),
-            key!('A') => Leaf(Command::append_to_line),
-            key!('o') => Leaf(Command::open_below),
-            key!('O') => Leaf(Command::open_above),
+            "i" => insert_mode,
+            "I" => prepend_to_line,
+            "a" => append_mode,
+            "A" => append_to_line,
+            "o" => open_below,
+            "O" => open_above,
             // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
-
-            key!('d') => Leaf(Command::delete_selection),
+            "d" => delete_selection,
             // TODO: also delete without yanking
-            key!('c') => Leaf(Command::change_selection),
+            "c" => change_selection,
             // TODO: also change delete without yanking
 
-            // key!('r') KeyCommand(ommand)::replace_with_char,
-
-            key!('s') => Leaf(Command::select_regex),
-            alt!('s') => Leaf(Command::split_selection_on_newline),
-            key!('S') => Leaf(Command::split_selection),
-            key!(';') => Leaf(Command::collapse_selection),
-            alt!(';') => Leaf(Command::flip_selections),
-            key!('%') => Leaf(Command::select_all),
-            key!('x') => Leaf(Command::extend_line),
-            key!('X') => Leaf(Command::extend_to_line_bounds),
+            "s" => select_regex,
+            "A-s" => split_selection_on_newline,
+            "S" => split_selection,
+            ";" => collapse_selection,
+            "A-;" => flip_selections,
+            "%" => select_all,
+            "x" => extend_line,
+            "X" => extend_to_line_bounds,
             // crop_to_whole_line
 
+            "m" => {
+                "m" => match_brackets,
+                "s" => surround_add,
+                "r" => surround_replace,
+                "d" => surround_delete,
+                "a" => select_textobject_around,
+                "i" => select_textobject_inner
+            },
+            "[" => {
+                "d" => goto_prev_diag,
+                "D" => goto_first_diag
+            },
+            "]" => {
+                "d" => goto_next_diag,
+                "D" => goto_last_diag
+            },
 
-            key!('m') => Leaf(Command::match_mode),
-            key!('[') => Leaf(Command::left_bracket_mode),
-            key!(']') => Leaf(Command::right_bracket_mode),
-
-            key!('/') => Leaf(Command::search),
+            "/" => search,
             // ? for search_reverse
-            key!('n') => Leaf(Command::search_next),
-            key!('N') => Leaf(Command::extend_search_next),
+            "n" => search_next,
+            "N" => extend_search_next,
             // N for search_prev
-            key!('*') => Leaf(Command::search_selection),
+            "*" => search_selection,
 
-            key!('u') => Leaf(Command::undo),
-            key!('U') => Leaf(Command::redo),
+            "u" => undo,
+            "U" => redo,
 
-            key!('y') => Leaf(Command::yank),
+            "y" => yank,
             // yank_all
-            key!('p') => Leaf(Command::paste_after),
+            "p" => paste_after,
             // paste_all
-            key!('P') => Leaf(Command::paste_before),
+            "P" => paste_before,
 
-            key!('>') => Leaf(Command::indent),
-            key!('<') => Leaf(Command::unindent),
-            key!('=') => Leaf(Command::format_selections),
-            key!('J') => Leaf(Command::join_selections),
+            ">" => indent,
+            "<" => unindent,
+            "=" => format_selections,
+            "J" => join_selections,
             // TODO: conflicts hover/doc
-            key!('K') => Leaf(Command::keep_selections),
+            "K" => keep_selections,
             // TODO: and another method for inverse
 
             // TODO: clashes with space mode
-            key!(' ') => Leaf(Command::keep_primary_selection),
+            "space" => keep_primary_selection,
 
-            // key!('q') KeyCommand(ommand)::record_macro,
-            // key!('Q') KeyCommand(ommand)::replay_macro,
+            // "q" => record_macro,
+            // "Q" => replay_macro,
 
-            // ~ / apostrophe => change case
             // & align selections
             // _ trim selections
 
             // C / altC = copy (repeat) selections on prev/next lines
 
-            key!(Esc) => Leaf(Command::normal_mode),
-            key!(PageUp) => Leaf(Command::page_up),
-            key!(PageDown) => Leaf(Command::page_down),
-            ctrl!('b') => Leaf(Command::page_up),
-            ctrl!('f') => Leaf(Command::page_down),
-            ctrl!('u') => Leaf(Command::half_page_up),
-            ctrl!('d') => Leaf(Command::half_page_down),
+            "esc" => normal_mode,
+            "pageup" => page_up,
+            "pagedown" => page_down,
+            "C-b" => page_up,
+            "C-f" => page_down,
+            "C-u" => half_page_up,
+            "C-d" => half_page_down,
 
-            ctrl!('w') => Leaf(Command::window_mode),
+            "C-w" => {
+                "w" => rotate_view,
+                "C-w" => rotate_view,
+                "h" => hsplit,
+                "v" => vsplit,
+                "q" => wclose
+            },
 
             // move under <space>c
-            ctrl!('c') => Leaf(Command::toggle_comments),
-            key!('K') => Leaf(Command::hover),
+            "C-c" => toggle_comments,
+            "K" => hover,
 
             // z family for save/restore/combine from/to sels from register
 
-            // supposedly ctrl!('i') but did not work
-            key!(Tab) => Leaf(Command::jump_forward),
-            ctrl!('o') => Leaf(Command::jump_backward),
-            // ctrl!('s') KeyCommand(ommand)::save_selection,
+            // supposedly "C-i" but did not work
+            "tab" => jump_forward,
+            "C-o" => jump_backward,
+            // "C-s" => save_selection,
 
-            key!(' ') => Leaf(Command::space_mode),
-            key!('z') => Leaf(Command::view_mode),
+            "space" => {
+                "f" => file_picker,
+                "b" => buffer_picker,
+                "s" => symbol_picker,
+                "w" => {
+                    "w" => rotate_view,
+                    "C-w" => rotate_view,
+                    "h" => hsplit,
+                    "v" => vsplit,
+                    "q" => wclose
+                },
+                "y" => yank_joined_to_clipboard,
+                "Y" => yank_main_selection_to_clipboard,
+                "p" => paste_clipboard_after,
+                "P" => paste_clipboard_before,
+                "R" => replace_selections_with_clipboard,
+                "space" => keep_primary_selection
+            },
+            "z" => {
+                "t" => align_view_top,
+                "z" => align_view_center,
+                "c" => align_view_center,
+                "b" => align_view_bottom,
+                "m" => align_view_middle,
+                "k" => scroll_up,
+                "j" => scroll_down
+            },
 
-            key!('"') => Leaf(Command::select_register),
+            "\"" => select_register
         );
         // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
         // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
         // because some selection operations can now be done from normal mode, some from select mode.
         let mut select = normal.clone();
         select.extend(
-            hashmap!(
-                key!('h') => Leaf(Command::extend_char_left),
-                key!('j') => Leaf(Command::extend_line_down),
-                key!('k') => Leaf(Command::extend_line_up),
-                key!('l') => Leaf(Command::extend_char_right),
+            keymap!(
+                "h" => extend_char_left,
+                "j" => extend_line_down,
+                "k" => extend_line_up,
+                "l" => extend_char_right,
 
-                key!(Left) => Leaf(Command::extend_char_left),
-                key!(Down) => Leaf(Command::extend_line_down),
-                key!(Up) => Leaf(Command::extend_line_up),
-                key!(Right) => Leaf(Command::extend_char_right),
+                "left" => extend_char_left,
+                "down" => extend_line_down,
+                "up" => extend_line_up,
+                "right" => extend_char_right,
 
-                key!('w') => Leaf(Command::extend_next_word_start),
-                key!('b') => Leaf(Command::extend_prev_word_start),
-                key!('e') => Leaf(Command::extend_next_word_end),
+                "w" => extend_next_word_start,
+                "b" => extend_prev_word_start,
+                "e" => extend_next_word_end,
 
-                key!('t') => Leaf(Command::extend_till_char),
-                key!('f') => Leaf(Command::extend_next_char),
+                "t" => extend_till_char,
+                "f" => extend_next_char,
+                "T" => extend_till_prev_char,
+                "F" => extend_prev_char,
 
-                key!('T') => Leaf(Command::extend_till_prev_char),
-                key!('F') => Leaf(Command::extend_prev_char),
-                key!(Home) => Leaf(Command::goto_line_start),
-                key!(End) => Leaf(Command::goto_line_end),
-                key!(Esc) => Leaf(Command::exit_select_mode),
+                "home" => goto_line_start,
+                "end" => goto_line_end,
+                "esc" => exit_select_mode
             )
             .into_iter(),
         );
-        let insert = hashmap!(
-            key!(Esc) => Leaf(Command::normal_mode),
-            key!(Backspace) => Leaf(Command::delete_char_backward),
-            key!(Delete) => Leaf(Command::delete_char_forward),
-            key!(Enter) => Leaf(Command::insert_newline),
-            key!(Tab) => Leaf(Command::insert_tab),
-            key!(Left) => Leaf(Command::move_char_left),
-            key!(Down) => Leaf(Command::move_line_down),
-            key!(Up) => Leaf(Command::move_line_up),
-            key!(Right) => Leaf(Command::move_char_right),
-            key!(PageUp) => Leaf(Command::page_up),
-            key!(PageDown) => Leaf(Command::page_down),
-            key!(Home) => Leaf(Command::goto_line_start),
-            key!(End) => Leaf(Command::goto_line_end_newline),
-            ctrl!('x') => Leaf(Command::completion),
-            ctrl!('w') => Leaf(Command::delete_word_backward),
+        let insert = keymap!(
+            "esc" => normal_mode,
+
+            "backspace" => delete_char_backward,
+            "del" => delete_char_forward,
+            "ret" => insert_newline,
+            "tab" => insert_tab,
+            "C-w" => delete_word_backward,
+
+            "left" => move_char_left,
+            "down" => move_line_down,
+            "up" => move_line_up,
+            "right" => move_char_right,
+            "pageup" => page_up,
+            "pagedown" => page_down,
+            "home" => goto_line_start,
+            "end" => goto_line_end_newline,
+
+            "C-x" => completion
         );
         Keymaps(hashmap!(
             Mode::Normal => Keymap::new(normal),
@@ -341,6 +395,8 @@ impl Default for Keymaps {
 /// Merge default config keys with user overwritten keys for custom
 /// user config.
 pub fn merge_keys(mut config: Config) -> Config {
+    // FIXME: requires recursive merging (defining "gp" in user mapping
+    // will disable all other default mappings under "g")
     let mut delta = std::mem::take(&mut config.keys);
     for (mode, keys) in &mut *config.keys {
         keys.extend(delta.remove(mode).unwrap_or_default().root)

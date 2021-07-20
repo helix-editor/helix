@@ -16,7 +16,6 @@ use helix_core::{
 use helix_view::{
     document::{IndentStyle, Mode},
     editor::Action,
-    info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
     view::{View, PADDING},
@@ -48,7 +47,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
 
 pub struct Context<'a> {
@@ -219,7 +218,6 @@ impl Command {
         open_below,
         open_above,
         normal_mode,
-        goto_mode,
         select_mode,
         exit_select_mode,
         goto_definition,
@@ -228,6 +226,10 @@ impl Command {
         goto_file_start,
         goto_file_end,
         goto_reference,
+        goto_window_top,
+        goto_window_middle,
+        goto_window_bottom,
+        goto_last_accessed_file,
         goto_first_diag,
         goto_last_diag,
         goto_next_diag,
@@ -263,20 +265,25 @@ impl Command {
         hover,
         toggle_comments,
         expand_selection,
-        match_brackets,
         jump_forward,
         jump_backward,
-        window_mode,
         rotate_view,
         hsplit,
         vsplit,
         wclose,
         select_register,
-        space_mode,
-        view_mode,
-        left_bracket_mode,
-        right_bracket_mode,
-        match_mode
+        align_view_top,
+        align_view_center,
+        align_view_bottom,
+        align_view_middle,
+        scroll_up,
+        scroll_down,
+        match_brackets,
+        surround_add,
+        surround_replace,
+        surround_delete,
+        select_textobject_around,
+        select_textobject_inner
     );
 }
 
@@ -2222,20 +2229,6 @@ fn exit_select_mode(cx: &mut Context) {
     doc_mut!(cx.editor).mode = Mode::Normal;
 }
 
-fn goto_prehook(cx: &mut Context) -> bool {
-    if let Some(count) = cx.count {
-        push_jump(cx.editor);
-
-        let (view, doc) = current!(cx.editor);
-        let line_idx = std::cmp::min(count.get() - 1, doc.text().len_lines().saturating_sub(2));
-        let pos = doc.text().line_to_char(line_idx);
-        doc.set_selection(view.id, Selection::point(pos));
-        true
-    } else {
-        false
-    }
-}
-
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
@@ -3615,198 +3608,4 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
-}
-
-/// Do nothing, just for modeinfo.
-fn noop(_cx: &mut Context) -> bool {
-    false
-}
-
-/// Generate modeinfo.
-///
-/// If prehook returns true then it will stop the rest.
-macro_rules! mode_info {
-    // TODO: reuse $mode for $stat
-    (@join $first:expr $(,$rest:expr)*) => {
-        concat!($first, $(", ", $rest),*)
-    };
-    (@name #[doc = $name:literal] $(#[$rest:meta])*) => {
-        $name
-    };
-    {
-        #[doc = $name:literal] $(#[$doc:meta])* $mode:ident, $stat:ident,
-        $(#[doc = $desc:literal] $($key:tt)|+ => $func:expr),+,
-    } => {
-        mode_info! {
-            #[doc = $name]
-            $(#[$doc])*
-            $mode, $stat, noop,
-            $(
-            #[doc = $desc]
-            $($key)|+ => $func
-            ),+,
-        }
-    };
-    {
-        #[doc = $name:literal] $(#[$doc:meta])* $mode:ident, $stat:ident, $prehook:expr,
-        $(#[doc = $desc:literal] $($key:tt)|+ => $func:expr),+,
-    } => {
-        #[doc = $name]
-        $(#[$doc])*
-        #[doc = ""]
-        #[doc = "<table><tr><th>key</th><th>desc</th></tr><tbody>"]
-        $(
-        #[doc = "<tr><td>"]
-        // TODO switch to this once we use rust 1.54
-        // right now it will produce multiple rows
-        // #[doc = mode_info!(@join $($key),+)]
-        $(
-        #[doc = $key]
-        )+
-        // <-
-        #[doc = "</td><td>"]
-        #[doc = $desc]
-        #[doc = "</td></tr>"]
-        )+
-        #[doc = "</tbody></table>"]
-        pub fn $mode(cx: &mut Context) {
-            if $prehook(cx) {
-                return;
-            }
-            static $stat: OnceCell<Info> = OnceCell::new();
-            cx.editor.autoinfo = Some($stat.get_or_init(|| Info::key(
-                $name.trim(),
-                vec![$((&[$($key.parse().unwrap()),+], $desc)),+],
-            )));
-            use helix_core::hashmap;
-            // TODO: try and convert this to match later
-            let map = hashmap! {
-                $($($key.parse::<KeyEvent>().unwrap() => $func as for<'r, 's> fn(&'r mut Context<'s>)),+),*
-            };
-            cx.on_next_key_mode(map);
-        }
-    };
-}
-
-mode_info! {
-    /// space mode
-    space_mode, SPACE_MODE,
-    /// file picker
-    "f" => file_picker,
-    /// buffer picker
-    "b" => buffer_picker,
-    /// symbol picker
-    "s" => symbol_picker,
-    /// window mode
-    "w" => window_mode,
-    /// yank joined to clipboard
-    "y" => yank_joined_to_clipboard,
-    /// yank main selection to clipboard
-    "Y" => yank_main_selection_to_clipboard,
-    /// paste system clipboard after selections
-    "p" => paste_clipboard_after,
-    /// paste system clipboard before selections
-    "P" => paste_clipboard_before,
-    /// replace selections with clipboard
-    "R" => replace_selections_with_clipboard,
-    /// keep primary selection
-    "space" => keep_primary_selection,
-}
-
-mode_info! {
-    /// goto
-    ///
-    /// When specified with a count, it will go to that line without entering the mode.
-    goto_mode, GOTO_MODE, goto_prehook,
-    /// file start
-    "g" => goto_file_start,
-    /// file end
-    "e" => goto_file_end,
-    /// line start
-    "h" => goto_line_start,
-    /// line end
-    "l" => goto_line_end,
-    /// line first non blank
-    "s" => goto_first_nonwhitespace,
-    /// definition
-    "d" => goto_definition,
-    /// type references
-    "y" => goto_type_definition,
-    /// references
-    "r" => goto_reference,
-    /// implementation
-    "i" => goto_implementation,
-    /// window top
-    "t" => goto_window_top,
-    /// window middle
-    "m" => goto_window_middle,
-    /// window bottom
-    "b" => goto_window_bottom,
-    /// last accessed file
-    "a" => goto_last_accessed_file,
-}
-
-mode_info! {
-   /// window
-   window_mode, WINDOW_MODE,
-   /// rotate
-   "w" | "C-w" => rotate_view,
-   /// horizontal split
-   "h" => hsplit,
-   /// vertical split
-   "v" => vsplit,
-   /// close
-   "q" => wclose,
-}
-
-mode_info! {
-    /// match
-    match_mode, MATCH_MODE,
-    /// matching character
-    "m" => match_brackets,
-    /// surround add
-    "s" => surround_add,
-    /// surround replace
-    "r" => surround_replace,
-    /// surround delete
-    "d" => surround_delete,
-    /// around object
-    "a" => select_textobject_around,
-    /// inside object
-    "i" => select_textobject_inner,
-}
-
-mode_info! {
-    /// select to previous
-    left_bracket_mode, LEFT_BRACKET_MODE,
-    /// previous diagnostic
-    "d" => goto_prev_diag,
-    /// diagnostic (first)
-    "D" => goto_first_diag,
-}
-
-mode_info! {
-    /// select to next
-    right_bracket_mode, RIGHT_BRACKET_MODE,
-    /// diagnostic
-    "d" => goto_next_diag,
-    /// diagnostic (last)
-    "D" => goto_last_diag,
-}
-
-mode_info! {
-    /// view
-    view_mode, VIEW_MODE,
-    /// align view top
-    "t" => align_view_top,
-    /// align view center
-    "z" | "c" => align_view_center,
-    /// align view bottom
-    "b" => align_view_bottom,
-    /// align view middle
-    "m" => align_view_middle,
-    /// scroll up
-    "k" => scroll_up,
-    /// scroll down
-    "j" => scroll_down,
 }
