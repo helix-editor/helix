@@ -46,8 +46,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let comment = Tendril::from(format!("{} ", token));
 
     for selection in selection {
-        let start = text.char_to_line(selection.from());
-        let end = text.char_to_line(selection.to());
+        let (start, end) = selection.line_range(text);
         let lines = start..end + 1;
         let (commented, skipped, min) = find_line_comment(&token, text, lines.clone());
 
