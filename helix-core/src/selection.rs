@@ -290,11 +290,12 @@ impl Selection {
         }
     }
 
+    /// Adds a new range to the selection and makes it the primary range.
     pub fn push(mut self, range: Range) -> Self {
         self.ranges.push(range);
+        self.set_primary_index(self.ranges().len() - 1);
         self.normalize()
     }
-    // replace_range
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after
     /// applying changes to a document.
@@ -318,6 +319,11 @@ impl Selection {
 
     pub fn primary_index(&self) -> usize {
         self.primary_index
+    }
+
+    pub fn set_primary_index(&mut self, idx: usize) {
+        assert!(idx < self.ranges.len());
+        self.primary_index = idx;
     }
 
     #[must_use]
