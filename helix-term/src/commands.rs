@@ -3093,7 +3093,10 @@ fn paste_impl(
             // paste linewise before
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
             // paste linewise after
-            (Paste::After, true) => text.line_to_char(text.char_to_line(range.to())),
+            (Paste::After, true) => {
+                let idx = range.to().saturating_sub(1).max(range.from());
+                text.line_to_char((text.char_to_line(idx) + 1).min(text.len_lines()))
+            }
             // paste insert
             (Paste::Before, false) => range.from(),
             // paste append
