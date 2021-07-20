@@ -1125,17 +1125,17 @@ fn extend_line(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text();
-    let pos = doc.selection(view.id).primary().min_width_1(text.slice(..));
+    let range = doc.selection(view.id).primary().min_width_1(text.slice(..));
 
-    let line_max = text.len_lines();
-    let start_line = text.char_to_line(pos.from()).min(line_max);
-    let end_line = (text.char_to_line(pos.to()) + count).min(line_max);
+    let start_line = text.char_to_line(range.from());
+    let end_line = (text.char_to_line(range.to().saturating_sub(1).max(range.from())) + count)
+        .min(text.len_lines());
 
     let start = text.line_to_char(start_line);
     let mut end = text.line_to_char(end_line);
 
-    if pos.from() == start && pos.to() == end {
-        end = text.line_to_char((end_line + 1).min(line_max));
+    if range.from() == start && range.to() == end {
+        end = text.line_to_char((end_line + 1).min(text.len_lines()));
     }
 
     doc.set_selection(view.id, Selection::single(start, end));
@@ -1148,12 +1148,15 @@ fn extend_to_line_bounds(cx: &mut Context) {
         view.id,
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text();
-            let start = text.line_to_char(text.char_to_line(range.from()));
-            let end = text
-                .line_to_char(text.char_to_line(range.to()) + 1)
-                .saturating_sub(1);
 
-            if range.anchor < range.head {
+            let start_line = text.char_to_line(range.from());
+            let end_line = (text.char_to_line(range.to().saturating_sub(1).max(range.from())) + 1)
+                .min(text.len_lines());
+
+            let start = text.line_to_char(start_line);
+            let end = text.line_to_char(end_line);
+
+            if range.anchor <= range.head {
                 Range::new(start, end)
             } else {
                 Range::new(end, start)
