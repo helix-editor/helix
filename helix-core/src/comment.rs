@@ -61,9 +61,9 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
         min_next_line = end + 1;
     }
 
-    changes.reserve(lines.len());
-
     let (commented, to_change, min, margin) = find_line_comment(&token, text, lines);
+
+    changes.reserve(to_change.len());
 
     for line in to_change {
         let pos = text.line_to_char(line) + min;
