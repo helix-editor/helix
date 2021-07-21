@@ -49,6 +49,10 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let text = doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();
 
+    // keep track of which lines have been affected, so that multiple
+    // selections on one line don't each try to change it.
+    let mut affected_lines: Vec<usize> = Vec::new();
+
     let token = token.unwrap_or("//");
     let comment = Tendril::from(format!("{} ", token));
 
@@ -61,9 +65,10 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
         changes.reserve((end - start).saturating_sub(skipped.len()));
 
         for line in lines {
-            if skipped.contains(&line) {
+            if skipped.contains(&line) || affected_lines.contains(&line) {
                 continue;
             }
+            affected_lines.push(line);
 
             let pos = text.line_to_char(line) + min;
 
