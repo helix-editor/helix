@@ -38,7 +38,6 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, TryFutureExt};
-use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
@@ -74,18 +73,6 @@ impl<'a> Context<'a> {
         on_next_key_callback: impl FnOnce(&mut Context, KeyEvent) + 'static,
     ) {
         self.on_next_key_callback = Some(Box::new(on_next_key_callback));
-    }
-
-    #[inline]
-    pub fn on_next_key_mode(&mut self, map: HashMap<KeyEvent, fn(&mut Context)>) {
-        let count = self.count;
-        self.on_next_key(move |cx, event| {
-            cx.count = count;
-            cx.editor.autoinfo = None;
-            if let Some(func) = map.get(&event) {
-                func(cx);
-            }
-        });
     }
 
     #[inline]
@@ -170,6 +157,10 @@ impl Command {
         self.name
     }
 
+    pub fn doc(&self) -> &'static str {
+        self.doc
+    }
+
     #[rustfmt::skip]
     commands!(
         move_char_left, "Move left",
@@ -247,7 +238,7 @@ impl Command {
         goto_line_end, "Goto end of line",
         // TODO: different description ?
         goto_line_end_newline, "Goto end of line",
-        goto_first_nonwhitespace, "Goto first non-whitespace char of line",
+        goto_first_nonwhitespace, "Goto first non-blank char in line",
         signature_help, "Show signature help",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",

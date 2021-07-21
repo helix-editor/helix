@@ -1,7 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     graphics::{CursorKind, Rect},
-    info::Info,
     theme::{self, Theme},
     tree::Tree,
     Document, DocumentId, RegisterSelection, View, ViewId,
@@ -33,7 +32,6 @@ pub struct Editor {
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
 
-    pub autoinfo: Option<&'static Info>,
     pub status_msg: Option<(String, Severity)>,
 }
 
@@ -66,7 +64,6 @@ impl Editor {
             theme_loader: themes,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
-            autoinfo: None,
             status_msg: None,
         }
     }

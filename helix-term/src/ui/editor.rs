@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::{KeymapResult, Keymaps},
+    keymap::{KeyTrie, KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -15,11 +15,12 @@ use helix_core::{
 use helix_view::{
     document::Mode,
     graphics::{CursorKind, Modifier, Rect, Style},
+    info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
@@ -30,6 +31,7 @@ pub struct EditorView {
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
     spinners: ProgressSpinners,
+    pub autoinfo: Option<Info>,
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -48,6 +50,7 @@ impl EditorView {
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            autoinfo: None,
         }
     }
 
@@ -569,9 +572,22 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
+        self.autoinfo = None;
         match self.keymaps.get_mut(&mode).unwrap().get(event) {
             KeymapResult::Matched(command) => command.execute(cxt),
-            KeymapResult::Pending(_map) => { /* render infobox */ }
+            KeymapResult::Pending(map) => {
+                let mut body = BTreeMap::new();
+                for (key, trie) in map.into_iter() {
+                    let desc = match trie {
+                        KeyTrie::Leaf(cmd) => cmd.doc(),
+                        KeyTrie::Node(_) => "",
+                    };
+                    // FIXME: multiple keys are ordered randomly (use BTreeSet)
+                    body.entry(desc).or_insert_with(Vec::new).push(key);
+                }
+                let info = Info::key("", body);
+                self.autoinfo = Some(info);
+            }
             k @ KeymapResult::NotFound | k @ KeymapResult::Cancelled(_) => return Some(k),
         }
         None
@@ -788,9 +804,8 @@ impl Component for EditorView {
             );
         }
 
-        if let Some(info) = std::mem::take(&mut cx.editor.autoinfo) {
+        if let Some(ref info) = self.autoinfo {
             info.render(area, surface, cx);
-            cx.editor.autoinfo = Some(info);
         }
 
         // render status msg
