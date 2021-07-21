@@ -286,7 +286,7 @@ impl Selection {
 
         // For 1-width cursor semantics.
         if range.anchor < range.head {
-            prev_grapheme_boundary(text, range.head)
+            prev_grapheme_boundary(text, range.head).max(range.anchor)
         } else {
             range.head
         }

@@ -97,9 +97,9 @@ impl View {
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let last_col = self.first_col + (self.area.width as usize - OFFSET);
 
-        if line > last_line.saturating_sub(scrolloff) {
+        if line > last_line.saturating_sub(scrolloff + 1) {
             // scroll down
-            self.first_line += line - (last_line.saturating_sub(scrolloff));
+            self.first_line += line - (last_line.saturating_sub(scrolloff + 1));
         } else if line < self.first_line + scrolloff {
             // scroll up
             self.first_line = line.saturating_sub(scrolloff);

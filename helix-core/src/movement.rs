@@ -7,9 +7,8 @@ use crate::{
     coords_at_pos,
     graphemes::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
-        prev_grapheme_boundary, RopeGraphemes,
+        prev_grapheme_boundary,
     },
-    line_ending::line_without_line_ending,
     pos_at_coords, Position, Range, RopeSlice,
 };
 
@@ -85,10 +84,8 @@ pub fn move_vertically(
         } else {
             (row + count).min(slice.len_lines().saturating_sub(1))
         };
-        let max_col = RopeGraphemes::new(line_without_line_ending(&slice, new_row)).count();
-        let new_col = col.max(horiz as usize).min(max_col);
-
-        pos_at_coords(slice, Position::new(new_row, new_col))
+        let new_col = col.max(horiz as usize);
+        pos_at_coords(slice, Position::new(new_row, new_col), true)
     };
 
     // Compute the new range according to the type of movement.
@@ -365,7 +362,7 @@ mod test {
     fn test_vertical_move() {
         let text = Rope::from("abcd\nefg\nwrs");
         let slice = text.slice(..);
-        let pos = pos_at_coords(slice, (0, 4).into());
+        let pos = pos_at_coords(slice, (0, 4).into(), true);
 
         let range = Range::new(pos, pos);
         assert_eq!(
@@ -381,7 +378,7 @@ mod test {
     fn horizontal_moves_through_single_line_text() {
         let text = Rope::from(SINGLE_LINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into());
+        let position = pos_at_coords(slice, (0, 0).into(), true);
 
         let mut range = Range::point(position);
 
@@ -404,7 +401,7 @@ mod test {
     fn horizontal_moves_through_multiline_text() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into());
+        let position = pos_at_coords(slice, (0, 0).into(), true);
 
         let mut range = Range::point(position);
 
@@ -431,7 +428,7 @@ mod test {
     fn selection_extending_moves_in_single_line_text() {
         let text = Rope::from(SINGLE_LINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into());
+        let position = pos_at_coords(slice, (0, 0).into(), true);
 
         let mut range = Range::point(position);
         let original_anchor = range.anchor;
@@ -452,7 +449,7 @@ mod test {
     fn vertical_moves_in_single_column() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into());
+        let position = pos_at_coords(slice, (0, 0).into(), true);
         let mut range = Range::point(position);
         let moves_and_expected_coordinates = IntoIter::new([
             ((Direction::Forward, 1usize), (1, 0)),
@@ -477,7 +474,7 @@ mod test {
     fn vertical_moves_jumping_column() {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into());
+        let position = pos_at_coords(slice, (0, 0).into(), true);
         let mut range = Range::point(position);
 
         enum Axis {
@@ -510,10 +507,10 @@ mod test {
     }
 
     #[test]
-    fn multibyte_character_column_jumps() {
+    fn multibyte_character_wide_column_jumps() {
         let text = Rope::from(MULTIBYTE_CHARACTER_SAMPLE);
         let slice = text.slice(..);
-        let position = pos_at_coords(slice, (0, 0).into());
+        let position = pos_at_coords(slice, (0, 0).into(), true);
         let mut range = Range::point(position);
 
         // FIXME: The behaviour captured in this test diverges from both Kakoune and Vim. These
@@ -524,10 +521,16 @@ mod test {
             V,
         }
         let moves_and_expected_coordinates = IntoIter::new([
-            // Places cursor at the fourth kana
-            ((Axis::H, Direction::Forward, 4), (0, 4)),
-            // Descent places cursor at the fourth character.
-            ((Axis::V, Direction::Forward, 1usize), (1, 4)),
+            // Places cursor at the fourth kana (each of which are double-wide,
+            // so the visual column is 8).
+            ((Axis::H, Direction::Forward, 4), (0, 8)),
+            // Descent places cursor at the 8th character.
+            ((Axis::V, Direction::Forward, 1usize), (1, 8)),
+            // Moving back a single-width character.
+            ((Axis::H, Direction::Backward, 1usize), (1, 7)),
+            // Jumping back up into the middle of a double-width character shifts
+            // the column to the start of that character.
+            ((Axis::V, Direction::Backward, 1usize), (0, 6)),
         ]);
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {

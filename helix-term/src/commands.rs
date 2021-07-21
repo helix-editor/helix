@@ -917,7 +917,7 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         .min(last_line.saturating_sub(scrolloff));
 
     let text = doc.text().slice(..);
-    let pos = pos_at_coords(text, Position::new(line, cursor.col)); // this func will properly truncate to line end
+    let pos = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
 
     // TODO: only manipulate main selection
     doc.set_selection(view.id, Selection::point(pos));
