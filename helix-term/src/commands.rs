@@ -215,6 +215,7 @@ impl Command {
         append_mode,
         command_mode,
         file_picker,
+        code_action,
         buffer_picker,
         symbol_picker,
         prepend_to_line,
@@ -3846,6 +3847,8 @@ mode_info! {
     "P" => paste_clipboard_before,
     /// replace selections with clipboard
     "R" => replace_selections_with_clipboard,
+    /// show available code actions for current selection
+    "a" => code_action,
     /// keep primary selection
     "space" => keep_primary_selection,
 }
