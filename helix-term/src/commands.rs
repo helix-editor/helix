@@ -1281,18 +1281,19 @@ fn append_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     enter_insert_mode(doc);
     doc.restore_cursor = true;
+    let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let to = if range.to() == range.from() {
-            // For 1-width cursor semantics.
-            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to())
-        } else {
-            range.to()
-        };
-        Range::new(range.from(), to)
-    });
+    // TODO: preserve selections, like in `Insert` mode.  Probably we'll want
+    // an explicit separate `Append` mode or something similar, so that we
+    // don't change the selection at all, and instead just display and edit
+    // things differently.
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| Range::new(range.to(), range.to()));
 
-    let end = doc.text().len_chars();
+    let end = text.len_chars();
 
     if selection.iter().any(|range| range.head == end) {
         let transaction = Transaction::change(
