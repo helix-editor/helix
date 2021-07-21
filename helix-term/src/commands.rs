@@ -138,13 +138,21 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
 /// A command is composed of a static name, and a function that takes the current state plus a count,
 /// and does a side-effect on the state (usually by creating and applying a transaction).
 #[derive(Copy, Clone)]
-pub struct Command(&'static str, fn(cx: &mut Context));
+pub struct Command {
+    name: &'static str,
+    fun: fn(cx: &mut Context),
+    doc: &'static str,
+}
 
 macro_rules! commands {
-    ( $($name:ident),* ) => {
+    ( $($name:ident, $doc:literal),* ) => {
         $(
             #[allow(non_upper_case_globals)]
-            pub const $name: Self = Self(stringify!($name), $name);
+            pub const $name: Self = Self {
+                name: stringify!($name),
+                fun: $name,
+                doc: $doc
+            };
         )*
 
         pub const COMMAND_LIST: &'static [Self] = &[
@@ -155,148 +163,150 @@ macro_rules! commands {
 
 impl Command {
     pub fn execute(&self, cx: &mut Context) {
-        (self.1)(cx);
+        (self.fun)(cx);
     }
 
     pub fn name(&self) -> &'static str {
-        self.0
+        self.name
     }
 
+    #[rustfmt::skip]
     commands!(
-        move_char_left,
-        move_char_right,
-        move_line_up,
-        move_line_down,
-        move_next_word_start,
-        move_prev_word_start,
-        move_next_word_end,
-        move_next_long_word_start,
-        move_prev_long_word_start,
-        move_next_long_word_end,
-        extend_next_word_start,
-        extend_prev_word_start,
-        extend_next_word_end,
-        find_till_char,
-        find_next_char,
-        extend_till_char,
-        extend_next_char,
-        till_prev_char,
-        find_prev_char,
-        extend_till_prev_char,
-        extend_prev_char,
-        replace,
-        page_up,
-        page_down,
-        half_page_up,
-        half_page_down,
-        extend_char_left,
-        extend_char_right,
-        extend_line_up,
-        extend_line_down,
-        select_all,
-        select_regex,
-        split_selection,
-        split_selection_on_newline,
-        search,
-        search_next,
-        extend_search_next,
-        search_selection,
-        extend_line,
-        extend_to_line_bounds,
-        delete_selection,
-        change_selection,
-        collapse_selection,
-        flip_selections,
-        insert_mode,
-        append_mode,
-        command_mode,
-        file_picker,
-        buffer_picker,
-        symbol_picker,
-        prepend_to_line,
-        append_to_line,
-        open_below,
-        open_above,
-        normal_mode,
-        select_mode,
-        exit_select_mode,
-        goto_definition,
-        goto_type_definition,
-        goto_implementation,
-        goto_file_start,
-        goto_file_end,
-        goto_reference,
-        goto_window_top,
-        goto_window_middle,
-        goto_window_bottom,
-        goto_last_accessed_file,
-        goto_first_diag,
-        goto_last_diag,
-        goto_next_diag,
-        goto_prev_diag,
-        goto_line_start,
-        goto_line_end,
-        goto_line_end_newline,
-        goto_first_nonwhitespace,
-        signature_help,
-        insert_tab,
-        insert_newline,
-        delete_char_backward,
-        delete_char_forward,
-        delete_word_backward,
-        undo,
-        redo,
-        yank,
-        yank_joined_to_clipboard,
-        yank_main_selection_to_clipboard,
-        replace_with_yanked,
-        replace_selections_with_clipboard,
-        paste_after,
-        paste_before,
-        paste_clipboard_after,
-        paste_clipboard_before,
-        indent,
-        unindent,
-        format_selections,
-        join_selections,
-        keep_selections,
-        keep_primary_selection,
-        completion,
-        hover,
-        toggle_comments,
-        expand_selection,
-        jump_forward,
-        jump_backward,
-        rotate_view,
-        hsplit,
-        vsplit,
-        wclose,
-        select_register,
-        align_view_top,
-        align_view_center,
-        align_view_bottom,
-        align_view_middle,
-        scroll_up,
-        scroll_down,
-        match_brackets,
-        surround_add,
-        surround_replace,
-        surround_delete,
-        select_textobject_around,
-        select_textobject_inner
+        move_char_left, "Move left",
+        move_char_right, "Move right",
+        move_line_up, "Move up",
+        move_line_down, "Move down",
+        extend_char_left, "Extend left",
+        extend_char_right, "Extend right",
+        extend_line_up, "Extend up",
+        extend_line_down, "Extend down",
+        move_next_word_start, "Move to beginning of next word",
+        move_prev_word_start, "Move to beginning of previous word",
+        move_next_word_end, "Move to end of next word",
+        move_next_long_word_start, "Move to beginning of next long word",
+        move_prev_long_word_start, "Move to beginning of previous long word",
+        move_next_long_word_end, "Move to end of next long word",
+        extend_next_word_start, "Extend to beginning of next word",
+        extend_prev_word_start, "Extend to beginning of previous word",
+        extend_next_word_end, "Extend to end of next word",
+        find_till_char, "Move till next occurance of char",
+        find_next_char, "Move to next occurance of char",
+        extend_till_char, "Extend till next occurance of char",
+        extend_next_char, "Extend to next occurance of char",
+        till_prev_char, "Move till previous occurance of char",
+        find_prev_char, "Move to previous occurance of char",
+        extend_till_prev_char, "Extend till previous occurance of char",
+        extend_prev_char, "Extend to previous occurance of char",
+        replace, "Replace with new char",
+        page_up, "Move page up",
+        page_down, "Move page down",
+        half_page_up, "Move half page up",
+        half_page_down, "Move half page down",
+        select_all, "Select whole document",
+        select_regex, "Select all regex matches inside selections",
+        split_selection, "Split selection into subselections on regex matches",
+        split_selection_on_newline, "Split selection on newlines",
+        search, "Search for regex pattern",
+        search_next, "Select next search match",
+        extend_search_next, "Add next search match to selection",
+        search_selection, "Use current selection as search pattern",
+        extend_line, "Select current line, if already selected, extend to next line",
+        extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
+        delete_selection, "Delete selection",
+        change_selection, "Change selection (delete and enter insert mode)",
+        collapse_selection, "Collapse selection onto a single cursor",
+        flip_selections, "Flip selection cursor and anchor",
+        insert_mode, "Insert before selection",
+        append_mode, "Insert after selection (append)",
+        command_mode, "Enter command mode",
+        file_picker, "Open file picker",
+        buffer_picker, "Open buffer picker",
+        symbol_picker, "Open symbol picker (current document)",
+        prepend_to_line, "Insert at start of line",
+        append_to_line, "Insert at end of line",
+        open_below, "Open new line below selection",
+        open_above, "Open new line above selection",
+        normal_mode, "Enter normal mode",
+        select_mode, "Enter selection extend mode",
+        exit_select_mode, "Exit selection mode",
+        goto_definition, "Goto definition",
+        goto_type_definition, "Goto type definition",
+        goto_implementation, "Goto implementation",
+        goto_file_start, "Goto start of file",
+        goto_file_end, "Goto end of file",
+        goto_reference, "Goto references",
+        goto_window_top, "Goto top of screen",
+        goto_window_middle, "Goto middle of screen",
+        goto_window_bottom, "Goto bottom of screen",
+        goto_last_accessed_file, "Goto last accessed/alternate file",
+        goto_first_diag, "Goto first diagnostic in document",
+        goto_last_diag, "Goto last diagnostic in document",
+        goto_next_diag, "Goto next diagnostic",
+        goto_prev_diag, "Goto previous diagnostic",
+        goto_line_start, "Goto start of line",
+        goto_line_end, "Goto end of line",
+        // TODO: different description ?
+        goto_line_end_newline, "Goto end of line",
+        goto_first_nonwhitespace, "Goto first non-whitespace char of line",
+        signature_help, "Show signature help",
+        insert_tab, "Insert tab char",
+        insert_newline, "Insert newline char",
+        delete_char_backward, "Delete previous char",
+        delete_char_forward, "Delete next char",
+        delete_word_backward, "Delete previous word",
+        undo, "Undo change",
+        redo, "Redo change",
+        yank, "Yank selection",
+        yank_joined_to_clipboard, "Join and yank selections to clipboard",
+        yank_main_selection_to_clipboard, "Yank main selection to clipboard",
+        replace_with_yanked, "Replace with yanked text",
+        replace_selections_with_clipboard, "Replace selections by clipboard content",
+        paste_after, "Paste after selection",
+        paste_before, "Paste before selection",
+        paste_clipboard_after, "Paste clipboard after selections",
+        paste_clipboard_before, "Paste clipboard before selections",
+        indent, "Indent selection",
+        unindent, "Unindent selection",
+        format_selections, "Format selection",
+        join_selections, "Join lines inside selection",
+        keep_selections, "Keep selections matching regex",
+        keep_primary_selection, "Keep only primary selection",
+        completion, "Invoke completion popup",
+        hover, "Show docs for item under cursor",
+        toggle_comments, "Comment/uncomment selections",
+        expand_selection, "Expand selection to parent syntax node",
+        jump_forward, "Jump forward on jumplist",
+        jump_backward, "Jump backward on jumplist",
+        rotate_view, "Switch to next window",
+        hsplit, "Horizontal bottom split",
+        vsplit, "Vertical right split",
+        wclose, "Close current window",
+        select_register, "Select register",
+        align_view_top, "Align line to top of screen",
+        align_view_center, "Vertically center line",
+        align_view_bottom, "Align line to bottom of screen",
+        align_view_middle, "Align line to middle of screen",
+        scroll_up, "Scroll view upwards",
+        scroll_down, "Scroll view downwards",
+        match_brackets, "Goto matching bracket",
+        surround_add, "Surround current selection",
+        surround_replace, "Replace surround char",
+        surround_delete, "Delete surround char",
+        select_textobject_around, "Select around textobject",
+        select_textobject_inner, "Select inside textobject"
     );
 }
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(name, _) = self;
+        let Command { name, .. } = self;
         f.debug_tuple("Command").field(name).finish()
     }
 }
 
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command(name, _) = self;
+        let Command { name, .. } = self;
         f.write_str(name)
     }
 }
@@ -308,7 +318,7 @@ impl std::str::FromStr for Command {
         Command::COMMAND_LIST
             .iter()
             .copied()
-            .find(|cmd| cmd.0 == s)
+            .find(|cmd| cmd.name == s)
             .ok_or_else(|| anyhow!("No command named '{}'", s))
     }
 }
