@@ -9,8 +9,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     register::Register,
-    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    search, selection, surround, textobject, ChangeSet, LineEnding, Position, Range, Rope,
+    RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -2162,6 +2162,50 @@ pub fn code_action(cx: &mut Context) {
                         lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
                     },
                     move |editor: &mut Editor, code_action, _action| {
+                        match code_action {
+                            lsp::CodeActionOrCommand::Command(command) => {
+                                log::debug!("command: {:?}", command);
+                            }
+                            lsp::CodeActionOrCommand::CodeAction(code_action) => {
+                                log::debug!("code action: {:?}", code_action);
+                                if let Some(ref edit) = code_action.edit {
+                                    if let Some(ref changes) = edit.document_changes {
+                                        match changes {
+                                            lsp::DocumentChanges::Edits(document_edits) => {
+                                                for document_edit in document_edits {
+                                                    for edit in &document_edit.edits {
+                                                        match edit {
+                                                            lsp::OneOf::Left(text_edit) => {
+                                                                let document = editor
+                                                                    .documents()
+                                                                    .find(|doc| {
+                                                                        doc.url().as_ref()
+                                                                            == Some(
+                                                                                &document_edit
+                                                                                    .text_document
+                                                                                    .uri,
+                                                                            )
+                                                                    })
+                                                                    .unwrap();
+
+                                                                let transaction = Transaction {
+                                                                    changes: todo!(),
+                                                                    selection: todo!(),
+                                                                };
+                                                            }
+                                                            lsp::OneOf::Right(
+                                                                annotated_text_edit,
+                                                            ) => todo!(),
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            lsp::DocumentChanges::Operations(_) => todo!(),
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         //
                     },
                 );
