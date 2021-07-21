@@ -1,16 +1,15 @@
 use crate::{
     find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
-use core::ops::Range;
 use std::borrow::Cow;
 
 fn find_line_comment(
     token: &str,
     text: RopeSlice,
-    lines: Range<usize>,
+    lines: impl IntoIterator<Item = usize>,
 ) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
-    let mut skipped = Vec::new();
+    let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for find_first_non_whitespace_char
     let mut margin = 1;
     for line in lines {
@@ -36,12 +35,12 @@ fn find_line_comment(
             if matches!(line_slice.get_char(pos + token.len()), Some(c) if c != ' ') {
                 margin = 0;
             }
-        } else {
-            // blank line
-            skipped.push(line);
+
+            // blank lines don't get pushed.
+            to_change.push(line);
         }
     }
-    (commented, skipped, min, margin)
+    (commented, to_change, min, margin)
 }
 
 #[must_use]
@@ -49,38 +48,35 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let text = doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();
 
-    // keep track of which lines have been affected, so that multiple
-    // selections on one line don't each try to change it.
-    let mut affected_lines: Vec<usize> = Vec::new();
-
     let token = token.unwrap_or("//");
     let comment = Tendril::from(format!("{} ", token));
 
+    let mut lines: Vec<usize> = Vec::new();
+
+    let mut min_next_line = 0;
     for selection in selection {
-        let start = text.char_to_line(selection.from());
-        let end = text.char_to_line(selection.to());
-        let lines = start..end + 1;
-        let (commented, skipped, min, margin) = find_line_comment(&token, text, lines.clone());
+        let start = text.char_to_line(selection.from()).max(min_next_line);
+        let end = text.char_to_line(selection.to()) + 1;
+        lines.extend(start..end);
+        min_next_line = end + 1;
+    }
 
-        changes.reserve((end - start).saturating_sub(skipped.len()));
+    changes.reserve(lines.len());
 
-        for line in lines {
-            if skipped.contains(&line) || affected_lines.contains(&line) {
-                continue;
-            }
-            affected_lines.push(line);
+    let (commented, to_change, min, margin) = find_line_comment(&token, text, lines);
 
-            let pos = text.line_to_char(line) + min;
+    for line in to_change {
+        let pos = text.line_to_char(line) + min;
 
-            if !commented {
-                // comment line
-                changes.push((pos, pos, Some(comment.clone())))
-            } else {
-                // uncomment line
-                changes.push((pos, pos + token.len() + margin, None))
-            }
+        if !commented {
+            // comment line
+            changes.push((pos, pos, Some(comment.clone())));
+        } else {
+            // uncomment line
+            changes.push((pos, pos + token.len() + margin, None));
         }
     }
+
     Transaction::change(doc, changes.into_iter())
 }
 
