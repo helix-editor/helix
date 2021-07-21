@@ -3000,9 +3000,13 @@ fn redo(cx: &mut Context) {
 
 fn yank(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
     let values: Vec<String> = doc
         .selection(view.id)
-        .fragments(doc.text().slice(..))
+        .clone()
+        .min_width_1(text)
+        .fragments(text)
         .map(Cow::into_owned)
         .collect();
 
@@ -3021,10 +3025,13 @@ fn yank(cx: &mut Context) {
 
 fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
 
     let values: Vec<String> = doc
         .selection(view.id)
-        .fragments(doc.text().slice(..))
+        .clone()
+        .min_width_1(text)
+        .fragments(text)
         .map(Cow::into_owned)
         .collect();
 
@@ -3052,11 +3059,13 @@ fn yank_joined_to_clipboard(cx: &mut Context) {
 
 fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
 
     let value = doc
         .selection(view.id)
         .primary()
-        .fragment(doc.text().slice(..));
+        .min_width_1(text)
+        .fragment(text);
 
     if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
         bail!("Couldn't set system clipboard content: {:?}", e);
