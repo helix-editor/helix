@@ -53,6 +53,26 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
 
         changes.reserve((end - start).saturating_sub(skipped.len()));
 
+        // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
+        // a margin of 0 is used for all lines.
+        let mut margin = 1;
+        if commented {
+            for line in lines.clone() {
+                if skipped.contains(&line) {
+                    continue;
+                }
+
+                let pos = text.line_to_char(line) + min;
+
+                if let Some(c) = text.get_char(pos + token.len()) {
+                    if c != ' ' {
+                        margin = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
         for line in lines {
             if skipped.contains(&line) {
                 continue;
@@ -65,7 +85,6 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
                 changes.push((pos, pos, Some(comment.clone())))
             } else {
                 // uncomment line
-                let margin = 1; // TODO: margin is hardcoded 1 but could easily be 0
                 changes.push((pos, pos + token.len() + margin, None))
             }
         }
