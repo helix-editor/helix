@@ -98,8 +98,8 @@ mod test {
         let text = state.doc.slice(..);
 
         let res = find_line_comment("//", text, 0..3);
-        // (commented = true, skipped = [line 1], min = col 2, margin = 1)
-        assert_eq!(res, (false, vec![1], 2, 1));
+        // (commented = true, to_change = [line 0, line 2], min = col 2, margin = 1)
+        assert_eq!(res, (false, vec![0, 2], 2, 1));
 
         // comment
         let transaction = toggle_line_comments(&state.doc, &state.selection, None);
