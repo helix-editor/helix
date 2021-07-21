@@ -2092,7 +2092,7 @@ fn symbol_picker(cx: &mut Context) {
 }
 
 pub fn workspace_symbol_picker(cx: &mut Context) {
-    let (view, doc) = cx.current();
+    let (view, doc) = current!(cx.editor);
 
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
@@ -2113,7 +2113,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                     |symbol| (&symbol.name).into(),
                     move |editor: &mut Editor, symbol, _action| {
                         push_jump(editor);
-                        let (view, doc) = editor.current();
+                        let (view, doc) = current!(editor);
 
                         // if let Some(range) =
                         //     lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
@@ -2130,7 +2130,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 }
 
 pub fn code_action(cx: &mut Context) {
-    let (view, doc) = cx.current();
+    let (view, doc) = current!(cx.editor);
 
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
