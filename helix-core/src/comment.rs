@@ -8,10 +8,11 @@ fn find_line_comment(
     token: &str,
     text: RopeSlice,
     lines: Range<usize>,
-) -> (bool, Vec<usize>, usize) {
+) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
     let mut skipped = Vec::new();
     let mut min = usize::MAX; // minimum col for find_first_non_whitespace_char
+    let mut margin = 1;
     for line in lines {
         let line_slice = text.line(line);
         if let Some(pos) = find_first_non_whitespace_char(line_slice) {
@@ -29,12 +30,18 @@ fn find_line_comment(
                 // considered uncommented.
                 commented = false;
             }
+
+            // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
+            // a margin of 0 is used for all lines.
+            if matches!(line_slice.get_char(pos + token.len()), Some(c) if c != ' ') {
+                margin = 0;
+            }
         } else {
             // blank line
             skipped.push(line);
         }
     }
-    (commented, skipped, min)
+    (commented, skipped, min, margin)
 }
 
 #[must_use]
@@ -49,29 +56,9 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
         let start = text.char_to_line(selection.from());
         let end = text.char_to_line(selection.to());
         let lines = start..end + 1;
-        let (commented, skipped, min) = find_line_comment(&token, text, lines.clone());
+        let (commented, skipped, min, margin) = find_line_comment(&token, text, lines.clone());
 
         changes.reserve((end - start).saturating_sub(skipped.len()));
-
-        // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
-        // a margin of 0 is used for all lines.
-        let mut margin = 1;
-        if commented {
-            for line in lines.clone() {
-                if skipped.contains(&line) {
-                    continue;
-                }
-
-                let pos = text.line_to_char(line) + min;
-
-                if let Some(c) = text.get_char(pos + token.len()) {
-                    if c != ' ' {
-                        margin = 0;
-                        break;
-                    }
-                }
-            }
-        }
 
         for line in lines {
             if skipped.contains(&line) {
