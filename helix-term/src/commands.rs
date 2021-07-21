@@ -9,7 +9,7 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     register::Register,
-    search, selection, surround, textobject, ChangeSet, LineEnding, Position, Range, Rope,
+    search, selection, surround, textobject, Change, LineEnding, Position, Range, Rope,
     RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 
@@ -2130,6 +2130,34 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     )
 }
 
+fn apply_edit(
+    editor: &mut Editor,
+    edited_document: &lsp::OptionalVersionedTextDocumentIdentifier,
+    offset_encoding: OffsetEncoding,
+    edit: &lsp::OneOf<lsp::TextEdit, lsp::AnnotatedTextEdit>,
+) {
+    let (view, doc) = current!(editor);
+    assert_eq!(doc.url().unwrap(), edited_document.uri);
+
+    match edit {
+        lsp::OneOf::Left(text_edit) => {
+            let lsp_pos_to_pos =
+                |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
+
+            // This clone probably could be optimized if Picker::new would give T instead of &T
+            let text_replacement = Tendril::from(text_edit.new_text.clone());
+            let change: Change = (
+                lsp_pos_to_pos(text_edit.range.start),
+                lsp_pos_to_pos(text_edit.range.end),
+                Some(text_replacement.clone().into()),
+            );
+            let transaction = Transaction::change(doc.text(), std::iter::once(change));
+            doc.apply(&transaction, view.id);
+        }
+        lsp::OneOf::Right(_annotated_text_edit) => todo!(),
+    }
+}
+
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -2137,7 +2165,6 @@ pub fn code_action(cx: &mut Context) {
         Some(language_server) => language_server,
         None => return,
     };
-    let offset_encoding = language_server.offset_encoding();
 
     let range = range_to_lsp_range(
         doc.text(),
@@ -2146,10 +2173,11 @@ pub fn code_action(cx: &mut Context) {
     );
 
     let future = language_server.code_actions(doc.identifier(), range);
+    let offset_encoding = language_server.offset_encoding().clone();
 
     cx.callback(
         future,
-        move |editor: &mut Editor,
+        move |_editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CodeActionResponse>| {
             if let Some(actions) = response {
@@ -2162,57 +2190,47 @@ pub fn code_action(cx: &mut Context) {
                         lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
                     },
                     move |editor: &mut Editor, code_action, _action| {
-                        match code_action {
-                            lsp::CodeActionOrCommand::Command(command) => {
-                                log::debug!("command: {:?}", command);
-                            }
-                            lsp::CodeActionOrCommand::CodeAction(code_action) => {
-                                log::debug!("code action: {:?}", code_action);
-                                if let Some(ref edit) = code_action.edit {
-                                    if let Some(ref changes) = edit.document_changes {
-                                        match changes {
-                                            lsp::DocumentChanges::Edits(document_edits) => {
-                                                for document_edit in document_edits {
-                                                    for edit in &document_edit.edits {
-                                                        match edit {
-                                                            lsp::OneOf::Left(text_edit) => {
-                                                                let document = editor
-                                                                    .documents()
-                                                                    .find(|doc| {
-                                                                        doc.url().as_ref()
-                                                                            == Some(
-                                                                                &document_edit
-                                                                                    .text_document
-                                                                                    .uri,
-                                                                            )
-                                                                    })
-                                                                    .unwrap();
-
-                                                                let transaction = Transaction {
-                                                                    changes: todo!(),
-                                                                    selection: todo!(),
-                                                                };
-                                                            }
-                                                            lsp::OneOf::Right(
-                                                                annotated_text_edit,
-                                                            ) => todo!(),
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            lsp::DocumentChanges::Operations(_) => todo!(),
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        //
+                        make_code_action_callback(editor, code_action, offset_encoding)
                     },
                 );
                 compositor.push(Box::new(picker))
             }
         },
     )
+}
+
+fn make_code_action_callback(
+    editor: &mut Editor,
+    code_action: &lsp::CodeActionOrCommand,
+    offset_encoding: OffsetEncoding,
+) {
+    match code_action {
+        lsp::CodeActionOrCommand::Command(command) => {
+            log::debug!("command: {:?}", command);
+        }
+        lsp::CodeActionOrCommand::CodeAction(code_action) => {
+            log::debug!("code action: {:?}", code_action);
+            if let Some(ref edit) = code_action.edit {
+                if let Some(ref changes) = edit.document_changes {
+                    match changes {
+                        lsp::DocumentChanges::Edits(document_edits) => {
+                            for document_edit in document_edits {
+                                for edit in &document_edit.edits {
+                                    apply_edit(
+                                        editor,
+                                        &document_edit.text_document,
+                                        offset_encoding,
+                                        edit,
+                                    );
+                                }
+                            }
+                        }
+                        lsp::DocumentChanges::Operations(_) => todo!(),
+                    }
+                }
+            }
+        }
+    }
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection
