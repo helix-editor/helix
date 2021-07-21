@@ -24,19 +24,34 @@ macro_rules! key {
     };
 }
 
+/// Macro for defining the root of a `Keymap` object. Example:
+///
+/// ```
+/// let normal_mode = keymap!{
+///     "i" => insert_mode,
+///     "g" => {
+///         "g" => goto_top,
+///         "e" => goto_end
+///     },
+///     "j" | "down" => move_down
+/// };
+/// let keymap = Keymap::new(normal_mode);
+/// ```
 macro_rules! keymap {
     (@trie $cmd:ident) => { KeyTrie::Leaf(Command::$cmd) };
-    (@trie { $($key:literal => $value:tt),* }) => {
-        KeyTrie::Node(keymap!($($key => $value),*))
+    (@trie { $($($key:literal)|+ => $value:tt),* }) => {
+        KeyTrie::Node(keymap!($($($key)|+ => $value),*))
     };
-    ($($key:literal => $value:tt),*) => {
+    ($($($key:literal)|+ => $value:tt),*) => {
         {
             // taken from the hashmap! macro since a macro cannot
             // take output of another macro as input
-            let _cap = hashmap!(@count $($key),*);
+            let _cap = hashmap!(@count $($($key),+),*);
             let mut _map = ::std::collections::HashMap::with_capacity(_cap);
             $(
-                let _ = _map.insert($key.parse::<KeyEvent>().unwrap(), keymap!(@trie $value));
+                $(
+                    let _ = _map.insert($key.parse::<KeyEvent>().unwrap(), keymap!(@trie $value));
+                )+
             )*
             _map
         }
@@ -155,15 +170,10 @@ impl DerefMut for Keymaps {
 impl Default for Keymaps {
     fn default() -> Keymaps {
         let normal = keymap!(
-            "h" => move_char_left,
-            "j" => move_line_down,
-            "k" => move_line_up,
-            "l" => move_char_right,
-
-            "left" => move_char_left,
-            "down" => move_line_down,
-            "up" => move_line_up,
-            "right" => move_char_right,
+            "h" | "left" => move_char_left,
+            "j" | "down" => move_line_down,
+            "k" | "up" => move_line_up,
+            "l" | "right" => move_char_right,
 
             "t" => find_till_char,
             "f" => find_next_char,
@@ -277,19 +287,16 @@ impl Default for Keymaps {
             // C / altC = copy (repeat) selections on prev/next lines
 
             "esc" => normal_mode,
-            "pageup" => page_up,
-            "pagedown" => page_down,
-            "C-b" => page_up,
-            "C-f" => page_down,
+            "C-b" | "pageup" => page_up,
+            "C-f" | "pagedown" => page_down,
             "C-u" => half_page_up,
             "C-d" => half_page_down,
 
             "C-w" => {
-                "w" => rotate_view,
-                "C-w" => rotate_view,
-                "h" => hsplit,
-                "v" => vsplit,
-                "q" => wclose
+                "C-w" | "w" => rotate_view,
+                "C-h" | "h" => hsplit,
+                "C-v" | "v" => vsplit,
+                "C-q" | "q" => wclose
             },
 
             // move under <space>c
@@ -308,11 +315,10 @@ impl Default for Keymaps {
                 "b" => buffer_picker,
                 "s" => symbol_picker,
                 "w" => {
-                    "w" => rotate_view,
-                    "C-w" => rotate_view,
-                    "h" => hsplit,
-                    "v" => vsplit,
-                    "q" => wclose
+                    "C-w" | "w" => rotate_view,
+                    "C-h" | "h" => hsplit,
+                    "C-v" | "v" => vsplit,
+                    "C-q" | "q" => wclose
                 },
                 "y" => yank_joined_to_clipboard,
                 "Y" => yank_main_selection_to_clipboard,
@@ -323,8 +329,7 @@ impl Default for Keymaps {
             },
             "z" => {
                 "t" => align_view_top,
-                "z" => align_view_center,
-                "c" => align_view_center,
+                "z" | "c" => align_view_center,
                 "b" => align_view_bottom,
                 "m" => align_view_middle,
                 "k" => scroll_up,
@@ -339,15 +344,10 @@ impl Default for Keymaps {
         let mut select = normal.clone();
         select.extend(
             keymap!(
-                "h" => extend_char_left,
-                "j" => extend_line_down,
-                "k" => extend_line_up,
-                "l" => extend_char_right,
-
-                "left" => extend_char_left,
-                "down" => extend_line_down,
-                "up" => extend_line_up,
-                "right" => extend_char_right,
+                "h" | "left" => extend_char_left,
+                "j" | "down" => extend_line_down,
+                "k" | "up" => extend_line_up,
+                "l" | "right" => extend_char_right,
 
                 "w" => extend_next_word_start,
                 "b" => extend_prev_word_start,
