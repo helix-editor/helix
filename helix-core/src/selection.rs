@@ -109,8 +109,21 @@ impl Range {
     /// Map a range through a set of changes. Returns a new range representing the same position
     /// after the changes are applied.
     pub fn map(self, changes: &ChangeSet) -> Self {
-        let anchor = changes.map_pos(self.anchor, Assoc::After);
-        let head = changes.map_pos(self.head, Assoc::After);
+        use std::cmp::Ordering;
+        let (anchor, head) = match self.anchor.cmp(&self.head) {
+            Ordering::Equal => (
+                changes.map_pos(self.anchor, Assoc::After),
+                changes.map_pos(self.head, Assoc::After),
+            ),
+            Ordering::Less => (
+                changes.map_pos(self.anchor, Assoc::After),
+                changes.map_pos(self.head, Assoc::Before),
+            ),
+            Ordering::Greater => (
+                changes.map_pos(self.anchor, Assoc::Before),
+                changes.map_pos(self.head, Assoc::After),
+            ),
+        };
 
         // We want to return a new `Range` with `horiz == None` every time,
         // even if the anchor and head haven't changed, because we don't
