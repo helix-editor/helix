@@ -247,6 +247,26 @@ impl Client {
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
+                    code_action: Some(lsp::CodeActionClientCapabilities {
+                        code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
+                            code_action_kind: lsp::CodeActionKindLiteralSupport {
+                                value_set: [
+                                    lsp::CodeActionKind::EMPTY,
+                                    lsp::CodeActionKind::QUICKFIX,
+                                    lsp::CodeActionKind::REFACTOR,
+                                    lsp::CodeActionKind::REFACTOR_EXTRACT,
+                                    lsp::CodeActionKind::REFACTOR_INLINE,
+                                    lsp::CodeActionKind::REFACTOR_REWRITE,
+                                    lsp::CodeActionKind::SOURCE,
+                                    lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                ]
+                                .iter()
+                                .map(|kind| kind.as_str().to_string())
+                                .collect(),
+                            },
+                        }),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
