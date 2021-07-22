@@ -6,7 +6,7 @@ use std::{collections::BTreeMap, fmt::Write};
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
     /// Title kept as static str for now.
-    pub title: &'static str,
+    pub title: String,
     /// Text body, should contains newline.
     pub text: String,
     /// Body width.
@@ -19,7 +19,7 @@ impl Info {
     // body is a BTreeMap instead of a HashMap because keymaps are represented
     // with nested hashmaps with no ordering, and each invocation of infobox would
     // show different orders of items
-    pub fn key(title: &'static str, body: BTreeMap<&'static str, Vec<KeyEvent>>) -> Info {
+    pub fn key(title: &str, body: BTreeMap<&str, Vec<KeyEvent>>) -> Info {
         let (lpad, mpad, rpad) = (1, 2, 1);
         let keymaps_width: u16 = body
             .values()
@@ -51,7 +51,7 @@ impl Info {
             writeln!(text, "{}", desc).ok();
         }
         Info {
-            title,
+            title: title.to_string(),
             text,
             width,
             height,

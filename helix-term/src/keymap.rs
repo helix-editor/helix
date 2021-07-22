@@ -1,10 +1,10 @@
 pub use crate::commands::Command;
 use crate::config::Config;
 use helix_core::hashmap;
-use helix_view::{document::Mode, input::KeyEvent};
+use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     ops::{Deref, DerefMut},
 };
 
@@ -27,22 +27,27 @@ macro_rules! key {
 /// Macro for defining the root of a `Keymap` object. Example:
 ///
 /// ```
-/// let normal_mode = keymap!{
+/// let normal_mode = keymap!({ "Normal mode"
 ///     "i" => insert_mode,
-///     "g" => {
+///     "g" => { "Goto mode"
 ///         "g" => goto_top,
 ///         "e" => goto_end
 ///     },
 ///     "j" | "down" => move_down
-/// };
+/// });
 /// let keymap = Keymap::new(normal_mode);
 /// ```
+#[macro_export]
 macro_rules! keymap {
     (@trie $cmd:ident) => { KeyTrie::Leaf(Command::$cmd) };
-    (@trie { $($($key:literal)|+ => $value:tt),* }) => {
-        KeyTrie::Node(keymap!($($($key)|+ => $value),*))
+    (@trie
+        { $label:literal $($($key:literal)|+ => $value:tt),* }
+    ) => {
+        keymap!({ $label $($($key)|+ => $value),* })
     };
-    ($($($key:literal)|+ => $value:tt),*) => {
+    (
+        { $label:literal $($($key:literal)|+ => $value:tt),* }
+    ) => {
         {
             // taken from the hashmap! macro since a macro cannot
             // take output of another macro as input
@@ -53,12 +58,84 @@ macro_rules! keymap {
                     let _ = _map.insert($key.parse::<KeyEvent>().unwrap(), keymap!(@trie $value));
                 )+
             )*
-            _map
+            KeyTrie::Node(KeyTrieNode::new($label, _map))
         }
     };
 }
 
-type KeyTrieNode = HashMap<KeyEvent, KeyTrie>;
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct KeyTrieNode {
+    /// A label for keys coming under this node, like "Goto mode"
+    #[serde(skip)]
+    name: String,
+    #[serde(flatten)]
+    map: HashMap<KeyEvent, KeyTrie>,
+}
+
+impl KeyTrieNode {
+    pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>) -> Self {
+        Self {
+            name: name.to_string(),
+            map,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Merge another Node in. Leaves and subnodes from the other node replace
+    /// corresponding keyevent in self, except when both other and self have
+    /// subnodes for same key. In that case the merge is recursive.
+    pub fn merge(&mut self, mut other: Self) {
+        for (key, trie) in std::mem::take(&mut other.map) {
+            if let Some(KeyTrie::Node(node)) = self.map.get_mut(&key) {
+                if let KeyTrie::Node(other_node) = trie {
+                    let mut n = std::mem::take(node);
+                    n.merge(other_node);
+                    let _ = std::mem::replace(node, n);
+                }
+            } else {
+                self.map.insert(key, trie.clone());
+            }
+        }
+    }
+}
+
+impl From<KeyTrieNode> for Info {
+    fn from(node: KeyTrieNode) -> Self {
+        let mut body = BTreeMap::new();
+        for (&key, trie) in node.iter() {
+            let desc = match trie {
+                KeyTrie::Leaf(cmd) => cmd.doc(),
+                KeyTrie::Node(n) => n.name(),
+            };
+            // FIXME: multiple keys are ordered randomly (use BTreeSet)
+            body.entry(desc).or_insert_with(Vec::new).push(key);
+        }
+        Info::key(node.name(), body)
+    }
+}
+
+impl Default for KeyTrieNode {
+    fn default() -> Self {
+        Self::new("", HashMap::new())
+    }
+}
+
+impl Deref for KeyTrieNode {
+    type Target = HashMap<KeyEvent, KeyTrie>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+
+impl DerefMut for KeyTrieNode {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.map
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
@@ -68,6 +145,27 @@ pub enum KeyTrie {
 }
 
 impl KeyTrie {
+    pub fn node(&self) -> Option<&KeyTrieNode> {
+        match *self {
+            KeyTrie::Node(ref node) => Some(node),
+            KeyTrie::Leaf(_) => None,
+        }
+    }
+
+    pub fn node_mut(&mut self) -> Option<&mut KeyTrieNode> {
+        match *self {
+            KeyTrie::Node(ref mut node) => Some(node),
+            KeyTrie::Leaf(_) => None,
+        }
+    }
+
+    /// Merge another KeyTrie in, assuming that this KeyTrie and the other
+    /// are both Nodes. Panics otherwise.
+    pub fn merge_nodes(&mut self, mut other: Self) {
+        let node = std::mem::take(other.node_mut().unwrap());
+        self.node_mut().unwrap().merge(node);
+    }
+
     pub fn search(&self, keys: &[KeyEvent]) -> Option<&KeyTrie> {
         let mut trie = self;
         for key in keys {
@@ -95,14 +193,15 @@ pub enum KeymapResult {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Keymap {
+    /// Always a Node
     #[serde(flatten)]
-    pub root: KeyTrieNode,
+    pub root: KeyTrie,
     #[serde(skip)]
     state: Vec<KeyEvent>,
 }
 
 impl Keymap {
-    pub fn new(root: KeyTrieNode) -> Self {
+    pub fn new(root: KeyTrie) -> Self {
         Keymap {
             root,
             state: Vec::new(),
@@ -111,8 +210,8 @@ impl Keymap {
 
     /// Lookup `key` in the keymap to try and find a command to execute
     pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
-        let first = self.state.get(0).unwrap_or(&key);
-        let trie = match self.root.get(first) {
+        let &first = self.state.get(0).unwrap_or(&key);
+        let trie = match self.root.search(&[first]) {
             Some(&KeyTrie::Leaf(cmd)) => return KeymapResult::Matched(cmd),
             None => return KeymapResult::NotFound,
             Some(t) => t,
@@ -127,25 +226,25 @@ impl Keymap {
             None => KeymapResult::Cancelled(self.state.drain(..).collect()),
         }
     }
+
+    pub fn merge(&mut self, other: Self) {
+        self.root.merge_nodes(other.root);
+        // let node = std::mem::take(other.root.node_mut().unwrap());
+        // self.root.node_mut().unwrap().merge(node);
+    }
 }
 
 impl Deref for Keymap {
     type Target = KeyTrieNode;
 
     fn deref(&self) -> &Self::Target {
-        &self.root
-    }
-}
-
-impl DerefMut for Keymap {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.root
+        &self.root.node().unwrap()
     }
 }
 
 impl Default for Keymap {
     fn default() -> Self {
-        Self::new(HashMap::new())
+        Self::new(KeyTrie::Node(KeyTrieNode::default()))
     }
 }
 
@@ -169,7 +268,7 @@ impl DerefMut for Keymaps {
 
 impl Default for Keymaps {
     fn default() -> Keymaps {
-        let normal = keymap!(
+        let normal = keymap!({ "Normal mode"
             "h" | "left" => move_char_left,
             "j" | "down" => move_line_down,
             "k" | "up" => move_line_up,
@@ -194,7 +293,7 @@ impl Default for Keymaps {
             "E" => move_next_long_word_end,
 
             "v" => select_mode,
-            "g" => {
+            "g" => { "Goto mode"
                 "g" => goto_file_start,
                 "e" => goto_file_end,
                 "h" => goto_line_start,
@@ -234,7 +333,7 @@ impl Default for Keymaps {
             "X" => extend_to_line_bounds,
             // crop_to_whole_line
 
-            "m" => {
+            "m" => { "Match mode"
                 "m" => match_brackets,
                 "s" => surround_add,
                 "r" => surround_replace,
@@ -242,11 +341,11 @@ impl Default for Keymaps {
                 "a" => select_textobject_around,
                 "i" => select_textobject_inner
             },
-            "[" => {
+            "[" => { "Bracket mode"
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag
             },
-            "]" => {
+            "]" => { "Bracket mode"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag
             },
@@ -292,7 +391,7 @@ impl Default for Keymaps {
             "C-u" => half_page_up,
             "C-d" => half_page_down,
 
-            "C-w" => {
+            "C-w" => { "Window mode"
                 "C-w" | "w" => rotate_view,
                 "C-h" | "h" => hsplit,
                 "C-v" | "v" => vsplit,
@@ -310,11 +409,11 @@ impl Default for Keymaps {
             "C-o" => jump_backward,
             // "C-s" => save_selection,
 
-            "space" => {
+            "space" => { "Space mode"
                 "f" => file_picker,
                 "b" => buffer_picker,
                 "s" => symbol_picker,
-                "w" => {
+                "w" => { "Window mode"
                     "C-w" | "w" => rotate_view,
                     "C-h" | "h" => hsplit,
                     "C-v" | "v" => vsplit,
@@ -327,7 +426,7 @@ impl Default for Keymaps {
                 "R" => replace_selections_with_clipboard,
                 "space" => keep_primary_selection
             },
-            "z" => {
+            "z" => { "View mode"
                 "t" => align_view_top,
                 "z" | "c" => align_view_center,
                 "b" => align_view_bottom,
@@ -337,34 +436,31 @@ impl Default for Keymaps {
             },
 
             "\"" => select_register
-        );
+        });
         // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
         // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
         // because some selection operations can now be done from normal mode, some from select mode.
         let mut select = normal.clone();
-        select.extend(
-            keymap!(
-                "h" | "left" => extend_char_left,
-                "j" | "down" => extend_line_down,
-                "k" | "up" => extend_line_up,
-                "l" | "right" => extend_char_right,
+        select.merge_nodes(keymap!({ "Select mode"
+            "h" | "left" => extend_char_left,
+            "j" | "down" => extend_line_down,
+            "k" | "up" => extend_line_up,
+            "l" | "right" => extend_char_right,
 
-                "w" => extend_next_word_start,
-                "b" => extend_prev_word_start,
-                "e" => extend_next_word_end,
+            "w" => extend_next_word_start,
+            "b" => extend_prev_word_start,
+            "e" => extend_next_word_end,
 
-                "t" => extend_till_char,
-                "f" => extend_next_char,
-                "T" => extend_till_prev_char,
-                "F" => extend_prev_char,
+            "t" => extend_till_char,
+            "f" => extend_next_char,
+            "T" => extend_till_prev_char,
+            "F" => extend_prev_char,
 
-                "home" => goto_line_start,
-                "end" => goto_line_end,
-                "esc" => exit_select_mode
-            )
-            .into_iter(),
-        );
-        let insert = keymap!(
+            "home" => goto_line_start,
+            "end" => goto_line_end,
+            "esc" => exit_select_mode
+        }));
+        let insert = keymap!({ "Insert mode"
             "esc" => normal_mode,
 
             "backspace" => delete_char_backward,
@@ -383,7 +479,7 @@ impl Default for Keymaps {
             "end" => goto_line_end_newline,
 
             "C-x" => completion
-        );
+        });
         Keymaps(hashmap!(
             Mode::Normal => Keymap::new(normal),
             Mode::Select => Keymap::new(select),
@@ -399,7 +495,7 @@ pub fn merge_keys(mut config: Config) -> Config {
     // will disable all other default mappings under "g")
     let mut delta = std::mem::take(&mut config.keys);
     for (mode, keys) in &mut *config.keys {
-        keys.extend(delta.remove(mode).unwrap_or_default().root)
+        keys.merge(delta.remove(mode).unwrap_or_default())
     }
     config
 }
@@ -407,19 +503,14 @@ pub fn merge_keys(mut config: Config) -> Config {
 #[test]
 fn merge_partial_keys() {
     use helix_view::keyboard::{KeyCode, KeyModifiers};
-    use KeyTrie::*;
     let config = Config {
         keys: Keymaps(hashmap! {
-            Mode::Normal => Keymap::new(hashmap! {
-                KeyEvent {
-                    code: KeyCode::Char('i'),
-                    modifiers: KeyModifiers::NONE,
-                } => Leaf(Command::normal_mode),
-                KeyEvent { // key that does not exist
-                    code: KeyCode::Char('无'),
-                    modifiers: KeyModifiers::NONE,
-                } => Leaf(Command::insert_mode),
-            }),
+            Mode::Normal => Keymap::new(
+                keymap!({ "Normal mode"
+                    "i" => normal_mode,
+                    "无" => insert_mode
+                })
+            )
         }),
         ..Default::default()
     };

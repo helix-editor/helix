@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::{KeyTrie, KeymapResult, Keymaps},
+    keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -20,7 +20,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, collections::BTreeMap};
+use std::borrow::Cow;
 
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
@@ -575,19 +575,7 @@ impl EditorView {
         self.autoinfo = None;
         match self.keymaps.get_mut(&mode).unwrap().get(event) {
             KeymapResult::Matched(command) => command.execute(cxt),
-            KeymapResult::Pending(map) => {
-                let mut body = BTreeMap::new();
-                for (key, trie) in map.into_iter() {
-                    let desc = match trie {
-                        KeyTrie::Leaf(cmd) => cmd.doc(),
-                        KeyTrie::Node(_) => "",
-                    };
-                    // FIXME: multiple keys are ordered randomly (use BTreeSet)
-                    body.entry(desc).or_insert_with(Vec::new).push(key);
-                }
-                let info = Info::key("", body);
-                self.autoinfo = Some(info);
-            }
+            KeymapResult::Pending(node) => self.autoinfo = Some(node.into()),
             k @ KeymapResult::NotFound | k @ KeymapResult::Cancelled(_) => return Some(k),
         }
         None
