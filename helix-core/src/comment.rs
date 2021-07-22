@@ -12,6 +12,7 @@ fn find_line_comment(
     let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for find_first_non_whitespace_char
     let mut margin = 1;
+    let token_len = token.chars().count();
     for line in lines {
         let line_slice = text.line(line);
         if let Some(pos) = find_first_non_whitespace_char(line_slice) {
@@ -32,7 +33,7 @@ fn find_line_comment(
 
             // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
             // a margin of 0 is used for all lines.
-            if matches!(line_slice.get_char(pos + token.len()), Some(c) if c != ' ') {
+            if matches!(line_slice.get_char(pos + token_len), Some(c) if c != ' ') {
                 margin = 0;
             }
 
