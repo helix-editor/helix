@@ -1,4 +1,5 @@
 # Helix
+> This is for ***users*** only. If you are interested in contributing, have a look at [CONTRIBUTING.md](./CONTRIBUTING.md). If you have a doubt, consider asking it in [discussions](https://github.com/helix-editor/helix/discussions) or [Matrix Space](https://matrix.to/#/#helix-community:matrix.org)(Matrix Space is more active).
 
 
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
