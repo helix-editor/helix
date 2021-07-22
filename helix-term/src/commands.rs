@@ -2139,22 +2139,30 @@ fn apply_edit(
     let (view, doc) = current!(editor);
     assert_eq!(doc.url().unwrap(), edited_document.uri);
 
-    match edit {
-        lsp::OneOf::Left(text_edit) => {
-            let lsp_pos_to_pos =
-                |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
+    let mut apply_text_edit = |text_edit: &lsp::TextEdit| {
+        let lsp_pos_to_pos =
+            |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
 
-            // This clone probably could be optimized if Picker::new would give T instead of &T
-            let text_replacement = Tendril::from(text_edit.new_text.clone());
-            let change: Change = (
-                lsp_pos_to_pos(text_edit.range.start),
-                lsp_pos_to_pos(text_edit.range.end),
-                Some(text_replacement.clone().into()),
-            );
-            let transaction = Transaction::change(doc.text(), std::iter::once(change));
-            doc.apply(&transaction, view.id);
+        // This clone probably could be optimized if Picker::new would give T instead of &T
+        let text_replacement = Tendril::from(text_edit.new_text.clone());
+        let change: Change = (
+            lsp_pos_to_pos(text_edit.range.start),
+            lsp_pos_to_pos(text_edit.range.end),
+            Some(text_replacement.clone().into()),
+        );
+        let transaction = Transaction::change(doc.text(), std::iter::once(change));
+        doc.apply(&transaction, view.id);
+    };
+
+    match edit {
+        lsp::OneOf::Left(text_edit) => apply_text_edit(text_edit),
+        lsp::OneOf::Right(annotated_text_edit) => {
+            apply_text_edit(&annotated_text_edit.text_edit);
+            log::error!(
+                "annotation {} could not be handled",
+                annotated_text_edit.annotation_id
+            ); // TODO: Handle annotations
         }
-        lsp::OneOf::Right(_annotated_text_edit) => todo!(),
     }
 }
 
