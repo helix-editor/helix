@@ -3911,7 +3911,7 @@ mode_info! {
     "P" => paste_clipboard_before,
     /// replace selections with clipboard
     "R" => replace_selections_with_clipboard,
-    /// show available code actions for current selection
+    /// perform code action
     "a" => code_action,
     /// keep primary selection
     "space" => keep_primary_selection,
