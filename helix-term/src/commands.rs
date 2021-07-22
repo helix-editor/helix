@@ -2234,7 +2234,8 @@ fn apply_edits(
         });
     let transaction = Transaction::change(doc.text(), changes);
     doc.apply(&transaction, view.id);
-  
+}
+
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seemed to work well with buffer_picker
     cx.callback = Some(Box::new(|compositor: &mut Compositor| {
