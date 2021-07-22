@@ -3238,8 +3238,7 @@ fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
 
     // Get all line numbers
     for range in doc.selection(view_id) {
-        let start = doc.text().char_to_line(range.from());
-        let end = doc.text().char_to_line(range.to());
+        let (start, end) = range.line_range(doc.text().slice(..));
 
         for line in start..=end {
             lines.push(line)
@@ -3367,10 +3366,9 @@ fn join_selections(cx: &mut Context) {
     let fragment = Tendril::from(" ");
 
     for selection in doc.selection(view.id) {
-        let start = text.char_to_line(selection.from());
-        let mut end = text.char_to_line(selection.to());
+        let (start, mut end) = selection.line_range(slice);
         if start == end {
-            end += 1
+            end = (end + 1).min(text.len_lines() - 1);
         }
         let lines = start..end;
 
