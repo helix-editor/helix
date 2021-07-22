@@ -2130,36 +2130,6 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     )
 }
 
-fn apply_edits(
-    editor: &mut Editor,
-    edited_document: &lsp::OptionalVersionedTextDocumentIdentifier,
-    offset_encoding: OffsetEncoding,
-    edits: &Vec<lsp::OneOf<lsp::TextEdit, lsp::AnnotatedTextEdit>>,
-) {
-    let (view, doc) = current!(editor);
-    assert_eq!(doc.url().unwrap(), edited_document.uri);
-    let lsp_pos_to_pos = |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
-
-    let changes = edits
-        .iter()
-        .map(|edit| match edit {
-            lsp::OneOf::Left(text_edit) => text_edit,
-            lsp::OneOf::Right(annotated_text_edit) => &annotated_text_edit.text_edit, // TODO: Handle annotations
-        })
-        .map(|edit| -> Change {
-            log::debug!("text edit: {:?}", edit);
-            // This clone probably could be optimized if Picker::new would give T instead of &T
-            let text_replacement = Tendril::from(edit.new_text.clone());
-            (
-                lsp_pos_to_pos(edit.range.start),
-                lsp_pos_to_pos(edit.range.end),
-                Some(text_replacement.clone().into()),
-            )
-        });
-    let transaction = Transaction::change(doc.text(), changes);
-    doc.apply(&transaction, view.id);
-}
-
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -2231,6 +2201,36 @@ fn make_code_action_callback(
             }
         }
     }
+}
+
+fn apply_edits(
+    editor: &mut Editor,
+    edited_document: &lsp::OptionalVersionedTextDocumentIdentifier,
+    offset_encoding: OffsetEncoding,
+    edits: &Vec<lsp::OneOf<lsp::TextEdit, lsp::AnnotatedTextEdit>>,
+) {
+    let (view, doc) = current!(editor);
+    assert_eq!(doc.url().unwrap(), edited_document.uri);
+    let lsp_pos_to_pos = |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
+
+    let changes = edits
+        .iter()
+        .map(|edit| match edit {
+            lsp::OneOf::Left(text_edit) => text_edit,
+            lsp::OneOf::Right(annotated_text_edit) => &annotated_text_edit.text_edit, // TODO: Handle annotations
+        })
+        .map(|edit| -> Change {
+            log::debug!("text edit: {:?}", edit);
+            // This clone probably could be optimized if Picker::new would give T instead of &T
+            let text_replacement = Tendril::from(edit.new_text.clone());
+            (
+                lsp_pos_to_pos(edit.range.start),
+                lsp_pos_to_pos(edit.range.end),
+                Some(text_replacement.clone().into()),
+            )
+        });
+    let transaction = Transaction::change(doc.text(), changes);
+    doc.apply(&transaction, view.id);
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection
