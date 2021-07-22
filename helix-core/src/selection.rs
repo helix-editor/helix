@@ -73,6 +73,18 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
+    /// The line number that the head is on (using 1-width semantics).
+    #[inline]
+    #[must_use]
+    pub fn head_line(&self, text: RopeSlice) -> usize {
+        let head = if self.anchor < self.head {
+            prev_grapheme_boundary(text, self.head)
+        } else {
+            self.head
+        };
+        text.char_to_line(head)
+    }
+
     /// The (inclusive) range of lines that the range overlaps.
     #[inline]
     #[must_use]

@@ -396,19 +396,14 @@ fn goto_line_end(cx: &mut Context) {
         view.id,
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text().slice(..);
-
-            let head = if range.anchor < range.head {
-                graphemes::prev_grapheme_boundary(text, range.head)
-            } else {
-                range.head
-            };
-            let line = text.char_to_line(head);
+            let line = range.head_line(text);
 
             let mut pos = line_end_char_index(&text, line);
             if doc.mode != Mode::Select {
                 pos = graphemes::prev_grapheme_boundary(text, pos);
             }
-            pos = head.max(pos).max(text.line_to_char(line));
+
+            pos = range.head.max(pos).max(text.line_to_char(line));
 
             range.put(text, pos, doc.mode == Mode::Select)
         }),
@@ -422,13 +417,7 @@ fn goto_line_end_newline(cx: &mut Context) {
         view.id,
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text().slice(..);
-
-            let head = if range.anchor < range.head {
-                graphemes::prev_grapheme_boundary(text, range.head)
-            } else {
-                range.head
-            };
-            let line = text.char_to_line(head);
+            let line = range.head_line(text);
 
             let mut pos = text.line_to_char((line + 1).min(text.len_lines()));
             if doc.mode != Mode::Select {
@@ -445,7 +434,7 @@ fn goto_line_start(cx: &mut Context) {
         view.id,
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text().slice(..);
-            let line = text.char_to_line(range.head);
+            let line = range.head_line(text);
 
             // adjust to start of the line
             let pos = text.line_to_char(line);
@@ -460,10 +449,10 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
         view.id,
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text().slice(..);
-            let line_idx = text.char_to_line(range.head);
+            let line = range.head_line(text);
 
-            if let Some(pos) = find_first_non_whitespace_char(text.line(line_idx)) {
-                let pos = pos + text.line_to_char(line_idx);
+            if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+                let pos = pos + text.line_to_char(line);
                 range.put(text, pos, doc.mode == Mode::Select)
             } else {
                 range
@@ -2212,9 +2201,9 @@ fn append_to_line(cx: &mut Context) {
     doc.set_selection(
         view.id,
         doc.selection(view.id).clone().transform(|range| {
-            let text = &doc.text().slice(..);
-            let line = text.char_to_line(range.head);
-            let pos = line_end_char_index(text, line);
+            let text = doc.text().slice(..);
+            let line = range.head_line(text);
+            let pos = line_end_char_index(&text, line);
             Range::new(pos, pos)
         }),
     );
@@ -2274,7 +2263,7 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let line = text.char_to_line(range.head);
+        let line = range.head_line(text);
 
         let line = match open {
             // adjust position to the end of the line (next line - 1)
