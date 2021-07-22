@@ -18,8 +18,8 @@ We provide an [architecture.md](./docs/architecture.md) that should give you
 a good overview of the internals.
 
 ## Before contributing:
-- Please check to see all closed and open issues and/or discussions that what problem you are facing has already been discussed, or solved. Please make sure you have the latest version.
-- If you have a question or a doubt. Please *DO NOT* open an issue. The [discussions](https://github.com/helix-editor/helix/discussions) tab is exactly for that.
+- Before submitting an issue, please make sure you're using the latest version of Helix, and search both closed and open issues to check that a similar issue hasn't already been submitted.
+- If you have questions about Helix's behavior or usage, please do not file an issue. Instead, ask your questions in [discussions](https://github.com/helix-editor/helix/discussions) or the [Matrix space](https://matrix.to/#/#helix-community:matrix.org).
 
 ## Coding Conventions:
 Please use [rustfmt](https://github.com/rust-lang/rustfmt#on-the-stable-toolchain) to format the entire code according to rust guidelines before opening a pull request.
