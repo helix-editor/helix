@@ -1,8 +1,6 @@
-use std::borrow::Cow;
-
 use crate::{
     chars::char_is_line_ending,
-    graphemes::{ensure_grapheme_boundary_prev, grapheme_width, RopeGraphemes},
+    graphemes::{ensure_grapheme_boundary_prev, RopeGraphemes},
     line_ending::line_end_char_index,
     RopeSlice,
 };
@@ -66,12 +64,7 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 
     let line_start = text.line_to_char(line);
     let pos = ensure_grapheme_boundary_prev(text, pos);
-    let col = RopeGraphemes::new(text.slice(line_start..pos))
-        .map(|g| {
-            let g: Cow<str> = g.into();
-            grapheme_width(&g)
-        })
-        .sum();
+    let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
 
     Position::new(line, col)
 }
@@ -83,6 +76,9 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 /// `false` corresponds to properly round-tripping with `coords_at_pos()`,
 /// whereas `true` will ensure that block cursors don't jump off the
 /// end of the line.
+///
+/// TODO: this should be changed to work in terms of visual row/column, not
+/// graphemes.
 pub fn pos_at_coords(text: RopeSlice, coords: Position, is_1_width: bool) -> usize {
     let Position { row, col } = coords;
     let line_start = text.line_to_char(row);
@@ -92,17 +88,11 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, is_1_width: bool) -> usi
         text.line_to_char((row + 1).min(text.len_lines()))
     };
 
-    let mut prev_col = 0;
     let mut col_char_offset = 0;
-    for g in RopeGraphemes::new(text.slice(line_start..line_end)) {
-        let g: Cow<str> = g.into();
-        let next_col = prev_col + grapheme_width(&g);
-
-        if next_col > col {
+    for (i, g) in RopeGraphemes::new(text.slice(line_start..line_end)).enumerate() {
+        if i == col {
             break;
         }
-
-        prev_col = next_col;
         col_char_offset += g.chars().count();
     }
 
@@ -131,17 +121,18 @@ mod test {
         assert_eq!(coords_at_pos(slice, 10), (1, 4).into()); // position on d
 
         // Test with wide characters.
+        // TODO: account for character width.
         let text = Rope::from("今日はいい\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 1), (0, 2).into());
-        assert_eq!(coords_at_pos(slice, 2), (0, 4).into());
-        assert_eq!(coords_at_pos(slice, 3), (0, 6).into());
-        assert_eq!(coords_at_pos(slice, 4), (0, 8).into());
-        assert_eq!(coords_at_pos(slice, 5), (0, 10).into());
+        assert_eq!(coords_at_pos(slice, 1), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 2), (0, 2).into());
+        assert_eq!(coords_at_pos(slice, 3), (0, 3).into());
+        assert_eq!(coords_at_pos(slice, 4), (0, 4).into());
+        assert_eq!(coords_at_pos(slice, 5), (0, 5).into());
         assert_eq!(coords_at_pos(slice, 6), (1, 0).into());
 
-        // test with grapheme clusters
+        // Test with grapheme clusters.
         let text = Rope::from("a̐éö̲\r\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
@@ -150,13 +141,23 @@ mod test {
         assert_eq!(coords_at_pos(slice, 7), (0, 3).into());
         assert_eq!(coords_at_pos(slice, 9), (1, 0).into());
 
+        // Test with wide-character grapheme clusters.
+        // TODO: account for character width.
         let text = Rope::from("किमपि\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 2), (0, 2).into());
-        assert_eq!(coords_at_pos(slice, 3), (0, 3).into());
-        assert_eq!(coords_at_pos(slice, 5), (0, 5).into());
+        assert_eq!(coords_at_pos(slice, 2), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 3), (0, 2).into());
+        assert_eq!(coords_at_pos(slice, 5), (0, 3).into());
         assert_eq!(coords_at_pos(slice, 6), (1, 0).into());
+
+        // Test with tabs.
+        // Todo: account for tab stops.
+        let text = Rope::from("\tHello\n");
+        let slice = text.slice(..);
+        assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
+        assert_eq!(coords_at_pos(slice, 1), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 2), (0, 2).into());
     }
 
     #[test]
@@ -172,21 +173,20 @@ mod test {
         assert_eq!(pos_at_coords(slice, (1, 4).into(), false), 10); // position on d
 
         // Test with wide characters.
+        // TODO: account for character width.
         let text = Rope::from("今日はいい\n");
         let slice = text.slice(..);
         assert_eq!(pos_at_coords(slice, (0, 0).into(), false), 0);
-        assert_eq!(pos_at_coords(slice, (0, 1).into(), false), 0);
-        assert_eq!(pos_at_coords(slice, (0, 2).into(), false), 1);
-        assert_eq!(pos_at_coords(slice, (0, 3).into(), false), 1);
-        assert_eq!(pos_at_coords(slice, (0, 4).into(), false), 2);
-        assert_eq!(pos_at_coords(slice, (0, 6).into(), false), 3);
-        assert_eq!(pos_at_coords(slice, (0, 8).into(), false), 4);
-        assert_eq!(pos_at_coords(slice, (0, 10).into(), false), 5);
-        assert_eq!(pos_at_coords(slice, (0, 11).into(), false), 6);
-        assert_eq!(pos_at_coords(slice, (0, 11).into(), true), 5);
+        assert_eq!(pos_at_coords(slice, (0, 1).into(), false), 1);
+        assert_eq!(pos_at_coords(slice, (0, 2).into(), false), 2);
+        assert_eq!(pos_at_coords(slice, (0, 3).into(), false), 3);
+        assert_eq!(pos_at_coords(slice, (0, 4).into(), false), 4);
+        assert_eq!(pos_at_coords(slice, (0, 5).into(), false), 5);
+        assert_eq!(pos_at_coords(slice, (0, 6).into(), false), 6);
+        assert_eq!(pos_at_coords(slice, (0, 6).into(), true), 5);
         assert_eq!(pos_at_coords(slice, (1, 0).into(), false), 6);
 
-        // test with grapheme clusters
+        // Test with grapheme clusters.
         let text = Rope::from("a̐éö̲\r\n");
         let slice = text.slice(..);
         assert_eq!(pos_at_coords(slice, (0, 0).into(), false), 0);
@@ -197,15 +197,24 @@ mod test {
         assert_eq!(pos_at_coords(slice, (0, 4).into(), true), 7);
         assert_eq!(pos_at_coords(slice, (1, 0).into(), false), 9);
 
+        // Test with wide-character grapheme clusters.
+        // TODO: account for character width.
         let text = Rope::from("किमपि");
         // 2 - 1 - 2 codepoints
         // TODO: delete handling as per https://news.ycombinator.com/item?id=20058454
         let slice = text.slice(..);
         assert_eq!(pos_at_coords(slice, (0, 0).into(), false), 0);
-        assert_eq!(pos_at_coords(slice, (0, 1).into(), false), 0);
+        assert_eq!(pos_at_coords(slice, (0, 1).into(), false), 2);
+        assert_eq!(pos_at_coords(slice, (0, 2).into(), false), 3);
+        assert_eq!(pos_at_coords(slice, (0, 3).into(), false), 5);
+        assert_eq!(pos_at_coords(slice, (0, 3).into(), true), 5);
+
+        // Test with tabs.
+        // Todo: account for tab stops.
+        let text = Rope::from("\tHello\n");
+        let slice = text.slice(..);
+        assert_eq!(pos_at_coords(slice, (0, 0).into(), false), 0);
+        assert_eq!(pos_at_coords(slice, (0, 1).into(), false), 1);
         assert_eq!(pos_at_coords(slice, (0, 2).into(), false), 2);
-        assert_eq!(pos_at_coords(slice, (0, 3).into(), false), 3);
-        assert_eq!(pos_at_coords(slice, (0, 4).into(), false), 3);
-        assert_eq!(pos_at_coords(slice, (0, 5).into(), false), 5); // eol
     }
 }

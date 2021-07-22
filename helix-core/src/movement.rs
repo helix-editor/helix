@@ -521,16 +521,14 @@ mod test {
             V,
         }
         let moves_and_expected_coordinates = IntoIter::new([
-            // Places cursor at the fourth kana (each of which are double-wide,
-            // so the visual column is 8).
-            ((Axis::H, Direction::Forward, 4), (0, 8)),
-            // Descent places cursor at the 8th character.
-            ((Axis::V, Direction::Forward, 1usize), (1, 8)),
-            // Moving back a single-width character.
-            ((Axis::H, Direction::Backward, 1usize), (1, 7)),
-            // Jumping back up into the middle of a double-width character shifts
-            // the column to the start of that character.
-            ((Axis::V, Direction::Backward, 1usize), (0, 6)),
+            // Places cursor at the fourth kana.
+            ((Axis::H, Direction::Forward, 4), (0, 4)),
+            // Descent places cursor at the 4th character.
+            ((Axis::V, Direction::Forward, 1usize), (1, 4)),
+            // Moving back 1 character.
+            ((Axis::H, Direction::Backward, 1usize), (1, 3)),
+            // Jumping back up 1 line.
+            ((Axis::V, Direction::Backward, 1usize), (0, 3)),
         ]);
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
