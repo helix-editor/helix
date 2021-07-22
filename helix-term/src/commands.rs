@@ -218,6 +218,7 @@ impl Command {
         code_action,
         buffer_picker,
         symbol_picker,
+        last_picker,
         prepend_to_line,
         append_to_line,
         open_below,
@@ -2233,6 +2234,16 @@ fn apply_edits(
         });
     let transaction = Transaction::change(doc.text(), changes);
     doc.apply(&transaction, view.id);
+  
+fn last_picker(cx: &mut Context) {
+    // TODO: last picker does not seemed to work well with buffer_picker
+    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+        if let Some(picker) = compositor.last_picker.take() {
+            compositor.push(picker);
+        }
+        // XXX: figure out how to show error when no last picker lifetime
+        // cx.editor.set_error("no last picker".to_owned())
+    }));
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection
@@ -3893,6 +3904,8 @@ macro_rules! mode_info {
 mode_info! {
     /// space mode
     space_mode, SPACE_MODE,
+    /// resume last picker
+    "'" => last_picker,
     /// file picker
     "f" => file_picker,
     /// buffer picker

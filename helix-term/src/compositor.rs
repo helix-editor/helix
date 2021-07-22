@@ -74,6 +74,8 @@ type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
     terminal: Terminal,
+
+    pub(crate) last_picker: Option<Box<dyn Component>>,
 }
 
 impl Compositor {
@@ -83,6 +85,7 @@ impl Compositor {
         Ok(Self {
             layers: Vec::new(),
             terminal,
+            last_picker: None,
         })
     }
 
@@ -103,8 +106,8 @@ impl Compositor {
         self.layers.push(layer);
     }
 
-    pub fn pop(&mut self) {
-        self.layers.pop();
+    pub fn pop(&mut self) -> Option<Box<dyn Component>> {
+        self.layers.pop()
     }
 
     pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
