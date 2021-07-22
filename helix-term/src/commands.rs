@@ -2161,7 +2161,7 @@ pub fn code_action(cx: &mut Context) {
                         }
                         lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
                     },
-                    move |editor: &mut Editor, code_action, _action| {
+                    move |editor, code_action, _action| {
                         make_code_action_callback(editor, code_action, offset_encoding)
                     },
                 );
@@ -2178,7 +2178,7 @@ fn make_code_action_callback(
 ) {
     match code_action {
         lsp::CodeActionOrCommand::Command(command) => {
-            log::debug!("command: {:?}", command);
+            todo!("command: {:?}", command);
         }
         lsp::CodeActionOrCommand::CodeAction(code_action) => {
             log::debug!("code action: {:?}", code_action);
@@ -2195,7 +2195,9 @@ fn make_code_action_callback(
                                 );
                             }
                         }
-                        lsp::DocumentChanges::Operations(_) => todo!(),
+                        lsp::DocumentChanges::Operations(operations) => {
+                            todo!("operations: {:?}", operations)
+                        }
                     }
                 }
             }
