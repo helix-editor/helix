@@ -262,8 +262,10 @@ where
                 file_types: vec!["rs".to_string()],
                 language_id: "Rust".to_string(),
                 highlight_config: OnceCell::new(),
+                config: None,
                 //
                 roots: vec![],
+                comment_token: None,
                 auto_format: false,
                 language_server: None,
                 indent: Some(IndentationConfiguration {

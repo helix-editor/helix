@@ -38,18 +38,18 @@ fn find_line_comment(
 }
 
 #[must_use]
-pub fn toggle_line_comments(doc: &Rope, selection: &Selection) -> Transaction {
+pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&str>) -> Transaction {
     let text = doc.slice(..);
     let mut changes: Vec<Change> = Vec::new();
 
-    let token = "//";
+    let token = token.unwrap_or("//");
     let comment = Tendril::from(format!("{} ", token));
 
     for selection in selection {
         let start = text.char_to_line(selection.from());
         let end = text.char_to_line(selection.to());
         let lines = start..end + 1;
-        let (commented, skipped, min) = find_line_comment(token, text, lines.clone());
+        let (commented, skipped, min) = find_line_comment(&token, text, lines.clone());
 
         changes.reserve((end - start).saturating_sub(skipped.len()));
 
@@ -95,14 +95,14 @@ mod test {
         assert_eq!(res, (false, vec![1], 2));
 
         // comment
-        let transaction = toggle_line_comments(&state.doc, &state.selection);
+        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
         transaction.apply(&mut state.doc);
         state.selection = state.selection.clone().map(transaction.changes());
 
         assert_eq!(state.doc, "  // 1\n\n  // 2\n  // 3");
 
         // uncomment
-        let transaction = toggle_line_comments(&state.doc, &state.selection);
+        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
         transaction.apply(&mut state.doc);
         state.selection = state.selection.clone().map(transaction.changes());
         assert_eq!(state.doc, "  1\n\n  2\n  3");

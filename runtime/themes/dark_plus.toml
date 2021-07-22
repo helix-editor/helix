@@ -46,15 +46,16 @@
 
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
-"ui.cursor.match" = { fg = "cursor", modifiers = ['underlined'] }
+"ui.cursor.match" = { bg = "#3a3d41", modifiers = ["underlined"] }
 
 "ui.selection" = { bg = "#3a3d41" }
-"ui.selection.primary" = { bg = "#add6ff26" }
+"ui.selection.primary" = { bg = "#264f78" }
 
 "ui.linenr" = { fg = "#858585" }
 "ui.linenr.selected" = { fg = "#c6c6c6" }
 
 "ui.statusline" = { fg = "#ffffff", bg = "#007acc" }
+"ui.statusline.inactive" = { fg = "#ffffff", bg = "#007acc" }
 
 "ui.text" = { fg = "text", bg = "background" }
 "ui.text.focus" = { fg = "#ffffff" }

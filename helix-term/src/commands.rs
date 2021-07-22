@@ -186,6 +186,9 @@ impl Command {
         extend_till_prev_char,
         extend_prev_char,
         replace,
+        switch_case,
+        switch_to_uppercase,
+        switch_to_lowercase,
         page_up,
         page_down,
         half_page_up,
@@ -214,6 +217,7 @@ impl Command {
         file_picker,
         buffer_picker,
         symbol_picker,
+        last_picker,
         prepend_to_line,
         append_to_line,
         open_below,
@@ -778,6 +782,57 @@ fn replace(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+fn switch_case(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range
+                .fragment(doc.text().slice(..))
+                .chars()
+                .flat_map(|ch| {
+                    if ch.is_lowercase() {
+                        ch.to_uppercase().collect()
+                    } else if ch.is_uppercase() {
+                        ch.to_lowercase().collect()
+                    } else {
+                        vec![ch]
+                    }
+                })
+                .collect();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_to_uppercase(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range.fragment(doc.text().slice(..)).to_uppercase().into();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_to_lowercase(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range.fragment(doc.text().slice(..)).to_lowercase().into();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }
 
 fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
@@ -2035,6 +2090,17 @@ fn symbol_picker(cx: &mut Context) {
             }
         },
     )
+}
+
+fn last_picker(cx: &mut Context) {
+    // TODO: last picker does not seemed to work well with buffer_picker
+    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+        if let Some(picker) = compositor.last_picker.take() {
+            compositor.push(picker);
+        }
+        // XXX: figure out how to show error when no last picker lifetime
+        // cx.editor.set_error("no last picker".to_owned())
+    }));
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection
@@ -3345,7 +3411,11 @@ fn hover(cx: &mut Context) {
 // comments
 fn toggle_comments(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id));
+    let token = doc
+        .language_config()
+        .and_then(|lc| lc.comment_token.as_ref())
+        .map(|tc| tc.as_ref());
+    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
@@ -3691,6 +3761,8 @@ macro_rules! mode_info {
 mode_info! {
     /// space mode
     space_mode, SPACE_MODE,
+    /// resume last picker
+    "'" => last_picker,
     /// file picker
     "f" => file_picker,
     /// buffer picker

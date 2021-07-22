@@ -83,15 +83,18 @@ impl Application {
                 editor.new_file(Action::VerticalSplit);
                 compositor.push(Box::new(ui::file_picker(first.clone())));
             } else {
+                let nr_of_files = args.files.len();
+                editor.open(first.to_path_buf(), Action::VerticalSplit)?;
                 for file in args.files {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
-                        editor.open(file, Action::VerticalSplit)?;
+                        editor.open(file.to_path_buf(), Action::Load)?;
                     }
                 }
+                editor.set_status(format!("Loaded {} files.", nr_of_files));
             }
         } else {
             editor.new_file(Action::VerticalSplit);
