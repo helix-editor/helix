@@ -2130,40 +2130,34 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     )
 }
 
-fn apply_edit(
+fn apply_edits(
     editor: &mut Editor,
     edited_document: &lsp::OptionalVersionedTextDocumentIdentifier,
     offset_encoding: OffsetEncoding,
-    edit: &lsp::OneOf<lsp::TextEdit, lsp::AnnotatedTextEdit>,
+    edits: &Vec<lsp::OneOf<lsp::TextEdit, lsp::AnnotatedTextEdit>>,
 ) {
     let (view, doc) = current!(editor);
     assert_eq!(doc.url().unwrap(), edited_document.uri);
+    let lsp_pos_to_pos = |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
 
-    let mut apply_text_edit = |text_edit: &lsp::TextEdit| {
-        let lsp_pos_to_pos =
-            |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
-
-        // This clone probably could be optimized if Picker::new would give T instead of &T
-        let text_replacement = Tendril::from(text_edit.new_text.clone());
-        let change: Change = (
-            lsp_pos_to_pos(text_edit.range.start),
-            lsp_pos_to_pos(text_edit.range.end),
-            Some(text_replacement.clone().into()),
-        );
-        let transaction = Transaction::change(doc.text(), std::iter::once(change));
-        doc.apply(&transaction, view.id);
-    };
-
-    match edit {
-        lsp::OneOf::Left(text_edit) => apply_text_edit(text_edit),
-        lsp::OneOf::Right(annotated_text_edit) => {
-            apply_text_edit(&annotated_text_edit.text_edit);
-            log::error!(
-                "annotation {} could not be handled",
-                annotated_text_edit.annotation_id
-            ); // TODO: Handle annotations
-        }
-    }
+    let changes = edits
+        .iter()
+        .map(|edit| match edit {
+            lsp::OneOf::Left(text_edit) => text_edit,
+            lsp::OneOf::Right(annotated_text_edit) => &annotated_text_edit.text_edit, // TODO: Handle annotations
+        })
+        .map(|edit| -> Change {
+            log::debug!("text edit: {:?}", edit);
+            // This clone probably could be optimized if Picker::new would give T instead of &T
+            let text_replacement = Tendril::from(edit.new_text.clone());
+            (
+                lsp_pos_to_pos(edit.range.start),
+                lsp_pos_to_pos(edit.range.end),
+                Some(text_replacement.clone().into()),
+            )
+        });
+    let transaction = Transaction::change(doc.text(), changes);
+    doc.apply(&transaction, view.id);
 }
 
 pub fn code_action(cx: &mut Context) {
@@ -2223,14 +2217,12 @@ fn make_code_action_callback(
                     match changes {
                         lsp::DocumentChanges::Edits(document_edits) => {
                             for document_edit in document_edits {
-                                for edit in &document_edit.edits {
-                                    apply_edit(
-                                        editor,
-                                        &document_edit.text_document,
-                                        offset_encoding,
-                                        edit,
-                                    );
-                                }
+                                apply_edits(
+                                    editor,
+                                    &document_edit.text_document,
+                                    offset_encoding,
+                                    &document_edit.edits,
+                                );
                             }
                         }
                         lsp::DocumentChanges::Operations(_) => todo!(),
