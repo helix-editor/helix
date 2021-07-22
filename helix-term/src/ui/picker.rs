@@ -159,7 +159,7 @@ impl<T: 'static> Component for Picker<T> {
 
         let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
             // remove the layer
-            compositor.pop();
+            compositor.last_picker = compositor.pop();
         })));
 
         match key_event {

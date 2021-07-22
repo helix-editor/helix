@@ -312,7 +312,12 @@ impl Registry {
                 Entry::Vacant(entry) => {
                     // initialize a new client
                     let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                    let (mut client, incoming) = Client::start(&config.command, &config.args, id)?;
+                    let (mut client, incoming) = Client::start(
+                        &config.command,
+                        &config.args,
+                        serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
+                        id,
+                    )?;
                     // TODO: run this async without blocking
                     futures_executor::block_on(client.initialize())?;
                     s_incoming.push(UnboundedReceiverStream::new(incoming));

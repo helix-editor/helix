@@ -473,11 +473,13 @@ impl Transaction {
     /// Generate a transaction from a set of changes.
     pub fn change<I>(doc: &Rope, changes: I) -> Self
     where
-        I: IntoIterator<Item = Change> + ExactSizeIterator,
+        I: IntoIterator<Item = Change> + Iterator,
     {
         let len = doc.len_chars();
 
-        let mut changeset = ChangeSet::with_capacity(2 * changes.len() + 1); // rough estimate
+        let (lower, upper) = changes.size_hint();
+        let size = upper.unwrap_or(lower);
+        let mut changeset = ChangeSet::with_capacity(2 * size + 1); // rough estimate
 
         // TODO: verify ranges are ordered and not overlapping or change will panic.
 
