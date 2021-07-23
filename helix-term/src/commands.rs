@@ -1272,19 +1272,13 @@ fn append_mode(cx: &mut Context) {
     doc.restore_cursor = true;
     let text = doc.text().slice(..);
 
-    // TODO: preserve selections, like in `Insert` mode.  Probably we'll want
-    // an explicit separate `Append` mode or something similar, so that we
-    // don't change the selection at all, and instead just display and edit
-    // things differently.
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .min_width_1(text)
-        .transform(|range| Range::new(range.to(), range.to()));
+    let selection = doc.selection(view.id).clone().min_width_1(text);
 
+    // Make sure there's room at the end of the document if the last
+    // selection butts up against it.
     let end = text.len_chars();
-
-    if selection.iter().any(|range| range.head == end) {
+    let last_range = selection.iter().last().unwrap();
+    if !last_range.is_empty() && last_range.head == end {
         let transaction = Transaction::change(
             doc.text(),
             std::array::IntoIter::new([(end, end, Some(doc.line_ending.as_str().into()))]),
@@ -1292,7 +1286,15 @@ fn append_mode(cx: &mut Context) {
         doc.apply(&transaction, view.id);
     }
 
-    doc.set_selection(view.id, selection);
+    doc.set_selection(
+        view.id,
+        selection.clone().transform(|range| {
+            Range::new(
+                range.from(),
+                graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
+            )
+        }),
+    );
 }
 
 mod cmd {
@@ -2829,11 +2831,11 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
 
         let text = doc.text();
-        let selection = doc.selection(view.id);
+        let selection = doc.selection(view.id).clone().cursors(text.slice(..));
 
         // run through insert hooks, stopping on the first one that returns Some(t)
         for hook in HOOKS {
-            if let Some(transaction) = hook(text, selection, c) {
+            if let Some(transaction) = hook(text, &selection, c) {
                 doc.apply(&transaction, view.id);
                 break;
             }
@@ -2853,7 +2855,11 @@ pub mod insert {
         // indent by one to reach 4 spaces).
 
         let indent = Tendril::from(doc.indent_unit());
-        let transaction = Transaction::insert(doc.text(), doc.selection(view.id), indent);
+        let transaction = Transaction::insert(
+            doc.text(),
+            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
+            indent,
+        );
         doc.apply(&transaction, view.id);
     }
 
@@ -2862,13 +2868,13 @@ pub mod insert {
         let text = doc.text().slice(..);
 
         let contents = doc.text();
-        let selection = doc.selection(view.id);
+        let selection = doc.selection(view.id).clone().cursors(text);
         let mut ranges = SmallVec::with_capacity(selection.len());
 
         // TODO: this is annoying, but we need to do it to properly calculate pos after edits
         let mut offs = 0;
 
-        let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+        let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
             let pos = range.head;
 
             let prev = if pos == 0 {

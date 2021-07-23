@@ -447,6 +447,20 @@ impl Selection {
         self.transform(|r| r.min_width_1(text))
     }
 
+    /// Transforms the selection into all of the left-side head positions,
+    /// using 1-width semantics.
+    pub fn cursors(self, text: RopeSlice) -> Self {
+        self.transform(|range| {
+            // For 1-width cursor semantics.
+            let pos = if range.anchor < range.head {
+                prev_grapheme_boundary(text, range.head).max(range.anchor)
+            } else {
+                range.head
+            };
+            Range::new(pos, pos)
+        })
+    }
+
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
         self.ranges.iter().map(move |range| range.fragment(text))
     }
