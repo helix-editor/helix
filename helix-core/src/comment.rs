@@ -3,6 +3,15 @@ use crate::{
 };
 use std::borrow::Cow;
 
+/// Given text, a comment token, and a set of line indices, returns the following:
+/// - Whether the given lines should be considered commented
+///     - If any of the lines are uncommented, all lines are considered as such.
+/// - The lines to change for toggling comments
+///     - This is all provided lines excluding blanks lines.
+/// - The column of the comment tokens
+///     - Column of existing tokens, if the lines are commented; column to place tokens at otherwise.
+/// - The margin to the right of the comment tokens
+///     - Defaults to `1`. If any existing comment token is not followed by a space, changes to `0`.
 fn find_line_comment(
     token: &str,
     text: RopeSlice,
