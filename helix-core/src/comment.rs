@@ -114,7 +114,16 @@ mod test {
         state.selection = state.selection.map(transaction.changes());
         assert_eq!(state.doc, "  1\n\n  2\n  3");
 
-        // TODO: account for no margin after comment
+        // 0 margin comments
+        state.doc = Rope::from("  //1\n\n  //2\n  //3");
+        // reset the selection.
+        state.selection = Selection::single(0, state.doc.len_chars() - 1);
+
+        let transaction = toggle_line_comments(&state.doc, &state.selection, None);
+        transaction.apply(&mut state.doc);
+        state.selection = state.selection.map(transaction.changes());
+        assert_eq!(state.doc, "  1\n\n  2\n  3");
+
         // TODO: account for uncommenting with uneven comment indentation
     }
 }
