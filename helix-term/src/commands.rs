@@ -2126,7 +2126,8 @@ pub fn code_action(cx: &mut Context) {
                     },
                     move |editor, code_action, _action| match code_action {
                         lsp::CodeActionOrCommand::Command(command) => {
-                            todo!("command: {:?}", command);
+                            log::debug!("code action command: {:?}", command);
+                            editor.set_error(String::from("Handling code action command is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
                         }
                         lsp::CodeActionOrCommand::CodeAction(code_action) => {
                             log::debug!("code action: {:?}", code_action);
@@ -2163,7 +2164,9 @@ fn apply_workspace_edit(
     };
 
     if let Some(ref changes) = workspace_edit.changes {
-        todo!("workspace changes: {:?}", changes);
+        log::debug!("workspace changes: {:?}", changes);
+        editor.set_error(String::from("Handling workspace changesis not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+        return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
         // TODO: find some example that uses workspace changes, and test it
         // for (url, edits) in changes.iter() {
@@ -2197,7 +2200,8 @@ fn apply_workspace_edit(
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
-                todo!("operations: {:?}", operations)
+                log::debug!("document changes - operations: {:?}", operations);
+                editor.set_error(String::from("Handling document operations is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
             }
         }
     }
