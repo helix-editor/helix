@@ -2093,44 +2093,6 @@ fn symbol_picker(cx: &mut Context) {
     )
 }
 
-pub fn workspace_symbol_picker(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => return,
-    };
-    let offset_encoding = language_server.offset_encoding();
-
-    let future = language_server.workspace_symbols("".to_string());
-
-    cx.callback(
-        future,
-        move |editor: &mut Editor,
-              compositor: &mut Compositor,
-              response: Option<Vec<lsp::SymbolInformation>>| {
-            if let Some(symbols) = response {
-                let picker = Picker::new(
-                    symbols,
-                    |symbol| (&symbol.name).into(),
-                    move |editor: &mut Editor, symbol, _action| {
-                        push_jump(editor);
-                        let (view, doc) = current!(editor);
-
-                        // if let Some(range) =
-                        //     lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
-                        // {
-                        //     doc.set_selection(view.id, Selection::single(range.to(), range.from()));
-                        //     align_view(doc, view, Align::Center);
-                        // }
-                    },
-                );
-                compositor.push(Box::new(picker))
-            }
-        },
-    )
-}
-
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
