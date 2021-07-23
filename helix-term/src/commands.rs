@@ -2162,8 +2162,16 @@ pub fn code_action(cx: &mut Context) {
                         }
                         lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
                     },
-                    move |editor, code_action, _action| {
-                        make_code_action_callback(editor, code_action, offset_encoding)
+                    move |editor, code_action, _action| match code_action {
+                        lsp::CodeActionOrCommand::Command(command) => {
+                            todo!("command: {:?}", command);
+                        }
+                        lsp::CodeActionOrCommand::CodeAction(code_action) => {
+                            log::debug!("code action: {:?}", code_action);
+                            if let Some(ref workspace_edit) = code_action.edit {
+                                apply_workspace_edit(editor, offset_encoding, workspace_edit)
+                            }
+                        }
                     },
                 );
                 compositor.push(Box::new(picker))
@@ -2172,57 +2180,14 @@ pub fn code_action(cx: &mut Context) {
     )
 }
 
-fn make_code_action_callback(
+fn apply_workspace_edit(
     editor: &mut Editor,
-    code_action: &lsp::CodeActionOrCommand,
     offset_encoding: OffsetEncoding,
+    workspace_edit: &lsp::WorkspaceEdit,
 ) {
-    match code_action {
-        lsp::CodeActionOrCommand::Command(command) => {
-            todo!("command: {:?}", command);
-        }
-        lsp::CodeActionOrCommand::CodeAction(code_action) => {
-            log::debug!("code action: {:?}", code_action);
-            if let Some(ref edit) = code_action.edit {
-                if let Some(ref changes) = edit.document_changes {
-                    match changes {
-                        lsp::DocumentChanges::Edits(document_edits) => {
-                            for document_edit in document_edits {
-                                apply_edits(
-                                    editor,
-                                    &document_edit.text_document,
-                                    offset_encoding,
-                                    &document_edit.edits,
-                                );
-                            }
-                        }
-                        lsp::DocumentChanges::Operations(operations) => {
-                            todo!("operations: {:?}", operations)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn apply_edits(
-    editor: &mut Editor,
-    edited_document: &lsp::OptionalVersionedTextDocumentIdentifier,
-    offset_encoding: OffsetEncoding,
-    edits: &Vec<lsp::OneOf<lsp::TextEdit, lsp::AnnotatedTextEdit>>,
-) {
-    let (view, doc) = current!(editor);
-    assert_eq!(doc.url().unwrap(), edited_document.uri);
-    let lsp_pos_to_pos = |lsp_pos| lsp_pos_to_pos(doc.text(), lsp_pos, offset_encoding).unwrap();
-
-    let changes = edits
-        .iter()
-        .map(|edit| match edit {
-            lsp::OneOf::Left(text_edit) => text_edit,
-            lsp::OneOf::Right(annotated_text_edit) => &annotated_text_edit.text_edit, // TODO: Handle annotations
-        })
-        .map(|edit| -> Change {
+    let edits_to_transaction = |doc: &Rope, edits: &Vec<&lsp::TextEdit>| {
+        let lsp_pos_to_pos = |lsp_pos| lsp_pos_to_pos(&doc, lsp_pos, offset_encoding).unwrap();
+        let changes = edits.iter().map(|edit| -> Change {
             log::debug!("text edit: {:?}", edit);
             // This clone probably could be optimized if Picker::new would give T instead of &T
             let text_replacement = Tendril::from(edit.new_text.clone());
@@ -2232,8 +2197,48 @@ fn apply_edits(
                 Some(text_replacement.clone().into()),
             )
         });
-    let transaction = Transaction::change(doc.text(), changes);
-    doc.apply(&transaction, view.id);
+        Transaction::change(doc, changes)
+    };
+
+    if let Some(ref changes) = workspace_edit.changes {
+        todo!("workspace changes: {:?}", changes);
+        // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
+        // TODO: find some example that uses workspace changes, and test it
+        // for (url, edits) in changes.iter() {
+        //     let file_path = url.origin().ascii_serialization();
+        //     let file_path = std::path::PathBuf::from(file_path);
+        //     let file = std::fs::File::open(file_path).unwrap();
+        //     let mut text = Rope::from_reader(file).unwrap();
+        //     let transaction = edits_to_changes(&text, edits);
+        //     transaction.apply(&mut text);
+        // }
+    }
+
+    if let Some(ref document_changes) = workspace_edit.document_changes {
+        match document_changes {
+            lsp::DocumentChanges::Edits(document_edits) => {
+                for document_edit in document_edits {
+                    let (view, doc) = current!(editor);
+                    assert_eq!(doc.url().unwrap(), document_edit.text_document.uri);
+                    let edits = document_edit
+                        .edits
+                        .iter()
+                        .map(|edit| match edit {
+                            lsp::OneOf::Left(text_edit) => text_edit,
+                            lsp::OneOf::Right(annotated_text_edit) => {
+                                &annotated_text_edit.text_edit
+                            }
+                        })
+                        .collect();
+                    let transaction = edits_to_transaction(doc.text(), &edits);
+                    doc.apply(&transaction, view.id);
+                }
+            }
+            lsp::DocumentChanges::Operations(operations) => {
+                todo!("operations: {:?}", operations)
+            }
+        }
+    }
 }
 
 fn last_picker(cx: &mut Context) {
