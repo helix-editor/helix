@@ -178,7 +178,7 @@ impl std::str::FromStr for KeyEvent {
             keys::MINUS => KeyCode::Char('-'),
             keys::SEMICOLON => KeyCode::Char(';'),
             keys::PERCENT => KeyCode::Char('%'),
-            single if single.len() == 1 => KeyCode::Char(single.chars().next().unwrap()),
+            single if single.chars().count() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && function.starts_with('F') => {
                 let function: String = function.chars().skip(1).collect();
                 let function = str::parse::<u8>(&function)?;

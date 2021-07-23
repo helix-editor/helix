@@ -27,24 +27,31 @@ macro_rules! key {
 /// Macro for defining the root of a `Keymap` object. Example:
 ///
 /// ```
+/// # use helix_core::hashmap;
+/// # use helix_term::keymap;
+/// # use helix_term::keymap::Keymap;
 /// let normal_mode = keymap!({ "Normal mode"
 ///     "i" => insert_mode,
 ///     "g" => { "Goto mode"
-///         "g" => goto_top,
-///         "e" => goto_end
+///         "g" => goto_file_start,
+///         "e" => goto_file_end
 ///     },
-///     "j" | "down" => move_down
+///     "j" | "down" => move_line_down
 /// });
 /// let keymap = Keymap::new(normal_mode);
 /// ```
 #[macro_export]
 macro_rules! keymap {
-    (@trie $cmd:ident) => { KeyTrie::Leaf(Command::$cmd) };
+    (@trie $cmd:ident) => {
+        $crate::keymap::KeyTrie::Leaf($crate::commands::Command::$cmd)
+    };
+
     (@trie
         { $label:literal $($($key:literal)|+ => $value:tt),* }
     ) => {
         keymap!({ $label $($($key)|+ => $value),* })
     };
+
     (
         { $label:literal $($($key:literal)|+ => $value:tt),* }
     ) => {
@@ -55,15 +62,18 @@ macro_rules! keymap {
             let mut _map = ::std::collections::HashMap::with_capacity(_cap);
             $(
                 $(
-                    let _ = _map.insert($key.parse::<KeyEvent>().unwrap(), keymap!(@trie $value));
+                    let _ = _map.insert(
+                        $key.parse::<::helix_view::input::KeyEvent>().unwrap(),
+                        keymap!(@trie $value)
+                    );
                 )+
             )*
-            KeyTrie::Node(KeyTrieNode::new($label, _map))
+            $crate::keymap::KeyTrie::Node($crate::keymap::KeyTrieNode::new($label, _map))
         }
     };
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
     #[serde(skip)]
@@ -91,13 +101,11 @@ impl KeyTrieNode {
         for (key, trie) in std::mem::take(&mut other.map) {
             if let Some(KeyTrie::Node(node)) = self.map.get_mut(&key) {
                 if let KeyTrie::Node(other_node) = trie {
-                    let mut n = std::mem::take(node);
-                    n.merge(other_node);
-                    let _ = std::mem::replace(node, n);
+                    node.merge(other_node);
+                    continue;
                 }
-            } else {
-                self.map.insert(key, trie.clone());
             }
+            self.map.insert(key, trie);
         }
     }
 }
@@ -120,6 +128,12 @@ impl From<KeyTrieNode> for Info {
 impl Default for KeyTrieNode {
     fn default() -> Self {
         Self::new("", HashMap::new())
+    }
+}
+
+impl PartialEq for KeyTrieNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.map == other.map
     }
 }
 
@@ -195,7 +209,7 @@ pub enum KeymapResult {
 pub struct Keymap {
     /// Always a Node
     #[serde(flatten)]
-    pub root: KeyTrie,
+    root: KeyTrie,
     #[serde(skip)]
     state: Vec<KeyEvent>,
 }
@@ -206,6 +220,10 @@ impl Keymap {
             root,
             state: Vec::new(),
         }
+    }
+
+    pub fn root(&self) -> &KeyTrie {
+        &self.root
     }
 
     /// Lookup `key` in the keymap to try and find a command to execute
@@ -502,13 +520,17 @@ pub fn merge_keys(mut config: Config) -> Config {
 
 #[test]
 fn merge_partial_keys() {
-    use helix_view::keyboard::{KeyCode, KeyModifiers};
     let config = Config {
         keys: Keymaps(hashmap! {
             Mode::Normal => Keymap::new(
                 keymap!({ "Normal mode"
                     "i" => normal_mode,
-                    "无" => insert_mode
+                    "无" => insert_mode,
+                    "z" => jump_backward,
+                    "g" => {"Merge into goto mode"
+                        "$" => goto_line_end,
+                        "g" => delete_char_forward
+                    }
                 })
             )
         }),
@@ -516,30 +538,43 @@ fn merge_partial_keys() {
     };
     let mut merged_config = merge_keys(config.clone());
     assert_ne!(config, merged_config);
+
+    let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
     assert_eq!(
-        merged_config
-            .keys
-            .0
-            .get_mut(&Mode::Normal)
-            .unwrap()
-            .get(KeyEvent {
-                code: KeyCode::Char('i'),
-                modifiers: KeyModifiers::NONE
-            }),
-        KeymapResult::Matched(Command::normal_mode)
+        keymap.get(key!('i')),
+        KeymapResult::Matched(Command::normal_mode),
+        "Leaf should replace leaf"
     );
     assert_eq!(
-        merged_config
-            .keys
-            .0
-            .get_mut(&Mode::Normal)
-            .unwrap()
-            .get(KeyEvent {
-                code: KeyCode::Char('无'),
-                modifiers: KeyModifiers::NONE
-            }),
-        KeymapResult::Matched(Command::insert_mode)
+        keymap.get(key!('无')),
+        KeymapResult::Matched(Command::insert_mode),
+        "New leaf should be present in merged keymap"
     );
+    // Assumes that z is a node in the default keymap
+    assert_eq!(
+        keymap.get(key!('z')),
+        KeymapResult::Matched(Command::jump_backward),
+        "Leaf should replace node"
+    );
+    // Assumes that `g` is a node in default keymap
+    assert_eq!(
+        keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
+        &KeyTrie::Leaf(Command::goto_line_end),
+        "Leaf should be present in merged subnode"
+    );
+    // Assumes that `gg` is in default keymap
+    assert_eq!(
+        keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
+        &KeyTrie::Leaf(Command::delete_char_forward),
+        "Leaf should replace old leaf in merged subnode"
+    );
+    // Assumes that `ge` is in default keymap
+    assert_eq!(
+        keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
+        &KeyTrie::Leaf(Command::goto_file_end),
+        "Old leaves in subnode should be present in merged node"
+    );
+
     assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
     assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
 }
