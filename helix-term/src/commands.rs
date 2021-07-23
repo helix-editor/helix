@@ -2108,7 +2108,7 @@ pub fn code_action(cx: &mut Context) {
     );
 
     let future = language_server.code_actions(doc.identifier(), range);
-    let offset_encoding = language_server.offset_encoding().clone();
+    let offset_encoding = language_server.offset_encoding();
 
     cx.callback(
         future,
@@ -2156,7 +2156,7 @@ fn apply_workspace_edit(
             (
                 lsp_pos_to_pos(edit.range.start),
                 lsp_pos_to_pos(edit.range.end),
-                Some(text_replacement.clone().into()),
+                Some(text_replacement),
             )
         });
         Transaction::change(doc, changes)
