@@ -90,13 +90,13 @@ impl<T: Item> Menu<T> {
 
     pub fn move_up(&mut self) {
         // TODO: wrap around to end
-        let pos = self.cursor.map_or(0, |i| i.saturating_sub(1)) % self.options.len();
+        let pos = self.cursor.map_or(0, |i| i.saturating_sub(1)) % self.matches.len();
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
 
     pub fn move_down(&mut self) {
-        let pos = self.cursor.map_or(0, |i| i + 1) % self.options.len();
+        let pos = self.cursor.map_or(0, |i| i + 1) % self.matches.len();
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
@@ -233,16 +233,16 @@ impl<T: Item + 'static> Component for Menu<T> {
         let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
             let row = option.row();
             // maintain max for each column
-            for (i, cell) in row.cells.iter().enumerate() {
+            for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
                 let width = cell.content.width();
-                if width > acc[i] {
-                    acc[i] = width;
+                if width > *acc {
+                    *acc = width;
                 }
             }
 
             acc
         });
-        let len = (max_lens.iter().sum::<usize>()) + n + 1; // +1: reserve some space for scrollbar
+        let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
         let width = len.min(viewport.0 as usize);
 
         self.widths = max_lens
@@ -250,9 +250,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .map(|len| Constraint::Length(len as u16))
             .collect();
 
-        const MAX: usize = 10;
-        let height = std::cmp::min(self.options.len(), MAX);
-        let height = std::cmp::min(height, viewport.1 as usize);
+        let height = self.options.len().min(10).min(viewport.1 as usize);
 
         self.size = (width as u16, height as u16);
 

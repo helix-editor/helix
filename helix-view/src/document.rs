@@ -596,6 +596,7 @@ impl Document {
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
+        self.reset_modified();
 
         // Detect indentation style and line ending.
         self.detect_indent_style();

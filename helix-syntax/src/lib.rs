@@ -3,15 +3,7 @@ use libloading::{Library, Symbol};
 use tree_sitter::Language;
 
 fn replace_dashes_with_underscores(name: &str) -> String {
-    let mut result = String::with_capacity(name.len());
-    for c in name.chars() {
-        if c == '-' {
-            result.push('_');
-        } else {
-            result.push(c);
-        }
-    }
-    result
+    name.replace('-', "_")
 }
 #[cfg(unix)]
 const DYLIB_EXTENSION: &str = "so";
