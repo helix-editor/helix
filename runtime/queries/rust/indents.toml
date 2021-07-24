@@ -10,6 +10,7 @@ indent = [
  "struct_pattern",
  "tuple_pattern",
  "enum_variant_list",
+ "call_expression",
  "binary_expression",
  "field_expression",
  "tuple_expression",
