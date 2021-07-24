@@ -8,7 +8,7 @@ impl Component for Info {
     fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get("ui.popup");
         let block = Block::default()
-            .title(self.title.clone())
+            .title(self.title.as_str())
             .borders(Borders::ALL)
             .border_style(style);
         let Info { width, height, .. } = self;

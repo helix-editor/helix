@@ -55,9 +55,8 @@ macro_rules! keymap {
     (
         { $label:literal $($($key:literal)|+ => $value:tt),* }
     ) => {
+        // modified from the hashmap! macro
         {
-            // taken from the hashmap! macro since a macro cannot
-            // take output of another macro as input
             let _cap = hashmap!(@count $($($key),+),*);
             let mut _map = ::std::collections::HashMap::with_capacity(_cap);
             $(
@@ -247,8 +246,6 @@ impl Keymap {
 
     pub fn merge(&mut self, other: Self) {
         self.root.merge_nodes(other.root);
-        // let node = std::mem::take(other.root.node_mut().unwrap());
-        // self.root.node_mut().unwrap().merge(node);
     }
 }
 
@@ -506,11 +503,8 @@ impl Default for Keymaps {
     }
 }
 
-/// Merge default config keys with user overwritten keys for custom
-/// user config.
+/// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(mut config: Config) -> Config {
-    // FIXME: requires recursive merging (defining "gp" in user mapping
-    // will disable all other default mappings under "g")
     let mut delta = std::mem::take(&mut config.keys);
     for (mode, keys) in &mut *config.keys {
         keys.merge(delta.remove(mode).unwrap_or_default())

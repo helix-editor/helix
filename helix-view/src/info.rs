@@ -5,9 +5,9 @@ use std::{collections::BTreeMap, fmt::Write};
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
-    /// Title kept as static str for now.
+    /// Title shown at top.
     pub title: String,
-    /// Text body, should contains newline.
+    /// Text body, should contain newlines.
     pub text: String,
     /// Body width.
     pub width: u16,

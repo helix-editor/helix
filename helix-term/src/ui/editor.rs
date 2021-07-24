@@ -749,7 +749,6 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        // self.last_insert.0 = self.keymaps[&mode][&key];
                         self.last_insert.0 = match self.keymaps.get_mut(&mode).unwrap().get(key) {
                             KeymapResult::Matched(command) => command,
                             // FIXME: insert mode can only be entered through single KeyCodes
