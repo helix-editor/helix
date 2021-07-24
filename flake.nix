@@ -28,27 +28,53 @@
             preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml} ..";
             buildInputs = (prev.buildInputs or [ ]) ++ [ common.cCompiler.cc.lib ];
           };
-          # link runtime since helix-core expects it because of embed_runtime feature
-          helix-core = _: { preConfigure = "ln -s ${common.root + "/runtime"} ../runtime"; };
           # link languages and theme toml files since helix-view expects them
           helix-view = _: { preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml} .."; };
-          helix-syntax = prev:
-            let
-              helix = common.pkgs.fetchgit {
-                url = "https://github.com/helix-editor/helix.git";
-                rev = "9fd17d4ff5b81211317da1a28d2b30442a512ffc";
-                fetchSubmodules = true;
-                sha256 = "sha256-y652sn/tCc1XoKr3YxDZv6bS2Cmr6+9K/wzzNAMFZJw=";
-              };
-            in
-            {
-              src = common.pkgs.runCommand prev.src.name { } ''
+          helix-syntax = prev: {
+            src =
+              let
+                pkgs = common.pkgs;
+                helix = pkgs.fetchgit {
+                  url = "https://github.com/helix-editor/helix.git";
+                  rev = "d4bd5b37669708361a0a6cd2917464b010e6b7f5";
+                  fetchSubmodules = true;
+                  sha256 = "sha256-KayR7K7UC0mT6EjHsZsCYY9IVDJzft63fGpPKGSY8nQ=";
+                };
+              in
+              pkgs.runCommand prev.src.name { } ''
                 mkdir -p $out
                 ln -s ${prev.src}/* $out
                 ln -sf ${helix}/helix-syntax/languages $out
               '';
-            };
+            preConfigure = "mkdir -p ../runtime/grammars";
+            postInstall = "cp -r ../runtime $out/runtime";
+          };
         };
+        mainBuild = common: prev:
+          let
+            inherit (common) pkgs lib;
+            helixSyntax = lib.buildCrate {
+              root = self;
+              memberName = "helix-syntax";
+              defaultCrateOverrides = {
+                helix-syntax = common.crateOverrides.helix-syntax;
+              };
+              release = false;
+            };
+            runtimeDir = pkgs.runCommand "helix-runtime" { } ''
+              mkdir -p $out
+              ln -s ${common.root}/runtime/* $out
+              ln -sf ${helixSyntax}/runtime/grammars $out
+            '';
+          in
+          lib.optionalAttrs (common.memberName == "helix-term") {
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            postFixup = ''
+              if [ -f "$out/bin/hx" ]; then
+                wrapProgram "$out/bin/hx" --set HELIX_RUNTIME "${runtimeDir}"
+              fi
+            '';
+          };
         shell = common: prev: {
           packages = prev.packages ++ (with common.pkgs; [ lld_10 lldb cargo-tarpaulin ]);
           env = prev.env ++ [
@@ -57,7 +83,6 @@
             { name = "RUSTFLAGS"; value = "-C link-arg=-fuse-ld=lld -C target-cpu=native"; }
           ];
         };
-        build = _: prev: { rootFeatures = prev.rootFeatures ++ [ "embed_runtime" ]; };
       };
     };
 }
