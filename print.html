@@ -357,8 +357,8 @@ so you should define the palette after normal theme options.</p>
 <tr><td><code>r</code></td><td>Replace with a character</td></tr>
 <tr><td><code>R</code></td><td>Replace with yanked text</td></tr>
 <tr><td><code>~</code></td><td>Switch case of the selected text</td></tr>
-<tr><td>```</td><td>Set the selected text to upper case</td></tr>
-<tr><td>`Alt-``</td><td>Set the selected text to lower case</td></tr>
+<tr><td><code>`</code></td><td>Set the selected text to lower case</td></tr>
+<tr><td><code>Alt-`</code></td><td>Set the selected text to upper case</td></tr>
 <tr><td><code>i</code></td><td>Insert before selection</td></tr>
 <tr><td><code>a</code></td><td>Insert after selection (append)</td></tr>
 <tr><td><code>I</code></td><td>Insert at the start of the line</td></tr>
@@ -387,10 +387,16 @@ so you should define the palette after normal theme options.</p>
 <tr><td><code>x</code></td><td>Select current line, if already selected, extend to next line</td></tr>
 <tr><td><code>X</code></td><td>Extend selection to line bounds (line-wise selection)</td></tr>
 <tr><td></td><td>Expand selection to parent syntax node TODO: pick a key</td></tr>
-<tr><td><code>J</code></td><td>join lines inside selection</td></tr>
-<tr><td><code>K</code></td><td>keep selections matching the regex TODO: overlapped by hover help</td></tr>
-<tr><td><code>Space</code></td><td>keep only the primary selection TODO: overlapped by space mode</td></tr>
+<tr><td><code>J</code></td><td>Join lines inside selection</td></tr>
+<tr><td><code>K</code></td><td>Keep selections matching the regex TODO: overlapped by hover help</td></tr>
+<tr><td><code>Space</code></td><td>Keep only the primary selection TODO: overlapped by space mode</td></tr>
 <tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td></tr>
+</tbody></table>
+<h3 id="insert-mode"><a class="header" href="#insert-mode">Insert Mode</a></h3>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Escape</code></td><td>Switch to normal mode</td></tr>
+<tr><td><code>Ctrl-x</code></td><td>Autocomplete</td></tr>
+<tr><td><code>Ctrl-w</code></td><td>Delete previous word</td></tr>
 </tbody></table>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
 <blockquote>
@@ -480,13 +486,15 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>f</code></td><td>Open file picker</td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td></tr>
 <tr><td><code>s</code></td><td>Open symbol picker (current document)</td></tr>
+<tr><td><code>a</code></td><td>Apply code action</td></tr>
+<tr><td><code>'</code></td><td>Open last fuzzy picker</td></tr>
 <tr><td><code>w</code></td><td>Enter <a href="keymap.html#window-mode">window mode</a></td></tr>
 <tr><td><code>space</code></td><td>Keep primary selection TODO: it's here because space mode replaced it</td></tr>
-<tr><td><code>p</code></td><td>paste system clipboard after selections</td></tr>
-<tr><td><code>P</code></td><td>paste system clipboard before selections</td></tr>
-<tr><td><code>y</code></td><td>join and yank selections to clipboard</td></tr>
-<tr><td><code>Y</code></td><td>yank main selection to clipboard</td></tr>
-<tr><td><code>R</code></td><td>replace selections by clipboard contents</td></tr>
+<tr><td><code>p</code></td><td>Paste system clipboard after selections</td></tr>
+<tr><td><code>P</code></td><td>Paste system clipboard before selections</td></tr>
+<tr><td><code>y</code></td><td>Join and yank selections to clipboard</td></tr>
+<tr><td><code>Y</code></td><td>Yank main selection to clipboard</td></tr>
+<tr><td><code>R</code></td><td>Replace selections by clipboard contents</td></tr>
 </tbody></table>
 <h1 id="picker"><a class="header" href="#picker">Picker</a></h1>
 <p>Keys to use within picker.</p>
