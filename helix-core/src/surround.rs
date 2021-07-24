@@ -49,19 +49,18 @@ pub fn find_nth_pairs_pos(
         if Some(open) == text.get_char(pos) {
             // Special case: cursor is directly on a matching char.
             match pos {
-                0 => Some((pos, search::find_nth_next(text, close, pos + 1, n, true)?)),
-                _ if (pos + 1) == text.len_chars() => Some((
-                    search::find_nth_prev(text, open, pos, n, true)?,
-                    text.len_chars(),
-                )),
+                0 => Some((pos, search::find_nth_next(text, close, pos + 1, n)? + 1)),
+                _ if (pos + 1) == text.len_chars() => {
+                    Some((search::find_nth_prev(text, open, pos, n)?, text.len_chars()))
+                }
                 // We return no match because there's no way to know which
                 // side of the char we should be searching on.
                 _ => None,
             }
         } else {
             Some((
-                search::find_nth_prev(text, open, pos, n, true)?,
-                search::find_nth_next(text, close, pos, n, true)?,
+                search::find_nth_prev(text, open, pos, n)?,
+                search::find_nth_next(text, close, pos, n)? + 1,
             ))
         }
     } else {

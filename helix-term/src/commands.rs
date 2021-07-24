@@ -373,15 +373,16 @@ fn goto_line_end(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.head_line(text);
+        let line_start = text.line_to_char(line);
 
-        let mut pos = line_end_char_index(&text, line);
-        if doc.mode != Mode::Select {
-            pos = graphemes::prev_grapheme_boundary(text, pos);
+        let pos = graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
+            .max(line_start);
+
+        if doc.mode == Mode::Select {
+            range.move_head(text, pos, true)
+        } else {
+            Range::point(pos)
         }
-
-        pos = range.head.max(pos).max(text.line_to_char(line));
-
-        range.put(text, pos, doc.mode == Mode::Select)
     });
     doc.set_selection(view.id, selection);
 }
@@ -392,12 +393,13 @@ fn goto_line_end_newline(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.head_line(text);
+        let pos = line_end_char_index(&text, line);
 
-        let mut pos = text.line_to_char((line + 1).min(text.len_lines()));
-        if doc.mode != Mode::Select {
-            pos = graphemes::prev_grapheme_boundary(text, pos);
+        if doc.mode == Mode::Select {
+            range.move_head(text, pos, true)
+        } else {
+            Range::point(pos)
         }
-        range.put(text, pos, doc.mode == Mode::Select)
     });
     doc.set_selection(view.id, selection);
 }
@@ -411,7 +413,11 @@ fn goto_line_start(cx: &mut Context) {
 
         // adjust to start of the line
         let pos = text.line_to_char(line);
-        range.put(text, pos, doc.mode == Mode::Select)
+        if doc.mode == Mode::Select {
+            range.move_head(text, pos, true)
+        } else {
+            Range::point(pos)
+        }
     });
     doc.set_selection(view.id, selection);
 }
@@ -425,7 +431,11 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 
         if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
             let pos = pos + text.line_to_char(line);
-            range.put(text, pos, doc.mode == Mode::Select)
+            if doc.mode == Mode::Select {
+                range.move_head(text, pos, true)
+            } else {
+                Range::point(pos)
+            }
         } else {
             range
         }
@@ -569,8 +579,8 @@ fn extend_next_word_start(cx: &mut Context) {
         .min_width_1(text)
         .transform(|range| {
             let word = movement::move_next_word_start(text, range, count);
-            let pos = word.head;
-            range.put(text, pos, true)
+            let pos = graphemes::prev_grapheme_boundary(text, word.head);
+            range.move_head(text, pos, true)
         });
     doc.set_selection(view.id, selection);
 }
@@ -587,7 +597,7 @@ fn extend_prev_word_start(cx: &mut Context) {
         .transform(|range| {
             let word = movement::move_prev_word_start(text, range, count);
             let pos = word.head;
-            range.put(text, pos, true)
+            range.move_head(text, pos, true)
         });
     doc.set_selection(view.id, selection);
 }
@@ -603,8 +613,8 @@ fn extend_next_word_end(cx: &mut Context) {
         .min_width_1(text)
         .transform(|range| {
             let word = movement::move_next_word_end(text, range, count);
-            let pos = word.head;
-            range.put(text, pos, true)
+            let pos = graphemes::prev_grapheme_boundary(text, word.head);
+            range.move_head(text, pos, true)
         });
     doc.set_selection(view.id, selection);
 }
@@ -652,11 +662,17 @@ where
         let text = doc.text().slice(..);
 
         let selection = doc.selection(view.id).clone().transform(|range| {
+            let range = if range.anchor < range.head {
+                // For 1-width cursor semantics.
+                Range::new(range.anchor, range.head - 1)
+            } else {
+                range
+            };
             search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
                 if extend {
-                    range.put(text, pos, true)
+                    range.move_head(text, pos, true)
                 } else {
-                    range.put(text, pos.saturating_sub(1), false)
+                    Range::point(pos)
                 }
             })
         });
@@ -664,10 +680,39 @@ where
     })
 }
 
+fn find_next_char_impl(
+    text: RopeSlice,
+    ch: char,
+    pos: usize,
+    n: usize,
+    inclusive: bool,
+) -> Option<usize> {
+    let pos = (pos + 1).min(text.len_chars());
+    if inclusive {
+        search::find_nth_next(text, ch, pos, n)
+    } else {
+        search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
+    }
+}
+
+fn find_prev_char_impl(
+    text: RopeSlice,
+    ch: char,
+    pos: usize,
+    n: usize,
+    inclusive: bool,
+) -> Option<usize> {
+    if inclusive {
+        search::find_nth_prev(text, ch, pos, n)
+    } else {
+        search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
+    }
+}
+
 fn find_till_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_next,
+        find_next_char_impl,
         false, /* inclusive */
         false, /* extend */
     )
@@ -676,7 +721,7 @@ fn find_till_char(cx: &mut Context) {
 fn find_next_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_next,
+        find_next_char_impl,
         true,  /* inclusive */
         false, /* extend */
     )
@@ -685,7 +730,7 @@ fn find_next_char(cx: &mut Context) {
 fn extend_till_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_next,
+        find_next_char_impl,
         false, /* inclusive */
         true,  /* extend */
     )
@@ -694,7 +739,7 @@ fn extend_till_char(cx: &mut Context) {
 fn extend_next_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_next,
+        find_next_char_impl,
         true, /* inclusive */
         true, /* extend */
     )
@@ -703,7 +748,7 @@ fn extend_next_char(cx: &mut Context) {
 fn till_prev_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_prev,
+        find_prev_char_impl,
         false, /* inclusive */
         false, /* extend */
     )
@@ -712,7 +757,7 @@ fn till_prev_char(cx: &mut Context) {
 fn find_prev_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_prev,
+        find_prev_char_impl,
         true,  /* inclusive */
         false, /* extend */
     )
@@ -721,7 +766,7 @@ fn find_prev_char(cx: &mut Context) {
 fn extend_till_prev_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_prev,
+        find_prev_char_impl,
         false, /* inclusive */
         true,  /* extend */
     )
@@ -730,7 +775,7 @@ fn extend_till_prev_char(cx: &mut Context) {
 fn extend_prev_char(cx: &mut Context) {
     find_char_impl(
         cx,
-        search::find_nth_prev,
+        find_prev_char_impl,
         true, /* inclusive */
         true, /* extend */
     )

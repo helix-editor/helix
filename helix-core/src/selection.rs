@@ -248,18 +248,18 @@ impl Range {
         }
     }
 
-    /// Moves the `Range` to `char_idx`.  If `extend == true`, then only the head
-    /// is moved to `char_idx`, and the anchor is adjusted only as needed to
-    /// preserve 1-width range semantics.
+    /// Moves the head of the `Range` to `char_idx`, adjusting the anchor
+    /// as needed to preserve 1-width range semantics.
+    ///
+    /// `block_cursor` specifies whether it should treat `char_idx` as a block
+    /// cursor position or as a range-end position.
     ///
     /// This method assumes that the range and `char_idx` are already properly
     /// grapheme-aligned.
     #[must_use]
     #[inline]
-    pub fn put(self, text: RopeSlice, char_idx: usize, extend: bool) -> Range {
-        let anchor = if !extend {
-            char_idx
-        } else if self.head >= self.anchor && char_idx < self.anchor {
+    pub fn move_head(self, text: RopeSlice, char_idx: usize, block_cursor: bool) -> Range {
+        let anchor = if self.head >= self.anchor && char_idx < self.anchor {
             next_grapheme_boundary(text, self.anchor)
         } else if self.head < self.anchor && char_idx >= self.anchor {
             prev_grapheme_boundary(text, self.anchor)
@@ -267,7 +267,11 @@ impl Range {
             self.anchor
         };
 
-        Range::new(anchor, char_idx)
+        if block_cursor && anchor <= char_idx {
+            Range::new(anchor, next_grapheme_boundary(text, char_idx))
+        } else {
+            Range::new(anchor, char_idx)
+        }
     }
 
     // groupAt

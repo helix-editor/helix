@@ -42,20 +42,18 @@ pub fn move_horizontally(
     };
 
     // Compute the new position.
-    let mut new_pos = if dir == Direction::Backward {
+    let new_pos = if dir == Direction::Backward {
         nth_prev_grapheme_boundary(slice, pos, count)
     } else {
         nth_next_grapheme_boundary(slice, pos, count)
     };
 
-    // Shift forward one grapheme if needed, for the
-    // visual 1-width cursor.
-    if behaviour == Extend && new_pos >= range.anchor {
-        new_pos = next_grapheme_boundary(slice, new_pos);
-    };
-
     // Compute the final new range.
-    range.put(slice, new_pos, behaviour == Extend)
+    if behaviour == Extend {
+        range.move_head(slice, new_pos, true)
+    } else {
+        Range::point(new_pos)
+    }
 }
 
 pub fn move_vertically(
@@ -78,14 +76,17 @@ pub fn move_vertically(
     let horiz = range.horiz.unwrap_or(col as u32);
 
     // Compute the new position.
-    let new_pos = {
+    let (new_pos, new_row) = {
         let new_row = if dir == Direction::Backward {
             row.saturating_sub(count)
         } else {
             (row + count).min(slice.len_lines().saturating_sub(1))
         };
         let new_col = col.max(horiz as usize);
-        pos_at_coords(slice, Position::new(new_row, new_col), true)
+        (
+            pos_at_coords(slice, Position::new(new_row, new_col), true),
+            new_row,
+        )
     };
 
     // Compute the new range according to the type of movement.
@@ -97,15 +98,13 @@ pub fn move_vertically(
         },
 
         Movement::Extend => {
-            let new_head = if new_pos >= range.anchor {
-                next_grapheme_boundary(slice, new_pos)
+            if slice.line(new_row).len_chars() > 0 {
+                let mut new_range = range.move_head(slice, new_pos, true);
+                new_range.horiz = Some(horiz);
+                new_range
             } else {
-                new_pos
-            };
-
-            let mut new_range = range.put(slice, new_head, true);
-            new_range.horiz = Some(horiz);
-            new_range
+                range
+            }
         }
     }
 }

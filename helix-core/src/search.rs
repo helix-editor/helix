@@ -1,12 +1,6 @@
 use crate::RopeSlice;
 
-pub fn find_nth_next(
-    text: RopeSlice,
-    ch: char,
-    mut pos: usize,
-    n: usize,
-    inclusive: bool,
-) -> Option<usize> {
+pub fn find_nth_next(text: RopeSlice, ch: char, mut pos: usize, n: usize) -> Option<usize> {
     if pos >= text.len_chars() || n == 0 {
         return None;
     }
@@ -25,20 +19,10 @@ pub fn find_nth_next(
         }
     }
 
-    if !inclusive {
-        pos -= 1;
-    }
-
-    Some(pos)
+    Some(pos - 1)
 }
 
-pub fn find_nth_prev(
-    text: RopeSlice,
-    ch: char,
-    mut pos: usize,
-    n: usize,
-    inclusive: bool,
-) -> Option<usize> {
+pub fn find_nth_prev(text: RopeSlice, ch: char, mut pos: usize, n: usize) -> Option<usize> {
     if pos == 0 || n == 0 {
         return None;
     }
@@ -55,10 +39,6 @@ pub fn find_nth_prev(
                 break;
             }
         }
-    }
-
-    if !inclusive {
-        pos += 1;
     }
 
     Some(pos)
