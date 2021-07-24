@@ -41,29 +41,29 @@
 
 ### Changes
 
-| Key      | Description                                     |
-| -----    | -----------                                     |
-| `r`      | Replace with a character                        |
-| `R`      | Replace with yanked text                        |
-| `~`      | Switch case of the selected text                |
-| `\``     | Set the selected text to upper case             |
-| `Alt-\`` | Set the selected text to lower case             |
-| `i`      | Insert before selection                         |
-| `a`      | Insert after selection (append)                 |
-| `I`      | Insert at the start of the line                 |
-| `A`      | Insert at the end of the line                   |
-| `o`      | Open new line below selection                   |
-| `o`      | Open new line above selection                   |
-| `u`      | Undo change                                     |
-| `U`      | Redo change                                     |
-| `y`      | Yank selection                                  |
-| `p`      | Paste after selection                           |
-| `P`      | Paste before selection                          |
-| `>`      | Indent selection                                |
-| `<`      | Unindent selection                              |
-| `=`      | Format selection                                |
-| `d`      | Delete selection                                |
-| `c`      | Change selection (delete and enter insert mode) |
+| Key         | Description                                     |
+| -----       | -----------                                     |
+| `r`         | Replace with a character                        |
+| `R`         | Replace with yanked text                        |
+| `~`         | Switch case of the selected text                |
+| `` ` ``     | Set the selected text to lower case             |
+| `` Alt-` `` | Set the selected text to upper case             |
+| `i`         | Insert before selection                         |
+| `a`         | Insert after selection (append)                 |
+| `I`         | Insert at the start of the line                 |
+| `A`         | Insert at the end of the line                   |
+| `o`         | Open new line below selection                   |
+| `o`         | Open new line above selection                   |
+| `u`         | Undo change                                     |
+| `U`         | Redo change                                     |
+| `y`         | Yank selection                                  |
+| `p`         | Paste after selection                           |
+| `P`         | Paste before selection                          |
+| `>`         | Indent selection                                |
+| `<`         | Unindent selection                              |
+| `=`         | Format selection                                |
+| `d`         | Delete selection                                |
+| `c`         | Change selection (delete and enter insert mode) |
 
 ### Selection manipulation
 
@@ -78,10 +78,18 @@
 | `x`      | Select current line, if already selected, extend to next line     |
 | `X`      | Extend selection to line bounds (line-wise selection)             |
 |          | Expand selection to parent syntax node TODO: pick a key           |
-| `J`      | join lines inside selection                                       |
-| `K`      | keep selections matching the regex TODO: overlapped by hover help |
-| `Space`  | keep only the primary selection TODO: overlapped by space mode    |
+| `J`      | Join lines inside selection                                       |
+| `K`      | Keep selections matching the regex TODO: overlapped by hover help |
+| `Space`  | Keep only the primary selection TODO: overlapped by space mode    |
 | `Ctrl-c` | Comment/uncomment the selections                                  |
+
+### Insert Mode
+
+| Key      | Description           |
+| -----    | -----------           |
+| `Escape` | Switch to normal mode |
+| `Ctrl-x` | Autocomplete          |
+| `Ctrl-w` | Delete previous word  |
 
 ### Search
 
@@ -190,13 +198,15 @@ This layer is a kludge of mappings I had under leader key in neovim.
 | `f`     | Open file picker                                                      |
 | `b`     | Open buffer picker                                                    |
 | `s`     | Open symbol picker (current document)                                 |
+| `a`     | Apply code action                                                     |
+| `'`     | Open last fuzzy picker                                                |
 | `w`     | Enter [window mode](#window-mode)                                     |
 | `space` | Keep primary selection TODO: it's here because space mode replaced it |
-| `p`     | paste system clipboard after selections                               |
-| `P`     | paste system clipboard before selections                              |
-| `y`     | join and yank selections to clipboard                                 |
-| `Y`     | yank main selection to clipboard                                      |
-| `R`     | replace selections by clipboard contents                              |
+| `p`     | Paste system clipboard after selections                               |
+| `P`     | Paste system clipboard before selections                              |
+| `y`     | Join and yank selections to clipboard                                 |
+| `Y`     | Yank main selection to clipboard                                      |
+| `R`     | Replace selections by clipboard contents                              |
 
 # Picker
 
