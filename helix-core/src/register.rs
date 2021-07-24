@@ -22,12 +22,16 @@ impl Register {
         self.name
     }
 
-    pub fn read(&self) -> &Vec<String> {
+    pub fn read(&self) -> &[String] {
         &self.values
     }
 
     pub fn write(&mut self, values: Vec<String>) {
         self.values = values;
+    }
+
+    pub fn push(&mut self, value: String) {
+        self.values.push(value);
     }
 }
 
@@ -42,11 +46,7 @@ impl Registers {
         self.inner.get(&name)
     }
 
-    pub fn get_mut(&mut self, name: char) -> Option<&mut Register> {
-        self.inner.get_mut(&name)
-    }
-
-    pub fn get_or_insert(&mut self, name: char) -> &mut Register {
+    pub fn get_mut(&mut self, name: char) -> &mut Register {
         self.inner
             .entry(name)
             .or_insert_with(|| Register::new(name))
@@ -57,7 +57,7 @@ impl Registers {
             .insert(name, Register::new_with_values(name, values));
     }
 
-    pub fn read(&self, name: char) -> Option<&Vec<String>> {
+    pub fn read(&self, name: char) -> Option<&[String]> {
         self.get(name).map(|reg| reg.read())
     }
 }

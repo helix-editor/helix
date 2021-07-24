@@ -1126,7 +1126,7 @@ fn delete_selection(cx: &mut Context) {
     let reg_name = cx.selected_register.name();
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
-    let reg = registers.get_or_insert(reg_name);
+    let reg = registers.get_mut(reg_name);
     delete_selection_impl(reg, doc, view.id);
 
     doc.append_changes_to_history(view.id);
@@ -1139,7 +1139,7 @@ fn change_selection(cx: &mut Context) {
     let reg_name = cx.selected_register.name();
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
-    let reg = registers.get_or_insert(reg_name);
+    let reg = registers.get_mut(reg_name);
     delete_selection_impl(reg, doc, view.id);
     enter_insert_mode(doc);
 }
@@ -1920,6 +1920,7 @@ mod cmd {
 fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".to_owned(),
+        Some(':'),
         |input: &str| {
             // we use .this over split_whitespace() because we care about empty segments
             let parts = input.split(' ').collect::<Vec<&str>>();

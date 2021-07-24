@@ -36,6 +36,7 @@ pub fn regex_prompt(
 
     Prompt::new(
         prompt,
+        None,
         |_input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {

@@ -20,6 +20,8 @@ pub struct Prompt {
     cursor: usize,
     completion: Vec<Completion>,
     selection: Option<usize>,
+    history_register: Option<char>,
+    history_pos: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
@@ -54,6 +56,7 @@ pub enum Movement {
 impl Prompt {
     pub fn new(
         prompt: String,
+        history_register: Option<char>,
         mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
@@ -63,6 +66,8 @@ impl Prompt {
             cursor: 0,
             completion: completion_fn(""),
             selection: None,
+            history_register,
+            history_pos: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -224,6 +229,28 @@ impl Prompt {
         self.cursor = 0;
         self.completion = (self.completion_fn)(&self.line);
         self.exit_selection();
+    }
+
+    pub fn change_history(&mut self, register: &[String], direction: CompletionDirection) {
+        if register.is_empty() {
+            return;
+        }
+
+        let end = register.len().saturating_sub(1);
+
+        let index = match direction {
+            CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
+            CompletionDirection::Backward => {
+                self.history_pos.unwrap_or(register.len()).saturating_sub(1)
+            }
+        }
+        .min(end);
+
+        self.line = register[index].clone();
+
+        self.history_pos = Some(index);
+
+        self.move_end();
     }
 
     pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
@@ -468,7 +495,38 @@ impl Component for Prompt {
                     self.exit_selection();
                 } else {
                     (self.callback_fn)(cx, &self.line, PromptEvent::Validate);
+
+                    if let Some(register) = self.history_register {
+                        // store in history
+                        let register = cx.editor.registers.get_mut(register);
+                        register.push(self.line.clone());
+                    }
                     return close_fn;
+                }
+            }
+            KeyEvent {
+                code: KeyCode::Char('p'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Up, ..
+            } => {
+                if let Some(register) = self.history_register {
+                    let register = cx.editor.registers.get_mut(register);
+                    self.change_history(register.read(), CompletionDirection::Backward);
+                }
+            }
+            KeyEvent {
+                code: KeyCode::Char('n'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Down,
+                ..
+            } => {
+                if let Some(register) = self.history_register {
+                    let register = cx.editor.registers.get_mut(register);
+                    self.change_history(register.read(), CompletionDirection::Forward);
                 }
             }
             KeyEvent {
