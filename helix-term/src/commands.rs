@@ -2188,6 +2188,7 @@ fn apply_workspace_edit(
                         offset_encoding,
                     );
                     doc.apply(&transaction, view.id);
+                    doc.append_changes_to_history(view.id);
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
