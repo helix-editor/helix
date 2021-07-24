@@ -1,11 +1,4 @@
 indent = [
- "while_expression",
- "for_expression",
- "loop_expression",
- "if_expression",
- "if_let_expression",
- "tuple_expression",
- "array_expression",
  "use_list",
  "block",
  "match_block",
@@ -19,6 +12,8 @@ indent = [
  "enum_variant_list",
  "binary_expression",
  "field_expression",
+ "tuple_expression",
+ "array_expression",
  "where_clause",
  "macro_invocation"
 ]
