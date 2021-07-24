@@ -652,8 +652,13 @@ where
         let text = doc.text().slice(..);
 
         let selection = doc.selection(view.id).clone().transform(|range| {
-            search_fn(text, ch, range.head, count, inclusive)
-                .map_or(range, |pos| range.put(text, pos, extend))
+            search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
+                if extend {
+                    range.put(text, pos, true)
+                } else {
+                    range.put(text, pos.saturating_sub(1), false)
+                }
+            })
         });
         doc.set_selection(view.id, selection);
     })
