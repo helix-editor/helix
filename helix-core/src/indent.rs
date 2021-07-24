@@ -47,7 +47,7 @@ fn calculate_indentation(query: &IndentQuery, node: Option<Node>, newline: bool)
     // NOTE: can't use contains() on query because of comparing Vec<String> and &str
     // https://doc.rust-lang.org/std/vec/struct.Vec.html#method.contains
 
-    let mut increment: i32 = 0;
+    let mut increment: isize = 0;
 
     let mut node = match node {
         Some(node) => node,
@@ -93,9 +93,7 @@ fn calculate_indentation(query: &IndentQuery, node: Option<Node>, newline: bool)
         node = parent;
     }
 
-    assert!(increment >= 0);
-
-    increment as usize
+    increment.max(0) as usize
 }
 
 #[allow(dead_code)]
