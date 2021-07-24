@@ -9,8 +9,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     register::Register,
-    search, selection, surround, textobject, Change, LineEnding, Position, Range, Rope,
-    RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
+    RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -2148,21 +2148,6 @@ fn apply_workspace_edit(
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
-    let edits_to_transaction = |doc: &Rope, edits: &Vec<&lsp::TextEdit>| {
-        let lsp_pos_to_pos = |lsp_pos| lsp_pos_to_pos(&doc, lsp_pos, offset_encoding).unwrap();
-        let changes = edits.iter().map(|edit| -> Change {
-            log::debug!("text edit: {:?}", edit);
-            // This clone probably could be optimized if Picker::new would give T instead of &T
-            let text_replacement = Tendril::from(edit.new_text.clone());
-            (
-                lsp_pos_to_pos(edit.range.start),
-                lsp_pos_to_pos(edit.range.end),
-                Some(text_replacement),
-            )
-        });
-        Transaction::change(doc, changes)
-    };
-
     if let Some(ref changes) = workspace_edit.changes {
         log::debug!("workspace changes: {:?}", changes);
         editor.set_error(String::from("Handling workspace changesis not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
@@ -2194,8 +2179,14 @@ fn apply_workspace_edit(
                                 &annotated_text_edit.text_edit
                             }
                         })
+                        .cloned()
                         .collect();
-                    let transaction = edits_to_transaction(doc.text(), &edits);
+
+                    let transaction = helix_lsp::util::generate_transaction_from_edits(
+                        doc.text(),
+                        edits,
+                        offset_encoding,
+                    );
                     doc.apply(&transaction, view.id);
                 }
             }
