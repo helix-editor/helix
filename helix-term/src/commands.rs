@@ -325,140 +325,111 @@ impl PartialEq for Command {
 fn move_char_left(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_horizontally(
-                doc.text().slice(..),
-                range,
-                Direction::Backward,
-                count,
-                Movement::Move,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Move)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn move_char_right(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_horizontally(
-                doc.text().slice(..),
-                range,
-                Direction::Forward,
-                count,
-                Movement::Move,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Move)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn move_line_up(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_vertically(
-                doc.text().slice(..),
-                range,
-                Direction::Backward,
-                count,
-                Movement::Move,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Move)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn move_line_down(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_vertically(
-                doc.text().slice(..),
-                range,
-                Direction::Forward,
-                count,
-                Movement::Move,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Move)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_line_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let line = range.head_line(text);
+    let text = doc.text().slice(..);
 
-            let mut pos = line_end_char_index(&text, line);
-            if doc.mode != Mode::Select {
-                pos = graphemes::prev_grapheme_boundary(text, pos);
-            }
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.head_line(text);
 
-            pos = range.head.max(pos).max(text.line_to_char(line));
+        let mut pos = line_end_char_index(&text, line);
+        if doc.mode != Mode::Select {
+            pos = graphemes::prev_grapheme_boundary(text, pos);
+        }
 
-            range.put(text, pos, doc.mode == Mode::Select)
-        }),
-    );
+        pos = range.head.max(pos).max(text.line_to_char(line));
+
+        range.put(text, pos, doc.mode == Mode::Select)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_line_end_newline(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
 
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let line = range.head_line(text);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.head_line(text);
 
-            let mut pos = text.line_to_char((line + 1).min(text.len_lines()));
-            if doc.mode != Mode::Select {
-                pos = graphemes::prev_grapheme_boundary(text, pos);
-            }
-            range.put(text, pos, doc.mode == Mode::Select)
-        }),
-    );
+        let mut pos = text.line_to_char((line + 1).min(text.len_lines()));
+        if doc.mode != Mode::Select {
+            pos = graphemes::prev_grapheme_boundary(text, pos);
+        }
+        range.put(text, pos, doc.mode == Mode::Select)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_line_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let line = range.head_line(text);
+    let text = doc.text().slice(..);
 
-            // adjust to start of the line
-            let pos = text.line_to_char(line);
-            range.put(text, pos, doc.mode == Mode::Select)
-        }),
-    );
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.head_line(text);
+
+        // adjust to start of the line
+        let pos = text.line_to_char(line);
+        range.put(text, pos, doc.mode == Mode::Select)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let line = range.head_line(text);
+    let text = doc.text().slice(..);
 
-            if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
-                let pos = pos + text.line_to_char(line);
-                range.put(text, pos, doc.mode == Mode::Select)
-            } else {
-                range
-            }
-        }),
-    );
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.head_line(text);
+
+        if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+            let pos = pos + text.line_to_char(line);
+            range.put(text, pos, doc.mode == Mode::Select)
+        } else {
+            range
+        }
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_window(cx: &mut Context, align: Align) {
@@ -499,80 +470,79 @@ fn goto_window_bottom(cx: &mut Context) {
 fn move_next_word_start(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
 
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| movement::move_next_word_start(doc.text().slice(..), range, count)),
-    );
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| movement::move_next_word_start(text, range, count));
+    doc.set_selection(view.id, selection);
 }
 
 fn move_prev_word_start(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| movement::move_prev_word_start(doc.text().slice(..), range, count)),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| movement::move_prev_word_start(text, range, count));
+    doc.set_selection(view.id, selection);
 }
 
 fn move_next_word_end(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| movement::move_next_word_end(doc.text().slice(..), range, count)),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| movement::move_next_word_end(text, range, count));
+    doc.set_selection(view.id, selection);
 }
 
 fn move_next_long_word_start(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| {
-                movement::move_next_long_word_start(doc.text().slice(..), range, count)
-            }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| movement::move_next_long_word_start(text, range, count));
+    doc.set_selection(view.id, selection);
 }
 
 fn move_prev_long_word_start(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| {
-                movement::move_prev_long_word_start(doc.text().slice(..), range, count)
-            }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| movement::move_prev_long_word_start(text, range, count));
+    doc.set_selection(view.id, selection);
 }
 
 fn move_next_long_word_end(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| {
-                movement::move_next_long_word_end(doc.text().slice(..), range, count)
-            }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| movement::move_next_long_word_end(text, range, count));
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_file_start(cx: &mut Context) {
@@ -590,52 +560,52 @@ fn goto_file_end(cx: &mut Context) {
 fn extend_next_word_start(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| {
-                let text = doc.text().slice(..);
-                let word = movement::move_next_word_start(text, range, count);
-                let pos = word.head;
-                range.put(text, pos, true)
-            }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| {
+            let word = movement::move_next_word_start(text, range, count);
+            let pos = word.head;
+            range.put(text, pos, true)
+        });
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_prev_word_start(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| {
-                let text = doc.text().slice(..);
-                let word = movement::move_prev_word_start(text, range, count);
-                let pos = word.head;
-                range.put(text, pos, true)
-            }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| {
+            let word = movement::move_prev_word_start(text, range, count);
+            let pos = word.head;
+            range.put(text, pos, true)
+        });
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_next_word_end(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .min_width_1(doc.text().slice(..))
-            .transform(|range| {
-                let text = doc.text().slice(..);
-                let word = movement::move_next_word_end(text, range, count);
-                let pos = word.head;
-                range.put(text, pos, true)
-            }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .min_width_1(text)
+        .transform(|range| {
+            let word = movement::move_next_word_end(text, range, count);
+            let pos = word.head;
+            range.put(text, pos, true)
+        });
+    doc.set_selection(view.id, selection);
 }
 
 #[inline]
@@ -678,15 +648,13 @@ where
         };
 
         let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
 
-        doc.set_selection(
-            view.id,
-            doc.selection(view.id).clone().transform(|range| {
-                let text = doc.text().slice(..);
-                search_fn(text, ch, range.head, count, inclusive)
-                    .map_or(range, |pos| range.put(text, pos, extend))
-            }),
-        );
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            search_fn(text, ch, range.head, count, inclusive)
+                .map_or(range, |pos| range.put(text, pos, extend))
+        });
+        doc.set_selection(view.id, selection);
     })
 }
 
@@ -939,69 +907,45 @@ fn half_page_down(cx: &mut Context) {
 fn extend_char_left(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_horizontally(
-                doc.text().slice(..),
-                range,
-                Direction::Backward,
-                count,
-                Movement::Extend,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Extend)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_char_right(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_horizontally(
-                doc.text().slice(..),
-                range,
-                Direction::Forward,
-                count,
-                Movement::Extend,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_line_up(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_vertically(
-                doc.text().slice(..),
-                range,
-                Direction::Backward,
-                count,
-                Movement::Extend,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_vertically(text, range, Direction::Backward, count, Movement::Extend)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_line_down(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            movement::move_vertically(
-                doc.text().slice(..),
-                range,
-                Direction::Forward,
-                count,
-                Movement::Extend,
-            )
-        }),
-    );
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        movement::move_vertically(text, range, Direction::Forward, count, Movement::Extend)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn select_all(cx: &mut Context) {
@@ -1222,30 +1166,28 @@ fn change_selection(cx: &mut Context) {
 
 fn collapse_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
 
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let pos = if range.head > range.anchor {
-                // For 1-width cursor semantics.
-                graphemes::prev_grapheme_boundary(doc.text().slice(..), range.head)
-            } else {
-                range.head
-            };
-            Range::new(pos, pos)
-        }),
-    );
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let pos = if range.head > range.anchor {
+            // For 1-width cursor semantics.
+            graphemes::prev_grapheme_boundary(text, range.head)
+        } else {
+            range.head
+        };
+        Range::new(pos, pos)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn flip_selections(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .transform(|range| Range::new(range.head, range.anchor)),
-    );
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| Range::new(range.head, range.anchor));
+    doc.set_selection(view.id, selection);
 }
 
 fn enter_insert_mode(doc: &mut Document) {
@@ -1257,12 +1199,11 @@ fn insert_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     enter_insert_mode(doc);
 
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id)
-            .clone()
-            .transform(|range| Range::new(range.to(), range.from())),
-    );
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| Range::new(range.to(), range.from()));
+    doc.set_selection(view.id, selection);
 }
 
 // inserts at the end of each selection
@@ -1286,15 +1227,13 @@ fn append_mode(cx: &mut Context) {
         doc.apply(&transaction, view.id);
     }
 
-    doc.set_selection(
-        view.id,
-        selection.clone().transform(|range| {
-            Range::new(
-                range.from(),
-                graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
-            )
-        }),
-    );
+    let selection = selection.transform(|range| {
+        Range::new(
+            range.from(),
+            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
+        )
+    });
+    doc.set_selection(view.id, selection);
 }
 
 mod cmd {
@@ -2200,15 +2139,13 @@ fn append_to_line(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     enter_insert_mode(doc);
 
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            let text = doc.text().slice(..);
-            let line = range.head_line(text);
-            let pos = line_end_char_index(&text, line);
-            Range::new(pos, pos)
-        }),
-    );
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let text = doc.text().slice(..);
+        let line = range.head_line(text);
+        let pos = line_end_char_index(&text, line);
+        Range::new(pos, pos)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 /// Sometimes when applying formatting changes we want to mark the buffer as unmodified, for
@@ -2338,15 +2275,14 @@ fn normal_mode(cx: &mut Context) {
 
     // if leaving append mode, move cursor back by 1
     if doc.restore_cursor {
-        doc.set_selection(
-            view.id,
-            doc.selection(view.id).clone().transform(|range| {
-                Range::new(
-                    range.from(),
-                    graphemes::prev_grapheme_boundary(doc.text().slice(..), range.to()),
-                )
-            }),
-        );
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            Range::new(
+                range.from(),
+                graphemes::prev_grapheme_boundary(text, range.to()),
+            )
+        });
+        doc.set_selection(view.id, selection);
 
         doc.restore_cursor = false;
     }
@@ -2370,22 +2306,21 @@ fn goto_last_accessed_file(cx: &mut Context) {
 
 fn select_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
 
     // Make sure all selections are at least 1-wide.
     // (With the exception of being in an empty document, of course.)
-    doc.set_selection(
-        view.id,
-        doc.selection(view.id).clone().transform(|range| {
-            if range.is_empty() && range.head == doc.text().len_chars() {
-                Range::new(
-                    graphemes::prev_grapheme_boundary(doc.text().slice(..), range.anchor),
-                    range.head,
-                )
-            } else {
-                range.min_width_1(doc.text().slice(..))
-            }
-        }),
-    );
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        if range.is_empty() && range.head == text.len_chars() {
+            Range::new(
+                graphemes::prev_grapheme_boundary(text, range.anchor),
+                range.head,
+            )
+        } else {
+            range.min_width_1(text)
+        }
+    });
+    doc.set_selection(view.id, selection);
 
     doc_mut!(cx.editor).mode = Mode::Select;
 }
@@ -2964,13 +2899,13 @@ pub mod insert {
     pub fn delete_word_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
 
-        doc.set_selection(
-            view.id,
-            doc.selection(view.id).clone().transform(|range| {
-                movement::move_prev_word_start(doc.text().slice(..), range, count)
-            }),
-        );
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| movement::move_prev_word_start(text, range, count));
+        doc.set_selection(view.id, selection);
         delete_selection(cx)
     }
 }
@@ -3721,21 +3656,19 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         } = event
         {
             let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
 
-            doc.set_selection(
-                view.id,
-                doc.selection(view.id).clone().transform(|range| {
-                    let text = doc.text().slice(..);
-                    match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count),
-                        // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => {
-                            textobject::textobject_surround(text, range, objtype, ch, count)
-                        }
-                        _ => range,
+            let selection = doc.selection(view.id).clone().transform(|range| {
+                match ch {
+                    'w' => textobject::textobject_word(text, range, objtype, count),
+                    // TODO: cancel new ranges if inconsistent surround matches across lines
+                    ch if !ch.is_ascii_alphanumeric() => {
+                        textobject::textobject_surround(text, range, objtype, ch, count)
                     }
-                }),
-            );
+                    _ => range,
+                }
+            });
+            doc.set_selection(view.id, selection);
         }
     })
 }
