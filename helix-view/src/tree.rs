@@ -1,7 +1,7 @@
 use crate::{graphics::Rect, View, ViewId};
 use slotmap::HopSlotMap;
 
-// the dimensions are recomputed on windo resize/tree change.
+// the dimensions are recomputed on window resize/tree change.
 //
 #[derive(Debug)]
 pub struct Tree {

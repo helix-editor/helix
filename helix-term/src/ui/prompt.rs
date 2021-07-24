@@ -463,7 +463,7 @@ impl Component for Prompt {
                 code: KeyCode::Enter,
                 ..
             } => {
-                if self.line.ends_with('/') {
+                if self.selection.is_some() && self.line.ends_with('/') {
                     self.completion = (self.completion_fn)(&self.line);
                     self.exit_selection();
                 } else {

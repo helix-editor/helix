@@ -35,6 +35,8 @@ pub struct LanguageConfiguration {
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
+    pub comment_token: Option<String>,
+    pub config: Option<String>,
 
     #[serde(default)]
     pub auto_format: bool,
@@ -93,7 +95,6 @@ fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::
 
 #[cfg(feature = "embed_runtime")]
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
-    use std::fmt;
     use std::path::PathBuf;
 
     #[derive(rust_embed::RustEmbed)]

@@ -36,7 +36,7 @@ use std::collections::HashMap;
 /// capabilities of [`Text`].
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Cell<'a> {
-    content: Text<'a>,
+    pub content: Text<'a>,
     style: Style,
 }
 
@@ -81,7 +81,7 @@ where
 /// By default, a row has a height of 1 but you can change this using [`Row::height`].
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Row<'a> {
-    cells: Vec<Cell<'a>>,
+    pub cells: Vec<Cell<'a>>,
     height: u16,
     style: Style,
     bottom_margin: u16,

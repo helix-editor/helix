@@ -99,6 +99,7 @@ jobs:
           else
             cp "target/${{ matrix.target }}/release/hx" "dist/"
           fi
+          cp -r runtime dist
 
       - uses: actions/upload-artifact@v2.2.4
         with:
@@ -148,7 +149,7 @@ jobs:
               pkgname=helix-$TAG-$platform
               mkdir tmp/$pkgname
               cp LICENSE README.md tmp/$pkgname
-              cp -r runtime tmp/$pkgname/
+              mv bins-$platform/runtime tmp/$pkgname/
               mv bins-$platform/hx$exe tmp/$pkgname
               chmod +x tmp/$pkgname/hx$exe
 

@@ -8,6 +8,7 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
 use helix_view::{graphics::Rect, Editor};
+use tui::layout::Constraint;
 
 pub trait Item {
     // TODO: sort_text
@@ -25,6 +26,8 @@ pub struct Menu<T: Item> {
     matcher: Box<Matcher>,
     /// (index, score)
     matches: Vec<(usize, i64)>,
+
+    widths: Vec<Constraint>,
 
     callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
 
@@ -44,6 +47,7 @@ impl<T: Item> Menu<T> {
             matcher: Box::new(Matcher::default()),
             matches: Vec::new(),
             cursor: None,
+            widths: Vec::new(),
             callback_fn: Box::new(callback_fn),
             scroll: 0,
             size: (0, 0),
@@ -86,13 +90,13 @@ impl<T: Item> Menu<T> {
 
     pub fn move_up(&mut self) {
         // TODO: wrap around to end
-        let pos = self.cursor.map_or(0, |i| i.saturating_sub(1)) % self.options.len();
+        let pos = self.cursor.map_or(0, |i| i.saturating_sub(1)) % self.matches.len();
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
 
     pub fn move_down(&mut self) {
-        let pos = self.cursor.map_or(0, |i| i + 1) % self.options.len();
+        let pos = self.cursor.map_or(0, |i| i + 1) % self.matches.len();
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
@@ -218,12 +222,35 @@ impl<T: Item + 'static> Component for Menu<T> {
         EventResult::Ignored
     }
 
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let width = std::cmp::min(30, viewport.0);
+    // TODO: completion sorting
 
-        const MAX: usize = 10;
-        let height = std::cmp::min(self.options.len(), MAX);
-        let height = std::cmp::min(height, viewport.1 as usize);
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+        let n = self
+            .options
+            .first()
+            .map(|option| option.row().cells.len())
+            .unwrap_or_default();
+        let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
+            let row = option.row();
+            // maintain max for each column
+            for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
+                let width = cell.content.width();
+                if width > *acc {
+                    *acc = width;
+                }
+            }
+
+            acc
+        });
+        let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
+        let width = len.min(viewport.0 as usize);
+
+        self.widths = max_lens
+            .into_iter()
+            .map(|len| Constraint::Length(len as u16))
+            .collect();
+
+        let height = self.options.len().min(10).min(viewport.1 as usize);
 
         self.size = (width as u16, height as u16);
 
@@ -263,13 +290,12 @@ impl<T: Item + 'static> Component for Menu<T> {
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));
 
-        use tui::layout::Constraint;
         let rows = options.iter().map(|option| option.row());
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
             .column_spacing(1)
-            .widths(&[Constraint::Percentage(50), Constraint::Percentage(50)]);
+            .widths(&self.widths);
 
         use tui::widgets::TableState;
 

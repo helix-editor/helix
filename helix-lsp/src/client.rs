@@ -24,12 +24,14 @@ pub struct Client {
     request_counter: AtomicU64,
     capabilities: Option<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
+    config: Option<Value>,
 }
 
 impl Client {
     pub fn start(
         cmd: &str,
         args: &[String],
+        config: Option<Value>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>)> {
         let process = Command::new(cmd)
@@ -57,6 +59,7 @@ impl Client {
             request_counter: AtomicU64::new(0),
             capabilities: None,
             offset_encoding: OffsetEncoding::Utf8,
+            config,
         };
 
         // TODO: async client.initialize()
@@ -214,13 +217,17 @@ impl Client {
         // TODO: delay any requests that are triggered prior to initialize
         let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
 
+        if self.config.is_some() {
+            log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
+        }
+
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
             // root_path is obsolete, use root_uri
             root_path: None,
             root_uri: root,
-            initialization_options: None,
+            initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
@@ -238,6 +245,26 @@ impl Client {
                         // if not specified, rust-analyzer returns plaintext marked as markdown but
                         // badly formatted.
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
+                        ..Default::default()
+                    }),
+                    code_action: Some(lsp::CodeActionClientCapabilities {
+                        code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
+                            code_action_kind: lsp::CodeActionKindLiteralSupport {
+                                value_set: [
+                                    lsp::CodeActionKind::EMPTY,
+                                    lsp::CodeActionKind::QUICKFIX,
+                                    lsp::CodeActionKind::REFACTOR,
+                                    lsp::CodeActionKind::REFACTOR_EXTRACT,
+                                    lsp::CodeActionKind::REFACTOR_INLINE,
+                                    lsp::CodeActionKind::REFACTOR_REWRITE,
+                                    lsp::CodeActionKind::SOURCE,
+                                    lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                ]
+                                .iter()
+                                .map(|kind| kind.as_str().to_string())
+                                .collect(),
+                            },
+                        }),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -705,5 +732,32 @@ impl Client {
         };
 
         self.call::<lsp::request::DocumentSymbolRequest>(params)
+    }
+
+    // empty string to get all symbols
+    pub fn workspace_symbols(&self, query: String) -> impl Future<Output = Result<Value>> {
+        let params = lsp::WorkspaceSymbolParams {
+            query,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.call::<lsp::request::WorkspaceSymbol>(params)
+    }
+
+    pub fn code_actions(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::CodeActionParams {
+            text_document,
+            range,
+            context: lsp::CodeActionContext::default(),
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.call::<lsp::request::CodeActionRequest>(params)
     }
 }

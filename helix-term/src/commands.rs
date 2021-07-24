@@ -9,8 +9,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     register::Register,
-    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    search, selection, surround, textobject, Change, LineEnding, Position, Range, Rope,
+    RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -189,6 +189,9 @@ impl Command {
         extend_till_prev_char, "Extend till previous occurance of char",
         extend_prev_char, "Extend to previous occurance of char",
         replace, "Replace with new char",
+        switch_case, "Switch (toggle) case",
+        switch_to_uppercase, "Switch to uppercase",
+        switch_to_lowercase, "Switch to lowercase",
         page_up, "Move page up",
         page_down, "Move page down",
         half_page_up, "Move half page up",
@@ -211,8 +214,10 @@ impl Command {
         append_mode, "Insert after selection (append)",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
+        code_action, "Open code action picker",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker (current document)",
+        last_picker, "Open previously used fuzzy picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
         open_below, "Open new line below selection",
@@ -786,6 +791,57 @@ fn replace(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+fn switch_case(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range
+                .fragment(doc.text().slice(..))
+                .chars()
+                .flat_map(|ch| {
+                    if ch.is_lowercase() {
+                        ch.to_uppercase().collect()
+                    } else if ch.is_uppercase() {
+                        ch.to_lowercase().collect()
+                    } else {
+                        vec![ch]
+                    }
+                })
+                .collect();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_to_uppercase(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range.fragment(doc.text().slice(..)).to_uppercase().into();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_to_lowercase(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let transaction =
+        Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let text: Tendril = range.fragment(doc.text().slice(..)).to_lowercase().into();
+
+            (range.from(), range.to() + 1, Some(text))
+        });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }
 
 fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
@@ -2043,6 +2099,131 @@ fn symbol_picker(cx: &mut Context) {
             }
         },
     )
+}
+
+pub fn code_action(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    let range = range_to_lsp_range(
+        doc.text(),
+        doc.selection(view.id).primary(),
+        language_server.offset_encoding(),
+    );
+
+    let future = language_server.code_actions(doc.identifier(), range);
+    let offset_encoding = language_server.offset_encoding();
+
+    cx.callback(
+        future,
+        move |_editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<lsp::CodeActionResponse>| {
+            if let Some(actions) = response {
+                let picker = Picker::new(
+                    actions,
+                    |action| match action {
+                        lsp::CodeActionOrCommand::CodeAction(action) => {
+                            action.title.as_str().into()
+                        }
+                        lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
+                    },
+                    move |editor, code_action, _action| match code_action {
+                        lsp::CodeActionOrCommand::Command(command) => {
+                            log::debug!("code action command: {:?}", command);
+                            editor.set_error(String::from("Handling code action command is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+                        }
+                        lsp::CodeActionOrCommand::CodeAction(code_action) => {
+                            log::debug!("code action: {:?}", code_action);
+                            if let Some(ref workspace_edit) = code_action.edit {
+                                apply_workspace_edit(editor, offset_encoding, workspace_edit)
+                            }
+                        }
+                    },
+                );
+                compositor.push(Box::new(picker))
+            }
+        },
+    )
+}
+
+fn apply_workspace_edit(
+    editor: &mut Editor,
+    offset_encoding: OffsetEncoding,
+    workspace_edit: &lsp::WorkspaceEdit,
+) {
+    let edits_to_transaction = |doc: &Rope, edits: &Vec<&lsp::TextEdit>| {
+        let lsp_pos_to_pos = |lsp_pos| lsp_pos_to_pos(&doc, lsp_pos, offset_encoding).unwrap();
+        let changes = edits.iter().map(|edit| -> Change {
+            log::debug!("text edit: {:?}", edit);
+            // This clone probably could be optimized if Picker::new would give T instead of &T
+            let text_replacement = Tendril::from(edit.new_text.clone());
+            (
+                lsp_pos_to_pos(edit.range.start),
+                lsp_pos_to_pos(edit.range.end),
+                Some(text_replacement),
+            )
+        });
+        Transaction::change(doc, changes)
+    };
+
+    if let Some(ref changes) = workspace_edit.changes {
+        log::debug!("workspace changes: {:?}", changes);
+        editor.set_error(String::from("Handling workspace changesis not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+        return;
+        // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
+        // TODO: find some example that uses workspace changes, and test it
+        // for (url, edits) in changes.iter() {
+        //     let file_path = url.origin().ascii_serialization();
+        //     let file_path = std::path::PathBuf::from(file_path);
+        //     let file = std::fs::File::open(file_path).unwrap();
+        //     let mut text = Rope::from_reader(file).unwrap();
+        //     let transaction = edits_to_changes(&text, edits);
+        //     transaction.apply(&mut text);
+        // }
+    }
+
+    if let Some(ref document_changes) = workspace_edit.document_changes {
+        match document_changes {
+            lsp::DocumentChanges::Edits(document_edits) => {
+                for document_edit in document_edits {
+                    let (view, doc) = current!(editor);
+                    assert_eq!(doc.url().unwrap(), document_edit.text_document.uri);
+                    let edits = document_edit
+                        .edits
+                        .iter()
+                        .map(|edit| match edit {
+                            lsp::OneOf::Left(text_edit) => text_edit,
+                            lsp::OneOf::Right(annotated_text_edit) => {
+                                &annotated_text_edit.text_edit
+                            }
+                        })
+                        .collect();
+                    let transaction = edits_to_transaction(doc.text(), &edits);
+                    doc.apply(&transaction, view.id);
+                }
+            }
+            lsp::DocumentChanges::Operations(operations) => {
+                log::debug!("document changes - operations: {:?}", operations);
+                editor.set_error(String::from("Handling document operations is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+            }
+        }
+    }
+}
+
+fn last_picker(cx: &mut Context) {
+    // TODO: last picker does not seemed to work well with buffer_picker
+    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+        if let Some(picker) = compositor.last_picker.take() {
+            compositor.push(picker);
+        }
+        // XXX: figure out how to show error when no last picker lifetime
+        // cx.editor.set_error("no last picker".to_owned())
+    }));
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection
@@ -3339,7 +3520,11 @@ fn hover(cx: &mut Context) {
 // comments
 fn toggle_comments(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id));
+    let token = doc
+        .language_config()
+        .and_then(|lc| lc.comment_token.as_ref())
+        .map(|tc| tc.as_ref());
+    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);

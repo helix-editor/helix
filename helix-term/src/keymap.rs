@@ -296,6 +296,10 @@ impl Default for Keymaps {
             "r" => replace,
             "R" => replace_with_yanked,
 
+            "~" => switch_case,
+            "`" => switch_to_lowercase,
+            "A-`" => switch_to_uppercase,
+
             "home" => goto_line_start,
             "end" => goto_line_end,
 
@@ -428,6 +432,8 @@ impl Default for Keymaps {
                 "f" => file_picker,
                 "b" => buffer_picker,
                 "s" => symbol_picker,
+                "a" => code_action,
+                "'" => last_picker,
                 "w" => { "Window mode"
                     "C-w" | "w" => rotate_view,
                     "C-h" | "h" => hsplit,

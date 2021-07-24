@@ -37,6 +37,7 @@ pub struct Editor {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Action {
+    Load,
     Replace,
     HorizontalSplit,
     VerticalSplit,
@@ -146,6 +147,9 @@ impl Editor {
                 let line = doc.text().char_to_line(pos);
                 view.first_line = line.saturating_sub(view.area.height as usize / 2);
 
+                return;
+            }
+            Action::Load => {
                 return;
             }
             Action::HorizontalSplit => {
