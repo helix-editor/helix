@@ -247,6 +247,26 @@ impl Client {
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
+                    code_action: Some(lsp::CodeActionClientCapabilities {
+                        code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
+                            code_action_kind: lsp::CodeActionKindLiteralSupport {
+                                value_set: [
+                                    lsp::CodeActionKind::EMPTY,
+                                    lsp::CodeActionKind::QUICKFIX,
+                                    lsp::CodeActionKind::REFACTOR,
+                                    lsp::CodeActionKind::REFACTOR_EXTRACT,
+                                    lsp::CodeActionKind::REFACTOR_INLINE,
+                                    lsp::CodeActionKind::REFACTOR_REWRITE,
+                                    lsp::CodeActionKind::SOURCE,
+                                    lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                ]
+                                .iter()
+                                .map(|kind| kind.as_str().to_string())
+                                .collect(),
+                            },
+                        }),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
@@ -712,5 +732,32 @@ impl Client {
         };
 
         self.call::<lsp::request::DocumentSymbolRequest>(params)
+    }
+
+    // empty string to get all symbols
+    pub fn workspace_symbols(&self, query: String) -> impl Future<Output = Result<Value>> {
+        let params = lsp::WorkspaceSymbolParams {
+            query,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.call::<lsp::request::WorkspaceSymbol>(params)
+    }
+
+    pub fn code_actions(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+    ) -> impl Future<Output = Result<Value>> {
+        let params = lsp::CodeActionParams {
+            text_document,
+            range,
+            context: lsp::CodeActionContext::default(),
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.call::<lsp::request::CodeActionRequest>(params)
     }
 }
