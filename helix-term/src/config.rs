@@ -39,10 +39,10 @@ fn parsing_keymaps_config_file() {
             keys: Keymaps(hashmap! {
                 Mode::Insert => Keymap::new(keymap!({ "Insert mode"
                     "y" => move_line_down,
-                    "S-C-a" => delete_selection
+                    "S-C-a" => delete_selection,
                 })),
                 Mode::Normal => Keymap::new(keymap!({ "Normal mode"
-                    "A-F12" => move_next_word_end
+                    "A-F12" => move_next_word_end,
                 })),
             }),
             ..Default::default()

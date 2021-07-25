@@ -34,9 +34,9 @@ macro_rules! key {
 ///     "i" => insert_mode,
 ///     "g" => { "Goto mode"
 ///         "g" => goto_file_start,
-///         "e" => goto_file_end
+///         "e" => goto_file_end,
 ///     },
-///     "j" | "down" => move_line_down
+///     "j" | "down" => move_line_down,
 /// });
 /// let keymap = Keymap::new(normal_mode);
 /// ```
@@ -47,13 +47,13 @@ macro_rules! keymap {
     };
 
     (@trie
-        { $label:literal $($($key:literal)|+ => $value:tt),* }
+        { $label:literal $($($key:literal)|+ => $value:tt,)+ }
     ) => {
-        keymap!({ $label $($($key)|+ => $value),* })
+        keymap!({ $label $($($key)|+ => $value,)+ })
     };
 
     (
-        { $label:literal $($($key:literal)|+ => $value:tt),* }
+        { $label:literal $($($key:literal)|+ => $value:tt,)+ }
     ) => {
         // modified from the hashmap! macro
         {
@@ -325,7 +325,7 @@ impl Default for Keymaps {
                 "t" => goto_window_top,
                 "m" => goto_window_middle,
                 "b" => goto_window_bottom,
-                "a" => goto_last_accessed_file
+                "a" => goto_last_accessed_file,
             },
             ":" => command_mode,
 
@@ -358,15 +358,15 @@ impl Default for Keymaps {
                 "r" => surround_replace,
                 "d" => surround_delete,
                 "a" => select_textobject_around,
-                "i" => select_textobject_inner
+                "i" => select_textobject_inner,
             },
             "[" => { "Bracket mode"
                 "d" => goto_prev_diag,
-                "D" => goto_first_diag
+                "D" => goto_first_diag,
             },
             "]" => { "Bracket mode"
                 "d" => goto_next_diag,
-                "D" => goto_last_diag
+                "D" => goto_last_diag,
             },
 
             "/" => search,
@@ -414,7 +414,7 @@ impl Default for Keymaps {
                 "C-w" | "w" => rotate_view,
                 "C-h" | "h" => hsplit,
                 "C-v" | "v" => vsplit,
-                "C-q" | "q" => wclose
+                "C-q" | "q" => wclose,
             },
 
             // move under <space>c
@@ -438,14 +438,14 @@ impl Default for Keymaps {
                     "C-w" | "w" => rotate_view,
                     "C-h" | "h" => hsplit,
                     "C-v" | "v" => vsplit,
-                    "C-q" | "q" => wclose
+                    "C-q" | "q" => wclose,
                 },
                 "y" => yank_joined_to_clipboard,
                 "Y" => yank_main_selection_to_clipboard,
                 "p" => paste_clipboard_after,
                 "P" => paste_clipboard_before,
                 "R" => replace_selections_with_clipboard,
-                "space" => keep_primary_selection
+                "space" => keep_primary_selection,
             },
             "z" => { "View mode"
                 "t" => align_view_top,
@@ -453,10 +453,10 @@ impl Default for Keymaps {
                 "b" => align_view_bottom,
                 "m" => align_view_middle,
                 "k" => scroll_up,
-                "j" => scroll_down
+                "j" => scroll_down,
             },
 
-            "\"" => select_register
+            "\"" => select_register,
         });
         // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
         // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
@@ -479,7 +479,7 @@ impl Default for Keymaps {
 
             "home" => goto_line_start,
             "end" => goto_line_end,
-            "esc" => exit_select_mode
+            "esc" => exit_select_mode,
         }));
         let insert = keymap!({ "Insert mode"
             "esc" => normal_mode,
@@ -499,7 +499,7 @@ impl Default for Keymaps {
             "home" => goto_line_start,
             "end" => goto_line_end_newline,
 
-            "C-x" => completion
+            "C-x" => completion,
         });
         Keymaps(hashmap!(
             Mode::Normal => Keymap::new(normal),
@@ -527,10 +527,10 @@ fn merge_partial_keys() {
                     "i" => normal_mode,
                     "无" => insert_mode,
                     "z" => jump_backward,
-                    "g" => {"Merge into goto mode"
+                    "g" => { "Merge into goto mode"
                         "$" => goto_line_end,
-                        "g" => delete_char_forward
-                    }
+                        "g" => delete_char_forward,
+                    },
                 })
             )
         }),
