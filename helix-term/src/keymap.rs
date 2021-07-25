@@ -32,7 +32,7 @@ macro_rules! key {
 /// # use helix_term::keymap::Keymap;
 /// let normal_mode = keymap!({ "Normal mode"
 ///     "i" => insert_mode,
-///     "g" => { "Goto mode"
+///     "g" => { "Goto"
 ///         "g" => goto_file_start,
 ///         "e" => goto_file_end,
 ///     },
@@ -312,7 +312,7 @@ impl Default for Keymaps {
             "E" => move_next_long_word_end,
 
             "v" => select_mode,
-            "g" => { "Goto mode"
+            "g" => { "Goto"
                 "g" => goto_file_start,
                 "e" => goto_file_end,
                 "h" => goto_line_start,
@@ -352,7 +352,7 @@ impl Default for Keymaps {
             "X" => extend_to_line_bounds,
             // crop_to_whole_line
 
-            "m" => { "Match mode"
+            "m" => { "Match"
                 "m" => match_brackets,
                 "s" => surround_add,
                 "r" => surround_replace,
@@ -360,11 +360,11 @@ impl Default for Keymaps {
                 "a" => select_textobject_around,
                 "i" => select_textobject_inner,
             },
-            "[" => { "Bracket mode"
+            "[" => { "Left bracket"
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
             },
-            "]" => { "Bracket mode"
+            "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
             },
@@ -410,7 +410,7 @@ impl Default for Keymaps {
             "C-u" => half_page_up,
             "C-d" => half_page_down,
 
-            "C-w" => { "Window mode"
+            "C-w" => { "Window"
                 "C-w" | "w" => rotate_view,
                 "C-h" | "h" => hsplit,
                 "C-v" | "v" => vsplit,
@@ -428,13 +428,13 @@ impl Default for Keymaps {
             "C-o" => jump_backward,
             // "C-s" => save_selection,
 
-            "space" => { "Space mode"
+            "space" => { "Space"
                 "f" => file_picker,
                 "b" => buffer_picker,
                 "s" => symbol_picker,
                 "a" => code_action,
                 "'" => last_picker,
-                "w" => { "Window mode"
+                "w" => { "Window"
                     "C-w" | "w" => rotate_view,
                     "C-h" | "h" => hsplit,
                     "C-v" | "v" => vsplit,
@@ -447,7 +447,7 @@ impl Default for Keymaps {
                 "R" => replace_selections_with_clipboard,
                 "space" => keep_primary_selection,
             },
-            "z" => { "View mode"
+            "z" => { "View"
                 "t" => align_view_top,
                 "z" | "c" => align_view_center,
                 "b" => align_view_bottom,
