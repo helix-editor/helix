@@ -4,7 +4,7 @@ use helix_core::hashmap;
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::HashMap,
     ops::{Deref, DerefMut},
 };
 
@@ -59,15 +59,18 @@ macro_rules! keymap {
         {
             let _cap = hashmap!(@count $($($key),+),*);
             let mut _map = ::std::collections::HashMap::with_capacity(_cap);
+            let mut _order = ::std::vec::Vec::with_capacity(_cap);
             $(
                 $(
-                    let _ = _map.insert(
-                        $key.parse::<::helix_view::input::KeyEvent>().unwrap(),
+                    let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
+                    _map.insert(
+                        _key,
                         keymap!(@trie $value)
                     );
+                    _order.push(_key);
                 )+
             )*
-            $crate::keymap::KeyTrie::Node($crate::keymap::KeyTrieNode::new($label, _map))
+            $crate::keymap::KeyTrie::Node($crate::keymap::KeyTrieNode::new($label, _map, _order))
         }
     };
 }
@@ -79,13 +82,16 @@ pub struct KeyTrieNode {
     name: String,
     #[serde(flatten)]
     map: HashMap<KeyEvent, KeyTrie>,
+    #[serde(skip)]
+    order: Vec<KeyEvent>,
 }
 
 impl KeyTrieNode {
-    pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>) -> Self {
+    pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>, order: Vec<KeyEvent>) -> Self {
         Self {
             name: name.to_string(),
             map,
+            order,
         }
     }
 
@@ -106,27 +112,39 @@ impl KeyTrieNode {
             }
             self.map.insert(key, trie);
         }
+
+        for &key in self.map.keys() {
+            if !self.order.contains(&key) {
+                self.order.push(key);
+            }
+        }
     }
 }
 
 impl From<KeyTrieNode> for Info {
     fn from(node: KeyTrieNode) -> Self {
-        let mut body = BTreeMap::new();
+        let mut body: Vec<(&str, Vec<KeyEvent>)> = Vec::with_capacity(node.len());
         for (&key, trie) in node.iter() {
             let desc = match trie {
                 KeyTrie::Leaf(cmd) => cmd.doc(),
                 KeyTrie::Node(n) => n.name(),
             };
-            // FIXME: multiple keys are ordered randomly (use BTreeSet)
-            body.entry(desc).or_insert_with(Vec::new).push(key);
+            match body.iter().position(|(d, _)| d == &desc) {
+                // FIXME: multiple keys are ordered randomly (use BTreeSet)
+                Some(pos) => body[pos].1.push(key),
+                None => body.push((desc, vec![key])),
+            }
         }
+        body.sort_unstable_by_key(|(_, keys)| {
+            node.order.iter().position(|&k| k == keys[0]).unwrap()
+        });
         Info::key(node.name(), body)
     }
 }
 
 impl Default for KeyTrieNode {
     fn default() -> Self {
-        Self::new("", HashMap::new())
+        Self::new("", HashMap::new(), Vec::new())
     }
 }
 
@@ -448,8 +466,8 @@ impl Default for Keymaps {
                 "space" => keep_primary_selection,
             },
             "z" => { "View"
-                "t" => align_view_top,
                 "z" | "c" => align_view_center,
+                "t" => align_view_top,
                 "b" => align_view_bottom,
                 "m" => align_view_middle,
                 "k" => scroll_up,

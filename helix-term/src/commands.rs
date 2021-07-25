@@ -234,7 +234,7 @@ impl Command {
         goto_window_top, "Goto top of screen",
         goto_window_middle, "Goto middle of screen",
         goto_window_bottom, "Goto bottom of screen",
-        goto_last_accessed_file, "Goto last accessed/alternate file",
+        goto_last_accessed_file, "Goto last accessed file",
         goto_first_diag, "Goto first diagnostic in document",
         goto_last_diag, "Goto last diagnostic in document",
         goto_next_diag, "Goto next diagnostic",
