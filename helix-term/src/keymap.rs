@@ -138,7 +138,7 @@ impl From<KeyTrieNode> for Info {
         body.sort_unstable_by_key(|(_, keys)| {
             node.order.iter().position(|&k| k == keys[0]).unwrap()
         });
-        let prefix = node.name().to_owned() + " ";
+        let prefix = format!("{} ", node.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
             body = body
                 .into_iter()
