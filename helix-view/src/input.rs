@@ -14,6 +14,16 @@ pub struct KeyEvent {
     pub modifiers: KeyModifiers,
 }
 
+impl KeyEvent {
+    /// Get only the character involved in this event
+    pub fn char(&self) -> Option<char> {
+        match self.code {
+            KeyCode::Char(ch) => Some(ch),
+            _ => None,
+        }
+    }
+}
+
 pub(crate) mod keys {
     pub(crate) const BACKSPACE: &str = "backspace";
     pub(crate) const ENTER: &str = "ret";
@@ -168,7 +178,7 @@ impl std::str::FromStr for KeyEvent {
             keys::MINUS => KeyCode::Char('-'),
             keys::SEMICOLON => KeyCode::Char(';'),
             keys::PERCENT => KeyCode::Char('%'),
-            single if single.len() == 1 => KeyCode::Char(single.chars().next().unwrap()),
+            single if single.chars().count() == 1 => KeyCode::Char(single.chars().next().unwrap()),
             function if function.len() > 1 && function.starts_with('F') => {
                 let function: String = function.chars().skip(1).collect();
                 let function = str::parse::<u8>(&function)?;
