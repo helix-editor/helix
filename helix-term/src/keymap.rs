@@ -138,6 +138,13 @@ impl From<KeyTrieNode> for Info {
         body.sort_unstable_by_key(|(_, keys)| {
             node.order.iter().position(|&k| k == keys[0]).unwrap()
         });
+        let prefix = node.name().to_owned() + " ";
+        if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
+            body = body
+                .into_iter()
+                .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
+                .collect();
+        }
         Info::key(node.name(), body)
     }
 }
