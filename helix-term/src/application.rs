@@ -15,7 +15,7 @@ use std::{
 use anyhow::Error;
 
 use crossterm::{
-    event::{Event, EventStream},
+    event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute, terminal,
 };
 
@@ -449,6 +449,7 @@ impl Application {
         let mut stdout = stdout();
 
         execute!(stdout, terminal::EnterAlternateScreen)?;
+        execute!(stdout, EnableMouseCapture)?;
 
         // Exit the alternate screen and disable raw mode before panicking
         let hook = std::panic::take_hook();
@@ -468,6 +469,7 @@ impl Application {
         // reset cursor shape
         write!(stdout, "\x1B[2 q")?;
 
+        execute!(stdout, DisableMouseCapture)?;
         execute!(stdout, terminal::LeaveAlternateScreen)?;
 
         terminal::disable_raw_mode()?;
