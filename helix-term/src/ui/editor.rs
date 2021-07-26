@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::Keymaps,
+    keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -15,6 +15,7 @@ use helix_core::{
 use helix_view::{
     document::Mode,
     graphics::{CursorKind, Modifier, Rect, Style},
+    info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -30,6 +31,7 @@ pub struct EditorView {
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
     spinners: ProgressSpinners,
+    pub autoinfo: Option<Info>,
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -48,6 +50,7 @@ impl EditorView {
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            autoinfo: None,
         }
     }
 
@@ -594,19 +597,53 @@ impl EditorView {
         );
     }
 
-    fn insert_mode(&self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(command) = self.keymaps[&Mode::Insert].get(&event) {
-            command.execute(cx);
-        } else if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
-            commands::insert::insert_char(cx, ch);
+    /// Handle events by looking them up in `self.keymaps`. Returns None
+    /// if event was handled (a command was executed or a subkeymap was
+    /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
+    /// otherwise.
+    fn handle_keymap_event(
+        &mut self,
+        mode: Mode,
+        cxt: &mut commands::Context,
+        event: KeyEvent,
+    ) -> Option<KeymapResult> {
+        self.autoinfo = None;
+        match self.keymaps.get_mut(&mode).unwrap().get(event) {
+            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Pending(node) => self.autoinfo = Some(node.into()),
+            k @ KeymapResult::NotFound | k @ KeymapResult::Cancelled(_) => return Some(k),
+        }
+        None
+    }
+
+    fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
+        if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
+            match keyresult {
+                KeymapResult::NotFound => {
+                    if let Some(ch) = event.char() {
+                        commands::insert::insert_char(cx, ch)
+                    }
+                }
+                KeymapResult::Cancelled(pending) => {
+                    for ev in pending {
+                        match ev.char() {
+                            Some(ch) => commands::insert::insert_char(cx, ch),
+                            None => {
+                                if let KeymapResult::Matched(command) =
+                                    self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev)
+                                {
+                                    command.execute(cx);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => unreachable!(),
+            }
         }
     }
 
-    fn command_mode(&self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
+    fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match event {
             // count handling
             key!(i @ '0'..='9') => {
@@ -619,8 +656,8 @@ impl EditorView {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
-                for key in &self.last_insert.1 {
-                    self.insert_mode(cxt, *key)
+                for &key in &self.last_insert.1.clone() {
+                    self.insert_mode(cxt, key)
                 }
             }
             _ => {
@@ -633,9 +670,7 @@ impl EditorView {
                 // set the register
                 cxt.selected_register = cxt.editor.selected_register.take();
 
-                if let Some(command) = self.keymaps[&mode].get(&event) {
-                    command.execute(cxt);
-                }
+                self.handle_keymap_event(mode, cxt, event);
             }
         }
     }
@@ -749,7 +784,11 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = self.keymaps[&mode][&key];
+                        self.last_insert.0 = match self.keymaps.get_mut(&mode).unwrap().get(key) {
+                            KeymapResult::Matched(command) => command,
+                            // FIXME: insert mode can only be entered through single KeyCodes
+                            _ => unimplemented!(),
+                        };
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {
@@ -787,9 +826,8 @@ impl Component for EditorView {
             );
         }
 
-        if let Some(info) = std::mem::take(&mut cx.editor.autoinfo) {
+        if let Some(ref info) = self.autoinfo {
             info.render(area, surface, cx);
-            cx.editor.autoinfo = Some(info);
         }
 
         // render status msg

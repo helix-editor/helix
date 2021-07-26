@@ -5,9 +5,9 @@ use std::fmt::Write;
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
-    /// Title kept as static str for now.
-    pub title: &'static str,
-    /// Text body, should contains newline.
+    /// Title shown at top.
+    pub title: String,
+    /// Text body, should contain newlines.
     pub text: String,
     /// Body width.
     pub width: u16,
@@ -16,17 +16,20 @@ pub struct Info {
 }
 
 impl Info {
-    pub fn key(title: &'static str, body: Vec<(&[KeyEvent], &'static str)>) -> Info {
+    // body is a BTreeMap instead of a HashMap because keymaps are represented
+    // with nested hashmaps with no ordering, and each invocation of infobox would
+    // show different orders of items
+    pub fn key(title: &str, body: Vec<(&str, Vec<KeyEvent>)>) -> Info {
         let (lpad, mpad, rpad) = (1, 2, 1);
         let keymaps_width: u16 = body
             .iter()
-            .map(|r| r.0.iter().map(|e| e.width() as u16 + 2).sum::<u16>() - 2)
+            .map(|r| r.1.iter().map(|e| e.width() as u16 + 2).sum::<u16>() - 2)
             .max()
             .unwrap();
         let mut text = String::new();
         let mut width = 0;
         let height = body.len() as u16;
-        for (keyevents, desc) in body {
+        for (desc, keyevents) in body {
             let keyevent = keyevents[0];
             let mut left = keymaps_width - keyevent.width() as u16;
             for _ in 0..lpad {
@@ -48,7 +51,7 @@ impl Info {
             writeln!(text, "{}", desc).ok();
         }
         Info {
-            title,
+            title: title.to_string(),
             text,
             width,
             height,
