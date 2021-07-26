@@ -92,17 +92,17 @@ impl View {
         let line = pos.row;
         let col = pos.col;
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
-        let last_line = self.first_line + height as usize;
+        let last_line = (self.first_line + height as usize).saturating_sub(1);
 
         let scrolloff = PADDING.min(self.area.height as usize / 2); // TODO: user pref
 
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        let last_col = self.first_col + (self.area.width as usize - OFFSET);
+        let last_col = (self.first_col + self.area.width as usize).saturating_sub(OFFSET + 1);
 
-        if line > last_line.saturating_sub(scrolloff + 1) {
+        if line > last_line.saturating_sub(scrolloff) {
             // scroll down
-            self.first_line += line - (last_line.saturating_sub(scrolloff + 1));
+            self.first_line += line - (last_line.saturating_sub(scrolloff));
         } else if line < self.first_line + scrolloff {
             // scroll up
             self.first_line = line.saturating_sub(scrolloff);

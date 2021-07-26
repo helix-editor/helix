@@ -32,10 +32,9 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) ->
                 if category != prev_category && pos != 0 && pos != slice.len_chars() {
                     return pos;
                 } else {
-                    if direction == Direction::Forward {
-                        pos += 1;
-                    } else {
-                        pos = pos.saturating_sub(1);
+                    match direction {
+                        Direction::Forward => pos += 1,
+                        Direction::Backward => pos = pos.saturating_sub(1),
                     }
                     prev_category = category;
                 }
