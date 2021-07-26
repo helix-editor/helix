@@ -1024,25 +1024,15 @@ fn split_selection_on_newline(cx: &mut Context) {
 }
 
 fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
-    let text = doc.text();
+    let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
     let start = {
+        // Get the right side of the block cursor.
         let range = selection.primary();
-
-        // This is a little bit weird.  Due to 1-width cursor semantics, we
-        // would typically want the search to always begin at the visual left-side
-        // of the head.  However, when there's already a selection from e.g. a
-        // previous search result, we don't want to include any of that selection
-        // in the subsequent search.  The code below makes a compromise between the
-        // two behaviors that hopefully behaves the way most people expect most of
-        // the time.
-        if range.anchor <= range.head {
-            text.char_to_byte(range.head)
+        if range.anchor < range.head {
+            range.head
         } else {
-            text.char_to_byte(graphemes::next_grapheme_boundary(
-                text.slice(..),
-                range.head,
-            ))
+            graphemes::next_grapheme_boundary(text, range.head)
         }
     };
 
