@@ -31,15 +31,7 @@ pub fn move_horizontally(
     count: usize,
     behaviour: Movement,
 ) -> Range {
-    use Movement::Extend;
-
-    // Shift back one grapheme if needed, to account for
-    // the cursor being visually 1-width.
-    let pos = if range.head > range.anchor {
-        prev_grapheme_boundary(slice, range.head)
-    } else {
-        range.head
-    };
+    let pos = range.cursor(slice);
 
     // Compute the new position.
     let new_pos = if dir == Direction::Backward {
@@ -49,11 +41,7 @@ pub fn move_horizontally(
     };
 
     // Compute the final new range.
-    if behaviour == Extend {
-        range.move_head(slice, new_pos, true)
-    } else {
-        Range::point(new_pos)
-    }
+    range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
 pub fn move_vertically(
@@ -63,13 +51,7 @@ pub fn move_vertically(
     count: usize,
     behaviour: Movement,
 ) -> Range {
-    // Shift back one grapheme if needed, to account for
-    // the cursor being visually 1-width.
-    let pos = if range.head > range.anchor {
-        prev_grapheme_boundary(slice, range.head)
-    } else {
-        range.head
-    };
+    let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
     let Position { row, col } = coords_at_pos(slice, pos);
@@ -89,24 +71,14 @@ pub fn move_vertically(
         )
     };
 
-    // Compute the new range according to the type of movement.
-    match behaviour {
-        Movement::Move => Range {
-            anchor: new_pos,
-            head: new_pos,
-            horiz: Some(horiz),
-        },
-
-        Movement::Extend => {
-            if slice.line(new_row).len_chars() > 0 {
-                let mut new_range = range.move_head(slice, new_pos, true);
-                new_range.horiz = Some(horiz);
-                new_range
-            } else {
-                range
-            }
-        }
+    // Special-case to avoid moving to the end of the last non-empty line.
+    if behaviour == Movement::Extend && slice.line(new_row).len_chars() == 0 {
+        return range;
     }
+
+    let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
+    new_range.horiz = Some(horiz);
+    new_range
 }
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
@@ -153,7 +125,7 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     // Prepare the range appropriately based on the target movement
     // direction.  This is addressing two things at once:
     //
-    //   1. 1-width range sementics.
+    //   1. Block-cursor semantics.
     //   2. The anchor position being irrelevant to the output result.
     #[allow(clippy::collapsible_else_if)] // Makes the structure clearer in this case.
     let start_range = if is_prev {

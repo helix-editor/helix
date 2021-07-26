@@ -59,17 +59,12 @@ pub fn textobject_word(
     textobject: TextObject,
     _count: usize,
 ) -> Range {
-    // For 1-width cursor semantics.
-    let head = if range.head > range.anchor {
-        prev_grapheme_boundary(slice, range.head)
-    } else {
-        range.head
-    };
+    let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, head, Direction::Backward);
-    let word_end = match slice.get_char(head).map(categorize_char) {
-        None | Some(CharCategory::Whitespace | CharCategory::Eol) => head,
-        _ => find_word_boundary(slice, head + 1, Direction::Forward),
+    let word_start = find_word_boundary(slice, pos, Direction::Backward);
+    let word_end = match slice.get_char(pos).map(categorize_char) {
+        None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward),
     };
 
     // Special case.

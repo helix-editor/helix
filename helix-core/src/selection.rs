@@ -73,16 +73,11 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
-    /// The line number that the head is on (using 1-width semantics).
+    /// The line number that the block-cursor is on.
     #[inline]
     #[must_use]
-    pub fn head_line(&self, text: RopeSlice) -> usize {
-        let head = if self.anchor < self.head {
-            prev_grapheme_boundary(text, self.head)
-        } else {
-            self.head
-        };
-        text.char_to_line(head)
+    pub fn cursor_line(&self, text: RopeSlice) -> usize {
+        text.char_to_line(self.cursor(text))
     }
 
     /// The (inclusive) range of lines that the range overlaps.
@@ -248,29 +243,44 @@ impl Range {
         }
     }
 
-    /// Moves the head of the `Range` to `char_idx`, adjusting the anchor
-    /// as needed to preserve 1-width range semantics.
+    /// Gets the left-side position of the block cursor.
+    #[must_use]
+    #[inline]
+    pub fn cursor(self, text: RopeSlice) -> usize {
+        if self.head > self.anchor {
+            prev_grapheme_boundary(text, self.head)
+        } else {
+            self.head
+        }
+    }
+
+    /// Puts the left side of the block cursor at `char_idx`, optionally extending.
     ///
-    /// `block_cursor` specifies whether it should treat `char_idx` as a block
-    /// cursor position or as a range-end position.
+    /// This follows "1-width" semantics, and therefore does a combination of anchor
+    /// and head moves to behave as if both the front and back of the range are 1-width
+    /// blocks
     ///
     /// This method assumes that the range and `char_idx` are already properly
     /// grapheme-aligned.
     #[must_use]
     #[inline]
-    pub fn move_head(self, text: RopeSlice, char_idx: usize, block_cursor: bool) -> Range {
-        let anchor = if self.head >= self.anchor && char_idx < self.anchor {
-            next_grapheme_boundary(text, self.anchor)
-        } else if self.head < self.anchor && char_idx >= self.anchor {
-            prev_grapheme_boundary(text, self.anchor)
-        } else {
-            self.anchor
-        };
+    pub fn put_cursor(self, text: RopeSlice, char_idx: usize, extend: bool) -> Range {
+        if extend {
+            let anchor = if self.head >= self.anchor && char_idx < self.anchor {
+                next_grapheme_boundary(text, self.anchor)
+            } else if self.head < self.anchor && char_idx >= self.anchor {
+                prev_grapheme_boundary(text, self.anchor)
+            } else {
+                self.anchor
+            };
 
-        if block_cursor && anchor <= char_idx {
-            Range::new(anchor, next_grapheme_boundary(text, char_idx))
+            if anchor <= char_idx {
+                Range::new(anchor, next_grapheme_boundary(text, char_idx))
+            } else {
+                Range::new(anchor, char_idx)
+            }
         } else {
-            Range::new(anchor, char_idx)
+            Range::point(char_idx)
         }
     }
 
@@ -307,18 +317,6 @@ impl Selection {
     #[must_use]
     pub fn primary(&self) -> Range {
         self.ranges[self.primary_index]
-    }
-
-    #[must_use]
-    pub fn cursor(&self, text: RopeSlice) -> usize {
-        let range = self.primary();
-
-        // For 1-width cursor semantics.
-        if range.anchor < range.head {
-            prev_grapheme_boundary(text, range.head).max(range.anchor)
-        } else {
-            range.head
-        }
     }
 
     /// Ensure selection containing only the primary selection.
@@ -452,17 +450,9 @@ impl Selection {
     }
 
     /// Transforms the selection into all of the left-side head positions,
-    /// using 1-width semantics.
+    /// using block-cursor semantics.
     pub fn cursors(self, text: RopeSlice) -> Self {
-        self.transform(|range| {
-            // For 1-width cursor semantics.
-            let pos = if range.anchor < range.head {
-                prev_grapheme_boundary(text, range.head).max(range.anchor)
-            } else {
-                range.head
-            };
-            Range::new(pos, pos)
-        })
+        self.transform(|range| Range::point(range.cursor(text)))
     }
 
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {

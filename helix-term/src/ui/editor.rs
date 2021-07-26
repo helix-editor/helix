@@ -406,7 +406,10 @@ impl EditorView {
                     // TODO: set cursor position for IME
                     if let Some(syntax) = doc.syntax() {
                         use helix_core::match_brackets;
-                        let pos = doc.selection(view.id).cursor(doc.text().slice(..));
+                        let pos = doc
+                            .selection(view.id)
+                            .primary()
+                            .cursor(doc.text().slice(..));
                         let pos = match_brackets::find(syntax, doc.text(), pos)
                             .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
@@ -451,7 +454,10 @@ impl EditorView {
             widgets::{Paragraph, Widget},
         };
 
-        let cursor = doc.selection(view.id).cursor(doc.text().slice(..));
+        let cursor = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
 
         let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
@@ -565,7 +571,9 @@ impl EditorView {
         let position_info = {
             let pos = coords_at_pos(
                 doc.text().slice(..),
-                doc.selection(view.id).cursor(doc.text().slice(..)),
+                doc.selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..)),
             );
             format!("{}:{}", pos.row + 1, pos.col + 1) // convert to 1-indexing
         };

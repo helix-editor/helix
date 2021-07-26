@@ -84,7 +84,10 @@ impl View {
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document) {
-        let cursor = doc.selection(self.id).cursor(doc.text().slice(..));
+        let cursor = doc
+            .selection(self.id)
+            .primary()
+            .cursor(doc.text().slice(..));
         let pos = coords_at_pos(doc.text().slice(..), cursor);
         let line = pos.row;
         let col = pos.col;

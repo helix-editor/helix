@@ -121,7 +121,10 @@ enum Align {
 }
 
 fn align_view(doc: &Document, view: &mut View, align: Align) {
-    let pos = doc.selection(view.id).cursor(doc.text().slice(..));
+    let pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
     let relative = match align {
@@ -372,17 +375,13 @@ fn goto_line_end(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let line = range.head_line(text);
+        let line = range.cursor_line(text);
         let line_start = text.line_to_char(line);
 
         let pos = graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
             .max(line_start);
 
-        if doc.mode == Mode::Select {
-            range.move_head(text, pos, true)
-        } else {
-            Range::point(pos)
-        }
+        range.put_cursor(text, pos, doc.mode == Mode::Select)
     });
     doc.set_selection(view.id, selection);
 }
@@ -392,14 +391,10 @@ fn goto_line_end_newline(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let line = range.head_line(text);
+        let line = range.cursor_line(text);
         let pos = line_end_char_index(&text, line);
 
-        if doc.mode == Mode::Select {
-            range.move_head(text, pos, true)
-        } else {
-            Range::point(pos)
-        }
+        range.put_cursor(text, pos, doc.mode == Mode::Select)
     });
     doc.set_selection(view.id, selection);
 }
@@ -409,15 +404,11 @@ fn goto_line_start(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let line = range.head_line(text);
+        let line = range.cursor_line(text);
 
         // adjust to start of the line
         let pos = text.line_to_char(line);
-        if doc.mode == Mode::Select {
-            range.move_head(text, pos, true)
-        } else {
-            Range::point(pos)
-        }
+        range.put_cursor(text, pos, doc.mode == Mode::Select)
     });
     doc.set_selection(view.id, selection);
 }
@@ -427,15 +418,11 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let line = range.head_line(text);
+        let line = range.cursor_line(text);
 
         if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
             let pos = pos + text.line_to_char(line);
-            if doc.mode == Mode::Select {
-                range.move_head(text, pos, true)
-            } else {
-                Range::point(pos)
-            }
+            range.put_cursor(text, pos, doc.mode == Mode::Select)
         } else {
             range
         }
@@ -579,8 +566,8 @@ fn extend_next_word_start(cx: &mut Context) {
         .min_width_1(text)
         .transform(|range| {
             let word = movement::move_next_word_start(text, range, count);
-            let pos = graphemes::prev_grapheme_boundary(text, word.head);
-            range.move_head(text, pos, true)
+            let pos = word.cursor(text);
+            range.put_cursor(text, pos, true)
         });
     doc.set_selection(view.id, selection);
 }
@@ -596,8 +583,8 @@ fn extend_prev_word_start(cx: &mut Context) {
         .min_width_1(text)
         .transform(|range| {
             let word = movement::move_prev_word_start(text, range, count);
-            let pos = word.head;
-            range.move_head(text, pos, true)
+            let pos = word.cursor(text);
+            range.put_cursor(text, pos, true)
         });
     doc.set_selection(view.id, selection);
 }
@@ -613,8 +600,8 @@ fn extend_next_word_end(cx: &mut Context) {
         .min_width_1(text)
         .transform(|range| {
             let word = movement::move_next_word_end(text, range, count);
-            let pos = graphemes::prev_grapheme_boundary(text, word.head);
-            range.move_head(text, pos, true)
+            let pos = word.cursor(text);
+            range.put_cursor(text, pos, true)
         });
     doc.set_selection(view.id, selection);
 }
@@ -663,18 +650,13 @@ where
 
         let selection = doc.selection(view.id).clone().transform(|range| {
             let range = if range.anchor < range.head {
-                // For 1-width cursor semantics.
+                // For block-cursor semantics.
                 Range::new(range.anchor, range.head - 1)
             } else {
                 range
             };
-            search_fn(text, ch, range.head, count, inclusive).map_or(range, |pos| {
-                if extend {
-                    range.move_head(text, pos, true)
-                } else {
-                    Range::point(pos)
-                }
-            })
+            search_fn(text, ch, range.head, count, inclusive)
+                .map_or(range, |pos| range.put_cursor(text, pos, extend))
         });
         doc.set_selection(view.id, selection);
     })
@@ -895,7 +877,9 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let (view, doc) = current!(cx.editor);
     let cursor = coords_at_pos(
         doc.text().slice(..),
-        doc.selection(view.id).cursor(doc.text().slice(..)),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
     );
     let doc_last_line = doc.text().len_lines() - 1;
 
@@ -1220,12 +1204,7 @@ fn collapse_selection(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let pos = if range.head > range.anchor {
-            // For 1-width cursor semantics.
-            graphemes::prev_grapheme_boundary(text, range.head)
-        } else {
-            range.head
-        };
+        let pos = range.cursor(text);
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
@@ -2203,7 +2182,7 @@ fn append_to_line(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let text = doc.text().slice(..);
-        let line = range.head_line(text);
+        let line = range.cursor_line(text);
         let pos = line_end_char_index(&text, line);
         Range::new(pos, pos)
     });
@@ -2264,7 +2243,7 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let line = range.head_line(text);
+        let line = range.cursor_line(text);
 
         let line = match open {
             // adjust position to the end of the line (next line - 1)
@@ -2472,7 +2451,9 @@ fn goto_definition(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(doc.text().slice(..)),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
         offset_encoding,
     );
 
@@ -2513,7 +2494,9 @@ fn goto_type_definition(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(doc.text().slice(..)),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
         offset_encoding,
     );
 
@@ -2554,7 +2537,9 @@ fn goto_implementation(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(doc.text().slice(..)),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
         offset_encoding,
     );
 
@@ -2595,7 +2580,9 @@ fn goto_reference(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(doc.text().slice(..)),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
         offset_encoding,
     );
 
@@ -2656,7 +2643,10 @@ fn goto_next_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
 
-    let cursor_pos = doc.selection(view.id).cursor(doc.text().slice(..));
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
     let diag = if let Some(diag) = doc
         .diagnostics()
         .iter()
@@ -2677,7 +2667,10 @@ fn goto_prev_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
 
-    let cursor_pos = doc.selection(view.id).cursor(doc.text().slice(..));
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
     let diag = if let Some(diag) = doc
         .diagnostics()
         .iter()
@@ -2705,7 +2698,9 @@ fn signature_help(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(doc.text().slice(..)),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
         language_server.offset_encoding(),
     );
 
@@ -3457,7 +3452,10 @@ fn completion(cx: &mut Context) {
     };
 
     let offset_encoding = language_server.offset_encoding();
-    let cursor = doc.selection(view.id).cursor(doc.text().slice(..));
+    let cursor = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
 
     let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
 
@@ -3514,7 +3512,9 @@ fn hover(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(
         doc.text(),
-        doc.selection(view.id).cursor(doc.text().slice(..)),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
         language_server.offset_encoding(),
     );
 
@@ -3580,7 +3580,10 @@ fn match_brackets(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     if let Some(syntax) = doc.syntax() {
-        let pos = doc.selection(view.id).cursor(doc.text().slice(..));
+        let pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
         if let Some(pos) = match_brackets::find(syntax, doc.text(), pos) {
             let selection = Selection::point(pos);
             doc.set_selection(view.id, selection);
@@ -3684,7 +3687,10 @@ fn align_view_bottom(cx: &mut Context) {
 
 fn align_view_middle(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let pos = doc.selection(view.id).cursor(doc.text().slice(..));
+    let pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
     let pos = coords_at_pos(doc.text().slice(..), pos);
 
     const OFFSET: usize = 7; // gutters
