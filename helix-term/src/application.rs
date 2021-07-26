@@ -457,6 +457,7 @@ impl Application {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`s.
+            let _ = execute!(std::io::stdout(), DisableMouseCapture);
             let _ = execute!(std::io::stdout(), terminal::LeaveAlternateScreen);
             let _ = terminal::disable_raw_mode();
             hook(info);
