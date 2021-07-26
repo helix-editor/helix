@@ -17,7 +17,7 @@ helix-core = { version = "0.3", path = "../helix-core" }
 anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-jsonrpc-core = { version = "17.1", default-features = false } # don't pull in all of futures
+jsonrpc-core = { version = "18.0", default-features = false } # don't pull in all of futures
 log = "0.4"
 lsp-types = { version = "0.89", features = ["proposed"] }
 serde = { version = "1.0", features = ["derive"] }
