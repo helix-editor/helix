@@ -19,9 +19,12 @@ use crossterm::{
     execute, terminal,
 };
 #[cfg(not(windows))]
-use signal_hook::{consts::signal, low_level};
-#[cfg(not(windows))]
-use signal_hook_tokio::Signals;
+use {
+    signal_hook::{consts::signal, low_level},
+    signal_hook_tokio::Signals,
+};
+#[cfg(windows)]
+type Signals = futures_util::stream::Empty<()>;
 
 pub struct Application {
     compositor: Compositor,
@@ -40,7 +43,6 @@ pub struct Application {
     #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
 
-    #[cfg(not(windows))]
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
@@ -108,6 +110,8 @@ impl Application {
 
         editor.set_theme(theme);
 
+        #[cfg(windows)]
+        let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
         let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT])?;
 
@@ -120,7 +124,6 @@ impl Application {
             theme_loader,
             syn_loader,
 
-            #[cfg(not(windows))]
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -158,7 +161,6 @@ impl Application {
 
             use futures_util::StreamExt;
 
-            #[cfg(not(windows))]
             tokio::select! {
                 biased;
 
@@ -166,23 +168,7 @@ impl Application {
                     self.handle_terminal_events(event)
                 }
                 Some(signal) = self.signals.next() => {
-                    use helix_view::graphics::Rect;
-                    match signal {
-                        signal::SIGTSTP => {
-                            self.compositor.save_cursor();
-                            self.restore_term().unwrap();
-                            low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
-                        }
-                        signal::SIGCONT => {
-                            self.claim_term().await.unwrap();
-                            // redraw the terminal
-                            let Rect { width, height, .. } = self.compositor.size();
-                            self.compositor.resize(width, height);
-                            self.compositor.load_cursor();
-                            self.render();
-                        }
-                        _ => unreachable!(),
-                    }
+                    self.handle_signals(signal).await;
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
                     self.handle_language_server_message(call, id).await;
@@ -202,31 +188,31 @@ impl Application {
                     self.render();
                 }
             }
-            #[cfg(windows)]
-            tokio::select! {
-                biased;
+        }
+    }
 
-                event = reader.next() => {
-                    self.handle_terminal_events(event)
-                }
-                Some((id, call)) = self.editor.language_servers.incoming.next() => {
-                    self.handle_language_server_message(call, id).await;
-                    // limit render calls for fast language server messages
-                    let last = self.editor.language_servers.incoming.is_empty();
-                    if last || last_render.elapsed() > deadline {
-                        self.render();
-                        last_render = Instant::now();
-                    }
-                }
-                Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
-                }
-                Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
-                }
+    #[cfg(windows)]
+    // no signal handling available on windows
+    pub async fn handle_signals(&mut self, _signal: ()) {}
+
+    #[cfg(not(windows))]
+    pub async fn handle_signals(&mut self, signal: i32) {
+        use helix_view::graphics::Rect;
+        match signal {
+            signal::SIGTSTP => {
+                self.compositor.save_cursor();
+                self.restore_term().unwrap();
+                low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
+            signal::SIGCONT => {
+                self.claim_term().await.unwrap();
+                // redraw the terminal
+                let Rect { width, height, .. } = self.compositor.size();
+                self.compositor.resize(width, height);
+                self.compositor.load_cursor();
+                self.render();
+            }
+            _ => unreachable!(),
         }
     }
 
