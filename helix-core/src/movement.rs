@@ -57,17 +57,12 @@ pub fn move_vertically(
     let horiz = range.horiz.unwrap_or(col as u32);
 
     // Compute the new position.
-    let (new_pos, new_row) = {
-        let new_row = match dir {
-            Direction::Forward => (row + count).min(slice.len_lines().saturating_sub(1)),
-            Direction::Backward => row.saturating_sub(count),
-        };
-        let new_col = col.max(horiz as usize);
-        (
-            pos_at_coords(slice, Position::new(new_row, new_col), true),
-            new_row,
-        )
+    let new_row = match dir {
+        Direction::Forward => (row + count).min(slice.len_lines().saturating_sub(1)),
+        Direction::Backward => row.saturating_sub(count),
     };
+    let new_col = col.max(horiz as usize);
+    let new_pos = pos_at_coords(slice, Position::new(new_row, new_col), true);
 
     // Special-case to avoid moving to the end of the last non-empty line.
     if behaviour == Movement::Extend && slice.line(new_row).len_chars() == 0 {
