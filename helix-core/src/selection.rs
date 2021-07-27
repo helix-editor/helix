@@ -1,5 +1,5 @@
-//! Selections are the primary editing construct. Even a single cursor is
-//! defined as a single empty or 1-wide selection range.
+//! Selections are the primary editing construct. Even cursors are
+//! defined as a selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
 use crate::{
@@ -14,17 +14,20 @@ use std::borrow::Cow;
 
 /// A single selection range.
 ///
-/// The range consists of an "anchor" and "head" position in
+/// A range consists of an "anchor" and "head" position in
 /// the text.  The head is the part that the user moves when
-/// directly extending the selection.  The head and anchor
-/// can be in any order: either can precede or follow the
-/// other in the text, and they can share the same position
-/// for a zero-width range.
+/// directly extending a selection.  The head and anchor
+/// can be in any order, or even share the same position.
+///
+/// The anchor and head positions use gap indexing, meaning
+/// that their indices represent the the gaps *between* `char`s
+/// rather than the `char`s themselves. For example, 1
+/// represents the position between the first and second `char`.
 ///
 /// Below are some example `Range` configurations to better
 /// illustrate.  The anchor and head indices are show as
 /// "(anchor, head)", followed by example text with "[" and "]"
-/// inserted to visually represent the anchor and head positions:
+/// inserted to represent the anchor and head positions:
 ///
 /// - (0, 3): [Som]e text.
 /// - (3, 0): ]Som[e text.
@@ -37,6 +40,12 @@ use std::borrow::Cow;
 /// are directly adjecent, sharing an edge, do not overlap.
 /// However, a zero-width range will overlap with the shared
 /// left-edge of another range.
+///
+/// By convention, user-facing ranges are considered to have
+/// a block cursor on the head-side of the range that spans a
+/// single grapheme inward from the range's edge.  There are a
+/// variety of helper methods on `Range` for working in terms of
+/// that block cursor, all of which have `cursor` in their name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Range {
     /// The anchor of the range: the side that doesn't move when extending.
@@ -71,13 +80,6 @@ impl Range {
     #[must_use]
     pub fn to(&self) -> usize {
         std::cmp::max(self.anchor, self.head)
-    }
-
-    /// The line number that the block-cursor is on.
-    #[inline]
-    #[must_use]
-    pub fn cursor_line(&self, text: RopeSlice) -> usize {
-        text.char_to_line(self.cursor(text))
     }
 
     /// The (inclusive) range of lines that the range overlaps.
@@ -184,31 +186,15 @@ impl Range {
         }
     }
 
-    /// Compute a possibly new range from this range, attempting to ensure
-    /// a minimum range width of 1 char by shifting the head in the forward
-    /// direction as needed.
-    ///
-    /// This method will never shift the anchor, and will only shift the
-    /// head in the forward direction.  Therefore, this method can fail
-    /// at ensuring the minimum width if and only if the passed range is
-    /// both zero-width and at the end of the `RopeSlice`.
-    ///
-    /// If the input range is grapheme-boundary aligned, the returned range
-    /// will also be.  Specifically, if the head needs to shift to achieve
-    /// the minimum width, it will shift to the next grapheme boundary.
-    #[must_use]
+    // groupAt
+
     #[inline]
-    pub fn min_width_1(&self, slice: RopeSlice) -> Self {
-        if self.anchor == self.head {
-            Range {
-                anchor: self.anchor,
-                head: next_grapheme_boundary(slice, self.head),
-                horiz: self.horiz,
-            }
-        } else {
-            *self
-        }
+    pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
+        text.slice(self.from()..self.to()).into()
     }
+
+    //--------------------------------
+    // Alignment methods.
 
     /// Compute a possibly new range from this range, with its ends
     /// shifted as needed to align with grapheme boundaries.
@@ -242,6 +228,35 @@ impl Range {
             },
         }
     }
+
+    /// Compute a possibly new range from this range, attempting to ensure
+    /// a minimum range width of 1 char by shifting the head in the forward
+    /// direction as needed.
+    ///
+    /// This method will never shift the anchor, and will only shift the
+    /// head in the forward direction.  Therefore, this method can fail
+    /// at ensuring the minimum width if and only if the passed range is
+    /// both zero-width and at the end of the `RopeSlice`.
+    ///
+    /// If the input range is grapheme-boundary aligned, the returned range
+    /// will also be.  Specifically, if the head needs to shift to achieve
+    /// the minimum width, it will shift to the next grapheme boundary.
+    #[must_use]
+    #[inline]
+    pub fn min_width_1(&self, slice: RopeSlice) -> Self {
+        if self.anchor == self.head {
+            Range {
+                anchor: self.anchor,
+                head: next_grapheme_boundary(slice, self.head),
+                horiz: self.horiz,
+            }
+        } else {
+            *self
+        }
+    }
+
+    //--------------------------------
+    // Block-cursor methods.
 
     /// Gets the left-side position of the block cursor.
     #[must_use]
@@ -284,11 +299,11 @@ impl Range {
         }
     }
 
-    // groupAt
-
+    /// The line number that the block-cursor is on.
     #[inline]
-    pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
-        text.slice(self.from()..self.to()).into()
+    #[must_use]
+    pub fn cursor_line(&self, text: RopeSlice) -> usize {
+        text.char_to_line(self.cursor(text))
     }
 }
 
