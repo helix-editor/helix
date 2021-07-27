@@ -252,11 +252,8 @@ impl Keymap {
     }
 
     /// Returns list of keys waiting to be disambiguated.
-    pub fn pending(&self) -> Option<&Vec<KeyEvent>> {
-        match self.state.is_empty() {
-            true => None,
-            false => Some(&self.state),
-        }
+    pub fn pending(&self) -> &[KeyEvent] {
+        &self.state
     }
 
     /// Lookup `key` in the keymap to try and find a command to execute
@@ -303,8 +300,14 @@ pub struct Keymaps(pub HashMap<Mode, Keymap>);
 
 impl Keymaps {
     /// Returns list of keys waiting to be disambiguated in current mode.
-    pub fn pending(&self) -> Option<&Vec<KeyEvent>> {
-        self.0.values().find_map(|keymap| keymap.pending())
+    pub fn pending(&self) -> &[KeyEvent] {
+        self.0
+            .values()
+            .find_map(|keymap| match keymap.pending().is_empty() {
+                true => None,
+                false => Some(keymap.pending()),
+            })
+            .unwrap_or_default()
     }
 }
 
