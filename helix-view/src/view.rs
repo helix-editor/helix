@@ -4,7 +4,7 @@ use crate::{graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
     coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
-    Position, RopeSlice, Selection,
+    Position, Rope, RopeSlice, Selection,
 };
 
 pub const PADDING: usize = 5;
@@ -159,6 +159,34 @@ impl View {
         let col = col.saturating_sub(self.first_col);
 
         Some(Position::new(row, col))
+    }
+
+    /// Translates a screen position to position in the test document.
+    /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
+    pub fn pos_at_screen_coords(&self, text: &Rope, row: usize, column: usize) -> Option<usize> {
+        // 2 for status
+        if row < self.area.y as usize || row > self.area.y as usize + self.area.height as usize - 2
+        {
+            return None;
+        }
+
+        let mut pos = text.line_to_char(row - self.area.y as usize + self.first_line);
+
+        // TODO: not ideal
+        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
+
+        if column < self.area.x as usize + OFFSET
+            || column > self.area.x as usize + self.area.width as usize
+        {
+            return None;
+        }
+
+        pos += std::cmp::min(
+            column - OFFSET - self.area.x as usize + self.first_col,
+            text.line(text.char_to_line(pos)).len_chars() - 1,
+        );
+
+        Some(pos)
     }
 
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)

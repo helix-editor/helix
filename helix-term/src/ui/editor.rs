@@ -10,7 +10,7 @@ use helix_core::{
     coords_at_pos,
     graphemes::{ensure_grapheme_boundary, next_grapheme_boundary},
     syntax::{self, HighlightEvent},
-    LineEnding, Position, Range, Rope, Selection,
+    LineEnding, Position, Range, Selection,
 };
 use helix_view::{
     document::Mode,
@@ -654,19 +654,6 @@ impl EditorView {
     }
 }
 
-fn normalize_position(text: &Rope, row: usize, column: usize) -> usize {
-    let line_number = std::cmp::min(row, text.len_lines() - 2);
-    let line_start = text.line_to_char(line_number);
-    let line = text.line(line_number);
-    let mut col = 0;
-    if line_number == row && column >= OFFSET as usize {
-        col = std::cmp::min(column - OFFSET as usize, line.len_chars() - 1);
-    } else if line_number < row {
-        col = line.len_chars() - 1;
-    }
-    line_start + col
-}
-
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         match event {
@@ -788,8 +775,8 @@ impl Component for EditorView {
                 let jump = (doc.id(), doc.selection(view.id).clone());
                 view.jumps.push(jump);
 
-                let pos = normalize_position(&doc.text(), row as usize, column as usize);
-                doc.set_selection(view.id, Selection::point(pos));
+                let pos = view.pos_at_screen_coords(&doc.text(), row as usize, column as usize);
+                doc.set_selection(view.id, Selection::point(pos.unwrap_or(0)));
 
                 EventResult::Consumed(None)
             }
@@ -804,11 +791,11 @@ impl Component for EditorView {
                 let jump = (doc.id(), doc.selection(view.id).clone());
                 view.jumps.push(jump);
 
-                let pos = normalize_position(&doc.text(), row as usize, column as usize);
+                let pos = view.pos_at_screen_coords(&doc.text(), row as usize, column as usize);
                 doc.set_selection(
                     view.id,
                     doc.selection(view.id)
-                        .transform(|range| Range::new(range.anchor, pos)),
+                        .transform(|range| Range::new(range.anchor, pos.unwrap_or(0))),
                 );
                 EventResult::Consumed(None)
             }
