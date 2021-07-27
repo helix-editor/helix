@@ -804,6 +804,86 @@ mod test {
     }
 
     #[test]
+    fn test_line_range() {
+        let r = Rope::from_str("\r\nHi\r\nthere!");
+        let s = r.slice(..);
+
+        // Zero-width ranges.
+        assert_eq!(Range::new(0, 0).line_range(s), (0, 0));
+        assert_eq!(Range::new(1, 1).line_range(s), (0, 0));
+        assert_eq!(Range::new(2, 2).line_range(s), (1, 1));
+        assert_eq!(Range::new(3, 3).line_range(s), (1, 1));
+
+        // Forward ranges.
+        assert_eq!(Range::new(0, 1).line_range(s), (0, 0));
+        assert_eq!(Range::new(0, 2).line_range(s), (0, 0));
+        assert_eq!(Range::new(0, 3).line_range(s), (0, 1));
+        assert_eq!(Range::new(1, 2).line_range(s), (0, 0));
+        assert_eq!(Range::new(2, 3).line_range(s), (1, 1));
+        assert_eq!(Range::new(3, 8).line_range(s), (1, 2));
+        assert_eq!(Range::new(0, 12).line_range(s), (0, 2));
+
+        // Reverse ranges.
+        assert_eq!(Range::new(1, 0).line_range(s), (0, 0));
+        assert_eq!(Range::new(2, 0).line_range(s), (0, 0));
+        assert_eq!(Range::new(3, 0).line_range(s), (0, 1));
+        assert_eq!(Range::new(2, 1).line_range(s), (0, 0));
+        assert_eq!(Range::new(3, 2).line_range(s), (1, 1));
+        assert_eq!(Range::new(8, 3).line_range(s), (1, 2));
+        assert_eq!(Range::new(12, 0).line_range(s), (0, 2));
+    }
+
+    #[test]
+    fn test_cursor() {
+        let r = Rope::from_str("\r\nHi\r\nthere!");
+        let s = r.slice(..);
+
+        // Zero-width ranges.
+        assert_eq!(Range::new(0, 0).cursor(s), 0);
+        assert_eq!(Range::new(2, 2).cursor(s), 2);
+        assert_eq!(Range::new(3, 3).cursor(s), 3);
+
+        // Forward ranges.
+        assert_eq!(Range::new(0, 2).cursor(s), 0);
+        assert_eq!(Range::new(0, 3).cursor(s), 2);
+        assert_eq!(Range::new(3, 6).cursor(s), 4);
+
+        // Reverse ranges.
+        assert_eq!(Range::new(2, 0).cursor(s), 0);
+        assert_eq!(Range::new(6, 2).cursor(s), 2);
+        assert_eq!(Range::new(6, 3).cursor(s), 3);
+    }
+
+    #[test]
+    fn test_put_cursor() {
+        let r = Rope::from_str("\r\nHi\r\nthere!");
+        let s = r.slice(..);
+
+        // Zero-width ranges.
+        assert_eq!(Range::new(0, 0).put_cursor(s, 0, true), Range::new(0, 2));
+        assert_eq!(Range::new(0, 0).put_cursor(s, 2, true), Range::new(0, 3));
+        assert_eq!(Range::new(2, 3).put_cursor(s, 4, true), Range::new(2, 6));
+        assert_eq!(Range::new(2, 8).put_cursor(s, 4, true), Range::new(2, 6));
+        assert_eq!(Range::new(8, 8).put_cursor(s, 4, true), Range::new(9, 4));
+
+        // Forward ranges.
+        assert_eq!(Range::new(3, 6).put_cursor(s, 0, true), Range::new(4, 0));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 2, true), Range::new(4, 2));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 3, true), Range::new(3, 4));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 4, true), Range::new(3, 6));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 6, true), Range::new(3, 7));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 8, true), Range::new(3, 9));
+
+        // Reverse ranges.
+        assert_eq!(Range::new(6, 3).put_cursor(s, 0, true), Range::new(6, 0));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 2, true), Range::new(6, 2));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 3, true), Range::new(6, 3));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 4, true), Range::new(6, 4));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 6, true), Range::new(4, 7));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 8, true), Range::new(4, 9));
+    }
+
+    #[test]
     fn test_split_on_matches() {
         use crate::regex::Regex;
 
