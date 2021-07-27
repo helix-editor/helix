@@ -175,16 +175,17 @@ impl View {
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
-        if column < self.area.x as usize + OFFSET
-            || column > self.area.x as usize + self.area.width as usize
+        if column < self.area.x as usize || column > self.area.x as usize + self.area.width as usize
         {
             return None;
         }
 
-        pos += std::cmp::min(
-            column - OFFSET - self.area.x as usize + self.first_col,
-            text.line(text.char_to_line(pos)).len_chars() - 1,
-        );
+        if column > OFFSET + self.area.x as usize {
+            pos += std::cmp::min(
+                column - OFFSET - self.area.x as usize + self.first_col,
+                text.line(text.char_to_line(pos)).len_chars() - 1,
+            );
+        }
 
         Some(pos)
     }
