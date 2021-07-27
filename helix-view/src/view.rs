@@ -161,13 +161,13 @@ impl View {
         Some(Position::new(row, col))
     }
 
-    /// Translates a screen position to position in the test document.
-    /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
-    pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> Option<usize> {
+    /// Verifies whether a screen position is inside the view
+    /// Returns true when position is inside the view
+    pub fn verify_screen_coords(&self, row: usize, column: usize) -> bool {
         // 2 for status
         if row < self.area.y as usize || row > self.area.y as usize + self.area.height as usize - 2
         {
-            return None;
+            return false;
         }
 
         // TODO: not ideal
@@ -176,6 +176,15 @@ impl View {
         if column < self.area.x as usize + OFFSET
             || column > self.area.x as usize + self.area.width as usize
         {
+            return false;
+        }
+        true
+    }
+
+    /// Translates a screen position to position in the text document.
+    /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
+    pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> Option<usize> {
+        if !self.verify_screen_coords(row, column) {
             return None;
         }
 
@@ -194,6 +203,9 @@ impl View {
                 current_line_length += grapheme_width(&grapheme);
             }
         }
+
+        // TODO: not ideal
+        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
         let target = std::cmp::min(
             column - OFFSET - self.area.x as usize + self.first_col,
