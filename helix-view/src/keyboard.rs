@@ -75,7 +75,7 @@ pub enum KeyCode {
     End,
     /// Page up key.
     PageUp,
-    /// Page dow key.
+    /// Page down key.
     PageDown,
     /// Tab key.
     Tab,
