@@ -788,8 +788,6 @@ impl Component for EditorView {
                 ..
             }) => {
                 let (view, doc) = current!(cx.editor);
-                let jump = (doc.id(), doc.selection(view.id).clone());
-                view.jumps.push(jump);
 
                 let pos = view.pos_at_screen_coords(&doc.text(), row as usize, column as usize);
                 doc.set_selection(
