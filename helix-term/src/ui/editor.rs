@@ -776,7 +776,12 @@ impl Component for EditorView {
                 view.jumps.push(jump);
 
                 let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
-                doc.set_selection(view.id, Selection::point(pos.unwrap_or(0)));
+                // Not in current view
+                if pos == None {
+                    return EventResult::Ignored;
+                }
+
+                doc.set_selection(view.id, Selection::point(pos.unwrap()));
 
                 EventResult::Consumed(None)
             }
@@ -790,10 +795,15 @@ impl Component for EditorView {
                 let (view, doc) = current!(cx.editor);
 
                 let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
+                // Not in current view
+                if pos == None {
+                    return EventResult::Ignored;
+                }
+
                 doc.set_selection(
                     view.id,
                     doc.selection(view.id)
-                        .transform(|range| Range::new(range.anchor, pos.unwrap_or(0))),
+                        .transform(|range| Range::new(range.anchor, pos.unwrap())),
                 );
                 EventResult::Consumed(None)
             }

@@ -173,7 +173,8 @@ impl View {
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
-        if column < self.area.x as usize || column > self.area.x as usize + self.area.width as usize
+        if column < self.area.x as usize + OFFSET
+            || column > self.area.x as usize + self.area.width as usize
         {
             return None;
         }
@@ -181,10 +182,6 @@ impl View {
         let text = doc.text();
         let line_number = row - self.area.y as usize + self.first_line;
         let mut pos = text.line_to_char(line_number);
-
-        if column < OFFSET + self.area.x as usize {
-            return Some(pos);
-        }
 
         let current_line = text.line(line_number);
         let mut current_line_length = 0;
