@@ -34,10 +34,9 @@ pub fn move_horizontally(
     let pos = range.cursor(slice);
 
     // Compute the new position.
-    let new_pos = if dir == Direction::Backward {
-        nth_prev_grapheme_boundary(slice, pos, count)
-    } else {
-        nth_next_grapheme_boundary(slice, pos, count)
+    let new_pos = match dir {
+        Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
+        Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
     };
 
     // Compute the final new range.
@@ -59,10 +58,9 @@ pub fn move_vertically(
 
     // Compute the new position.
     let (new_pos, new_row) = {
-        let new_row = if dir == Direction::Backward {
-            row.saturating_sub(count)
-        } else {
-            (row + count).min(slice.len_lines().saturating_sub(1))
+        let new_row = match dir {
+            Direction::Forward => (row + count).min(slice.len_lines().saturating_sub(1)),
+            Direction::Backward => row.saturating_sub(count),
         };
         let new_col = col.max(horiz as usize);
         (
