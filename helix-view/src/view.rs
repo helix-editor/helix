@@ -4,7 +4,7 @@ use crate::{graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
     coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
-    Position, Rope, RopeSlice, Selection,
+    Position, RopeSlice, Selection,
 };
 
 pub const PADDING: usize = 5;
@@ -163,14 +163,12 @@ impl View {
 
     /// Translates a screen position to position in the test document.
     /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
-    pub fn pos_at_screen_coords(&self, text: &Rope, row: usize, column: usize) -> Option<usize> {
+    pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> Option<usize> {
         // 2 for status
         if row < self.area.y as usize || row > self.area.y as usize + self.area.height as usize - 2
         {
             return None;
         }
-
-        let mut pos = text.line_to_char(row - self.area.y as usize + self.first_line);
 
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
@@ -180,11 +178,43 @@ impl View {
             return None;
         }
 
-        if column > OFFSET + self.area.x as usize {
-            pos += std::cmp::min(
-                column - OFFSET - self.area.x as usize + self.first_col,
-                text.line(text.char_to_line(pos)).len_chars() - 1,
-            );
+        let text = doc.text();
+        let line_number = row - self.area.y as usize + self.first_line;
+        let mut pos = text.line_to_char(line_number);
+
+        if column < OFFSET + self.area.x as usize {
+            return Some(pos);
+        }
+
+        let current_line = text.line(line_number);
+        let mut current_line_length = 0;
+        let tab_width = doc.tab_width();
+        for grapheme in RopeGraphemes::new(current_line) {
+            if grapheme == "\t" {
+                current_line_length += tab_width;
+            } else {
+                let grapheme = Cow::from(grapheme);
+                current_line_length += grapheme_width(&grapheme);
+            }
+        }
+
+        let target = std::cmp::min(
+            column - OFFSET - self.area.x as usize + self.first_col,
+            current_line_length - 1,
+        );
+        let mut selected = 0;
+
+        for grapheme in RopeGraphemes::new(current_line) {
+            if selected >= target {
+                break;
+            }
+            if grapheme == "\t" {
+                selected += tab_width;
+            } else {
+                let width = grapheme_width(&Cow::from(grapheme));
+                selected += width;
+            }
+            pos += 1;
         }
 
         Some(pos)
