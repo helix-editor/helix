@@ -10,6 +10,7 @@ use helix_core::{
     coords_at_pos,
     graphemes::{ensure_grapheme_boundary, next_grapheme_boundary},
     syntax::{self, HighlightEvent},
+    unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range,
 };
 use helix_view::{
@@ -627,7 +628,7 @@ impl EditorView {
             }
             _ => {
                 // set the count
-                cxt.count = cxt.editor.count.take();
+                cxt.count = cxt.editor.count;
                 // TODO: edge case: 0j -> reset to 1
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
@@ -636,6 +637,9 @@ impl EditorView {
                 cxt.selected_register = cxt.editor.selected_register.take();
 
                 self.handle_keymap_event(mode, cxt, event);
+                if self.keymaps.pending().is_none() {
+                    cxt.editor.count = None
+                }
             }
         }
     }
@@ -809,6 +813,29 @@ impl Component for EditorView {
                 area.y + area.height.saturating_sub(1),
                 status_msg,
                 style,
+            );
+        } else {
+            let mut disp = String::new();
+            if let Some(count) = cx.editor.count {
+                disp.push_str(&count.get().to_string())
+            }
+            if let Some(keys) = self.keymaps.pending() {
+                for key in keys {
+                    let s = key.to_string();
+                    if s.width() > 1 {
+                        disp.push_str(&format!("<{}>", s));
+                    } else {
+                        disp.push_str(&s);
+                    }
+                }
+            }
+            let width = 10usize;
+            surface.set_string(
+                area.x + area.width.saturating_sub(width as u16),
+                area.y + area.height.saturating_sub(1),
+                disp.get(disp.len().saturating_sub(width)..)
+                    .unwrap_or(&disp),
+                cx.editor.theme.get("ui.text"),
             );
         }
 
