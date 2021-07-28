@@ -253,6 +253,18 @@ impl Tree {
         })
     }
 
+    pub fn views_with_keys_mut(&mut self) -> impl Iterator<Item = (&mut View, ViewId)> {
+        self.nodes
+            .iter_mut()
+            .filter_map(move |(key, node)| match node {
+                Node {
+                    content: Content::View(view),
+                    ..
+                } => Some((view.as_mut(), key)),
+                _ => None,
+            })
+    }
+
     pub fn views_mut(&mut self) -> impl Iterator<Item = (&mut View, bool)> {
         let focus = self.focus;
         self.nodes

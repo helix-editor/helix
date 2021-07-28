@@ -20,7 +20,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
+    Document, Editor, Theme, View, ViewId,
 };
 use std::borrow::Cow;
 
@@ -776,19 +776,38 @@ impl Component for EditorView {
                 column,
                 ..
             }) => {
-                let (view, doc) = current!(cx.editor);
-                let jump = (doc.id(), doc.selection(view.id).clone());
-                view.jumps.push(jump);
+                let editor = &mut cx.editor;
+                let tree = &mut editor.tree;
+                let mut id: Option<ViewId> = None;
+                let mut result = EventResult::Ignored;
 
-                let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
-                // Not in current view
-                if pos == None {
-                    return EventResult::Ignored;
+                for (view, view_id) in tree.views_with_keys_mut() {
+                    if !view.verify_screen_coords(row as usize, column as usize) {
+                        continue;
+                    }
+
+                    id = Some(view_id);
+
+                    let doc = &mut editor.documents[view.doc];
+                    let jump = (doc.id(), doc.selection(view.id).clone());
+                    view.jumps.push(jump);
+
+                    let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
+                    // Not in current view. Impossible, but do not panic
+                    if pos == None {
+                        break;
+                    }
+
+                    doc.set_selection(view.id, Selection::point(pos.unwrap()));
+
+                    result = EventResult::Consumed(None);
                 }
 
-                doc.set_selection(view.id, Selection::point(pos.unwrap()));
+                if let Some(id_unwrapped) = id {
+                    cx.editor.tree.focus = id_unwrapped;
+                }
 
-                EventResult::Consumed(None)
+                result
             }
 
             Event::Mouse(MouseEvent {
