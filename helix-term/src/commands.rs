@@ -483,7 +483,6 @@ fn move_next_word_start(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .min_width_1(text)
         .transform(|range| movement::move_next_word_start(text, range, count));
     doc.set_selection(view.id, selection);
 }
@@ -496,7 +495,6 @@ fn move_prev_word_start(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .min_width_1(text)
         .transform(|range| movement::move_prev_word_start(text, range, count));
     doc.set_selection(view.id, selection);
 }
@@ -509,7 +507,6 @@ fn move_next_word_end(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .min_width_1(text)
         .transform(|range| movement::move_next_word_end(text, range, count));
     doc.set_selection(view.id, selection);
 }
@@ -522,7 +519,6 @@ fn move_next_long_word_start(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .min_width_1(text)
         .transform(|range| movement::move_next_long_word_start(text, range, count));
     doc.set_selection(view.id, selection);
 }
@@ -535,7 +531,6 @@ fn move_prev_long_word_start(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .min_width_1(text)
         .transform(|range| movement::move_prev_long_word_start(text, range, count));
     doc.set_selection(view.id, selection);
 }
@@ -548,7 +543,6 @@ fn move_next_long_word_end(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .min_width_1(text)
         .transform(|range| movement::move_next_long_word_end(text, range, count));
     doc.set_selection(view.id, selection);
 }
@@ -574,15 +568,11 @@ fn extend_next_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .min_width_1(text)
-        .transform(|range| {
-            let word = movement::move_next_word_start(text, range, count);
-            let pos = word.cursor(text);
-            range.put_cursor(text, pos, true)
-        });
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let word = movement::move_next_word_start(text, range, count);
+        let pos = word.cursor(text);
+        range.put_cursor(text, pos, true)
+    });
     doc.set_selection(view.id, selection);
 }
 
@@ -591,15 +581,11 @@ fn extend_prev_word_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .min_width_1(text)
-        .transform(|range| {
-            let word = movement::move_prev_word_start(text, range, count);
-            let pos = word.cursor(text);
-            range.put_cursor(text, pos, true)
-        });
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let word = movement::move_prev_word_start(text, range, count);
+        let pos = word.cursor(text);
+        range.put_cursor(text, pos, true)
+    });
     doc.set_selection(view.id, selection);
 }
 
@@ -608,15 +594,11 @@ fn extend_next_word_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .min_width_1(text)
-        .transform(|range| {
-            let word = movement::move_next_word_end(text, range, count);
-            let pos = word.cursor(text);
-            range.put_cursor(text, pos, true)
-        });
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let word = movement::move_next_word_end(text, range, count);
+        let pos = word.cursor(text);
+        range.put_cursor(text, pos, true)
+    });
     doc.set_selection(view.id, selection);
 }
 
@@ -663,13 +645,16 @@ where
         let text = doc.text().slice(..);
 
         let selection = doc.selection(view.id).clone().transform(|range| {
-            let range = if range.anchor < range.head {
-                // For block-cursor semantics.
-                Range::new(range.anchor, range.head - 1)
+            // TODO: use `Range::cursor()` here instead.  However, that works in terms of
+            // graphemes, wheras this function does yet.  So we're doing the same logic
+            // here, but just in terms of chars instead.
+            let search_start_pos = if range.anchor < range.head {
+                range.head - 1
             } else {
-                range
+                range.head
             };
-            search_fn(text, ch, range.head, count, inclusive)
+
+            search_fn(text, ch, search_start_pos, count, inclusive)
                 .map_or(range, |pos| range.put_cursor(text, pos, extend))
         });
         doc.set_selection(view.id, selection);
@@ -795,11 +780,10 @@ fn replace(cx: &mut Context) {
             _ => None,
         };
 
-        let text = doc.text().slice(..);
-        let selection = doc.selection(view.id).clone().min_width_1(text);
+        let selection = doc.selection(view.id);
 
         if let Some(ch) = ch {
-            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
                     let text: String =
                         RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
@@ -828,11 +812,8 @@ fn replace(cx: &mut Context) {
 
 fn switch_case(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .min_width_1(doc.text().slice(..));
-    let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         let text: Tendril = range
             .fragment(doc.text().slice(..))
             .chars()
@@ -856,11 +837,8 @@ fn switch_case(cx: &mut Context) {
 
 fn switch_to_uppercase(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .min_width_1(doc.text().slice(..));
-    let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         let text: Tendril = range.fragment(doc.text().slice(..)).to_uppercase().into();
 
         (range.from(), range.to(), Some(text))
@@ -872,11 +850,8 @@ fn switch_to_uppercase(cx: &mut Context) {
 
 fn switch_to_lowercase(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .min_width_1(doc.text().slice(..));
-    let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         let text: Tendril = range.fragment(doc.text().slice(..)).to_lowercase().into();
 
         (range.from(), range.to(), Some(text))
@@ -1040,15 +1015,9 @@ fn split_selection_on_newline(cx: &mut Context) {
 fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
-    let start = {
-        // Get the right side of the block cursor.
-        let range = selection.primary();
-        if range.anchor < range.head {
-            range.head
-        } else {
-            graphemes::next_grapheme_boundary(text, range.head)
-        }
-    };
+
+    // Get the right side of the primary block cursor.
+    let start = graphemes::next_grapheme_boundary(text, selection.primary().cursor(text));
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
@@ -1132,7 +1101,7 @@ fn extend_line(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text();
-    let range = doc.selection(view.id).primary().min_width_1(text.slice(..));
+    let range = doc.selection(view.id).primary();
 
     let (start_line, end_line) = range.line_range(text.slice(..));
     let start = text.line_to_char(start_line);
@@ -1168,14 +1137,14 @@ fn extend_to_line_bounds(cx: &mut Context) {
 
 fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
     let text = doc.text().slice(..);
-    let selection = doc.selection(view_id).clone().min_width_1(text);
+    let selection = doc.selection(view_id);
 
     // first yank the selection
     let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
     reg.write(values);
 
     // then delete
-    let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         (range.from(), range.to(), None)
     });
     doc.apply(&transaction, view_id);
@@ -1247,12 +1216,10 @@ fn append_mode(cx: &mut Context) {
     doc.restore_cursor = true;
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).clone().min_width_1(text);
-
     // Make sure there's room at the end of the document if the last
     // selection butts up against it.
     let end = text.len_chars();
-    let last_range = selection.iter().last().unwrap();
+    let last_range = doc.selection(view.id).iter().last().unwrap();
     if !last_range.is_empty() && last_range.head == end {
         let transaction = Transaction::change(
             doc.text(),
@@ -1261,7 +1228,7 @@ fn append_mode(cx: &mut Context) {
         doc.apply(&transaction, view.id);
     }
 
-    let selection = selection.transform(|range| {
+    let selection = doc.selection(view.id).clone().transform(|range| {
         Range::new(
             range.from(),
             graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
@@ -1689,10 +1656,7 @@ mod cmd {
 
         match cx.editor.clipboard_provider.get_contents() {
             Ok(contents) => {
-                let selection = doc
-                    .selection(view.id)
-                    .clone()
-                    .min_width_1(doc.text().slice(..));
+                let selection = doc.selection(view.id);
                 let transaction =
                     Transaction::change_by_selection(doc.text(), &selection, |range| {
                         (range.from(), range.to(), Some(contents.as_str().into()))
@@ -2471,7 +2435,7 @@ fn select_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    // Make sure all selections are at least 1-wide.
+    // Make sure end-of-document selections are also 1-width.
     // (With the exception of being in an empty document, of course.)
     let selection = doc.selection(view.id).clone().transform(|range| {
         if range.is_empty() && range.head == text.len_chars() {
@@ -2480,7 +2444,7 @@ fn select_mode(cx: &mut Context) {
                 range.head,
             )
         } else {
-            range.min_width_1(text)
+            range
         }
     });
     doc.set_selection(view.id, selection);
@@ -3037,9 +3001,10 @@ pub mod insert {
         let text = doc.text().slice(..);
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                let pos = range.cursor(text);
                 (
-                    graphemes::nth_prev_grapheme_boundary(text, range.head, count),
-                    range.head,
+                    graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                    pos,
                     None,
                 )
             });
@@ -3052,9 +3017,10 @@ pub mod insert {
         let text = doc.text().slice(..);
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                let pos = range.cursor(text);
                 (
-                    range.head,
-                    graphemes::nth_next_grapheme_boundary(text, range.head, count),
+                    pos,
+                    graphemes::nth_next_grapheme_boundary(text, pos, count),
                     None,
                 )
             });
@@ -3100,8 +3066,6 @@ fn yank(cx: &mut Context) {
 
     let values: Vec<String> = doc
         .selection(view.id)
-        .clone()
-        .min_width_1(text)
         .fragments(text)
         .map(Cow::into_owned)
         .collect();
@@ -3125,8 +3089,6 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow
 
     let values: Vec<String> = doc
         .selection(view.id)
-        .clone()
-        .min_width_1(text)
         .fragments(text)
         .map(Cow::into_owned)
         .collect();
@@ -3157,11 +3119,7 @@ fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
-    let value = doc
-        .selection(view.id)
-        .primary()
-        .min_width_1(text)
-        .fragment(text);
+    let value = doc.selection(view.id).primary().fragment(text);
 
     if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
         bail!("Couldn't set system clipboard content: {:?}", e);
@@ -3202,9 +3160,9 @@ fn paste_impl(
     let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
 
     let text = doc.text();
-    let selection = doc.selection(view.id).clone().min_width_1(text.slice(..));
+    let selection = doc.selection(view.id);
 
-    let transaction = Transaction::change_by_selection(text, &selection, |range| {
+    let transaction = Transaction::change_by_selection(text, selection, |range| {
         let pos = match (action, linewise) {
             // paste linewise before
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
@@ -3257,11 +3215,8 @@ fn replace_with_yanked(cx: &mut Context) {
 
     if let Some(values) = registers.read(reg_name) {
         if let Some(yank) = values.first() {
-            let selection = doc
-                .selection(view.id)
-                .clone()
-                .min_width_1(doc.text().slice(..));
-            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+            let selection = doc.selection(view.id);
+            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
                     (range.from(), range.to(), Some(yank.as_str().into()))
                 } else {
@@ -3280,11 +3235,8 @@ fn replace_selections_with_clipboard_impl(editor: &mut Editor) -> anyhow::Result
 
     match editor.clipboard_provider.get_contents() {
         Ok(contents) => {
-            let selection = doc
-                .selection(view.id)
-                .clone()
-                .min_width_1(doc.text().slice(..));
-            let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+            let selection = doc.selection(view.id);
+            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 (range.from(), range.to(), Some(contents.as_str().into()))
             });
 
@@ -3857,8 +3809,7 @@ fn surround_add(cx: &mut Context) {
         } = event
         {
             let (view, doc) = current!(cx.editor);
-            let text = doc.text().slice(..);
-            let selection = doc.selection(view.id).clone().min_width_1(text);
+            let selection = doc.selection(view.id);
             let (open, close) = surround::get_pair(ch);
 
             let mut changes = Vec::new();
@@ -3890,9 +3841,9 @@ fn surround_replace(cx: &mut Context) {
                 {
                     let (view, doc) = current!(cx.editor);
                     let text = doc.text().slice(..);
-                    let selection = doc.selection(view.id).clone().min_width_1(text);
+                    let selection = doc.selection(view.id);
 
-                    let change_pos = match surround::get_surround_pos(text, &selection, from, count)
+                    let change_pos = match surround::get_surround_pos(text, selection, from, count)
                     {
                         Some(c) => c,
                         None => return,
@@ -3927,9 +3878,9 @@ fn surround_delete(cx: &mut Context) {
         {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
-            let selection = doc.selection(view.id).clone().min_width_1(text);
+            let selection = doc.selection(view.id);
 
-            let change_pos = match surround::get_surround_pos(text, &selection, ch, count) {
+            let change_pos = match surround::get_surround_pos(text, selection, ch, count) {
                 Some(c) => c,
                 None => return,
             };

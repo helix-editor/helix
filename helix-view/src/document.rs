@@ -792,7 +792,8 @@ impl Document {
 
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
         // TODO: use a transaction?
-        self.selections.insert(view_id, selection);
+        self.selections
+            .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
     }
 
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
@@ -807,7 +808,12 @@ impl Document {
                 .selection()
                 .cloned()
                 .unwrap_or_else(|| self.selection(view_id).clone().map(transaction.changes()));
-            self.set_selection(view_id, selection);
+            self.selections.insert(view_id, selection);
+
+            // Ensure all selections accross all views still adhere to invariants.
+            for selection in self.selections.values_mut() {
+                *selection = selection.clone().ensure_invariants(self.text.slice(..));
+            }
         }
 
         if !transaction.changes().is_empty() {
