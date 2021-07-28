@@ -449,7 +449,7 @@ impl Application {
         let mut stdout = stdout();
 
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        if !self.config.terminal.disable_mouse {
+        if self.config.terminal.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
 

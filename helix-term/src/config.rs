@@ -19,10 +19,16 @@ pub struct LspConfig {
     pub display_messages: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct TerminalConfig {
-    pub disable_mouse: bool,
+    pub mouse: bool,
+}
+
+impl Default for TerminalConfig {
+    fn default() -> Self {
+        Self { mouse: true }
+    }
 }
 
 #[test]
