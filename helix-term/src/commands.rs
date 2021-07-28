@@ -1017,7 +1017,10 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
     let selection = doc.selection(view.id);
 
     // Get the right side of the primary block cursor.
-    let start = graphemes::next_grapheme_boundary(text, selection.primary().cursor(text));
+    let start = text.char_to_byte(graphemes::next_grapheme_boundary(
+        text,
+        selection.primary().cursor(text),
+    ));
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
