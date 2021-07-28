@@ -774,6 +774,7 @@ impl Component for EditorView {
                 kind: MouseEventKind::Down(MouseButton::Left),
                 row,
                 column,
+                modifiers,
                 ..
             }) => {
                 let editor = &mut cx.editor;
@@ -798,7 +799,12 @@ impl Component for EditorView {
                         break;
                     }
 
-                    doc.set_selection(view.id, Selection::point(pos.unwrap()));
+                    if modifiers == crossterm::event::KeyModifiers::ALT {
+                        let selection = doc.selection(view.id).clone();
+                        doc.set_selection(view.id, selection.push(Range::point(pos.unwrap())));
+                    } else {
+                        doc.set_selection(view.id, Selection::point(pos.unwrap()));
+                    }
 
                     result = EventResult::Consumed(None);
                 }
@@ -824,10 +830,12 @@ impl Component for EditorView {
                     return EventResult::Ignored;
                 }
 
+                let selection = doc.selection(view.id).clone();
+                let primary = selection.primary();
+
                 doc.set_selection(
                     view.id,
-                    doc.selection(view.id)
-                        .transform(|range| Range::new(range.anchor, pos.unwrap())),
+                    selection.push(Range::new(primary.anchor, pos.unwrap())),
                 );
                 EventResult::Consumed(None)
             }
