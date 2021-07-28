@@ -193,40 +193,28 @@ impl View {
         let mut pos = text.line_to_char(line_number);
 
         let current_line = text.line(line_number);
-        let mut current_line_length = 0;
         let tab_width = doc.tab_width();
-        for grapheme in RopeGraphemes::new(current_line) {
-            if grapheme == "\t" {
-                current_line_length += tab_width;
-            } else {
-                let grapheme = Cow::from(grapheme);
-                current_line_length += grapheme_width(&grapheme);
-            }
-        }
 
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
-        let target = std::cmp::min(
-            column - OFFSET - self.area.x as usize + self.first_col,
-            current_line_length - 1,
-        );
+        let target = column - OFFSET - self.area.x as usize + self.first_col;
         let mut selected = 0;
 
         for grapheme in RopeGraphemes::new(current_line) {
-            if selected >= target {
+            if selected > target {
                 break;
             }
             if grapheme == "\t" {
                 selected += tab_width;
-            } else {
+            } else if grapheme != "\n" {
                 let width = grapheme_width(&Cow::from(grapheme));
                 selected += width;
             }
             pos += 1;
         }
 
-        Some(pos)
+        Some(pos - 1)
     }
 
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
