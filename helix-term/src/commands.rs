@@ -3632,11 +3632,7 @@ fn wclose(cx: &mut Context) {
 
 fn select_register(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
+        if let Some(ch) = event.char() {
             cx.editor.selected_register.select(ch);
         }
     })
@@ -3687,11 +3683,7 @@ fn select_textobject_inner(cx: &mut Context) {
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
+        if let Some(ch) = event.char() {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
 
@@ -3713,11 +3705,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
+        if let Some(ch) = event.char() {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
             let selection = doc.selection(view.id);
@@ -3743,17 +3731,9 @@ fn surround_add(cx: &mut Context) {
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(from),
-            ..
-        } = event
-        {
+        if let Some(from) = event.char() {
             cx.on_next_key(move |cx, event| {
-                if let KeyEvent {
-                    code: KeyCode::Char(to),
-                    ..
-                } = event
-                {
+                if let Some(to) = event.char() {
                     let (view, doc) = current!(cx.editor);
                     let text = doc.text().slice(..);
                     let selection = doc.selection(view.id);
@@ -3783,11 +3763,7 @@ fn surround_replace(cx: &mut Context) {
 fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        if let KeyEvent {
-            code: KeyCode::Char(ch),
-            ..
-        } = event
-        {
+        if let Some(ch) = event.char() {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
             let selection = doc.selection(view.id);
