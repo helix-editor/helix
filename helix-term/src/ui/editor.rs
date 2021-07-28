@@ -822,19 +822,15 @@ impl Component for EditorView {
             }) => {
                 let (view, doc) = current!(cx.editor);
 
-                let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
-                // Not in current view
-                if pos == None {
-                    return EventResult::Ignored;
-                }
+                let pos = match view.pos_at_screen_coords(doc, row as usize, column as usize) {
+                    Some(pos) => pos,
+                    None => return EventResult::Ignored,
+                };
 
                 let selection = doc.selection(view.id).clone();
                 let primary = selection.primary();
 
-                doc.set_selection(
-                    view.id,
-                    selection.push(Range::new(primary.anchor, pos.unwrap())),
-                );
+                doc.set_selection(view.id, selection.push(Range::new(primary.anchor, pos)));
                 EventResult::Consumed(None)
             }
             Event::Mouse(_) => EventResult::Ignored,
