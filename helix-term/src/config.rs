@@ -9,12 +9,20 @@ pub struct Config {
     pub lsp: LspConfig,
     #[serde(default)]
     pub keys: Keymaps,
+    #[serde(default)]
+    pub terminal: TerminalConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LspConfig {
     pub display_messages: bool,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct TerminalConfig {
+    pub disable_mouse: bool,
 }
 
 #[test]

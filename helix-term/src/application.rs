@@ -449,7 +449,9 @@ impl Application {
         let mut stdout = stdout();
 
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        execute!(stdout, EnableMouseCapture)?;
+        if !self.config.terminal.disable_mouse {
+            execute!(stdout, EnableMouseCapture)?;
+        }
 
         // Exit the alternate screen and disable raw mode before panicking
         let hook = std::panic::take_hook();
