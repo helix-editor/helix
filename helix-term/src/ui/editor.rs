@@ -807,8 +807,8 @@ impl Component for EditorView {
                     result = EventResult::Consumed(None);
                 }
 
-                if let Some(id_unwrapped) = id {
-                    cx.editor.tree.focus = id_unwrapped;
+                if let Some(id) = id {
+                    cx.editor.tree.focus = id;
                 }
 
                 result
