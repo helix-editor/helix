@@ -228,13 +228,14 @@ impl Command {
         goto_definition, "Goto definition",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
-        goto_file_start, "Goto file start",
+        goto_file_start, "Goto file start/line",
         goto_file_end, "Goto file end",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_middle, "Goto window middle",
         goto_window_bottom, "Goto window bottom",
         goto_last_accessed_file, "Goto last accessed file",
+        goto_line, "Goto line",
         goto_first_diag, "Goto first diagnostic",
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
@@ -566,9 +567,13 @@ fn move_next_long_word_end(cx: &mut Context) {
 }
 
 fn goto_file_start(cx: &mut Context) {
-    push_jump(cx.editor);
-    let (view, doc) = current!(cx.editor);
-    doc.set_selection(view.id, Selection::point(0));
+    if cx.count.is_some() {
+        goto_line(cx);
+    } else {
+        push_jump(cx.editor);
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(view.id, Selection::point(0));
+    }
 }
 
 fn goto_file_end(cx: &mut Context) {
@@ -2385,6 +2390,17 @@ fn push_jump(editor: &mut Editor) {
     let (view, doc) = current!(editor);
     let jump = (doc.id(), doc.selection(view.id).clone());
     view.jumps.push(jump);
+}
+
+fn goto_line(cx: &mut Context) {
+    if let Some(count) = cx.count {
+        push_jump(cx.editor);
+
+        let (view, doc) = current!(cx.editor);
+        let line_idx = std::cmp::min(count.get() - 1, doc.text().len_lines().saturating_sub(2));
+        let pos = doc.text().line_to_char(line_idx);
+        doc.set_selection(view.id, Selection::point(pos));
+    }
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {

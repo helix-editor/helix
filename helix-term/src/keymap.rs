@@ -356,6 +356,7 @@ impl Default for Keymaps {
             "E" => move_next_long_word_end,
 
             "v" => select_mode,
+            "G" => goto_line,
             "g" => { "Goto"
                 "g" => goto_file_start,
                 "e" => goto_file_end,
