@@ -20,7 +20,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View, ViewId,
+    Document, Editor, Theme, View,
 };
 use std::borrow::Cow;
 
@@ -778,40 +778,42 @@ impl Component for EditorView {
                 ..
             }) => {
                 let editor = &mut cx.editor;
-                let tree = &mut editor.tree;
-                let mut id: Option<ViewId> = None;
-                let mut result = EventResult::Ignored;
 
-                for (view, view_id) in tree.views_with_keys_mut() {
+                let result = editor.tree.views().find_map(|(view, _focus)| {
                     if !view.verify_screen_coords(row as usize, column as usize) {
-                        continue;
+                        return None;
                     }
 
-                    id = Some(view_id);
+                    Some((
+                        view.pos_at_screen_coords(
+                            &editor.documents[view.doc],
+                            row as usize,
+                            column as usize,
+                        ),
+                        view.id,
+                    ))
+                });
 
-                    let doc = &mut editor.documents[view.doc];
-                    let jump = (doc.id(), doc.selection(view.id).clone());
-                    view.jumps.push(jump);
+                let tree = &mut editor.tree;
 
-                    let pos = view
-                        .pos_at_screen_coords(doc, row as usize, column as usize)
-                        .unwrap();
+                if let Some((pos, id)) = result {
+                    let doc = &mut editor.documents[tree.get(id).doc];
+                    let jump = (doc.id(), doc.selection(id).clone());
+                    tree.get_mut(id).jumps.push(jump);
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
-                        let selection = doc.selection(view.id).clone();
-                        doc.set_selection(view.id, selection.push(Range::point(pos)));
+                        let selection = doc.selection(id).clone();
+                        doc.set_selection(id, selection.push(Range::point(pos)));
                     } else {
-                        doc.set_selection(view.id, Selection::point(pos));
+                        doc.set_selection(id, Selection::point(pos));
                     }
 
-                    result = EventResult::Consumed(None);
-                }
-
-                if let Some(id) = id {
                     cx.editor.tree.focus = id;
+
+                    return EventResult::Consumed(None);
                 }
 
-                result
+                EventResult::Ignored
             }
 
             Event::Mouse(MouseEvent {
@@ -822,10 +824,11 @@ impl Component for EditorView {
             }) => {
                 let (view, doc) = current!(cx.editor);
 
-                let pos = match view.pos_at_screen_coords(doc, row as usize, column as usize) {
-                    Some(pos) => pos,
-                    None => return EventResult::Ignored,
-                };
+                if !view.verify_screen_coords(row as usize, column as usize) {
+                    return EventResult::Ignored;
+                }
+
+                let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
 
                 let selection = doc.selection(view.id).clone();
                 let primary = selection.primary();
