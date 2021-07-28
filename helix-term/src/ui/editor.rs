@@ -793,17 +793,15 @@ impl Component for EditorView {
                     let jump = (doc.id(), doc.selection(view.id).clone());
                     view.jumps.push(jump);
 
-                    let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
-                    // Not in current view. Impossible, but do not panic
-                    if pos == None {
-                        break;
-                    }
+                    let pos = view
+                        .pos_at_screen_coords(doc, row as usize, column as usize)
+                        .unwrap();
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
                         let selection = doc.selection(view.id).clone();
-                        doc.set_selection(view.id, selection.push(Range::point(pos.unwrap())));
+                        doc.set_selection(view.id, selection.push(Range::point(pos)));
                     } else {
-                        doc.set_selection(view.id, Selection::point(pos.unwrap()));
+                        doc.set_selection(view.id, Selection::point(pos));
                     }
 
                     result = EventResult::Consumed(None);
