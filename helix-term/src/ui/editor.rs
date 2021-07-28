@@ -10,6 +10,8 @@ use helix_core::{
     coords_at_pos,
     graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
     syntax::{self, HighlightEvent},
+    unicode::segmentation::UnicodeSegmentation,
+    unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range,
 };
 use helix_view::{
@@ -662,7 +664,7 @@ impl EditorView {
             }
             _ => {
                 // set the count
-                cxt.count = cxt.editor.count.take();
+                cxt.count = cxt.editor.count;
                 // TODO: edge case: 0j -> reset to 1
                 // if this fails, count was Some(0)
                 // debug_assert!(cxt.count != 0);
@@ -671,6 +673,9 @@ impl EditorView {
                 cxt.selected_register = cxt.editor.selected_register.take();
 
                 self.handle_keymap_event(mode, cxt, event);
+                if self.keymaps.pending().is_empty() {
+                    cxt.editor.count = None
+                }
             }
         }
     }
@@ -830,8 +835,12 @@ impl Component for EditorView {
             info.render(area, surface, cx);
         }
 
+        let key_width = 15u16; // for showing pending keys
+        let mut status_msg_width = 0;
+
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
+            status_msg_width = status_msg.width();
             use helix_view::editor::Severity;
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
@@ -844,6 +853,28 @@ impl Component for EditorView {
                 area.y + area.height.saturating_sub(1),
                 status_msg,
                 style,
+            );
+        }
+
+        if area.width.saturating_sub(status_msg_width as u16) > key_width {
+            let mut disp = String::new();
+            if let Some(count) = cx.editor.count {
+                disp.push_str(&count.to_string())
+            }
+            for key in self.keymaps.pending() {
+                let s = key.to_string();
+                if s.graphemes(true).count() > 1 {
+                    disp.push_str(&format!("<{}>", s));
+                } else {
+                    disp.push_str(&s);
+                }
+            }
+            surface.set_string(
+                area.x + area.width.saturating_sub(key_width),
+                area.y + area.height.saturating_sub(1),
+                disp.get(disp.len().saturating_sub(key_width as usize)..)
+                    .unwrap_or(&disp),
+                cx.editor.theme.get("ui.text"),
             );
         }
 

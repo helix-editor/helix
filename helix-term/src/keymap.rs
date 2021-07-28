@@ -234,6 +234,7 @@ pub struct Keymap {
     /// Always a Node
     #[serde(flatten)]
     root: KeyTrie,
+    /// Stores pending keys waiting for the next key
     #[serde(skip)]
     state: Vec<KeyEvent>,
 }
@@ -248,6 +249,11 @@ impl Keymap {
 
     pub fn root(&self) -> &KeyTrie {
         &self.root
+    }
+
+    /// Returns list of keys waiting to be disambiguated.
+    pub fn pending(&self) -> &[KeyEvent] {
+        &self.state
     }
 
     /// Lookup `key` in the keymap to try and find a command to execute
@@ -291,6 +297,19 @@ impl Default for Keymap {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct Keymaps(pub HashMap<Mode, Keymap>);
+
+impl Keymaps {
+    /// Returns list of keys waiting to be disambiguated in current mode.
+    pub fn pending(&self) -> &[KeyEvent] {
+        self.0
+            .values()
+            .find_map(|keymap| match keymap.pending().is_empty() {
+                true => None,
+                false => Some(keymap.pending()),
+            })
+            .unwrap_or_default()
+    }
+}
 
 impl Deref for Keymaps {
     type Target = HashMap<Mode, Keymap>;
@@ -337,6 +356,7 @@ impl Default for Keymaps {
             "E" => move_next_long_word_end,
 
             "v" => select_mode,
+            "G" => goto_line,
             "g" => { "Goto"
                 "g" => goto_file_start,
                 "e" => goto_file_end,

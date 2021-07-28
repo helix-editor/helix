@@ -4,6 +4,7 @@ language = "en"
 multilingual = false
 src = "src"
 theme = "colibri"
+edit-url-template = "https://github.com/helix-editor/helix/tree/master/book/{path}?mode=edit"
 
 [output.html]
 cname = "docs.helix-editor.com"
