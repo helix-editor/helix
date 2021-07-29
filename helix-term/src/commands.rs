@@ -646,7 +646,7 @@ where
 
         let selection = doc.selection(view.id).clone().transform(|range| {
             // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-            // graphemes, wheras this function does yet.  So we're doing the same logic
+            // graphemes, whereas this function doesn't yet.  So we're doing the same logic
             // here, but just in terms of chars instead.
             let search_start_pos = if range.anchor < range.head {
                 range.head - 1
