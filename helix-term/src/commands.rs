@@ -1,5 +1,6 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
@@ -11,7 +12,7 @@ use helix_core::{
 };
 
 use helix_view::{
-    document::{IndentStyle, Mode},
+    document::Mode,
     editor::Action,
     input::KeyEvent,
     keyboard::KeyCode,
