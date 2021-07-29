@@ -186,6 +186,11 @@ impl View {
     pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> usize {
         let text = doc.text();
         let line_number = row - self.area.y as usize + self.first_line;
+
+        if line_number > text.len_lines() - 1 {
+            return text.len_chars() - 1;
+        }
+
         let mut pos = text.line_to_char(line_number);
 
         let current_line = text.line(line_number);
