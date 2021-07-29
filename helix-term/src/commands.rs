@@ -1661,7 +1661,7 @@ mod cmd {
             Ok(contents) => {
                 let selection = doc.selection(view.id);
                 let transaction =
-                    Transaction::change_by_selection(doc.text(), &selection, |range| {
+                    Transaction::change_by_selection(doc.text(), selection, |range| {
                         (range.from(), range.to(), Some(contents.as_str().into()))
                     });
 
