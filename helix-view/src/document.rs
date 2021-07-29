@@ -306,19 +306,6 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
-/// Inserts the final line ending into `rope` if it's missing. [Why?](https://stackoverflow.com/questions/729692/why-should-text-files-end-with-a-newline)
-pub fn with_line_ending(rope: &mut Rope) -> LineEnding {
-    // search for line endings
-    let line_ending = auto_detect_line_ending(rope).unwrap_or(DEFAULT_LINE_ENDING);
-
-    // add missing newline at the end of file
-    if rope.len_bytes() == 0 || !char_is_line_ending(rope.char(rope.len_chars() - 1)) {
-        rope.insert(rope.len_chars(), line_ending.as_str());
-    }
-
-    line_ending
-}
-
 /// Like std::mem::replace() except it allows the replacement value to be mapped from the
 /// original value.
 fn take_with<T, F>(mut_ref: &mut T, closure: F)
@@ -456,7 +443,7 @@ impl Document {
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
-        let (mut rope, encoding) = if path.exists() {
+        let (rope, encoding) = if path.exists() {
             let mut file =
                 std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
@@ -465,7 +452,6 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
-        let line_ending = with_line_ending(&mut rope);
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
@@ -474,9 +460,9 @@ impl Document {
             doc.detect_language(theme, loader);
         }
 
-        // Detect indentation style and set line ending.
+        // Detect indentation style and line ending.
         doc.detect_indent_style();
-        doc.line_ending = line_ending;
+        doc.line_ending = auto_detect_line_ending(&doc.text).unwrap_or(DEFAULT_LINE_ENDING);
 
         Ok(doc)
     }
@@ -605,17 +591,16 @@ impl Document {
         }
 
         let mut file = std::fs::File::open(path.unwrap())?;
-        let (mut rope, ..) = from_reader(&mut file, Some(encoding))?;
-        let line_ending = with_line_ending(&mut rope);
+        let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
         self.reset_modified();
 
-        // Detect indentation style and set line ending.
+        // Detect indentation style and line ending.
         self.detect_indent_style();
-        self.line_ending = line_ending;
+        self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
 
         Ok(())
     }
@@ -807,7 +792,8 @@ impl Document {
 
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
         // TODO: use a transaction?
-        self.selections.insert(view_id, selection);
+        self.selections
+            .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
     }
 
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
@@ -822,7 +808,12 @@ impl Document {
                 .selection()
                 .cloned()
                 .unwrap_or_else(|| self.selection(view_id).clone().map(transaction.changes()));
-            self.set_selection(view_id, selection);
+            self.selections.insert(view_id, selection);
+
+            // Ensure all selections accross all views still adhere to invariants.
+            for selection in self.selections.values_mut() {
+                *selection = selection.clone().ensure_invariants(self.text.slice(..));
+            }
         }
 
         if !transaction.changes().is_empty() {
@@ -1089,7 +1080,7 @@ impl Document {
 
 impl Default for Document {
     fn default() -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        let text = Rope::from("");
         Self::from(text, None)
     }
 }
@@ -1214,11 +1205,7 @@ mod test {
 
     #[test]
     fn test_line_ending() {
-        if cfg!(windows) {
-            assert_eq!(Document::default().text().to_string(), "\r\n");
-        } else {
-            assert_eq!(Document::default().text().to_string(), "\n");
-        }
+        assert_eq!(Document::default().text().to_string(), "");
     }
 
     macro_rules! test_decode {

@@ -138,12 +138,14 @@ impl Editor {
                 let (view, doc) = current!(self);
 
                 // initialize selection for view
-                let selection = doc
-                    .selections
+                doc.selections
                     .entry(view.id)
                     .or_insert_with(|| Selection::point(0));
                 // TODO: reuse align_view
-                let pos = selection.cursor();
+                let pos = doc
+                    .selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..));
                 let line = doc.text().char_to_line(pos);
                 view.first_line = line.saturating_sub(view.area.height as usize / 2);
 
@@ -293,7 +295,10 @@ impl Editor {
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = view!(self);
         let doc = &self.documents[view.doc];
-        let cursor = doc.selection(view.id).cursor();
+        let cursor = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
             pos.col += view.area.x as usize + OFFSET as usize;
             pos.row += view.area.y as usize;

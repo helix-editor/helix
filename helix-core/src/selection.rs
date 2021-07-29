@@ -1,30 +1,59 @@
-//! Selections are the primary editing construct. Even a single cursor is defined as an empty
-//! single selection range.
+//! Selections are the primary editing construct. Even cursors are
+//! defined as a selection range.
 //!
 //! All positioning is done via `char` offsets into the buffer.
-use crate::{Assoc, ChangeSet, RopeSlice};
+use crate::{
+    graphemes::{
+        ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
+        prev_grapheme_boundary,
+    },
+    Assoc, ChangeSet, RopeSlice,
+};
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 
-#[inline]
-fn abs_difference(x: usize, y: usize) -> usize {
-    if x < y {
-        y - x
-    } else {
-        x - y
-    }
-}
-
-/// A single selection range. Anchor-inclusive, head-exclusive.
+/// A single selection range.
+///
+/// A range consists of an "anchor" and "head" position in
+/// the text.  The head is the part that the user moves when
+/// directly extending a selection.  The head and anchor
+/// can be in any order, or even share the same position.
+///
+/// The anchor and head positions use gap indexing, meaning
+/// that their indices represent the the gaps *between* `char`s
+/// rather than the `char`s themselves. For example, 1
+/// represents the position between the first and second `char`.
+///
+/// Below are some example `Range` configurations to better
+/// illustrate.  The anchor and head indices are show as
+/// "(anchor, head)", followed by example text with "[" and "]"
+/// inserted to represent the anchor and head positions:
+///
+/// - (0, 3): [Som]e text.
+/// - (3, 0): ]Som[e text.
+/// - (2, 7): So[me te]xt.
+/// - (1, 1): S[]ome text.
+///
+/// Ranges are considered to be inclusive on the left and
+/// exclusive on the right, regardless of anchor-head ordering.
+/// This means, for example, that non-zero-width ranges that
+/// are directly adjecent, sharing an edge, do not overlap.
+/// However, a zero-width range will overlap with the shared
+/// left-edge of another range.
+///
+/// By convention, user-facing ranges are considered to have
+/// a block cursor on the head-side of the range that spans a
+/// single grapheme inward from the range's edge.  There are a
+/// variety of helper methods on `Range` for working in terms of
+/// that block cursor, all of which have `cursor` in their name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Range {
-    // TODO: optimize into u32
     /// The anchor of the range: the side that doesn't move when extending.
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
     pub horiz: Option<u32>,
-} // TODO: might be cheaper to store normalized as from/to and an inverted flag
+}
 
 impl Range {
     pub fn new(anchor: usize, head: usize) -> Self {
@@ -53,6 +82,20 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
+    /// The (inclusive) range of lines that the range overlaps.
+    #[inline]
+    #[must_use]
+    pub fn line_range(&self, text: RopeSlice) -> (usize, usize) {
+        let from = self.from();
+        let to = if self.is_empty() {
+            self.to()
+        } else {
+            prev_grapheme_boundary(text, self.to()).max(from)
+        };
+
+        (text.char_to_line(from), text.char_to_line(to))
+    }
+
     /// `true` when head and anchor are at the same position.
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -62,37 +105,39 @@ impl Range {
     /// Check two ranges for overlap.
     #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {
-        // cursor overlap is checked differently
-        if self.is_empty() {
-            let pos = self.head;
-            pos >= other.from() && other.to() >= pos
-        } else {
-            self.to() > other.from() && other.to() > self.from()
-        }
+        // To my eye, it's non-obvious why this works, but I arrived
+        // at it after transforming the slower version that explicitly
+        // enumerated more cases.  The unit tests are thorough.
+        self.from() == other.from() || (self.to() > other.from() && other.to() > self.from())
     }
 
     pub fn contains(&self, pos: usize) -> bool {
-        if self.is_empty() {
-            return false;
-        }
-
-        if self.anchor < self.head {
-            self.anchor <= pos && pos < self.head
-        } else {
-            self.head < pos && pos <= self.anchor
-        }
+        self.from() <= pos && pos < self.to()
     }
 
     /// Map a range through a set of changes. Returns a new range representing the same position
     /// after the changes are applied.
     pub fn map(self, changes: &ChangeSet) -> Self {
-        let anchor = changes.map_pos(self.anchor, Assoc::After);
-        let head = changes.map_pos(self.head, Assoc::After);
+        use std::cmp::Ordering;
+        let (anchor, head) = match self.anchor.cmp(&self.head) {
+            Ordering::Equal => (
+                changes.map_pos(self.anchor, Assoc::After),
+                changes.map_pos(self.head, Assoc::After),
+            ),
+            Ordering::Less => (
+                changes.map_pos(self.anchor, Assoc::After),
+                changes.map_pos(self.head, Assoc::Before),
+            ),
+            Ordering::Greater => (
+                changes.map_pos(self.anchor, Assoc::Before),
+                changes.map_pos(self.head, Assoc::After),
+            ),
+        };
 
-        // TODO: possibly unnecessary
-        if self.anchor == anchor && self.head == head {
-            return self;
-        }
+        // We want to return a new `Range` with `horiz == None` every time,
+        // even if the anchor and head haven't changed, because we don't
+        // know if the *visual* position hasn't changed due to
+        // character-width or grapheme changes earlier in the text.
         Self {
             anchor,
             head,
@@ -103,22 +148,41 @@ impl Range {
     /// Extend the range to cover at least `from` `to`.
     #[must_use]
     pub fn extend(&self, from: usize, to: usize) -> Self {
-        if from <= self.anchor && to >= self.anchor {
-            return Self {
-                anchor: from,
-                head: to,
-                horiz: None,
-            };
-        }
+        debug_assert!(from <= to);
 
-        Self {
-            anchor: self.anchor,
-            head: if abs_difference(from, self.anchor) > abs_difference(to, self.anchor) {
-                from
-            } else {
-                to
-            },
-            horiz: None,
+        if self.anchor <= self.head {
+            Self {
+                anchor: self.anchor.min(from),
+                head: self.head.max(to),
+                horiz: None,
+            }
+        } else {
+            Self {
+                anchor: self.anchor.max(to),
+                head: self.head.min(from),
+                horiz: None,
+            }
+        }
+    }
+
+    /// Returns a range that encompasses both input ranges.
+    ///
+    /// This is like `extend()`, but tries to negotiate the
+    /// anchor/head ordering between the two input ranges.
+    #[must_use]
+    pub fn merge(&self, other: Self) -> Self {
+        if self.anchor > self.head && other.anchor > other.head {
+            Range {
+                anchor: self.anchor.max(other.anchor),
+                head: self.head.min(other.head),
+                horiz: None,
+            }
+        } else {
+            Range {
+                anchor: self.from().min(other.from()),
+                head: self.to().max(other.to()),
+                horiz: None,
+            }
         }
     }
 
@@ -126,7 +190,120 @@ impl Range {
 
     #[inline]
     pub fn fragment<'a, 'b: 'a>(&'a self, text: RopeSlice<'b>) -> Cow<'b, str> {
-        Cow::from(text.slice(self.from()..self.to() + 1))
+        text.slice(self.from()..self.to()).into()
+    }
+
+    //--------------------------------
+    // Alignment methods.
+
+    /// Compute a possibly new range from this range, with its ends
+    /// shifted as needed to align with grapheme boundaries.
+    ///
+    /// Zero-width ranges will always stay zero-width, and non-zero-width
+    /// ranges will never collapse to zero-width.
+    #[must_use]
+    pub fn grapheme_aligned(&self, slice: RopeSlice) -> Self {
+        use std::cmp::Ordering;
+        let (new_anchor, new_head) = match self.anchor.cmp(&self.head) {
+            Ordering::Equal => {
+                let pos = ensure_grapheme_boundary_prev(slice, self.anchor);
+                (pos, pos)
+            }
+            Ordering::Less => (
+                ensure_grapheme_boundary_prev(slice, self.anchor),
+                ensure_grapheme_boundary_next(slice, self.head),
+            ),
+            Ordering::Greater => (
+                ensure_grapheme_boundary_next(slice, self.anchor),
+                ensure_grapheme_boundary_prev(slice, self.head),
+            ),
+        };
+        Range {
+            anchor: new_anchor,
+            head: new_head,
+            horiz: if new_anchor == self.anchor {
+                self.horiz
+            } else {
+                None
+            },
+        }
+    }
+
+    /// Compute a possibly new range from this range, attempting to ensure
+    /// a minimum range width of 1 char by shifting the head in the forward
+    /// direction as needed.
+    ///
+    /// This method will never shift the anchor, and will only shift the
+    /// head in the forward direction.  Therefore, this method can fail
+    /// at ensuring the minimum width if and only if the passed range is
+    /// both zero-width and at the end of the `RopeSlice`.
+    ///
+    /// If the input range is grapheme-boundary aligned, the returned range
+    /// will also be.  Specifically, if the head needs to shift to achieve
+    /// the minimum width, it will shift to the next grapheme boundary.
+    #[must_use]
+    #[inline]
+    pub fn min_width_1(&self, slice: RopeSlice) -> Self {
+        if self.anchor == self.head {
+            Range {
+                anchor: self.anchor,
+                head: next_grapheme_boundary(slice, self.head),
+                horiz: self.horiz,
+            }
+        } else {
+            *self
+        }
+    }
+
+    //--------------------------------
+    // Block-cursor methods.
+
+    /// Gets the left-side position of the block cursor.
+    #[must_use]
+    #[inline]
+    pub fn cursor(self, text: RopeSlice) -> usize {
+        if self.head > self.anchor {
+            prev_grapheme_boundary(text, self.head)
+        } else {
+            self.head
+        }
+    }
+
+    /// Puts the left side of the block cursor at `char_idx`, optionally extending.
+    ///
+    /// This follows "1-width" semantics, and therefore does a combination of anchor
+    /// and head moves to behave as if both the front and back of the range are 1-width
+    /// blocks
+    ///
+    /// This method assumes that the range and `char_idx` are already properly
+    /// grapheme-aligned.
+    #[must_use]
+    #[inline]
+    pub fn put_cursor(self, text: RopeSlice, char_idx: usize, extend: bool) -> Range {
+        if extend {
+            let anchor = if self.head >= self.anchor && char_idx < self.anchor {
+                next_grapheme_boundary(text, self.anchor)
+            } else if self.head < self.anchor && char_idx >= self.anchor {
+                prev_grapheme_boundary(text, self.anchor)
+            } else {
+                self.anchor
+            };
+
+            if anchor <= char_idx {
+                Range::new(anchor, next_grapheme_boundary(text, char_idx))
+            } else {
+                Range::new(anchor, char_idx)
+            }
+        } else {
+            Range::point(char_idx)
+        }
+    }
+
+    /// The line number that the block-cursor is on.
+    #[inline]
+    #[must_use]
+    pub fn cursor_line(&self, text: RopeSlice) -> usize {
+        text.char_to_line(self.cursor(text))
     }
 }
 
@@ -157,11 +334,6 @@ impl Selection {
         self.ranges[self.primary_index]
     }
 
-    #[must_use]
-    pub fn cursor(&self) -> usize {
-        self.primary().head
-    }
-
     /// Ensure selection containing only the primary selection.
     pub fn into_single(self) -> Self {
         if self.ranges.len() == 1 {
@@ -174,13 +346,12 @@ impl Selection {
         }
     }
 
+    /// Adds a new range to the selection and makes it the primary range.
     pub fn push(mut self, range: Range) -> Self {
-        let index = self.ranges.len();
         self.ranges.push(range);
-
-        Self::normalize(self.ranges, index)
+        self.set_primary_index(self.ranges().len() - 1);
+        self.normalize()
     }
-    // replace_range
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after
     /// applying changes to a document.
@@ -206,6 +377,11 @@ impl Selection {
         self.primary_index
     }
 
+    pub fn set_primary_index(&mut self, idx: usize) {
+        assert!(idx < self.ranges.len());
+        self.primary_index = idx;
+    }
+
     #[must_use]
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {
@@ -224,80 +400,79 @@ impl Selection {
         Self::single(pos, pos)
     }
 
-    fn normalize(mut ranges: SmallVec<[Range; 1]>, mut primary_index: usize) -> Self {
-        let primary = ranges[primary_index];
-        ranges.sort_unstable_by_key(Range::from);
-        primary_index = ranges.iter().position(|&range| range == primary).unwrap();
+    /// Normalizes a `Selection`.
+    fn normalize(mut self) -> Self {
+        let primary = self.ranges[self.primary_index];
+        self.ranges.sort_unstable_by_key(Range::from);
+        self.primary_index = self
+            .ranges
+            .iter()
+            .position(|&range| range == primary)
+            .unwrap();
 
-        let mut result = SmallVec::with_capacity(ranges.len()); // approx
-
-        // TODO: we could do with one vec by removing elements as we mutate
-
-        let mut i = 0;
-
-        for range in ranges.into_iter() {
-            // if previous value exists
-            if let Some(prev) = result.last_mut() {
-                // and we overlap it
-
-                // TODO: we used to simply check range.from() <(=) prev.to()
-                // avoiding two comparisons
-                if range.overlaps(prev) {
-                    let from = prev.from();
-                    let to = std::cmp::max(range.to(), prev.to());
-
-                    if i <= primary_index {
-                        primary_index -= 1
-                    }
-
-                    // merge into previous
-                    if range.anchor > range.head {
-                        prev.anchor = to;
-                        prev.head = from;
-                    } else {
-                        prev.anchor = from;
-                        prev.head = to;
-                    }
-                    continue;
-                }
+        let mut prev_i = 0;
+        for i in 1..self.ranges.len() {
+            if self.ranges[prev_i].overlaps(&self.ranges[i]) {
+                self.ranges[prev_i] = self.ranges[prev_i].merge(self.ranges[i]);
+            } else {
+                prev_i += 1;
+                self.ranges[prev_i] = self.ranges[i];
             }
-
-            result.push(range);
-            i += 1
+            if i == self.primary_index {
+                self.primary_index = prev_i;
+            }
         }
 
-        Self {
-            ranges: result,
-            primary_index,
-        }
+        self.ranges.truncate(prev_i + 1);
+
+        self
     }
 
     // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
         assert!(!ranges.is_empty());
+        debug_assert!(primary_index < ranges.len());
 
-        // fast path for a single selection (cursor)
-        if ranges.len() == 1 {
-            return Self {
-                ranges,
-                primary_index: 0,
-            };
+        let mut selection = Self {
+            ranges,
+            primary_index,
+        };
+
+        if selection.ranges.len() > 1 {
+            // TODO: only normalize if needed (any ranges out of order)
+            selection = selection.normalize();
         }
 
-        // TODO: only normalize if needed (any ranges out of order)
-        Self::normalize(ranges, primary_index)
+        selection
     }
 
-    /// Takes a closure and maps each selection over the closure.
-    pub fn transform<F>(&self, f: F) -> Self
+    /// Takes a closure and maps each `Range` over the closure.
+    pub fn transform<F>(mut self, f: F) -> Self
     where
         F: Fn(Range) -> Range,
     {
-        Self::new(
-            self.ranges.iter().copied().map(f).collect(),
-            self.primary_index,
-        )
+        for range in self.ranges.iter_mut() {
+            *range = f(*range)
+        }
+        self.normalize()
+    }
+
+    // Ensures the selection adheres to the following invariants:
+    // 1. All ranges are grapheme aligned.
+    // 2. All ranges are at least 1 character wide, unless at the
+    //    very end of the document.
+    // 3. Ranges are non-overlapping.
+    // 4. Ranges are sorted by their position in the text.
+    pub fn ensure_invariants(self, text: RopeSlice) -> Self {
+        self.transform(|r| r.min_width_1(text).grapheme_aligned(text))
+            .normalize()
+    }
+
+    /// Transforms the selection into all of the left-side head positions,
+    /// using block-cursor semantics.
+    pub fn cursors(self, text: RopeSlice) -> Self {
+        self.transform(|range| Range::point(range.cursor(text)))
     }
 
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
@@ -363,7 +538,7 @@ pub fn select_on_matches(
 
             let start = text.byte_to_char(start_byte + mat.start());
             let end = text.byte_to_char(start_byte + mat.end());
-            result.push(Range::new(start, end.saturating_sub(1)));
+            result.push(Range::new(start, end));
         }
     }
 
@@ -384,6 +559,12 @@ pub fn split_on_matches(
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
+        // Special case: zero-width selection.
+        if sel.from() == sel.to() {
+            result.push(*sel);
+            continue;
+        }
+
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
@@ -396,13 +577,12 @@ pub fn split_on_matches(
 
         for mat in regex.find_iter(&fragment) {
             // TODO: retain range direction
-
             let end = text.byte_to_char(start_byte + mat.start());
-            result.push(Range::new(start, end.saturating_sub(1)));
+            result.push(Range::new(start, end));
             start = text.byte_to_char(start_byte + mat.end());
         }
 
-        if start <= sel_end {
+        if start < sel_end {
             result.push(Range::new(start, sel_end));
         }
     }
@@ -484,7 +664,7 @@ mod test {
             .collect::<Vec<String>>()
             .join(",");
 
-        assert_eq!(res, "8/10,10/12");
+        assert_eq!(res, "8/10,10/12,12/12");
     }
 
     #[test]
@@ -498,35 +678,251 @@ mod test {
         assert_eq!(range.contains(13), false);
 
         let range = Range::new(9, 6);
-        assert_eq!(range.contains(9), true);
+        assert_eq!(range.contains(9), false);
         assert_eq!(range.contains(7), true);
-        assert_eq!(range.contains(6), false);
+        assert_eq!(range.contains(6), true);
+    }
+
+    #[test]
+    fn test_overlaps() {
+        fn overlaps(a: (usize, usize), b: (usize, usize)) -> bool {
+            Range::new(a.0, a.1).overlaps(&Range::new(b.0, b.1))
+        }
+
+        // Two non-zero-width ranges, no overlap.
+        assert!(!overlaps((0, 3), (3, 6)));
+        assert!(!overlaps((0, 3), (6, 3)));
+        assert!(!overlaps((3, 0), (3, 6)));
+        assert!(!overlaps((3, 0), (6, 3)));
+        assert!(!overlaps((3, 6), (0, 3)));
+        assert!(!overlaps((3, 6), (3, 0)));
+        assert!(!overlaps((6, 3), (0, 3)));
+        assert!(!overlaps((6, 3), (3, 0)));
+
+        // Two non-zero-width ranges, overlap.
+        assert!(overlaps((0, 4), (3, 6)));
+        assert!(overlaps((0, 4), (6, 3)));
+        assert!(overlaps((4, 0), (3, 6)));
+        assert!(overlaps((4, 0), (6, 3)));
+        assert!(overlaps((3, 6), (0, 4)));
+        assert!(overlaps((3, 6), (4, 0)));
+        assert!(overlaps((6, 3), (0, 4)));
+        assert!(overlaps((6, 3), (4, 0)));
+
+        // Zero-width and non-zero-width range, no overlap.
+        assert!(!overlaps((0, 3), (3, 3)));
+        assert!(!overlaps((3, 0), (3, 3)));
+        assert!(!overlaps((3, 3), (0, 3)));
+        assert!(!overlaps((3, 3), (3, 0)));
+
+        // Zero-width and non-zero-width range, overlap.
+        assert!(overlaps((1, 4), (1, 1)));
+        assert!(overlaps((4, 1), (1, 1)));
+        assert!(overlaps((1, 1), (1, 4)));
+        assert!(overlaps((1, 1), (4, 1)));
+
+        assert!(overlaps((1, 4), (3, 3)));
+        assert!(overlaps((4, 1), (3, 3)));
+        assert!(overlaps((3, 3), (1, 4)));
+        assert!(overlaps((3, 3), (4, 1)));
+
+        // Two zero-width ranges, no overlap.
+        assert!(!overlaps((0, 0), (1, 1)));
+        assert!(!overlaps((1, 1), (0, 0)));
+
+        // Two zero-width ranges, overlap.
+        assert!(overlaps((1, 1), (1, 1)));
+    }
+
+    #[test]
+    fn test_graphem_aligned() {
+        let r = Rope::from_str("\r\nHi\r\n");
+        let s = r.slice(..);
+
+        // Zero-width.
+        assert_eq!(Range::new(0, 0).grapheme_aligned(s), Range::new(0, 0));
+        assert_eq!(Range::new(1, 1).grapheme_aligned(s), Range::new(0, 0));
+        assert_eq!(Range::new(2, 2).grapheme_aligned(s), Range::new(2, 2));
+        assert_eq!(Range::new(3, 3).grapheme_aligned(s), Range::new(3, 3));
+        assert_eq!(Range::new(4, 4).grapheme_aligned(s), Range::new(4, 4));
+        assert_eq!(Range::new(5, 5).grapheme_aligned(s), Range::new(4, 4));
+        assert_eq!(Range::new(6, 6).grapheme_aligned(s), Range::new(6, 6));
+
+        // Forward.
+        assert_eq!(Range::new(0, 1).grapheme_aligned(s), Range::new(0, 2));
+        assert_eq!(Range::new(1, 2).grapheme_aligned(s), Range::new(0, 2));
+        assert_eq!(Range::new(2, 3).grapheme_aligned(s), Range::new(2, 3));
+        assert_eq!(Range::new(3, 4).grapheme_aligned(s), Range::new(3, 4));
+        assert_eq!(Range::new(4, 5).grapheme_aligned(s), Range::new(4, 6));
+        assert_eq!(Range::new(5, 6).grapheme_aligned(s), Range::new(4, 6));
+
+        assert_eq!(Range::new(0, 2).grapheme_aligned(s), Range::new(0, 2));
+        assert_eq!(Range::new(1, 3).grapheme_aligned(s), Range::new(0, 3));
+        assert_eq!(Range::new(2, 4).grapheme_aligned(s), Range::new(2, 4));
+        assert_eq!(Range::new(3, 5).grapheme_aligned(s), Range::new(3, 6));
+        assert_eq!(Range::new(4, 6).grapheme_aligned(s), Range::new(4, 6));
+
+        // Reverse.
+        assert_eq!(Range::new(1, 0).grapheme_aligned(s), Range::new(2, 0));
+        assert_eq!(Range::new(2, 1).grapheme_aligned(s), Range::new(2, 0));
+        assert_eq!(Range::new(3, 2).grapheme_aligned(s), Range::new(3, 2));
+        assert_eq!(Range::new(4, 3).grapheme_aligned(s), Range::new(4, 3));
+        assert_eq!(Range::new(5, 4).grapheme_aligned(s), Range::new(6, 4));
+        assert_eq!(Range::new(6, 5).grapheme_aligned(s), Range::new(6, 4));
+
+        assert_eq!(Range::new(2, 0).grapheme_aligned(s), Range::new(2, 0));
+        assert_eq!(Range::new(3, 1).grapheme_aligned(s), Range::new(3, 0));
+        assert_eq!(Range::new(4, 2).grapheme_aligned(s), Range::new(4, 2));
+        assert_eq!(Range::new(5, 3).grapheme_aligned(s), Range::new(6, 3));
+        assert_eq!(Range::new(6, 4).grapheme_aligned(s), Range::new(6, 4));
+    }
+
+    #[test]
+    fn test_min_width_1() {
+        let r = Rope::from_str("\r\nHi\r\n");
+        let s = r.slice(..);
+
+        // Zero-width.
+        assert_eq!(Range::new(0, 0).min_width_1(s), Range::new(0, 2));
+        assert_eq!(Range::new(1, 1).min_width_1(s), Range::new(1, 2));
+        assert_eq!(Range::new(2, 2).min_width_1(s), Range::new(2, 3));
+        assert_eq!(Range::new(3, 3).min_width_1(s), Range::new(3, 4));
+        assert_eq!(Range::new(4, 4).min_width_1(s), Range::new(4, 6));
+        assert_eq!(Range::new(5, 5).min_width_1(s), Range::new(5, 6));
+        assert_eq!(Range::new(6, 6).min_width_1(s), Range::new(6, 6));
+
+        // Forward.
+        assert_eq!(Range::new(0, 1).min_width_1(s), Range::new(0, 1));
+        assert_eq!(Range::new(1, 2).min_width_1(s), Range::new(1, 2));
+        assert_eq!(Range::new(2, 3).min_width_1(s), Range::new(2, 3));
+        assert_eq!(Range::new(3, 4).min_width_1(s), Range::new(3, 4));
+        assert_eq!(Range::new(4, 5).min_width_1(s), Range::new(4, 5));
+        assert_eq!(Range::new(5, 6).min_width_1(s), Range::new(5, 6));
+
+        // Reverse.
+        assert_eq!(Range::new(1, 0).min_width_1(s), Range::new(1, 0));
+        assert_eq!(Range::new(2, 1).min_width_1(s), Range::new(2, 1));
+        assert_eq!(Range::new(3, 2).min_width_1(s), Range::new(3, 2));
+        assert_eq!(Range::new(4, 3).min_width_1(s), Range::new(4, 3));
+        assert_eq!(Range::new(5, 4).min_width_1(s), Range::new(5, 4));
+        assert_eq!(Range::new(6, 5).min_width_1(s), Range::new(6, 5));
+    }
+
+    #[test]
+    fn test_line_range() {
+        let r = Rope::from_str("\r\nHi\r\nthere!");
+        let s = r.slice(..);
+
+        // Zero-width ranges.
+        assert_eq!(Range::new(0, 0).line_range(s), (0, 0));
+        assert_eq!(Range::new(1, 1).line_range(s), (0, 0));
+        assert_eq!(Range::new(2, 2).line_range(s), (1, 1));
+        assert_eq!(Range::new(3, 3).line_range(s), (1, 1));
+
+        // Forward ranges.
+        assert_eq!(Range::new(0, 1).line_range(s), (0, 0));
+        assert_eq!(Range::new(0, 2).line_range(s), (0, 0));
+        assert_eq!(Range::new(0, 3).line_range(s), (0, 1));
+        assert_eq!(Range::new(1, 2).line_range(s), (0, 0));
+        assert_eq!(Range::new(2, 3).line_range(s), (1, 1));
+        assert_eq!(Range::new(3, 8).line_range(s), (1, 2));
+        assert_eq!(Range::new(0, 12).line_range(s), (0, 2));
+
+        // Reverse ranges.
+        assert_eq!(Range::new(1, 0).line_range(s), (0, 0));
+        assert_eq!(Range::new(2, 0).line_range(s), (0, 0));
+        assert_eq!(Range::new(3, 0).line_range(s), (0, 1));
+        assert_eq!(Range::new(2, 1).line_range(s), (0, 0));
+        assert_eq!(Range::new(3, 2).line_range(s), (1, 1));
+        assert_eq!(Range::new(8, 3).line_range(s), (1, 2));
+        assert_eq!(Range::new(12, 0).line_range(s), (0, 2));
+    }
+
+    #[test]
+    fn test_cursor() {
+        let r = Rope::from_str("\r\nHi\r\nthere!");
+        let s = r.slice(..);
+
+        // Zero-width ranges.
+        assert_eq!(Range::new(0, 0).cursor(s), 0);
+        assert_eq!(Range::new(2, 2).cursor(s), 2);
+        assert_eq!(Range::new(3, 3).cursor(s), 3);
+
+        // Forward ranges.
+        assert_eq!(Range::new(0, 2).cursor(s), 0);
+        assert_eq!(Range::new(0, 3).cursor(s), 2);
+        assert_eq!(Range::new(3, 6).cursor(s), 4);
+
+        // Reverse ranges.
+        assert_eq!(Range::new(2, 0).cursor(s), 0);
+        assert_eq!(Range::new(6, 2).cursor(s), 2);
+        assert_eq!(Range::new(6, 3).cursor(s), 3);
+    }
+
+    #[test]
+    fn test_put_cursor() {
+        let r = Rope::from_str("\r\nHi\r\nthere!");
+        let s = r.slice(..);
+
+        // Zero-width ranges.
+        assert_eq!(Range::new(0, 0).put_cursor(s, 0, true), Range::new(0, 2));
+        assert_eq!(Range::new(0, 0).put_cursor(s, 2, true), Range::new(0, 3));
+        assert_eq!(Range::new(2, 3).put_cursor(s, 4, true), Range::new(2, 6));
+        assert_eq!(Range::new(2, 8).put_cursor(s, 4, true), Range::new(2, 6));
+        assert_eq!(Range::new(8, 8).put_cursor(s, 4, true), Range::new(9, 4));
+
+        // Forward ranges.
+        assert_eq!(Range::new(3, 6).put_cursor(s, 0, true), Range::new(4, 0));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 2, true), Range::new(4, 2));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 3, true), Range::new(3, 4));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 4, true), Range::new(3, 6));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 6, true), Range::new(3, 7));
+        assert_eq!(Range::new(3, 6).put_cursor(s, 8, true), Range::new(3, 9));
+
+        // Reverse ranges.
+        assert_eq!(Range::new(6, 3).put_cursor(s, 0, true), Range::new(6, 0));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 2, true), Range::new(6, 2));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 3, true), Range::new(6, 3));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 4, true), Range::new(6, 4));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 6, true), Range::new(4, 7));
+        assert_eq!(Range::new(6, 3).put_cursor(s, 8, true), Range::new(4, 9));
     }
 
     #[test]
     fn test_split_on_matches() {
         use crate::regex::Regex;
 
-        let text = Rope::from("abcd efg wrs   xyz 123 456");
+        let text = Rope::from(" abcd efg wrs   xyz 123 456");
 
-        let selection = Selection::new(smallvec![Range::new(0, 8), Range::new(10, 19),], 0);
+        let selection = Selection::new(smallvec![Range::new(0, 9), Range::new(11, 20),], 0);
 
         let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
 
         assert_eq!(
             result.ranges(),
             &[
-                Range::new(0, 3),
-                Range::new(5, 7),
-                Range::new(10, 11),
-                Range::new(15, 17),
-                Range::new(19, 19),
+                // TODO: rather than this behavior, maybe we want it
+                // to be based on which side is the anchor?
+                //
+                // We get a leading zero-width range when there's
+                // a leading match because ranges are inclusive on
+                // the left.  Imagine, for example, if the entire
+                // selection range were matched: you'd still want
+                // at least one range to remain after the split.
+                Range::new(0, 0),
+                Range::new(1, 5),
+                Range::new(6, 9),
+                Range::new(11, 13),
+                Range::new(16, 19),
+                // In contrast to the comment above, there is no
+                // _trailing_ zero-width range despite the trailing
+                // match, because ranges are exclusive on the right.
             ]
         );
 
         assert_eq!(
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
-            &["abcd", "efg", "rs", "xyz", "1"]
+            &["", "abcd", "efg", "rs", "xyz"]
         );
     }
 }

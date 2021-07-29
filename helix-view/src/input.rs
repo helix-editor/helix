@@ -15,10 +15,10 @@ pub struct KeyEvent {
 }
 
 impl KeyEvent {
-    /// Get only the character involved in this event
+    /// If a character was pressed (without modifiers), return it.
     pub fn char(&self) -> Option<char> {
         match self.code {
-            KeyCode::Char(ch) => Some(ch),
+            KeyCode::Char(ch) if self.modifiers.is_empty() => Some(ch),
             _ => None,
         }
     }
