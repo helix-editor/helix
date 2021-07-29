@@ -831,9 +831,15 @@ impl Component for EditorView {
                 let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
 
                 let selection = doc.selection(view.id).clone();
-                let primary = selection.primary();
+                let primary_anchor = selection.primary().anchor;
+                let new_selection = selection.transform(|range| -> Range {
+                    if range.anchor == primary_anchor {
+                        return Range::new(primary_anchor, pos);
+                    }
+                    range
+                });
 
-                doc.set_selection(view.id, selection.push(Range::new(primary.anchor, pos)));
+                doc.set_selection(view.id, new_selection);
                 EventResult::Consumed(None)
             }
             Event::Mouse(_) => EventResult::Ignored,
