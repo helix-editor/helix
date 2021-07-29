@@ -1080,7 +1080,7 @@ impl Document {
 
 impl Default for Document {
     fn default() -> Self {
-        let text = Rope::from("");
+        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
         Self::from(text, None)
     }
 }
@@ -1205,7 +1205,10 @@ mod test {
 
     #[test]
     fn test_line_ending() {
-        assert_eq!(Document::default().text().to_string(), "");
+        assert_eq!(
+            Document::default().text().to_string(),
+            DEFAULT_LINE_ENDING.as_str()
+        );
     }
 
     macro_rules! test_decode {
