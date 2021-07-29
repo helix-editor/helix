@@ -212,7 +212,7 @@ impl View {
                 let width = grapheme_width(&Cow::from(grapheme));
                 selected += width;
             }
-            pos += 1;
+            pos += grapheme.chars().count();
         }
 
         pos - 1
