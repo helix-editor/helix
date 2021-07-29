@@ -208,7 +208,7 @@ impl View {
             }
             if grapheme == "\t" {
                 selected += tab_width;
-            } else if grapheme != "\n" {
+            } else {
                 let width = grapheme_width(&Cow::from(grapheme));
                 selected += width;
             }
