@@ -4,6 +4,7 @@ use crate::{graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
     coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
+    line_ending::line_end_char_index,
     Position, RopeSlice, Selection,
 };
 
@@ -211,7 +212,7 @@ impl View {
         let mut selected = 0;
 
         for grapheme in RopeGraphemes::new(current_line) {
-            if selected > target {
+            if selected >= target {
                 break;
             }
             if grapheme == "\t" {
@@ -223,7 +224,7 @@ impl View {
             pos += grapheme.chars().count();
         }
 
-        Some(pos - 1)
+        Some(pos.min(line_end_char_index(&text.slice(..), line_number)))
     }
 
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
