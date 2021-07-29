@@ -788,12 +788,10 @@ impl Component for EditorView {
                     .map(|pos| (pos, view.id))
                 });
 
-                let tree = &mut editor.tree;
-
                 if let Some((pos, id)) = result {
-                    let doc = &mut editor.documents[tree.get(id).doc];
+                    let doc = &mut editor.documents[editor.tree.get(id).doc];
                     let jump = (doc.id(), doc.selection(id).clone());
-                    tree.get_mut(id).jumps.push(jump);
+                    editor.tree.get_mut(id).jumps.push(jump);
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
                         let selection = doc.selection(id).clone();
@@ -802,7 +800,7 @@ impl Component for EditorView {
                         doc.set_selection(id, Selection::point(pos));
                     }
 
-                    cx.editor.tree.focus = id;
+                    editor.tree.focus = id;
 
                     return EventResult::Consumed(None);
                 }
