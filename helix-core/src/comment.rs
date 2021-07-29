@@ -72,7 +72,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
         min_next_line = end + 1;
     }
 
-    let (commented, to_change, min, margin) = find_line_comment(&token, text, lines);
+    let (commented, to_change, min, margin) = find_line_comment(token, text, lines);
 
     let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
 

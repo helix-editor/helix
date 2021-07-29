@@ -245,6 +245,7 @@ impl CharHelpers for Chars<'_> {
 
         // Find our target position(s).
         let head_start = head;
+        #[allow(clippy::while_let_on_iterator)] // Clippy's suggestion to fix doesn't work here.
         while let Some(next_ch) = self.next() {
             if prev_ch.is_none() || reached_target(target, prev_ch.unwrap(), next_ch) {
                 if head == head_start {

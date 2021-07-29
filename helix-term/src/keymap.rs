@@ -284,7 +284,7 @@ impl Deref for Keymap {
     type Target = KeyTrieNode;
 
     fn deref(&self) -> &Self::Target {
-        &self.root.node().unwrap()
+        self.root.node().unwrap()
     }
 }
 
