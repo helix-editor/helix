@@ -182,13 +182,17 @@ impl View {
     }
 
     /// Translates a screen position to position in the text document.
-    /// Returns a usize typed position in bounds of the text if found in this view, panics if out of view.
-    pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> usize {
+    /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
+    pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> Option<usize> {
+        if !self.verify_screen_coords(row, column) {
+            return None;
+        }
+
         let text = doc.text();
         let line_number = row - self.area.y as usize + self.first_line;
 
         if line_number > text.len_lines() - 1 {
-            return text.len_chars() - 1;
+            return Some(text.len_chars() - 1);
         }
 
         let mut pos = text.line_to_char(line_number);
@@ -215,7 +219,7 @@ impl View {
             pos += grapheme.chars().count();
         }
 
-        pos - 1
+        Some(pos - 1)
     }
 
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)

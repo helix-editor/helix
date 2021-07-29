@@ -780,18 +780,12 @@ impl Component for EditorView {
                 let editor = &mut cx.editor;
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
-                    if !view.verify_screen_coords(row as usize, column as usize) {
-                        return None;
-                    }
-
-                    Some((
-                        view.pos_at_screen_coords(
-                            &editor.documents[view.doc],
-                            row as usize,
-                            column as usize,
-                        ),
-                        view.id,
-                    ))
+                    view.pos_at_screen_coords(
+                        &editor.documents[view.doc],
+                        row as usize,
+                        column as usize,
+                    )
+                    .map(|pos| (pos, view.id))
                 });
 
                 let tree = &mut editor.tree;
@@ -824,17 +818,17 @@ impl Component for EditorView {
             }) => {
                 let (view, doc) = current!(cx.editor);
 
-                if !view.verify_screen_coords(row as usize, column as usize) {
+                let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
+
+                if pos == None {
                     return EventResult::Ignored;
                 }
-
-                let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
 
                 let selection = doc.selection(view.id).clone();
                 let primary_anchor = selection.primary().anchor;
                 let new_selection = selection.transform(|range| -> Range {
                     if range.anchor == primary_anchor {
-                        return Range::new(primary_anchor, pos);
+                        return Range::new(primary_anchor, pos.unwrap());
                     }
                     range
                 });
