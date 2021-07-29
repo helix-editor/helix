@@ -43,7 +43,8 @@ This will install the `hx` binary to `$HOME/.cargo/bin`.
 
 Helix also needs it's runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overriden
-via the `HELIX_RUNTIME` environment variable.
+via the `HELIX_RUNTIME` environment variable. To customize stuff, add `languages.toml` for custom
+language, `theme.toml` for custom theme, `config.toml` for custom config in `~/.config/helix/`.
 
 Packages already solve this for you by wrapping the `hx` binary with a wrapper
 that sets the variable to the install dir.
