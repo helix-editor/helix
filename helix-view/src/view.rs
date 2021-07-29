@@ -197,7 +197,7 @@ impl View {
         let line_number = row - self.area.y as usize + self.first_line;
 
         if line_number > text.len_lines() - 1 {
-            return Some(text.len_chars() - 1);
+            return Some(text.len_chars());
         }
 
         let mut pos = text.line_to_char(line_number);
