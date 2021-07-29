@@ -84,18 +84,21 @@ impl View {
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document) {
-        let cursor = doc.selection(self.id).cursor();
+        let cursor = doc
+            .selection(self.id)
+            .primary()
+            .cursor(doc.text().slice(..));
         let pos = coords_at_pos(doc.text().slice(..), cursor);
         let line = pos.row;
         let col = pos.col;
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
-        let last_line = self.first_line + height as usize;
+        let last_line = (self.first_line + height as usize).saturating_sub(1);
 
         let scrolloff = PADDING.min(self.area.height as usize / 2); // TODO: user pref
 
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        let last_col = self.first_col + (self.area.width as usize - OFFSET);
+        let last_col = (self.first_col + self.area.width as usize).saturating_sub(OFFSET + 1);
 
         if line > last_line.saturating_sub(scrolloff) {
             // scroll down
@@ -119,8 +122,9 @@ impl View {
     pub fn last_line(&self, doc: &Document) -> usize {
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
         std::cmp::min(
-            self.first_line + height as usize,
-            doc.text().len_lines() - 1,
+            // Saturating subs to make it inclusive zero indexing.
+            (self.first_line + height as usize).saturating_sub(1),
+            doc.text().len_lines().saturating_sub(1),
         )
     }
 

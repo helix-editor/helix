@@ -24,12 +24,13 @@ pub fn find(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
         return None;
     }
 
-    let start_byte = node.start_byte();
     let len = doc.len_bytes();
-    if start_byte >= len {
+    let start_byte = node.start_byte();
+    let end_byte = node.end_byte() - 1; // it's end exclusive
+    if start_byte >= len || end_byte >= len {
         return None;
     }
-    let end_byte = node.end_byte() - 1; // it's end exclusive
+
     let start_char = doc.byte_to_char(start_byte);
     let end_char = doc.byte_to_char(end_byte);
 

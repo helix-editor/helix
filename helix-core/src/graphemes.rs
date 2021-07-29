@@ -71,6 +71,8 @@ pub fn nth_prev_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -
 }
 
 /// Finds the previous grapheme boundary before the given char position.
+#[must_use]
+#[inline(always)]
 pub fn prev_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     nth_prev_grapheme_boundary(slice, char_idx, 1)
 }
@@ -117,21 +119,38 @@ pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -
 }
 
 /// Finds the next grapheme boundary after the given char position.
+#[must_use]
+#[inline(always)]
 pub fn next_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     nth_next_grapheme_boundary(slice, char_idx, 1)
 }
 
 /// Returns the passed char index if it's already a grapheme boundary,
 /// or the next grapheme boundary char index if not.
-pub fn ensure_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
+#[must_use]
+#[inline]
+pub fn ensure_grapheme_boundary_next(slice: RopeSlice, char_idx: usize) -> usize {
     if char_idx == 0 {
-        0
+        char_idx
     } else {
         next_grapheme_boundary(slice, char_idx - 1)
     }
 }
 
+/// Returns the passed char index if it's already a grapheme boundary,
+/// or the prev grapheme boundary char index if not.
+#[must_use]
+#[inline]
+pub fn ensure_grapheme_boundary_prev(slice: RopeSlice, char_idx: usize) -> usize {
+    if char_idx == slice.len_chars() {
+        char_idx
+    } else {
+        prev_grapheme_boundary(slice, char_idx + 1)
+    }
+}
+
 /// Returns whether the given char position is a grapheme boundary.
+#[must_use]
 pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
     // Bounds check
     debug_assert!(char_idx <= slice.len_chars());

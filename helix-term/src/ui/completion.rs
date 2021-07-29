@@ -86,7 +86,10 @@ impl Completion {
                     let item = item.unwrap();
 
                     // if more text was entered, remove it
-                    let cursor = doc.selection(view.id).cursor();
+                    let cursor = doc
+                        .selection(view.id)
+                        .primary()
+                        .cursor(doc.text().slice(..));
                     if trigger_offset < cursor {
                         let remove = Transaction::change(
                             doc.text(),
@@ -109,7 +112,10 @@ impl Completion {
                         )
                     } else {
                         let text = item.insert_text.as_ref().unwrap_or(&item.label);
-                        let cursor = doc.selection(view.id).cursor();
+                        let cursor = doc
+                            .selection(view.id)
+                            .primary()
+                            .cursor(doc.text().slice(..));
                         Transaction::change(
                             doc.text(),
                             vec![(cursor, cursor, Some(text.as_str().into()))].into_iter(),
@@ -155,7 +161,10 @@ impl Completion {
         // TODO: hooks should get processed immediately so maybe do it after select!(), before
         // looping?
 
-        let cursor = doc.selection(view.id).cursor();
+        let cursor = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
         if self.trigger_offset <= cursor {
             let fragment = doc.text().slice(self.trigger_offset..cursor);
             let text = Cow::from(fragment);
@@ -212,7 +221,10 @@ impl Component for Completion {
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))
                 .unwrap_or("");
-            let cursor_pos = doc.selection(view.id).cursor();
+            let cursor_pos = doc
+                .selection(view.id)
+                .primary()
+                .cursor(doc.text().slice(..));
             let cursor_pos = (helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row
                 - view.first_line) as u16;
 
