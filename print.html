@@ -171,13 +171,9 @@ cd helix
 cargo install --path helix-term
 </code></pre>
 <p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code>.</p>
-<p>Now copy the <code>runtime/</code> directory somewhere. Helix will by default look for the
-runtime inside the same folder as the executable, but that can be overriden via
-the <code>HELIX_RUNTIME</code> environment variable.</p>
-<p>If you want to embed the <code>runtime/</code> directory into the Helix binary you can build
-it with:</p>
-<pre><code>cargo install --path helix-term --features &quot;embed_runtime&quot;
-</code></pre>
+<p>Helix also needs it's runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
+config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overriden
+via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
 <p>(Currently not fully documented, see the <a href="./keymap.html">keymappings</a> list for more.)</p>
 <h2 id="surround"><a class="header" href="#surround">Surround</a></h2>
