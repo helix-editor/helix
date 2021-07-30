@@ -1744,16 +1744,33 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-
+        let view = cx.editor.tree.get(cx.editor.tree.focus);
+        let doc_id = view.doc;
+        let doc = cx.editor.document(doc_id).unwrap();
         let language_server = match doc.language_server_arc() {
             Some(language_server) => language_server,
             None => return Err(anyhow!("running lsp server not found")),
         };
 
-        let fut = language_server.shutdown_and_exit();
-        let callback = make_lsp_restart_callback(doc.id(), fut);
-        cx.jobs.callback(callback);
+        log::debug!("got lspserver");
+        let fut = async move {
+            log::debug!("trying shutdown");
+            let shutdown_result = language_server.shutdown_and_exit().await;
+            if let Err(err) = shutdown_result {
+                log::debug!("shutdown & exit request returned error: {}", err); // we're not doing anything except logging, if LSP crashes then this error is expected
+            }
+            let callback: job::Callback = Box::new(move |editor: &mut Editor, _compositor| {
+                let doc = editor.document(doc_id).unwrap();
+                let language_config = doc.language_config_arc().unwrap();
+                let language_server = editor.language_servers.get(&language_config).unwrap();
+                log::debug!("got new language server");
+                let doc = editor.document_mut(doc_id).unwrap();
+                doc.set_language_server(Some(language_server));
+                log::debug!("set new language server");
+            });
+            Ok::<job::Callback, anyhow::Error>(callback)
+        };
+        cx.jobs.callback(fut);
 
         Ok(())
     }
@@ -2327,21 +2344,6 @@ async fn make_format_callback(
         }
     });
     Ok(call)
-}
-
-async fn make_lsp_restart_callback(
-    doc_id: DocumentId,
-    lsp_restart: impl Future<Output = Result<(), helix_lsp::Error>> + Send + 'static,
-) -> anyhow::Result<job::Callback> {
-    let callback: job::Callback =
-        Box::new(move |editor: &mut Editor, _compositor: &mut Compositor| {
-            let doc = editor.document(doc_id).unwrap();
-            let language_config = doc.language_config_arc().unwrap();
-            let language_server = editor.language_servers.get(&language_config).unwrap();
-            let doc = editor.document_mut(doc_id).unwrap();
-            doc.set_language_server(Some(language_server));
-        });
-    Ok(callback)
 }
 
 enum Open {
