@@ -24,12 +24,13 @@
 "variable.builtin" = { fg = "#61AFEF" }
 "variable.parameter" = { fg = "#E06C75" }
 
+diagnostic = { modifiers = ["underlined"] }
 "info" = { fg = "#61afef", modifiers = ['bold'] }
 "hint" = { fg = "#98c379", modifiers = ['bold'] }
 "warning" = { fg = "#e5c07b", modifiers = ['bold'] }
 "error" = { fg = "#e06c75", modifiers = ['bold'] }
 
-"ui.background" = { fg = "#ABB2BF", bg = "#282C34" }
+"ui.background" = { bg = "#282C34" }
 
 "ui.cursor" = { fg = "#ABB2BF", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "#ABB2BF", modifiers = ["reversed"] }
@@ -44,11 +45,10 @@
 "ui.statusline" = { fg = "#ABB2BF", bg = "#2C323C" }
 "ui.statusline.inactive" = { fg = "#5C6370", bg = "#2C323C" }
 
-"ui.text" = { fg = "#ABB2BF", bg = "#282C34" }
+"ui.text" = { fg = "#ABB2BF" }
 "ui.text.focus" = { fg = "#ABB2BF", bg = "#2C323C", modifiers = ['bold'] }
 
 "ui.help" = { bg = "#3E4452" }
 "ui.popup" = { bg = "#3E4452" }
 "ui.window" = { bg = "#3E4452" }
 "ui.menu.selected" = { fg = "#282C34", bg = "#61AFEF" }
-
