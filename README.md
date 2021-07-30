@@ -51,13 +51,6 @@ that sets the variable to the install dir.
 > NOTE: running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
 > detect the `runtime` directory in the project root.
 
-Alternatively, if you want to embed the `runtime/` directory into the Helix binary you can build
-it with:
-
-```
-cargo install --path helix-term --features "embed_runtime"
-```
-
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
 ## MacOS
