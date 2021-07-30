@@ -4,6 +4,7 @@ use crate::{graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
     coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
+    line_ending::line_end_char_index,
     Position, RopeSlice, Selection,
 };
 
@@ -165,6 +166,74 @@ impl View {
         Some(Position::new(row, col))
     }
 
+    /// Verifies whether a screen position is inside the view
+    /// Returns true when position is inside the view
+    pub fn verify_screen_coords(&self, row: usize, column: usize) -> bool {
+        // 2 for status
+        if row < self.area.y as usize || row > self.area.y as usize + self.area.height as usize - 2
+        {
+            return false;
+        }
+
+        // TODO: not ideal
+        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
+
+        if column < self.area.x as usize + OFFSET
+            || column > self.area.x as usize + self.area.width as usize
+        {
+            return false;
+        }
+        true
+    }
+
+    pub fn text_pos_at_screen_coords(
+        &self,
+        text: &RopeSlice,
+        row: usize,
+        column: usize,
+        tab_width: usize,
+    ) -> Option<usize> {
+        if !self.verify_screen_coords(row, column) {
+            return None;
+        }
+
+        let line_number = row - self.area.y as usize + self.first_line;
+
+        if line_number > text.len_lines() - 1 {
+            return Some(text.len_chars());
+        }
+
+        let mut pos = text.line_to_char(line_number);
+
+        let current_line = text.line(line_number);
+
+        // TODO: not ideal
+        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
+
+        let target = column - OFFSET - self.area.x as usize + self.first_col;
+        let mut selected = 0;
+
+        for grapheme in RopeGraphemes::new(current_line) {
+            if selected >= target {
+                break;
+            }
+            if grapheme == "\t" {
+                selected += tab_width;
+            } else {
+                let width = grapheme_width(&Cow::from(grapheme));
+                selected += width;
+            }
+            pos += grapheme.chars().count();
+        }
+
+        Some(pos.min(line_end_char_index(&text.slice(..), line_number)))
+    }
+
+    /// Translates a screen position to position in the text document.
+    /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
+    pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> Option<usize> {
+        self.text_pos_at_screen_coords(&doc.text().slice(..), row, column, doc.tab_width())
+    }
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
     // where
     //     F: Fn(usize, usize),
@@ -185,4 +254,82 @@ impl View {
     //         (None, None) => return,
     //     }
     // }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use helix_core::Rope;
+
+    #[test]
+    fn test_text_pos_at_screen_coords() {
+        let mut view = View::new(DocumentId::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        let text = Rope::from_str("abc\n\tdef");
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 40, 2, 4),
+            None
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 40, 41, 4),
+            None
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 0, 2, 4),
+            None
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 0, 49, 4),
+            None
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 0, 41, 4),
+            None
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 40, 81, 4),
+            None
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 78, 41, 4),
+            None
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 40, 40 + 7 + 3, 4),
+            Some(3)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 40, 80, 4),
+            Some(3)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 41, 40 + 7 + 1, 4),
+            Some(5)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 41, 40 + 7 + 4, 4),
+            Some(5)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 41, 40 + 7 + 7, 4),
+            Some(8)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text.slice(..), 41, 80, 4),
+            Some(8)
+        );
+    }
 }

@@ -12,7 +12,7 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range,
+    LineEnding, Position, Range, Selection,
 };
 use helix_view::{
     document::Mode,
@@ -24,7 +24,7 @@ use helix_view::{
 };
 use std::borrow::Cow;
 
-use crossterm::event::Event;
+use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
@@ -804,6 +804,70 @@ impl Component for EditorView {
                 }
 
                 EventResult::Consumed(callback)
+            }
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                row,
+                column,
+                modifiers,
+                ..
+            }) => {
+                let editor = &mut cx.editor;
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(
+                        &editor.documents[view.doc],
+                        row as usize,
+                        column as usize,
+                    )
+                    .map(|pos| (pos, view.id))
+                });
+
+                if let Some((pos, id)) = result {
+                    let doc = &mut editor.documents[editor.tree.get(id).doc];
+                    let jump = (doc.id(), doc.selection(id).clone());
+                    editor.tree.get_mut(id).jumps.push(jump);
+
+                    if modifiers == crossterm::event::KeyModifiers::ALT {
+                        let selection = doc.selection(id).clone();
+                        doc.set_selection(id, selection.push(Range::point(pos)));
+                    } else {
+                        doc.set_selection(id, Selection::point(pos));
+                    }
+
+                    editor.tree.focus = id;
+
+                    return EventResult::Consumed(None);
+                }
+
+                EventResult::Ignored
+            }
+
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Drag(MouseButton::Left),
+                row,
+                column,
+                ..
+            }) => {
+                let (view, doc) = current!(cx.editor);
+
+                let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
+
+                if pos == None {
+                    return EventResult::Ignored;
+                }
+
+                let selection = doc.selection(view.id).clone();
+                let primary_anchor = selection.primary().anchor;
+                let new_selection = selection.transform(|range| -> Range {
+                    if range.anchor == primary_anchor {
+                        return Range::new(primary_anchor, pos.unwrap());
+                    }
+                    range
+                });
+
+                doc.set_selection(view.id, new_selection);
+                EventResult::Consumed(None)
             }
             Event::Mouse(_) => EventResult::Ignored,
         }
