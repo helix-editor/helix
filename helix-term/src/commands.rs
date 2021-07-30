@@ -3200,7 +3200,8 @@ fn yank(cx: &mut Context) {
         .registers
         .write(cx.selected_register.name(), values);
 
-    cx.editor.set_status(msg)
+    cx.editor.set_status(msg);
+    exit_select_mode(cx);
 }
 
 fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow::Result<()> {
@@ -3233,6 +3234,7 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = current!(cx.editor).1.line_ending;
     let _ = yank_joined_to_clipboard_impl(&mut cx.editor, line_ending.as_str());
+    exit_select_mode(cx);
 }
 
 fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<()> {
@@ -3251,6 +3253,7 @@ fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
     let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor);
+    exit_select_mode(cx);
 }
 
 #[derive(Copy, Clone)]
