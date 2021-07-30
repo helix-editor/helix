@@ -678,17 +678,21 @@ impl Document {
         let success = transaction.changes().apply(&mut self.text);
 
         if success {
-            // update the selection: either take the selection specified in the transaction, or map the
-            // current selection through changes.
-            let selection = transaction
-                .selection()
-                .cloned()
-                .unwrap_or_else(|| self.selection(view_id).clone().map(transaction.changes()));
-            self.selections.insert(view_id, selection);
-
-            // Ensure all selections accross all views still adhere to invariants.
             for selection in self.selections.values_mut() {
-                *selection = selection.clone().ensure_invariants(self.text.slice(..));
+                *selection = selection
+                    .clone()
+                    // Map through changes
+                    .map(transaction.changes())
+                    // Ensure all selections accross all views still adhere to invariants.
+                    .ensure_invariants(self.text.slice(..));
+            }
+
+            // if specified, the current selection should instead be replaced by transaction.selection
+            if let Some(selection) = transaction.selection() {
+                self.selections.insert(
+                    view_id,
+                    selection.clone().ensure_invariants(self.text.slice(..)),
+                );
             }
         }
 
