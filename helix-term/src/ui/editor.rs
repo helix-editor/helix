@@ -825,8 +825,6 @@ impl Component for EditorView {
 
                 if let Some((pos, id)) = result {
                     let doc = &mut editor.documents[editor.tree.get(id).doc];
-                    let jump = (doc.id(), doc.selection(id).clone());
-                    editor.tree.get_mut(id).jumps.push(jump);
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
                         let selection = doc.selection(id).clone();
