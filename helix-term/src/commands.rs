@@ -654,8 +654,13 @@ where
                 range.head
             };
 
-            search_fn(text, ch, search_start_pos, count, inclusive)
-                .map_or(range, |pos| range.put_cursor(text, pos, extend))
+            search_fn(text, ch, search_start_pos, count, inclusive).map_or(range, |pos| {
+                if extend {
+                    range.put_cursor(text, pos, true)
+                } else {
+                    Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                }
+            })
         });
         doc.set_selection(view.id, selection);
     })
