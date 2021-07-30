@@ -973,6 +973,10 @@ impl Document {
         self.language.as_deref()
     }
 
+    pub fn language_config_arc(&self) -> Option<Arc<LanguageConfiguration>> {
+        self.language.clone()
+    }
+
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
@@ -981,6 +985,11 @@ impl Document {
     #[inline]
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         self.language_server.as_deref()
+    }
+
+    #[inline]
+    pub fn language_server_arc(&self) -> Option<Arc<helix_lsp::Client>> {
+        self.language_server.clone()
     }
 
     #[inline]

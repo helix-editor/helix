@@ -1739,6 +1739,25 @@ mod cmd {
         doc.reload(view.id)
     }
 
+    fn lsp_restart(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+
+        let language_server = match doc.language_server_arc() {
+            Some(language_server) => language_server,
+            None => return Err(anyhow!("running lsp server not found")),
+        };
+
+        let fut = language_server.shutdown_and_exit();
+        let callback = make_lsp_restart_callback(doc.id(), fut);
+        cx.jobs.callback(callback);
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1934,6 +1953,13 @@ mod cmd {
             alias: None,
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "lsp-restart",
+            alias: None,
+            doc: "Restart current LSP connection.",
+            fun: lsp_restart,
             completer: None,
         }
     ];
@@ -2301,6 +2327,21 @@ async fn make_format_callback(
         }
     });
     Ok(call)
+}
+
+async fn make_lsp_restart_callback(
+    doc_id: DocumentId,
+    lsp_restart: impl Future<Output = Result<(), helix_lsp::Error>> + Send + 'static,
+) -> anyhow::Result<job::Callback> {
+    let callback: job::Callback =
+        Box::new(move |editor: &mut Editor, _compositor: &mut Compositor| {
+            let doc = editor.document(doc_id).unwrap();
+            let language_config = doc.language_config_arc().unwrap();
+            let language_server = editor.language_servers.get(&language_config).unwrap();
+            let doc = editor.document_mut(doc_id).unwrap();
+            doc.set_language_server(Some(language_server));
+        });
+    Ok(callback)
 }
 
 enum Open {
