@@ -245,76 +245,117 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
+    const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
     #[test]
     fn test_text_pos_at_screen_coords() {
         let mut view = View::new(DocumentId::default());
         view.area = Rect::new(40, 40, 40, 40);
-        let text = Rope::from_str("abc\n\tdef");
+        let rope = Rope::from_str("abc\n\tdef");
+        let text = rope.slice(..);
+
+        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 2, 4), None);
+
+        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 41, 4), None);
+
+        assert_eq!(view.text_pos_at_screen_coords(&text, 0, 2, 4), None);
+
+        assert_eq!(view.text_pos_at_screen_coords(&text, 0, 49, 4), None);
+
+        assert_eq!(view.text_pos_at_screen_coords(&text, 0, 41, 4), None);
+
+        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 81, 4), None);
+
+        assert_eq!(view.text_pos_at_screen_coords(&text, 78, 41, 4), None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 40, 2, 4),
-            None
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 40, 41, 4),
-            None
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 0, 2, 4),
-            None
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 0, 49, 4),
-            None
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 0, 41, 4),
-            None
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 40, 81, 4),
-            None
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 78, 41, 4),
-            None
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 40, 40 + 7 + 3, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 3, 4),
             Some(3)
         );
 
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 40, 80, 4),
-            Some(3)
-        );
+        assert_eq!(view.text_pos_at_screen_coords(&text, 40, 80, 4), Some(3));
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 41, 40 + 7 + 1, 4),
+            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 1, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 41, 40 + 7 + 4, 4),
+            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 4, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 41, 40 + 7 + 7, 4),
+            view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 7, 4),
             Some(8)
         );
 
+        assert_eq!(view.text_pos_at_screen_coords(&text, 41, 80, 4), Some(8));
+    }
+
+    #[test]
+    fn test_text_pos_at_screen_coords_cjk() {
+        let mut view = View::new(DocumentId::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        let rope = Rope::from_str("Hi! こんにちは皆さん");
+        let text = rope.slice(..);
+
         assert_eq!(
-            view.text_pos_at_screen_coords(&text.slice(..), 41, 80, 4),
-            Some(8)
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            Some(0)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 5, 4),
+            Some(5)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 6, 4),
+            Some(5)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 7, 4),
+            Some(6)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 8, 4),
+            Some(6)
+        );
+    }
+
+    #[test]
+    fn test_text_pos_at_screen_coords_graphemes() {
+        let mut view = View::new(DocumentId::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        let rope = Rope::from_str("Hèl̀l̀ò world!");
+        let text = rope.slice(..);
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            Some(0)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 1, 4),
+            Some(1)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 2, 4),
+            Some(3)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 3, 4),
+            Some(5)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            Some(7)
         );
     }
 }
