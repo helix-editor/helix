@@ -329,9 +329,16 @@ pub struct Selection {
 impl Selection {
     // eq
 
+    #[inline]
     #[must_use]
     pub fn primary(&self) -> Range {
         self.ranges[self.primary_index]
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn primary_mut(&mut self) -> &mut Range {
+        &mut self.ranges[self.primary_index]
     }
 
     /// Ensure selection containing only the primary selection.

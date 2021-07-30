@@ -166,38 +166,26 @@ impl View {
         Some(Position::new(row, col))
     }
 
-    /// Verifies whether a screen position is inside the view
-    /// Returns true when position is inside the view
-    pub fn verify_screen_coords(&self, row: usize, column: usize) -> bool {
-        // 2 for status
-        if row < self.area.y as usize || row > self.area.y as usize + self.area.height as usize - 2
-        {
-            return false;
-        }
-
-        // TODO: not ideal
-        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
-
-        if column < self.area.x as usize + OFFSET
-            || column > self.area.x as usize + self.area.width as usize
-        {
-            return false;
-        }
-        true
-    }
-
     pub fn text_pos_at_screen_coords(
         &self,
         text: &RopeSlice,
-        row: usize,
-        column: usize,
+        row: u16,
+        column: u16,
         tab_width: usize,
     ) -> Option<usize> {
-        if !self.verify_screen_coords(row, column) {
+        // TODO: not ideal
+        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+
+        // 2 for status
+        if row < self.area.top() || row > self.area.bottom().saturating_sub(2) {
             return None;
         }
 
-        let line_number = row - self.area.y as usize + self.first_line;
+        if column < self.area.left() + OFFSET || column > self.area.right() {
+            return None;
+        }
+
+        let line_number = (row - self.area.y) as usize + self.first_line;
 
         if line_number > text.len_lines() - 1 {
             return Some(text.len_chars());
@@ -207,10 +195,7 @@ impl View {
 
         let current_line = text.line(line_number);
 
-        // TODO: not ideal
-        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
-
-        let target = column - OFFSET - self.area.x as usize + self.first_col;
+        let target = (column - OFFSET - self.area.x) as usize + self.first_col;
         let mut selected = 0;
 
         for grapheme in RopeGraphemes::new(current_line) {
@@ -231,7 +216,7 @@ impl View {
 
     /// Translates a screen position to position in the text document.
     /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
-    pub fn pos_at_screen_coords(&self, doc: &Document, row: usize, column: usize) -> Option<usize> {
+    pub fn pos_at_screen_coords(&self, doc: &Document, row: u16, column: u16) -> Option<usize> {
         self.text_pos_at_screen_coords(&doc.text().slice(..), row, column, doc.tab_width())
     }
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)

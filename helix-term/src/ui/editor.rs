@@ -815,25 +815,21 @@ impl Component for EditorView {
                 let editor = &mut cx.editor;
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(
-                        &editor.documents[view.doc],
-                        row as usize,
-                        column as usize,
-                    )
-                    .map(|pos| (pos, view.id))
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|pos| (pos, view.id))
                 });
 
-                if let Some((pos, id)) = result {
-                    let doc = &mut editor.documents[editor.tree.get(id).doc];
+                if let Some((pos, view_id)) = result {
+                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
-                        let selection = doc.selection(id).clone();
-                        doc.set_selection(id, selection.push(Range::point(pos)));
+                        let selection = doc.selection(view_id).clone();
+                        doc.set_selection(view_id, selection.push(Range::point(pos)));
                     } else {
-                        doc.set_selection(id, Selection::point(pos));
+                        doc.set_selection(view_id, Selection::point(pos));
                     }
 
-                    editor.tree.focus = id;
+                    editor.tree.focus = view_id;
 
                     return EventResult::Consumed(None);
                 }
@@ -849,22 +845,15 @@ impl Component for EditorView {
             }) => {
                 let (view, doc) = current!(cx.editor);
 
-                let pos = view.pos_at_screen_coords(doc, row as usize, column as usize);
+                let pos = match view.pos_at_screen_coords(doc, row, column) {
+                    Some(pos) => pos,
+                    None => return EventResult::Ignored,
+                };
 
-                if pos == None {
-                    return EventResult::Ignored;
-                }
-
-                let selection = doc.selection(view.id).clone();
-                let primary_anchor = selection.primary().anchor;
-                let new_selection = selection.transform(|range| -> Range {
-                    if range.anchor == primary_anchor {
-                        return Range::new(primary_anchor, pos.unwrap());
-                    }
-                    range
-                });
-
-                doc.set_selection(view.id, new_selection);
+                let mut selection = doc.selection(view.id).clone();
+                let primary = selection.primary_mut();
+                *primary = Range::new(primary.anchor, pos);
+                doc.set_selection(view.id, selection);
                 EventResult::Consumed(None)
             }
             Event::Mouse(_) => EventResult::Ignored,
