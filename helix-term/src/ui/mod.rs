@@ -11,6 +11,7 @@ mod text;
 
 pub use completion::Completion;
 pub use editor::EditorView;
+use helix_core::Selection;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::Picker;
@@ -123,6 +124,10 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
             editor
                 .open(path.into(), action)
                 .expect("editor.open failed");
+        },
+        |path| {
+            // FIXME: directories are creeping up in filepicker
+            Some((path.clone(), Selection::point(0)))
         },
     )
 }

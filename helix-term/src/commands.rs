@@ -101,13 +101,13 @@ impl<'a> Context<'a> {
     }
 }
 
-enum Align {
+pub enum Align {
     Top,
     Center,
     Bottom,
 }
 
-fn align_view(doc: &Document, view: &mut View, align: Align) {
+pub fn align_view(doc: &Document, view: &mut View, align: Align) {
     let pos = doc
         .selection(view.id)
         .primary()
@@ -2061,6 +2061,7 @@ fn buffer_picker(cx: &mut Context) {
         |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
             editor.switch(*id, Action::Replace);
         },
+        |symbol| None,
     );
     cx.push_layer(Box::new(picker));
 }
@@ -2128,6 +2129,7 @@ fn symbol_picker(cx: &mut Context) {
                             align_view(doc, view, Align::Center);
                         }
                     },
+                    |symbol| None,
                 );
                 compositor.push(Box::new(picker))
             }
@@ -2178,6 +2180,7 @@ pub fn code_action(cx: &mut Context) {
                             }
                         }
                     },
+                    |symbol| None,
                 );
                 compositor.push(Box::new(picker))
             }
@@ -2515,6 +2518,7 @@ fn goto_impl(
                 move |editor: &mut Editor, location, action| {
                     jump_to(editor, location, offset_encoding, action)
                 },
+                |symbol| None,
             );
             compositor.push(Box::new(picker));
         }
