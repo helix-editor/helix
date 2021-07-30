@@ -9,8 +9,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use helix_core::{
-    chars::{char_is_line_ending, char_is_whitespace},
     history::History,
+    indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
@@ -61,12 +61,6 @@ impl<'de> Deserialize<'de> for Mode {
         let s = String::deserialize(deserializer)?;
         s.parse().map_err(de::Error::custom)
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum IndentStyle {
-    Tabs,
-    Spaces(u8),
 }
 
 pub struct Document {
@@ -460,9 +454,7 @@ impl Document {
             doc.detect_language(theme, loader);
         }
 
-        // Detect indentation style and line ending.
-        doc.detect_indent_style();
-        doc.line_ending = auto_detect_line_ending(&doc.text).unwrap_or(DEFAULT_LINE_ENDING);
+        doc.detect_indent_and_line_ending();
 
         Ok(doc)
     }
@@ -580,6 +572,18 @@ impl Document {
         }
     }
 
+    pub fn detect_indent_and_line_ending(&mut self) {
+        self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
+            IndentStyle::from_str(
+                self.language
+                    .as_ref()
+                    .and_then(|config| config.indent.as_ref())
+                    .map_or("  ", |config| config.unit.as_str()), // Fallback to 2 spaces.
+            )
+        });
+        self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
+    }
+
     /// Reload the document from its path.
     pub fn reload(&mut self, view_id: ViewId) -> Result<(), Error> {
         let encoding = &self.encoding;
@@ -598,9 +602,7 @@ impl Document {
         self.append_changes_to_history(view_id);
         self.reset_modified();
 
-        // Detect indentation style and line ending.
-        self.detect_indent_style();
-        self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
+        self.detect_indent_and_line_ending();
 
         Ok(())
     }
@@ -617,132 +619,6 @@ impl Document {
     /// Returns the [`Document`]'s current encoding.
     pub fn encoding(&self) -> &'static encoding_rs::Encoding {
         self.encoding
-    }
-
-    fn detect_indent_style(&mut self) {
-        // Build a histogram of the indentation *increases* between
-        // subsequent lines, ignoring lines that are all whitespace.
-        //
-        // Index 0 is for tabs, the rest are 1-8 spaces.
-        let histogram: [usize; 9] = {
-            let mut histogram = [0; 9];
-            let mut prev_line_is_tabs = false;
-            let mut prev_line_leading_count = 0usize;
-
-            // Loop through the lines, checking for and recording indentation
-            // increases as we go.
-            'outer: for line in self.text.lines().take(1000) {
-                let mut c_iter = line.chars();
-
-                // Is first character a tab or space?
-                let is_tabs = match c_iter.next() {
-                    Some('\t') => true,
-                    Some(' ') => false,
-
-                    // Ignore blank lines.
-                    Some(c) if char_is_line_ending(c) => continue,
-
-                    _ => {
-                        prev_line_is_tabs = false;
-                        prev_line_leading_count = 0;
-                        continue;
-                    }
-                };
-
-                // Count the line's total leading tab/space characters.
-                let mut leading_count = 1;
-                let mut count_is_done = false;
-                for c in c_iter {
-                    match c {
-                        '\t' if is_tabs && !count_is_done => leading_count += 1,
-                        ' ' if !is_tabs && !count_is_done => leading_count += 1,
-
-                        // We stop counting if we hit whitespace that doesn't
-                        // qualify as indent or doesn't match the leading
-                        // whitespace, but we don't exit the loop yet because
-                        // we still want to determine if the line is blank.
-                        c if char_is_whitespace(c) => count_is_done = true,
-
-                        // Ignore blank lines.
-                        c if char_is_line_ending(c) => continue 'outer,
-
-                        _ => break,
-                    }
-
-                    // Bound the worst-case execution time for weird text files.
-                    if leading_count > 256 {
-                        continue 'outer;
-                    }
-                }
-
-                // If there was an increase in indentation over the previous
-                // line, update the histogram with that increase.
-                if (prev_line_is_tabs == is_tabs || prev_line_leading_count == 0)
-                    && prev_line_leading_count < leading_count
-                {
-                    if is_tabs {
-                        histogram[0] += 1;
-                    } else {
-                        let amount = leading_count - prev_line_leading_count;
-                        if amount <= 8 {
-                            histogram[amount] += 1;
-                        }
-                    }
-                }
-
-                // Store this line's leading whitespace info for use with
-                // the next line.
-                prev_line_is_tabs = is_tabs;
-                prev_line_leading_count = leading_count;
-            }
-
-            // Give more weight to tabs, because their presence is a very
-            // strong indicator.
-            histogram[0] *= 2;
-
-            histogram
-        };
-
-        // Find the most frequent indent, its frequency, and the frequency of
-        // the next-most frequent indent.
-        let indent = histogram
-            .iter()
-            .enumerate()
-            .max_by_key(|kv| kv.1)
-            .unwrap()
-            .0;
-        let indent_freq = histogram[indent];
-        let indent_freq_2 = *histogram
-            .iter()
-            .enumerate()
-            .filter(|kv| kv.0 != indent)
-            .map(|kv| kv.1)
-            .max()
-            .unwrap();
-
-        // Use the auto-detected result if we're confident enough in its
-        // accuracy, based on some heuristics.  Otherwise fall back to
-        // the language-based setting.
-        if indent_freq >= 1 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
-            // Use the auto-detected setting.
-            self.indent_style = match indent {
-                0 => IndentStyle::Tabs,
-                _ => IndentStyle::Spaces(indent as u8),
-            };
-        } else {
-            // Fall back to language-based setting.
-            let indent = self
-                .language
-                .as_ref()
-                .and_then(|config| config.indent.as_ref())
-                .map_or("  ", |config| config.unit.as_str()); // fallback to 2 spaces
-
-            self.indent_style = if indent.starts_with(' ') {
-                IndentStyle::Spaces(indent.len() as u8)
-            } else {
-                IndentStyle::Tabs
-            };
-        }
     }
 
     pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
@@ -1002,21 +878,7 @@ impl Document {
     /// TODO: we might not need this function anymore, since the information
     /// is conveniently available in `Document::indent_style` now.
     pub fn indent_unit(&self) -> &'static str {
-        match self.indent_style {
-            IndentStyle::Tabs => "\t",
-            IndentStyle::Spaces(1) => " ",
-            IndentStyle::Spaces(2) => "  ",
-            IndentStyle::Spaces(3) => "   ",
-            IndentStyle::Spaces(4) => "    ",
-            IndentStyle::Spaces(5) => "     ",
-            IndentStyle::Spaces(6) => "      ",
-            IndentStyle::Spaces(7) => "       ",
-            IndentStyle::Spaces(8) => "        ",
-
-            // Unsupported indentation style.  This should never happen,
-            // but just in case fall back to two spaces.
-            _ => "  ",
-        }
+        self.indent_style.as_str()
     }
 
     #[inline]
@@ -1080,7 +942,7 @@ impl Document {
 
 impl Default for Document {
     fn default() -> Self {
-        let text = Rope::from("");
+        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
         Self::from(text, None)
     }
 }
@@ -1205,7 +1067,10 @@ mod test {
 
     #[test]
     fn test_line_ending() {
-        assert_eq!(Document::default().text().to_string(), "");
+        assert_eq!(
+            Document::default().text().to_string(),
+            DEFAULT_LINE_ENDING.as_str()
+        );
     }
 
     macro_rules! test_decode {

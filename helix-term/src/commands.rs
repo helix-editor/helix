@@ -1,5 +1,6 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
@@ -11,7 +12,7 @@ use helix_core::{
 };
 
 use helix_view::{
-    document::{IndentStyle, Mode},
+    document::Mode,
     editor::Action,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -654,8 +655,13 @@ where
                 range.head
             };
 
-            search_fn(text, ch, search_start_pos, count, inclusive)
-                .map_or(range, |pos| range.put_cursor(text, pos, extend))
+            search_fn(text, ch, search_start_pos, count, inclusive).map_or(range, |pos| {
+                if extend {
+                    range.put_cursor(text, pos, true)
+                } else {
+                    Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                }
+            })
         });
         doc.set_selection(view.id, selection);
     })
@@ -1661,7 +1667,7 @@ mod cmd {
             Ok(contents) => {
                 let selection = doc.selection(view.id);
                 let transaction =
-                    Transaction::change_by_selection(doc.text(), &selection, |range| {
+                    Transaction::change_by_selection(doc.text(), selection, |range| {
                         (range.from(), range.to(), Some(contents.as_str().into()))
                     });
 
