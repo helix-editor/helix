@@ -80,3 +80,99 @@ _________________________________________________________________
  --> Thhiss senttencee haass exxtra charracterss.
 
  Once the sentence is correct, move on to the next lesson.
+
+
+
+
+
+
+
+
+
+
+=================================================================
+=                          INSERT MODE                          =
+=================================================================
+
+ Press the i key to enter Insert mode.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Move to a place in the line which is missing text and press
+    i to enter Insert mode. Keys you press will now type text.
+ 3. Enter the missing text.
+ 4. Press <ESC> to exit Insert mode and return to Normal mode.
+ 5. Repeat until the line matches the line below it.
+
+ --> Th stce misg so.
+     This sentence is missing some text.
+
+ Note: If you want to move the cursor while in Insert mode,
+       you may use the arrow keys instead of exiting and
+       reentering Insert mode.
+ Note: The status bar will display your current mode.
+       Notice that when you press i, 'NOR' changes to 'INS'.
+
+
+=================================================================
+=                      MORE ON INSERT MODE                      =
+=================================================================
+
+ As you saw, you can press i to enter Insert mode at the current
+ position of the cursor. There are a few other ways you can
+ enter Insert mode at different locations.
+
+ Common examples of insertion commands include:
+   i - Insert before the selection.
+   a - Insert after the selection. (a means "append")
+   I - Insert at the start of the line.
+   A - Insert at the end of the line.
+
+ 1. Move to anywhere in the line below marked -->.
+ 2. Press A (<SHIFT> + a), your cursor will move to the end of
+    the line and you will be able to type.
+ 3. Type the text necessary to match the line below.
+
+ --> This sentence is miss
+     This sentence is missing some text.
+
+
+=================================================================
+=                         SAVING A FILE                         =
+=================================================================
+
+ 1. Exit Helix using :q! as explained before, or open a new
+    terminal.
+ 2. Open a file in Helix by running: hx FILENAME
+ 3. Make some edits to the file.
+ 4. Press the : key to enter command mode.
+ 5. Type w or write, and press <ENTER> to save the file.
+
+ You can also use wq or write-quit to save and exit.
+
+ Note: If there are any unsaved changes to a file, a plus [+]
+       will appear next to the file name in the status bar.
+
+
+
+
+
+
+
+
+=================================================================
+=                             RECAP                             =
+=================================================================
+
+ * Use the h,j,k,l keys to move the cursor.
+
+ * Press : to enter command mode.
+   * The q/quit and q!/quit! commands will exit Helix. The
+     former fails when there are unsaved changes. The latter
+     discards them.
+   * The w/write command will save the file.
+   * The wq/write-quit command will do both.
+
+ * Press d to delete the character at the cursor.
+
+ * Press i to enter Insert mode and type text. Press <ESC> to
+   return to Normal mode.
