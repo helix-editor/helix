@@ -140,6 +140,8 @@ _________________________________________________________________
 =                         SAVING A FILE                         =
 =================================================================
 
+ Use :w/:write to save a file.
+
  1. Exit Helix using :q! as explained before, or open a new
     terminal.
  2. Open a file in Helix by running: hx FILENAME
@@ -149,6 +151,8 @@ _________________________________________________________________
 
  You can also use wq or write-quit to save and exit.
 
+ Note: You can optionally enter a filepath after the w/write
+       command in order to save to that path.
  Note: If there are any unsaved changes to a file, a plus [+]
        will appear next to the file name in the status bar.
 
