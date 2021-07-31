@@ -2061,7 +2061,15 @@ fn buffer_picker(cx: &mut Context) {
         |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
             editor.switch(*id, Action::Replace);
         },
-        |editor, symbol| None,
+        |editor, (id, path)| {
+            let doc = &editor.documents.get(*id)?;
+            let &view_id = doc.selections().keys().next()?;
+            let line = doc
+                .selection(view_id)
+                .primary()
+                .cursor_line(doc.text().slice(..));
+            Some((path.clone()?, line))
+        },
     );
     cx.push_layer(Box::new(picker));
 }

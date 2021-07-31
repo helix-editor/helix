@@ -901,6 +901,10 @@ impl Document {
         &self.selections[&view_id]
     }
 
+    pub fn selections(&self) -> &HashMap<ViewId, Selection> {
+        &self.selections
+    }
+
     pub fn relative_path(&self) -> Option<PathBuf> {
         let cwdir = std::env::current_dir().expect("couldn't determine current directory");
 

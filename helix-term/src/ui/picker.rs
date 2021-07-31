@@ -39,6 +39,7 @@ pub struct Picker<T> {
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
+    #[allow(clippy::type_complexity)]
     preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, usize)>>,
 }
 
