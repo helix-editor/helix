@@ -53,6 +53,8 @@ pub trait Component: Any + AnyComponent {
         (None, CursorKind::Hidden)
     }
 
+    fn prepare_for_render(&mut self, _ctx: &Context) {}
+
     /// May be used by the parent component to compute the child area.
     /// viewport is the maximum allowed area, and the child should stay within those bounds.
     fn required_size(&mut self, _viewport: (u16, u16)) -> Option<(u16, u16)> {
@@ -137,8 +139,9 @@ impl Compositor {
 
         let area = *surface.area();
 
-        for layer in &self.layers {
-            layer.render(area, surface, cx)
+        for layer in &mut self.layers {
+            layer.prepare_for_render(cx);
+            layer.render(area, surface, cx);
         }
 
         let (pos, kind) = self.cursor(area, cx.editor);

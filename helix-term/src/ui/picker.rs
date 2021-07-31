@@ -367,7 +367,6 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_up();
-                self.calculate_preview(cx.editor);
             }
             KeyEvent {
                 code: KeyCode::Down,
@@ -381,7 +380,6 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_down();
-                self.calculate_preview(cx.editor);
             }
             KeyEvent {
                 code: KeyCode::Esc, ..
@@ -427,18 +425,20 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.save_filter();
-                self.calculate_preview(cx.editor);
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
                     // TODO: recalculate only if pattern changed
                     self.score();
-                    self.calculate_preview(cx.editor);
                 }
             }
         }
 
         EventResult::Consumed(None)
+    }
+
+    fn prepare_for_render(&mut self, cx: &Context) {
+        self.calculate_preview(cx.editor)
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
