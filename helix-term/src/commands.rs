@@ -2132,9 +2132,14 @@ fn symbol_picker(cx: &mut Context) {
                     move |editor, symbol| {
                         let view = editor.tree.get(editor.tree.focus);
                         let doc = &editor.documents[view.doc];
-                        let range =
-                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding);
-                        doc.path().cloned().zip(range)
+                        // let range =
+                        //     lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding);
+                        // Calculating the exact range is expensive, so use line number only
+                        let pos = doc
+                            .text()
+                            .line_to_char(symbol.location.range.start.line as usize);
+                        let range = Range::point(pos);
+                        doc.path().cloned().zip(Some(range))
                     },
                 );
                 compositor.push(Box::new(picker))
@@ -2186,7 +2191,7 @@ pub fn code_action(cx: &mut Context) {
                             }
                         }
                     },
-                    |editor, symbol| None,
+                    |_editor, _action| None,
                 );
                 compositor.push(Box::new(picker))
             }

@@ -14,7 +14,7 @@ use fuzzy_matcher::FuzzyMatcher;
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{Position, Range, Selection};
+use helix_core::{hashmap, Position, Range, Selection};
 use helix_view::{
     document::canonicalize_path,
     editor::Action,
@@ -34,7 +34,7 @@ pub struct Picker<T> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    preview_cache: HashMap<(PathBuf, Range), (Document, View)>,
+    preview_cache: HashMap<PathBuf, (Document, HashMap<Range, View>)>,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
@@ -290,19 +290,20 @@ impl<T> Picker<T> {
         {
             // TODO: store only the doc as key and map of range -> view as value ?
             // will improve perfomance for pickers where most items are from same file (symbol, goto)
-            let &mut (ref mut doc, ref mut view) = self
-                .preview_cache
-                .entry((path.clone(), range))
-                .or_insert_with(|| {
+            let &mut (ref mut doc, ref mut range_map) =
+                self.preview_cache.entry(path.clone()).or_insert_with(|| {
                     let doc =
                         Document::open(path, None, Some(&editor.theme), Some(&editor.syn_loader))
                             .unwrap();
                     let view = View::new(doc.id());
-                    (doc, view)
+                    (doc, hashmap!(range => view))
                 });
+            let view = range_map
+                .entry(range)
+                .or_insert_with(|| View::new(doc.id()));
 
             doc.set_selection(view.id, Selection::from(range));
-            commands::align_view(doc, view, Align::Center);
+            commands::align_view(doc, view, Align::Top);
         }
     }
 
@@ -480,7 +481,11 @@ impl<T: 'static> Component for Picker<T> {
             .selection()
             .and_then(|current| (self.preview_fn)(cx.editor, current))
             .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
-            .and_then(|(path, range)| self.preview_cache.get(&(path, range)))
+            .and_then(|(path, range)| {
+                self.preview_cache
+                    .get(&path)
+                    .and_then(|(doc, range_map)| Some((doc, range_map.get(&range)?)))
+            })
         {
             item_width = inner.width * 40 / 100;
 
