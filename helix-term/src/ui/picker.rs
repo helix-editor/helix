@@ -38,7 +38,7 @@ pub struct Picker<T> {
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
-    preview_fn: Box<dyn Fn(&T) -> Option<(PathBuf, Range)>>,
+    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, Range)>>,
 }
 
 impl<T> Picker<T> {
@@ -46,7 +46,7 @@ impl<T> Picker<T> {
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
-        preview_fn: impl Fn(&T) -> Option<(PathBuf, Range)> + 'static,
+        preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, Range)> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".to_string(),
@@ -282,21 +282,21 @@ impl<T> Picker<T> {
         }
     }
 
-    fn calculate_preview(
-        &mut self,
-        theme: &helix_view::Theme,
-        loader: &helix_core::syntax::Loader,
-    ) {
+    fn calculate_preview(&mut self, editor: &Editor) {
         if let Some((path, range)) = self
             .selection()
-            .and_then(|current| (self.preview_fn)(current))
+            .and_then(|current| (self.preview_fn)(editor, current))
             .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
         {
+            // TODO: store only the doc as key and map of range -> view as value ?
+            // will improve perfomance for pickers where most items are from same file (symbol, goto)
             let &mut (ref mut doc, ref mut view) = self
                 .preview_cache
                 .entry((path.clone(), range))
                 .or_insert_with(|| {
-                    let doc = Document::open(path, None, Some(theme), Some(loader)).unwrap();
+                    let doc =
+                        Document::open(path, None, Some(&editor.theme), Some(&editor.syn_loader))
+                            .unwrap();
                     let view = View::new(doc.id());
                     (doc, view)
                 });
@@ -364,7 +364,7 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_up();
-                self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
+                self.calculate_preview(cx.editor);
             }
             KeyEvent {
                 code: KeyCode::Down,
@@ -378,7 +378,7 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_down();
-                self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
+                self.calculate_preview(cx.editor);
             }
             KeyEvent {
                 code: KeyCode::Esc, ..
@@ -424,13 +424,13 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.save_filter();
-                self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
+                self.calculate_preview(cx.editor);
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
                     // TODO: recalculate only if pattern changed
                     self.score();
-                    self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
+                    self.calculate_preview(cx.editor);
                 }
             }
         }
@@ -478,7 +478,7 @@ impl<T: 'static> Component for Picker<T> {
 
         if let Some((doc, view)) = self
             .selection()
-            .and_then(|current| (self.preview_fn)(current))
+            .and_then(|current| (self.preview_fn)(cx.editor, current))
             .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
             .and_then(|(path, range)| self.preview_cache.get(&(path, range)))
         {

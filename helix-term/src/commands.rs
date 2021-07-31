@@ -2061,7 +2061,7 @@ fn buffer_picker(cx: &mut Context) {
         |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
             editor.switch(*id, Action::Replace);
         },
-        |symbol| None,
+        |editor, symbol| None,
     );
     cx.push_layer(Box::new(picker));
 }
@@ -2125,11 +2125,17 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::single(range.to(), range.from()));
+                            doc.set_selection(view.id, Selection::from(range));
                             align_view(doc, view, Align::Center);
                         }
                     },
-                    |symbol| None,
+                    move |editor, symbol| {
+                        let view = editor.tree.get(editor.tree.focus);
+                        let doc = &editor.documents[view.doc];
+                        let range =
+                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding);
+                        doc.path().cloned().zip(range)
+                    },
                 );
                 compositor.push(Box::new(picker))
             }
@@ -2180,7 +2186,7 @@ pub fn code_action(cx: &mut Context) {
                             }
                         }
                     },
-                    |symbol| None,
+                    |editor, symbol| None,
                 );
                 compositor.push(Box::new(picker))
             }
@@ -2518,7 +2524,7 @@ fn goto_impl(
                 move |editor: &mut Editor, location, action| {
                     jump_to(editor, location, offset_encoding, action)
                 },
-                |symbol| None,
+                |editor, symbol| None,
             );
             compositor.push(Box::new(picker));
         }
@@ -3476,8 +3482,7 @@ fn keep_primary_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let range = doc.selection(view.id).primary();
-    let selection = Selection::single(range.anchor, range.head);
-    doc.set_selection(view.id, selection);
+    doc.set_selection(view.id, Selection::from(range));
 }
 
 fn completion(cx: &mut Context) {

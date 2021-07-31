@@ -125,7 +125,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
                 .open(path.into(), action)
                 .expect("editor.open failed");
         },
-        |path| {
+        |_editor, path| {
             // FIXME: directories are creeping up in filepicker
             Some((path.clone(), Range::point(0)))
         },
