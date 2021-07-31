@@ -34,11 +34,12 @@ pub struct Picker<T> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    preview_cache: HashMap<PathBuf, (Document, HashMap<Range, View>)>,
+    // Caches paths to docs to line number to view
+    preview_cache: HashMap<PathBuf, (Document, HashMap<usize, View>)>,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
-    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, Range)>>,
+    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, usize)>>,
 }
 
 impl<T> Picker<T> {
@@ -46,7 +47,7 @@ impl<T> Picker<T> {
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
-        preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, Range)> + 'static,
+        preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, usize)> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".to_string(),
@@ -283,7 +284,7 @@ impl<T> Picker<T> {
     }
 
     fn calculate_preview(&mut self, editor: &Editor) {
-        if let Some((path, range)) = self
+        if let Some((path, line)) = self
             .selection()
             .and_then(|current| (self.preview_fn)(editor, current))
             .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
@@ -296,14 +297,14 @@ impl<T> Picker<T> {
                         Document::open(path, None, Some(&editor.theme), Some(&editor.syn_loader))
                             .unwrap();
                     let view = View::new(doc.id());
-                    (doc, hashmap!(range => view))
+                    (doc, hashmap!(line => view))
                 });
-            let view = range_map
-                .entry(range)
-                .or_insert_with(|| View::new(doc.id()));
+            let view = range_map.entry(line).or_insert_with(|| View::new(doc.id()));
 
+            let range = Range::point(doc.text().line_to_char(line));
             doc.set_selection(view.id, Selection::from(range));
-            commands::align_view(doc, view, Align::Top);
+            // FIXME: gets aligned top instead of center
+            commands::align_view(doc, view, Align::Center);
         }
     }
 
@@ -480,11 +481,11 @@ impl<T: 'static> Component for Picker<T> {
         if let Some((doc, view)) = self
             .selection()
             .and_then(|current| (self.preview_fn)(cx.editor, current))
-            .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
-            .and_then(|(path, range)| {
+            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
+            .and_then(|(path, line)| {
                 self.preview_cache
                     .get(&path)
-                    .and_then(|(doc, range_map)| Some((doc, range_map.get(&range)?)))
+                    .and_then(|(doc, range_map)| Some((doc, range_map.get(&line)?)))
             })
         {
             item_width = inner.width * 40 / 100;

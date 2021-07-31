@@ -11,7 +11,6 @@ mod text;
 
 pub use completion::Completion;
 pub use editor::EditorView;
-use helix_core::Range;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::Picker;
@@ -127,7 +126,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
         },
         |_editor, path| {
             // FIXME: directories are creeping up in filepicker
-            Some((path.clone(), Range::point(0)))
+            Some((path.clone(), 0))
         },
     )
 }
