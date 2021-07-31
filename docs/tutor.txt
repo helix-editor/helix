@@ -176,3 +176,51 @@ _________________________________________________________________
 
  * Press i to enter Insert mode and type text. Press <ESC> to
    return to Normal mode.
+
+
+
+
+
+
+=================================================================
+=                    MOTIONS AND SELECTIONS                     =
+=================================================================
+
+ Press w to select forward until the next word.
+
+ The d key doesn't actually delete the character at the cursor,
+ it deletes all selected text. Your cursor is like a
+ single-character selection.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Move to the beginning of a word that needs to be deleted.
+ 3. Press w to select until the beginning of the next word.
+ 4. Press d to delete the selection.
+ 5. Repeat for all extra words in the line.
+
+ --> This sentence pencil has vacuum extra words in the it.
+
+
+
+
+
+
+=================================================================
+=                        MORE ON MOTIONS                        =
+=================================================================
+
+ As you saw, pressing w moves the cursor forward until the start
+ of the next word, selecting the text traversed. This is useful
+ for moving around text and for selecting text to operate on.
+
+ Some common motions include:
+   w - Move forward to before the beginning of the next word.
+   e - Move forward to the end of the current word.
+   b - Move backward to the beginning of the current word.
+
+ The w,e,b motions also have counterparts - W,E,B - which
+ traverse WORDS instead of words. WORDS are only separated by
+ whitespace, whereas words can be separated by other characters
+ in addition to whitespace.
+
+ All of these motions select the text they traverse.
