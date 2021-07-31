@@ -46,7 +46,7 @@ use std::borrow::Cow;
 /// single grapheme inward from the range's edge.  There are a
 /// variety of helper methods on `Range` for working in terms of
 /// that block cursor, all of which have `cursor` in their name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Range {
     /// The anchor of the range: the side that doesn't move when extending.
     pub anchor: usize,
@@ -494,6 +494,12 @@ impl Selection {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.ranges.len()
+    }
+}
+
+impl From<Range> for Selection {
+    fn from(range: Range) -> Self {
+        Self::single(range.anchor, range.head)
     }
 }
 

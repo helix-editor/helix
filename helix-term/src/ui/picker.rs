@@ -11,10 +11,10 @@ use tui::{
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{Position, Selection};
+use helix_core::{Position, Range, Selection};
 use helix_view::{
     document::canonicalize_path,
     editor::Action,
@@ -34,10 +34,11 @@ pub struct Picker<T> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
+    preview_cache: HashMap<(PathBuf, Range), (Document, View)>,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
-    preview_fn: Box<dyn Fn(&T) -> Option<(PathBuf, Selection)>>,
+    preview_fn: Box<dyn Fn(&T) -> Option<(PathBuf, Range)>>,
 }
 
 impl<T> Picker<T> {
@@ -45,7 +46,7 @@ impl<T> Picker<T> {
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
-        preview_fn: impl Fn(&T) -> Option<(PathBuf, Selection)> + 'static,
+        preview_fn: impl Fn(&T) -> Option<(PathBuf, Range)> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".to_string(),
@@ -63,6 +64,7 @@ impl<T> Picker<T> {
             filters: Vec::new(),
             cursor: 0,
             prompt,
+            preview_cache: HashMap::new(),
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
             preview_fn: Box::new(preview_fn),
@@ -280,6 +282,30 @@ impl<T> Picker<T> {
         }
     }
 
+    fn calculate_preview(
+        &mut self,
+        theme: &helix_view::Theme,
+        loader: &helix_core::syntax::Loader,
+    ) {
+        if let Some((path, range)) = self
+            .selection()
+            .and_then(|current| (self.preview_fn)(current))
+            .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
+        {
+            let &mut (ref mut doc, ref mut view) = self
+                .preview_cache
+                .entry((path.clone(), range))
+                .or_insert_with(|| {
+                    let doc = Document::open(path, None, Some(theme), Some(loader)).unwrap();
+                    let view = View::new(doc.id());
+                    (doc, view)
+                });
+
+            doc.set_selection(view.id, Selection::from(range));
+            commands::align_view(doc, view, Align::Center);
+        }
+    }
+
     pub fn selection(&self) -> Option<&T> {
         self.matches
             .get(self.cursor)
@@ -336,7 +362,10 @@ impl<T: 'static> Component for Picker<T> {
             | KeyEvent {
                 code: KeyCode::Char('p'),
                 modifiers: KeyModifiers::CONTROL,
-            } => self.move_up(),
+            } => {
+                self.move_up();
+                self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
+            }
             KeyEvent {
                 code: KeyCode::Down,
                 ..
@@ -347,7 +376,10 @@ impl<T: 'static> Component for Picker<T> {
             | KeyEvent {
                 code: KeyCode::Char('n'),
                 modifiers: KeyModifiers::CONTROL,
-            } => self.move_down(),
+            } => {
+                self.move_down();
+                self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
+            }
             KeyEvent {
                 code: KeyCode::Esc, ..
             }
@@ -355,6 +387,7 @@ impl<T: 'static> Component for Picker<T> {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
+                self.preview_cache.clear();
                 return close_fn;
             }
             KeyEvent {
@@ -364,6 +397,7 @@ impl<T: 'static> Component for Picker<T> {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::Replace);
                 }
+                self.preview_cache.clear();
                 return close_fn;
             }
             KeyEvent {
@@ -382,6 +416,7 @@ impl<T: 'static> Component for Picker<T> {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
                 }
+                self.preview_cache.clear();
                 return close_fn;
             }
             KeyEvent {
@@ -389,11 +424,13 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.save_filter();
+                self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
                     // TODO: recalculate only if pattern changed
                     self.score();
+                    self.calculate_preview(&cx.editor.theme, &cx.editor.syn_loader);
                 }
             }
         }
@@ -439,19 +476,13 @@ impl<T: 'static> Component for Picker<T> {
         let inner = Rect::new(inner.x + 3, inner.y + 2, inner.width - 3, inner.height - 2);
         let mut item_width = inner.width;
 
-        if let Some((path, selection)) = self
+        if let Some((doc, view)) = self
             .selection()
             .and_then(|current| (self.preview_fn)(current))
-            .and_then(|(path, selection)| canonicalize_path(&path).ok().zip(Some(selection)))
+            .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
+            .and_then(|(path, range)| self.preview_cache.get(&(path, range)))
         {
             item_width = inner.width * 40 / 100;
-
-            let (theme, loader) = (&cx.editor.theme, &cx.editor.syn_loader);
-            let mut doc = Document::open(path, None, Some(theme), Some(loader)).unwrap();
-            let mut view = View::new(doc.id());
-
-            doc.set_selection(view.id, selection);
-            commands::align_view(&doc, &mut view, Align::Center);
 
             for y in inner.top()..inner.bottom() {
                 surface
@@ -466,9 +497,17 @@ impl<T: 'static> Component for Picker<T> {
                 inner.width * 60 / 100,
                 inner.height,
             );
-            // FIXME: the last line will not be highlighted because of a -1 in View::last_line
+            // FIXME: last line will not be highlighted because of a -1 in View::last_line
+            let mut view = view.clone();
             view.area = viewport;
-            self.render_buffer(&doc, &view, viewport, surface, theme, loader);
+            self.render_buffer(
+                doc,
+                &view,
+                viewport,
+                surface,
+                &cx.editor.theme,
+                &cx.editor.syn_loader,
+            );
         }
 
         let style = cx.editor.theme.get("ui.text");

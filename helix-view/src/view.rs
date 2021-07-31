@@ -12,7 +12,7 @@ pub const PADDING: usize = 5;
 
 type Jump = (DocumentId, Selection);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JumpList {
     jumps: Vec<Jump>,
     current: usize,
@@ -59,7 +59,7 @@ impl JumpList {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct View {
     pub id: ViewId,
     pub doc: DocumentId,
