@@ -104,9 +104,10 @@ impl EditorView {
         self.render_statusline(doc, view, area, surface, theme, is_focused);
     }
 
+    /// Render a document into a Rect with syntax highlighting,
+    /// diagnostics, matching brackets and selections.
     #[allow(clippy::too_many_arguments)]
-    pub fn render_buffer(
-        &self,
+    pub fn render_doc(
         doc: &Document,
         view: &View,
         viewport: Rect,
@@ -116,9 +117,7 @@ impl EditorView {
         loader: &syntax::Loader,
     ) {
         let text = doc.text().slice(..);
-
         let last_line = view.last_line(doc);
-
         let range = {
             // calculate viewport byte ranges
             let start = text.line_to_byte(view.first_line);
@@ -128,7 +127,7 @@ impl EditorView {
         };
 
         // TODO: range doesn't actually restrict source, just highlight range
-        let highlights: Vec<_> = match doc.syntax() {
+        let highlights = match doc.syntax() {
             Some(syntax) => {
                 let scopes = theme.scopes();
                 syntax
@@ -150,20 +149,16 @@ impl EditorView {
                                     Some(config_ref)
                                 })
                     })
+                    .map(|event| event.unwrap())
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
-            None => vec![Ok(HighlightEvent::Source {
+            None => vec![HighlightEvent::Source {
                 start: range.start,
                 end: range.end,
-            })],
-        };
-        let mut spans = Vec::new();
-        let mut visual_x = 0u16;
-        let mut line = 0u16;
-        let tab_width = doc.tab_width();
-        let tab = " ".repeat(tab_width);
-
-        let highlights = highlights.into_iter().map(|event| match event.unwrap() {
+            }],
+        }
+        .into_iter()
+        .map(|event| match event {
             // convert byte offsets to char offset
             HighlightEvent::Source { start, end } => {
                 let start = ensure_grapheme_boundary_next(text, text.byte_to_char(start));
@@ -250,6 +245,12 @@ impl EditorView {
                 .collect(),
         ));
 
+        let mut spans = Vec::new();
+        let mut visual_x = 0u16;
+        let mut line = 0u16;
+        let tab_width = doc.tab_width();
+        let tab = " ".repeat(tab_width);
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -323,7 +324,72 @@ impl EditorView {
             }
         }
 
-        // render gutters
+        if is_focused {
+            let screen = {
+                let start = text.line_to_char(view.first_line);
+                let end = text.line_to_char(last_line + 1) + 1; // +1 for cursor at end of text.
+                Range::new(start, end)
+            };
+
+            let selection = doc.selection(view.id);
+
+            for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
+                let head = view.screen_coords_at_pos(
+                    doc,
+                    text,
+                    if selection.head > selection.anchor {
+                        selection.head - 1
+                    } else {
+                        selection.head
+                    },
+                );
+                if head.is_some() {
+                    // TODO: set cursor position for IME
+                    if let Some(syntax) = doc.syntax() {
+                        use helix_core::match_brackets;
+                        let pos = doc
+                            .selection(view.id)
+                            .primary()
+                            .cursor(doc.text().slice(..));
+                        let pos = match_brackets::find(syntax, doc.text(), pos)
+                            .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
+
+                        if let Some(pos) = pos {
+                            // ensure col is on screen
+                            if (pos.col as u16) < viewport.width + view.first_col as u16
+                                && pos.col >= view.first_col
+                            {
+                                let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
+                                    Style::default()
+                                        .add_modifier(Modifier::REVERSED)
+                                        .add_modifier(Modifier::DIM)
+                                });
+
+                                surface
+                                    .get_mut(
+                                        viewport.x + pos.col as u16,
+                                        viewport.y + pos.row as u16,
+                                    )
+                                    .set_style(style);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_gutter(
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+        is_focused: bool,
+    ) {
+        let text = doc.text().slice(..);
+        let last_line = view.last_line(doc);
 
         let linenr: Style = theme.get("ui.linenr");
         let warning: Style = theme.get("warning");
@@ -368,7 +434,7 @@ impl EditorView {
             );
         }
 
-        // render selections and selected linenr(s)
+        // render selected linenr(s)
         let linenr_select: Style = theme
             .try_get("ui.linenr.selected")
             .unwrap_or_else(|| theme.get("ui.linenr"));
@@ -407,40 +473,24 @@ impl EditorView {
                         5,
                         linenr_select,
                     );
-
-                    // TODO: set cursor position for IME
-                    if let Some(syntax) = doc.syntax() {
-                        use helix_core::match_brackets;
-                        let pos = doc
-                            .selection(view.id)
-                            .primary()
-                            .cursor(doc.text().slice(..));
-                        let pos = match_brackets::find(syntax, doc.text(), pos)
-                            .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
-
-                        if let Some(pos) = pos {
-                            // ensure col is on screen
-                            if (pos.col as u16) < viewport.width + view.first_col as u16
-                                && pos.col >= view.first_col
-                            {
-                                let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
-                                    Style::default()
-                                        .add_modifier(Modifier::REVERSED)
-                                        .add_modifier(Modifier::DIM)
-                                });
-
-                                surface
-                                    .get_mut(
-                                        viewport.x + pos.col as u16,
-                                        viewport.y + pos.row as u16,
-                                    )
-                                    .set_style(style);
-                            }
-                        }
-                    }
                 }
             }
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_buffer(
+        &self,
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+        is_focused: bool,
+        loader: &syntax::Loader,
+    ) {
+        Self::render_doc(doc, view, viewport, surface, theme, is_focused, loader);
+        Self::render_gutter(doc, view, viewport, surface, theme, is_focused);
     }
 
     pub fn render_diagnostics(

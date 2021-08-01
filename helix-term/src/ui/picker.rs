@@ -1,6 +1,7 @@
 use crate::{
     commands::{self, Align},
     compositor::{Component, Compositor, Context, EventResult},
+    ui::EditorView,
 };
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui::{
@@ -78,161 +79,6 @@ impl<T> Picker<T> {
         picker
     }
 
-    // TODO: Copied from EditorView::render_buffer, reuse
-    #[allow(clippy::too_many_arguments)]
-    fn render_buffer(
-        &self,
-        doc: &Document,
-        view: &helix_view::View,
-        viewport: Rect,
-        surface: &mut Surface,
-        theme: &helix_view::Theme,
-        loader: &helix_core::syntax::Loader,
-    ) {
-        let text = doc.text().slice(..);
-
-        let last_line = view.last_line(doc);
-
-        let range = {
-            // calculate viewport byte ranges
-            let start = text.line_to_byte(view.first_line);
-            let end = text.line_to_byte(last_line + 1);
-
-            start..end
-        };
-
-        // TODO: range doesn't actually restrict source, just highlight range
-        let highlights: Vec<_> = match doc.syntax() {
-            Some(syntax) => {
-                let scopes = theme.scopes();
-                syntax
-                    .highlight_iter(text.slice(..), Some(range), None, |language| {
-                        loader
-                            .language_config_for_scope(&format!("source.{}", language))
-                            .and_then(|language_config| {
-                                let config = language_config.highlight_config(scopes)?;
-                                let config_ref = config.as_ref();
-                                // SAFETY: the referenced `HighlightConfiguration` behind
-                                // the `Arc` is guaranteed to remain valid throughout the
-                                // duration of the highlight.
-                                let config_ref = unsafe {
-                                    std::mem::transmute::<
-                                        _,
-                                        &'static helix_core::syntax::HighlightConfiguration,
-                                    >(config_ref)
-                                };
-                                Some(config_ref)
-                            })
-                    })
-                    .collect() // TODO: we collect here to avoid holding the lock, fix later
-            }
-            None => vec![Ok(helix_core::syntax::HighlightEvent::Source {
-                start: range.start,
-                end: range.end,
-            })],
-        };
-        let mut spans = Vec::new();
-        let mut visual_x = 0u16;
-        let mut line = 0u16;
-        let tab_width = doc.tab_width();
-        let tab = " ".repeat(tab_width);
-
-        let highlights = highlights.into_iter().map(|event| match event.unwrap() {
-            // convert byte offsets to char offset
-            helix_core::syntax::HighlightEvent::Source { start, end } => {
-                let start = helix_core::graphemes::ensure_grapheme_boundary_next(
-                    text,
-                    text.byte_to_char(start),
-                );
-                let end = helix_core::graphemes::ensure_grapheme_boundary_next(
-                    text,
-                    text.byte_to_char(end),
-                );
-                helix_core::syntax::HighlightEvent::Source { start, end }
-            }
-            event => event,
-        });
-
-        // let selections = doc.selection(view.id);
-        // let primary_idx = selections.primary_index();
-        // let selection_scope = theme
-        //     .find_scope_index("ui.selection")
-        //     .expect("no selection scope found!");
-
-        'outer: for event in highlights {
-            match event {
-                helix_core::syntax::HighlightEvent::HighlightStart(span) => {
-                    spans.push(span);
-                }
-                helix_core::syntax::HighlightEvent::HighlightEnd => {
-                    spans.pop();
-                }
-                helix_core::syntax::HighlightEvent::Source { start, end } => {
-                    // `unwrap_or_else` part is for off-the-end indices of
-                    // the rope, to allow cursor highlighting at the end
-                    // of the rope.
-                    let text = text.get_slice(start..end).unwrap_or_else(|| " ".into());
-
-                    use helix_core::graphemes::{grapheme_width, RopeGraphemes};
-
-                    let style = spans.iter().fold(theme.get("ui.text"), |acc, span| {
-                        let style = theme.get(theme.scopes()[span.0].as_str());
-                        acc.patch(style)
-                    });
-
-                    for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < view.first_col as u16
-                            || visual_x >= viewport.width + view.first_col as u16;
-
-                        if helix_core::LineEnding::from_rope_slice(&grapheme).is_some() {
-                            if !out_of_bounds {
-                                // we still want to render an empty cell with the style
-                                surface.set_string(
-                                    viewport.x + visual_x - view.first_col as u16,
-                                    viewport.y + line,
-                                    " ",
-                                    style,
-                                );
-                            }
-
-                            visual_x = 0;
-                            line += 1;
-
-                            // TODO: with proper iter this shouldn't be necessary
-                            if line >= viewport.height {
-                                break 'outer;
-                            }
-                        } else {
-                            let grapheme = Cow::from(grapheme);
-
-                            let (grapheme, width) = if grapheme == "\t" {
-                                // make sure we display tab as appropriate amount of spaces
-                                (tab.as_str(), tab_width)
-                            } else {
-                                // Cow will prevent allocations if span contained in a single slice
-                                // which should really be the majority case
-                                let width = grapheme_width(&grapheme);
-                                (grapheme.as_ref(), width)
-                            };
-
-                            if !out_of_bounds {
-                                // if we're offscreen just keep going until we hit a new line
-                                surface.set_string(
-                                    viewport.x + visual_x - view.first_col as u16,
-                                    viewport.y + line,
-                                    grapheme,
-                                    style,
-                                );
-                            }
-
-                            visual_x = visual_x.saturating_add(width as u16);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     pub fn score(&mut self) {
         // need to borrow via pattern match otherwise it complains about simultaneous borrow
         let Self {
@@ -288,7 +134,7 @@ impl<T> Picker<T> {
         if let Some((path, line)) = self
             .selection()
             .and_then(|current| (self.preview_fn)(editor, current))
-            .and_then(|(path, range)| canonicalize_path(&path).ok().zip(Some(range)))
+            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
         {
             // TODO: store only the doc as key and map of range -> view as value ?
             // will improve perfomance for pickers where most items are from same file (symbol, goto)
@@ -507,12 +353,13 @@ impl<T: 'static> Component for Picker<T> {
             // FIXME: last line will not be highlighted because of a -1 in View::last_line
             let mut view = view.clone();
             view.area = viewport;
-            self.render_buffer(
+            EditorView::render_doc(
                 doc,
                 &view,
                 viewport,
                 surface,
                 &cx.editor.theme,
+                true, // is_focused
                 &cx.editor.syn_loader,
             );
         }
