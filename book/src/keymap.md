@@ -53,7 +53,7 @@
 | `I`         | Insert at the start of the line                 |
 | `A`         | Insert at the end of the line                   |
 | `o`         | Open new line below selection                   |
-| `o`         | Open new line above selection                   |
+| `O`         | Open new line above selection                   |
 | `u`         | Undo change                                     |
 | `U`         | Redo change                                     |
 | `y`         | Yank selection                                  |
