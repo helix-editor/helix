@@ -11,6 +11,7 @@ use tui::{
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
+use tui::widgets::Widget;
 
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
@@ -22,6 +23,139 @@ use helix_view::{
     graphics::{Color, CursorKind, Rect, Style},
     Document, Editor, View,
 };
+
+pub struct FilePicker<T: 'static + Clone> {
+    picker: Picker<T>,
+    preview: Preview<T>,
+}
+
+impl<T: 'static + Clone> FilePicker<T> {
+    pub fn new(
+        options: Vec<T>,
+        format_fn: impl Fn(&T) -> Cow<str> + 'static,
+        callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
+        preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, usize)> + 'static,
+    ) -> Self {
+        Self {
+            picker: Picker::new(options, format_fn, callback_fn),
+            preview: Preview::new(preview_fn),
+        }
+    }
+}
+
+impl<T: 'static + Clone> Component for FilePicker<T> {
+    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let area = inner_rect(area);
+        let picker_area = Rect::new(area.x, area.y, area.width / 2, area.height);
+        let preview_area = Rect::new(
+            area.x + picker_area.width,
+            area.y,
+            area.width / 2,
+            area.height,
+        );
+        self.picker.render(picker_area, surface, cx);
+        self.preview.render(preview_area, surface, cx);
+    }
+
+    fn prepare_for_render(&mut self, cx: &Context) {
+        self.preview.current = self.picker.selection().cloned();
+        self.preview.calculate_preview(cx.editor);
+    }
+
+    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+        let result = self.picker.handle_event(event, ctx);
+        self.preview.current = self.picker.selection().cloned();
+        result
+    }
+
+    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+        self.picker.cursor(area, ctx)
+    }
+}
+
+pub struct Preview<T> {
+    pub current: Option<T>,
+    // Caches paths to docs to line number to view
+    cache: HashMap<PathBuf, (Document, HashMap<usize, View>)>,
+    #[allow(clippy::type_complexity)]
+    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, usize)>>,
+}
+
+impl<T> Preview<T> {
+    fn new(preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, usize)> + 'static) -> Self {
+        Self {
+            current: None,
+            cache: HashMap::new(),
+            preview_fn: Box::new(preview_fn),
+        }
+    }
+
+    fn calculate_preview(&mut self, editor: &Editor) {
+        if let Some((path, line)) = self
+            .current
+            .as_ref()
+            .and_then(|current| (self.preview_fn)(editor, current))
+            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
+        {
+            let &mut (ref mut doc, ref mut range_map) =
+                self.cache.entry(path.clone()).or_insert_with(|| {
+                    let doc =
+                        Document::open(path, None, Some(&editor.theme), Some(&editor.syn_loader))
+                            .unwrap();
+                    let view = View::new(doc.id());
+                    (doc, hashmap!(line => view))
+                });
+            let view = range_map.entry(line).or_insert_with(|| View::new(doc.id()));
+
+            let range = Range::point(doc.text().line_to_char(line));
+            doc.set_selection(view.id, Selection::from(range));
+            // FIXME: gets aligned top instead of center
+            commands::align_view(doc, view, Align::Center);
+        }
+    }
+}
+
+impl<T: 'static> Component for Preview<T> {
+    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // -- Render the frame:
+        // clear area
+        let background = cx.editor.theme.get("ui.background");
+        surface.clear_with(area, background);
+
+        // don't like this but the lifetime sucks
+        let block = Block::default().borders(Borders::ALL);
+
+        // calculate the inner area inside the box
+        let inner = block.inner(area);
+
+        block.render(area, surface);
+
+        if let Some((doc, view)) = self
+            .current
+            .as_ref()
+            .and_then(|current| (self.preview_fn)(cx.editor, current))
+            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
+            .and_then(|(path, line)| {
+                self.cache
+                    .get(&path)
+                    .and_then(|(doc, range_map)| Some((doc, range_map.get(&line)?)))
+            })
+        {
+            // FIXME: last line will not be highlighted because of a -1 in View::last_line
+            let mut view = view.clone();
+            view.area = inner;
+            EditorView::render_doc(
+                doc,
+                &view,
+                inner,
+                surface,
+                &cx.editor.theme,
+                true, // is_focused
+                &cx.editor.syn_loader,
+            );
+        }
+    }
+}
 
 pub struct Picker<T> {
     options: Vec<T>,
@@ -35,13 +169,9 @@ pub struct Picker<T> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    // Caches paths to docs to line number to view
-    preview_cache: HashMap<PathBuf, (Document, HashMap<usize, View>)>,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
-    #[allow(clippy::type_complexity)]
-    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, usize)>>,
 }
 
 impl<T> Picker<T> {
@@ -49,7 +179,6 @@ impl<T> Picker<T> {
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
-        preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, usize)> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".to_string(),
@@ -67,10 +196,8 @@ impl<T> Picker<T> {
             filters: Vec::new(),
             cursor: 0,
             prompt,
-            preview_cache: HashMap::new(),
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
-            preview_fn: Box::new(preview_fn),
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -127,31 +254,6 @@ impl<T> Picker<T> {
 
         if self.cursor < self.matches.len() - 1 {
             self.cursor += 1;
-        }
-    }
-
-    fn calculate_preview(&mut self, editor: &Editor) {
-        if let Some((path, line)) = self
-            .selection()
-            .and_then(|current| (self.preview_fn)(editor, current))
-            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
-        {
-            // TODO: store only the doc as key and map of range -> view as value ?
-            // will improve perfomance for pickers where most items are from same file (symbol, goto)
-            let &mut (ref mut doc, ref mut range_map) =
-                self.preview_cache.entry(path.clone()).or_insert_with(|| {
-                    let doc =
-                        Document::open(path, None, Some(&editor.theme), Some(&editor.syn_loader))
-                            .unwrap();
-                    let view = View::new(doc.id());
-                    (doc, hashmap!(line => view))
-                });
-            let view = range_map.entry(line).or_insert_with(|| View::new(doc.id()));
-
-            let range = Range::point(doc.text().line_to_char(line));
-            doc.set_selection(view.id, Selection::from(range));
-            // FIXME: gets aligned top instead of center
-            commands::align_view(doc, view, Align::Center);
         }
     }
 
@@ -234,7 +336,6 @@ impl<T: 'static> Component for Picker<T> {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
-                self.preview_cache.clear();
                 return close_fn;
             }
             KeyEvent {
@@ -244,7 +345,6 @@ impl<T: 'static> Component for Picker<T> {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::Replace);
                 }
-                self.preview_cache.clear();
                 return close_fn;
             }
             KeyEvent {
@@ -263,7 +363,6 @@ impl<T: 'static> Component for Picker<T> {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
                 }
-                self.preview_cache.clear();
                 return close_fn;
             }
             KeyEvent {
@@ -283,20 +382,13 @@ impl<T: 'static> Component for Picker<T> {
         EventResult::Consumed(None)
     }
 
-    fn prepare_for_render(&mut self, cx: &Context) {
-        self.calculate_preview(cx.editor)
-    }
-
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let area = inner_rect(area);
-
         // -- Render the frame:
 
         // clear area
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        use tui::widgets::Widget;
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
 
@@ -323,46 +415,6 @@ impl<T: 'static> Component for Picker<T> {
         // -- Render the contents:
         // subtract the area of the prompt (-2) and current item marker " > " (-3)
         let inner = Rect::new(inner.x + 3, inner.y + 2, inner.width - 3, inner.height - 2);
-        let mut item_width = inner.width;
-
-        if let Some((doc, view)) = self
-            .selection()
-            .and_then(|current| (self.preview_fn)(cx.editor, current))
-            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
-            .and_then(|(path, line)| {
-                self.preview_cache
-                    .get(&path)
-                    .and_then(|(doc, range_map)| Some((doc, range_map.get(&line)?)))
-            })
-        {
-            item_width = inner.width * 40 / 100;
-
-            for y in inner.top()..inner.bottom() {
-                surface
-                    .get_mut(inner.x + item_width, y)
-                    .set_symbol(borders.vertical)
-                    .set_style(sep_style);
-            }
-
-            let viewport = Rect::new(
-                inner.x + item_width + 1, // 1 for sep
-                inner.y,
-                inner.width * 60 / 100,
-                inner.height,
-            );
-            // FIXME: last line will not be highlighted because of a -1 in View::last_line
-            let mut view = view.clone();
-            view.area = viewport;
-            EditorView::render_doc(
-                doc,
-                &view,
-                viewport,
-                surface,
-                &cx.editor.theme,
-                true, // is_focused
-                &cx.editor.syn_loader,
-            );
-        }
 
         let style = cx.editor.theme.get("ui.text");
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
@@ -383,7 +435,7 @@ impl<T: 'static> Component for Picker<T> {
                 inner.x,
                 inner.y + i as u16,
                 (self.format_fn)(option),
-                item_width as usize,
+                inner.width as usize,
                 if i == (self.cursor - offset) {
                     selected
                 } else {
