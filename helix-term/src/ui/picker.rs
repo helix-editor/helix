@@ -24,12 +24,15 @@ use helix_view::{
     Document, Editor, View,
 };
 
-pub struct FilePicker<T: 'static + Clone> {
+pub struct PreviewedPicker<T> {
     picker: Picker<T>,
-    preview: Preview<T>,
+    // Caches paths to docs to line number to view
+    preview_cache: HashMap<PathBuf, (Document, HashMap<usize, View>)>,
+    #[allow(clippy::type_complexity)]
+    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, usize)>>,
 }
 
-impl<T: 'static + Clone> FilePicker<T> {
+impl<T> PreviewedPicker<T> {
     pub fn new(
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
@@ -38,67 +41,20 @@ impl<T: 'static + Clone> FilePicker<T> {
     ) -> Self {
         Self {
             picker: Picker::new(options, format_fn, callback_fn),
-            preview: Preview::new(preview_fn),
-        }
-    }
-}
-
-impl<T: 'static + Clone> Component for FilePicker<T> {
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let area = inner_rect(area);
-        let picker_area = Rect::new(area.x, area.y, area.width / 2, area.height);
-        let preview_area = Rect::new(
-            area.x + picker_area.width,
-            area.y,
-            area.width / 2,
-            area.height,
-        );
-        self.picker.render(picker_area, surface, cx);
-        self.preview.render(preview_area, surface, cx);
-    }
-
-    fn prepare_for_render(&mut self, cx: &Context) {
-        self.preview.current = self.picker.selection().cloned();
-        self.preview.calculate_preview(cx.editor);
-    }
-
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
-        let result = self.picker.handle_event(event, ctx);
-        self.preview.current = self.picker.selection().cloned();
-        result
-    }
-
-    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
-        self.picker.cursor(area, ctx)
-    }
-}
-
-pub struct Preview<T> {
-    pub current: Option<T>,
-    // Caches paths to docs to line number to view
-    cache: HashMap<PathBuf, (Document, HashMap<usize, View>)>,
-    #[allow(clippy::type_complexity)]
-    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, usize)>>,
-}
-
-impl<T> Preview<T> {
-    fn new(preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, usize)> + 'static) -> Self {
-        Self {
-            current: None,
-            cache: HashMap::new(),
+            preview_cache: HashMap::new(),
             preview_fn: Box::new(preview_fn),
         }
     }
 
     fn calculate_preview(&mut self, editor: &Editor) {
         if let Some((path, line)) = self
-            .current
-            .as_ref()
+            .picker
+            .selection()
             .and_then(|current| (self.preview_fn)(editor, current))
             .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
         {
             let &mut (ref mut doc, ref mut range_map) =
-                self.cache.entry(path.clone()).or_insert_with(|| {
+                self.preview_cache.entry(path.clone()).or_insert_with(|| {
                     let doc =
                         Document::open(path, None, Some(&editor.theme), Some(&editor.syn_loader))
                             .unwrap();
@@ -115,28 +71,38 @@ impl<T> Preview<T> {
     }
 }
 
-impl<T: 'static> Component for Preview<T> {
+impl<T: 'static> Component for PreviewedPicker<T> {
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let area = inner_rect(area);
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
+        let picker_area = Rect::new(area.x, area.y, area.width / 2, area.height);
+        let preview_area = Rect::new(
+            area.x + picker_area.width,
+            area.y,
+            area.width / 2,
+            area.height,
+        );
+        self.picker.render(picker_area, surface, cx);
+
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
 
         // calculate the inner area inside the box
-        let inner = block.inner(area);
+        let inner = block.inner(preview_area);
 
-        block.render(area, surface);
+        block.render(preview_area, surface);
 
         if let Some((doc, view)) = self
-            .current
-            .as_ref()
+            .picker
+            .selection()
             .and_then(|current| (self.preview_fn)(cx.editor, current))
             .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
             .and_then(|(path, line)| {
-                self.cache
+                self.preview_cache
                     .get(&path)
                     .and_then(|(doc, range_map)| Some((doc, range_map.get(&line)?)))
             })
@@ -154,6 +120,19 @@ impl<T: 'static> Component for Preview<T> {
                 &cx.editor.syn_loader,
             );
         }
+    }
+
+    fn prepare_for_render(&mut self, cx: &Context) {
+        self.calculate_preview(cx.editor);
+    }
+
+    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+        // TODO: keybinds for scrolling preview
+        self.picker.handle_event(event, ctx)
+    }
+
+    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+        self.picker.cursor(area, ctx)
     }
 }
 
@@ -384,7 +363,6 @@ impl<T: 'static> Component for Picker<T> {
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // -- Render the frame:
-
         // clear area
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);

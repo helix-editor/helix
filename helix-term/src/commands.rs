@@ -31,7 +31,7 @@ use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
-    ui::{self, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, Popup, PreviewedPicker, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -2039,7 +2039,7 @@ fn file_picker(cx: &mut Context) {
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
-    let picker = FilePicker::new(
+    let picker = PreviewedPicker::new(
         cx.editor
             .documents
             .iter()
@@ -2123,7 +2123,7 @@ fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let picker = FilePicker::new(
+                let picker = PreviewedPicker::new(
                     symbols,
                     |symbol| (&symbol.name).into(),
                     move |editor: &mut Editor, symbol, _action| {
@@ -2177,7 +2177,7 @@ pub fn code_action(cx: &mut Context) {
               compositor: &mut Compositor,
               response: Option<lsp::CodeActionResponse>| {
             if let Some(actions) = response {
-                let picker = FilePicker::new(
+                let picker = PreviewedPicker::new(
                     actions,
                     |action| match action {
                         lsp::CodeActionOrCommand::CodeAction(action) => {
@@ -2525,7 +2525,7 @@ fn goto_impl(
             editor.set_error("No definition found.".to_string());
         }
         _locations => {
-            let picker = FilePicker::new(
+            let picker = PreviewedPicker::new(
                 locations,
                 |location| {
                     let file = location.uri.as_str();

@@ -13,7 +13,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::FilePicker;
+pub use picker::PreviewedPicker;
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -73,7 +73,7 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
+pub fn file_picker(root: PathBuf) -> PreviewedPicker<PathBuf> {
     use ignore::Walk;
     use std::time;
     let files = Walk::new(root.clone()).filter_map(|entry| match entry {
@@ -109,7 +109,7 @@ pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
 
     let files = files.into_iter().map(|(path, _)| path).collect();
 
-    FilePicker::new(
+    PreviewedPicker::new(
         files,
         move |path: &PathBuf| {
             // format_fn
