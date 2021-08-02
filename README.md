@@ -28,7 +28,7 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 # Installation
 
 Note: Only certain languages have indentation definitions at the moment. Check
-`runtime/<lang>/` for `indents.toml`.
+`runtime/queries/<lang>/` for `indents.toml`.
 
 We provide packaging for various distributions, but here's a quick method to
 build from source.
