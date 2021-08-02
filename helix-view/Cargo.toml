@@ -36,7 +36,7 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 log = "~0.4"
 
-which = "4.1"
+which = "4.2"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.2", features = ["std"] }
