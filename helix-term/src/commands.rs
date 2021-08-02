@@ -1745,6 +1745,42 @@ mod cmd {
         doc.reload(view.id)
     }
 
+    fn lsp_restart(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let view = cx.editor.tree.get(cx.editor.tree.focus);
+        let doc_id = view.doc;
+        let doc = cx.editor.document(doc_id).unwrap();
+        let language_server = match doc.language_server_arc() {
+            Some(language_server) => language_server,
+            None => return Err(anyhow!("running lsp server not found")),
+        };
+
+        log::debug!("got lspserver");
+        let fut = async move {
+            log::debug!("trying shutdown");
+            let shutdown_result = language_server.shutdown_and_exit().await;
+            if let Err(err) = shutdown_result {
+                log::debug!("shutdown & exit request returned error: {}", err); // we're not doing anything except logging, if LSP crashes then this error is expected
+            }
+            let callback: job::Callback = Box::new(move |editor: &mut Editor, _compositor| {
+                let doc = editor.document(doc_id).unwrap();
+                let language_config = doc.language_config_arc().unwrap();
+                let language_server = editor.language_servers.get(&language_config).unwrap();
+                log::debug!("got new language server");
+                let doc = editor.document_mut(doc_id).unwrap();
+                doc.set_language_server(Some(language_server));
+                log::debug!("set new language server");
+            });
+            Ok::<job::Callback, anyhow::Error>(callback)
+        };
+        cx.jobs.callback(fut);
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -1940,6 +1976,13 @@ mod cmd {
             alias: None,
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "lsp-restart",
+            alias: None,
+            doc: "Restart current LSP connection.",
+            fun: lsp_restart,
             completer: None,
         }
     ];
