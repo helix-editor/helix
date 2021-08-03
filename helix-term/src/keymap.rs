@@ -502,6 +502,11 @@ impl Default for Keymaps {
             },
 
             "\"" => select_register,
+            "|" => shell_pipe,
+            "A-|" => shell_pipe_ignore,
+            "!" => shell_insert,
+            "A-!" => shell_append,
+            "$" => shell_filter,
         });
         // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
         // we keep this separate select mode. More keys can fit into normal mode then, but it's weird

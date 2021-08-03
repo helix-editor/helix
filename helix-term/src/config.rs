@@ -5,6 +5,7 @@ use crate::keymap::Keymaps;
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 pub struct Config {
     pub theme: Option<String>,
+    pub shell: Option<Vec<String>>,
     #[serde(default)]
     pub lsp: LspConfig,
     #[serde(default)]

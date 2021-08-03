@@ -133,7 +133,7 @@ pub struct Command {
 }
 
 macro_rules! commands {
-    ( $($name:ident, $doc:literal),* ) => {
+    ( $($name:ident, $doc:literal),* $(,)? ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self {
@@ -291,7 +291,12 @@ impl Command {
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object"
+        select_textobject_inner, "Select inside object",
+        shell_pipe, "Pipe selections through shell command",
+        shell_pipe_ignore, "Pipe selections into shell command, ignoring command output",
+        shell_insert, "Insert output of shell command before each selection",
+        shell_append, "Append output of shell command after each selection",
+        shell_filter, "Filter selections with shell predicate",
     );
 }
 
@@ -3876,4 +3881,112 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+#[derive(Eq, PartialEq)]
+enum ShellBehavior {
+    Replace,
+    Insert,
+    Append,
+    Filter,
+    None,
+}
+
+fn shell_pipe(cx: &mut Context) {
+    shell(cx, "pipe:", true, ShellBehavior::Replace);
+}
+
+fn shell_pipe_ignore(cx: &mut Context) {
+    shell(cx, "pipe:", true, ShellBehavior::None);
+}
+
+fn shell_insert(cx: &mut Context) {
+    shell(cx, "command:", false, ShellBehavior::Insert);
+}
+
+fn shell_append(cx: &mut Context) {
+    shell(cx, "command:", false, ShellBehavior::Append);
+}
+
+fn shell_filter(cx: &mut Context) {
+    shell(cx, "filter:", true, ShellBehavior::Filter);
+}
+
+fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let shell = Option::<Vec<_>>::None; // this should come from config, but can't currently
+    let (shell, args) = match shell {
+        Some(shell) if !shell.is_empty() => {
+            let mut args = shell.into_iter();
+            (args.next().unwrap(), args)
+        }
+        _ => {
+            if cfg!(windows) {
+                ("cmd".to_owned(), vec!["/C".to_owned()].into_iter())
+            } else {
+                (
+                    std::env::var("SHELL").unwrap_or_else(|_| "sh".to_owned()),
+                    vec!["-c".to_owned()].into_iter(),
+                )
+            }
+        }
+    };
+    let prompt = Prompt::new(
+        prompt.to_owned(),
+        Some('!'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event == PromptEvent::Validate {
+                let (view, doc) = current!(cx.editor);
+                let selection = doc.selection(view.id);
+                let transaction =
+                    Transaction::change_by_selection(doc.text(), selection, |range| {
+                        let mut command = Command::new(&shell);
+                        for arg in args.as_ref() {
+                            command.arg(arg);
+                        }
+                        let mut process = command
+                            .arg(input)
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::null())
+                            .spawn()
+                            .unwrap();
+                        if pipe {
+                            let stdin = process.stdin.as_mut().unwrap();
+                            let fragment = range.fragment(doc.text().slice(..));
+                            stdin.write_all(fragment.as_bytes()).unwrap();
+                        }
+
+                        if behavior != ShellBehavior::Filter {
+                            let output = process.wait_with_output().unwrap().stdout;
+                            let tendril = Tendril::try_from_byte_slice(&output).unwrap();
+                            let (from, to) = match behavior {
+                                ShellBehavior::Replace => (range.from(), range.to()),
+                                ShellBehavior::Insert => (range.from(), range.from()),
+                                ShellBehavior::Append => (range.to(), range.to()),
+                                _ => (range.from(), range.from()),
+                            };
+                            (from, to, Some(tendril))
+                        } else {
+                            // if the process exits successfully, keep the selection, otherwise delete it.
+                            let output = process.wait_with_output().unwrap().status.success();
+                            (
+                                range.from(),
+                                if output { range.from() } else { range.to() },
+                                None,
+                            )
+                        }
+                    });
+
+                if behavior != ShellBehavior::None {
+                    doc.apply(&transaction, view.id);
+                    doc.append_changes_to_history(view.id);
+                }
+            }
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
 }
