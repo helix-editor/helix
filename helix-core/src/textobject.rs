@@ -98,11 +98,8 @@ pub fn textobject_surround(
 ) -> Range {
     surround::find_nth_pairs_pos(slice, ch, range.head, count)
         .map(|(anchor, head)| match textobject {
-            TextObject::Inside => Range::new(
-                next_grapheme_boundary(slice, anchor),
-                prev_grapheme_boundary(slice, head),
-            ),
-            TextObject::Around => Range::new(anchor, head),
+            TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
+            TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
         })
         .unwrap_or(range)
 }
