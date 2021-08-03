@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 use std::cmp::{max, min};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 /// UNSTABLE
 pub enum CursorKind {
     /// █
