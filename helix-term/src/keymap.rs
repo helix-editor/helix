@@ -359,7 +359,7 @@ impl Default for Keymaps {
             "G" => goto_line,
             "g" => { "Goto"
                 "g" => goto_file_start,
-                "e" => goto_file_end,
+                "e" => goto_last_line,
                 "h" => goto_line_start,
                 "l" => goto_line_end,
                 "s" => goto_first_nonwhitespace,
@@ -617,7 +617,7 @@ fn merge_partial_keys() {
     // Assumes that `ge` is in default keymap
     assert_eq!(
         keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
-        &KeyTrie::Leaf(Command::goto_file_end),
+        &KeyTrie::Leaf(Command::goto_last_line),
         "Old leaves in subnode should be present in merged node"
     );
 

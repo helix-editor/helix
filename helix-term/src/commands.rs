@@ -237,6 +237,7 @@ impl Command {
         goto_window_bottom, "Goto window bottom",
         goto_last_accessed_file, "Goto last accessed file",
         goto_line, "Goto line",
+        goto_last_line, "Goto last line",
         goto_first_diag, "Goto first diagnostic",
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
@@ -2426,10 +2427,30 @@ fn goto_line(cx: &mut Context) {
         push_jump(cx.editor);
 
         let (view, doc) = current!(cx.editor);
-        let line_idx = std::cmp::min(count.get() - 1, doc.text().len_lines().saturating_sub(2));
+        let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
+            // If the last line is blank, don't jump to it.
+            doc.text().len_lines().saturating_sub(2)
+        } else {
+            doc.text().len_lines() - 1
+        };
+        let line_idx = std::cmp::min(count.get() - 1, max_line);
         let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
     }
+}
+
+fn goto_last_line(cx: &mut Context) {
+    push_jump(cx.editor);
+
+    let (view, doc) = current!(cx.editor);
+    let line_idx = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
+        // If the last line is blank, don't jump to it.
+        doc.text().len_lines().saturating_sub(2)
+    } else {
+        doc.text().len_lines() - 1
+    };
+    let pos = doc.text().line_to_char(line_idx);
+    doc.set_selection(view.id, Selection::point(pos));
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
