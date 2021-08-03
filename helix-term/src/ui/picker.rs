@@ -1,5 +1,4 @@
 use crate::{
-    commands::{self, Align},
     compositor::{Component, Compositor, Context, EventResult},
     ui::EditorView,
 };
@@ -16,63 +15,72 @@ use tui::widgets::Widget;
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{hashmap, Position, Range, Selection};
+use helix_core::{Position, Selection};
 use helix_view::{
     document::canonicalize_path,
     editor::Action,
     graphics::{Color, CursorKind, Rect, Style},
-    Document, Editor, View,
+    Document, Editor, View, ViewId,
 };
 
-pub struct PreviewedPicker<T> {
+/// File path and line number
+type FileLocation = (PathBuf, usize);
+
+pub struct FilePicker<T> {
     picker: Picker<T>,
-    // Caches paths to docs to line number to view
-    preview_cache: HashMap<PathBuf, (Document, HashMap<usize, View>)>,
-    #[allow(clippy::type_complexity)]
-    preview_fn: Box<dyn Fn(&Editor, &T) -> Option<(PathBuf, usize)>>,
+    /// Caches paths to documents
+    preview_cache: HashMap<PathBuf, Document>,
+    /// Given an item in the picker, return the file path and line number to display.
+    file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+    // A view id to be shared by all documents in the cache. Mostly a hack since a doc
+    // requires at least one selection.
+    _preview_view_id: ViewId,
 }
 
-impl<T> PreviewedPicker<T> {
+impl<T> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
-        preview_fn: impl Fn(&Editor, &T) -> Option<(PathBuf, usize)> + 'static,
+        preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         Self {
             picker: Picker::new(options, format_fn, callback_fn),
             preview_cache: HashMap::new(),
-            preview_fn: Box::new(preview_fn),
+            file_fn: Box::new(preview_fn),
+            _preview_view_id: ViewId::default(),
         }
     }
 
-    fn calculate_preview(&mut self, editor: &Editor) {
-        if let Some((path, line)) = self
-            .picker
+    fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
+        self.picker
             .selection()
-            .and_then(|current| (self.preview_fn)(editor, current))
+            .and_then(|current| (self.file_fn)(editor, current))
             .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
-        {
-            let &mut (ref mut doc, ref mut range_map) =
-                self.preview_cache.entry(path.clone()).or_insert_with(|| {
-                    let doc =
-                        Document::open(path, None, Some(&editor.theme), Some(&editor.syn_loader))
-                            .unwrap();
-                    let view = View::new(doc.id());
-                    (doc, hashmap!(line => view))
-                });
-            let view = range_map.entry(line).or_insert_with(|| View::new(doc.id()));
+    }
 
-            let range = Range::point(doc.text().line_to_char(line));
-            doc.set_selection(view.id, Selection::from(range));
-            // FIXME: gets aligned top instead of center
-            commands::align_view(doc, view, Align::Center);
+    fn calculate_preview(&mut self, editor: &Editor) {
+        if let Some((path, _line)) = self.current_file(editor) {
+            if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
+                let mut doc =
+                    Document::open(&path, None, Some(&editor.theme), Some(&editor.syn_loader))
+                        .unwrap();
+                // HACK: a doc needs atleast one selection
+                doc.set_selection(self._preview_view_id, Selection::point(0));
+                self.preview_cache.insert(path, doc);
+            }
         }
     }
 }
 
-impl<T: 'static> Component for PreviewedPicker<T> {
+impl<T: 'static> Component for FilePicker<T> {
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // |---------|  |---------|
+        // |prompt   |  |preview  |
+        // |---------|  |         |
+        // |picker   |  |         |
+        // |         |  |         |
+        // |---------|  |---------|
         let area = inner_rect(area);
         // -- Render the frame:
         // clear area
@@ -96,19 +104,23 @@ impl<T: 'static> Component for PreviewedPicker<T> {
 
         block.render(preview_area, surface);
 
-        if let Some((doc, view)) = self
-            .picker
-            .selection()
-            .and_then(|current| (self.preview_fn)(cx.editor, current))
-            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
-            .and_then(|(path, line)| {
-                self.preview_cache
-                    .get(&path)
-                    .and_then(|(doc, range_map)| Some((doc, range_map.get(&line)?)))
-            })
-        {
+        if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, line)| {
+            cx.editor
+                .document_by_path(&path)
+                .or_else(|| self.preview_cache.get(&path))
+                .zip(Some(line))
+        }) {
             // FIXME: last line will not be highlighted because of a -1 in View::last_line
-            let mut view = view.clone();
+            let mut view = View::new(doc.id());
+            view.id = if doc.selections().contains_key(&self._preview_view_id) {
+                self._preview_view_id // doc from cache
+            } else {
+                // Any view will do since we do not depend on doc selections for highlighting
+                *doc.selections().keys().next().unwrap() // doc from editor
+            };
+            view.first_col = 0;
+            // align to middle
+            view.first_line = line.saturating_sub(inner.height as usize / 2);
             view.area = inner;
             EditorView::render_doc(
                 doc,
@@ -116,9 +128,15 @@ impl<T: 'static> Component for PreviewedPicker<T> {
                 inner,
                 surface,
                 &cx.editor.theme,
-                true, // is_focused
+                false, // is_focused
                 &cx.editor.syn_loader,
             );
+            // highlight the line
+            for x in inner.left()..inner.right() {
+                surface
+                    .get_mut(x, inner.y + line.saturating_sub(view.first_line) as u16)
+                    .set_style(cx.editor.theme.get("ui.selection.primary"));
+            }
         }
     }
 

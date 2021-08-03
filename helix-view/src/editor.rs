@@ -7,7 +7,11 @@ use crate::{
 };
 
 use futures_util::future;
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use slotmap::SlotMap;
 
@@ -284,6 +288,11 @@ impl Editor {
 
     pub fn documents_mut(&mut self) -> impl Iterator<Item = &mut Document> {
         self.documents.iter_mut().map(|(_id, doc)| doc)
+    }
+
+    pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
+        self.documents()
+            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
     // pub fn current_document(&self) -> Document {
