@@ -73,13 +73,22 @@ pub fn textobject_word(
 
     match textobject {
         TextObject::Inside => Range::new(word_start, word_end),
-        TextObject::Around => Range::new(
-            word_start,
-            match slice.get_char(word_end).map(categorize_char) {
-                None | Some(CharCategory::Eol) => word_end,
-                _ => next_grapheme_boundary(slice, word_end),
+        TextObject::Around => match (
+            if word_start == 0 {
+                None
+            } else {
+                slice.get_char(word_start - 1).map(categorize_char)
             },
-        ),
+            slice.get_char(word_end).map(categorize_char),
+        ) {
+            (_, Some(CharCategory::Whitespace)) => {
+                Range::new(word_start, next_grapheme_boundary(slice, word_end))
+            }
+            (Some(CharCategory::Whitespace), _) => {
+                Range::new(prev_grapheme_boundary(slice, word_start), word_end)
+            }
+            _ => Range::new(word_start, word_end),
+        },
     }
 }
 
@@ -120,9 +129,9 @@ mod test {
                     (13, Inside, (10, 16)),
                     (10, Inside, (10, 16)),
                     (15, Inside, (10, 16)),
-                    (13, Around, (9, 17)),
-                    (10, Around, (9, 17)),
-                    (15, Around, (9, 17)),
+                    (13, Around, (10, 17)),
+                    (10, Around, (10, 17)),
+                    (15, Around, (10, 17)),
                 ],
             ),
             (
@@ -161,9 +170,9 @@ mod test {
                     (13, Inside, (10, 16)),
                     (10, Inside, (10, 16)),
                     (15, Inside, (10, 16)),
-                    (13, Around, (9, 17)),
-                    (10, Around, (9, 17)),
-                    (15, Around, (9, 17)),
+                    (13, Around, (10, 17)),
+                    (10, Around, (10, 17)),
+                    (15, Around, (10, 17)),
                 ],
             ),
             (
@@ -172,10 +181,10 @@ mod test {
                     (14, Inside, (14, 21)),
                     (20, Inside, (14, 21)),
                     (17, Inside, (14, 21)),
-                    (14, Around, (13, 22)),
+                    (14, Around, (14, 21)),
                     // FIXME: edge case
                     // (20, Around, (14, 20)),
-                    (17, Around, (13, 22)),
+                    (17, Around, (14, 21)),
                 ],
             ),
             (
