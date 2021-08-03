@@ -74,13 +74,7 @@ pub fn textobject_word(
     match textobject {
         TextObject::Inside => Range::new(word_start, word_end),
         TextObject::Around => Range::new(
-            match slice
-                .get_char(word_start.saturating_sub(1))
-                .map(categorize_char)
-            {
-                None | Some(CharCategory::Eol) => word_start,
-                _ => prev_grapheme_boundary(slice, word_start),
-            },
+            word_start,
             match slice.get_char(word_end).map(categorize_char) {
                 None | Some(CharCategory::Eol) => word_end,
                 _ => next_grapheme_boundary(slice, word_end),
