@@ -2497,6 +2497,8 @@ fn goto_impl(
         align_view(doc, view, Align::Center);
     }
 
+    let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+
     match locations.as_slice() {
         [location] => {
             jump_to(editor, location, offset_encoding, Action::Replace);
@@ -2507,8 +2509,23 @@ fn goto_impl(
         _locations => {
             let picker = ui::Picker::new(
                 locations,
-                |location| {
-                    let file = location.uri.as_str();
+                move |location| {
+                    let file: Cow<'_, str> = (location.uri.scheme() == "file")
+                        .then(|| {
+                            location
+                                .uri
+                                .to_file_path()
+                                .map(|path| {
+                                    // strip root prefix
+                                    path.strip_prefix(&cwdir)
+                                        .map(|path| path.to_path_buf())
+                                        .unwrap_or(path)
+                                })
+                                .ok()
+                                .and_then(|path| path.to_str().map(|path| path.to_owned().into()))
+                        })
+                        .flatten()
+                        .unwrap_or_else(|| location.uri.as_str().into());
                     let line = location.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
