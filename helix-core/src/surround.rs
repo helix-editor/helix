@@ -1,4 +1,3 @@
-use crate::graphemes::next_grapheme_boundary;
 use crate::{search, Selection};
 use ropey::RopeSlice;
 
@@ -49,9 +48,9 @@ pub fn find_nth_pairs_pos(
         if Some(open) == text.get_char(pos) {
             // Special case: cursor is directly on a matching char.
             match pos {
-                0 => Some((pos, search::find_nth_next(text, close, pos + 1, n)? + 1)),
+                0 => Some((pos, search::find_nth_next(text, close, pos + 1, n)?)),
                 _ if (pos + 1) == text.len_chars() => {
-                    Some((search::find_nth_prev(text, open, pos, n)?, text.len_chars()))
+                    Some((search::find_nth_prev(text, open, pos, n)?, pos))
                 }
                 // We return no match because there's no way to know which
                 // side of the char we should be searching on.
@@ -60,13 +59,13 @@ pub fn find_nth_pairs_pos(
         } else {
             Some((
                 search::find_nth_prev(text, open, pos, n)?,
-                search::find_nth_next(text, close, pos, n)? + 1,
+                search::find_nth_next(text, close, pos, n)?,
             ))
         }
     } else {
         Some((
             find_nth_open_pair(text, open, close, pos, n)?,
-            next_grapheme_boundary(text, find_nth_close_pair(text, open, close, pos, n)?),
+            find_nth_close_pair(text, open, close, pos, n)?,
         ))
     }
 }
@@ -185,13 +184,13 @@ mod test {
         let slice = doc.slice(..);
 
         // cursor on [t]ext
-        assert_eq!(find_nth_pairs_pos(slice, '(', 6, 1), Some((5, 11)));
-        assert_eq!(find_nth_pairs_pos(slice, ')', 6, 1), Some((5, 11)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 6, 1), Some((5, 10)));
+        assert_eq!(find_nth_pairs_pos(slice, ')', 6, 1), Some((5, 10)));
         // cursor on so[m]e
         assert_eq!(find_nth_pairs_pos(slice, '(', 2, 1), None);
         // cursor on bracket itself
-        assert_eq!(find_nth_pairs_pos(slice, '(', 5, 1), Some((5, 11)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 10, 1), Some((5, 11)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 5, 1), Some((5, 10)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 10, 1), Some((5, 10)));
     }
 
     #[test]
@@ -200,9 +199,9 @@ mod test {
         let slice = doc.slice(..);
 
         // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((10, 16)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 2), Some((4, 22)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 3), Some((0, 28)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((10, 15)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 2), Some((4, 21)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 3), Some((0, 27)));
     }
 
     #[test]
@@ -211,14 +210,14 @@ mod test {
         let slice = doc.slice(..);
 
         // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 1), Some((10, 16)));
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 2), Some((4, 22)));
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 3), Some((0, 28)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 1), Some((10, 15)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 2), Some((4, 21)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 13, 3), Some((0, 27)));
         // cursor on the quotes
         assert_eq!(find_nth_pairs_pos(slice, '\'', 10, 1), None);
         // this is the best we can do since opening and closing pairs are same
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 0, 1), Some((0, 5)));
-        assert_eq!(find_nth_pairs_pos(slice, '\'', 27, 1), Some((21, 28)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 0, 1), Some((0, 4)));
+        assert_eq!(find_nth_pairs_pos(slice, '\'', 27, 1), Some((21, 27)));
     }
 
     #[test]
@@ -227,8 +226,8 @@ mod test {
         let slice = doc.slice(..);
 
         // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 1), Some((5, 25)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 2), Some((0, 32)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 1), Some((5, 24)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 15, 2), Some((0, 31)));
     }
 
     #[test]
@@ -237,9 +236,9 @@ mod test {
         let slice = doc.slice(..);
 
         // cursor on go[o]d
-        assert_eq!(find_nth_pairs_pos(slice, '{', 13, 1), Some((10, 16)));
-        assert_eq!(find_nth_pairs_pos(slice, '[', 13, 1), Some((4, 22)));
-        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((0, 28)));
+        assert_eq!(find_nth_pairs_pos(slice, '{', 13, 1), Some((10, 15)));
+        assert_eq!(find_nth_pairs_pos(slice, '[', 13, 1), Some((4, 21)));
+        assert_eq!(find_nth_pairs_pos(slice, '(', 13, 1), Some((0, 27)));
     }
 
     #[test]
@@ -256,7 +255,7 @@ mod test {
             get_surround_pos(slice, &selection, '(', 1)
                 .unwrap()
                 .as_slice(),
-            &[0, 6, 7, 14, 15, 24]
+            &[0, 5, 7, 13, 15, 23]
         );
     }
 
