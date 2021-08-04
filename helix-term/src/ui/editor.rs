@@ -868,12 +868,55 @@ impl Component for EditorView {
                     return EventResult::Ignored;
                 }
 
-                let _ = cx
-                    .editor
-                    .primary_selection_provider
-                    .set_contents(range.fragment(doc.text().slice(..)).to_string());
+                let mut cxt = commands::Context {
+                    selected_register: helix_view::RegisterSelection::default(),
+                    editor: &mut cx.editor,
+                    count: None,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs: cx.jobs,
+                };
+
+                commands::Command::yank_main_selection_to_primary_selection.execute(&mut cxt);
 
                 EventResult::Consumed(None)
+            }
+
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Middle),
+                row,
+                column,
+                ..
+            }) => {
+                let editor = &mut cx.editor;
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|pos| (pos, view.id))
+                });
+
+                if let Some((pos, view_id)) = result {
+                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+
+                    doc.set_selection(view_id, Selection::point(pos));
+
+                    editor.tree.focus = view_id;
+
+                    let mut cxt = commands::Context {
+                        selected_register: helix_view::RegisterSelection::default(),
+                        editor: &mut cx.editor,
+                        count: None,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    commands::Command::paste_primary_selection_before.execute(&mut cxt);
+
+                    return EventResult::Consumed(None);
+                }
+
+                EventResult::Ignored
             }
 
             Event::Mouse(_) => EventResult::Ignored,
