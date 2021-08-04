@@ -886,9 +886,25 @@ impl Component for EditorView {
                 kind: MouseEventKind::Up(MouseButton::Middle),
                 row,
                 column,
+                modifiers,
                 ..
             }) => {
                 let editor = &mut cx.editor;
+
+                if modifiers == crossterm::event::KeyModifiers::ALT {
+                    let mut cxt = commands::Context {
+                        selected_register: helix_view::RegisterSelection::default(),
+                        editor: &mut cx.editor,
+                        count: None,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    commands::Command::replace_selections_with_primary_selection.execute(&mut cxt);
+
+                    return EventResult::Consumed(None);
+                }
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
                     view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
