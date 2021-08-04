@@ -6,7 +6,7 @@ use std::borrow::Cow;
 pub trait ClipboardProvider: std::fmt::Debug {
     fn name(&self) -> Cow<str>;
     fn get_contents(&self) -> Result<String>;
-    fn set_contents(&self, contents: String) -> Result<()>;
+    fn set_contents(&mut self, contents: String) -> Result<()>;
 }
 
 macro_rules! command_provider {
@@ -81,7 +81,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         return Box::new(provider::WindowsProvider);
 
         #[cfg(not(target_os = "windows"))]
-        return Box::new(provider::NopProvider);
+        return Box::new(provider::NopProvider{ buf: String::new() });
     }
 }
 
@@ -108,7 +108,9 @@ mod provider {
     use std::borrow::Cow;
 
     #[derive(Debug)]
-    pub struct NopProvider;
+    pub struct NopProvider {
+        pub buf: String,
+    }
 
     impl ClipboardProvider for NopProvider {
         fn name(&self) -> Cow<str> {
@@ -116,10 +118,11 @@ mod provider {
         }
 
         fn get_contents(&self) -> Result<String> {
-            Ok(String::new())
+            Ok(self.buf.clone())
         }
 
-        fn set_contents(&self, _: String) -> Result<()> {
+        fn set_contents(&mut self, content: String) -> Result<()> {
+            self.buf = content;
             Ok(())
         }
     }
@@ -139,7 +142,7 @@ mod provider {
             Ok(contents)
         }
 
-        fn set_contents(&self, contents: String) -> Result<()> {
+        fn set_contents(&mut self, contents: String) -> Result<()> {
             clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
             Ok(())
         }
@@ -211,7 +214,7 @@ mod provider {
             Ok(output)
         }
 
-        fn set_contents(&self, value: String) -> Result<()> {
+        fn set_contents(&mut self, value: String) -> Result<()> {
             self.set_cmd.execute(Some(&value), false).map(|_| ())
         }
     }
