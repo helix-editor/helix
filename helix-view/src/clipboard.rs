@@ -85,6 +85,20 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
+pub fn get_primary_selection_provider() -> Box<dyn ClipboardProvider> {
+    // TODO: support for user-defined provider, probably when we have plugin support by setting a
+    // variable?
+
+    if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
+        command_provider! {
+            paste => "wl-paste", "-p", "--no-newline";
+            copy => "wl-copy", "-p", "--type", "text/plain";
+        }
+    } else {
+        Box::new(provider::NopProvider{ buf: String::new() })
+    }
+}
+
 fn exists(executable_name: &str) -> bool {
     which::which(executable_name).is_ok()
 }

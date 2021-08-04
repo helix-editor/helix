@@ -1687,7 +1687,7 @@ mod cmd {
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         cx.editor
-            .set_status(cx.editor.clipboard_provider.name().into());
+            .set_status(format!("Clipboard: {}; Primary selection: {}", cx.editor.clipboard_provider.name(), cx.editor.primary_selection_provider.name()));
         Ok(())
     }
 
