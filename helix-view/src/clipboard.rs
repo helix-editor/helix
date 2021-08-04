@@ -89,7 +89,13 @@ pub fn get_primary_selection_provider() -> Box<dyn ClipboardProvider> {
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
 
-    if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
+    if env_var_is_set("DISPLAY") && exists("xsel") && is_exit_success("xsel", &["-o"]) {
+        // FIXME: check performance of is_exit_success
+        command_provider! {
+            paste => "xsel", "-o";
+            copy => "xsel", "-i";
+        }
+    } else if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
         command_provider! {
             paste => "wl-paste", "-p", "--no-newline";
             copy => "wl-copy", "-p", "--type", "text/plain";
