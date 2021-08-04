@@ -1,6 +1,6 @@
 use ropey::RopeSlice;
 
-use crate::chars::{categorize_char, CharCategory};
+use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::movement::Direction;
 use crate::surround;
@@ -73,22 +73,23 @@ pub fn textobject_word(
 
     match textobject {
         TextObject::Inside => Range::new(word_start, word_end),
-        TextObject::Around => match (
-            if word_start == 0 {
-                None
+        TextObject::Around => {
+            let whitespace_count_right = slice
+                .chars_at(word_end)
+                .take_while(|c| char_is_whitespace(*c))
+                .count();
+
+            if whitespace_count_right > 0 {
+                Range::new(word_start, word_end + whitespace_count_right)
             } else {
-                slice.get_char(word_start - 1).map(categorize_char)
-            },
-            slice.get_char(word_end).map(categorize_char),
-        ) {
-            (_, Some(CharCategory::Whitespace)) => {
-                Range::new(word_start, next_grapheme_boundary(slice, word_end))
+                let whitespace_count_left = {
+                    let mut iter = slice.chars_at(word_start);
+                    iter.reverse();
+                    iter.take_while(|c| char_is_whitespace(*c)).count()
+                };
+                Range::new(word_start - whitespace_count_left, word_end)
             }
-            (Some(CharCategory::Whitespace), _) => {
-                Range::new(prev_grapheme_boundary(slice, word_start), word_end)
-            }
-            _ => Range::new(word_start, word_end),
-        },
+        }
     }
 }
 
@@ -197,6 +198,14 @@ mod test {
                     (10, Around, (10, 10)),
                     (11, Around, (11, 11)),
                 ],
+            ),
+            (
+                "cursor on word   with extra whitespace",
+                vec![(11, Inside, (10, 14)), (11, Around, (10, 17))],
+            ),
+            (
+                "cursor at end with extra   whitespace",
+                vec![(28, Inside, (27, 37)), (28, Around, (24, 37))],
             ),
             (
                 "cursor at end of doc",
