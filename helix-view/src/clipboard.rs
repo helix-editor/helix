@@ -81,7 +81,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         return Box::new(provider::WindowsProvider);
 
         #[cfg(not(target_os = "windows"))]
-        return Box::new(provider::NopProvider{ buf: String::new() });
+        return Box::new(provider::NopProvider { buf: String::new() });
     }
 }
 
@@ -95,7 +95,7 @@ pub fn get_primary_selection_provider() -> Box<dyn ClipboardProvider> {
             copy => "wl-copy", "-p", "--type", "text/plain";
         }
     } else {
-        Box::new(provider::NopProvider{ buf: String::new() })
+        Box::new(provider::NopProvider { buf: String::new() })
     }
 }
 
