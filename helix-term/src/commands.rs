@@ -1642,6 +1642,26 @@ mod cmd {
         yank_joined_to_clipboard_impl(&mut cx.editor, separator)
     }
 
+    fn yank_main_selection_to_primary_selection(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        yank_main_selection_to_primary_selection_impl(&mut cx.editor)
+    }
+
+    fn yank_joined_to_primary_selection(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let separator = args
+            .first()
+            .copied()
+            .unwrap_or_else(|| doc.line_ending.as_str());
+        yank_joined_to_primary_selection_impl(&mut cx.editor, separator)
+    }
     fn paste_clipboard_after(
         cx: &mut compositor::Context,
         _args: &[&str],
@@ -1678,6 +1698,45 @@ mod cmd {
                 Ok(())
             }
             Err(e) => Err(e.context("Couldn't get system clipboard contents")),
+        }
+    }
+
+    fn paste_primary_selection_after(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        paste_primary_selection_impl(&mut cx.editor, Paste::After)
+    }
+
+    fn paste_primary_selection_before(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        paste_primary_selection_impl(&mut cx.editor, Paste::After)
+    }
+
+    fn replace_selections_with_primary_selection(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+
+        match cx.editor.primary_selection_provider.get_contents() {
+            Ok(contents) => {
+                let selection = doc.selection(view.id);
+                let transaction =
+                    Transaction::change_by_selection(doc.text(), selection, |range| {
+                        (range.from(), range.to(), Some(contents.as_str().into()))
+                    });
+
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
+                Ok(())
+            }
+            Err(e) => Err(e.context("Couldn't get system primary selection contents")),
         }
     }
 
@@ -1892,6 +1951,20 @@ mod cmd {
             completer: None,
         },
         TypableCommand {
+            name: "primary-selection-yank",
+            alias: None,
+            doc: "Yank main selection into system primary selection.",
+            fun: yank_main_selection_to_primary_selection,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-selection-yank-join",
+            alias: None,
+            doc: "Yank joined selections into system primary selection. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
+            fun: yank_joined_to_primary_selection,
+            completer: None,
+        },
+        TypableCommand {
             name: "clipboard-paste-after",
             alias: None,
             doc: "Paste system clipboard after selections.",
@@ -1910,6 +1983,27 @@ mod cmd {
             alias: None,
             doc: "Replace selections with content of system clipboard.",
             fun: replace_selections_with_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-selection-paste-after",
+            alias: None,
+            doc: "Paste primary selection after selections.",
+            fun: paste_primary_selection_after,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-selection-paste-before",
+            alias: None,
+            doc: "Paste primary selection before selections.",
+            fun: paste_primary_selection_before,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-selection-paste-replace",
+            alias: None,
+            doc: "Replace selections with content of system primary selection.",
+            fun: replace_selections_with_primary_selection,
             completer: None,
         },
         TypableCommand {
@@ -3184,6 +3278,62 @@ fn yank_main_selection_to_clipboard(cx: &mut Context) {
     let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor);
 }
 
+fn yank_joined_to_primary_selection_impl(
+    editor: &mut Editor,
+    separator: &str,
+) -> anyhow::Result<()> {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let values: Vec<String> = doc
+        .selection(view.id)
+        .fragments(text)
+        .map(Cow::into_owned)
+        .collect();
+
+    let msg = format!(
+        "joined and yanked {} selection(s) to system primary selection",
+        values.len(),
+    );
+
+    let joined = values.join(separator);
+
+    editor
+        .primary_selection_provider
+        .set_contents(joined)
+        .context("Couldn't set system primary selection content")?;
+
+    editor.set_status(msg);
+
+    Ok(())
+}
+
+fn yank_joined_to_primary_selection(cx: &mut Context) {
+    let line_ending = current!(cx.editor).1.line_ending;
+    let _ = yank_joined_to_primary_selection_impl(&mut cx.editor, line_ending.as_str());
+}
+
+fn yank_main_selection_to_primary_selection_impl(editor: &mut Editor) -> anyhow::Result<()> {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let value = doc.selection(view.id).primary().fragment(text);
+
+    if let Err(e) = editor
+        .primary_selection_provider
+        .set_contents(value.into_owned())
+    {
+        bail!("Couldn't set system primary selection content: {:?}", e);
+    }
+
+    editor.set_status("yanked main selection to system primary selection".to_owned());
+    Ok(())
+}
+
+fn yank_main_selection_to_primary_selection(cx: &mut Context) {
+    let _ = yank_main_selection_to_primary_selection_impl(&mut cx.editor);
+}
+
 #[derive(Copy, Clone)]
 enum Paste {
     Before,
@@ -3259,6 +3409,32 @@ fn paste_clipboard_before(cx: &mut Context) {
     let _ = paste_clipboard_impl(&mut cx.editor, Paste::Before);
 }
 
+fn paste_primary_selection_impl(editor: &mut Editor, action: Paste) -> anyhow::Result<()> {
+    let (view, doc) = current!(editor);
+
+    match editor
+        .primary_selection_provider
+        .get_contents()
+        .map(|contents| paste_impl(&[contents], doc, view, action))
+    {
+        Ok(Some(transaction)) => {
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+            Ok(())
+        }
+        Ok(None) => Ok(()),
+        Err(e) => Err(e.context("Couldn't get system primary clipboard contents")),
+    }
+}
+
+fn paste_primary_selection_after(cx: &mut Context) {
+    let _ = paste_primary_selection_impl(&mut cx.editor, Paste::After);
+}
+
+fn paste_primary_selection_before(cx: &mut Context) {
+    let _ = paste_primary_selection_impl(&mut cx.editor, Paste::Before);
+}
+
 fn replace_with_yanked(cx: &mut Context) {
     let reg_name = cx.selected_register.name();
     let (view, doc) = current!(cx.editor);
@@ -3301,6 +3477,28 @@ fn replace_selections_with_clipboard_impl(editor: &mut Editor) -> anyhow::Result
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
     let _ = replace_selections_with_clipboard_impl(&mut cx.editor);
+}
+
+fn replace_selections_with_primary_selection_impl(editor: &mut Editor) -> anyhow::Result<()> {
+    let (view, doc) = current!(editor);
+
+    match editor.primary_selection_provider.get_contents() {
+        Ok(contents) => {
+            let selection = doc.selection(view.id);
+            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+                (range.from(), range.to(), Some(contents.as_str().into()))
+            });
+
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+            Ok(())
+        }
+        Err(e) => Err(e.context("Couldn't get system primary selection contents")),
+    }
+}
+
+fn replace_selections_with_primary_selection(cx: &mut Context) {
+    let _ = replace_selections_with_primary_selection_impl(&mut cx.editor);
 }
 
 fn paste_after(cx: &mut Context) {
