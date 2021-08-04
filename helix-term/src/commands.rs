@@ -3940,10 +3940,7 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
             if cfg!(windows) {
                 vec!["cmd".to_owned(), "/C".to_owned()]
             } else {
-                vec![
-                    std::env::var("SHELL").unwrap_or_else(|_| "sh".to_owned()),
-                    "-c".to_owned(),
-                ]
+                vec!["sh".to_owned(), "-c".to_owned()]
             }
         }
     };
