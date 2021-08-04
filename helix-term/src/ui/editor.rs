@@ -862,13 +862,15 @@ impl Component for EditorView {
                 ..
             }) => {
                 let (view, doc) = current!(cx.editor);
+                let range = doc.selection(view.id).primary();
 
-                cx.editor.primary_selection_provider.set_contents(
-                    doc.selection(view.id)
-                        .primary()
-                        .fragment(doc.text().slice(..))
-                        .to_string(),
-                );
+                if range.to() - range.from() <= 1 {
+                    return EventResult::Ignored;
+                }
+
+                cx.editor
+                    .primary_selection_provider
+                    .set_contents(range.fragment(doc.text().slice(..)).to_string());
 
                 EventResult::Consumed(None)
             }
