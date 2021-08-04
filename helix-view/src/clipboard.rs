@@ -85,7 +85,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-pub fn get_primary_selection_provider() -> Box<dyn ClipboardProvider> {
+pub fn get_primary_clipboard_provider() -> Box<dyn ClipboardProvider> {
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
 

@@ -877,7 +877,7 @@ impl Component for EditorView {
                     jobs: cx.jobs,
                 };
 
-                commands::Command::yank_main_selection_to_primary_selection.execute(&mut cxt);
+                commands::Command::yank_main_selection_to_primary_clipboard.execute(&mut cxt);
 
                 EventResult::Consumed(None)
             }
@@ -901,7 +901,7 @@ impl Component for EditorView {
                         jobs: cx.jobs,
                     };
 
-                    commands::Command::replace_selections_with_primary_selection.execute(&mut cxt);
+                    commands::Command::replace_selections_with_primary_clipboard.execute(&mut cxt);
 
                     return EventResult::Consumed(None);
                 }
@@ -927,7 +927,7 @@ impl Component for EditorView {
                         jobs: cx.jobs,
                     };
 
-                    commands::Command::paste_primary_selection_before.execute(&mut cxt);
+                    commands::Command::paste_primary_clipboard_before.execute(&mut cxt);
 
                     return EventResult::Consumed(None);
                 }
