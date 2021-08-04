@@ -868,7 +868,8 @@ impl Component for EditorView {
                     return EventResult::Ignored;
                 }
 
-                cx.editor
+                let _ = cx
+                    .editor
                     .primary_selection_provider
                     .set_contents(range.fragment(doc.text().slice(..)).to_string());
 
