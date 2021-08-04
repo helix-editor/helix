@@ -3934,19 +3934,16 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
     use std::io::Write;
     use std::process::{Command, Stdio};
     let shell = Option::<Vec<_>>::None; // this should come from config, but can't currently
-    let (shell, args) = match shell {
-        Some(shell) if !shell.is_empty() => {
-            let mut args = shell.into_iter();
-            (args.next().unwrap(), args)
-        }
+    let shell = match shell {
+        Some(v) if !v.is_empty() => v,
         _ => {
             if cfg!(windows) {
-                ("cmd".to_owned(), vec!["/C".to_owned()].into_iter())
+                vec!["cmd".to_owned(), "/C".to_owned()]
             } else {
-                (
+                vec![
                     std::env::var("SHELL").unwrap_or_else(|_| "sh".to_owned()),
-                    vec!["-c".to_owned()].into_iter(),
-                )
+                    "-c".to_owned(),
+                ]
             }
         }
     };
@@ -3960,11 +3957,8 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
                 let selection = doc.selection(view.id);
                 let transaction =
                     Transaction::change_by_selection(doc.text(), selection, |range| {
-                        let mut command = Command::new(&shell);
-                        for arg in args.as_ref() {
-                            command.arg(arg);
-                        }
-                        let mut process = command
+                        let mut process = Command::new(&shell[0])
+                            .args(&shell[1..])
                             .arg(input)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
