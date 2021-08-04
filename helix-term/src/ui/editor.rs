@@ -29,6 +29,7 @@ use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     keymaps: Keymaps,
+    middle_click_paste: bool,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -40,14 +41,15 @@ const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default())
+        Self::new(Keymaps::default(), true)
     }
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(keymaps: Keymaps, middle_click_paste: bool) -> Self {
         Self {
             keymaps,
+            middle_click_paste,
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
@@ -861,6 +863,10 @@ impl Component for EditorView {
                 kind: MouseEventKind::Up(MouseButton::Left),
                 ..
             }) => {
+                if !self.middle_click_paste {
+                    return EventResult::Ignored;
+                }
+
                 let (view, doc) = current!(cx.editor);
                 let range = doc.selection(view.id).primary();
 
@@ -889,6 +895,10 @@ impl Component for EditorView {
                 modifiers,
                 ..
             }) => {
+                if !self.middle_click_paste {
+                    return EventResult::Ignored;
+                }
+
                 let editor = &mut cx.editor;
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {

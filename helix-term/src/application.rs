@@ -82,7 +82,7 @@ impl Application {
 
         let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
 
-        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
+        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys), config.terminal.middle_click_paste));
         compositor.push(editor_view);
 
         if !args.files.is_empty() {
