@@ -95,6 +95,11 @@ pub fn get_primary_selection_provider() -> Box<dyn ClipboardProvider> {
             paste => "xsel", "-o";
             copy => "xsel", "-i";
         }
+    } else if env_var_is_set("DISPLAY") && exists("xclip") {
+        command_provider! {
+            paste => "xclip", "-o";
+            copy => "xclip", "-i";
+        }
     } else if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
         command_provider! {
             paste => "wl-paste", "-p", "--no-newline";
