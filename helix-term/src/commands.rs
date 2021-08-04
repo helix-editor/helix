@@ -960,32 +960,74 @@ fn extend_char_right(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn copy_selection_on_prev_line(cx: &mut Context) {
+fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let old_selection = doc.selection(view.id).clone();
-    let mut ranges: SmallVec<_> = old_selection.ranges().into();
-    for r in old_selection.iter() {
-        ranges.push(Range::point(
-            movement::move_vertically(text, *r, Direction::Backward, count, Movement::Extend).head,
-        ));
+    let selection = doc.selection(view.id);
+    let mut ranges = SmallVec::with_capacity(selection.ranges().len() * (count + 1));
+    ranges.extend_from_slice(selection.ranges());
+    let mut primary_index = 0;
+    for range in selection.iter() {
+        let is_primary = *range == selection.primary();
+        let head_pos = coords_at_pos(text, range.head);
+        let anchor_pos = coords_at_pos(text, range.anchor);
+        let height = std::cmp::max(head_pos.row, anchor_pos.row)
+            - std::cmp::min(head_pos.row, anchor_pos.row)
+            + 1;
+
+        if is_primary {
+            primary_index = ranges.len();
+        }
+        ranges.push(*range);
+
+        let mut sels = 0;
+        let mut i = 0;
+        while sels < count {
+            let offset = (i + 1) * height;
+
+            let anchor_row = match direction {
+                Direction::Forward => anchor_pos.row + offset,
+                Direction::Backward => anchor_pos.row.saturating_sub(offset),
+            };
+
+            let head_row = match direction {
+                Direction::Forward => head_pos.row + offset,
+                Direction::Backward => head_pos.row.saturating_sub(offset),
+            };
+
+            if anchor_row >= text.len_lines() || head_row >= text.len_lines() {
+                break;
+            }
+
+            let anchor = pos_at_coords(text, Position::new(anchor_row, anchor_pos.col), true);
+            let head = pos_at_coords(text, Position::new(head_row, head_pos.col), true);
+
+            // skip lines that are too short
+            if coords_at_pos(text, anchor).col == anchor_pos.col
+                && coords_at_pos(text, head).col == head_pos.col
+            {
+                if is_primary {
+                    primary_index = ranges.len();
+                }
+                ranges.push(Range::new(anchor, head));
+                sels += 1;
+            }
+
+            i += 1;
+        }
     }
-    doc.set_selection(view.id, Selection::new(ranges, old_selection.cursor()));
+
+    let selection = Selection::new(ranges, primary_index);
+    doc.set_selection(view.id, selection);
+}
+
+fn copy_selection_on_prev_line(cx: &mut Context) {
+    copy_selection_on_line(cx, Direction::Backward)
 }
 
 fn copy_selection_on_next_line(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-    let old_selection = doc.selection(view.id).clone();
-    let mut ranges: SmallVec<_> = old_selection.ranges().into();
-    for r in old_selection.iter() {
-        ranges.push(Range::point(
-            movement::move_vertically(text, *r, Direction::Forward, count, Movement::Extend).head,
-        ));
-    }
-    doc.set_selection(view.id, Selection::new(ranges, old_selection.cursor()));
+    copy_selection_on_line(cx, Direction::Forward)
 }
 
 fn extend_line_up(cx: &mut Context) {
