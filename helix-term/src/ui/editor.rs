@@ -856,6 +856,23 @@ impl Component for EditorView {
                 doc.set_selection(view.id, selection);
                 EventResult::Consumed(None)
             }
+
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Left),
+                ..
+            }) => {
+                let (view, doc) = current!(cx.editor);
+
+                cx.editor.primary_selection_provider.set_contents(
+                    doc.selection(view.id)
+                        .primary()
+                        .fragment(doc.text().slice(..))
+                        .to_string(),
+                );
+
+                EventResult::Consumed(None)
+            }
+
             Event::Mouse(_) => EventResult::Ignored,
         }
     }
