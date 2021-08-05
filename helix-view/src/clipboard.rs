@@ -3,10 +3,15 @@
 use anyhow::Result;
 use std::borrow::Cow;
 
+pub enum ClipboardType {
+    Clipboard,
+    Selection,
+}
+
 pub trait ClipboardProvider: std::fmt::Debug {
     fn name(&self) -> Cow<str>;
-    fn get_contents(&self) -> Result<String>;
-    fn set_contents(&mut self, contents: String) -> Result<()>;
+    fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String>;
+    fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()>;
 }
 
 macro_rules! command_provider {
@@ -20,6 +25,33 @@ macro_rules! command_provider {
                 prg: $set_prg,
                 args: &[ $( $set_arg ),* ],
             },
+            get_primary_cmd: None,
+            set_primary_cmd: None,
+            selection_buf: String::new(),
+        })
+    }};
+}
+
+macro_rules! command_provider_with_primary {
+    (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ; primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ; ) => {{
+        Box::new(provider::CommandProvider {
+            get_cmd: provider::CommandConfig {
+                prg: $get_prg,
+                args: &[ $( $get_arg ),* ],
+            },
+            set_cmd: provider::CommandConfig {
+                prg: $set_prg,
+                args: &[ $( $set_arg ),* ],
+            },
+            get_primary_cmd: Some(provider::CommandConfig {
+                prg: $pr_get_prg,
+                args: &[ $( $pr_get_arg ),* ],
+            }),
+            set_primary_cmd: Some(provider::CommandConfig {
+                prg: $pr_set_prg,
+                args: &[ $( $pr_set_arg ),* ],
+            }),
+            selection_buf: String::new(),
         })
     }};
 }
@@ -34,21 +66,27 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             copy => "pbcopy";
         }
     } else if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
-        command_provider! {
+        command_provider_with_primary! {
             paste => "wl-paste", "--no-newline";
             copy => "wl-copy", "--type", "text/plain";
+            primary_paste => "wl-paste", "-p", "--no-newline";
+            primary_copy => "wl-copy", "-p", "--type", "text/plain";
         }
     } else if env_var_is_set("DISPLAY") && exists("xclip") {
-        command_provider! {
+        command_provider_with_primary! {
             paste => "xclip", "-o", "-selection", "clipboard";
             copy => "xclip", "-i", "-selection", "clipboard";
+            primary_paste => "xclip", "-o";
+            primary_copy => "xclip", "-i";
         }
     } else if env_var_is_set("DISPLAY") && exists("xsel") && is_exit_success("xsel", &["-o", "-b"])
     {
         // FIXME: check performance of is_exit_success
-        command_provider! {
+        command_provider_with_primary! {
             paste => "xsel", "-o", "-b";
             copy => "xsel", "--nodetach", "-i", "-b";
+            primary_paste => "xsel", "-o";
+            primary_copy => "xsel", "-i";
         }
     } else if exists("lemonade") {
         command_provider! {
@@ -78,35 +116,10 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         }
     } else {
         #[cfg(target_os = "windows")]
-        return Box::new(provider::WindowsProvider);
+        return Box::new(provider::WindowsProvider::new());
 
         #[cfg(not(target_os = "windows"))]
-        return Box::new(provider::NopProvider { buf: String::new() });
-    }
-}
-
-pub fn get_primary_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    // TODO: support for user-defined provider, probably when we have plugin support by setting a
-    // variable?
-
-    if env_var_is_set("DISPLAY") && exists("xsel") && is_exit_success("xsel", &["-o"]) {
-        // FIXME: check performance of is_exit_success
-        command_provider! {
-            paste => "xsel", "-o";
-            copy => "xsel", "-i";
-        }
-    } else if env_var_is_set("DISPLAY") && exists("xclip") {
-        command_provider! {
-            paste => "xclip", "-o";
-            copy => "xclip", "-i";
-        }
-    } else if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
-        command_provider! {
-            paste => "wl-paste", "-p", "--no-newline";
-            copy => "wl-copy", "-p", "--type", "text/plain";
-        }
-    } else {
-        Box::new(provider::NopProvider { buf: String::new() })
+        return Box::new(provider::NopProvider::new());
     }
 }
 
@@ -128,13 +141,23 @@ fn is_exit_success(program: &str, args: &[&str]) -> bool {
 }
 
 mod provider {
-    use super::ClipboardProvider;
+    use super::{ClipboardProvider, ClipboardType};
     use anyhow::{bail, Context as _, Result};
     use std::borrow::Cow;
 
     #[derive(Debug)]
     pub struct NopProvider {
-        pub buf: String,
+        buf: String,
+        primary_buf: String,
+    }
+
+    impl NopProvider {
+        pub fn new() -> Self {
+            Self {
+                buf: String::new(),
+                primary_buf: String::new(),
+            }
+        }
     }
 
     impl ClipboardProvider for NopProvider {
@@ -142,19 +165,38 @@ mod provider {
             Cow::Borrowed("none")
         }
 
-        fn get_contents(&self) -> Result<String> {
-            Ok(self.buf.clone())
+        fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
+            let value = match clipboard_type {
+                ClipboardType::Clipboard => self.buf.clone(),
+                ClipboardType::Selection => self.primary_buf.clone(),
+            };
+
+            Ok(value)
         }
 
-        fn set_contents(&mut self, content: String) -> Result<()> {
-            self.buf = content;
+        fn set_contents(&mut self, content: String, clipboard_type: ClipboardType) -> Result<()> {
+            match clipboard_type {
+                ClipboardType::Clipboard => self.buf = content,
+                ClipboardType::Selection => self.primary_buf = content,
+            }
             Ok(())
         }
     }
 
     #[cfg(target_os = "windows")]
     #[derive(Debug)]
-    pub struct WindowsProvider;
+    pub struct WindowsProvider {
+        selection_buf: String,
+    }
+
+    #[cfg(target_os = "windows")]
+    impl WindowsProvider {
+        pub fn new() -> Self {
+            Self {
+                selection_buf: String::new(),
+            }
+        }
+    }
 
     #[cfg(target_os = "windows")]
     impl ClipboardProvider for WindowsProvider {
@@ -162,13 +204,23 @@ mod provider {
             Cow::Borrowed("clipboard-win")
         }
 
-        fn get_contents(&self) -> Result<String> {
-            let contents = clipboard_win::get_clipboard(clipboard_win::formats::Unicode)?;
+        fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
+            let contents = match clipboard_type {
+                ClipboardType::Clipboard => {
+                    clipboard_win::get_clipboard(clipboard_win::formats::Unicode)?
+                }
+                ClipboardType::Selection => self.selection_buf.clone(),
+            };
             Ok(contents)
         }
 
-        fn set_contents(&mut self, contents: String) -> Result<()> {
-            clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
+        fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()> {
+            match clipboard_type {
+                ClipboardType::Clipboard => {
+                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?
+                }
+                ClipboardType::Selection => self.selection_buf = contents,
+            }
             Ok(())
         }
     }
@@ -220,27 +272,52 @@ mod provider {
     pub struct CommandProvider {
         pub get_cmd: CommandConfig,
         pub set_cmd: CommandConfig,
+        pub get_primary_cmd: Option<CommandConfig>,
+        pub set_primary_cmd: Option<CommandConfig>,
+        pub selection_buf: String,
     }
 
     impl ClipboardProvider for CommandProvider {
         fn name(&self) -> Cow<str> {
-            if self.get_cmd.prg != self.set_cmd.prg {
+            if let Some(get_primary) = &self.get_primary_cmd {
+                Cow::Owned(format!("{}/{}", self.get_cmd.prg, get_primary.prg))
+            } else if self.get_cmd.prg != self.set_cmd.prg {
                 Cow::Owned(format!("{}+{}", self.get_cmd.prg, self.set_cmd.prg))
             } else {
                 Cow::Borrowed(self.get_cmd.prg)
             }
         }
 
-        fn get_contents(&self) -> Result<String> {
-            let output = self
-                .get_cmd
-                .execute(None, true)?
-                .context("output is missing")?;
-            Ok(output)
+        fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
+            match clipboard_type {
+                ClipboardType::Clipboard => {
+                    return Ok(self
+                        .get_cmd
+                        .execute(None, true)?
+                        .context("output is missing")?)
+                }
+                ClipboardType::Selection => {
+                    if let Some(cmd) = &self.get_primary_cmd {
+                        return Ok(cmd.execute(None, true)?.context("output is missing")?);
+                    }
+
+                    return Ok(self.selection_buf.clone());
+                }
+            };
         }
 
-        fn set_contents(&mut self, value: String) -> Result<()> {
-            self.set_cmd.execute(Some(&value), false).map(|_| ())
+        fn set_contents(&mut self, value: String, clipboard_type: ClipboardType) -> Result<()> {
+            return match clipboard_type {
+                ClipboardType::Clipboard => self.set_cmd.execute(Some(&value), false).map(|_| ()),
+                ClipboardType::Selection => {
+                    if let Some(cmd) = &self.set_primary_cmd {
+                        return cmd.execute(Some(&value), false).map(|_| ());
+                    }
+
+                    self.selection_buf = value;
+                    return Ok(());
+                }
+            };
         }
     }
 }

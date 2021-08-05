@@ -1,5 +1,5 @@
 use crate::{
-    clipboard::{get_clipboard_provider, get_primary_clipboard_provider, ClipboardProvider},
+    clipboard::{get_clipboard_provider, ClipboardProvider},
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
@@ -28,7 +28,6 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
-    pub primary_clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -66,7 +65,6 @@ impl Editor {
             theme_loader: themes,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
-            primary_clipboard_provider: get_primary_clipboard_provider(),
             status_msg: None,
         }
     }
