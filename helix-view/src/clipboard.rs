@@ -279,9 +279,7 @@ mod provider {
 
     impl ClipboardProvider for CommandProvider {
         fn name(&self) -> Cow<str> {
-            if let Some(get_primary) = &self.get_primary_cmd {
-                Cow::Owned(format!("{}/{}", self.get_cmd.prg, get_primary.prg))
-            } else if self.get_cmd.prg != self.set_cmd.prg {
+            if self.get_cmd.prg != self.set_cmd.prg {
                 Cow::Owned(format!("{}+{}", self.get_cmd.prg, self.set_cmd.prg))
             } else {
                 Cow::Borrowed(self.get_cmd.prg)
