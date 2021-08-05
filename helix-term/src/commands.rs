@@ -133,7 +133,7 @@ pub struct Command {
 }
 
 macro_rules! commands {
-    ( $($name:ident, $doc:literal),* $(,)? ) => {
+    ( $($name:ident, $doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self {
