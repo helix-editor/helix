@@ -74,6 +74,8 @@
 | `Alt-s`  | Split selection on newlines                                       |
 | `;`      | Collapse selection onto a single cursor                           |
 | `Alt-;`  | Flip selection cursor and anchor                                  |
+| `C`      | Copy selection onto the next line                                 |
+| `Alt-C`  | Copy selection onto the previous line                             |
 | `%`      | Select entire file                                                |
 | `x`      | Select current line, if already selected, extend to next line     |
 | `X`      | Extend selection to line bounds (line-wise selection)             |
