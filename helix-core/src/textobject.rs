@@ -1,7 +1,7 @@
 use ropey::RopeSlice;
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
-use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
+use crate::graphemes::next_grapheme_boundary;
 use crate::movement::Direction;
 use crate::surround;
 use crate::Range;
