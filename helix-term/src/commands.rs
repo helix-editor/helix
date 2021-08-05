@@ -3946,7 +3946,7 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
     };
     let prompt = Prompt::new(
         prompt.to_owned(),
-        Some('!'),
+        Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             if event == PromptEvent::Validate {
