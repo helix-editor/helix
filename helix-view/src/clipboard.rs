@@ -290,24 +290,22 @@ mod provider {
 
         fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
             match clipboard_type {
-                ClipboardType::Clipboard => {
-                    return Ok(self
-                        .get_cmd
-                        .execute(None, true)?
-                        .context("output is missing")?)
-                }
+                ClipboardType::Clipboard => Ok(self
+                    .get_cmd
+                    .execute(None, true)?
+                    .context("output is missing")?),
                 ClipboardType::Selection => {
                     if let Some(cmd) = &self.get_primary_cmd {
-                        return Ok(cmd.execute(None, true)?.context("output is missing")?);
+                        return cmd.execute(None, true)?.context("output is missing");
                     }
 
-                    return Ok(self.selection_buf.clone());
+                    Ok(self.selection_buf.clone())
                 }
-            };
+            }
         }
 
         fn set_contents(&mut self, value: String, clipboard_type: ClipboardType) -> Result<()> {
-            return match clipboard_type {
+            match clipboard_type {
                 ClipboardType::Clipboard => self.set_cmd.execute(Some(&value), false).map(|_| ()),
                 ClipboardType::Selection => {
                     if let Some(cmd) = &self.set_primary_cmd {
@@ -315,9 +313,9 @@ mod provider {
                     }
 
                     self.selection_buf = value;
-                    return Ok(());
+                    Ok(())
                 }
-            };
+            }
         }
     }
 }
