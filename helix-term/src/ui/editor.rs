@@ -904,7 +904,7 @@ impl Component for EditorView {
                 if modifiers == crossterm::event::KeyModifiers::ALT {
                     let mut cxt = commands::Context {
                         selected_register: helix_view::RegisterSelection::default(),
-                        editor: &mut cx.editor,
+                        editor: editor,
                         count: None,
                         callback: None,
                         on_next_key_callback: None,
