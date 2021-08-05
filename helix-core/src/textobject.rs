@@ -183,8 +183,7 @@ mod test {
                     (20, Inside, (14, 21)),
                     (17, Inside, (14, 21)),
                     (14, Around, (14, 21)),
-                    // FIXME: edge case
-                    // (20, Around, (14, 20)),
+                    (20, Around, (14, 21)),
                     (17, Around, (14, 21)),
                 ],
             ),
