@@ -19,13 +19,22 @@ pub struct LspConfig {
     pub display_messages: bool,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct TerminalConfig {
     #[serde(default = "mouse_default")]
     pub mouse: bool,
     #[serde(default = "middle_click_paste_default")]
     pub middle_click_paste: bool,
+}
+
+impl Default for TerminalConfig {
+    fn default() -> Self {
+        Self {
+            mouse: true,
+            middle_click_paste: true,
+        }
+    }
 }
 
 fn mouse_default() -> bool {
