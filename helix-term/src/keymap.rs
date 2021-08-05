@@ -387,6 +387,10 @@ impl Default for Keymaps {
             "c" => change_selection,
             // TODO: also change delete without yanking
 
+            "C" => copy_selection_on_next_line,
+            "A-C" => copy_selection_on_prev_line,
+
+
             "s" => select_regex,
             "A-s" => split_selection_on_newline,
             "S" => split_selection,

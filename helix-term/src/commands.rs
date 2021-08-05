@@ -173,6 +173,8 @@ impl Command {
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
+        copy_selection_on_next_line, "Copy selection on next line",
+        copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to beginning of next word",
         move_prev_word_start, "Move to beginning of previous word",
         move_next_word_end, "Move to end of next word",
@@ -962,6 +964,76 @@ fn extend_char_right(cx: &mut Context) {
         movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
+}
+
+fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+    let mut ranges = SmallVec::with_capacity(selection.ranges().len() * (count + 1));
+    ranges.extend_from_slice(selection.ranges());
+    let mut primary_index = 0;
+    for range in selection.iter() {
+        let is_primary = *range == selection.primary();
+        let head_pos = coords_at_pos(text, range.head);
+        let anchor_pos = coords_at_pos(text, range.anchor);
+        let height = std::cmp::max(head_pos.row, anchor_pos.row)
+            - std::cmp::min(head_pos.row, anchor_pos.row)
+            + 1;
+
+        if is_primary {
+            primary_index = ranges.len();
+        }
+        ranges.push(*range);
+
+        let mut sels = 0;
+        let mut i = 0;
+        while sels < count {
+            let offset = (i + 1) * height;
+
+            let anchor_row = match direction {
+                Direction::Forward => anchor_pos.row + offset,
+                Direction::Backward => anchor_pos.row.saturating_sub(offset),
+            };
+
+            let head_row = match direction {
+                Direction::Forward => head_pos.row + offset,
+                Direction::Backward => head_pos.row.saturating_sub(offset),
+            };
+
+            if anchor_row >= text.len_lines() || head_row >= text.len_lines() {
+                break;
+            }
+
+            let anchor = pos_at_coords(text, Position::new(anchor_row, anchor_pos.col), true);
+            let head = pos_at_coords(text, Position::new(head_row, head_pos.col), true);
+
+            // skip lines that are too short
+            if coords_at_pos(text, anchor).col == anchor_pos.col
+                && coords_at_pos(text, head).col == head_pos.col
+            {
+                if is_primary {
+                    primary_index = ranges.len();
+                }
+                ranges.push(Range::new(anchor, head));
+                sels += 1;
+            }
+
+            i += 1;
+        }
+    }
+
+    let selection = Selection::new(ranges, primary_index);
+    doc.set_selection(view.id, selection);
+}
+
+fn copy_selection_on_prev_line(cx: &mut Context) {
+    copy_selection_on_line(cx, Direction::Backward)
+}
+
+fn copy_selection_on_next_line(cx: &mut Context) {
+    copy_selection_on_line(cx, Direction::Forward)
 }
 
 fn extend_line_up(cx: &mut Context) {
@@ -3237,7 +3309,8 @@ fn yank(cx: &mut Context) {
         .registers
         .write(cx.selected_register.name(), values);
 
-    cx.editor.set_status(msg)
+    cx.editor.set_status(msg);
+    exit_select_mode(cx);
 }
 
 fn yank_joined_to_clipboard_impl(
@@ -3278,6 +3351,7 @@ fn yank_joined_to_clipboard(cx: &mut Context) {
         line_ending.as_str(),
         ClipboardType::Clipboard,
     );
+    exit_select_mode(cx);
 }
 
 fn yank_main_selection_to_clipboard_impl(
@@ -3315,6 +3389,7 @@ fn yank_joined_to_primary_clipboard(cx: &mut Context) {
 
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
     let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Selection);
+    exit_select_mode(cx);
 }
 
 #[derive(Copy, Clone)]
