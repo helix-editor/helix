@@ -489,7 +489,6 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        self.editor.close_language_servers(None).await?;
         if self.config.terminal.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
