@@ -140,7 +140,7 @@ impl Transport {
         let output: serde_json::Result<ServerMessage> = serde_json::from_str(&msg);
         log::trace!("parsed JSON, output: {:?}", output);
 
-        semaphore_guard.unwrap().forget();
+        drop(semaphore_guard.unwrap());
 
         Ok(output?)
     }
