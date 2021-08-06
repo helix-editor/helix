@@ -101,13 +101,13 @@ impl<'a> Context<'a> {
     }
 }
 
-pub enum Align {
+enum Align {
     Top,
     Center,
     Bottom,
 }
 
-pub fn align_view(doc: &Document, view: &mut View, align: Align) {
+fn align_view(doc: &Document, view: &mut View, align: Align) {
     let pos = doc
         .selection(view.id)
         .primary()
@@ -2140,9 +2140,6 @@ fn symbol_picker(cx: &mut Context) {
                     move |editor, symbol| {
                         let view = editor.tree.get(editor.tree.focus);
                         let doc = &editor.documents[view.doc];
-                        // let range =
-                        //     lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding);
-                        // Calculating the exact range is expensive, so use line number only
                         doc.path()
                             .cloned()
                             .zip(Some(symbol.location.range.start.line as usize))

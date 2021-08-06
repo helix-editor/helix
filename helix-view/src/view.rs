@@ -59,7 +59,7 @@ impl JumpList {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct View {
     pub id: ViewId,
     pub doc: DocumentId,

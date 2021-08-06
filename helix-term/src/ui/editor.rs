@@ -33,7 +33,7 @@ pub struct EditorView {
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
     spinners: ProgressSpinners,
-    pub autoinfo: Option<Info>,
+    autoinfo: Option<Info>,
 }
 
 const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
