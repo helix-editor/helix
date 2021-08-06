@@ -62,9 +62,8 @@ impl<T> FilePicker<T> {
     fn calculate_preview(&mut self, editor: &Editor) {
         if let Some((path, _line)) = self.current_file(editor) {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
-                let mut doc =
-                    Document::open(&path, None, Some(&editor.theme), Some(&editor.syn_loader))
-                        .unwrap();
+                // TODO: enable syntax highlighting; blocked by async rendering
+                let mut doc = Document::open(&path, None, Some(&editor.theme), None).unwrap();
                 // HACK: a doc needs atleast one selection
                 doc.set_selection(self._preview_view_id, Selection::point(0));
                 self.preview_cache.insert(path, doc);
@@ -75,12 +74,12 @@ impl<T> FilePicker<T> {
 
 impl<T: 'static> Component for FilePicker<T> {
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // |---------|  |---------|
-        // |prompt   |  |preview  |
-        // |---------|  |         |
-        // |picker   |  |         |
-        // |         |  |         |
-        // |---------|  |---------|
+        // +---------+ +---------+
+        // |prompt   | |preview  |
+        // +---------+ |         |
+        // |picker   | |         |
+        // |         | |         |
+        // +---------+ +---------+
         let area = inner_rect(area);
         // -- Render the frame:
         // clear area
