@@ -84,7 +84,7 @@ impl Transport {
         loop {
             buffer.truncate(0);
             reader.read_line(buffer).await?;
-            if let None = semaphore_guard {
+            if semaphore_guard.is_none() {
                 semaphore_guard = Some(
                     semaphore
                         .acquire()
