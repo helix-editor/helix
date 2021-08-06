@@ -275,6 +275,8 @@ impl Command {
         completion, "Invoke completion popup",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
+        rotate_selections_forward, "Rotate selections forward",
+        rotate_selections_backward, "Rotate selections backward",
         expand_selection, "Expand selection to parent syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
@@ -3745,6 +3747,25 @@ fn toggle_comments(cx: &mut Context) {
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+}
+
+fn rotate_selections(cx: &mut Context, direction: Direction) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let mut selection = doc.selection(view.id).clone();
+    let index = selection.primary_index();
+    let len = selection.len();
+    selection.set_primary_index(match direction {
+        Direction::Forward => (index + count) % len,
+        Direction::Backward => (index + (len.saturating_sub(count) % len)) % len,
+    });
+    doc.set_selection(view.id, selection);
+}
+fn rotate_selections_forward(cx: &mut Context) {
+    rotate_selections(cx, Direction::Forward)
+}
+fn rotate_selections_backward(cx: &mut Context) {
+    rotate_selections(cx, Direction::Backward)
 }
 
 // tree sitter node selection
