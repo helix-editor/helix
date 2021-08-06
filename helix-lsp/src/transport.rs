@@ -76,12 +76,22 @@ impl Transport {
     async fn recv_server_message(
         reader: &mut (impl AsyncBufRead + Unpin + Send),
         buffer: &mut String,
+        semaphore: &tokio::sync::Semaphore,
     ) -> Result<ServerMessage> {
         let mut content_length = None;
+        let mut semaphore_guard = None;
 
         loop {
             buffer.truncate(0);
             reader.read_line(buffer).await?;
+            if let None = semaphore_guard {
+                semaphore_guard = Some(
+                    semaphore
+                        .acquire()
+                        .await
+                        .expect("semaphore acquisition failed"),
+                );
+            }
             log::trace!(
                 "line: {:?}, trimmed: {:?}, empty: {}",
                 buffer.as_bytes(),
@@ -130,6 +140,7 @@ impl Transport {
         let output: serde_json::Result<ServerMessage> = serde_json::from_str(&msg);
         log::trace!("parsed JSON, output: {:?}", output);
 
+        semaphore_guard.unwrap().forget();
 
         Ok(output?)
     }
@@ -218,6 +229,7 @@ impl Transport {
     async fn duplex(mut self) {
         let mut recv_buffer = String::new();
         let mut err_buffer = String::new();
+        let server_message_semaphore = tokio::sync::Semaphore::new(1);
         loop {
             tokio::select! {
                 // client -> server
@@ -230,7 +242,7 @@ impl Transport {
                     }
                 }
                 // server -> client
-                msg = Self::recv_server_message(&mut self.server_stdout, &mut recv_buffer) => {
+                msg = Self::recv_server_message(&mut self.server_stdout, &mut recv_buffer, &server_message_semaphore) => {
                     match msg {
                         Ok(msg) => {
                             self.process_server_message(msg).await.unwrap();
