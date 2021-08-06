@@ -78,12 +78,20 @@ impl Transport {
         buffer: &mut String,
     ) -> Result<ServerMessage> {
         let mut content_length = None;
+
         loop {
             buffer.truncate(0);
             reader.read_line(buffer).await?;
+            log::trace!(
+                "line: {:?}, trimmed: {:?}, empty: {}",
+                buffer.as_bytes(),
+                buffer.trim().as_bytes(),
+                buffer.trim().is_empty()
+            );
             let header = buffer.trim();
 
             if header.is_empty() {
+                log::trace!("breaking the loop");
                 break;
             }
 
@@ -104,17 +112,24 @@ impl Transport {
             }
         }
 
+        log::trace!("before reading content length");
         let content_length = content_length.context("missing content length")?;
+        log::trace!("read content length: {}", content_length);
 
         //TODO: reuse vector
         let mut content = vec![0; content_length];
+        log::trace!("created content vector");
         reader.read_exact(&mut content).await?;
+        log::trace!("read exact from reader to content: {:?}", content);
         let msg = String::from_utf8(content).context("invalid utf8 from server")?;
+        log::trace!("converted content to msg");
 
         info!("<- {}", msg);
 
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<ServerMessage> = serde_json::from_str(&msg);
+        log::trace!("parsed JSON, output: {:?}", output);
+
 
         Ok(output?)
     }
