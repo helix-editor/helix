@@ -696,6 +696,15 @@ impl EditorView {
 
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+        let mut cxt = commands::Context {
+            selected_register: helix_view::RegisterSelection::default(),
+            editor: &mut cx.editor,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+            jobs: cx.jobs,
+        };
+
         match event {
             Event::Resize(width, height) => {
                 // HAXX: offset the render area height by 1 to account for prompt/commandline
@@ -706,19 +715,10 @@ impl Component for EditorView {
                 let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
                 // clear status
-                cx.editor.status_msg = None;
+                cxt.editor.status_msg = None;
 
-                let (_, doc) = current!(cx.editor);
+                let (_, doc) = current!(cxt.editor);
                 let mode = doc.mode();
-
-                let mut cxt = commands::Context {
-                    selected_register: helix_view::RegisterSelection::default(),
-                    editor: &mut cx.editor,
-                    count: None,
-                    callback: None,
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -773,11 +773,11 @@ impl Component for EditorView {
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
-                if cx.editor.should_close() {
+                if cxt.editor.should_close() {
                     return EventResult::Ignored;
                 }
 
-                let (view, doc) = current!(cx.editor);
+                let (view, doc) = current!(cxt.editor);
                 view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
 
                 // mode transitions
@@ -812,7 +812,7 @@ impl Component for EditorView {
                 modifiers,
                 ..
             }) => {
-                let editor = &mut cx.editor;
+                let editor = &mut cxt.editor;
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
                     view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
@@ -843,7 +843,7 @@ impl Component for EditorView {
                 column,
                 ..
             }) => {
-                let (view, doc) = current!(cx.editor);
+                let (view, doc) = current!(cxt.editor);
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
                     Some(pos) => pos,
@@ -856,6 +856,23 @@ impl Component for EditorView {
                 doc.set_selection(view.id, selection);
                 EventResult::Consumed(None)
             }
+
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                ..
+            }) => {
+                commands::Command::scroll_up.execute(&mut cxt);
+                EventResult::Consumed(None)
+            }
+
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                ..
+            }) => {
+                commands::Command::scroll_down.execute(&mut cxt);
+                EventResult::Consumed(None)
+            }
+
             Event::Mouse(_) => EventResult::Ignored,
         }
     }
