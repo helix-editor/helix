@@ -1757,33 +1757,6 @@ mod cmd {
         paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard)
     }
 
-    fn replace_selections_with_clipboard(
-        cx: &mut compositor::Context,
-        _args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        let (view, doc) = current!(cx.editor);
-
-        match cx
-            .editor
-            .clipboard_provider
-            .get_contents(ClipboardType::Clipboard)
-        {
-            Ok(contents) => {
-                let selection = doc.selection(view.id);
-                let transaction =
-                    Transaction::change_by_selection(doc.text(), selection, |range| {
-                        (range.from(), range.to(), Some(contents.as_str().into()))
-                    });
-
-                doc.apply(&transaction, view.id);
-                doc.append_changes_to_history(view.id);
-                Ok(())
-            }
-            Err(e) => Err(e.context("Couldn't get system clipboard contents")),
-        }
-    }
-
     fn paste_primary_clipboard_after(
         cx: &mut compositor::Context,
         _args: &[&str],
@@ -1800,18 +1773,13 @@ mod cmd {
         paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection)
     }
 
-    fn replace_selections_with_primary_clipboard(
+    fn replace_selections_with_clipboard_impl(
         cx: &mut compositor::Context,
-        _args: &[&str],
-        _event: PromptEvent,
+        clipboard_type: ClipboardType,
     ) -> anyhow::Result<()> {
         let (view, doc) = current!(cx.editor);
 
-        match cx
-            .editor
-            .clipboard_provider
-            .get_contents(ClipboardType::Selection)
-        {
+        match cx.editor.clipboard_provider.get_contents(clipboard_type) {
             Ok(contents) => {
                 let selection = doc.selection(view.id);
                 let transaction =
@@ -1823,8 +1791,24 @@ mod cmd {
                 doc.append_changes_to_history(view.id);
                 Ok(())
             }
-            Err(e) => Err(e.context("Couldn't get system primary clipboard contents")),
+            Err(e) => Err(e.context("Couldn't get system clipboard contents")),
         }
+    }
+
+    fn replace_selections_with_clipboard(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard)
+    }
+
+    fn replace_selections_with_primary_clipboard(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        replace_selections_with_clipboard_impl(cx, ClipboardType::Selection)
     }
 
     fn show_clipboard_provider(
