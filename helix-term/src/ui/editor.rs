@@ -1,6 +1,7 @@
 use crate::{
     commands,
     compositor::{Component, Context, EventResult},
+    config::Config,
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
@@ -29,6 +30,7 @@ use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     keymaps: Keymaps,
+    config: Config,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -40,14 +42,15 @@ pub const GUTTER_OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default())
+        Self::new(Keymaps::default(), Config::default())
     }
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(keymaps: Keymaps, config: Config) -> Self {
         Self {
             keymaps,
+            config,
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
@@ -861,7 +864,9 @@ impl Component for EditorView {
                 kind: MouseEventKind::ScrollUp,
                 ..
             }) => {
-                commands::Command::scroll_up.execute(&mut cxt);
+                for _ in 0..self.config.terminal.scroll_lines {
+                    commands::Command::scroll_up.execute(&mut cxt);
+                }
                 EventResult::Consumed(None)
             }
 
@@ -869,7 +874,9 @@ impl Component for EditorView {
                 kind: MouseEventKind::ScrollDown,
                 ..
             }) => {
-                commands::Command::scroll_down.execute(&mut cxt);
+                for _ in 0..self.config.terminal.scroll_lines {
+                    commands::Command::scroll_down.execute(&mut cxt);
+                }
                 EventResult::Consumed(None)
             }
 
