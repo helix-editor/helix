@@ -303,17 +303,19 @@ mod provider {
         }
 
         fn set_contents(&mut self, value: String, clipboard_type: ClipboardType) -> Result<()> {
-            match clipboard_type {
-                ClipboardType::Clipboard => self.set_cmd.execute(Some(&value), false).map(|_| ()),
+            let cmd = match clipboard_type {
+                ClipboardType::Clipboard => &self.set_cmd,
                 ClipboardType::Selection => {
                     if let Some(cmd) = &self.set_primary_cmd {
-                        return cmd.execute(Some(&value), false).map(|_| ());
+                        cmd
+                    } else {
+                        self.selection_buf = value;
+                        return Ok(());
                     }
-
-                    self.selection_buf = value;
-                    Ok(())
                 }
-            }
+            };
+            cmd.execute(Some(&value), false).map(|_| ())
         }
+
     }
 }
