@@ -23,8 +23,8 @@ use helix_view::{
     Document, Editor, View, ViewId,
 };
 
-/// File path and line number
-type FileLocation = (PathBuf, usize);
+/// File path and line number (used to align and highlight a line)
+type FileLocation = (PathBuf, Option<usize>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
@@ -64,7 +64,7 @@ impl<T> FilePicker<T> {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
                 // TODO: enable syntax highlighting; blocked by async rendering
                 let mut doc = Document::open(&path, None, Some(&editor.theme), None).unwrap();
-                // HACK: a doc needs atleast one selection
+                // HACK: a doc needs atleast one selection, but we do our own line highlighting
                 doc.set_selection(self._preview_view_id, Selection::point(0));
                 self.preview_cache.insert(path, doc);
             }
@@ -119,7 +119,7 @@ impl<T: 'static> Component for FilePicker<T> {
             };
             view.first_col = 0;
             // align to middle
-            view.first_line = line.saturating_sub(inner.height as usize / 2);
+            view.first_line = line.unwrap_or(0).saturating_sub(inner.height as usize / 2);
             view.area = inner;
             EditorView::render_doc(
                 doc,
@@ -131,10 +131,12 @@ impl<T: 'static> Component for FilePicker<T> {
                 &cx.editor.syn_loader,
             );
             // highlight the line
-            for x in inner.left()..inner.right() {
-                surface
-                    .get_mut(x, inner.y + line.saturating_sub(view.first_line) as u16)
-                    .set_style(cx.editor.theme.get("ui.selection.primary"));
+            if let Some(line) = line {
+                for x in inner.left()..inner.right() {
+                    surface
+                        .get_mut(x, inner.y + line.saturating_sub(view.first_line) as u16)
+                        .set_style(cx.editor.theme.get("ui.selection.primary"));
+                }
             }
         }
     }

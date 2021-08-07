@@ -2068,7 +2068,7 @@ fn buffer_picker(cx: &mut Context) {
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, line))
+            Some((path.clone()?, Some(line)))
         },
     );
     cx.push_layer(Box::new(picker));
@@ -2140,9 +2140,8 @@ fn symbol_picker(cx: &mut Context) {
                     move |editor, symbol| {
                         let view = editor.tree.get(editor.tree.focus);
                         let doc = &editor.documents[view.doc];
-                        doc.path()
-                            .cloned()
-                            .zip(Some(symbol.location.range.start.line as usize))
+                        let line = Some(symbol.location.range.start.line as usize);
+                        doc.path().cloned().zip(Some(line))
                     },
                 );
                 compositor.push(Box::new(picker))
@@ -2534,7 +2533,8 @@ fn goto_impl(
                 },
                 |_editor, location| {
                     let path = location.uri.to_file_path().unwrap();
-                    Some((path, location.range.start.line as usize))
+                    let line = Some(location.range.start.line as usize);
+                    Some((path, line))
                 },
             );
             compositor.push(Box::new(picker));

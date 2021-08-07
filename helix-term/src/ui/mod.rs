@@ -123,7 +123,7 @@ pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
         },
         |_editor, path| {
             // FIXME: directories are creeping up in filepicker
-            Some((path.clone(), 0))
+            Some((path.clone(), None))
         },
     )
 }
