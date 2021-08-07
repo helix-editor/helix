@@ -314,6 +314,7 @@ impl Editor {
         &self,
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
+        info!("closing language server");
         tokio::time::timeout(
             Duration::from_millis(timeout.unwrap_or(500)),
             future::join_all(
