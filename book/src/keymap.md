@@ -59,6 +59,7 @@
 | `y`         | Yank selection                                  |
 | `p`         | Paste after selection                           |
 | `P`         | Paste before selection                          |
+| `"` `<reg>` | Select a register to yank to or paste from      |
 | `>`         | Indent selection                                |
 | `<`         | Unindent selection                              |
 | `=`         | Format selection                                |
