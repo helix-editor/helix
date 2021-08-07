@@ -30,10 +30,12 @@ macro_rules! command_provider {
             selection_buf: String::new(),
         })
     }};
-}
 
-macro_rules! command_provider_with_primary {
-    (paste => $get_prg:literal $( , $get_arg:literal )* ; copy => $set_prg:literal $( , $set_arg:literal )* ; primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ; primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ; ) => {{
+    (paste => $get_prg:literal $( , $get_arg:literal )* ;
+     copy => $set_prg:literal $( , $set_arg:literal )* ;
+     primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
+     primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
+    ) => {{
         Box::new(provider::CommandProvider {
             get_cmd: provider::CommandConfig {
                 prg: $get_prg,
@@ -66,14 +68,14 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             copy => "pbcopy";
         }
     } else if env_var_is_set("WAYLAND_DISPLAY") && exists("wl-copy") && exists("wl-paste") {
-        command_provider_with_primary! {
+        command_provider! {
             paste => "wl-paste", "--no-newline";
             copy => "wl-copy", "--type", "text/plain";
             primary_paste => "wl-paste", "-p", "--no-newline";
             primary_copy => "wl-copy", "-p", "--type", "text/plain";
         }
     } else if env_var_is_set("DISPLAY") && exists("xclip") {
-        command_provider_with_primary! {
+        command_provider! {
             paste => "xclip", "-o", "-selection", "clipboard";
             copy => "xclip", "-i", "-selection", "clipboard";
             primary_paste => "xclip", "-o";
@@ -82,7 +84,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     } else if env_var_is_set("DISPLAY") && exists("xsel") && is_exit_success("xsel", &["-o", "-b"])
     {
         // FIXME: check performance of is_exit_success
-        command_provider_with_primary! {
+        command_provider! {
             paste => "xsel", "-o", "-b";
             copy => "xsel", "--nodetach", "-i", "-b";
             primary_paste => "xsel", "-o";
@@ -316,6 +318,5 @@ mod provider {
             };
             cmd.execute(Some(&value), false).map(|_| ())
         }
-
     }
 }
