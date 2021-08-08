@@ -451,7 +451,10 @@ impl Default for Keymaps {
             // & align selections
             // _ trim selections
 
-            // C / altC = copy (repeat) selections on prev/next lines
+            "(" => rotate_selections_backward,
+            ")" => rotate_selections_forward,
+            "A-(" => rotate_selection_contents_backward,
+            "A-)" => rotate_selection_contents_forward,
 
             "esc" => normal_mode,
             "C-b" | "pageup" => page_up,
@@ -472,8 +475,7 @@ impl Default for Keymaps {
 
             // z family for save/restore/combine from/to sels from register
 
-            // supposedly "C-i" but did not work
-            "tab" => jump_forward,
+            "tab" => jump_forward, // tab == <C-i>
             "C-o" => jump_backward,
             // "C-s" => save_selection,
 
@@ -508,9 +510,6 @@ impl Default for Keymaps {
             "\"" => select_register,
             "C-z" => suspend,
         });
-        // TODO: decide whether we want normal mode to also be select mode (kakoune-like), or whether
-        // we keep this separate select mode. More keys can fit into normal mode then, but it's weird
-        // because some selection operations can now be done from normal mode, some from select mode.
         let mut select = normal.clone();
         select.merge_nodes(keymap!({ "Select mode"
             "h" | "left" => extend_char_left,

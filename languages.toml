@@ -36,6 +36,7 @@ scope = "source.elixir"
 injection-regex = "elixir"
 file-types = ["ex", "exs"]
 roots = []
+comment-token = "#"
 
 indent = { tab-width = 2, unit = "  " }
 
@@ -141,6 +142,7 @@ scope = "source.nix"
 injection-regex = "nix"
 file-types = ["nix"]
 roots = []
+comment-token = "#"
 
 indent = { tab-width = 2, unit = "  " }
 

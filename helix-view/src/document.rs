@@ -520,13 +520,12 @@ impl Document {
         // state without blocking any further edits.
 
         let mut text = self.text().clone();
-        let path = self.path.clone().expect("Can't save with no path set!"); // TODO: handle no path
+        let path = self.path.clone().expect("Can't save with no path set!");
         let identifier = self.identifier();
-
-        // TODO: mark changes up to now as saved
 
         let language_server = self.language_server.clone();
 
+        // mark changes up to now as saved
         self.reset_modified();
 
         let encoding = self.encoding;

@@ -37,7 +37,7 @@ pub struct EditorView {
     pub autoinfo: Option<Info>,
 }
 
-const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+pub const GUTTER_OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
@@ -74,9 +74,9 @@ impl EditorView {
         loader: &syntax::Loader,
     ) {
         let area = Rect::new(
-            view.area.x + OFFSET,
+            view.area.x + GUTTER_OFFSET,
             view.area.y,
-            view.area.width - OFFSET,
+            view.area.width - GUTTER_OFFSET,
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
 
@@ -341,7 +341,7 @@ impl EditorView {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
-                    viewport.x - OFFSET,
+                    viewport.x - GUTTER_OFFSET,
                     viewport.y + i as u16,
                     "●",
                     1,
@@ -362,7 +362,7 @@ impl EditorView {
                 format!("{:>5}", line + 1)
             };
             surface.set_stringn(
-                viewport.x + 1 - OFFSET,
+                viewport.x + 1 - GUTTER_OFFSET,
                 viewport.y + i as u16,
                 line_number_text,
                 5,
@@ -403,7 +403,7 @@ impl EditorView {
                         format!("{:>5}", line_number + 1)
                     };
                     surface.set_stringn(
-                        viewport.x + 1 - OFFSET,
+                        viewport.x + 1 - GUTTER_OFFSET,
                         viewport.y + head.row as u16,
                         line_number_text,
                         5,
@@ -780,7 +780,7 @@ impl Component for EditorView {
                 }
 
                 let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc);
+                view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
 
                 // mode transitions
                 match (mode, doc.mode()) {

@@ -18,6 +18,26 @@ pub use helix_core::register::Registers;
 use helix_core::syntax;
 use helix_core::Position;
 
+use serde::Deserialize;
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Config {
+    /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
+    pub scrolloff: usize,
+    /// Mouse support. Defaults to true.
+    pub mouse: bool,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            scrolloff: 5,
+            mouse: true,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
@@ -33,6 +53,8 @@ pub struct Editor {
     pub theme_loader: Arc<theme::Loader>,
 
     pub status_msg: Option<(String, Severity)>,
+
+    pub config: Config,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -48,6 +70,7 @@ impl Editor {
         mut area: Rect,
         themes: Arc<theme::Loader>,
         config_loader: Arc<syntax::Loader>,
+        config: Config,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
 
@@ -66,6 +89,7 @@ impl Editor {
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
+            config,
         }
     }
 
@@ -108,7 +132,7 @@ impl Editor {
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[view.doc];
-            view.ensure_cursor_in_view(doc)
+            view.ensure_cursor_in_view(doc, self.config.scrolloff)
         }
     }
 
@@ -267,7 +291,7 @@ impl Editor {
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
         let doc = &self.documents[view.doc];
-        view.ensure_cursor_in_view(doc)
+        view.ensure_cursor_in_view(doc, self.config.scrolloff)
     }
 
     pub fn document(&self, id: DocumentId) -> Option<&Document> {

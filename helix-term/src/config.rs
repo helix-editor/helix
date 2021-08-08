@@ -10,39 +10,13 @@ pub struct Config {
     #[serde(default)]
     pub keys: Keymaps,
     #[serde(default)]
-    pub terminal: TerminalConfig,
+    pub editor: helix_view::editor::Config,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LspConfig {
     pub display_messages: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct TerminalConfig {
-    #[serde(default = "mouse_default")]
-    pub mouse: bool,
-    #[serde(default = "middle_click_paste_default")]
-    pub middle_click_paste: bool,
-}
-
-impl Default for TerminalConfig {
-    fn default() -> Self {
-        Self {
-            mouse: true,
-            middle_click_paste: true,
-        }
-    }
-}
-
-fn mouse_default() -> bool {
-    true
-}
-
-fn middle_click_paste_default() -> bool {
-    true
 }
 
 #[test]
