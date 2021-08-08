@@ -859,9 +859,23 @@ impl Component for EditorView {
 
             Event::Mouse(MouseEvent {
                 kind: MouseEventKind::ScrollUp,
+                row,
+                column,
                 ..
             }) => {
-                for _ in 0..cxt.editor.config.scroll_lines {
+                let editor = &mut cxt.editor;
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|_| view.id)
+                });
+
+                match result {
+                    Some(view_id) => editor.tree.focus = view_id,
+                    None => return EventResult::Ignored,
+                }
+
+                for _ in 0..editor.config.scroll_lines {
                     commands::Command::scroll_up.execute(&mut cxt);
                 }
                 EventResult::Consumed(None)
@@ -869,8 +883,22 @@ impl Component for EditorView {
 
             Event::Mouse(MouseEvent {
                 kind: MouseEventKind::ScrollDown,
+                row,
+                column,
                 ..
             }) => {
+                let editor = &mut cxt.editor;
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|_| view.id)
+                });
+
+                match result {
+                    Some(view_id) => editor.tree.focus = view_id,
+                    None => return EventResult::Ignored,
+                }
+
                 for _ in 0..cxt.editor.config.scroll_lines {
                     commands::Command::scroll_down.execute(&mut cxt);
                 }
