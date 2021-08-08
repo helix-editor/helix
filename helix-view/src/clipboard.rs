@@ -209,11 +209,7 @@ mod provider {
                 ClipboardType::Clipboard => {
                     clipboard_win::get_clipboard(clipboard_win::formats::Unicode)
                 }
-                ClipboardType::Selection => Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Primary clipboard is not supported on Windows",
-                )
-                .into()),
+                ClipboardType::Selection => String::new(),
             }
         }
 
@@ -222,13 +218,7 @@ mod provider {
                 ClipboardType::Clipboard => {
                     clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)
                 }
-                ClipboardType::Selection => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "Primary clipboard is not supported on Windows",
-                    )
-                    .into())
-                }
+                ClipboardType::Selection => {}
             };
             Ok(())
         }
@@ -305,11 +295,7 @@ mod provider {
                         return cmd.execute(None, true)?.context("output is missing");
                     }
 
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "No command is set for primary clipboard",
-                    )
-                    .into())
+                    Ok(String::new())
                 }
             }
         }
@@ -321,11 +307,7 @@ mod provider {
                     if let Some(cmd) = &self.set_primary_cmd {
                         cmd
                     } else {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            "No command is set for primary clipboard",
-                        )
-                        .into());
+                        return Ok(());
                     }
                 }
             };
