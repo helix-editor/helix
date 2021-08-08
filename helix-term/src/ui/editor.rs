@@ -858,46 +858,27 @@ impl Component for EditorView {
             }
 
             Event::Mouse(MouseEvent {
-                kind: MouseEventKind::ScrollUp,
+                kind: MouseEventKind::ScrollUp | MouseEventKind::ScrollDown,
                 row,
                 column,
                 ..
             }) => {
                 let editor = &mut cxt.editor;
 
-                let cmd = match editor.config.scroll_lines.signum() {
+                let direction = match event {
+                    Event::Mouse(MouseEvent {
+                        kind: MouseEventKind::ScrollUp,
+                        ..
+                    }) => editor.config.scroll_lines.signum(),
+                    Event::Mouse(MouseEvent {
+                        kind: MouseEventKind::ScrollDown,
+                        ..
+                    }) => -editor.config.scroll_lines.signum(),
+                    _ => 0,
+                };
+                let cmd = match direction {
                     1 => commands::Command::scroll_up,
                     -1 => commands::Command::scroll_down,
-                    _ => return EventResult::Ignored,
-                };
-
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
-                        .map(|_| view.id)
-                });
-
-                match result {
-                    Some(view_id) => editor.tree.focus = view_id,
-                    None => return EventResult::Ignored,
-                }
-
-                for _ in 0..editor.config.scroll_lines.abs() {
-                    cmd.execute(&mut cxt);
-                }
-                EventResult::Consumed(None)
-            }
-
-            Event::Mouse(MouseEvent {
-                kind: MouseEventKind::ScrollDown,
-                row,
-                column,
-                ..
-            }) => {
-                let editor = &mut cxt.editor;
-
-                let cmd = match editor.config.scroll_lines.signum() {
-                    1 => commands::Command::scroll_down,
-                    -1 => commands::Command::scroll_up,
                     _ => return EventResult::Ignored,
                 };
 
