@@ -1,7 +1,6 @@
 use crate::{
     commands,
     compositor::{Component, Context, EventResult},
-    config::Config,
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
@@ -30,7 +29,6 @@ use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     keymaps: Keymaps,
-    config: Config,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
     completion: Option<Completion>,
@@ -42,15 +40,14 @@ pub const GUTTER_OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default(), Config::default())
+        Self::new(Keymaps::default())
     }
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps, config: Config) -> Self {
+    pub fn new(keymaps: Keymaps) -> Self {
         Self {
             keymaps,
-            config,
             on_next_key: None,
             last_insert: (commands::Command::normal_mode, Vec::new()),
             completion: None,
@@ -781,7 +778,7 @@ impl Component for EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
-                view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+                view.ensure_cursor_in_view(doc, cxt.editor.config.scrolloff);
 
                 // mode transitions
                 match (mode, doc.mode()) {
@@ -864,7 +861,7 @@ impl Component for EditorView {
                 kind: MouseEventKind::ScrollUp,
                 ..
             }) => {
-                for _ in 0..self.config.terminal.scroll_lines {
+                for _ in 0..cxt.editor.config.scrolloff {
                     commands::Command::scroll_up.execute(&mut cxt);
                 }
                 EventResult::Consumed(None)
@@ -874,7 +871,7 @@ impl Component for EditorView {
                 kind: MouseEventKind::ScrollDown,
                 ..
             }) => {
-                for _ in 0..self.config.terminal.scroll_lines {
+                for _ in 0..cxt.editor.config.scrolloff {
                     commands::Command::scroll_down.execute(&mut cxt);
                 }
                 EventResult::Consumed(None)
