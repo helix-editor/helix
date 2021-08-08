@@ -1,9 +1,18 @@
 indent = [
- "if",
+ # "function",
+ "bind",
+ "assert",
+ "with",
  "let",
- "function",
+ "if",
+
  "attrset",
  "list",
  "indented_string",
- "parenthesized"
+ "parenthesized",
+]
+
+outdent = [
+  "}",
+  "]",
 ]
