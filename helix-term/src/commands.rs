@@ -480,10 +480,6 @@ fn goto_window_bottom(cx: &mut Context) {
     goto_window(cx, Align::Bottom)
 }
 
-// TODO: move vs extend could take an extra type Extend/Move that would
-// Range::new(if Move { pos } if Extend { range.anchor }, pos)
-// since these all really do the same thing
-
 fn move_next_word_start(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -2320,7 +2316,7 @@ fn apply_workspace_edit(
 }
 
 fn last_picker(cx: &mut Context) {
-    // TODO: last picker does not seemed to work well with buffer_picker
+    // TODO: last picker does not seem to work well with buffer_picker
     cx.callback = Some(Box::new(|compositor: &mut Compositor| {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);
@@ -2653,7 +2649,6 @@ fn goto_definition(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_definition(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2696,7 +2691,6 @@ fn goto_type_definition(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_type_definition(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2739,7 +2733,6 @@ fn goto_implementation(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_implementation(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2782,7 +2775,6 @@ fn goto_reference(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_reference(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2900,7 +2892,6 @@ fn signature_help(cx: &mut Context) {
         language_server.offset_encoding(),
     );
 
-    // TODO: handle fails
     let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
 
     cx.callback(
@@ -3646,7 +3637,6 @@ fn completion(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
 
-    // TODO: handle fails
     let future = language_server.completion(doc.identifier(), pos, None);
 
     let trigger_offset = cursor;
@@ -3672,8 +3662,8 @@ fn completion(cx: &mut Context) {
                 None => Vec::new(),
             };
 
-            // TODO: if no completion, show some message or something
             if items.is_empty() {
+                editor.set_error("No completion available".to_string());
                 return;
             }
             let size = compositor.size();
@@ -3705,7 +3695,6 @@ fn hover(cx: &mut Context) {
         language_server.offset_encoding(),
     );
 
-    // TODO: handle fails
     let future = language_server.text_document_hover(doc.identifier(), pos, None);
 
     cx.callback(

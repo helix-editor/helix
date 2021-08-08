@@ -475,8 +475,7 @@ impl Default for Keymaps {
 
             // z family for save/restore/combine from/to sels from register
 
-            // supposedly "C-i" but did not work
-            "tab" => jump_forward,
+            "tab" => jump_forward, // tab == <C-i>
             "C-o" => jump_backward,
             // "C-s" => save_selection,
 
