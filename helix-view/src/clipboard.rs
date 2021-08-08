@@ -27,7 +27,6 @@ macro_rules! command_provider {
             },
             get_primary_cmd: None,
             set_primary_cmd: None,
-            selection_buf: String::new(),
         })
     }};
 
@@ -53,7 +52,6 @@ macro_rules! command_provider {
                 prg: $pr_set_prg,
                 args: &[ $( $pr_set_arg ),* ],
             }),
-            selection_buf: String::new(),
         })
     }};
 }
@@ -207,23 +205,29 @@ mod provider {
         }
 
         fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
-            let contents = match clipboard_type {
+            match clipboard_type {
                 ClipboardType::Clipboard => {
-                    clipboard_win::get_clipboard(clipboard_win::formats::Unicode)?
+                    clipboard_win::get_clipboard(clipboard_win::formats::Unicode)
                 }
-                ClipboardType::Selection => self.selection_buf.clone(),
+                ClipboardType::Selection => Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Primary clipboard is not supported on Windows",
+                )
+                .into()),
             };
-            Ok(contents)
         }
 
         fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()> {
             match clipboard_type {
                 ClipboardType::Clipboard => {
-                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?
+                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)
                 }
-                ClipboardType::Selection => self.selection_buf = contents,
+                ClipboardType::Selection => Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Primary clipboard is not supported on Windows",
+                )
+                .into()),
             }
-            Ok(())
         }
     }
 
@@ -276,7 +280,6 @@ mod provider {
         pub set_cmd: CommandConfig,
         pub get_primary_cmd: Option<CommandConfig>,
         pub set_primary_cmd: Option<CommandConfig>,
-        pub selection_buf: String,
     }
 
     impl ClipboardProvider for CommandProvider {
@@ -299,7 +302,11 @@ mod provider {
                         return cmd.execute(None, true)?.context("output is missing");
                     }
 
-                    Ok(self.selection_buf.clone())
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "No command is set for primary clipboard",
+                    )
+                    .into())
                 }
             }
         }
@@ -311,8 +318,11 @@ mod provider {
                     if let Some(cmd) = &self.set_primary_cmd {
                         cmd
                     } else {
-                        self.selection_buf = value;
-                        return Ok(());
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            "No command is set for primary clipboard",
+                        )
+                        .into());
                     }
                 }
             };
