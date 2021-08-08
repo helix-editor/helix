@@ -25,6 +25,8 @@ use serde::Deserialize;
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
+    /// Number of lines to scroll at once. Defaults to 3
+    pub scroll_lines: usize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
 }
@@ -33,6 +35,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             scrolloff: 5,
+            scroll_lines: 3,
             mouse: true,
         }
     }

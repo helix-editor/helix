@@ -861,7 +861,7 @@ impl Component for EditorView {
                 kind: MouseEventKind::ScrollUp,
                 ..
             }) => {
-                for _ in 0..cxt.editor.config.scrolloff {
+                for _ in 0..cxt.editor.config.scroll_lines {
                     commands::Command::scroll_up.execute(&mut cxt);
                 }
                 EventResult::Consumed(None)
@@ -871,7 +871,7 @@ impl Component for EditorView {
                 kind: MouseEventKind::ScrollDown,
                 ..
             }) => {
-                for _ in 0..cxt.editor.config.scrolloff {
+                for _ in 0..cxt.editor.config.scroll_lines {
                     commands::Command::scroll_down.execute(&mut cxt);
                 }
                 EventResult::Consumed(None)
