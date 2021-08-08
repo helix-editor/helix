@@ -21,7 +21,7 @@ use helix_core::Position;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", default)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
