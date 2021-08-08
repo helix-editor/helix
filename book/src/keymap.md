@@ -78,6 +78,8 @@
 | `Alt-C`  | Copy selection onto the previous line                             |
 | `(`      | Rotate main selection forward                                     |
 | `)`      | Rotate main selection backward                                    |
+| `Alt-(`  | Rotate selection contents forward                                 |
+| `Alt-)`  | Rotate selection contents backward                                |
 | `%`      | Select entire file                                                |
 | `x`      | Select current line, if already selected, extend to next line     |
 | `X`      | Extend selection to line bounds (line-wise selection)             |
