@@ -8,8 +8,6 @@ use helix_core::{
     Position, RopeSlice, Selection,
 };
 
-pub const PADDING: usize = 5;
-
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug)]
@@ -84,7 +82,7 @@ impl View {
         }
     }
 
-    pub fn ensure_cursor_in_view(&mut self, doc: &Document) {
+    pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
         let cursor = doc
             .selection(self.id)
             .primary()
@@ -95,7 +93,7 @@ impl View {
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
         let last_line = (self.first_line + height as usize).saturating_sub(1);
 
-        let scrolloff = PADDING.min(self.area.height as usize / 2); // TODO: user pref
+        let scrolloff = scrolloff.min(self.area.height as usize / 2);
 
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter

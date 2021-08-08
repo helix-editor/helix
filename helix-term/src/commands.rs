@@ -12,12 +12,8 @@ use helix_core::{
 };
 
 use helix_view::{
-    document::Mode,
-    editor::Action,
-    input::KeyEvent,
-    keyboard::KeyCode,
-    view::{View, PADDING},
-    Document, DocumentId, Editor, ViewId,
+    document::Mode, editor::Action, input::KeyEvent, keyboard::KeyCode, view::View, Document,
+    DocumentId, Editor, ViewId,
 };
 
 use anyhow::{anyhow, bail, Context as _};
@@ -452,7 +448,11 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 fn goto_window(cx: &mut Context, align: Align) {
     let (view, doc) = current!(cx.editor);
 
-    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+    let scrolloff = cx
+        .editor
+        .config
+        .scrolloff
+        .min(view.area.height as usize / 2); // TODO: user pref
 
     let last_line = view.last_line(doc);
 
@@ -890,7 +890,11 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         return;
     }
 
-    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+    let scrolloff = cx
+        .editor
+        .config
+        .scrolloff
+        .min(view.area.height as usize / 2); // TODO: user pref
 
     view.first_line = match direction {
         Forward => view.first_line + offset,
@@ -3927,10 +3931,9 @@ fn align_view_middle(cx: &mut Context) {
         .cursor(doc.text().slice(..));
     let pos = coords_at_pos(doc.text().slice(..), pos);
 
-    const OFFSET: usize = 7; // gutters
-    view.first_col = pos
-        .col
-        .saturating_sub(((view.area.width as usize).saturating_sub(OFFSET)) / 2);
+    view.first_col = pos.col.saturating_sub(
+        ((view.area.width as usize).saturating_sub(crate::ui::editor::GUTTER_OFFSET as usize)) / 2,
+    );
 }
 
 fn scroll_up(cx: &mut Context) {
