@@ -214,7 +214,7 @@ mod provider {
                     "Primary clipboard is not supported on Windows",
                 )
                 .into()),
-            };
+            }
         }
 
         fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()> {
@@ -222,12 +222,15 @@ mod provider {
                 ClipboardType::Clipboard => {
                     clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)
                 }
-                ClipboardType::Selection => Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Primary clipboard is not supported on Windows",
-                )
-                .into()),
-            }
+                ClipboardType::Selection => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Primary clipboard is not supported on Windows",
+                    )
+                    .into())
+                }
+            };
+            Ok(())
         }
     }
 
