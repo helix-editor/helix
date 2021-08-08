@@ -87,10 +87,7 @@ impl Application {
             config.editor.clone(),
         );
 
-        let editor_view = Box::new(ui::EditorView::new(
-            std::mem::take(&mut config.keys),
-            config.terminal.middle_click_paste,
-        ));
+        let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
         if !args.files.is_empty() {

@@ -21,12 +21,14 @@ use helix_core::Position;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", default)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Middle click paste support. Defaults to true
+    pub middle_click_paste: bool,
 }
 
 impl Default for Config {
@@ -34,6 +36,7 @@ impl Default for Config {
         Self {
             scrolloff: 5,
             mouse: true,
+            middle_click_paste: true,
         }
     }
 }
