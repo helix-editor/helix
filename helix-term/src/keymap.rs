@@ -453,6 +453,8 @@ impl Default for Keymaps {
 
             "(" => rotate_selections_backward,
             ")" => rotate_selections_forward,
+            "A-(" => rotate_selection_contents_backward,
+            "A-)" => rotate_selection_contents_forward,
 
             "esc" => normal_mode,
             "C-b" | "pageup" => page_up,

@@ -277,6 +277,8 @@ impl Command {
         toggle_comments, "Comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
         rotate_selections_backward, "Rotate selections backward",
+        rotate_selection_contents_forward, "Rotate selection contents forward",
+        rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
@@ -3766,6 +3768,49 @@ fn rotate_selections_forward(cx: &mut Context) {
 }
 fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
+}
+
+fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
+    let count = cx.count;
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id);
+    let mut fragments: Vec<_> = selection
+        .fragments(text)
+        .map(|fragment| Tendril::from_slice(&fragment))
+        .collect();
+
+    let group = count
+        .map(|count| count.get())
+        .unwrap_or(fragments.len()) // default to rotating everything as one group
+        .min(fragments.len());
+
+    for chunk in fragments.chunks_mut(group) {
+        // TODO: also modify main index
+        match direction {
+            Direction::Forward => chunk.rotate_right(1),
+            Direction::Backward => chunk.rotate_left(1),
+        };
+    }
+
+    let transaction = Transaction::change(
+        doc.text(),
+        selection
+            .ranges()
+            .iter()
+            .zip(fragments)
+            .map(|(range, fragment)| (range.from(), range.to(), Some(fragment))),
+    );
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+fn rotate_selection_contents_forward(cx: &mut Context) {
+    rotate_selection_contents(cx, Direction::Forward)
+}
+fn rotate_selection_contents_backward(cx: &mut Context) {
+    rotate_selection_contents(cx, Direction::Backward)
 }
 
 // tree sitter node selection
