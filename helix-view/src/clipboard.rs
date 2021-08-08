@@ -207,16 +207,17 @@ mod provider {
         fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
             match clipboard_type {
                 ClipboardType::Clipboard => {
-                    clipboard_win::get_clipboard(clipboard_win::formats::Unicode)
+                    let contents = clipboard_win::get_clipboard(clipboard_win::formats::Unicode)?;
+                    Ok(contents)
                 }
-                ClipboardType::Selection => String::new(),
+                ClipboardType::Selection => Ok(String::new()),
             }
         }
 
         fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()> {
             match clipboard_type {
                 ClipboardType::Clipboard => {
-                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)
+                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents);
                 }
                 ClipboardType::Selection => {}
             };
