@@ -865,6 +865,12 @@ impl Component for EditorView {
             }) => {
                 let editor = &mut cxt.editor;
 
+                let cmd = match editor.config.scroll_lines.signum() {
+                    1 => commands::Command::scroll_up,
+                    -1 => commands::Command::scroll_down,
+                    _ => return EventResult::Ignored,
+                };
+
                 let result = editor.tree.views().find_map(|(view, _focus)| {
                     view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
                         .map(|_| view.id)
@@ -875,8 +881,8 @@ impl Component for EditorView {
                     None => return EventResult::Ignored,
                 }
 
-                for _ in 0..editor.config.scroll_lines {
-                    commands::Command::scroll_up.execute(&mut cxt);
+                for _ in 0..editor.config.scroll_lines.abs() {
+                    cmd.execute(&mut cxt);
                 }
                 EventResult::Consumed(None)
             }
@@ -889,6 +895,12 @@ impl Component for EditorView {
             }) => {
                 let editor = &mut cxt.editor;
 
+                let cmd = match editor.config.scroll_lines.signum() {
+                    1 => commands::Command::scroll_down,
+                    -1 => commands::Command::scroll_up,
+                    _ => return EventResult::Ignored,
+                };
+
                 let result = editor.tree.views().find_map(|(view, _focus)| {
                     view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
                         .map(|_| view.id)
@@ -899,8 +911,8 @@ impl Component for EditorView {
                     None => return EventResult::Ignored,
                 }
 
-                for _ in 0..cxt.editor.config.scroll_lines {
-                    commands::Command::scroll_down.execute(&mut cxt);
+                for _ in 0..editor.config.scroll_lines.abs() {
+                    cmd.execute(&mut cxt);
                 }
                 EventResult::Consumed(None)
             }

@@ -26,7 +26,7 @@ pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
-    pub scroll_lines: usize,
+    pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
 }
