@@ -160,7 +160,7 @@ impl EditorView {
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
         let mut line = 0u16;
-        let tab_width = doc.tab_width();
+        let tab_width = doc.tab_width;
         let tab = " ".repeat(tab_width);
 
         let highlights = highlights.into_iter().map(|event| match event.unwrap() {

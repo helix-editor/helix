@@ -1442,6 +1442,32 @@ mod cmd {
 
         Ok(())
     }
+
+    fn set_tab_width(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        // If no argument, report current tab width.
+        if args.is_empty() {
+            let width = current!(cx.editor).1.tab_width;
+            cx.editor.set_status(format!("tab width {}", width));
+            return Ok(());
+        }
+
+        // Attempt to parse argument as a number.
+        let width = args
+            .get(0)
+            .and_then(|arg| arg.parse::<usize>().ok())
+            .filter(|n| (1..=8).contains(n)) // Limit to max of 8.
+            .context("invalid tab width")?;
+
+        let doc = doc_mut!(cx.editor);
+        doc.tab_width = width;
+
+        Ok(())
+    }
+
     fn set_indent_style(
         cx: &mut compositor::Context,
         args: &[&str],
@@ -1864,6 +1890,13 @@ mod cmd {
             alias: Some("fmt"),
             doc: "Format the file using a formatter.",
             fun: format,
+            completer: None,
+        },
+        TypableCommand {
+            name: "tab-width",
+            alias: None,
+            doc: "Set tab display width (maximum 8).",
+            fun: set_tab_width,
             completer: None,
         },
         TypableCommand {
@@ -3442,7 +3475,7 @@ fn unindent(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let lines = get_lines(doc, view.id);
     let mut changes = Vec::with_capacity(lines.len());
-    let tab_width = doc.tab_width();
+    let tab_width = doc.tab_width;
     let indent_width = count * tab_width;
 
     for line_idx in lines {

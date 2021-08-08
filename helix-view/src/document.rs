@@ -75,8 +75,9 @@ pub struct Document {
     pub mode: Mode,
     pub restore_cursor: bool,
 
-    /// Current indent style.
+    /// Current indent style and tab display width.
     pub indent_style: IndentStyle,
+    pub tab_width: usize,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -413,6 +414,7 @@ impl Document {
             text,
             selections: HashMap::default(),
             indent_style: IndentStyle::Spaces(4),
+            tab_width: 4,
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -577,9 +579,14 @@ impl Document {
                 self.language
                     .as_ref()
                     .and_then(|config| config.indent.as_ref())
-                    .map_or("  ", |config| config.unit.as_str()), // Fallback to 2 spaces.
+                    .map_or("    ", |config| config.unit.as_str()), // Fallback to 4 spaces.
             )
         });
+        self.tab_width = self
+            .language
+            .as_ref()
+            .and_then(|config| config.indent.as_ref())
+            .map_or(4, |config| config.tab_width); // Fallback to 4 columns.
         self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
     }
 
@@ -866,14 +873,6 @@ impl Document {
     /// Tree-sitter AST tree
     pub fn syntax(&self) -> Option<&Syntax> {
         self.syntax.as_ref()
-    }
-
-    /// Tab size in columns.
-    pub fn tab_width(&self) -> usize {
-        self.language
-            .as_ref()
-            .and_then(|config| config.indent.as_ref())
-            .map_or(4, |config| config.tab_width) // fallback to 4 columns
     }
 
     /// Returns a string containing a single level of indentation.

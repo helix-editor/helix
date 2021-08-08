@@ -146,7 +146,7 @@ impl View {
         let line_start = text.line_to_char(line);
         let line_slice = text.slice(line_start..pos);
         let mut col = 0;
-        let tab_width = doc.tab_width();
+        let tab_width = doc.tab_width;
 
         for grapheme in RopeGraphemes::new(line_slice) {
             if grapheme == "\t" {
@@ -215,7 +215,7 @@ impl View {
     /// Translates a screen position to position in the text document.
     /// Returns a usize typed position in bounds of the text if found in this view, None if out of view.
     pub fn pos_at_screen_coords(&self, doc: &Document, row: u16, column: u16) -> Option<usize> {
-        self.text_pos_at_screen_coords(&doc.text().slice(..), row, column, doc.tab_width())
+        self.text_pos_at_screen_coords(&doc.text().slice(..), row, column, doc.tab_width)
     }
     // pub fn traverse<F>(&self, text: RopeSlice, start: usize, end: usize, fun: F)
     // where
