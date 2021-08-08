@@ -864,6 +864,7 @@ impl Component for EditorView {
                 ..
             }) => {
                 let editor = &mut cxt.editor;
+                let current_view = editor.tree.focus;
 
                 let direction = match event {
                     Event::Mouse(MouseEvent {
@@ -895,6 +896,9 @@ impl Component for EditorView {
                 for _ in 0..editor.config.scroll_lines.abs() {
                     cmd.execute(&mut cxt);
                 }
+
+                cxt.editor.tree.focus = current_view;
+
                 EventResult::Consumed(None)
             }
 
