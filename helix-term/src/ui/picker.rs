@@ -15,12 +15,12 @@ use tui::widgets::Widget;
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{Position, Selection};
+use helix_core::Position;
 use helix_view::{
     document::canonicalize_path,
     editor::Action,
     graphics::{Color, CursorKind, Rect, Style},
-    Document, Editor, View, ViewId,
+    Document, Editor,
 };
 
 /// File path and line number (used to align and highlight a line)
@@ -32,9 +32,6 @@ pub struct FilePicker<T> {
     preview_cache: HashMap<PathBuf, Document>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
-    // A view id to be shared by all documents in the cache. Mostly a hack since a doc
-    // requires at least one selection.
-    _preview_view_id: ViewId,
 }
 
 impl<T> FilePicker<T> {
@@ -48,7 +45,6 @@ impl<T> FilePicker<T> {
             picker: Picker::new(options, format_fn, callback_fn),
             preview_cache: HashMap::new(),
             file_fn: Box::new(preview_fn),
-            _preview_view_id: ViewId::default(),
         }
     }
 
@@ -63,9 +59,7 @@ impl<T> FilePicker<T> {
         if let Some((path, _line)) = self.current_file(editor) {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
                 // TODO: enable syntax highlighting; blocked by async rendering
-                let mut doc = Document::open(&path, None, Some(&editor.theme), None).unwrap();
-                // HACK: a doc needs atleast one selection, but we do our own line highlighting
-                doc.set_selection(self._preview_view_id, Selection::point(0));
+                let doc = Document::open(&path, None, Some(&editor.theme), None).unwrap();
                 self.preview_cache.insert(path, doc);
             }
         }
@@ -109,32 +103,36 @@ impl<T: 'static> Component for FilePicker<T> {
                 .or_else(|| self.preview_cache.get(&path))
                 .zip(Some(line))
         }) {
-            // FIXME: last line will not be highlighted because of a -1 in View::last_line
-            let mut view = View::new(doc.id());
-            view.id = if doc.selections().contains_key(&self._preview_view_id) {
-                self._preview_view_id // doc from cache
-            } else {
-                // Any view will do since we do not depend on doc selections for highlighting
-                *doc.selections().keys().next().unwrap() // doc from editor
-            };
-            view.first_col = 0;
             // align to middle
-            view.first_line = line.unwrap_or(0).saturating_sub(inner.height as usize / 2);
-            view.area = inner;
-            EditorView::render_doc(
+            let first_line = line.unwrap_or(0).saturating_sub(inner.height as usize / 2);
+            let last_line = std::cmp::min(
+                // Saturating subs to make it inclusive zero indexing.
+                (first_line + area.height as usize).saturating_sub(1),
+                doc.text().len_lines().saturating_sub(1),
+            );
+            let offset = Position::new(first_line, 0);
+
+            let highlights = EditorView::doc_syntax_highlights(
                 doc,
-                &view,
+                offset,
+                last_line,
+                &cx.editor.theme,
+                &cx.editor.syn_loader,
+            );
+            EditorView::render_text_highlights(
+                doc,
+                offset,
                 inner,
                 surface,
                 &cx.editor.theme,
-                false, // is_focused
-                &cx.editor.syn_loader,
+                highlights,
             );
+
             // highlight the line
             if let Some(line) = line {
                 for x in inner.left()..inner.right() {
                     surface
-                        .get_mut(x, inner.y + line.saturating_sub(view.first_line) as u16)
+                        .get_mut(x, inner.y + line.saturating_sub(first_line) as u16)
                         .set_style(cx.editor.theme.get("ui.selection.primary"));
                 }
             }

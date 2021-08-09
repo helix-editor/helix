@@ -77,8 +77,26 @@ impl EditorView {
             view.area.width - OFFSET,
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
+        let offset = Position::new(view.first_line, view.first_col);
+        let last_line = view.last_line(doc);
 
-        self.render_buffer(doc, view, area, surface, theme, is_focused, loader);
+        let highlights = Self::doc_syntax_highlights(doc, offset, last_line, theme, loader);
+        let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
+        let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
+            Box::new(syntax::merge(
+                highlights,
+                Self::doc_selection_highlights(doc, view, theme),
+            ))
+        } else {
+            Box::new(highlights)
+        };
+
+        Self::render_text_highlights(doc, offset, area, surface, theme, highlights);
+        Self::render_gutter(doc, view, area, surface, theme);
+
+        if is_focused {
+            Self::render_focused_view_elements(view, doc, area, theme, surface);
+        }
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -93,7 +111,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, area, surface, theme, is_focused);
+        self.render_diagnostics(doc, view, area, surface, theme);
 
         let area = Rect::new(
             view.area.x,
@@ -104,23 +122,21 @@ impl EditorView {
         self.render_statusline(doc, view, area, surface, theme, is_focused);
     }
 
-    /// Render a document into a Rect with syntax highlighting,
-    /// diagnostics, matching brackets and selections.
+    /// Get syntax highlights for a document in a view represented by the first line
+    /// and column (`offset`) and the last line. This is done instead of using a view
+    /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
     #[allow(clippy::too_many_arguments)]
-    pub fn render_doc(
-        doc: &Document,
-        view: &View,
-        viewport: Rect,
-        surface: &mut Surface,
+    pub fn doc_syntax_highlights<'doc>(
+        doc: &'doc Document,
+        offset: Position,
+        last_line: usize,
         theme: &Theme,
-        is_focused: bool,
         loader: &syntax::Loader,
-    ) {
+    ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
-        let last_line = view.last_line(doc);
         let range = {
             // calculate viewport byte ranges
-            let start = text.line_to_byte(view.first_line);
+            let start = text.line_to_byte(offset.row);
             let end = text.line_to_byte(last_line + 1);
 
             start..end
@@ -158,7 +174,7 @@ impl EditorView {
             }],
         }
         .into_iter()
-        .map(|event| match event {
+        .map(move |event| match event {
             // convert byte offsets to char offset
             HighlightEvent::Source { start, end } => {
                 let start = ensure_grapheme_boundary_next(text, text.byte_to_char(start));
@@ -168,13 +184,44 @@ impl EditorView {
             event => event,
         });
 
-        let selections = doc.selection(view.id);
-        let primary_idx = selections.primary_index();
+        Box::new(highlights)
+    }
+
+    /// Get highlight spans for document diagnostics
+    pub fn doc_diagnostics_highlights(
+        doc: &Document,
+        theme: &Theme,
+    ) -> Vec<(usize, std::ops::Range<usize>)> {
+        let diagnostic_scope = theme
+            .find_scope_index("diagnostic")
+            .or_else(|| theme.find_scope_index("ui.cursor"))
+            .or_else(|| theme.find_scope_index("ui.selection"))
+            .expect("no selection scope found!");
+
+        doc.diagnostics()
+            .iter()
+            .map(|diagnostic| {
+                (
+                    diagnostic_scope,
+                    diagnostic.range.start..diagnostic.range.end,
+                )
+            })
+            .collect()
+    }
+
+    /// Get highlight spans for selections in a document view.
+    pub fn doc_selection_highlights(
+        doc: &Document,
+        view: &View,
+        theme: &Theme,
+    ) -> Vec<(usize, std::ops::Range<usize>)> {
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id);
+        let primary_idx = selection.primary_index();
 
         let selection_scope = theme
             .find_scope_index("ui.selection")
             .expect("no selection scope found!");
-
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
@@ -186,64 +233,53 @@ impl EditorView {
         }
         .unwrap_or(base_cursor_scope);
 
-        let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
-            // TODO: primary + insert mode patching:
-            // (ui.cursor.primary).patch(mode).unwrap_or(cursor)
-            let primary_cursor_scope = theme
-                .find_scope_index("ui.cursor.primary")
-                .unwrap_or(cursor_scope);
-            let primary_selection_scope = theme
-                .find_scope_index("ui.selection.primary")
-                .unwrap_or(selection_scope);
+        let primary_cursor_scope = theme
+            .find_scope_index("ui.cursor.primary")
+            .unwrap_or(cursor_scope);
+        let primary_selection_scope = theme
+            .find_scope_index("ui.selection.primary")
+            .unwrap_or(selection_scope);
 
-            // inject selections as highlight scopes
-            let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
-            for (i, range) in selections.iter().enumerate() {
-                let (cursor_scope, selection_scope) = if i == primary_idx {
-                    (primary_cursor_scope, primary_selection_scope)
-                } else {
-                    (cursor_scope, selection_scope)
-                };
+        let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        for (i, range) in selection.iter().enumerate() {
+            let (cursor_scope, selection_scope) = if i == primary_idx {
+                (primary_cursor_scope, primary_selection_scope)
+            } else {
+                (cursor_scope, selection_scope)
+            };
 
-                // Special-case: cursor at end of the rope.
-                if range.head == range.anchor && range.head == text.len_chars() {
-                    spans.push((cursor_scope, range.head..range.head + 1));
-                    continue;
-                }
-
-                let range = range.min_width_1(text);
-                if range.head > range.anchor {
-                    // Standard case.
-                    let cursor_start = prev_grapheme_boundary(text, range.head);
-                    spans.push((selection_scope, range.anchor..cursor_start));
-                    spans.push((cursor_scope, cursor_start..range.head));
-                } else {
-                    // Reverse case.
-                    let cursor_end = next_grapheme_boundary(text, range.head);
-                    spans.push((cursor_scope, range.head..cursor_end));
-                    spans.push((selection_scope, cursor_end..range.anchor));
-                }
+            // Special-case: cursor at end of the rope.
+            if range.head == range.anchor && range.head == text.len_chars() {
+                spans.push((cursor_scope, range.head..range.head + 1));
+                continue;
             }
 
-            Box::new(syntax::merge(highlights, spans))
-        } else {
-            Box::new(highlights)
-        };
+            let range = range.min_width_1(text);
+            if range.head > range.anchor {
+                // Standard case.
+                let cursor_start = prev_grapheme_boundary(text, range.head);
+                spans.push((selection_scope, range.anchor..cursor_start));
+                spans.push((cursor_scope, cursor_start..range.head));
+            } else {
+                // Reverse case.
+                let cursor_end = next_grapheme_boundary(text, range.head);
+                spans.push((cursor_scope, range.head..cursor_end));
+                spans.push((selection_scope, cursor_end..range.anchor));
+            }
+        }
 
-        // diagnostic injection
-        let diagnostic_scope = theme.find_scope_index("diagnostic").unwrap_or(cursor_scope);
-        let highlights = Box::new(syntax::merge(
-            highlights,
-            doc.diagnostics()
-                .iter()
-                .map(|diagnostic| {
-                    (
-                        diagnostic_scope,
-                        diagnostic.range.start..diagnostic.range.end,
-                    )
-                })
-                .collect(),
-        ));
+        spans
+    }
+
+    pub fn render_text_highlights<H: Iterator<Item = HighlightEvent>>(
+        doc: &Document,
+        offset: Position,
+        viewport: Rect,
+        surface: &mut Surface,
+        theme: &Theme,
+        highlights: H,
+    ) {
+        let text = doc.text().slice(..);
 
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
@@ -273,14 +309,14 @@ impl EditorView {
                     });
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = visual_x < view.first_col as u16
-                            || visual_x >= viewport.width + view.first_col as u16;
+                        let out_of_bounds = visual_x < offset.col as u16
+                            || visual_x >= viewport.width + offset.col as u16;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
-                                    viewport.x + visual_x - view.first_col as u16,
+                                    viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
                                     " ",
                                     style,
@@ -310,7 +346,7 @@ impl EditorView {
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
-                                    viewport.x + visual_x - view.first_col as u16,
+                                    viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
                                     grapheme,
                                     style,
@@ -323,55 +359,85 @@ impl EditorView {
                 }
             }
         }
+    }
 
-        if is_focused {
-            let screen = {
-                let start = text.line_to_char(view.first_line);
-                let end = text.line_to_char(last_line + 1) + 1; // +1 for cursor at end of text.
-                Range::new(start, end)
-            };
+    /// Render brace match, selected line numbers, etc (meant for the focused view only)
+    pub fn render_focused_view_elements(
+        view: &View,
+        doc: &Document,
+        viewport: Rect,
+        theme: &Theme,
+        surface: &mut Surface,
+    ) {
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id);
+        let last_line = view.last_line(doc);
+        let screen = {
+            let start = text.line_to_char(view.first_line);
+            let end = text.line_to_char(last_line + 1) + 1; // +1 for cursor at end of text.
+            Range::new(start, end)
+        };
 
-            let selection = doc.selection(view.id);
+        // render selected linenr(s)
+        let linenr_select: Style = theme
+            .try_get("ui.linenr.selected")
+            .unwrap_or_else(|| theme.get("ui.linenr"));
 
-            for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
-                let head = view.screen_coords_at_pos(
-                    doc,
-                    text,
-                    if selection.head > selection.anchor {
-                        selection.head - 1
-                    } else {
-                        selection.head
-                    },
+        // Whether to draw the line number for the last line of the
+        // document or not.  We only draw it if it's not an empty line.
+        let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+
+        for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
+            let head = view.screen_coords_at_pos(
+                doc,
+                text,
+                if selection.head > selection.anchor {
+                    selection.head - 1
+                } else {
+                    selection.head
+                },
+            );
+            if let Some(head) = head {
+                // Highlight line number for selected lines.
+                let line_number = view.first_line + head.row;
+                let line_number_text = if line_number == last_line && !draw_last {
+                    "    ~".into()
+                } else {
+                    format!("{:>5}", line_number + 1)
+                };
+                surface.set_stringn(
+                    viewport.x - OFFSET + 1,
+                    viewport.y + head.row as u16,
+                    line_number_text,
+                    5,
+                    linenr_select,
                 );
-                if head.is_some() {
-                    // TODO: set cursor position for IME
-                    if let Some(syntax) = doc.syntax() {
-                        use helix_core::match_brackets;
-                        let pos = doc
-                            .selection(view.id)
-                            .primary()
-                            .cursor(doc.text().slice(..));
-                        let pos = match_brackets::find(syntax, doc.text(), pos)
-                            .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
-                        if let Some(pos) = pos {
-                            // ensure col is on screen
-                            if (pos.col as u16) < viewport.width + view.first_col as u16
-                                && pos.col >= view.first_col
-                            {
-                                let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
-                                    Style::default()
-                                        .add_modifier(Modifier::REVERSED)
-                                        .add_modifier(Modifier::DIM)
-                                });
+                // Highlight matching braces
+                // TODO: set cursor position for IME
+                if let Some(syntax) = doc.syntax() {
+                    use helix_core::match_brackets;
+                    let pos = doc
+                        .selection(view.id)
+                        .primary()
+                        .cursor(doc.text().slice(..));
+                    let pos = match_brackets::find(syntax, doc.text(), pos)
+                        .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
-                                surface
-                                    .get_mut(
-                                        viewport.x + pos.col as u16,
-                                        viewport.y + pos.row as u16,
-                                    )
-                                    .set_style(style);
-                            }
+                    if let Some(pos) = pos {
+                        // ensure col is on screen
+                        if (pos.col as u16) < viewport.width + view.first_col as u16
+                            && pos.col >= view.first_col
+                        {
+                            let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
+                                Style::default()
+                                    .add_modifier(Modifier::REVERSED)
+                                    .add_modifier(Modifier::DIM)
+                            });
+
+                            surface
+                                .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
+                                .set_style(style);
                         }
                     }
                 }
@@ -386,16 +452,15 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
-        is_focused: bool,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
-        let linenr: Style = theme.get("ui.linenr");
-        let warning: Style = theme.get("warning");
-        let error: Style = theme.get("error");
-        let info: Style = theme.get("info");
-        let hint: Style = theme.get("hint");
+        let linenr = theme.get("ui.linenr");
+        let warning = theme.get("warning");
+        let error = theme.get("error");
+        let info = theme.get("info");
+        let hint = theme.get("hint");
 
         // Whether to draw the line number for the last line of the
         // document or not.  We only draw it if it's not an empty line.
@@ -433,64 +498,6 @@ impl EditorView {
                 linenr,
             );
         }
-
-        // render selected linenr(s)
-        let linenr_select: Style = theme
-            .try_get("ui.linenr.selected")
-            .unwrap_or_else(|| theme.get("ui.linenr"));
-
-        if is_focused {
-            let screen = {
-                let start = text.line_to_char(view.first_line);
-                let end = text.line_to_char(last_line + 1) + 1; // +1 for cursor at end of text.
-                Range::new(start, end)
-            };
-
-            let selection = doc.selection(view.id);
-
-            for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
-                let head = view.screen_coords_at_pos(
-                    doc,
-                    text,
-                    if selection.head > selection.anchor {
-                        selection.head - 1
-                    } else {
-                        selection.head
-                    },
-                );
-                if let Some(head) = head {
-                    // Draw line number for selected lines.
-                    let line_number = view.first_line + head.row;
-                    let line_number_text = if line_number == last_line && !draw_last {
-                        "    ~".into()
-                    } else {
-                        format!("{:>5}", line_number + 1)
-                    };
-                    surface.set_stringn(
-                        viewport.x + 1 - OFFSET,
-                        viewport.y + head.row as u16,
-                        line_number_text,
-                        5,
-                        linenr_select,
-                    );
-                }
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn render_buffer(
-        &self,
-        doc: &Document,
-        view: &View,
-        viewport: Rect,
-        surface: &mut Surface,
-        theme: &Theme,
-        is_focused: bool,
-        loader: &syntax::Loader,
-    ) {
-        Self::render_doc(doc, view, viewport, surface, theme, is_focused, loader);
-        Self::render_gutter(doc, view, viewport, surface, theme, is_focused);
     }
 
     pub fn render_diagnostics(
@@ -500,7 +507,6 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
-        _is_focused: bool,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -518,10 +524,10 @@ impl EditorView {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
-        let warning: Style = theme.get("warning");
-        let error: Style = theme.get("error");
-        let info: Style = theme.get("info");
-        let hint: Style = theme.get("hint");
+        let warning = theme.get("warning");
+        let error = theme.get("error");
+        let info = theme.get("info");
+        let hint = theme.get("hint");
 
         // Vec::with_capacity(diagnostics.len()); // rough estimate
         let mut lines = Vec::new();
