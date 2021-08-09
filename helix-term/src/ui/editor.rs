@@ -699,7 +699,8 @@ impl Component for EditorView {
         match event {
             Event::Resize(width, height) => {
                 // HAXX: offset the render area height by 1 to account for prompt/commandline
-                cx.editor.resize(Rect::new(0, 0, width, height - 1));
+                cx.editor
+                    .resize(Rect::new(0, 0, width, height.saturating_sub(1)));
                 EventResult::Consumed(None)
             }
             Event::Key(key) => {
