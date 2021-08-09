@@ -1,7 +1,7 @@
 use ropey::RopeSlice;
 
-use crate::chars::{categorize_char, CharCategory};
-use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
+use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
+use crate::graphemes::next_grapheme_boundary;
 use crate::movement::Direction;
 use crate::surround;
 use crate::Range;
@@ -73,19 +73,23 @@ pub fn textobject_word(
 
     match textobject {
         TextObject::Inside => Range::new(word_start, word_end),
-        TextObject::Around => Range::new(
-            match slice
-                .get_char(word_start.saturating_sub(1))
-                .map(categorize_char)
-            {
-                None | Some(CharCategory::Eol) => word_start,
-                _ => prev_grapheme_boundary(slice, word_start),
-            },
-            match slice.get_char(word_end).map(categorize_char) {
-                None | Some(CharCategory::Eol) => word_end,
-                _ => next_grapheme_boundary(slice, word_end),
-            },
-        ),
+        TextObject::Around => {
+            let whitespace_count_right = slice
+                .chars_at(word_end)
+                .take_while(|c| char_is_whitespace(*c))
+                .count();
+
+            if whitespace_count_right > 0 {
+                Range::new(word_start, word_end + whitespace_count_right)
+            } else {
+                let whitespace_count_left = {
+                    let mut iter = slice.chars_at(word_start);
+                    iter.reverse();
+                    iter.take_while(|c| char_is_whitespace(*c)).count()
+                };
+                Range::new(word_start - whitespace_count_left, word_end)
+            }
+        }
     }
 }
 
@@ -98,11 +102,8 @@ pub fn textobject_surround(
 ) -> Range {
     surround::find_nth_pairs_pos(slice, ch, range.head, count)
         .map(|(anchor, head)| match textobject {
-            TextObject::Inside => Range::new(
-                next_grapheme_boundary(slice, anchor),
-                prev_grapheme_boundary(slice, head),
-            ),
-            TextObject::Around => Range::new(anchor, head),
+            TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
+            TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
         })
         .unwrap_or(range)
 }
@@ -129,9 +130,9 @@ mod test {
                     (13, Inside, (10, 16)),
                     (10, Inside, (10, 16)),
                     (15, Inside, (10, 16)),
-                    (13, Around, (9, 17)),
-                    (10, Around, (9, 17)),
-                    (15, Around, (9, 17)),
+                    (13, Around, (10, 17)),
+                    (10, Around, (10, 17)),
+                    (15, Around, (10, 17)),
                 ],
             ),
             (
@@ -170,9 +171,9 @@ mod test {
                     (13, Inside, (10, 16)),
                     (10, Inside, (10, 16)),
                     (15, Inside, (10, 16)),
-                    (13, Around, (9, 17)),
-                    (10, Around, (9, 17)),
-                    (15, Around, (9, 17)),
+                    (13, Around, (10, 17)),
+                    (10, Around, (10, 17)),
+                    (15, Around, (10, 17)),
                 ],
             ),
             (
@@ -181,10 +182,9 @@ mod test {
                     (14, Inside, (14, 21)),
                     (20, Inside, (14, 21)),
                     (17, Inside, (14, 21)),
-                    (14, Around, (13, 22)),
-                    // FIXME: edge case
-                    // (20, Around, (14, 20)),
-                    (17, Around, (13, 22)),
+                    (14, Around, (14, 21)),
+                    (20, Around, (14, 21)),
+                    (17, Around, (14, 21)),
                 ],
             ),
             (
@@ -197,6 +197,14 @@ mod test {
                     (10, Around, (10, 10)),
                     (11, Around, (11, 11)),
                 ],
+            ),
+            (
+                "cursor on word   with extra whitespace",
+                vec![(11, Inside, (10, 14)), (11, Around, (10, 17))],
+            ),
+            (
+                "cursor at end with extra   whitespace",
+                vec![(28, Inside, (27, 37)), (28, Around, (24, 37))],
             ),
             (
                 "cursor at end of doc",

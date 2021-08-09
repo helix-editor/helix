@@ -80,7 +80,12 @@ impl Application {
         let syn_loader_conf = toml::from_slice(lang_conf).expect("Could not parse languages.toml");
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        let mut editor = Editor::new(size, theme_loader.clone(), syn_loader.clone());
+        let mut editor = Editor::new(
+            size,
+            theme_loader.clone(),
+            syn_loader.clone(),
+            config.editor.clone(),
+        );
 
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
@@ -489,8 +494,7 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        self.editor.close_language_servers(None).await?;
-        if self.config.terminal.mouse {
+        if self.config.editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
         Ok(())

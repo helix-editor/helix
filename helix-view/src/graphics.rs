@@ -64,22 +64,27 @@ impl Rect {
         }
     }
 
+    #[inline]
     pub fn area(self) -> u16 {
         self.width * self.height
     }
 
+    #[inline]
     pub fn left(self) -> u16 {
         self.x
     }
 
+    #[inline]
     pub fn right(self) -> u16 {
         self.x.saturating_add(self.width)
     }
 
+    #[inline]
     pub fn top(self) -> u16 {
         self.y
     }
 
+    #[inline]
     pub fn bottom(self) -> u16 {
         self.y.saturating_add(self.height)
     }
@@ -97,7 +102,18 @@ impl Rect {
         }
     }
 
+    /// Calculate the union between two [`Rect`]s.
     pub fn union(self, other: Rect) -> Rect {
+        // Example:
+        //
+        // If `Rect` A is positioned at `(0, 0)` with a width and height of `5`,
+        // and `Rect` B is positioned at `(5, 0)` with a width and height of `2`,
+        // then this is the resulting union:
+        //
+        // x1 = min(0, 5) => x1 = 0
+        // y1 = min(0, 0) => y1 = 0
+        // x2 = max(0 + 5, 5 + 2) => x2 = 7
+        // y2 = max(0 + 5, 0 + 2) => y2 = 5
         let x1 = min(self.x, other.x);
         let y1 = min(self.y, other.y);
         let x2 = max(self.x + self.width, other.x + other.width);
@@ -110,7 +126,18 @@ impl Rect {
         }
     }
 
+    /// Calculate the intersection between two [`Rect`]s.
     pub fn intersection(self, other: Rect) -> Rect {
+        // Example:
+        //
+        // If `Rect` A is positioned at `(0, 0)` with a width and height of `5`,
+        // and `Rect` B is positioned at `(5, 0)` with a width and height of `2`,
+        // then this is the resulting intersection:
+        //
+        // x1 = max(0, 5) => x1 = 5
+        // y1 = max(0, 0) => y1 = 0
+        // x2 = min(0 + 5, 5 + 2) => x2 = 5
+        // y2 = min(0 + 5, 0 + 2) => y2 = 2
         let x1 = max(self.x, other.x);
         let y1 = max(self.y, other.y);
         let x2 = min(self.x + self.width, other.x + other.width);

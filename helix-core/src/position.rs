@@ -71,18 +71,27 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 
 /// Convert (line, column) coordinates to a character index.
 ///
-/// `is_1_width` specifies whether the position should be treated
-/// as a block cursor or not.  This effects how line-ends are handled.
-/// `false` corresponds to properly round-tripping with `coords_at_pos()`,
-/// whereas `true` will ensure that block cursors don't jump off the
-/// end of the line.
+/// If the `line` coordinate is beyond the end of the file, the EOF
+/// position will be returned.
+///
+/// If the `column` coordinate is past the end of the given line, the
+/// line-end position will be returned.  What constitutes the "line-end
+/// position" depends on the parameter `limit_before_line_ending`.  If it's
+/// `true`, the line-end position will be just *before* the line ending
+/// character.  If `false` it will be just *after* the line ending
+/// character--on the border between the current line and the next.
+///
+/// Usually you only want `limit_before_line_ending` to be `true` if you're working
+/// with left-side block-cursor positions, as this prevents the the block cursor
+/// from jumping to the next line.  Otherwise you typically want it to be `false`,
+/// such as when dealing with raw anchor/head positions.
 ///
 /// TODO: this should be changed to work in terms of visual row/column, not
 /// graphemes.
-pub fn pos_at_coords(text: RopeSlice, coords: Position, is_1_width: bool) -> usize {
+pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending: bool) -> usize {
     let Position { row, col } = coords;
     let line_start = text.line_to_char(row);
-    let line_end = if is_1_width {
+    let line_end = if limit_before_line_ending {
         line_end_char_index(&text, row)
     } else {
         text.line_to_char((row + 1).min(text.len_lines()))
