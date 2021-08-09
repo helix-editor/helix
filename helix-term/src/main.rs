@@ -35,12 +35,8 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cache_dir = helix_core::cache_dir();
-    if !cache_dir.exists() {
-        std::fs::create_dir_all(&cache_dir).ok();
-    }
+    let log_path_default = helix_core::cache_dir().join("helix.log");
 
-    let logpath = cache_dir.join("helix.log");
     let help = format!(
         "\
 {} {}
@@ -63,7 +59,7 @@ FLAGS:
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
-        logpath.display(),
+        log_path_default.display(),
     );
 
     let args = Args::parse_args().context("could not parse arguments")?;
@@ -90,7 +86,17 @@ FLAGS:
         Err(err) => return Err(Error::new(err)),
     };
 
-    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
+    let log_path = config
+        .log_file
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or(log_path_default);
+    let log_dir = log_path.parent().unwrap();
+
+    if !log_dir.exists() {
+        std::fs::create_dir_all(log_dir).ok();
+    }
+    setup_logging(log_path, args.verbosity).context("failed to initialize logging")?;
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;

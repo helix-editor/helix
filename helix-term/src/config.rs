@@ -3,8 +3,10 @@ use serde::Deserialize;
 use crate::keymap::Keymaps;
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Config {
     pub theme: Option<String>,
+    pub log_file: Option<String>,
     #[serde(default)]
     pub lsp: LspConfig,
     #[serde(default)]
