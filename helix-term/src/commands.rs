@@ -2468,7 +2468,10 @@ fn select_mode(cx: &mut Context) {
 }
 
 fn exit_select_mode(cx: &mut Context) {
-    doc_mut!(cx.editor).mode = Mode::Normal;
+    let doc = doc_mut!(cx.editor);
+    if doc.mode == Mode::Select {
+        doc.mode = Mode::Normal;
+    }
 }
 
 fn goto_impl(
