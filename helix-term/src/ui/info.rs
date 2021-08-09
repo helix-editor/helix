@@ -28,10 +28,9 @@ impl Component for Info {
         block.render(area, surface);
 
         // Only write as many lines as there are rows available.
-        for (_, (y, line)) in (inner.y..)
+        for (y, line) in (inner.y..)
             .zip(self.text.lines())
             .take(inner.height as usize)
-            .enumerate()
         {
             surface.set_string(inner.x, y, line, style);
         }
