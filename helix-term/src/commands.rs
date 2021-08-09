@@ -871,7 +871,7 @@ fn switch_to_lowercase(cx: &mut Context) {
     doc.append_changes_to_history(view.id);
 }
 
-fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
+pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     use Direction::*;
     let (view, doc) = current!(cx.editor);
     let cursor = coords_at_pos(

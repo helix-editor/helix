@@ -9,6 +9,7 @@ use crate::{
 use helix_core::{
     coords_at_pos,
     graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
+    movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
@@ -694,6 +695,110 @@ impl EditorView {
     }
 }
 
+impl EditorView {
+    fn handle_mouse_event(&mut self, event: Event, cxt: &mut commands::Context) -> EventResult {
+        match event {
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                row,
+                column,
+                modifiers,
+                ..
+            }) => {
+                let editor = &mut cxt.editor;
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|pos| (pos, view.id))
+                });
+
+                if let Some((pos, view_id)) = result {
+                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+
+                    if modifiers == crossterm::event::KeyModifiers::ALT {
+                        let selection = doc.selection(view_id).clone();
+                        doc.set_selection(view_id, selection.push(Range::point(pos)));
+                    } else {
+                        doc.set_selection(view_id, Selection::point(pos));
+                    }
+
+                    editor.tree.focus = view_id;
+
+                    return EventResult::Consumed(None);
+                }
+
+                EventResult::Ignored
+            }
+
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Drag(MouseButton::Left),
+                row,
+                column,
+                ..
+            }) => {
+                let (view, doc) = current!(cxt.editor);
+
+                let pos = match view.pos_at_screen_coords(doc, row, column) {
+                    Some(pos) => pos,
+                    None => return EventResult::Ignored,
+                };
+
+                let mut selection = doc.selection(view.id).clone();
+                let primary = selection.primary_mut();
+                *primary = Range::new(primary.anchor, pos);
+                doc.set_selection(view.id, selection);
+                EventResult::Consumed(None)
+            }
+
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::ScrollUp | MouseEventKind::ScrollDown,
+                row,
+                column,
+                ..
+            }) => {
+                let editor = &mut cxt.editor;
+                let current_view = editor.tree.focus;
+
+                let direction = match event {
+                    Event::Mouse(MouseEvent {
+                        kind: MouseEventKind::ScrollUp,
+                        ..
+                    }) => editor.config.scroll_lines.signum(),
+                    Event::Mouse(MouseEvent {
+                        kind: MouseEventKind::ScrollDown,
+                        ..
+                    }) => -editor.config.scroll_lines.signum(),
+                    _ => unreachable!(),
+                };
+                let direction = match direction {
+                    1 => Direction::Backward,
+                    -1 => Direction::Forward,
+                    _ => return EventResult::Ignored,
+                };
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|_| view.id)
+                });
+
+                match result {
+                    Some(view_id) => editor.tree.focus = view_id,
+                    None => return EventResult::Ignored,
+                }
+
+                let offset = editor.config.scroll_lines.abs() as usize;
+                commands::scroll(cxt, offset, direction);
+
+                cxt.editor.tree.focus = current_view;
+
+                EventResult::Consumed(None)
+            }
+
+            _ => EventResult::Ignored,
+        }
+    }
+}
+
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let mut cxt = commands::Context {
@@ -805,104 +910,8 @@ impl Component for EditorView {
 
                 EventResult::Consumed(callback)
             }
-            Event::Mouse(MouseEvent {
-                kind: MouseEventKind::Down(MouseButton::Left),
-                row,
-                column,
-                modifiers,
-                ..
-            }) => {
-                let editor = &mut cxt.editor;
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
-                        .map(|pos| (pos, view.id))
-                });
-
-                if let Some((pos, view_id)) = result {
-                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
-
-                    if modifiers == crossterm::event::KeyModifiers::ALT {
-                        let selection = doc.selection(view_id).clone();
-                        doc.set_selection(view_id, selection.push(Range::point(pos)));
-                    } else {
-                        doc.set_selection(view_id, Selection::point(pos));
-                    }
-
-                    editor.tree.focus = view_id;
-
-                    return EventResult::Consumed(None);
-                }
-
-                EventResult::Ignored
-            }
-
-            Event::Mouse(MouseEvent {
-                kind: MouseEventKind::Drag(MouseButton::Left),
-                row,
-                column,
-                ..
-            }) => {
-                let (view, doc) = current!(cxt.editor);
-
-                let pos = match view.pos_at_screen_coords(doc, row, column) {
-                    Some(pos) => pos,
-                    None => return EventResult::Ignored,
-                };
-
-                let mut selection = doc.selection(view.id).clone();
-                let primary = selection.primary_mut();
-                *primary = Range::new(primary.anchor, pos);
-                doc.set_selection(view.id, selection);
-                EventResult::Consumed(None)
-            }
-
-            Event::Mouse(MouseEvent {
-                kind: MouseEventKind::ScrollUp | MouseEventKind::ScrollDown,
-                row,
-                column,
-                ..
-            }) => {
-                let editor = &mut cxt.editor;
-                let current_view = editor.tree.focus;
-
-                let direction = match event {
-                    Event::Mouse(MouseEvent {
-                        kind: MouseEventKind::ScrollUp,
-                        ..
-                    }) => editor.config.scroll_lines.signum(),
-                    Event::Mouse(MouseEvent {
-                        kind: MouseEventKind::ScrollDown,
-                        ..
-                    }) => -editor.config.scroll_lines.signum(),
-                    _ => 0,
-                };
-                let cmd = match direction {
-                    1 => commands::Command::scroll_up,
-                    -1 => commands::Command::scroll_down,
-                    _ => return EventResult::Ignored,
-                };
-
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
-                        .map(|_| view.id)
-                });
-
-                match result {
-                    Some(view_id) => editor.tree.focus = view_id,
-                    None => return EventResult::Ignored,
-                }
-
-                for _ in 0..editor.config.scroll_lines.abs() {
-                    cmd.execute(&mut cxt);
-                }
-
-                cxt.editor.tree.focus = current_view;
-
-                EventResult::Consumed(None)
-            }
-
-            Event::Mouse(_) => EventResult::Ignored,
+            Event::Mouse(_) => self.handle_mouse_event(event, &mut cxt),
         }
     }
 
