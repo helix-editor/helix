@@ -4087,17 +4087,10 @@ fn shell_filter(cx: &mut Context) {
 fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
     use std::io::Write;
     use std::process::{Command, Stdio};
-    let shell = Option::<Vec<_>>::None; // this should come from config, but can't currently
-    let shell = match shell {
-        Some(v) if !v.is_empty() => v,
-        _ => {
-            if cfg!(windows) {
-                vec!["cmd".to_owned(), "/C".to_owned()]
-            } else {
-                vec!["sh".to_owned(), "-c".to_owned()]
-            }
-        }
-    };
+    let shell = cx.editor.config.shell.clone();
+    if shell.is_empty() {
+        return;
+    }
     let prompt = Prompt::new(
         prompt.to_owned(),
         Some('|'),

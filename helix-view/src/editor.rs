@@ -27,6 +27,8 @@ pub struct Config {
     pub scrolloff: usize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
+    pub shell: Vec<String>,
 }
 
 impl Default for Config {
@@ -34,6 +36,11 @@ impl Default for Config {
         Self {
             scrolloff: 5,
             mouse: true,
+            shell: if cfg!(windows) {
+                vec!["cmd".to_owned(), "/C".to_owned()]
+            } else {
+                vec!["sh".to_owned(), "-c".to_owned()]
+            },
         }
     }
 }
