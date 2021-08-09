@@ -89,14 +89,15 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn move_up(&mut self) {
-        // TODO: wrap around to end
-        let pos = self.cursor.map_or(0, |i| i.saturating_sub(1)) % self.matches.len();
+        let len = self.matches.len();
+        let pos = self.cursor.map_or(0, |i| (i + len.saturating_sub(1)) % len) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
 
     pub fn move_down(&mut self) {
-        let pos = self.cursor.map_or(0, |i| i + 1) % self.matches.len();
+        let len = self.matches.len();
+        let pos = self.cursor.map_or(0, |i| i + 1) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
     }

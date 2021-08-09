@@ -1,5 +1,5 @@
 mod completion;
-mod editor;
+pub(crate) mod editor;
 mod info;
 mod markdown;
 mod menu;
@@ -63,7 +63,7 @@ pub fn regex_prompt(
 
                             fun(view, doc, registers, regex);
 
-                            view.ensure_cursor_in_view(doc);
+                            view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
                         }
                         Err(_err) => (), // TODO: mark command line as error
                     }

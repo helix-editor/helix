@@ -12,12 +12,8 @@ use helix_core::{
 };
 
 use helix_view::{
-    document::Mode,
-    editor::Action,
-    input::KeyEvent,
-    keyboard::KeyCode,
-    view::{View, PADDING},
-    Document, DocumentId, Editor, ViewId,
+    document::Mode, editor::Action, input::KeyEvent, keyboard::KeyCode, view::View, Document,
+    DocumentId, Editor, ViewId,
 };
 
 use anyhow::{anyhow, bail, Context as _};
@@ -172,6 +168,8 @@ impl Command {
         extend_char_right, "Extend right",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
+        copy_selection_on_next_line, "Copy selection on next line",
+        copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to beginning of next word",
         move_prev_word_start, "Move to beginning of previous word",
         move_next_word_end, "Move to end of next word",
@@ -237,6 +235,7 @@ impl Command {
         goto_window_bottom, "Goto window bottom",
         goto_last_accessed_file, "Goto last accessed file",
         goto_line, "Goto line",
+        goto_last_line, "Goto last line",
         goto_first_diag, "Goto first diagnostic",
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
@@ -272,6 +271,10 @@ impl Command {
         completion, "Invoke completion popup",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
+        rotate_selections_forward, "Rotate selections forward",
+        rotate_selections_backward, "Rotate selections backward",
+        rotate_selection_contents_forward, "Rotate selection contents forward",
+        rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
@@ -291,7 +294,8 @@ impl Command {
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object"
+        select_textobject_inner, "Select inside object",
+        suspend, "Suspend"
     );
 }
 
@@ -444,7 +448,11 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 fn goto_window(cx: &mut Context, align: Align) {
     let (view, doc) = current!(cx.editor);
 
-    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+    let scrolloff = cx
+        .editor
+        .config
+        .scrolloff
+        .min(view.area.height as usize / 2); // TODO: user pref
 
     let last_line = view.last_line(doc);
 
@@ -471,10 +479,6 @@ fn goto_window_middle(cx: &mut Context) {
 fn goto_window_bottom(cx: &mut Context) {
     goto_window(cx, Align::Bottom)
 }
-
-// TODO: move vs extend could take an extra type Extend/Move that would
-// Range::new(if Move { pos } if Extend { range.anchor }, pos)
-// since these all really do the same thing
 
 fn move_next_word_start(cx: &mut Context) {
     let count = cx.count();
@@ -886,7 +890,11 @@ fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         return;
     }
 
-    let scrolloff = PADDING.min(view.area.height as usize / 2); // TODO: user pref
+    let scrolloff = cx
+        .editor
+        .config
+        .scrolloff
+        .min(view.area.height as usize / 2); // TODO: user pref
 
     view.first_line = match direction {
         Forward => view.first_line + offset,
@@ -954,6 +962,76 @@ fn extend_char_right(cx: &mut Context) {
         movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
     });
     doc.set_selection(view.id, selection);
+}
+
+fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+    let mut ranges = SmallVec::with_capacity(selection.ranges().len() * (count + 1));
+    ranges.extend_from_slice(selection.ranges());
+    let mut primary_index = 0;
+    for range in selection.iter() {
+        let is_primary = *range == selection.primary();
+        let head_pos = coords_at_pos(text, range.head);
+        let anchor_pos = coords_at_pos(text, range.anchor);
+        let height = std::cmp::max(head_pos.row, anchor_pos.row)
+            - std::cmp::min(head_pos.row, anchor_pos.row)
+            + 1;
+
+        if is_primary {
+            primary_index = ranges.len();
+        }
+        ranges.push(*range);
+
+        let mut sels = 0;
+        let mut i = 0;
+        while sels < count {
+            let offset = (i + 1) * height;
+
+            let anchor_row = match direction {
+                Direction::Forward => anchor_pos.row + offset,
+                Direction::Backward => anchor_pos.row.saturating_sub(offset),
+            };
+
+            let head_row = match direction {
+                Direction::Forward => head_pos.row + offset,
+                Direction::Backward => head_pos.row.saturating_sub(offset),
+            };
+
+            if anchor_row >= text.len_lines() || head_row >= text.len_lines() {
+                break;
+            }
+
+            let anchor = pos_at_coords(text, Position::new(anchor_row, anchor_pos.col), true);
+            let head = pos_at_coords(text, Position::new(head_row, head_pos.col), true);
+
+            // skip lines that are too short
+            if coords_at_pos(text, anchor).col == anchor_pos.col
+                && coords_at_pos(text, head).col == head_pos.col
+            {
+                if is_primary {
+                    primary_index = ranges.len();
+                }
+                ranges.push(Range::new(anchor, head));
+                sels += 1;
+            }
+
+            i += 1;
+        }
+    }
+
+    let selection = Selection::new(ranges, primary_index);
+    doc.set_selection(view.id, selection);
+}
+
+fn copy_selection_on_prev_line(cx: &mut Context) {
+    copy_selection_on_line(cx, Direction::Backward)
+}
+
+fn copy_selection_on_next_line(cx: &mut Context) {
+    copy_selection_on_line(cx, Direction::Forward)
 }
 
 fn extend_line_up(cx: &mut Context) {
@@ -2258,7 +2336,7 @@ fn apply_workspace_edit(
 }
 
 fn last_picker(cx: &mut Context) {
-    // TODO: last picker does not seemed to work well with buffer_picker
+    // TODO: last picker does not seem to work well with buffer_picker
     cx.callback = Some(Box::new(|compositor: &mut Compositor| {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);
@@ -2441,10 +2519,30 @@ fn goto_line(cx: &mut Context) {
         push_jump(cx.editor);
 
         let (view, doc) = current!(cx.editor);
-        let line_idx = std::cmp::min(count.get() - 1, doc.text().len_lines().saturating_sub(2));
+        let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
+            // If the last line is blank, don't jump to it.
+            doc.text().len_lines().saturating_sub(2)
+        } else {
+            doc.text().len_lines() - 1
+        };
+        let line_idx = std::cmp::min(count.get() - 1, max_line);
         let pos = doc.text().line_to_char(line_idx);
         doc.set_selection(view.id, Selection::point(pos));
     }
+}
+
+fn goto_last_line(cx: &mut Context) {
+    push_jump(cx.editor);
+
+    let (view, doc) = current!(cx.editor);
+    let line_idx = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
+        // If the last line is blank, don't jump to it.
+        doc.text().len_lines().saturating_sub(2)
+    } else {
+        doc.text().len_lines() - 1
+    };
+    let pos = doc.text().line_to_char(line_idx);
+    doc.set_selection(view.id, Selection::point(pos));
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
@@ -2513,6 +2611,8 @@ fn goto_impl(
         align_view(doc, view, Align::Center);
     }
 
+    let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+
     match locations.as_slice() {
         [location] => {
             jump_to(editor, location, offset_encoding, Action::Replace);
@@ -2523,8 +2623,23 @@ fn goto_impl(
         _locations => {
             let picker = FilePicker::new(
                 locations,
-                |location| {
-                    let file = location.uri.as_str();
+                move |location| {
+                    let file: Cow<'_, str> = (location.uri.scheme() == "file")
+                        .then(|| {
+                            location
+                                .uri
+                                .to_file_path()
+                                .map(|path| {
+                                    // strip root prefix
+                                    path.strip_prefix(&cwdir)
+                                        .map(|path| path.to_path_buf())
+                                        .unwrap_or(path)
+                                })
+                                .ok()
+                                .and_then(|path| path.to_str().map(|path| path.to_owned().into()))
+                        })
+                        .flatten()
+                        .unwrap_or_else(|| location.uri.as_str().into());
                     let line = location.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
@@ -2559,7 +2674,6 @@ fn goto_definition(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_definition(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2602,7 +2716,6 @@ fn goto_type_definition(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_type_definition(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2645,7 +2758,6 @@ fn goto_implementation(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_implementation(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2688,7 +2800,6 @@ fn goto_reference(cx: &mut Context) {
         offset_encoding,
     );
 
-    // TODO: handle fails
     let future = language_server.goto_reference(doc.identifier(), pos, None);
 
     cx.callback(
@@ -2806,7 +2917,6 @@ fn signature_help(cx: &mut Context) {
         language_server.offset_encoding(),
     );
 
-    // TODO: handle fails
     let future = language_server.text_document_signature_help(doc.identifier(), pos, None);
 
     cx.callback(
@@ -3110,7 +3220,8 @@ fn yank(cx: &mut Context) {
         .registers
         .write(cx.selected_register.name(), values);
 
-    cx.editor.set_status(msg)
+    cx.editor.set_status(msg);
+    exit_select_mode(cx);
 }
 
 fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow::Result<()> {
@@ -3143,6 +3254,7 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = current!(cx.editor).1.line_ending;
     let _ = yank_joined_to_clipboard_impl(&mut cx.editor, line_ending.as_str());
+    exit_select_mode(cx);
 }
 
 fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<()> {
@@ -3161,6 +3273,7 @@ fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
     let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor);
+    exit_select_mode(cx);
 }
 
 #[derive(Copy, Clone)]
@@ -3548,7 +3661,6 @@ fn completion(cx: &mut Context) {
 
     let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
 
-    // TODO: handle fails
     let future = language_server.completion(doc.identifier(), pos, None);
 
     let trigger_offset = cursor;
@@ -3574,8 +3686,8 @@ fn completion(cx: &mut Context) {
                 None => Vec::new(),
             };
 
-            // TODO: if no completion, show some message or something
             if items.is_empty() {
+                editor.set_error("No completion available".to_string());
                 return;
             }
             let size = compositor.size();
@@ -3607,7 +3719,6 @@ fn hover(cx: &mut Context) {
         language_server.offset_encoding(),
     );
 
-    // TODO: handle fails
     let future = language_server.text_document_hover(doc.identifier(), pos, None);
 
     cx.callback(
@@ -3651,6 +3762,68 @@ fn toggle_comments(cx: &mut Context) {
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+}
+
+fn rotate_selections(cx: &mut Context, direction: Direction) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let mut selection = doc.selection(view.id).clone();
+    let index = selection.primary_index();
+    let len = selection.len();
+    selection.set_primary_index(match direction {
+        Direction::Forward => (index + count) % len,
+        Direction::Backward => (index + (len.saturating_sub(count) % len)) % len,
+    });
+    doc.set_selection(view.id, selection);
+}
+fn rotate_selections_forward(cx: &mut Context) {
+    rotate_selections(cx, Direction::Forward)
+}
+fn rotate_selections_backward(cx: &mut Context) {
+    rotate_selections(cx, Direction::Backward)
+}
+
+fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
+    let count = cx.count;
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id);
+    let mut fragments: Vec<_> = selection
+        .fragments(text)
+        .map(|fragment| Tendril::from_slice(&fragment))
+        .collect();
+
+    let group = count
+        .map(|count| count.get())
+        .unwrap_or(fragments.len()) // default to rotating everything as one group
+        .min(fragments.len());
+
+    for chunk in fragments.chunks_mut(group) {
+        // TODO: also modify main index
+        match direction {
+            Direction::Forward => chunk.rotate_right(1),
+            Direction::Backward => chunk.rotate_left(1),
+        };
+    }
+
+    let transaction = Transaction::change(
+        doc.text(),
+        selection
+            .ranges()
+            .iter()
+            .zip(fragments)
+            .map(|(range, fragment)| (range.from(), range.to(), Some(fragment))),
+    );
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+fn rotate_selection_contents_forward(cx: &mut Context) {
+    rotate_selection_contents(cx, Direction::Forward)
+}
+fn rotate_selection_contents_backward(cx: &mut Context) {
+    rotate_selection_contents(cx, Direction::Backward)
 }
 
 // tree sitter node selection
@@ -3778,10 +3951,9 @@ fn align_view_middle(cx: &mut Context) {
         .cursor(doc.text().slice(..));
     let pos = coords_at_pos(doc.text().slice(..), pos);
 
-    const OFFSET: usize = 7; // gutters
-    view.first_col = pos
-        .col
-        .saturating_sub(((view.area.width as usize).saturating_sub(OFFSET)) / 2);
+    view.first_col = pos.col.saturating_sub(
+        ((view.area.width as usize).saturating_sub(crate::ui::editor::GUTTER_OFFSET as usize)) / 2,
+    );
 }
 
 fn scroll_up(cx: &mut Context) {
@@ -3896,4 +4068,9 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+fn suspend(_cx: &mut Context) {
+    #[cfg(not(windows))]
+    signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
 }

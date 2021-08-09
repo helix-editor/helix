@@ -70,7 +70,7 @@ pub trait Component: Any + AnyComponent {
 
 use anyhow::Error;
 use std::io::stdout;
-use tui::backend::CrosstermBackend;
+use tui::backend::{Backend, CrosstermBackend};
 type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
 
 pub struct Compositor {
@@ -99,6 +99,21 @@ impl Compositor {
         self.terminal
             .resize(Rect::new(0, 0, width, height))
             .expect("Unable to resize terminal")
+    }
+
+    pub fn save_cursor(&mut self) {
+        if self.terminal.cursor_kind() == CursorKind::Hidden {
+            self.terminal
+                .backend_mut()
+                .show_cursor(CursorKind::Block)
+                .ok();
+        }
+    }
+
+    pub fn load_cursor(&mut self) {
+        if self.terminal.cursor_kind() == CursorKind::Hidden {
+            self.terminal.backend_mut().hide_cursor().ok();
+        }
     }
 
     pub fn push(&mut self, mut layer: Box<dyn Component>) {

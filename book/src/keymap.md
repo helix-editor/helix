@@ -53,7 +53,7 @@
 | `I`         | Insert at the start of the line                 |
 | `A`         | Insert at the end of the line                   |
 | `o`         | Open new line below selection                   |
-| `o`         | Open new line above selection                   |
+| `O`         | Open new line above selection                   |
 | `u`         | Undo change                                     |
 | `U`         | Redo change                                     |
 | `y`         | Yank selection                                  |
@@ -74,6 +74,12 @@
 | `Alt-s`  | Split selection on newlines                                       |
 | `;`      | Collapse selection onto a single cursor                           |
 | `Alt-;`  | Flip selection cursor and anchor                                  |
+| `C`      | Copy selection onto the next line                                 |
+| `Alt-C`  | Copy selection onto the previous line                             |
+| `(`      | Rotate main selection forward                                     |
+| `)`      | Rotate main selection backward                                    |
+| `Alt-(`  | Rotate selection contents forward                                 |
+| `Alt-)`  | Rotate selection contents backward                                |
 | `%`      | Select entire file                                                |
 | `x`      | Select current line, if already selected, extend to next line     |
 | `X`      | Extend selection to line bounds (line-wise selection)             |

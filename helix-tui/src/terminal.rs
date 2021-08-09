@@ -45,8 +45,8 @@ where
     buffers: [Buffer; 2],
     /// Index of the current buffer in the previous array
     current: usize,
-    /// Whether the cursor is currently hidden
-    hidden_cursor: bool,
+    /// Kind of cursor (hidden or others)
+    cursor_kind: CursorKind,
     /// Viewport
     viewport: Viewport,
 }
@@ -57,7 +57,7 @@ where
 {
     fn drop(&mut self) {
         // Attempt to restore the cursor state
-        if self.hidden_cursor {
+        if self.cursor_kind == CursorKind::Hidden {
             if let Err(err) = self.show_cursor(CursorKind::Block) {
                 eprintln!("Failed to show the cursor: {}", err);
             }
@@ -93,7 +93,7 @@ where
                 Buffer::empty(options.viewport.area),
             ],
             current: 0,
-            hidden_cursor: false,
+            cursor_kind: CursorKind::Block,
             viewport: options.viewport,
         })
     }
@@ -185,15 +185,20 @@ where
         Ok(())
     }
 
+    #[inline]
+    pub fn cursor_kind(&self) -> CursorKind {
+        self.cursor_kind
+    }
+
     pub fn hide_cursor(&mut self) -> io::Result<()> {
         self.backend.hide_cursor()?;
-        self.hidden_cursor = true;
+        self.cursor_kind = CursorKind::Hidden;
         Ok(())
     }
 
     pub fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
         self.backend.show_cursor(kind)?;
-        self.hidden_cursor = false;
+        self.cursor_kind = kind;
         Ok(())
     }
 

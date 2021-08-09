@@ -521,13 +521,12 @@ impl Document {
         // state without blocking any further edits.
 
         let mut text = self.text().clone();
-        let path = self.path.clone().expect("Can't save with no path set!"); // TODO: handle no path
+        let path = self.path.clone().expect("Can't save with no path set!");
         let identifier = self.identifier();
-
-        // TODO: mark changes up to now as saved
 
         let language_server = self.language_server.clone();
 
+        // mark changes up to now as saved
         self.reset_modified();
 
         let encoding = self.encoding;
@@ -679,17 +678,21 @@ impl Document {
         let success = transaction.changes().apply(&mut self.text);
 
         if success {
-            // update the selection: either take the selection specified in the transaction, or map the
-            // current selection through changes.
-            let selection = transaction
-                .selection()
-                .cloned()
-                .unwrap_or_else(|| self.selection(view_id).clone().map(transaction.changes()));
-            self.selections.insert(view_id, selection);
-
-            // Ensure all selections accross all views still adhere to invariants.
             for selection in self.selections.values_mut() {
-                *selection = selection.clone().ensure_invariants(self.text.slice(..));
+                *selection = selection
+                    .clone()
+                    // Map through changes
+                    .map(transaction.changes())
+                    // Ensure all selections accross all views still adhere to invariants.
+                    .ensure_invariants(self.text.slice(..));
+            }
+
+            // if specified, the current selection should instead be replaced by transaction.selection
+            if let Some(selection) = transaction.selection() {
+                self.selections.insert(
+                    view_id,
+                    selection.clone().ensure_invariants(self.text.slice(..)),
+                );
             }
         }
 
