@@ -5,7 +5,7 @@ use tui::buffer::Buffer as Surface;
 use std::borrow::Cow;
 
 use helix_core::Transaction;
-use helix_view::{graphics::Rect, Editor};
+use helix_view::{graphics::Rect, Document, Editor, View};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -81,15 +81,47 @@ impl Completion {
     ) -> Self {
         // let items: Vec<CompletionItem> = Vec::new();
         let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+            fn item_to_transaction(
+                doc: &Document,
+                view: &View,
+                item: &CompletionItem,
+                offset_encoding: helix_lsp::OffsetEncoding,
+            ) -> Transaction {
+                if let Some(edit) = &item.text_edit {
+                    let edit = match edit {
+                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                            unimplemented!("completion: insert_and_replace {:?}", item)
+                        }
+                    };
+                    util::generate_transaction_from_edits(
+                        doc.text(),
+                        vec![edit],
+                        offset_encoding, // TODO: should probably transcode in Client
+                    )
+                } else {
+                    let text = item.insert_text.as_ref().unwrap_or(&item.label);
+                    let cursor = doc
+                        .selection(view.id)
+                        .primary()
+                        .cursor(doc.text().slice(..));
+                    Transaction::change(
+                        doc.text(),
+                        vec![(cursor, cursor, Some(text.as_str().into()))].into_iter(),
+                    )
+                }
+            }
+
             match event {
                 PromptEvent::Abort => {}
-                PromptEvent::Validate => {
+                PromptEvent::Update => {
                     let (view, doc) = current!(editor);
 
                     // always present here
                     let item = item.unwrap();
 
                     // if more text was entered, remove it
+                    // TODO: ideally to undo we should keep the last completion tx revert, and map it over new changes
                     let cursor = doc
                         .selection(view.id)
                         .primary()
@@ -102,30 +134,30 @@ impl Completion {
                         doc.apply(&remove, view.id);
                     }
 
-                    let transaction = if let Some(edit) = &item.text_edit {
-                        let edit = match edit {
-                            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                            lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                                unimplemented!("completion: insert_and_replace {:?}", item)
-                            }
-                        };
-                        util::generate_transaction_from_edits(
-                            doc.text(),
-                            vec![edit],
-                            offset_encoding, // TODO: should probably transcode in Client
-                        )
-                    } else {
-                        let text = item.insert_text.as_ref().unwrap_or(&item.label);
-                        let cursor = doc
-                            .selection(view.id)
-                            .primary()
-                            .cursor(doc.text().slice(..));
-                        Transaction::change(
-                            doc.text(),
-                            vec![(cursor, cursor, Some(text.as_str().into()))].into_iter(),
-                        )
-                    };
+                    let transaction = item_to_transaction(doc, view, item, offset_encoding);
+                    doc.apply(&transaction, view.id);
+                }
+                PromptEvent::Validate => {
+                    let (view, doc) = current!(editor);
 
+                    // always present here
+                    let item = item.unwrap();
+
+                    // if more text was entered, remove it
+                    // TODO: ideally to undo we should keep the last completion tx revert, and map it over new changes
+                    let cursor = doc
+                        .selection(view.id)
+                        .primary()
+                        .cursor(doc.text().slice(..));
+                    if trigger_offset < cursor {
+                        let remove = Transaction::change(
+                            doc.text(),
+                            vec![(trigger_offset, cursor, None)].into_iter(),
+                        );
+                        doc.apply(&remove, view.id);
+                    }
+
+                    let transaction = item_to_transaction(doc, view, item, offset_encoding);
                     doc.apply(&transaction, view.id);
 
                     if let Some(additional_edits) = &item.additional_text_edits {
@@ -140,7 +172,6 @@ impl Completion {
                         }
                     }
                 }
-                _ => (),
             };
         });
         let popup = Popup::new(menu);
