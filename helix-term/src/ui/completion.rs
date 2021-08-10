@@ -14,6 +14,10 @@ use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
 
 impl menu::Item for CompletionItem {
+    fn sort_text(&self) -> &str {
+        self.filter_text.as_ref().unwrap_or(&self.label).as_str()
+    }
+
     fn filter_text(&self) -> &str {
         self.filter_text.as_ref().unwrap_or(&self.label).as_str()
     }
