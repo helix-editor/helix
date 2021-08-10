@@ -71,6 +71,7 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         loader: &syntax::Loader,
+        config: &helix_view::editor::Config,
     ) {
         let area = Rect::new(
             view.area.x + GUTTER_OFFSET,
@@ -79,7 +80,7 @@ impl EditorView {
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
 
-        self.render_buffer(doc, view, area, surface, theme, is_focused, loader);
+        self.render_buffer(doc, view, area, surface, theme, is_focused, loader, config);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -115,6 +116,7 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         loader: &syntax::Loader,
+        config: &helix_view::editor::Config,
     ) {
         let text = doc.text().slice(..);
 
@@ -932,6 +934,7 @@ impl Component for EditorView {
                 &cx.editor.theme,
                 is_focused,
                 loader,
+                &cx.editor.config,
             );
         }
 
