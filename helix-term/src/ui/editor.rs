@@ -17,6 +17,7 @@ use helix_core::{
 };
 use helix_view::{
     document::Mode,
+    editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -360,14 +361,16 @@ impl EditorView {
             let line_number_text = if line == last_line && !draw_last {
                 "    ~".into()
             } else {
-                let line_number = if true {
-                    let current_line = doc.text().char_to_line(selections.primary().anchor);
-                    ((current_line as isize) - (line as isize)).abs() as usize
-                } else {
-                    line + 1
-                };
-
-                format!("{:>5}", line_number)
+                match config.line_number {
+                    LineNumber::Absolute => format!("{:>5}", line + 1),
+                    LineNumber::Relative => {
+                        // TODO: Put char_to_line out of the loop
+                        let current_line = doc.text().char_to_line(selections.primary().anchor);
+                        let relative_line =
+                            ((current_line as isize) - (line as isize)).abs() as usize;
+                        format!("{:>5}", relative_line)
+                    }
+                }
             };
             surface.set_stringn(
                 viewport.x + 1 - GUTTER_OFFSET,
