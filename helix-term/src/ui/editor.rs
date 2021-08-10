@@ -696,15 +696,19 @@ impl EditorView {
 }
 
 impl EditorView {
-    fn handle_mouse_event(&mut self, event: Event, cxt: &mut commands::Context) -> EventResult {
+    fn handle_mouse_event(
+        &mut self,
+        event: MouseEvent,
+        cxt: &mut commands::Context,
+    ) -> EventResult {
         match event {
-            Event::Mouse(MouseEvent {
+            MouseEvent {
                 kind: MouseEventKind::Down(MouseButton::Left),
                 row,
                 column,
                 modifiers,
                 ..
-            }) => {
+            } => {
                 let editor = &mut cxt.editor;
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
@@ -730,12 +734,12 @@ impl EditorView {
                 EventResult::Ignored
             }
 
-            Event::Mouse(MouseEvent {
+            MouseEvent {
                 kind: MouseEventKind::Drag(MouseButton::Left),
                 row,
                 column,
                 ..
-            }) => {
+            } => {
                 let (view, doc) = current!(cxt.editor);
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
@@ -750,50 +754,37 @@ impl EditorView {
                 EventResult::Consumed(None)
             }
 
-            Event::Mouse(MouseEvent {
+            MouseEvent {
                 kind: MouseEventKind::ScrollUp | MouseEventKind::ScrollDown,
                 row,
                 column,
                 ..
-            }) => {
-                let editor = &mut cxt.editor;
-                let current_view = editor.tree.focus;
+            } => {
+                let current_view = cxt.editor.tree.focus;
 
-                let direction = match event {
-                    Event::Mouse(MouseEvent {
-                        kind: MouseEventKind::ScrollUp,
-                        ..
-                    }) => editor.config.scroll_lines.signum(),
-                    Event::Mouse(MouseEvent {
-                        kind: MouseEventKind::ScrollDown,
-                        ..
-                    }) => -editor.config.scroll_lines.signum(),
+                let direction = match event.kind {
+                    MouseEventKind::ScrollUp => Direction::Backward,
+                    MouseEventKind::ScrollDown => Direction::Forward,
                     _ => unreachable!(),
                 };
-                let direction = match direction {
-                    1 => Direction::Backward,
-                    -1 => Direction::Forward,
-                    _ => return EventResult::Ignored,
-                };
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&cxt.editor.documents[view.doc], row, column)
                         .map(|_| view.id)
                 });
 
                 match result {
-                    Some(view_id) => editor.tree.focus = view_id,
+                    Some(view_id) => cxt.editor.tree.focus = view_id,
                     None => return EventResult::Ignored,
                 }
 
-                let offset = editor.config.scroll_lines.abs() as usize;
+                let offset = cxt.editor.config.scroll_lines.abs() as usize;
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
 
                 EventResult::Consumed(None)
             }
-
             _ => EventResult::Ignored,
         }
     }
@@ -911,7 +902,7 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(_) => self.handle_mouse_event(event, &mut cxt),
+            Event::Mouse(event) => self.handle_mouse_event(event, &mut cxt),
         }
     }
 
