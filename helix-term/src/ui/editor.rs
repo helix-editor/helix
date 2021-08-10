@@ -9,6 +9,7 @@ use crate::{
 use helix_core::{
     coords_at_pos,
     graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
+    movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
@@ -694,8 +695,112 @@ impl EditorView {
     }
 }
 
+impl EditorView {
+    fn handle_mouse_event(
+        &mut self,
+        event: MouseEvent,
+        cxt: &mut commands::Context,
+    ) -> EventResult {
+        match event {
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                row,
+                column,
+                modifiers,
+                ..
+            } => {
+                let editor = &mut cxt.editor;
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|pos| (pos, view.id))
+                });
+
+                if let Some((pos, view_id)) = result {
+                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+
+                    if modifiers == crossterm::event::KeyModifiers::ALT {
+                        let selection = doc.selection(view_id).clone();
+                        doc.set_selection(view_id, selection.push(Range::point(pos)));
+                    } else {
+                        doc.set_selection(view_id, Selection::point(pos));
+                    }
+
+                    editor.tree.focus = view_id;
+
+                    return EventResult::Consumed(None);
+                }
+
+                EventResult::Ignored
+            }
+
+            MouseEvent {
+                kind: MouseEventKind::Drag(MouseButton::Left),
+                row,
+                column,
+                ..
+            } => {
+                let (view, doc) = current!(cxt.editor);
+
+                let pos = match view.pos_at_screen_coords(doc, row, column) {
+                    Some(pos) => pos,
+                    None => return EventResult::Ignored,
+                };
+
+                let mut selection = doc.selection(view.id).clone();
+                let primary = selection.primary_mut();
+                *primary = Range::new(primary.anchor, pos);
+                doc.set_selection(view.id, selection);
+                EventResult::Consumed(None)
+            }
+
+            MouseEvent {
+                kind: MouseEventKind::ScrollUp | MouseEventKind::ScrollDown,
+                row,
+                column,
+                ..
+            } => {
+                let current_view = cxt.editor.tree.focus;
+
+                let direction = match event.kind {
+                    MouseEventKind::ScrollUp => Direction::Backward,
+                    MouseEventKind::ScrollDown => Direction::Forward,
+                    _ => unreachable!(),
+                };
+
+                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&cxt.editor.documents[view.doc], row, column)
+                        .map(|_| view.id)
+                });
+
+                match result {
+                    Some(view_id) => cxt.editor.tree.focus = view_id,
+                    None => return EventResult::Ignored,
+                }
+
+                let offset = cxt.editor.config.scroll_lines.abs() as usize;
+                commands::scroll(cxt, offset, direction);
+
+                cxt.editor.tree.focus = current_view;
+
+                EventResult::Consumed(None)
+            }
+            _ => EventResult::Ignored,
+        }
+    }
+}
+
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+        let mut cxt = commands::Context {
+            selected_register: helix_view::RegisterSelection::default(),
+            editor: &mut cx.editor,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+            jobs: cx.jobs,
+        };
+
         match event {
             Event::Resize(_width, _height) => {
                 // Ignore this event, we handle resizing just before rendering to screen.
@@ -706,19 +811,10 @@ impl Component for EditorView {
                 let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
                 // clear status
-                cx.editor.status_msg = None;
+                cxt.editor.status_msg = None;
 
-                let (_, doc) = current!(cx.editor);
+                let (_, doc) = current!(cxt.editor);
                 let mode = doc.mode();
-
-                let mut cxt = commands::Context {
-                    selected_register: helix_view::RegisterSelection::default(),
-                    editor: &mut cx.editor,
-                    count: None,
-                    callback: None,
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -773,12 +869,12 @@ impl Component for EditorView {
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
-                if cx.editor.should_close() {
+                if cxt.editor.should_close() {
                     return EventResult::Ignored;
                 }
 
-                let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+                let (view, doc) = current!(cxt.editor);
+                view.ensure_cursor_in_view(doc, cxt.editor.config.scrolloff);
 
                 // mode transitions
                 match (mode, doc.mode()) {
@@ -805,58 +901,8 @@ impl Component for EditorView {
 
                 EventResult::Consumed(callback)
             }
-            Event::Mouse(MouseEvent {
-                kind: MouseEventKind::Down(MouseButton::Left),
-                row,
-                column,
-                modifiers,
-                ..
-            }) => {
-                let editor = &mut cx.editor;
 
-                let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
-                        .map(|pos| (pos, view.id))
-                });
-
-                if let Some((pos, view_id)) = result {
-                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
-
-                    if modifiers == crossterm::event::KeyModifiers::ALT {
-                        let selection = doc.selection(view_id).clone();
-                        doc.set_selection(view_id, selection.push(Range::point(pos)));
-                    } else {
-                        doc.set_selection(view_id, Selection::point(pos));
-                    }
-
-                    editor.tree.focus = view_id;
-
-                    return EventResult::Consumed(None);
-                }
-
-                EventResult::Ignored
-            }
-
-            Event::Mouse(MouseEvent {
-                kind: MouseEventKind::Drag(MouseButton::Left),
-                row,
-                column,
-                ..
-            }) => {
-                let (view, doc) = current!(cx.editor);
-
-                let pos = match view.pos_at_screen_coords(doc, row, column) {
-                    Some(pos) => pos,
-                    None => return EventResult::Ignored,
-                };
-
-                let mut selection = doc.selection(view.id).clone();
-                let primary = selection.primary_mut();
-                *primary = Range::new(primary.anchor, pos);
-                doc.set_selection(view.id, selection);
-                EventResult::Consumed(None)
-            }
-            Event::Mouse(_) => EventResult::Ignored,
+            Event::Mouse(event) => self.handle_mouse_event(event, &mut cxt),
         }
     }
 
