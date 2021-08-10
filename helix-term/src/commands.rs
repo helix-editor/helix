@@ -27,7 +27,7 @@ use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
-    ui::{self, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -2251,7 +2251,8 @@ pub fn code_action(cx: &mut Context) {
               compositor: &mut Compositor,
               response: Option<lsp::CodeActionResponse>| {
             if let Some(actions) = response {
-                let picker = FilePicker::new(
+                let picker = Picker::new(
+                    true,
                     actions,
                     |action| match action {
                         lsp::CodeActionOrCommand::CodeAction(action) => {
@@ -2271,7 +2272,6 @@ pub fn code_action(cx: &mut Context) {
                             }
                         }
                     },
-                    |_editor, _action| None,
                 );
                 compositor.push(Box::new(picker))
             }

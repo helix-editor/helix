@@ -42,7 +42,7 @@ impl<T> FilePicker<T> {
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         Self {
-            picker: Picker::new(options, format_fn, callback_fn),
+            picker: Picker::new(false, options, format_fn, callback_fn),
             preview_cache: HashMap::new(),
             file_fn: Box::new(preview_fn),
         }
@@ -165,6 +165,8 @@ pub struct Picker<T> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
+    /// Whether to render in the middle of the area
+    render_centered: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
@@ -172,6 +174,7 @@ pub struct Picker<T> {
 
 impl<T> Picker<T> {
     pub fn new(
+        render_centered: bool,
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
@@ -192,6 +195,7 @@ impl<T> Picker<T> {
             filters: Vec::new(),
             cursor: 0,
             prompt,
+            render_centered,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
         };
@@ -379,6 +383,12 @@ impl<T: 'static> Component for Picker<T> {
     }
 
     fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let area = if self.render_centered {
+            inner_rect(area)
+        } else {
+            area
+        };
+
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
