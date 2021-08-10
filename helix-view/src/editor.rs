@@ -36,9 +36,6 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
-    /// No line number will be displayed
-    None,
-
     /// Show absolute line number
     Absolute,
 
