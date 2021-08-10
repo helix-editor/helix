@@ -876,7 +876,7 @@ fn switch_to_lowercase(cx: &mut Context) {
     doc.append_changes_to_history(view.id);
 }
 
-fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
+pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     use Direction::*;
     let (view, doc) = current!(cx.editor);
     let cursor = coords_at_pos(
@@ -2652,7 +2652,10 @@ fn select_mode(cx: &mut Context) {
 }
 
 fn exit_select_mode(cx: &mut Context) {
-    doc_mut!(cx.editor).mode = Mode::Normal;
+    let doc = doc_mut!(cx.editor);
+    if doc.mode == Mode::Select {
+        doc.mode = Mode::Normal;
+    }
 }
 
 fn goto_impl(

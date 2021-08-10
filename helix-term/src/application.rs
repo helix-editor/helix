@@ -527,7 +527,9 @@ impl Application {
 
         self.event_loop().await;
 
-        self.editor.close_language_servers(None).await?;
+        if self.editor.close_language_servers(None).await.is_err() {
+            log::error!("Timed out waiting for language servers to shutdown");
+        };
 
         self.restore_term()?;
 
