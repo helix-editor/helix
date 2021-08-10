@@ -29,6 +29,21 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Line number mode.
+    pub line_number: LineNumber,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineNumber {
+    /// No line number will be displayed
+    None,
+
+    /// Show absolute line number
+    Absolute,
+
+    /// Show relative line number to the primary cursor
+    Relative,
 }
 
 impl Default for Config {
@@ -37,6 +52,7 @@ impl Default for Config {
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
+            line_number: LineNumber::Absolute,
         }
     }
 }
