@@ -358,7 +358,14 @@ impl EditorView {
             let line_number_text = if line == last_line && !draw_last {
                 "    ~".into()
             } else {
-                format!("{:>5}", line + 1)
+                let line_number = if true {
+                    let current_line = doc.text().char_to_line(selections.primary().anchor);
+                    ((current_line as isize) - (line as isize)).abs() as usize
+                } else {
+                    line + 1
+                };
+
+                format!("{:>5}", line_number)
             };
             surface.set_stringn(
                 viewport.x + 1 - GUTTER_OFFSET,
