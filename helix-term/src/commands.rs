@@ -110,10 +110,12 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
+    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+
     let relative = match align {
-        Align::Center => view.area.height as usize / 2,
+        Align::Center => height / 2,
         Align::Top => 0,
-        Align::Bottom => view.area.height as usize,
+        Align::Bottom => height,
     };
 
     view.first_line = line.saturating_sub(relative);
@@ -448,17 +450,21 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 fn goto_window(cx: &mut Context, align: Align) {
     let (view, doc) = current!(cx.editor);
 
+    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+    // - 1 so we have at least one gap in the middle.
+    // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
+    // as we type
     let scrolloff = cx
         .editor
         .config
         .scrolloff
-        .min(view.area.height as usize / 2); // TODO: user pref
+        .min(height.saturating_sub(1) / 2);
 
     let last_line = view.last_line(doc);
 
     let line = match align {
         Align::Top => (view.first_line + scrolloff),
-        Align::Center => (view.first_line + (view.area.height as usize / 2)),
+        Align::Center => (view.first_line + (height / 2)),
         Align::Bottom => last_line.saturating_sub(scrolloff),
     }
     .min(last_line.saturating_sub(scrolloff));
@@ -894,7 +900,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         .editor
         .config
         .scrolloff
-        .min(view.area.height as usize / 2); // TODO: user pref
+        .min(view.area.height as usize / 2);
 
     view.first_line = match direction {
         Forward => view.first_line + offset,
