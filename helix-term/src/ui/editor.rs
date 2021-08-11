@@ -339,6 +339,7 @@ impl EditorView {
         // document or not.  We only draw it if it's not an empty line.
         let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
+        let current_line = doc.text().char_to_line(selections.primary().anchor);
         for (i, line) in (view.first_line..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
@@ -364,8 +365,6 @@ impl EditorView {
                 match config.line_number {
                     LineNumber::Absolute => format!("{:>5}", line + 1),
                     LineNumber::Relative => {
-                        // TODO: Put char_to_line out of the loop
-                        let current_line = doc.text().char_to_line(selections.primary().anchor);
                         let relative_line =
                             ((current_line as isize) - (line as isize)).abs() as usize;
                         format!("{:>5}", relative_line)
