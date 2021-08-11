@@ -224,3 +224,10 @@ _________________________________________________________________
  in addition to whitespace.
 
  All of these motions select the text they traverse.
+
+
+
+
+=================================================================
+ This tutorial is still a work-in-progress.
+ More sections are planned.
