@@ -60,6 +60,7 @@ impl Jobs {
         self.add(Job::with_callback(f));
     }
 
+    #[tracing::instrument(name = "Jobs::handle_callback", skip(self, compositor, call))]
     pub fn handle_callback(
         &mut self,
         editor: &mut Editor,

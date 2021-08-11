@@ -14,6 +14,8 @@ homepage = "https://helix-editor.com"
 [dependencies]
 helix-core = { version = "0.3", path = "../helix-core" }
 
+tracing = "0.1"
+
 anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }

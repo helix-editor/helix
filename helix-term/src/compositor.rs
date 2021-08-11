@@ -94,9 +94,11 @@ impl Compositor {
     }
 
     pub fn resize(&mut self, width: u16, height: u16) {
-        self.terminal
-            .resize(Rect::new(0, 0, width, height))
-            .expect("Unable to resize terminal")
+        tracing::debug_span!("Compositor::resize").in_scope(|| {
+            self.terminal
+                .resize(Rect::new(0, 0, width, height))
+                .expect("Unable to resize terminal");
+        });
     }
 
     pub fn save_cursor(&mut self) {

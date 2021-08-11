@@ -35,6 +35,16 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let (flame_layer, guard) = tracing_flame::FlameLayer::with_file("./tracing.folded").unwrap();
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::registry()
+            .with(tracing_tracy::TracyLayer::new())
+            .with(flame_layer),
+    )
+    .unwrap();
+
     let cache_dir = helix_core::cache_dir();
     if !cache_dir.exists() {
         std::fs::create_dir_all(&cache_dir).ok();
@@ -96,5 +106,6 @@ FLAGS:
     let mut app = Application::new(args, config).context("unable to create new application")?;
     app.run().await.unwrap();
 
+    guard.flush().unwrap();
     Ok(())
 }

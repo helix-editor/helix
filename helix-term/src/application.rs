@@ -137,6 +137,7 @@ impl Application {
         Ok(app)
     }
 
+    #[tracing::instrument(name = "Application::render", skip(self))]
     fn render(&mut self) {
         let editor = &mut self.editor;
         let compositor = &mut self.compositor;
@@ -165,7 +166,6 @@ impl Application {
             }
 
             use futures_util::StreamExt;
-
             tokio::select! {
                 biased;
 
@@ -176,7 +176,7 @@ impl Application {
                     self.handle_signals(signal).await;
                 }
                 Some((id, call)) = self.editor.language_servers.incoming.next() => {
-                    self.handle_language_server_message(call, id).await;
+                    self.handle_language_server_message(call, id);
                     // limit render calls for fast language server messages
                     let last = self.editor.language_servers.incoming.is_empty();
                     if last || last_render.elapsed() > deadline {
@@ -221,6 +221,7 @@ impl Application {
         }
     }
 
+    #[tracing::instrument(name = "Application::handle_terminal_events", skip(self))]
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
@@ -230,6 +231,7 @@ impl Application {
         // Handle key events
         let should_redraw = match event {
             Some(Ok(Event::Resize(width, height))) => {
+                tracing::info!("resize");
                 self.compositor.resize(width, height);
 
                 self.compositor
@@ -245,7 +247,8 @@ impl Application {
         }
     }
 
-    pub async fn handle_language_server_message(
+    #[tracing::instrument(name = "Application::handle_language_server_message", skip(self))]
+    pub fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
         server_id: usize,
