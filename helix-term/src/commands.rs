@@ -4017,11 +4017,11 @@ fn surround_replace(cx: &mut Context) {
                     let transaction = Transaction::change(
                         doc.text(),
                         change_pos.iter().enumerate().map(|(i, &pos)| {
-                            if i % 2 == 0 {
-                                (pos, pos + 1, Some(Tendril::from_char(open)))
-                            } else {
-                                (pos.saturating_sub(1), pos, Some(Tendril::from_char(close)))
-                            }
+                            (
+                                pos,
+                                pos + 1,
+                                Some(Tendril::from_char(if i % 2 == 0 { open } else { close })),
+                            )
                         }),
                     );
                     doc.apply(&transaction, view.id);
