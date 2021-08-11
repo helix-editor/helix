@@ -365,8 +365,7 @@ impl EditorView {
                 match config.line_number {
                     LineNumber::Absolute => format!("{:>5}", line + 1),
                     LineNumber::Relative => {
-                        let relative_line =
-                            ((current_line as isize) - (line as isize)).abs() as usize;
+                        let relative_line = abs_diff(current_line, line);
                         format!("{:>5}", relative_line)
                     }
                 }
@@ -1008,5 +1007,14 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
+    }
+}
+
+#[inline]
+fn abs_diff(a: usize, b: usize) -> usize {
+    if a > b {
+        a - b
+    } else {
+        b - a
     }
 }
