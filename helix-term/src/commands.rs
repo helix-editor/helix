@@ -2211,15 +2211,14 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::from(range));
+                            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
                             align_view(doc, view, Align::Center);
                         }
                     },
-                    move |editor, symbol| {
-                        let view = editor.tree.get(editor.tree.focus);
-                        let doc = &editor.documents[view.doc];
+                    move |_editor, symbol| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
                         let line = Some(symbol.location.range.start.line as usize);
-                        doc.path().cloned().zip(Some(line))
+                        Some((path, line))
                     },
                 );
                 compositor.push(Box::new(picker))
@@ -3606,7 +3605,7 @@ fn keep_primary_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let range = doc.selection(view.id).primary();
-    doc.set_selection(view.id, Selection::from(range));
+    doc.set_selection(view.id, Selection::single(range.anchor, range.head));
 }
 
 fn completion(cx: &mut Context) {

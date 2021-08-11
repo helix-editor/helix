@@ -431,13 +431,12 @@ impl Document {
     // TODO: async fn?
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
-    pub fn open<P: AsRef<Path>>(
-        path: P,
+    pub fn open(
+        path: &Path,
         encoding: Option<&'static encoding_rs::Encoding>,
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
-        let path = path.as_ref();
         let (rope, encoding) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;

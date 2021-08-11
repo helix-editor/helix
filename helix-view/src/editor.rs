@@ -220,7 +220,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(path, None, Some(&self.theme), Some(&self.syn_loader))?;
+            let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
             let language_server = doc

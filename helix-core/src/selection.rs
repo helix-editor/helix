@@ -497,12 +497,6 @@ impl Selection {
     }
 }
 
-impl From<Range> for Selection {
-    fn from(range: Range) -> Self {
-        Self::single(range.anchor, range.head)
-    }
-}
-
 impl<'a> IntoIterator for &'a Selection {
     type Item = &'a Range;
     type IntoIter = std::slice::Iter<'a, Range>;
