@@ -16,8 +16,8 @@ term = ["crossterm"]
 [dependencies]
 bitflags = "1.0"
 anyhow = "1"
-helix-core = { version = "0.3", path = "../helix-core" }
-helix-lsp = { version = "0.3", path = "../helix-lsp"}
+helix-core = { version = "0.4", path = "../helix-core" }
+helix-lsp = { version = "0.4", path = "../helix-lsp"}
 crossterm = { version = "0.20", optional = true }
 
 # Conversion traits

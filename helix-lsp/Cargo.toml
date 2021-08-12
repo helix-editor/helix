@@ -12,7 +12,7 @@ homepage = "https://helix-editor.com"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-core = { version = "0.3", path = "../helix-core" }
+helix-core = { version = "0.4", path = "../helix-core" }
 
 anyhow = "1.0"
 futures-executor = "0.3"

@@ -13,7 +13,7 @@ include = ["src/**/*", "README.md"]
 [features]
 
 [dependencies]
-helix-syntax = { version = "0.3", path = "../helix-syntax" }
+helix-syntax = { version = "0.4", path = "../helix-syntax" }
 
 ropey = "1.3"
 smallvec = "1.4"
