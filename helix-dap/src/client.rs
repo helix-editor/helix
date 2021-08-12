@@ -148,6 +148,19 @@ struct StackTraceResponseBody {
     stack_frames: Vec<StackFrame>,
 }
 
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Thread {
+    id: usize,
+    name: String,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ThreadsResponseBody {
+    threads: Vec<Thread>,
+}
+
 #[derive(Debug)]
 pub struct Client {
     id: usize,
@@ -348,5 +361,13 @@ impl Client {
         let body: StackTraceResponseBody = from_value(response.body.unwrap()).unwrap();
 
         Ok((body.stack_frames, body.total_frames))
+    }
+
+    pub async fn threads(&mut self) -> Result<Vec<Thread>> {
+        let response = self.request("threads".to_owned(), None).await?;
+
+        let body: ThreadsResponseBody = from_value(response.body.unwrap()).unwrap();
+
+        Ok(body.threads)
     }
 }

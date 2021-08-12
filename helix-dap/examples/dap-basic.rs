@@ -42,6 +42,7 @@ pub async fn main() -> Result<()> {
 
     println!("configurationDone: {:?}", client.configuration_done().await);
     println!("stopped: {:?}", client.wait_for_stopped().await);
+    println!("threads: {:#?}", client.threads().await);
     println!("stack trace: {:#?}", client.stack_trace(1).await);
 
     let mut _in = String::new();
