@@ -35,7 +35,22 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let log_path_default = helix_core::cache_dir().join("helix.log");
+    let conf_dir = helix_core::config_dir();
+    if !conf_dir.exists() {
+        std::fs::create_dir_all(&conf_dir).ok();
+    }
+
+    let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
+        Ok(config) => merge_keys(toml::from_str(&config)?),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
+        Err(err) => return Err(Error::new(err)),
+    };
+
+    let log_path = config
+        .log_file
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or(helix_core::cache_dir().join("helix.log"));
 
     let help = format!(
         "\
@@ -52,14 +67,14 @@ ARGS:
 FLAGS:
     -h, --help       Prints help information
     -v               Increases logging verbosity each use for up to 3 times
-                     (default file: {})
+                     (file: {})
     -V, --version    Prints version information
 ",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
-        log_path_default.display(),
+        log_path.display(),
     );
 
     let args = Args::parse_args().context("could not parse arguments")?;
@@ -75,22 +90,6 @@ FLAGS:
         std::process::exit(0);
     }
 
-    let conf_dir = helix_core::config_dir();
-    if !conf_dir.exists() {
-        std::fs::create_dir_all(&conf_dir).ok();
-    }
-
-    let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
-        Ok(config) => merge_keys(toml::from_str(&config)?),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
-    };
-
-    let log_path = config
-        .log_file
-        .clone()
-        .map(PathBuf::from)
-        .unwrap_or(log_path_default);
     let log_dir = log_path.parent().unwrap();
 
     if !log_dir.exists() {
