@@ -16,14 +16,14 @@ pub async fn main() -> Result<()> {
     let mut client = Client::start("nc", vec!["127.0.0.1", "7777"], 0)?;
 
     println!("init: {:?}", client.initialize().await);
-    println!("caps: {:?}", client.capabilities());
+    println!("caps: {:#?}", client.capabilities());
     println!(
         "launch: {:?}",
         client.launch("/tmp/godebug/main".to_owned()).await
     );
 
     println!(
-        "breakpoints: {:?}",
+        "breakpoints: {:#?}",
         client
             .set_breakpoints(
                 "/tmp/godebug/main.go".to_owned(),
@@ -42,7 +42,7 @@ pub async fn main() -> Result<()> {
 
     println!("configurationDone: {:?}", client.configuration_done().await);
     println!("stopped: {:?}", client.wait_for_stopped().await);
-    println!("stack trace: {:?}", client.stack_trace(1).await);
+    println!("stack trace: {:#?}", client.stack_trace(1).await);
 
     let mut _in = String::new();
     std::io::stdin()
