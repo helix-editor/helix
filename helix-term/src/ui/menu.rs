@@ -263,7 +263,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
     // TODO: required size should re-trigger when we filter items so we can draw a smaller menu
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get("ui.text");
         let selected = cx.editor.theme.get("ui.menu.selected");
 

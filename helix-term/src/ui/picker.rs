@@ -67,13 +67,14 @@ impl<T> FilePicker<T> {
 }
 
 impl<T: 'static> Component for FilePicker<T> {
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
+        self.calculate_preview(cx.editor);
         let area = inner_rect(area);
         // -- Render the frame:
         // clear area
@@ -105,17 +106,12 @@ impl<T: 'static> Component for FilePicker<T> {
         }) {
             // align to middle
             let first_line = line.unwrap_or(0).saturating_sub(inner.height as usize / 2);
-            let last_line = std::cmp::min(
-                // Saturating subs to make it inclusive zero indexing.
-                (first_line + area.height as usize).saturating_sub(1),
-                doc.text().len_lines().saturating_sub(1),
-            );
             let offset = Position::new(first_line, 0);
 
             let highlights = EditorView::doc_syntax_highlights(
                 doc,
                 offset,
-                last_line,
+                area.height,
                 &cx.editor.theme,
                 &cx.editor.syn_loader,
             );
@@ -137,10 +133,6 @@ impl<T: 'static> Component for FilePicker<T> {
                 }
             }
         }
-    }
-
-    fn prepare_for_render(&mut self, cx: &Context) {
-        self.calculate_preview(cx.editor);
     }
 
     fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
@@ -382,7 +374,7 @@ impl<T: 'static> Component for Picker<T> {
         EventResult::Consumed(None)
     }
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let area = if self.render_centered {
             inner_rect(area)
         } else {

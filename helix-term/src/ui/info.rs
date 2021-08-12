@@ -5,7 +5,7 @@ use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
 
 impl Component for Info {
-    fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get("ui.popup");
 
         // Calculate the area of the terminal to modify. Because we want to

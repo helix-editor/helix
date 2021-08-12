@@ -78,9 +78,9 @@ impl EditorView {
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
         let offset = Position::new(view.first_line, view.first_col);
-        let last_line = view.last_line(doc);
+        let height = view.area.height.saturating_sub(1); // - 1 for statusline
 
-        let highlights = Self::doc_syntax_highlights(doc, offset, last_line, theme, loader);
+        let highlights = Self::doc_syntax_highlights(doc, offset, height, theme, loader);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
@@ -129,11 +129,17 @@ impl EditorView {
     pub fn doc_syntax_highlights<'doc>(
         doc: &'doc Document,
         offset: Position,
-        last_line: usize,
+        height: u16,
         theme: &Theme,
         loader: &syntax::Loader,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
+        let last_line = std::cmp::min(
+            // Saturating subs to make it inclusive zero indexing.
+            (offset.row + height as usize).saturating_sub(1),
+            doc.text().len_lines().saturating_sub(1),
+        );
+
         let range = {
             // calculate viewport byte ranges
             let start = text.line_to_byte(offset.row);
@@ -917,7 +923,7 @@ impl Component for EditorView {
         }
     }
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
 
@@ -939,7 +945,7 @@ impl Component for EditorView {
             );
         }
 
-        if let Some(ref info) = self.autoinfo {
+        if let Some(ref mut info) = self.autoinfo {
             info.render(area, surface, cx);
         }
 
@@ -986,7 +992,7 @@ impl Component for EditorView {
             );
         }
 
-        if let Some(completion) = &self.completion {
+        if let Some(completion) = self.completion.as_mut() {
             completion.render(area, surface, cx);
         }
     }

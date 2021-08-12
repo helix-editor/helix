@@ -105,7 +105,7 @@ impl<T: Component> Component for Popup<T> {
         Some(self.size)
     }
 
-    fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         cx.scroll = Some(self.scroll);
 
         let position = self

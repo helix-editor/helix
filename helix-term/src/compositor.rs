@@ -46,14 +46,12 @@ pub trait Component: Any + AnyComponent {
     }
 
     /// Render the component onto the provided surface.
-    fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
+    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
     /// Get cursor position and cursor kind.
     fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
         (None, CursorKind::Hidden)
     }
-
-    fn prepare_for_render(&mut self, _ctx: &Context) {}
 
     /// May be used by the parent component to compute the child area.
     /// viewport is the maximum allowed area, and the child should stay within those bounds.
@@ -155,7 +153,6 @@ impl Compositor {
         let area = *surface.area();
 
         for layer in &mut self.layers {
-            layer.prepare_for_render(cx);
             layer.render(area, surface, cx);
         }
 

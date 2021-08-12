@@ -13,7 +13,7 @@ impl Text {
     }
 }
 impl Component for Text {
-    fn render(&self, area: Rect, surface: &mut Surface, _cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, _cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
         let contents = tui::text::Text::from(self.contents.clone());
 
