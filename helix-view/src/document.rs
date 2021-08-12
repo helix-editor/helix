@@ -432,14 +432,14 @@ impl Document {
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
     pub fn open(
-        path: PathBuf,
+        path: &Path,
         encoding: Option<&'static encoding_rs::Encoding>,
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
         let (rope, encoding) = if path.exists() {
             let mut file =
-                std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
+                std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
             let encoding = encoding.unwrap_or(encoding_rs::UTF_8);
@@ -449,7 +449,7 @@ impl Document {
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
-        doc.set_path(&path)?;
+        doc.set_path(path)?;
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
         }
@@ -902,6 +902,10 @@ impl Document {
     #[inline]
     pub fn selection(&self, view_id: ViewId) -> &Selection {
         &self.selections[&view_id]
+    }
+
+    pub fn selections(&self) -> &HashMap<ViewId, Selection> {
+        &self.selections
     }
 
     pub fn relative_path(&self) -> Option<PathBuf> {

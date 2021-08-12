@@ -1,5 +1,8 @@
 use bitflags::bitflags;
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    str::FromStr,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// UNSTABLE
@@ -234,6 +237,25 @@ bitflags! {
         const REVERSED          = 0b0000_0100_0000;
         const HIDDEN            = 0b0000_1000_0000;
         const CROSSED_OUT       = 0b0001_0000_0000;
+    }
+}
+
+impl FromStr for Modifier {
+    type Err = &'static str;
+
+    fn from_str(modifier: &str) -> Result<Self, Self::Err> {
+        match modifier {
+            "bold" => Ok(Self::BOLD),
+            "dim" => Ok(Self::DIM),
+            "italic" => Ok(Self::ITALIC),
+            "underlined" => Ok(Self::UNDERLINED),
+            "slow_blink" => Ok(Self::SLOW_BLINK),
+            "rapid_blink" => Ok(Self::RAPID_BLINK),
+            "reversed" => Ok(Self::REVERSED),
+            "hidden" => Ok(Self::HIDDEN),
+            "crossed_out" => Ok(Self::CROSSED_OUT),
+            _ => Err("Invalid modifier"),
+        }
     }
 }
 

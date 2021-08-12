@@ -7,7 +7,11 @@ use crate::{
 };
 
 use futures_util::future;
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use slotmap::SlotMap;
 
@@ -31,6 +35,8 @@ pub struct Config {
     pub mouse: bool,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Middle click paste support. Defaults to true
+    pub middle_click_paste: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -50,6 +56,7 @@ impl Default for Config {
             scroll_lines: 3,
             mouse: true,
             line_number: LineNumber::Absolute,
+            middle_click_paste: true,
         }
     }
 }
@@ -232,7 +239,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(path, None, Some(&self.theme), Some(&self.syn_loader))?;
+            let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
             let language_server = doc
@@ -324,6 +331,11 @@ impl Editor {
 
     pub fn documents_mut(&mut self) -> impl Iterator<Item = &mut Document> {
         self.documents.iter_mut().map(|(_id, doc)| doc)
+    }
+
+    pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
+        self.documents()
+            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
     // pub fn current_document(&self) -> Document {
