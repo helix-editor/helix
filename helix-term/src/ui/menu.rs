@@ -304,14 +304,6 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
         );
 
-        // // TODO: set bg for the whole row if selected
-        // if line == self.cursor {
-        //     surface.set_style(
-        //         Rect::new(area.x, area.y + i as u16, area.width - 1, 1),
-        //         selected,
-        //     )
-        // }
-
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 

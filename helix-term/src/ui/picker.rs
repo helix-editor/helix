@@ -19,7 +19,7 @@ use helix_core::Position;
 use helix_view::{
     document::canonicalize_path,
     editor::Action,
-    graphics::{Color, CursorKind, Rect, Style},
+    graphics::{Color, CursorKind, Margin, Rect, Style},
     Document, Editor,
 };
 
@@ -90,23 +90,26 @@ impl<T: 'static> Component for FilePicker<T> {
             area.width
         };
 
-        let picker_area = Rect::new(area.x, area.y, picker_width, area.height);
+        let picker_area = area.with_width(picker_width);
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
             return;
         }
 
-        let preview_area = Rect::new(area.x + picker_width, area.y, area.width / 2, area.height);
+        let preview_area = area.chop_from_left(picker_width);
 
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
 
         // calculate the inner area inside the box
-        let mut inner = block.inner(preview_area);
+        let inner = block.inner(preview_area);
         // 1 column gap on either side
-        inner.x += 1;
-        inner.width = inner.width.saturating_sub(2);
+        let margin = Margin {
+            vertical: 1,
+            horizontal: 0,
+        };
+        let inner = inner.inner(&margin);
 
         block.render(preview_area, surface);
 
@@ -282,15 +285,11 @@ impl<T> Picker<T> {
 //  - score all the names in relation to input
 
 fn inner_rect(area: Rect) -> Rect {
-    let padding_vertical = area.height * 10 / 100;
-    let padding_horizontal = area.width * 10 / 100;
-
-    Rect::new(
-        area.x + padding_horizontal,
-        area.y + padding_vertical,
-        area.width - padding_horizontal * 2,
-        area.height - padding_vertical * 2,
-    )
+    let margin = Margin {
+        vertical: area.height * 10 / 100,
+        horizontal: area.width * 10 / 100,
+    };
+    area.inner(&margin)
 }
 
 impl<T: 'static> Component for Picker<T> {
@@ -408,7 +407,7 @@ impl<T: 'static> Component for Picker<T> {
 
         // -- Render the input bar:
 
-        let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
+        let area = inner.chop_from_left(1).with_height(1);
         self.prompt.render(area, surface, cx);
 
         // -- Separator
@@ -422,8 +421,8 @@ impl<T: 'static> Component for Picker<T> {
         }
 
         // -- Render the contents:
-        // subtract the area of the prompt (-2) and current item marker " > " (-3)
-        let inner = Rect::new(inner.x + 3, inner.y + 2, inner.width - 3, inner.height - 2);
+        // subtract area of prompt from top and current item marker " > " from left
+        let inner = inner.chop_from_top(2).chop_from_left(3);
 
         let style = cx.editor.theme.get("ui.text");
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
@@ -463,7 +462,7 @@ impl<T: 'static> Component for Picker<T> {
         let inner = block.inner(area);
 
         // prompt area
-        let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
+        let area = inner.chop_from_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
     }

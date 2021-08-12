@@ -72,12 +72,8 @@ impl EditorView {
         is_focused: bool,
         loader: &syntax::Loader,
     ) {
-        let area = Rect::new(
-            view.area.x + GUTTER_OFFSET,
-            view.area.y,
-            view.area.width - GUTTER_OFFSET,
-            view.area.height.saturating_sub(1),
-        ); // - 1 for statusline
+        // -1 from bottom for statusline
+        let area = view.area.chop_from_left(GUTTER_OFFSET).chop_from_bottom(1);
         let offset = Position::new(view.first_line, view.first_col);
         let height = view.area.height.saturating_sub(1); // - 1 for statusline
 
@@ -114,13 +110,11 @@ impl EditorView {
 
         self.render_diagnostics(doc, view, area, surface, theme);
 
-        let area = Rect::new(
-            view.area.x,
-            view.area.y + view.area.height.saturating_sub(1),
-            view.area.width,
-            1,
-        );
-        self.render_statusline(doc, view, area, surface, theme, is_focused);
+        let statusline_area = view
+            .area
+            .chop_from_top(view.area.height.saturating_sub(1))
+            .chop_from_bottom(1); // -1 from bottom to remove commandline
+        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
     }
 
     /// Get syntax highlights for a document in a view represented by the first line
@@ -555,12 +549,7 @@ impl EditorView {
         let width = 80.min(viewport.width);
         let height = 15.min(viewport.height);
         paragraph.render(
-            Rect::new(
-                viewport.right() - width,
-                viewport.y as u16 + 1,
-                width,
-                height,
-            ),
+            Rect::new(viewport.right() - width, viewport.y + 1, width, height),
             surface,
         );
     }
@@ -599,7 +588,7 @@ impl EditorView {
             theme.get("ui.statusline.inactive")
         };
         // statusline
-        surface.set_style(Rect::new(viewport.x, viewport.y, viewport.width, 1), style);
+        surface.set_style(viewport.with_height(1), style);
         if is_focused {
             surface.set_string(viewport.x + 1, viewport.y, mode, style);
         }
@@ -1028,8 +1017,7 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
 
         // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor
-            .resize(Rect::new(area.x, area.y, area.width, area.height - 1)); // - 1 to account for commandline
+        cx.editor.resize(area.chop_from_bottom(1)); // -1 from bottom for commandline
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
