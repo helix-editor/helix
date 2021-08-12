@@ -272,7 +272,7 @@ impl Client {
             .expect("Expected initialized event")
         {
             Payload::Event(Event { event, .. }) => {
-                if event == "initialized".to_owned() {
+                if event == *"initialized" {
                     Ok(())
                 } else {
                     unreachable!()
@@ -308,7 +308,7 @@ impl Client {
     pub async fn wait_for_stopped(&mut self) -> Result<()> {
         match self.server_rx.recv().await.expect("Expected stopped event") {
             Payload::Event(Event { event, .. }) => {
-                if event == "stopped".to_owned() {
+                if event == *"stopped" {
                     Ok(())
                 } else {
                     unreachable!()

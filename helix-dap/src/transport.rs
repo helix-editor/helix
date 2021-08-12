@@ -137,12 +137,8 @@ impl Transport {
         req: Request,
     ) -> Result<()> {
         let json = serde_json::to_string(&req)?;
-        match req.back_ch {
-            Some(back) => {
-                self.pending_requests.lock().await.insert(req.seq, back);
-                ()
-            }
-            None => {}
+        if let Some(back) = req.back_ch {
+            self.pending_requests.lock().await.insert(req.seq, back);
         }
         self.send_string_to_server(server_stdin, json).await
     }
