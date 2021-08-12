@@ -327,6 +327,7 @@ name = "helix-dap"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "fern",
  "log",
  "serde",
  "serde_json",

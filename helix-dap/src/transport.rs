@@ -1,6 +1,6 @@
 use crate::{Error, Result};
 use anyhow::Context;
-use log::error;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -123,8 +123,7 @@ impl Transport {
         reader.read_exact(&mut content).await?;
         let msg = std::str::from_utf8(&content).context("invalid utf8 from server")?;
 
-        // TODO: `info!` here
-        println!("<- DAP {}", msg);
+        info!("<- DAP {}", msg);
 
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<Payload> = serde_json::from_str(msg);
@@ -153,8 +152,7 @@ impl Transport {
         server_stdin: &mut BufWriter<ChildStdin>,
         request: String,
     ) -> Result<()> {
-        // TODO: `info!` here
-        println!("-> DAP {}", request);
+        info!("-> DAP {}", request);
 
         // send the headers
         server_stdin
@@ -181,8 +179,7 @@ impl Transport {
                 request_seq,
                 ..
             }) => {
-                // TODO: `info!` here
-                println!("<- DAP success ({}, in response to {})", seq, request_seq);
+                info!("<- DAP success ({}, in response to {})", seq, request_seq);
                 if let Payload::Response(val) = msg {
                     (request_seq, Ok(val))
                 } else {
@@ -197,8 +194,7 @@ impl Transport {
                 command,
                 ..
             }) => {
-                // TODO: `error!` here
-                println!(
+                error!(
                     "<- DAP error {:?} ({:?}) for command #{} {}",
                     message, body, request_seq, command
                 );
@@ -212,16 +208,14 @@ impl Transport {
                 ref seq,
                 ..
             }) => {
-                // TODO: `info!` here
-                println!("<- DAP request {} #{}", command, seq);
+                info!("<- DAP request {} #{}", command, seq);
                 client_tx.send(msg).expect("Failed to send");
                 return Ok(());
             }
             Payload::Event(Event {
                 ref event, ref seq, ..
             }) => {
-                // TODO: `info!` here
-                println!("<- DAP event {} #{}", event, seq);
+                info!("<- DAP event {} #{}", event, seq);
                 client_tx.send(msg).expect("Failed to send");
                 return Ok(());
             }

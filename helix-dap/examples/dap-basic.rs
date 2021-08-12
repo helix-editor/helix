@@ -2,6 +2,17 @@ use helix_dap::{Client, Result, SourceBreakpoint};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
+    let base_config = fern::Dispatch::new().level(log::LevelFilter::Info);
+
+    let stderr_config = fern::Dispatch::new()
+        .format(|out, message, record| out.finish(format_args!("[{}] {}", record.level(), message)))
+        .chain(std::io::stderr());
+
+    base_config
+        .chain(stderr_config)
+        .apply()
+        .expect("Failed to set up logging");
+
     let mut client = Client::start("nc", vec!["127.0.0.1", "7777"], 0)?;
 
     println!("init: {:?}", client.initialize().await);
