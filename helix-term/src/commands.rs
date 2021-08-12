@@ -12,8 +12,8 @@ use helix_core::{
 };
 
 use helix_view::{
-    document::Mode, editor::Action, input::KeyEvent, keyboard::KeyCode, view::View, Document,
-    DocumentId, Editor, ViewId,
+    clipboard::ClipboardType, document::Mode, editor::Action, input::KeyEvent, keyboard::KeyCode,
+    view::View, Document, DocumentId, Editor, ViewId,
 };
 
 use anyhow::{anyhow, bail, Context as _};
@@ -258,12 +258,17 @@ impl Command {
         yank, "Yank selection",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
+        yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
+        yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard",
         replace_with_yanked, "Replace with yanked text",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
+        replace_selections_with_primary_clipboard, "Replace selections by primary clipboard content",
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
         paste_clipboard_after, "Paste clipboard after selections",
         paste_clipboard_before, "Paste clipboard before selections",
+        paste_primary_clipboard_after, "Paste primary clipboard after selections",
+        paste_primary_clipboard_before, "Paste primary clipboard before selections",
         indent, "Indent selection",
         unindent, "Unindent selection",
         format_selections, "Format selection",
@@ -1705,7 +1710,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        yank_main_selection_to_clipboard_impl(&mut cx.editor)
+        yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Clipboard)
     }
 
     fn yank_joined_to_clipboard(
@@ -1718,7 +1723,28 @@ mod cmd {
             .first()
             .copied()
             .unwrap_or_else(|| doc.line_ending.as_str());
-        yank_joined_to_clipboard_impl(&mut cx.editor, separator)
+        yank_joined_to_clipboard_impl(&mut cx.editor, separator, ClipboardType::Clipboard)
+    }
+
+    fn yank_main_selection_to_primary_clipboard(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Selection)
+    }
+
+    fn yank_joined_to_primary_clipboard(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let separator = args
+            .first()
+            .copied()
+            .unwrap_or_else(|| doc.line_ending.as_str());
+        yank_joined_to_clipboard_impl(&mut cx.editor, separator, ClipboardType::Selection)
     }
 
     fn paste_clipboard_after(
@@ -1726,7 +1752,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After)
+        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard)
     }
 
     fn paste_clipboard_before(
@@ -1734,17 +1760,32 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After)
+        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard)
     }
 
-    fn replace_selections_with_clipboard(
+    fn paste_primary_clipboard_after(
         cx: &mut compositor::Context,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
+        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection)
+    }
+
+    fn paste_primary_clipboard_before(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection)
+    }
+
+    fn replace_selections_with_clipboard_impl(
+        cx: &mut compositor::Context,
+        clipboard_type: ClipboardType,
+    ) -> anyhow::Result<()> {
         let (view, doc) = current!(cx.editor);
 
-        match cx.editor.clipboard_provider.get_contents() {
+        match cx.editor.clipboard_provider.get_contents(clipboard_type) {
             Ok(contents) => {
                 let selection = doc.selection(view.id);
                 let transaction =
@@ -1760,13 +1801,29 @@ mod cmd {
         }
     }
 
+    fn replace_selections_with_clipboard(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard)
+    }
+
+    fn replace_selections_with_primary_clipboard(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        replace_selections_with_clipboard_impl(cx, ClipboardType::Selection)
+    }
+
     fn show_clipboard_provider(
         cx: &mut compositor::Context,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         cx.editor
-            .set_status(cx.editor.clipboard_provider.name().into());
+            .set_status(cx.editor.clipboard_provider.name().to_string());
         Ok(())
     }
 
@@ -1968,6 +2025,20 @@ mod cmd {
             completer: None,
         },
         TypableCommand {
+            name: "primary-clipboard-yank",
+            alias: None,
+            doc: "Yank main selection into system primary clipboard.",
+            fun: yank_main_selection_to_primary_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-clipboard-yank-join",
+            alias: None,
+            doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
+            fun: yank_joined_to_primary_clipboard,
+            completer: None,
+        },
+        TypableCommand {
             name: "clipboard-paste-after",
             alias: None,
             doc: "Paste system clipboard after selections.",
@@ -1986,6 +2057,27 @@ mod cmd {
             alias: None,
             doc: "Replace selections with content of system clipboard.",
             fun: replace_selections_with_clipboard,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-clipboard-paste-after",
+            alias: None,
+            doc: "Paste primary clipboard after selections.",
+            fun: paste_primary_clipboard_after,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-clipboard-paste-before",
+            alias: None,
+            doc: "Paste primary clipboard before selections.",
+            fun: paste_primary_clipboard_before,
+            completer: None,
+        },
+        TypableCommand {
+            name: "primary-clipboard-paste-replace",
+            alias: None,
+            doc: "Replace selections with content of system primary clipboard.",
+            fun: replace_selections_with_primary_clipboard,
             completer: None,
         },
         TypableCommand {
@@ -3209,7 +3301,11 @@ fn yank(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
-fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow::Result<()> {
+fn yank_joined_to_clipboard_impl(
+    editor: &mut Editor,
+    separator: &str,
+    clipboard_type: ClipboardType,
+) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
@@ -3228,7 +3324,7 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow
 
     editor
         .clipboard_provider
-        .set_contents(joined)
+        .set_contents(joined, clipboard_type)
         .context("Couldn't set system clipboard content")?;
 
     editor.set_status(msg);
@@ -3238,17 +3334,27 @@ fn yank_joined_to_clipboard_impl(editor: &mut Editor, separator: &str) -> anyhow
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = current!(cx.editor).1.line_ending;
-    let _ = yank_joined_to_clipboard_impl(&mut cx.editor, line_ending.as_str());
+    let _ = yank_joined_to_clipboard_impl(
+        &mut cx.editor,
+        line_ending.as_str(),
+        ClipboardType::Clipboard,
+    );
     exit_select_mode(cx);
 }
 
-fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<()> {
+fn yank_main_selection_to_clipboard_impl(
+    editor: &mut Editor,
+    clipboard_type: ClipboardType,
+) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
     let value = doc.selection(view.id).primary().fragment(text);
 
-    if let Err(e) = editor.clipboard_provider.set_contents(value.into_owned()) {
+    if let Err(e) = editor
+        .clipboard_provider
+        .set_contents(value.into_owned(), clipboard_type)
+    {
         bail!("Couldn't set system clipboard content: {:?}", e);
     }
 
@@ -3257,7 +3363,20 @@ fn yank_main_selection_to_clipboard_impl(editor: &mut Editor) -> anyhow::Result<
 }
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
-    let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor);
+    let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Clipboard);
+}
+
+fn yank_joined_to_primary_clipboard(cx: &mut Context) {
+    let line_ending = current!(cx.editor).1.line_ending;
+    let _ = yank_joined_to_clipboard_impl(
+        &mut cx.editor,
+        line_ending.as_str(),
+        ClipboardType::Selection,
+    );
+}
+
+fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
+    let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Selection);
     exit_select_mode(cx);
 }
 
@@ -3310,12 +3429,16 @@ fn paste_impl(
     Some(transaction)
 }
 
-fn paste_clipboard_impl(editor: &mut Editor, action: Paste) -> anyhow::Result<()> {
+fn paste_clipboard_impl(
+    editor: &mut Editor,
+    action: Paste,
+    clipboard_type: ClipboardType,
+) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
 
     match editor
         .clipboard_provider
-        .get_contents()
+        .get_contents(clipboard_type)
         .map(|contents| paste_impl(&[contents], doc, view, action))
     {
         Ok(Some(transaction)) => {
@@ -3329,11 +3452,19 @@ fn paste_clipboard_impl(editor: &mut Editor, action: Paste) -> anyhow::Result<()
 }
 
 fn paste_clipboard_after(cx: &mut Context) {
-    let _ = paste_clipboard_impl(&mut cx.editor, Paste::After);
+    let _ = paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard);
 }
 
 fn paste_clipboard_before(cx: &mut Context) {
-    let _ = paste_clipboard_impl(&mut cx.editor, Paste::Before);
+    let _ = paste_clipboard_impl(&mut cx.editor, Paste::Before, ClipboardType::Clipboard);
+}
+
+fn paste_primary_clipboard_after(cx: &mut Context) {
+    let _ = paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection);
+}
+
+fn paste_primary_clipboard_before(cx: &mut Context) {
+    let _ = paste_clipboard_impl(&mut cx.editor, Paste::Before, ClipboardType::Selection);
 }
 
 fn replace_with_yanked(cx: &mut Context) {
@@ -3358,10 +3489,13 @@ fn replace_with_yanked(cx: &mut Context) {
     }
 }
 
-fn replace_selections_with_clipboard_impl(editor: &mut Editor) -> anyhow::Result<()> {
+fn replace_selections_with_clipboard_impl(
+    editor: &mut Editor,
+    clipboard_type: ClipboardType,
+) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
 
-    match editor.clipboard_provider.get_contents() {
+    match editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -3377,7 +3511,11 @@ fn replace_selections_with_clipboard_impl(editor: &mut Editor) -> anyhow::Result
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(&mut cx.editor);
+    let _ = replace_selections_with_clipboard_impl(&mut cx.editor, ClipboardType::Clipboard);
+}
+
+fn replace_selections_with_primary_clipboard(cx: &mut Context) {
+    let _ = replace_selections_with_clipboard_impl(&mut cx.editor, ClipboardType::Selection);
 }
 
 fn paste_after(cx: &mut Context) {

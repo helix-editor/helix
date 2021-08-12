@@ -785,6 +785,61 @@ impl EditorView {
 
                 EventResult::Consumed(None)
             }
+
+            MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Left),
+                ..
+            } => {
+                if !cxt.editor.config.middle_click_paste {
+                    return EventResult::Ignored;
+                }
+
+                let (view, doc) = current!(cxt.editor);
+                let range = doc.selection(view.id).primary();
+
+                if range.to() - range.from() <= 1 {
+                    return EventResult::Ignored;
+                }
+
+                commands::Command::yank_main_selection_to_primary_clipboard.execute(cxt);
+
+                EventResult::Consumed(None)
+            }
+
+            MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Middle),
+                row,
+                column,
+                modifiers,
+                ..
+            } => {
+                let editor = &mut cxt.editor;
+                if !editor.config.middle_click_paste {
+                    return EventResult::Ignored;
+                }
+
+                if modifiers == crossterm::event::KeyModifiers::ALT {
+                    commands::Command::replace_selections_with_primary_clipboard.execute(cxt);
+
+                    return EventResult::Consumed(None);
+                }
+
+                let result = editor.tree.views().find_map(|(view, _focus)| {
+                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                        .map(|pos| (pos, view.id))
+                });
+
+                if let Some((pos, view_id)) = result {
+                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+                    doc.set_selection(view_id, Selection::point(pos));
+                    editor.tree.focus = view_id;
+                    commands::Command::paste_primary_clipboard_before.execute(cxt);
+                    return EventResult::Consumed(None);
+                }
+
+                EventResult::Ignored
+            }
+
             _ => EventResult::Ignored,
         }
     }
