@@ -10,7 +10,7 @@ use helix_core::{
 
 type Jump = (DocumentId, Selection);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JumpList {
     jumps: Vec<Jump>,
     current: usize,

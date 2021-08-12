@@ -241,7 +241,7 @@ impl Component for Completion {
         self.popup.required_size(viewport)
     }
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.popup.render(area, surface, cx);
 
         // if we have a selection, render a markdown popup on top/below with info
@@ -263,7 +263,7 @@ impl Component for Completion {
             let cursor_pos = (helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row
                 - view.first_line) as u16;
 
-            let doc = match &option.documentation {
+            let mut doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
                     kind: lsp::MarkupKind::PlainText,

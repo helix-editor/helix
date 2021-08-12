@@ -352,7 +352,7 @@ impl Prompt {
         }
 
         if let Some(doc) = (self.doc_fn)(&self.line) {
-            let text = ui::Text::new(doc.to_string());
+            let mut text = ui::Text::new(doc.to_string());
 
             let viewport = area;
             let area = viewport.intersection(Rect::new(
@@ -546,7 +546,7 @@ impl Component for Prompt {
         EventResult::Consumed(None)
     }
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.render_prompt(area, surface, cx)
     }
 

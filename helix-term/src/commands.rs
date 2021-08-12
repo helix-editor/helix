@@ -27,7 +27,7 @@ use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
-    ui::{self, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -2212,7 +2212,7 @@ fn file_picker(cx: &mut Context) {
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
-    let picker = Picker::new(
+    let picker = FilePicker::new(
         cx.editor
             .documents
             .iter()
@@ -2233,6 +2233,15 @@ fn buffer_picker(cx: &mut Context) {
         },
         |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
             editor.switch(*id, Action::Replace);
+        },
+        |editor, (id, path)| {
+            let doc = &editor.documents.get(*id)?;
+            let &view_id = doc.selections().keys().next()?;
+            let line = doc
+                .selection(view_id)
+                .primary()
+                .cursor_line(doc.text().slice(..));
+            Some((path.clone()?, Some(line)))
         },
     );
     cx.push_layer(Box::new(picker));
@@ -2287,7 +2296,7 @@ fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let picker = Picker::new(
+                let picker = FilePicker::new(
                     symbols,
                     |symbol| (&symbol.name).into(),
                     move |editor: &mut Editor, symbol, _action| {
@@ -2297,9 +2306,14 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::single(range.to(), range.from()));
+                            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
                             align_view(doc, view, Align::Center);
                         }
+                    },
+                    move |_editor, symbol| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
+                        let line = Some(symbol.location.range.start.line as usize);
+                        Some((path, line))
                     },
                 );
                 compositor.push(Box::new(picker))
@@ -2332,6 +2346,7 @@ pub fn code_action(cx: &mut Context) {
               response: Option<lsp::CodeActionResponse>| {
             if let Some(actions) = response {
                 let picker = Picker::new(
+                    true,
                     actions,
                     |action| match action {
                         lsp::CodeActionOrCommand::CodeAction(action) => {
@@ -2703,7 +2718,7 @@ fn goto_impl(
             editor.set_error("No definition found.".to_string());
         }
         _locations => {
-            let picker = ui::Picker::new(
+            let picker = FilePicker::new(
                 locations,
                 move |location| {
                     let file: Cow<'_, str> = (location.uri.scheme() == "file")
@@ -2727,6 +2742,11 @@ fn goto_impl(
                 },
                 move |editor: &mut Editor, location, action| {
                     jump_to(editor, location, offset_encoding, action)
+                },
+                |_editor, location| {
+                    let path = location.uri.to_file_path().unwrap();
+                    let line = Some(location.range.start.line as usize);
+                    Some((path, line))
                 },
             );
             compositor.push(Box::new(picker));
@@ -3729,8 +3749,7 @@ fn keep_primary_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let range = doc.selection(view.id).primary();
-    let selection = Selection::single(range.anchor, range.head);
-    doc.set_selection(view.id, selection);
+    doc.set_selection(view.id, Selection::single(range.anchor, range.head));
 }
 
 fn completion(cx: &mut Context) {

@@ -198,7 +198,7 @@ fn parse<'a>(
     Text::from(lines)
 }
 impl Component for Markdown {
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
         let text = parse(&self.contents, Some(&cx.editor.theme), &self.config_loader);
