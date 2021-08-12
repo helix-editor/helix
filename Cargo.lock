@@ -323,6 +323,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-dap"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "helix-lsp"
 version = "0.4.1"
 dependencies = [
