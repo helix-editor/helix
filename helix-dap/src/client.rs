@@ -128,17 +128,17 @@ struct StackTraceArguments {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StackFrame {
-    id: usize,
-    name: String,
-    source: Option<Source>,
-    line: usize,
-    column: usize,
-    end_line: Option<usize>,
-    end_column: Option<usize>,
-    can_restart: Option<bool>,
-    instruction_pointer_reference: Option<String>,
+    pub id: usize,
+    pub name: String,
+    pub source: Option<Source>,
+    pub line: usize,
+    pub column: usize,
+    pub end_line: Option<usize>,
+    pub end_column: Option<usize>,
+    pub can_restart: Option<bool>,
+    pub instruction_pointer_reference: Option<String>,
     // module_id
-    presentation_hint: Option<String>,
+    pub presentation_hint: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -151,14 +151,87 @@ struct StackTraceResponseBody {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Thread {
-    id: usize,
-    name: String,
+    pub id: usize,
+    pub name: String,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ThreadsResponseBody {
     threads: Vec<Thread>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScopesArguments {
+    frame_id: usize,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Scope {
+    pub name: String,
+    pub presentation_hint: Option<String>,
+    pub variables_reference: usize,
+    pub named_variables: Option<usize>,
+    pub indexed_variables: Option<usize>,
+    pub expensive: bool,
+    pub source: Option<Source>,
+    pub line: Option<usize>,
+    pub column: Option<usize>,
+    pub end_line: Option<usize>,
+    pub end_column: Option<usize>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScopesResponseBody {
+    scopes: Vec<Scope>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ValueFormat {
+    hex: Option<bool>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VariablesArguments {
+    variables_reference: usize,
+    filter: Option<String>,
+    start: Option<usize>,
+    count: Option<usize>,
+    format: Option<ValueFormat>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VariablePresentationHint {
+    pub kind: Option<String>,
+    pub attributes: Option<Vec<String>>,
+    pub visibility: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Variable {
+    pub name: String,
+    pub value: String,
+    #[serde(rename = "type")]
+    pub data_type: Option<String>,
+    pub presentation_hint: Option<VariablePresentationHint>,
+    pub evaluate_name: Option<String>,
+    pub variables_reference: usize,
+    pub named_variables: Option<usize>,
+    pub indexed_variables: Option<usize>,
+    pub memory_reference: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VariablesResponseBody {
+    variables: Vec<Variable>,
 }
 
 #[derive(Debug)]
@@ -369,5 +442,35 @@ impl Client {
         let body: ThreadsResponseBody = from_value(response.body.unwrap()).unwrap();
 
         Ok(body.threads)
+    }
+
+    pub async fn scopes(&mut self, frame_id: usize) -> Result<Vec<Scope>> {
+        let args = ScopesArguments { frame_id };
+
+        let response = self
+            .request("scopes".to_owned(), to_value(args).ok())
+            .await?;
+
+        let body: ScopesResponseBody = from_value(response.body.unwrap()).unwrap();
+
+        Ok(body.scopes)
+    }
+
+    pub async fn variables(&mut self, variables_reference: usize) -> Result<Vec<Variable>> {
+        let args = VariablesArguments {
+            variables_reference,
+            filter: None,
+            start: None,
+            count: None,
+            format: None,
+        };
+
+        let response = self
+            .request("variables".to_owned(), to_value(args).ok())
+            .await?;
+
+        let body: VariablesResponseBody = from_value(response.body.unwrap()).unwrap();
+
+        Ok(body.variables)
     }
 }

@@ -28,7 +28,7 @@ pub async fn main() -> Result<()> {
             .set_breakpoints(
                 "/tmp/godebug/main.go".to_owned(),
                 vec![SourceBreakpoint {
-                    line: 6,
+                    line: 8,
                     column: Some(2),
                 }]
             )
@@ -43,7 +43,17 @@ pub async fn main() -> Result<()> {
     println!("configurationDone: {:?}", client.configuration_done().await);
     println!("stopped: {:?}", client.wait_for_stopped().await);
     println!("threads: {:#?}", client.threads().await);
-    println!("stack trace: {:#?}", client.stack_trace(1).await);
+    let bt = client.stack_trace(1).await.expect("expected stack trace");
+    println!("stack trace: {:#?}", bt);
+    let scopes = client
+        .scopes(bt.0[0].id)
+        .await
+        .expect("expected scopes for thread");
+    println!("scopes: {:#?}", scopes);
+    println!(
+        "vars: {:#?}",
+        client.variables(scopes[1].variables_reference).await
+    );
 
     let mut _in = String::new();
     std::io::stdin()
