@@ -23,6 +23,8 @@ use helix_view::{
     Document, Editor,
 };
 
+pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
+
 /// File path and line number (used to align and highlight a line)
 type FileLocation = (PathBuf, Option<usize>);
 
@@ -75,26 +77,36 @@ impl<T: 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
         self.calculate_preview(cx.editor);
+        let render_preview = area.width > MIN_SCREEN_WIDTH_FOR_PREVIEW;
         let area = inner_rect(area);
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        let picker_area = Rect::new(area.x, area.y, area.width / 2, area.height);
-        let preview_area = Rect::new(
-            area.x + picker_area.width,
-            area.y,
-            area.width / 2,
-            area.height,
-        );
+        let picker_width = if render_preview {
+            area.width / 2
+        } else {
+            area.width
+        };
+
+        let picker_area = Rect::new(area.x, area.y, picker_width, area.height);
         self.picker.render(picker_area, surface, cx);
+
+        if !render_preview {
+            return;
+        }
+
+        let preview_area = Rect::new(area.x + picker_width, area.y, area.width / 2, area.height);
 
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
 
         // calculate the inner area inside the box
-        let inner = block.inner(preview_area);
+        let mut inner = block.inner(preview_area);
+        // 1 column gap on either side
+        inner.x += 1;
+        inner.width = inner.width.saturating_sub(2);
 
         block.render(preview_area, surface);
 
@@ -270,8 +282,8 @@ impl<T> Picker<T> {
 //  - score all the names in relation to input
 
 fn inner_rect(area: Rect) -> Rect {
-    let padding_vertical = area.height * 20 / 100;
-    let padding_horizontal = area.width * 20 / 100;
+    let padding_vertical = area.height * 10 / 100;
+    let padding_horizontal = area.width * 10 / 100;
 
     Rect::new(
         area.x + padding_horizontal,
