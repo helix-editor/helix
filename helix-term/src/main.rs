@@ -46,11 +46,12 @@ async fn main() -> Result<()> {
         Err(err) => return Err(Error::new(err)),
     };
 
+    let default_log_path = helix_core::cache_dir().join("helix.log");
     let log_path = config
         .log_file
         .clone()
         .map(PathBuf::from)
-        .unwrap_or(helix_core::cache_dir().join("helix.log"));
+        .unwrap_or(default_log_path);
 
     let help = format!(
         "\
