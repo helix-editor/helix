@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    convert::TryFrom,
     path::{Path, PathBuf},
 };
 
@@ -10,8 +11,6 @@ use serde::{Deserialize, Deserializer};
 use toml::Value;
 
 pub use crate::graphics::{Color, Modifier, Style};
-
-/// Color theme for syntax highlighting.
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
     toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
@@ -54,22 +53,10 @@ impl Loader {
             .map(|entries| {
                 entries
                     .filter_map(|entry| {
-                        if let Ok(entry) = entry {
-                            let path = entry.path();
-                            if let Some(ext) = path.extension() {
-                                if ext != "toml" {
-                                    return None;
-                                }
-                                return Some(
-                                    entry
-                                        .file_name()
-                                        .to_string_lossy()
-                                        .trim_end_matches(".toml")
-                                        .to_owned(),
-                                );
-                            }
-                        }
-                        None
+                        let entry = entry.ok()?;
+                        let path = entry.path();
+                        (path.extension()? == "toml")
+                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
                     })
                     .collect()
             })
@@ -103,117 +90,29 @@ impl<'de> Deserialize<'de> for Theme {
         let mut styles = HashMap::new();
 
         if let Ok(mut colors) = HashMap::<String, Value>::deserialize(deserializer) {
-            let palette = parse_palette(colors.remove("palette"));
-            // scopes.reserve(colors.len());
+            // TODO: alert user of parsing failures in editor
+            let palette = colors
+                .remove("palette")
+                .map(|value| {
+                    ThemePalette::try_from(value).unwrap_or_else(|err| {
+                        warn!("{}", err);
+                        ThemePalette::default()
+                    })
+                })
+                .unwrap_or_default();
+
             styles.reserve(colors.len());
             for (name, style_value) in colors {
                 let mut style = Style::default();
-                parse_style(&mut style, style_value, &palette);
-                // scopes.push(name);
+                if let Err(err) = palette.parse_style(&mut style, style_value) {
+                    warn!("{}", err);
+                }
                 styles.insert(name, style);
             }
         }
 
         let scopes = styles.keys().map(ToString::to_string).collect();
         Ok(Self { scopes, styles })
-    }
-}
-
-fn parse_palette(value: Option<Value>) -> HashMap<String, Color> {
-    match value {
-        Some(Value::Table(entries)) => entries,
-        _ => return HashMap::default(),
-    }
-    .into_iter()
-    .filter_map(|(name, value)| {
-        let color = parse_color(value, &HashMap::default())?;
-        Some((name, color))
-    })
-    .collect()
-}
-
-fn parse_style(style: &mut Style, value: Value, palette: &HashMap<String, Color>) {
-    //TODO: alert user of parsing failures
-    if let Value::Table(entries) = value {
-        for (name, value) in entries {
-            match name.as_str() {
-                "fg" => {
-                    if let Some(color) = parse_color(value, palette) {
-                        *style = style.fg(color);
-                    }
-                }
-                "bg" => {
-                    if let Some(color) = parse_color(value, palette) {
-                        *style = style.bg(color);
-                    }
-                }
-                "modifiers" => {
-                    if let Value::Array(arr) = value {
-                        for modifier in arr.iter().filter_map(parse_modifier) {
-                            *style = style.add_modifier(modifier);
-                        }
-                    }
-                }
-                _ => (),
-            }
-        }
-    } else if let Some(color) = parse_color(value, palette) {
-        *style = style.fg(color);
-    }
-}
-
-fn hex_string_to_rgb(s: &str) -> Option<(u8, u8, u8)> {
-    if s.starts_with('#') && s.len() >= 7 {
-        if let (Ok(red), Ok(green), Ok(blue)) = (
-            u8::from_str_radix(&s[1..3], 16),
-            u8::from_str_radix(&s[3..5], 16),
-            u8::from_str_radix(&s[5..7], 16),
-        ) {
-            Some((red, green, blue))
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-fn parse_color(value: Value, palette: &HashMap<String, Color>) -> Option<Color> {
-    if let Value::String(s) = value {
-        if let Some(color) = palette.get(&s) {
-            Some(*color)
-        } else if let Some((red, green, blue)) = hex_string_to_rgb(&s) {
-            Some(Color::Rgb(red, green, blue))
-        } else {
-            warn!("malformed hexcode in theme: {}", s);
-            None
-        }
-    } else {
-        warn!("unrecognized value in theme: {}", value);
-        None
-    }
-}
-
-fn parse_modifier(value: &Value) -> Option<Modifier> {
-    if let Value::String(s) = value {
-        match s.as_str() {
-            "bold" => Some(Modifier::BOLD),
-            "dim" => Some(Modifier::DIM),
-            "italic" => Some(Modifier::ITALIC),
-            "underlined" => Some(Modifier::UNDERLINED),
-            "slow_blink" => Some(Modifier::SLOW_BLINK),
-            "rapid_blink" => Some(Modifier::RAPID_BLINK),
-            "reversed" => Some(Modifier::REVERSED),
-            "hidden" => Some(Modifier::HIDDEN),
-            "crossed_out" => Some(Modifier::CROSSED_OUT),
-            _ => {
-                warn!("unrecognized modifier in theme: {}", s);
-                None
-            }
-        }
-    } else {
-        warn!("unrecognized modifier in theme: {}", value);
-        None
     }
 }
 
@@ -237,28 +136,123 @@ impl Theme {
     }
 }
 
+struct ThemePalette {
+    palette: HashMap<String, Color>,
+}
+
+impl Default for ThemePalette {
+    fn default() -> Self {
+        Self::new(HashMap::new())
+    }
+}
+
+impl ThemePalette {
+    pub fn new(palette: HashMap<String, Color>) -> Self {
+        Self { palette }
+    }
+
+    pub fn hex_string_to_rgb(s: &str) -> Result<Color, String> {
+        if s.starts_with('#') && s.len() >= 7 {
+            if let (Ok(red), Ok(green), Ok(blue)) = (
+                u8::from_str_radix(&s[1..3], 16),
+                u8::from_str_radix(&s[3..5], 16),
+                u8::from_str_radix(&s[5..7], 16),
+            ) {
+                return Ok(Color::Rgb(red, green, blue));
+            }
+        }
+
+        Err(format!("Theme: malformed hexcode: {}", s))
+    }
+
+    fn parse_value_as_str(value: &Value) -> Result<&str, String> {
+        value
+            .as_str()
+            .ok_or(format!("Theme: unrecognized value: {}", value))
+    }
+
+    pub fn parse_color(&self, value: Value) -> Result<Color, String> {
+        let value = Self::parse_value_as_str(&value)?;
+
+        self.palette
+            .get(value)
+            .copied()
+            .ok_or("")
+            .or_else(|_| Self::hex_string_to_rgb(value))
+    }
+
+    pub fn parse_modifier(value: &Value) -> Result<Modifier, String> {
+        value
+            .as_str()
+            .and_then(|s| s.parse().ok())
+            .ok_or(format!("Theme: invalid modifier: {}", value))
+    }
+
+    pub fn parse_style(&self, style: &mut Style, value: Value) -> Result<(), String> {
+        if let Value::Table(entries) = value {
+            for (name, value) in entries {
+                match name.as_str() {
+                    "fg" => *style = style.fg(self.parse_color(value)?),
+                    "bg" => *style = style.bg(self.parse_color(value)?),
+                    "modifiers" => {
+                        let modifiers = value
+                            .as_array()
+                            .ok_or("Theme: modifiers should be an array")?;
+
+                        for modifier in modifiers {
+                            *style = style.add_modifier(Self::parse_modifier(modifier)?);
+                        }
+                    }
+                    _ => return Err(format!("Theme: invalid style attribute: {}", name)),
+                }
+            }
+        } else {
+            *style = style.fg(self.parse_color(value)?);
+        }
+        Ok(())
+    }
+}
+
+impl TryFrom<Value> for ThemePalette {
+    type Error = String;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let map = match value {
+            Value::Table(entries) => entries,
+            _ => return Ok(Self::default()),
+        };
+
+        let mut palette = HashMap::with_capacity(map.len());
+        for (name, value) in map {
+            let value = Self::parse_value_as_str(&value)?;
+            let color = Self::hex_string_to_rgb(value)?;
+            palette.insert(name, color);
+        }
+
+        Ok(Self::new(palette))
+    }
+}
+
 #[test]
 fn test_parse_style_string() {
     let fg = Value::String("#ffffff".to_string());
 
     let mut style = Style::default();
-    parse_style(&mut style, fg, &HashMap::default());
+    let palette = ThemePalette::default();
+    palette.parse_style(&mut style, fg).unwrap();
 
     assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
 }
 
 #[test]
 fn test_palette() {
+    use helix_core::hashmap;
     let fg = Value::String("my_color".to_string());
 
     let mut style = Style::default();
-    parse_style(
-        &mut style,
-        fg,
-        &vec![("my_color".to_string(), Color::Rgb(255, 255, 255))]
-            .into_iter()
-            .collect(),
-    );
+    let palette =
+        ThemePalette::new(hashmap! { "my_color".to_string() => Color::Rgb(255, 255, 255) });
+    palette.parse_style(&mut style, fg).unwrap();
 
     assert_eq!(style, Style::default().fg(Color::Rgb(255, 255, 255)));
 }
@@ -274,9 +268,10 @@ fn test_parse_style_table() {
     };
 
     let mut style = Style::default();
+    let palette = ThemePalette::default();
     if let Value::Table(entries) = table {
         for (_name, value) in entries {
-            parse_style(&mut style, value, &HashMap::default());
+            palette.parse_style(&mut style, value).unwrap();
         }
     }
 

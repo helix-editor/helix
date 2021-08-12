@@ -46,7 +46,7 @@ pub trait Component: Any + AnyComponent {
     }
 
     /// Render the component onto the provided surface.
-    fn render(&self, area: Rect, frame: &mut Surface, ctx: &mut Context);
+    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
     /// Get cursor position and cursor kind.
     fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
@@ -152,8 +152,8 @@ impl Compositor {
 
         let area = *surface.area();
 
-        for layer in &self.layers {
-            layer.render(area, surface, cx)
+        for layer in &mut self.layers {
+            layer.render(area, surface, cx);
         }
 
         let (pos, kind) = self.cursor(area, cx.editor);

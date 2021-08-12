@@ -10,7 +10,7 @@ use helix_core::{
 
 type Jump = (DocumentId, Selection);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JumpList {
     jumps: Vec<Jump>,
     current: usize,
@@ -93,7 +93,10 @@ impl View {
         let height = self.area.height.saturating_sub(1); // - 1 for statusline
         let last_line = (self.first_line + height as usize).saturating_sub(1);
 
-        let scrolloff = scrolloff.min(self.area.height as usize / 2);
+        // - 1 so we have at least one gap in the middle.
+        // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
+        // as we type
+        let scrolloff = scrolloff.min(height.saturating_sub(1) as usize / 2);
 
         // TODO: not ideal
         const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter

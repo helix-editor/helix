@@ -11,7 +11,7 @@ use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
-    // TODO: sort_text
+    fn sort_text(&self) -> &str;
     fn filter_text(&self) -> &str;
 
     fn label(&self) -> &str;
@@ -64,24 +64,21 @@ impl<T: Item> Menu<T> {
         let Self {
             ref mut matcher,
             ref mut matches,
+            ref options,
             ..
         } = *self;
 
         // reuse the matches allocation
         matches.clear();
-        matches.extend(
-            self.options
-                .iter()
-                .enumerate()
-                .filter_map(|(index, option)| {
-                    let text = option.filter_text();
-                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    matcher
-                        .fuzzy_match(text, pattern)
-                        .map(|score| (index, score))
-                }),
-        );
-        matches.sort_unstable_by_key(|(_, score)| -score);
+        matches.extend(options.iter().enumerate().filter_map(|(index, option)| {
+            let text = option.filter_text();
+            // TODO: using fuzzy_indices could give us the char idx for match highlighting
+            matcher
+                .fuzzy_match(text, pattern)
+                .map(|score| (index, score))
+        }));
+        // matches.sort_unstable_by_key(|(_, score)| -score);
+        matches.sort_unstable_by_key(|(index, _score)| options[*index].sort_text());
 
         // reset cursor position
         self.cursor = None;
@@ -223,8 +220,6 @@ impl<T: Item + 'static> Component for Menu<T> {
         EventResult::Ignored
     }
 
-    // TODO: completion sorting
-
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let n = self
             .options
@@ -263,7 +258,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
     // TODO: required size should re-trigger when we filter items so we can draw a smaller menu
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get("ui.text");
         let selected = cx.editor.theme.get("ui.menu.selected");
 
