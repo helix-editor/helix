@@ -1,6 +1,6 @@
 [package]
 name = "helix-tui"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 description = """
 A library to build rich terminal user interfaces or dashboards
