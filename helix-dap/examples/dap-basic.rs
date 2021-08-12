@@ -30,6 +30,9 @@ pub async fn main() -> Result<()> {
                 vec![SourceBreakpoint {
                     line: 8,
                     column: Some(2),
+                    condition: None,
+                    hit_condition: None,
+                    log_message: None,
                 }]
             )
             .await

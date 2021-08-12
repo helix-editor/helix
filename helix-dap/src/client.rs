@@ -15,12 +15,13 @@ use tokio::{
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebuggerCapabilities {
-    supports_configuration_done_request: bool,
-    supports_function_breakpoints: bool,
-    supports_conditional_breakpoints: bool,
-    supports_exception_info_request: bool,
-    support_terminate_debuggee: bool,
-    supports_delayed_stack_trace_loading: bool,
+    pub supports_configuration_done_request: Option<bool>,
+    pub supports_function_breakpoints: Option<bool>,
+    pub supports_conditional_breakpoints: Option<bool>,
+    pub supports_exception_info_request: Option<bool>,
+    pub support_terminate_debuggee: Option<bool>,
+    pub supports_delayed_stack_trace_loading: Option<bool>,
+    // TODO: complete this
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -43,7 +44,7 @@ struct InitializeArguments {
     supports_invalidated_event: bool,
 }
 
-// TODO: split out
+// TODO: split out, as it's a debugger-specific payload not covered by standard
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct LaunchArguments {
@@ -53,8 +54,22 @@ struct LaunchArguments {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct Checksum {
+    pub algorithm: String,
+    pub checksum: String,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Source {
-    path: Option<String>,
+    pub name: Option<String>,
+    pub path: Option<String>,
+    pub source_reference: Option<usize>,
+    pub presentation_hint: Option<String>,
+    pub origin: Option<String>,
+    pub sources: Option<Vec<Source>>,
+    pub adapter_data: Option<Value>,
+    pub checksums: Option<Vec<Checksum>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -62,6 +77,9 @@ pub struct Source {
 pub struct SourceBreakpoint {
     pub line: usize,
     pub column: Option<usize>,
+    pub condition: Option<String>,
+    pub hit_condition: Option<String>,
+    pub log_message: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -69,6 +87,8 @@ pub struct SourceBreakpoint {
 struct SetBreakpointsArguments {
     source: Source,
     breakpoints: Option<Vec<SourceBreakpoint>>,
+    // lines is deprecated
+    source_modified: Option<bool>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -137,7 +157,7 @@ pub struct StackFrame {
     pub end_column: Option<usize>,
     pub can_restart: Option<bool>,
     pub instruction_pointer_reference: Option<String>,
-    // module_id
+    pub module_id: Option<Value>,
     pub presentation_hint: Option<String>,
 }
 
@@ -271,9 +291,6 @@ impl Client {
             capabilities: None,
         };
 
-        // TODO: async client.initialize()
-        // maybe use an arc<atomic> flag
-
         Ok(client)
     }
 
@@ -374,8 +391,18 @@ impl Client {
         breakpoints: Vec<SourceBreakpoint>,
     ) -> Result<Option<Vec<Breakpoint>>> {
         let args = SetBreakpointsArguments {
-            source: Source { path: Some(file) },
+            source: Source {
+                path: Some(file),
+                name: None,
+                source_reference: None,
+                presentation_hint: None,
+                origin: None,
+                sources: None,
+                adapter_data: None,
+                checksums: None,
+            },
             breakpoints: Some(breakpoints),
+            source_modified: Some(false),
         };
 
         let response = self
