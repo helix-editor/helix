@@ -15,6 +15,8 @@ For more information, see the [website](https://helix-editor.com) or
 
 All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html)
 
+[Troubleshooting](https://github.com/helix-editor/helix/wiki/Troubleshooting)
+
 # Features
 
 - Vim-like modal editing
