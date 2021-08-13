@@ -330,8 +330,7 @@ pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&
     }
 
     scopes.reverse();
-
-    return scopes;
+    scopes
 }
 
 #[cfg(test)]
