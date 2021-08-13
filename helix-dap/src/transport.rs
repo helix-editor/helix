@@ -167,36 +167,51 @@ impl Transport {
         client_tx: &UnboundedSender<Payload>,
         msg: Payload,
     ) -> Result<()> {
-        let (id, result) = match msg {
+        match msg {
             Payload::Response(Response {
-                success: true,
-                seq,
+                ref success,
+                ref seq,
                 request_seq,
+                ref command,
+                ref message,
+                ref body,
                 ..
             }) => {
-                info!("<- DAP success ({}, in response to {})", seq, request_seq);
-                if let Payload::Response(val) = msg {
-                    (request_seq, Ok(val))
-                } else {
-                    unreachable!();
-                }
-            }
-            Payload::Response(Response {
-                success: false,
-                message,
-                body,
-                request_seq,
-                command,
-                ..
-            }) => {
-                error!(
-                    "<- DAP error {:?} ({:?}) for command #{} {}",
-                    message, body, request_seq, command
-                );
-                (
-                    request_seq,
-                    Err(Error::Other(anyhow::format_err!("{:?}", body))),
-                )
+                let result = match success {
+                    true => {
+                        info!("<- DAP success ({}, in response to {})", seq, request_seq);
+                        if let Payload::Response(val) = msg {
+                            Ok(val)
+                        } else {
+                            unreachable!();
+                        }
+                    }
+                    false => {
+                        error!(
+                            "<- DAP error {:?} ({:?}) for command #{} {}",
+                            message, body, request_seq, command
+                        );
+
+                        Err(Error::Other(anyhow::format_err!("{:?}", body)))
+                    }
+                };
+
+                let tx = self
+                    .pending_requests
+                    .lock()
+                    .await
+                    .remove(&request_seq)
+                    .expect("pending_request with id not found!");
+
+                match tx.send(result).await {
+                    Ok(_) => (),
+                    Err(_) => error!(
+                        "Tried sending response into a closed channel (id={:?}), original request likely timed out",
+                        request_seq
+                    ),
+                };
+
+                Ok(())
             }
             Payload::Request(Request {
                 ref command,
@@ -205,33 +220,16 @@ impl Transport {
             }) => {
                 info!("<- DAP request {} #{}", command, seq);
                 client_tx.send(msg).expect("Failed to send");
-                return Ok(());
+                Ok(())
             }
             Payload::Event(Event {
                 ref event, ref seq, ..
             }) => {
                 info!("<- DAP event {} #{}", event, seq);
                 client_tx.send(msg).expect("Failed to send");
-                return Ok(());
+                Ok(())
             }
-        };
-
-        let tx = self
-            .pending_requests
-            .lock()
-            .await
-            .remove(&id)
-            .expect("pending_request with id not found!");
-
-        match tx.send(result).await {
-            Ok(_) => (),
-            Err(_) => error!(
-                "Tried sending response into a closed channel (id={:?}), original request likely timed out",
-                id
-            ),
-        };
-
-        Ok(())
+        }
     }
 
     async fn recv(
