@@ -141,7 +141,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 for x in inner.left()..inner.right() {
                     surface
                         .get_mut(x, inner.y + line.saturating_sub(first_line) as u16)
-                        .set_style(cx.editor.theme.get("ui.selection.primary"));
+                        .set_style(cx.editor.theme.get("ui.selection"));
                 }
             }
         }
