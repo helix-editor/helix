@@ -6,8 +6,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::{
-    io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
-    process::{ChildStdin, ChildStdout},
+    io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     sync::{
         mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
         Mutex,
@@ -65,8 +64,8 @@ pub struct Transport {
 
 impl Transport {
     pub fn start(
-        server_stdout: BufReader<ChildStdout>,
-        server_stdin: BufWriter<ChildStdin>,
+        server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
+        server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
         id: usize,
     ) -> (UnboundedReceiver<Payload>, UnboundedSender<Request>) {
         let (client_tx, rx) = unbounded_channel();
@@ -86,7 +85,7 @@ impl Transport {
     }
 
     async fn recv_server_message(
-        reader: &mut (impl AsyncBufRead + Unpin + Send),
+        reader: &mut Box<dyn AsyncBufRead + Unpin + Send>,
         buffer: &mut String,
     ) -> Result<Payload> {
         let mut content_length = None;
@@ -133,7 +132,7 @@ impl Transport {
 
     async fn send_payload_to_server(
         &self,
-        server_stdin: &mut BufWriter<ChildStdin>,
+        server_stdin: &mut Box<dyn AsyncWrite + Unpin + Send>,
         req: Request,
     ) -> Result<()> {
         let json = serde_json::to_string(&req)?;
@@ -145,7 +144,7 @@ impl Transport {
 
     async fn send_string_to_server(
         &self,
-        server_stdin: &mut BufWriter<ChildStdin>,
+        server_stdin: &mut Box<dyn AsyncWrite + Unpin + Send>,
         request: String,
     ) -> Result<()> {
         info!("-> DAP {}", request);
@@ -237,7 +236,7 @@ impl Transport {
 
     async fn recv(
         transport: Arc<Self>,
-        mut server_stdout: BufReader<ChildStdout>,
+        mut server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
         client_tx: UnboundedSender<Payload>,
     ) {
         let mut recv_buffer = String::new();
@@ -259,7 +258,7 @@ impl Transport {
 
     async fn send(
         transport: Arc<Self>,
-        mut server_stdin: BufWriter<ChildStdin>,
+        mut server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
         mut client_rx: UnboundedReceiver<Request>,
     ) {
         while let Some(req) = client_rx.recv().await {

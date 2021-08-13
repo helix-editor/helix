@@ -280,7 +280,7 @@ impl Client {
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
 
-        let (server_rx, server_tx) = Transport::start(reader, writer, id);
+        let (server_rx, server_tx) = Transport::start(Box::new(reader), Box::new(writer), id);
 
         let client = Self {
             id,
