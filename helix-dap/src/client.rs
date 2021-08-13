@@ -7,7 +7,8 @@ use serde_json::{from_value, to_value, Value};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::{
-    io::{BufReader, BufWriter},
+    io::{AsyncBufRead, AsyncWrite, BufReader, BufWriter},
+    net::TcpStream,
     process::{Child, Command},
     sync::mpsc::{channel, UnboundedReceiver, UnboundedSender},
 };
@@ -257,7 +258,7 @@ struct VariablesResponseBody {
 #[derive(Debug)]
 pub struct Client {
     id: usize,
-    _process: Child,
+    _process: Option<Child>,
     server_tx: UnboundedSender<Request>,
     server_rx: UnboundedReceiver<Payload>,
     request_counter: AtomicU64,
@@ -265,7 +266,33 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn start(cmd: &str, args: Vec<&str>, id: usize) -> Result<Self> {
+    pub fn streams(
+        rx: Box<dyn AsyncBufRead + Unpin + Send>,
+        tx: Box<dyn AsyncWrite + Unpin + Send>,
+        id: usize,
+        process: Option<Child>,
+    ) -> Result<Self> {
+        let (server_rx, server_tx) = Transport::start(rx, tx, id);
+
+        let client = Self {
+            id,
+            _process: process,
+            server_tx,
+            server_rx,
+            request_counter: AtomicU64::new(0),
+            capabilities: None,
+        };
+
+        Ok(client)
+    }
+
+    pub async fn tcp(addr: std::net::SocketAddr, id: usize) -> Result<Self> {
+        let stream = TcpStream::connect(addr).await?;
+        let (rx, tx) = stream.into_split();
+        Self::streams(Box::new(BufReader::new(rx)), Box::new(tx), id, None)
+    }
+
+    pub fn stdio(cmd: &str, args: Vec<&str>, id: usize) -> Result<Self> {
         let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -280,18 +307,12 @@ impl Client {
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
 
-        let (server_rx, server_tx) = Transport::start(Box::new(reader), Box::new(writer), id);
-
-        let client = Self {
+        Self::streams(
+            Box::new(BufReader::new(reader)),
+            Box::new(writer),
             id,
-            _process: process,
-            server_tx,
-            server_rx,
-            request_counter: AtomicU64::new(0),
-            capabilities: None,
-        };
-
-        Ok(client)
+            Some(process),
+        )
     }
 
     pub fn id(&self) -> usize {

@@ -13,7 +13,9 @@ pub async fn main() -> Result<()> {
         .apply()
         .expect("Failed to set up logging");
 
-    let mut client = Client::start("nc", vec!["127.0.0.1", "7777"], 0)?;
+    let client = Client::tcp("127.0.0.1:7777".parse::<std::net::SocketAddr>().unwrap(), 0).await;
+    println!("create: {:?}", client);
+    let mut client = client?;
 
     println!("init: {:?}", client.initialize().await);
     println!("caps: {:#?}", client.capabilities());
