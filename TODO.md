@@ -22,18 +22,11 @@ as you type completion!
 
 - [ ] = for auto indent line/selection
 - [ ]  :x for closing buffers
-
 - [ ] repeat selection
 
-- [] jump to alt buffer
-
 - [ ] lsp: signature help
-- [ ] lsp: code actions
-- [ ] lsp: formatting
 
 - [ ] search: smart case by default: insensitive unless upper detected
-
-- [ ] move Compositor into tui
 
 2
 - [ ] macro recording
