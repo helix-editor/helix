@@ -95,7 +95,7 @@ impl EditorView {
         };
 
         Self::render_text_highlights(doc, offset, area, surface, theme, highlights);
-        Self::render_gutter(doc, view, area, surface, theme);
+        Self::render_gutter(doc, view, area, surface, theme, config);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, area, theme, surface);
@@ -135,7 +135,6 @@ impl EditorView {
         height: u16,
         theme: &Theme,
         loader: &syntax::Loader,
-        config: &helix_view::editor::Config,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
         let last_line = std::cmp::min(
@@ -462,6 +461,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        config: &helix_view::editor::Config,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -476,7 +476,9 @@ impl EditorView {
         // document or not.  We only draw it if it's not an empty line.
         let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
-        let current_line = doc.text().char_to_line(selections.primary().anchor);
+        let current_line = doc
+            .text()
+            .char_to_line(doc.selection(view.id).primary().anchor);
         for (i, line) in (view.first_line..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
