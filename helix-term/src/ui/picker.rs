@@ -410,6 +410,8 @@ impl<T: 'static> Component for Picker<T> {
 
         // -- Render the input bar:
 
+        let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
+
         let count = format!("{}/{}", self.matches.len(), self.options.len());
         surface.set_stringn(
             (area.x + area.width).saturating_sub(count.len() as u16 + 1),
@@ -419,7 +421,6 @@ impl<T: 'static> Component for Picker<T> {
             text_style,
         );
 
-        let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
         self.prompt.render(area, surface, cx);
 
         // -- Separator
