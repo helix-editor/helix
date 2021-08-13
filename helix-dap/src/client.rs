@@ -372,8 +372,9 @@ impl Client {
         Ok(())
     }
 
-    pub async fn launch(&mut self, args: Value) -> Result<()> {
-        self.request("launch".to_owned(), Some(args)).await?;
+    pub async fn launch(&mut self, args: impl Serialize) -> Result<()> {
+        self.request("launch".to_owned(), to_value(args).ok())
+            .await?;
 
         match self
             .server_rx

@@ -33,10 +33,7 @@ pub async fn main() -> Result<()> {
         program: "/tmp/godebug/main".to_owned(),
     };
 
-    println!(
-        "launch: {:?}",
-        client.launch(serde_json::to_value(args)?).await
-    );
+    println!("launch: {:?}", client.launch(args).await);
 
     println!(
         "breakpoints: {:#?}",
