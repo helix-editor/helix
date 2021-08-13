@@ -17,7 +17,7 @@ pub async fn main() -> Result<()> {
     println!("create: {:?}", client);
     let mut client = client?;
 
-    println!("init: {:?}", client.initialize().await);
+    println!("init: {:?}", client.initialize("go".to_owned()).await);
     println!("caps: {:#?}", client.capabilities());
     println!(
         "launch: {:?}",

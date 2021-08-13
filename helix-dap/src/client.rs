@@ -350,11 +350,11 @@ impl Client {
             .expect("language server not yet initialized!")
     }
 
-    pub async fn initialize(&mut self) -> Result<()> {
+    pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
         let args = InitializeArguments {
             client_id: "hx".to_owned(),
             client_name: "helix".to_owned(),
-            adapter_id: "go".to_owned(),
+            adapter_id,
             locale: "en-us".to_owned(),
             lines_start_at_one: true,
             columns_start_at_one: true,
