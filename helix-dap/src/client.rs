@@ -393,6 +393,27 @@ impl Client {
         }
     }
 
+    pub async fn attach(&mut self, args: impl Serialize) -> Result<()> {
+        self.request("attach".to_owned(), to_value(args).ok())
+            .await?;
+
+        match self
+            .server_rx
+            .recv()
+            .await
+            .expect("Expected initialized event")
+        {
+            Payload::Event(Event { event, .. }) => {
+                if event == *"initialized" {
+                    Ok(())
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub async fn set_breakpoints(
         &mut self,
         file: String,
