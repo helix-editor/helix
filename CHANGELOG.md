@@ -36,7 +36,7 @@ selections in the future as well as resolves many bugs and edge cases.
 - Java support ([#448](https://github.com/helix-editor/helix/pull/448))
 - Prompts have an (in-memory) history ([63e54e30](https://github.com/helix-editor/helix/commit/63e54e30a74bb0d1d782877ddbbcf95f2817d061))
 
-# 0.4.0 (2021-06-27)
+# 0.3.0 (2021-06-27)
 
 Another big release. 
 
