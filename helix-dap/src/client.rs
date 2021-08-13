@@ -45,14 +45,6 @@ struct InitializeArguments {
     supports_invalidated_event: bool,
 }
 
-// TODO: split out, as it's a debugger-specific payload not covered by standard
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LaunchArguments {
-    mode: String,
-    program: String,
-}
-
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Checksum {
@@ -380,14 +372,8 @@ impl Client {
         Ok(())
     }
 
-    pub async fn launch(&mut self, executable: String) -> Result<()> {
-        let args = LaunchArguments {
-            mode: "exec".to_owned(),
-            program: executable,
-        };
-
-        self.request("launch".to_owned(), to_value(args).ok())
-            .await?;
+    pub async fn launch(&mut self, args: Value) -> Result<()> {
+        self.request("launch".to_owned(), Some(args)).await?;
 
         match self
             .server_rx

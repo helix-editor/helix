@@ -1,4 +1,12 @@
 use helix_dap::{Client, Result, SourceBreakpoint};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LaunchArguments {
+    mode: String,
+    program: String,
+}
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
@@ -19,9 +27,15 @@ pub async fn main() -> Result<()> {
 
     println!("init: {:?}", client.initialize("go".to_owned()).await);
     println!("caps: {:#?}", client.capabilities());
+
+    let args = LaunchArguments {
+        mode: "exec".to_owned(),
+        program: "/tmp/godebug/main".to_owned(),
+    };
+
     println!(
         "launch: {:?}",
-        client.launch("/tmp/godebug/main".to_owned()).await
+        client.launch(serde_json::to_value(args)?).await
     );
 
     println!(
