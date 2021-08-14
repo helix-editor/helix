@@ -12,6 +12,7 @@ use std::sync::{
 use std::{collections::HashMap, process::Stdio};
 use tokio::{
     io::{AsyncBufRead, AsyncWrite, BufReader, BufWriter},
+    join,
     net::TcpStream,
     process::{Child, Command},
     sync::{
@@ -449,7 +450,12 @@ impl Client {
         self.request_counter.fetch_add(1, Ordering::Relaxed)
     }
 
-    async fn request(&self, command: String, arguments: Option<Value>) -> Result<Response> {
+    async fn request(
+        &self,
+        command: String,
+        arguments: Option<Value>,
+        response: bool,
+    ) -> Result<Option<Response>> {
         let (callback_rx, mut callback_tx) = channel(1);
 
         let req = Request {
@@ -464,10 +470,11 @@ impl Client {
             .send(req)
             .expect("Failed to send request to debugger");
 
-        callback_tx
-            .recv()
-            .await
-            .expect("Failed to receive response")
+        if response {
+            Ok(Some(callback_tx.recv().await.unwrap()?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
@@ -494,25 +501,25 @@ impl Client {
         };
 
         let response = self
-            .request("initialize".to_owned(), to_value(args).ok())
-            .await?;
+            .request("initialize".to_owned(), to_value(args).ok(), true)
+            .await?
+            .unwrap();
         self.capabilities = from_value(response.body.unwrap()).ok();
 
         Ok(())
     }
 
     pub async fn disconnect(&mut self) -> Result<()> {
-        self.request("disconnect".to_owned(), None).await?;
+        self.request("disconnect".to_owned(), None, true).await?;
         Ok(())
     }
 
     pub async fn launch(&mut self, args: impl Serialize) -> Result<()> {
         let mut initialized = self.listen_for_event("initialized".to_owned()).await;
 
-        self.request("launch".to_owned(), to_value(args).ok())
-            .await?;
-
-        initialized.recv().await;
+        let res = self.request("launch".to_owned(), to_value(args).ok(), true);
+        let ev = initialized.recv();
+        join!(res, ev).0?;
 
         Ok(())
     }
@@ -520,10 +527,9 @@ impl Client {
     pub async fn attach(&mut self, args: impl Serialize) -> Result<()> {
         let mut initialized = self.listen_for_event("initialized".to_owned()).await;
 
-        self.request("attach".to_owned(), to_value(args).ok())
-            .await?;
-
-        initialized.recv().await;
+        let res = self.request("attach".to_owned(), to_value(args).ok(), false);
+        let ev = initialized.recv();
+        join!(res, ev).0?;
 
         Ok(())
     }
@@ -549,15 +555,17 @@ impl Client {
         };
 
         let response = self
-            .request("setBreakpoints".to_owned(), to_value(args).ok())
-            .await?;
+            .request("setBreakpoints".to_owned(), to_value(args).ok(), true)
+            .await?
+            .unwrap();
         let body: Option<SetBreakpointsResponseBody> = from_value(response.body.unwrap()).ok();
 
         Ok(body.map(|b| b.breakpoints).unwrap())
     }
 
     pub async fn configuration_done(&mut self) -> Result<()> {
-        self.request("configurationDone".to_owned(), None).await?;
+        self.request("configurationDone".to_owned(), None, true)
+            .await?;
         Ok(())
     }
 
@@ -565,8 +573,9 @@ impl Client {
         let args = ContinueArguments { thread_id };
 
         let response = self
-            .request("continue".to_owned(), to_value(args).ok())
-            .await?;
+            .request("continue".to_owned(), to_value(args).ok(), true)
+            .await?
+            .unwrap();
 
         let body: Option<ContinueResponseBody> = from_value(response.body.unwrap()).ok();
 
@@ -585,8 +594,9 @@ impl Client {
         };
 
         let response = self
-            .request("stackTrace".to_owned(), to_value(args).ok())
-            .await?;
+            .request("stackTrace".to_owned(), to_value(args).ok(), true)
+            .await?
+            .unwrap();
 
         let body: StackTraceResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -594,7 +604,10 @@ impl Client {
     }
 
     pub async fn threads(&mut self) -> Result<Vec<Thread>> {
-        let response = self.request("threads".to_owned(), None).await?;
+        let response = self
+            .request("threads".to_owned(), None, true)
+            .await?
+            .unwrap();
 
         let body: ThreadsResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -605,8 +618,9 @@ impl Client {
         let args = ScopesArguments { frame_id };
 
         let response = self
-            .request("scopes".to_owned(), to_value(args).ok())
-            .await?;
+            .request("scopes".to_owned(), to_value(args).ok(), true)
+            .await?
+            .unwrap();
 
         let body: ScopesResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -623,8 +637,9 @@ impl Client {
         };
 
         let response = self
-            .request("variables".to_owned(), to_value(args).ok())
-            .await?;
+            .request("variables".to_owned(), to_value(args).ok(), true)
+            .await?
+            .unwrap();
 
         let body: VariablesResponseBody = from_value(response.body.unwrap()).unwrap();
 

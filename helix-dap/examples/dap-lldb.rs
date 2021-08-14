@@ -57,7 +57,7 @@ pub async fn main() -> Result<()> {
                 "/tmp/cdebug/main.c".to_owned(),
                 vec![SourceBreakpoint {
                     line: 6,
-                    column: Some(4),
+                    column: Some(2),
                     condition: None,
                     hit_condition: None,
                     log_message: None,
@@ -82,7 +82,7 @@ pub async fn main() -> Result<()> {
     let threads = client.threads().await?;
     println!("threads: {:#?}", threads);
     let bt = client
-        .stack_trace(threads[2].id)
+        .stack_trace(threads[0].id)
         .await
         .expect("expected stack trace");
     println!("stack trace: {:#?}", bt);
@@ -93,7 +93,7 @@ pub async fn main() -> Result<()> {
     println!("scopes: {:#?}", scopes);
     println!(
         "vars: {:#?}",
-        client.variables(scopes[1].variables_reference).await
+        client.variables(scopes[0].variables_reference).await
     );
 
     let mut _in = String::new();
