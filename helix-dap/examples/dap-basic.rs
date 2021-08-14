@@ -1,11 +1,19 @@
-use helix_dap::{Client, Result, SourceBreakpoint};
+use helix_dap::{Client, Event, OutputEventBody, Result, SourceBreakpoint};
 use serde::{Deserialize, Serialize};
+use serde_json::from_value;
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct LaunchArguments {
     mode: String,
     program: String,
+}
+
+async fn output(mut output_event: Receiver<Event>) {
+    let body: OutputEventBody =
+        from_value(output_event.recv().await.unwrap().body.unwrap()).unwrap();
+    println!("{:?}", body);
 }
 
 #[tokio::main]
@@ -24,6 +32,9 @@ pub async fn main() -> Result<()> {
     let client = Client::tcp("127.0.0.1:7777".parse::<std::net::SocketAddr>().unwrap(), 0).await;
     println!("create: {:?}", client);
     let mut client = client?;
+
+    let output_event = client.listen_for_event("output".to_owned()).await;
+    tokio::spawn(output(output_event));
 
     println!("init: {:?}", client.initialize("go".to_owned()).await);
     println!("caps: {:#?}", client.capabilities());

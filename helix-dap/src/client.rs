@@ -254,6 +254,19 @@ struct VariablesResponseBody {
     variables: Vec<Variable>,
 }
 
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputEventBody {
+    pub output: String,
+    pub category: Option<String>,
+    pub group: Option<String>,
+    pub line: Option<usize>,
+    pub column: Option<usize>,
+    pub variables_reference: Option<usize>,
+    pub source: Option<Source>,
+    pub data: Option<Value>,
+}
+
 #[derive(Debug)]
 pub struct Client {
     id: usize,
