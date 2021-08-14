@@ -22,14 +22,75 @@ use tokio::{
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ColumnDescriptor {
+    pub attribute_name: String,
+    pub label: String,
+    pub format: Option<String>,
+    #[serde(rename = "type")]
+    pub col_type: Option<String>,
+    pub width: Option<usize>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExceptionBreakpointsFilter {
+    pub filter: String,
+    pub label: String,
+    pub description: Option<String>,
+    pub default: Option<bool>,
+    pub supports_condition: Option<bool>,
+    pub condition_description: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DebuggerCapabilities {
     pub supports_configuration_done_request: Option<bool>,
     pub supports_function_breakpoints: Option<bool>,
     pub supports_conditional_breakpoints: Option<bool>,
+    pub supports_hit_conditional_breakpoints: Option<bool>,
+    pub supports_evaluate_for_hovers: Option<bool>,
+    pub supports_step_back: Option<bool>,
+    pub supports_set_variable: Option<bool>,
+    pub supports_restart_frame: Option<bool>,
+    pub supports_goto_targets_request: Option<bool>,
+    pub supports_step_in_targets_request: Option<bool>,
+    pub supports_completions_request: Option<bool>,
+    pub supports_modules_request: Option<bool>,
+    pub supports_restart_request: Option<bool>,
+    pub supports_exception_options: Option<bool>,
+    pub supports_value_formatting_options: Option<bool>,
     pub supports_exception_info_request: Option<bool>,
     pub support_terminate_debuggee: Option<bool>,
+    pub support_suspend_debuggee: Option<bool>,
     pub supports_delayed_stack_trace_loading: Option<bool>,
-    // TODO: complete this
+    pub supports_loaded_sources_request: Option<bool>,
+    pub supports_log_points: Option<bool>,
+    pub supports_terminate_threads_request: Option<bool>,
+    pub supports_set_expression: Option<bool>,
+    pub supports_terminate_request: Option<bool>,
+    pub supports_data_breakpoints: Option<bool>,
+    pub supports_read_memory_request: Option<bool>,
+    pub supports_write_memory_request: Option<bool>,
+    pub supports_disassemble_request: Option<bool>,
+    pub supports_cancel_request: Option<bool>,
+    pub supports_breakpoint_locations_request: Option<bool>,
+    pub supports_clipboard_context: Option<bool>,
+    pub supports_stepping_granularity: Option<bool>,
+    pub supports_instruction_breakpoints: Option<bool>,
+    pub supports_exception_filter_options: Option<bool>,
+    pub exception_breakpoint_filters: Option<Vec<ExceptionBreakpointsFilter>>,
+    pub completion_trigger_characters: Option<Vec<String>>,
+    pub additional_module_columns: Option<Vec<ColumnDescriptor>>,
+    pub supported_checksum_algorithms: Option<Vec<String>>,
+}
+
+impl std::ops::Deref for DebuggerCapabilities {
+    type Target = Option<bool>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.supports_exception_options
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]

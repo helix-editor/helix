@@ -41,7 +41,7 @@ pub async fn main() -> Result<()> {
     tokio::spawn(output(output_event));
 
     println!("init: {:?}", client.initialize("go".to_owned()).await);
-    println!("caps: {:#?}", client.capabilities());
+    println!("caps: {:?}", client.capabilities());
 
     let args = LaunchArguments {
         mode: "exec".to_owned(),
