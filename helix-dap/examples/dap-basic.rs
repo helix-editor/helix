@@ -13,7 +13,11 @@ struct LaunchArguments {
 async fn output(mut output_event: Receiver<Event>) {
     let body: OutputEventBody =
         from_value(output_event.recv().await.unwrap().body.unwrap()).unwrap();
-    println!("{:?}", body);
+    println!(
+        "> [{}] {}",
+        body.category.unwrap_or("unknown".to_owned()),
+        body.output
+    );
 }
 
 #[tokio::main]
