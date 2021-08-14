@@ -1,7 +1,7 @@
 mod client;
 mod transport;
 
-pub use client::{Breakpoint, Client, OutputEventBody, SourceBreakpoint};
+pub use client::{Breakpoint, Client, OutputEventBody, SourceBreakpoint, StoppedEventBody};
 pub use transport::{Event, Payload, Request, Response, Transport};
 
 use thiserror::Error;

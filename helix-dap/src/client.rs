@@ -267,6 +267,18 @@ pub struct OutputEventBody {
     pub data: Option<Value>,
 }
 
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoppedEventBody {
+    pub reason: String,
+    pub description: Option<String>,
+    pub thread_id: Option<usize>,
+    pub preserve_focus_hint: Option<bool>,
+    pub text: Option<String>,
+    pub all_threads_stopped: Option<bool>,
+    pub hit_breakpoint_ids: Option<Vec<usize>>,
+}
+
 #[derive(Debug)]
 pub struct Client {
     id: usize,

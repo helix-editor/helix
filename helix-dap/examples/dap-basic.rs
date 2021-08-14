@@ -1,4 +1,4 @@
-use helix_dap::{Client, Event, OutputEventBody, Result, SourceBreakpoint};
+use helix_dap::{Client, Event, OutputEventBody, Result, SourceBreakpoint, StoppedEventBody};
 use serde::{Deserialize, Serialize};
 use serde_json::from_value;
 use tokio::sync::mpsc::Receiver;
@@ -75,7 +75,9 @@ pub async fn main() -> Result<()> {
 
     println!("configurationDone: {:?}", client.configuration_done().await);
 
-    println!("stopped: {:?}", stopped_event.recv().await);
+    let stop: StoppedEventBody =
+        from_value(stopped_event.recv().await.unwrap().body.unwrap()).unwrap();
+    println!("stopped: {:?}", stop);
 
     println!("threads: {:#?}", client.threads().await);
     let bt = client.stack_trace(1).await.expect("expected stack trace");
