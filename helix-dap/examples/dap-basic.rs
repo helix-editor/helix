@@ -56,8 +56,12 @@ pub async fn main() -> Result<()> {
         .read_line(&mut _in)
         .expect("Failed to read line");
 
+    let mut stopped_event = client.listen_for_event("stopped".to_owned()).await;
+
     println!("configurationDone: {:?}", client.configuration_done().await);
-    println!("stopped: {:?}", client.wait_for_stopped().await);
+
+    println!("stopped: {:?}", stopped_event.recv().await);
+
     println!("threads: {:#?}", client.threads().await);
     let bt = client.stack_trace(1).await.expect("expected stack trace");
     println!("stack trace: {:#?}", bt);
