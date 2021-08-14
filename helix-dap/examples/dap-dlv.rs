@@ -79,8 +79,12 @@ pub async fn main() -> Result<()> {
         from_value(stopped_event.recv().await.unwrap().body.unwrap()).unwrap();
     println!("stopped: {:?}", stop);
 
-    println!("threads: {:#?}", client.threads().await);
-    let bt = client.stack_trace(1).await.expect("expected stack trace");
+    let threads = client.threads().await?;
+    println!("threads: {:#?}", threads);
+    let bt = client
+        .stack_trace(threads[0].id)
+        .await
+        .expect("expected stack trace");
     println!("stack trace: {:#?}", bt);
     let scopes = client
         .scopes(bt.0[0].id)
