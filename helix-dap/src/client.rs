@@ -35,21 +35,23 @@ pub struct DebuggerCapabilities {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InitializeArguments {
-    client_id: String,
-    client_name: String,
+    #[serde(rename = "clientID")]
+    client_id: Option<String>,
+    client_name: Option<String>,
+    #[serde(rename = "adapterID")]
     adapter_id: String,
-    locale: String,
+    locale: Option<String>,
     #[serde(rename = "linesStartAt1")]
-    lines_start_at_one: bool,
+    lines_start_at_one: Option<bool>,
     #[serde(rename = "columnsStartAt1")]
-    columns_start_at_one: bool,
-    path_format: String,
-    supports_variable_type: bool,
-    supports_variable_paging: bool,
-    supports_run_in_terminal_request: bool,
-    supports_memory_references: bool,
-    supports_progress_reporting: bool,
-    supports_invalidated_event: bool,
+    columns_start_at_one: Option<bool>,
+    path_format: Option<String>,
+    supports_variable_type: Option<bool>,
+    supports_variable_paging: Option<bool>,
+    supports_run_in_terminal_request: Option<bool>,
+    supports_memory_references: Option<bool>,
+    supports_progress_reporting: Option<bool>,
+    supports_invalidated_event: Option<bool>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -415,19 +417,19 @@ impl Client {
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
         let args = InitializeArguments {
-            client_id: "hx".to_owned(),
-            client_name: "helix".to_owned(),
+            client_id: Some("hx".to_owned()),
+            client_name: Some("helix".to_owned()),
             adapter_id,
-            locale: "en-us".to_owned(),
-            lines_start_at_one: true,
-            columns_start_at_one: true,
-            path_format: "path".to_owned(),
-            supports_variable_type: false,
-            supports_variable_paging: false,
-            supports_run_in_terminal_request: false,
-            supports_memory_references: false,
-            supports_progress_reporting: true,
-            supports_invalidated_event: true,
+            locale: Some("en-us".to_owned()),
+            lines_start_at_one: Some(true),
+            columns_start_at_one: Some(true),
+            path_format: Some("path".to_owned()),
+            supports_variable_type: Some(false),
+            supports_variable_paging: Some(false),
+            supports_run_in_terminal_request: Some(false),
+            supports_memory_references: Some(false),
+            supports_progress_reporting: Some(true),
+            supports_invalidated_event: Some(true),
         };
 
         let response = self
