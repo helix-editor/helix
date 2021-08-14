@@ -26,7 +26,7 @@ pub struct Request {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Response {
-    pub seq: u64,
+    // seq is omitted as unused and is not sent by some implementations
     #[serde(rename = "type")]
     pub msg_type: String,
     pub request_seq: u64,
@@ -38,7 +38,7 @@ pub struct Response {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Event {
-    pub seq: u64,
+    // seq is omitted as unused and is not sent by some implementations
     #[serde(rename = "type")]
     pub msg_type: String,
     pub event: String,
@@ -165,10 +165,7 @@ impl Transport {
     fn process_response(res: Response) -> Result<Response> {
         match res.success {
             true => {
-                info!(
-                    "<- DAP success ({}, in response to {})",
-                    res.seq, res.request_seq
-                );
+                info!("<- DAP success in response to {}", res.request_seq);
 
                 Ok(res)
             }
@@ -218,10 +215,8 @@ impl Transport {
                 client_tx.send(msg).expect("Failed to send");
                 Ok(())
             }
-            Payload::Event(Event {
-                ref event, ref seq, ..
-            }) => {
-                info!("<- DAP event {} #{}", event, seq);
+            Payload::Event(Event { ref event, .. }) => {
+                info!("<- DAP event {}", event);
                 client_tx.send(msg).expect("Failed to send");
                 Ok(())
             }
