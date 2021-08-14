@@ -295,7 +295,8 @@ impl Client {
             match msg {
                 Payload::Event(ev) => {
                     let name = ev.event.clone();
-                    let tx = awaited_events.lock().await.remove(&name);
+                    let hashmap = awaited_events.lock().await;
+                    let tx = hashmap.get(&name);
 
                     match tx {
                         Some(tx) => match tx.send(ev).await {
