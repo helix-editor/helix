@@ -595,7 +595,8 @@ impl Client {
 
         let response = self
             .request("stackTrace".to_owned(), to_value(args).ok(), true)
-            .await?.unwrap();
+            .await?
+            .unwrap();
 
         let body: StackTraceResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -603,7 +604,10 @@ impl Client {
     }
 
     pub async fn threads(&mut self) -> Result<Vec<Thread>> {
-        let response = self.request("threads".to_owned(), None, true).await?.unwrap();
+        let response = self
+            .request("threads".to_owned(), None, true)
+            .await?
+            .unwrap();
 
         let body: ThreadsResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -615,7 +619,8 @@ impl Client {
 
         let response = self
             .request("scopes".to_owned(), to_value(args).ok(), true)
-            .await?.unwrap();
+            .await?
+            .unwrap();
 
         let body: ScopesResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -633,7 +638,8 @@ impl Client {
 
         let response = self
             .request("variables".to_owned(), to_value(args).ok(), true)
-            .await?.unwrap();
+            .await?
+            .unwrap();
 
         let body: VariablesResponseBody = from_value(response.body.unwrap()).unwrap();
 
