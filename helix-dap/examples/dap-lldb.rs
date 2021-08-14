@@ -56,8 +56,8 @@ pub async fn main() -> Result<()> {
             .set_breakpoints(
                 "/tmp/cdebug/main.c".to_owned(),
                 vec![SourceBreakpoint {
-                    line: 8,
-                    column: Some(2),
+                    line: 6,
+                    column: Some(4),
                     condition: None,
                     hit_condition: None,
                     log_message: None,
