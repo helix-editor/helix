@@ -35,7 +35,7 @@ pub async fn main() -> Result<()> {
         .apply()
         .expect("Failed to set up logging");
 
-    let client = Client::tcp("127.0.0.1:7777".parse::<std::net::SocketAddr>().unwrap(), 0).await;
+    let client = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0).await;
     println!("create: {:?}", client);
     let mut client = client?;
 
