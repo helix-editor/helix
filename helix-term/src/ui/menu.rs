@@ -145,6 +145,8 @@ impl<T: Item + 'static> Component for Menu<T> {
             compositor.pop();
         })));
 
+        let should_update_menu = cx.editor.config.update_menu;
+
         match event {
             // esc or ctrl-c aborts the completion and closes the menu
             KeyEvent {
@@ -170,15 +172,20 @@ impl<T: Item + 'static> Component for Menu<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_up();
-                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                if should_update_menu {
+                    (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                }
                 return EventResult::Consumed(None);
             }
             // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
             KeyEvent {
                 code: KeyCode::Tab,
                 modifiers: KeyModifiers::NONE,
+            } => {
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                return EventResult::Consumed(None);
             }
-            | KeyEvent {
+            KeyEvent {
                 code: KeyCode::Down,
                 ..
             }
@@ -187,7 +194,9 @@ impl<T: Item + 'static> Component for Menu<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_down();
-                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                if should_update_menu {
+                    (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                }
                 return EventResult::Consumed(None);
             }
             KeyEvent {

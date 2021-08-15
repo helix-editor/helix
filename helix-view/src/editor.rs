@@ -35,6 +35,7 @@ pub struct Config {
     pub mouse: bool,
     /// Middle click paste support. Defaults to true
     pub middle_click_paste: bool,
+    pub update_menu: bool,
 }
 
 impl Default for Config {
@@ -44,6 +45,7 @@ impl Default for Config {
             scroll_lines: 3,
             mouse: true,
             middle_click_paste: true,
+            update_menu: true,
         }
     }
 }
