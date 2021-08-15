@@ -675,6 +675,11 @@ impl EditorView {
         self.autoinfo = None;
         match self.keymaps.get_mut(&mode).unwrap().get(event) {
             KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::MatchedSequence(commands) => {
+                for command in commands {
+                    command.execute(cxt);
+                }
+            }
             KeymapResult::Pending(node) => self.autoinfo = Some(node.into()),
             k @ KeymapResult::NotFound | k @ KeymapResult::Cancelled(_) => return Some(k),
         }

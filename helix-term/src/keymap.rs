@@ -52,6 +52,10 @@ macro_rules! keymap {
         keymap!({ $label $($($key)|+ => $value,)+ })
     };
 
+    (@trie [$($cmd:ident),* $(,)?]) => {
+        $crate::keymap::KeyTrie::Sequence(vec![$($crate::commands::Command::$cmd),*])
+    };
+
     (
         { $label:literal $($($key:literal)|+ => $value:tt,)+ }
     ) => {
@@ -128,6 +132,8 @@ impl From<KeyTrieNode> for Info {
             let desc = match trie {
                 KeyTrie::Leaf(cmd) => cmd.doc(),
                 KeyTrie::Node(n) => n.name(),
+                // TODO
+                KeyTrie::Sequence(_) => "",
             };
             match body.iter().position(|(d, _)| d == &desc) {
                 // FIXME: multiple keys are ordered randomly (use BTreeSet)
@@ -179,6 +185,7 @@ impl DerefMut for KeyTrieNode {
 #[serde(untagged)]
 pub enum KeyTrie {
     Leaf(Command),
+    Sequence(Vec<Command>),
     Node(KeyTrieNode),
 }
 
@@ -186,14 +193,14 @@ impl KeyTrie {
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),
-            KeyTrie::Leaf(_) => None,
+            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
         }
     }
 
     pub fn node_mut(&mut self) -> Option<&mut KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref mut node) => Some(node),
-            KeyTrie::Leaf(_) => None,
+            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
         }
     }
 
@@ -210,7 +217,7 @@ impl KeyTrie {
             trie = match trie {
                 KeyTrie::Node(map) => map.get(key),
                 // leaf encountered while keys left to process
-                KeyTrie::Leaf(_) => None,
+                KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
             }?
         }
         Some(trie)
@@ -218,10 +225,12 @@ impl KeyTrie {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum KeymapResult {
+pub enum KeymapResult<'a> {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
     Matched(Command),
+    /// Matched a sequence of commands to execute.
+    MatchedSequence(&'a [Command]),
     /// Key was not found in the root keymap
     NotFound,
     /// Key is invalid in combination with previous keys. Contains keys leading upto
@@ -270,6 +279,10 @@ impl Keymap {
             Some(&KeyTrie::Leaf(command)) => {
                 self.state.clear();
                 KeymapResult::Matched(command)
+            }
+            Some(&KeyTrie::Sequence(ref commands)) => {
+                self.state.clear();
+                KeymapResult::MatchedSequence(commands)
             }
             None => KeymapResult::Cancelled(self.state.drain(..).collect()),
         }
