@@ -461,7 +461,6 @@ impl Client {
         let req = Request {
             back_ch: Some(callback_rx),
             seq: self.next_request_id(),
-            msg_type: "request".to_owned(),
             command,
             arguments,
         };

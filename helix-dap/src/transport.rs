@@ -18,8 +18,6 @@ pub struct Request {
     #[serde(skip)]
     pub back_ch: Option<Sender<Result<Response>>>,
     pub seq: u64,
-    #[serde(rename = "type")]
-    pub msg_type: String,
     pub command: String,
     pub arguments: Option<Value>,
 }
@@ -27,8 +25,6 @@ pub struct Request {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Response {
     // seq is omitted as unused and is not sent by some implementations
-    #[serde(rename = "type")]
-    pub msg_type: String,
     pub request_seq: u64,
     pub success: bool,
     pub command: String,
@@ -39,14 +35,12 @@ pub struct Response {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Event {
     // seq is omitted as unused and is not sent by some implementations
-    #[serde(rename = "type")]
-    pub msg_type: String,
     pub event: String,
     pub body: Option<Value>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(untagged)]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum Payload {
     // type = "event"
     Event(Event),
@@ -135,7 +129,7 @@ impl Transport {
         server_stdin: &mut Box<dyn AsyncWrite + Unpin + Send>,
         req: Request,
     ) -> Result<()> {
-        let json = serde_json::to_string(&req)?;
+        let json = serde_json::to_string(&Payload::Request(req.clone()))?;
         if let Some(back) = req.back_ch {
             self.pending_requests.lock().await.insert(req.seq, back);
         }
