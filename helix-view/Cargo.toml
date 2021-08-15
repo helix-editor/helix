@@ -28,6 +28,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
 slotmap = "1"
+rustc-hash = "1.1.0"
 
 encoding_rs = "0.8"
 chardetng = "0.1"
@@ -37,6 +38,10 @@ toml = "0.5"
 log = "~0.4"
 
 which = "4.2"
+
+crossbeam-channel = "0.5.1"
+notify = "=5.0.0-pre.11"    # check that it builds on NetBSD before upgrading
+jod-thread = "0.1.2"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.2", features = ["std"] }

@@ -12,6 +12,7 @@ pub mod register_selection;
 pub mod theme;
 pub mod tree;
 pub mod view;
+pub mod file_watcher;
 
 slotmap::new_key_type! {
     pub struct DocumentId;

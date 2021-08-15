@@ -1,6 +1,6 @@
 use helix_core::syntax;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{theme, Editor};
+use helix_view::{file_watcher, theme, Editor};
 
 use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
@@ -191,6 +191,9 @@ impl Application {
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
+                }
+                Some(msg) = self.editor.watcher.receiver.recv() => {
+                    self.handle_watcher_message(msg)
                 }
             }
         }
@@ -487,6 +490,17 @@ impl Application {
                 // );
             }
             e => unreachable!("{:?}", e),
+        }
+    }
+
+    fn handle_watcher_message(&mut self, msg: file_watcher::Message) {
+        match msg {
+            file_watcher::Message::NotifyEvent(event) => {
+                log::info!("handling file watcher event: {:?}", event);
+            }
+                // match event.unwrap() {
+                // _ => unimplemented!(),
+            // },
         }
     }
 

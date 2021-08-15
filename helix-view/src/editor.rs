@@ -1,5 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
+    file_watcher::{self, NotifyActor, NotifyHandle},
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
@@ -13,6 +14,7 @@ use std::{
     time::Duration,
 };
 
+use rustc_hash::FxHashMap;
 use slotmap::SlotMap;
 
 use anyhow::Error;
@@ -52,12 +54,14 @@ impl Default for Config {
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
+    pub path_to_doc: FxHashMap<PathBuf, DocumentId>,
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: RegisterSelection,
     pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
+    pub watcher: NotifyHandle,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -90,6 +94,7 @@ impl Editor {
         Self {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
+            path_to_doc: FxHashMap::default(),
             count: None,
             selected_register: RegisterSelection::default(),
             theme: themes.default(),
@@ -98,6 +103,7 @@ impl Editor {
             theme_loader: themes,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
+            watcher: NotifyActor::spawn(),
             status_msg: None,
             config,
         }
@@ -218,10 +224,7 @@ impl Editor {
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
         let path = crate::document::canonicalize_path(&path)?;
 
-        let id = self
-            .documents()
-            .find(|doc| doc.path() == Some(&path))
-            .map(|doc| doc.id);
+        let id = self.path_to_doc.get(&path).map(|it| *it);
 
         let id = if let Some(id) = id {
             id
@@ -253,6 +256,11 @@ impl Editor {
 
             let id = self.documents.insert(doc);
             self.documents[id].id = id;
+            self.watcher
+                .sender
+                .send(file_watcher::ActorMessage::Watch(path.clone()))
+                .unwrap();
+            self.path_to_doc.insert(path, id);
             id
         };
 
