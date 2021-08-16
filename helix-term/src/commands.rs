@@ -3926,6 +3926,7 @@ fn toggle_comments(cx: &mut Context) {
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+    exit_select_mode(cx);
 }
 
 fn rotate_selections(cx: &mut Context, direction: Direction) {
