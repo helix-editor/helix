@@ -1,43 +1,44 @@
 # Author : Jakub Bartodziej <kubabartodziej@gmail.com>
 # The theme uses the gruvbox dark palette with standard contrast: github.com/morhetz/gruvbox
 
-"attribute" = "fg2"
+"attribute" = "aqua1"
 "keyword" = { fg = "red1" }
 "keyword.directive" = "red0"
-"namespace" = "yellow0"
-"punctuation" = "fg4"
-"punctuation.delimiter" = "fg4"
-"operator" = "orange0"
+"namespace" = "aqua1"
+"punctuation" = "orange1"
+"punctuation.delimiter" = "orange1"
+"operator" = "purple1"
 "special" = "purple0"
 "property" = "fg2"
-"variable" = "fg2"
-"variable.builtin" = "fg3"
+"field" = "blue1"
+"variable" = "fg1"
+"variable.builtin" = "orange1"
 "variable.parameter" = "fg2"
-"type" = "orange1"
-"type.builtin" = "orange0"
-"constructor" = "fg2"
-"function" = "green0"
+"type" = "yellow1"
+"type.builtin" = "yellow1"
+"constructor" = { fg = "purple1", modifiers = ["bold"] }
+"function" = { fg = "green1", modifiers = ["bold"] }
 "function.macro" = "aqua1"
 "function.builtin" = "yellow1"
-"comment" = "gray1"
-"constant" = { fg = "fg2", modifiers = ["bold"] }
-"constant.builtin" = { fg = "fg1", modifiers = ["bold"] }
+"comment" = { fg = "gray1", modifiers = ["italic"]  }
+"constant" = { fg = "purple1" }
+"constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
 "string" = "green1"
 "number" = "purple1"
 "escape" = { fg = "fg2", modifiers = ["bold"] }
 "label" = "aqua1"
-"module" = "yellow1"
+"module" = "aqua1"
 
-"warning" = "orange0"
-"error" = "red0"
-"info" = "purple0"
-"hint" = "blue0"
+"warning" = "orange1"
+"error" = "red1"
+"info" = "aqua1"
+"hint" = "blue1"
 
 "ui.background" = { bg = "bg0" }
-"ui.linenr" = { fg = "fg3" }
-"ui.linenr.selected" = { fg = "fg1", modifiers = ["bold"] }
-"ui.statusline" = { fg = "fg2", bg = "bg2" }
-"ui.statusline.inactive" = { fg = "fg3", bg = "bg4" }
+"ui.linenr" = { fg = "bg4" }
+"ui.linenr.selected" = { fg = "yellow1" }
+"ui.statusline" = { fg = "fg1", bg = "bg2" }
+"ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
 "ui.popup" = { bg = "bg1" }
 "ui.window" = { bg = "bg1" }
 "ui.help" = { bg = "bg1", fg = "fg1" }
@@ -46,8 +47,8 @@
 "ui.selection" = { bg = "bg3" }
 "ui.cursor.primary" = { bg = "bg3" }
 "ui.cursor.match" = { bg = "bg4" }
-"ui.menu" = { fg = "fg1" }
-"ui.menu.selected" = { fg = "fg3", bg = "bg3" }
+"ui.menu" = { fg = "fg1", bg = "bg2" }
+"ui.menu.selected" = { fg = "bg2", bg = "blue1", modifiers = ["bold"] }
 
 "diagnostic" = { modifiers = ["underlined"] }
 

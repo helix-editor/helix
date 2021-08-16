@@ -40,9 +40,10 @@
 (enum_variant (identifier) @type.enum.variant)
 
 (field_initializer
-  (field_identifier) @property)
-(shorthand_field_initializer) @variable
-(shorthand_field_identifier) @variable
+  (field_identifier) @field)
+(shorthand_field_initializer
+  (identifier) @field)
+; (shorthand_field_identifier) @field
 
 (lifetime
   "'" @label
@@ -65,6 +66,8 @@
   ")"
   "["
   "]"
+  "{"
+  "}"
 ] @punctuation.bracket
 (type_arguments
   [
@@ -333,4 +336,4 @@
 
 (type_identifier) @type
 (identifier) @variable
-(field_identifier) @variable
+(field_identifier) @field
