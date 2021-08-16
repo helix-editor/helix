@@ -505,12 +505,7 @@ impl Client {
         self.request_counter.fetch_add(1, Ordering::Relaxed)
     }
 
-    async fn request(
-        &self,
-        command: String,
-        arguments: Option<Value>,
-        response: bool,
-    ) -> Result<Option<Response>> {
+    async fn request(&self, command: String, arguments: Option<Value>) -> Result<Response> {
         let (callback_rx, mut callback_tx) = channel(1);
 
         let req = Request {
@@ -524,11 +519,7 @@ impl Client {
             .send(req)
             .expect("Failed to send request to debugger");
 
-        if response {
-            Ok(Some(callback_tx.recv().await.unwrap()?))
-        } else {
-            Ok(None)
-        }
+        Ok(callback_tx.recv().await.unwrap()?)
     }
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
@@ -555,23 +546,22 @@ impl Client {
         };
 
         let response = self
-            .request("initialize".to_owned(), to_value(args).ok(), true)
-            .await?
-            .unwrap();
+            .request("initialize".to_owned(), to_value(args).ok())
+            .await?;
         self.capabilities = from_value(response.body.unwrap()).ok();
 
         Ok(())
     }
 
     pub async fn disconnect(&mut self) -> Result<()> {
-        self.request("disconnect".to_owned(), None, true).await?;
+        self.request("disconnect".to_owned(), None).await?;
         Ok(())
     }
 
     pub async fn launch(&mut self, args: impl Serialize) -> Result<()> {
         let mut initialized = self.listen_for_event("initialized".to_owned()).await;
 
-        let res = self.request("launch".to_owned(), to_value(args).ok(), true);
+        let res = self.request("launch".to_owned(), to_value(args).ok());
         let ev = initialized.recv();
         join!(res, ev).0?;
 
@@ -581,7 +571,7 @@ impl Client {
     pub async fn attach(&mut self, args: impl Serialize) -> Result<()> {
         let mut initialized = self.listen_for_event("initialized".to_owned()).await;
 
-        let res = self.request("attach".to_owned(), to_value(args).ok(), false);
+        let res = self.request("attach".to_owned(), to_value(args).ok());
         let ev = initialized.recv();
         join!(res, ev).0?;
 
@@ -609,17 +599,15 @@ impl Client {
         };
 
         let response = self
-            .request("setBreakpoints".to_owned(), to_value(args).ok(), true)
-            .await?
-            .unwrap();
+            .request("setBreakpoints".to_owned(), to_value(args).ok())
+            .await?;
         let body: Option<SetBreakpointsResponseBody> = from_value(response.body.unwrap()).ok();
 
         Ok(body.map(|b| b.breakpoints).unwrap())
     }
 
     pub async fn configuration_done(&mut self) -> Result<()> {
-        self.request("configurationDone".to_owned(), None, true)
-            .await?;
+        self.request("configurationDone".to_owned(), None).await?;
         Ok(())
     }
 
@@ -627,9 +615,8 @@ impl Client {
         let args = ContinueArguments { thread_id };
 
         let response = self
-            .request("continue".to_owned(), to_value(args).ok(), true)
-            .await?
-            .unwrap();
+            .request("continue".to_owned(), to_value(args).ok())
+            .await?;
 
         let body: Option<ContinueResponseBody> = from_value(response.body.unwrap()).ok();
 
@@ -648,9 +635,8 @@ impl Client {
         };
 
         let response = self
-            .request("stackTrace".to_owned(), to_value(args).ok(), true)
-            .await?
-            .unwrap();
+            .request("stackTrace".to_owned(), to_value(args).ok())
+            .await?;
 
         let body: StackTraceResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -658,10 +644,7 @@ impl Client {
     }
 
     pub async fn threads(&mut self) -> Result<Vec<Thread>> {
-        let response = self
-            .request("threads".to_owned(), None, true)
-            .await?
-            .unwrap();
+        let response = self.request("threads".to_owned(), None).await?;
 
         let body: ThreadsResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -672,9 +655,8 @@ impl Client {
         let args = ScopesArguments { frame_id };
 
         let response = self
-            .request("scopes".to_owned(), to_value(args).ok(), true)
-            .await?
-            .unwrap();
+            .request("scopes".to_owned(), to_value(args).ok())
+            .await?;
 
         let body: ScopesResponseBody = from_value(response.body.unwrap()).unwrap();
 
@@ -691,9 +673,8 @@ impl Client {
         };
 
         let response = self
-            .request("variables".to_owned(), to_value(args).ok(), true)
-            .await?
-            .unwrap();
+            .request("variables".to_owned(), to_value(args).ok())
+            .await?;
 
         let body: VariablesResponseBody = from_value(response.body.unwrap()).unwrap();
 
