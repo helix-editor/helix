@@ -1,6 +1,9 @@
 # Configuration
 
-To override global configuration parameters create a `config.toml` file located in your config directory (i.e `~/.config/helix/config.toml`).
+To override global configuration parameters, create a `config.toml` file located in your config directory:
+
+* Linux and Mac: `~/.config/helix/config.toml`
+* Windows: `%AppData%\helix\config.toml`
 
 ## LSP
 
