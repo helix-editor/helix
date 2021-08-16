@@ -495,7 +495,7 @@ impl Application {
 
     fn handle_watcher_message(&mut self, msg: file_watcher::Message) {
         match msg {
-            file_watcher::Message::NotifyEvent(event) => {
+            file_watcher::Message::NotifyEvents(event) => {
                 log::info!("handling file watcher event: {:?}", event);
             }
                 // match event.unwrap() {

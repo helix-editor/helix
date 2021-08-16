@@ -29,6 +29,7 @@ futures-util = { version = "0.3", features = ["std", "async-await"], default-fea
 
 slotmap = "1"
 rustc-hash = "1.1.0"
+indexmap = "1.7.0"
 
 encoding_rs = "0.8"
 chardetng = "0.1"

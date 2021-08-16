@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    file_watcher::{self, NotifyActor, NotifyHandle},
+    file_watcher::{self, ActorMessage, NotifyActor, NotifyHandle, ActorMessageKind},
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
@@ -13,6 +13,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use tokio::sync::oneshot;
 
 use rustc_hash::FxHashMap;
 use slotmap::SlotMap;
@@ -256,10 +257,16 @@ impl Editor {
 
             let id = self.documents.insert(doc);
             self.documents[id].id = id;
+            let (tx, rx) = oneshot::channel();
             self.watcher
                 .sender
-                .send(file_watcher::ActorMessage::Watch(path.clone()))
+                .send(ActorMessage {
+                    kind: ActorMessageKind::Watch(path.clone()),
+                    done: tx,
+                })
                 .unwrap();
+            // let watcher = self.watcher;
+            // tokio::spawn(async { watcher.watch(path.clone()) });
             self.path_to_doc.insert(path, id);
             id
         };
