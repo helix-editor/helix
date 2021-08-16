@@ -10,6 +10,7 @@
 "operator" = "purple1"
 "special" = "purple0"
 "property" = "blue1"
+"variable.property" = "blue1"
 "variable" = "fg1"
 "variable.builtin" = "orange1"
 "variable.parameter" = "fg2"

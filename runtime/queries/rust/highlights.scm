@@ -42,8 +42,8 @@
 (field_initializer
   (field_identifier) @property)
 (shorthand_field_initializer
-  (identifier) @property)
-(shorthand_field_identifier) @property
+  (identifier) @variable.property)
+(shorthand_field_identifier) @variable.property
 
 (lifetime
   "'" @label
