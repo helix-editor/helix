@@ -26,7 +26,7 @@ pub fn find(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
 
     let len = doc.len_bytes();
     let start_byte = node.start_byte();
-    let end_byte = node.end_byte() - 1; // it's end exclusive
+    let end_byte = node.end_byte().saturating_sub(1); // it's end exclusive
     if start_byte >= len || end_byte >= len {
         return None;
     }
