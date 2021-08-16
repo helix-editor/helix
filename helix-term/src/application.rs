@@ -85,7 +85,7 @@ impl Application {
             theme_loader.clone(),
             syn_loader.clone(),
             config.editor.clone(),
-        );
+        )?;
 
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);

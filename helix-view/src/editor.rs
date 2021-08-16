@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    file_watcher::{self, ActorMessage, NotifyActor, NotifyHandle, ActorMessageKind},
+    file_watcher::{self, ActorMessage, ActorMessageKind, NotifyActor, NotifyHandle},
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
@@ -86,13 +86,13 @@ impl Editor {
         themes: Arc<theme::Loader>,
         config_loader: Arc<syntax::Loader>,
         config: Config,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let language_servers = helix_lsp::Registry::new();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
-        Self {
+        Ok(Self {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
             path_to_doc: FxHashMap::default(),
@@ -104,10 +104,10 @@ impl Editor {
             theme_loader: themes,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
-            watcher: NotifyActor::spawn(),
+            watcher: NotifyActor::spawn()?,
             status_msg: None,
             config,
-        }
+        })
     }
 
     pub fn clear_status(&mut self) {

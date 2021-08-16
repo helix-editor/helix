@@ -1,3 +1,4 @@
+use anyhow::Context;
 use indexmap::{IndexMap, IndexSet};
 use log::info;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
@@ -25,16 +26,16 @@ pub struct NotifyActor {
 }
 
 impl NotifyActor {
-    pub fn spawn() -> NotifyHandle {
+    pub fn spawn() -> anyhow::Result<NotifyHandle> {
         let (actor_tx, actor_rx) = unbounded_channel();
         let (tx, rx) = unbounded_channel();
-        let actor = NotifyActor::new(Box::new(move |msg| tx.send(msg).unwrap()));
+        let actor = NotifyActor::new(Box::new(move |msg| tx.send(msg).unwrap()))?;
         let task = tokio::spawn(async move { actor.run(actor_rx).await });
-        NotifyHandle {
+        Ok(NotifyHandle {
             sender: actor_tx,
             receiver: rx,
             task,
-        }
+        })
     }
 
     async fn next_event(
@@ -48,15 +49,15 @@ impl NotifyActor {
         }
     }
 
-    fn new(sender: Sender) -> NotifyActor {
+    fn new(sender: Sender) -> anyhow::Result<NotifyActor> {
         let (tx, rx) = unbounded_channel();
-        let watcher: RecommendedWatcher =
-            recommended_watcher(move |e| tx.send(e).unwrap()).unwrap();
-        NotifyActor {
+        let watcher: RecommendedWatcher = recommended_watcher(move |e| tx.send(e).unwrap())
+            .context("Failed to create file watcher")?;
+        Ok(NotifyActor {
             sender,
             ignored: HashSet::new(),
             watcher: (watcher, rx),
-        }
+        })
     }
 
     async fn run(mut self, mut inbox: UnboundedReceiver<ActorMessage>) {
