@@ -205,6 +205,15 @@ file-types = ["java"]
 roots = []
 indent = { tab-width = 4, unit = "    " }
 
+[[language]]
+name = "ledger"
+scope = "source.ledger"
+injection-regex = "ledger"
+file-types = ["ldg", "ledger", "journal"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 4, unit = "    " }
+
 # [[language]]
 # name = "haskell"
 # scope = "source.haskell"
