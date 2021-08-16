@@ -442,7 +442,6 @@ dependencies = [
  "bitflags",
  "chardetng",
  "clipboard-win",
- "crossbeam-channel",
  "crossterm",
  "encoding_rs",
  "futures-util",
@@ -450,7 +449,6 @@ dependencies = [
  "helix-lsp",
  "helix-tui",
  "indexmap",
- "jod-thread",
  "log",
  "notify",
  "once_cell",
@@ -545,12 +543,6 @@ name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
-
-[[package]]
-name = "jod-thread"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b23360e99b8717f20aaa4598f5a6541efbe30630039fbc7706cf954a87947ae"
 
 [[package]]
 name = "jsonrpc-core"

@@ -1,5 +1,3 @@
-// use crossbeam_channel::unbounded;
-// use crossbeam_channel::{select, Receiver};
 use indexmap::{IndexMap, IndexSet};
 use log::info;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
@@ -13,22 +11,10 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 use tokio::time::timeout;
 
-// macro_rules! watcher_log {
-//     () => {
-//         }
-//     };
-// }
-macro_rules! watcher_error {
-    ($fmt:expr, $($args:tt)*) => {{
-        let s = &format!($fmt, $( $args )*);
-        log::error!("File Watcher error: {}", s);
-    }};
-}
-
 fn log_notify_error(res: notify::Result<()>) {
     match res {
         Ok(()) => (),
-        Err(e) => watcher_error!("Error from notify: {:?}", e),
+        Err(e) => log::error!("Error from notify: {:?}", e),
     }
 }
 
@@ -108,12 +94,11 @@ impl NotifyActor {
         match msg {
             Ok(it) => {
                 let event = Event::from(it);
-                if self.ignored.contains(&event.path) {
-                    return;
+                if !self.ignored.contains(&event.path) {
+                    events.insert(event);
                 }
-                events.insert(event);
             }
-            Err(e) => watcher_error!("Error from notify: {:?}", e),
+            Err(e) => log::error!("Error from notify: {:?}", e),
         }
 
         while let Ok(Some(it)) = timeout(Duration::from_millis(200), self.watcher.1.recv()).await {
@@ -126,7 +111,7 @@ impl NotifyActor {
                     }
                     events.insert(it);
                 }
-                Err(e) => watcher_error!("Error from notify: {:?}", e),
+                Err(e) => log::error!("Error from notify: {:?}", e),
             }
         }
 
@@ -142,7 +127,7 @@ impl NotifyActor {
                             *op = Operation::Change;
                         }
                         Err(e) if e.kind() == io::ErrorKind::NotFound => (),
-                        Err(e) => watcher_error!("Failed to stat path {:?}: {:?}", path, e),
+                        Err(e) => log::error!("Failed to stat path {:?}: {:?}", path, e),
                     }
                 }
                 _ => (),
