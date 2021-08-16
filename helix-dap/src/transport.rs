@@ -127,11 +127,13 @@ impl Transport {
     async fn send_payload_to_server(
         &self,
         server_stdin: &mut Box<dyn AsyncWrite + Unpin + Send>,
-        req: Request,
+        mut req: Request,
     ) -> Result<()> {
-        let json = serde_json::to_string(&Payload::Request(req.clone()))?;
-        if let Some(back) = req.back_ch {
-            self.pending_requests.lock().await.insert(req.seq, back);
+        let back_ch = req.back_ch.take();
+        let seq = req.seq;
+        let json = serde_json::to_string(&Payload::Request(req))?;
+        if let Some(back) = back_ch {
+            self.pending_requests.lock().await.insert(seq, back);
         }
         self.send_string_to_server(server_stdin, json).await
     }
