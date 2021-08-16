@@ -17,6 +17,7 @@ use helix_core::{
 };
 use helix_view::{
     document::Mode,
+    editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -71,6 +72,7 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         loader: &syntax::Loader,
+        config: &helix_view::editor::Config,
     ) {
         let area = Rect::new(
             view.area.x + GUTTER_OFFSET,
@@ -93,7 +95,7 @@ impl EditorView {
         };
 
         Self::render_text_highlights(doc, offset, area, surface, theme, highlights);
-        Self::render_gutter(doc, view, area, surface, theme);
+        Self::render_gutter(doc, view, area, surface, theme, config);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, area, theme, surface);
@@ -459,6 +461,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        config: &helix_view::editor::Config,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -473,6 +476,9 @@ impl EditorView {
         // document or not.  We only draw it if it's not an empty line.
         let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
+        let current_line = doc
+            .text()
+            .char_to_line(doc.selection(view.id).primary().anchor);
         for (i, line) in (view.first_line..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
@@ -495,7 +501,13 @@ impl EditorView {
             let line_number_text = if line == last_line && !draw_last {
                 "    ~".into()
             } else {
-                format!("{:>5}", line + 1)
+                match config.line_number {
+                    LineNumber::Absolute => format!("{:>5}", line + 1),
+                    LineNumber::Relative => {
+                        let relative_line = abs_diff(current_line, line);
+                        format!("{:>5}", relative_line)
+                    }
+                }
             };
             surface.set_stringn(
                 viewport.x + 1 - GUTTER_OFFSET,
@@ -1042,6 +1054,7 @@ impl Component for EditorView {
                 &cx.editor.theme,
                 is_focused,
                 loader,
+                &cx.editor.config,
             );
         }
 
@@ -1113,5 +1126,14 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
+    }
+}
+
+#[inline]
+fn abs_diff(a: usize, b: usize) -> usize {
+    if a > b {
+        a - b
+    } else {
+        b - a
     }
 }
