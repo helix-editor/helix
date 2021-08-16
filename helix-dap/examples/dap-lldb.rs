@@ -1,6 +1,6 @@
 use helix_dap::{events, Client, Event, Result, SourceBreakpoint};
 use serde::{Deserialize, Serialize};
-use serde_json::from_value;
+use serde_json::{from_value, to_value};
 use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -50,7 +50,7 @@ pub async fn main() -> Result<()> {
         console: "internalConsole".to_owned(),
     };
 
-    println!("launch: {:?}", client.launch(args).await);
+    println!("launch: {:?}", client.launch(to_value(args)?).await);
 
     println!(
         "breakpoints: {:#?}",
