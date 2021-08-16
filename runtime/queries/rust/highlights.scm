@@ -40,10 +40,10 @@
 (enum_variant (identifier) @type.enum.variant)
 
 (field_initializer
-  (field_identifier) @field)
+  (field_identifier) @property)
 (shorthand_field_initializer
-  (identifier) @field)
-; (shorthand_field_identifier) @field
+  (identifier) @property)
+(shorthand_field_identifier) @property
 
 (lifetime
   "'" @label
@@ -336,4 +336,4 @@
 
 (type_identifier) @type
 (identifier) @variable
-(field_identifier) @field
+(field_identifier) @property
