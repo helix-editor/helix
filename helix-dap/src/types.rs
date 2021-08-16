@@ -229,6 +229,51 @@ pub mod requests {
         pub supports_invalidated_event: Option<bool>,
     }
 
+    #[derive(Debug)]
+    pub enum Initialize {}
+
+    impl Request for Initialize {
+        type Arguments = InitializeArguments;
+        type Result = DebuggerCapabilities;
+        const COMMAND: &'static str = "initialize";
+    }
+
+    #[derive(Debug)]
+    pub enum Launch {}
+
+    impl Request for Launch {
+        type Arguments = Value;
+        type Result = Value;
+        const COMMAND: &'static str = "launch";
+    }
+
+    #[derive(Debug)]
+    pub enum Attach {}
+
+    impl Request for Attach {
+        type Arguments = Value;
+        type Result = Value;
+        const COMMAND: &'static str = "attach";
+    }
+
+    #[derive(Debug)]
+    pub enum Disconnect {}
+
+    impl Request for Disconnect {
+        type Arguments = ();
+        type Result = ();
+        const COMMAND: &'static str = "disconnect";
+    }
+
+    #[derive(Debug)]
+    pub enum ConfigurationDone {}
+
+    impl Request for ConfigurationDone {
+        type Arguments = ();
+        type Result = ();
+        const COMMAND: &'static str = "configurationDone";
+    }
+
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetBreakpointsArguments {

@@ -1,11 +1,9 @@
 use crate::{
-    transport::{Event, Payload, Request, Response, Transport},
+    transport::{Event, Payload, Request, Transport},
     types::*,
     Result,
 };
 pub use log::{error, info};
-use serde::Serialize;
-use serde_json::{from_value, to_value, Value};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr},
@@ -184,13 +182,18 @@ impl Client {
         self.request_counter.fetch_add(1, Ordering::Relaxed)
     }
 
-    async fn request(&self, command: String, arguments: Option<Value>) -> Result<Response> {
+    async fn request<R: crate::types::Request>(
+        &self,
+        arguments: R::Arguments,
+    ) -> Result<R::Result> {
         let (callback_rx, mut callback_tx) = channel(1);
+
+        let arguments = Some(serde_json::to_value(arguments)?);
 
         let req = Request {
             back_ch: Some(callback_rx),
             seq: self.next_request_id(),
-            command,
+            command: R::COMMAND.to_string(),
             arguments,
         };
 
@@ -198,7 +201,9 @@ impl Client {
             .send(req)
             .expect("Failed to send request to debugger");
 
-        Ok(callback_tx.recv().await.unwrap()?)
+        let response = callback_tx.recv().await.unwrap()?;
+        let response = serde_json::from_value(response.body.unwrap_or_default())?;
+        Ok(response)
     }
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
@@ -224,33 +229,30 @@ impl Client {
             supports_invalidated_event: Some(false),
         };
 
-        let response = self
-            .request("initialize".to_owned(), to_value(args).ok())
-            .await?;
-        self.capabilities = from_value(response.body.unwrap()).ok();
+        let response = self.request::<requests::Initialize>(args).await?;
+        self.capabilities = Some(response);
 
         Ok(())
     }
 
     pub async fn disconnect(&mut self) -> Result<()> {
-        self.request("disconnect".to_owned(), None).await?;
-        Ok(())
+        self.request::<requests::Disconnect>(()).await
     }
 
-    pub async fn launch(&mut self, args: impl Serialize) -> Result<()> {
+    pub async fn launch(&mut self, args: serde_json::Value) -> Result<()> {
         let mut initialized = self.listen_for_event("initialized".to_owned()).await;
 
-        let res = self.request("launch".to_owned(), to_value(args).ok());
+        let res = self.request::<requests::Launch>(args);
         let ev = initialized.recv();
         join!(res, ev).0?;
 
         Ok(())
     }
 
-    pub async fn attach(&mut self, args: impl Serialize) -> Result<()> {
+    pub async fn attach(&mut self, args: serde_json::Value) -> Result<()> {
         let mut initialized = self.listen_for_event("initialized".to_owned()).await;
 
-        let res = self.request("attach".to_owned(), to_value(args).ok());
+        let res = self.request::<requests::Attach>(args);
         let ev = initialized.recv();
         join!(res, ev).0?;
 
@@ -277,29 +279,20 @@ impl Client {
             source_modified: Some(false),
         };
 
-        let response = self
-            .request("setBreakpoints".to_owned(), to_value(args).ok())
-            .await?;
-        let body: Option<requests::SetBreakpointsResponse> = from_value(response.body.unwrap()).ok();
+        let response = self.request::<requests::SetBreakpoints>(args).await?;
 
-        Ok(body.map(|b| b.breakpoints).unwrap())
+        Ok(response.breakpoints)
     }
 
     pub async fn configuration_done(&mut self) -> Result<()> {
-        self.request("configurationDone".to_owned(), None).await?;
-        Ok(())
+        self.request::<requests::ConfigurationDone>(()).await
     }
 
     pub async fn continue_thread(&mut self, thread_id: usize) -> Result<Option<bool>> {
         let args = requests::ContinueArguments { thread_id };
 
-        let response = self
-            .request("continue".to_owned(), to_value(args).ok())
-            .await?;
-
-        let body: Option<requests::ContinueResponse> = from_value(response.body.unwrap()).ok();
-
-        Ok(body.map(|b| b.all_threads_continued).unwrap())
+        let response = self.request::<requests::Continue>(args).await?;
+        Ok(response.all_threads_continued)
     }
 
     pub async fn stack_trace(
@@ -313,33 +306,20 @@ impl Client {
             format: None,
         };
 
-        let response = self
-            .request("stackTrace".to_owned(), to_value(args).ok())
-            .await?;
-
-        let body: requests::StackTraceResponse = from_value(response.body.unwrap()).unwrap();
-
-        Ok((body.stack_frames, body.total_frames))
+        let response = self.request::<requests::StackTrace>(args).await?;
+        Ok((response.stack_frames, response.total_frames))
     }
 
     pub async fn threads(&mut self) -> Result<Vec<Thread>> {
-        let response = self.request("threads".to_owned(), None).await?;
-
-        let body: requests::ThreadsResponse = from_value(response.body.unwrap()).unwrap();
-
-        Ok(body.threads)
+        let response = self.request::<requests::Threads>(()).await?;
+        Ok(response.threads)
     }
 
     pub async fn scopes(&mut self, frame_id: usize) -> Result<Vec<Scope>> {
         let args = requests::ScopesArguments { frame_id };
 
-        let response = self
-            .request("scopes".to_owned(), to_value(args).ok())
-            .await?;
-
-        let body: requests::ScopesResponse = from_value(response.body.unwrap()).unwrap();
-
-        Ok(body.scopes)
+        let response = self.request::<requests::Scopes>(args).await?;
+        Ok(response.scopes)
     }
 
     pub async fn variables(&mut self, variables_reference: usize) -> Result<Vec<Variable>> {
@@ -351,12 +331,7 @@ impl Client {
             format: None,
         };
 
-        let response = self
-            .request("variables".to_owned(), to_value(args).ok())
-            .await?;
-
-        let body: requests::VariablesResponse = from_value(response.body.unwrap()).unwrap();
-
-        Ok(body.variables)
+        let response = self.request::<requests::Variables>(args).await?;
+        Ok(response.variables)
     }
 }

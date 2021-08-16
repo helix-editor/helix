@@ -1,4 +1,4 @@
-use helix_dap::{Client, Event, OutputEventBody, Result, SourceBreakpoint, StoppedEventBody};
+use helix_dap::{events, Client, Event, Result, SourceBreakpoint};
 use serde::{Deserialize, Serialize};
 use serde_json::from_value;
 use tokio::sync::mpsc::Receiver;
@@ -12,7 +12,7 @@ struct LaunchArguments {
 
 async fn output(mut output_event: Receiver<Event>) {
     loop {
-        let body: OutputEventBody =
+        let body: events::Output =
             from_value(output_event.recv().await.unwrap().body.unwrap()).unwrap();
         println!(
             "> [{}] {}",
@@ -77,7 +77,7 @@ pub async fn main() -> Result<()> {
 
     println!("configurationDone: {:?}", client.configuration_done().await);
 
-    let stop: StoppedEventBody =
+    let stop: events::Stopped =
         from_value(stopped_event.recv().await.unwrap().body.unwrap()).unwrap();
     println!("stopped: {:?}", stop);
 
