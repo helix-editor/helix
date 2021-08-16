@@ -7,6 +7,9 @@ use crate::{
 };
 
 use futures_util::future;
+use futures_util::stream::select_all::SelectAll;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -70,6 +73,7 @@ pub struct Editor {
     pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
+    pub debuggers: SelectAll<UnboundedReceiverStream<(usize, helix_dap::Payload)>>,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub syn_loader: Arc<syntax::Loader>,
@@ -107,6 +111,7 @@ impl Editor {
             selected_register: RegisterSelection::default(),
             theme: themes.default(),
             language_servers,
+            debuggers: SelectAll::new(),
             syn_loader: config_loader,
             theme_loader: themes,
             registers: Registers::default(),

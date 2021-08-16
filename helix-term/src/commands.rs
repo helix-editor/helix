@@ -1900,6 +1900,41 @@ mod cmd {
         Ok(())
     }
 
+    fn debug(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        use helix_dap::Client;
+        use helix_lsp::block_on;
+        use serde_json::to_value;
+        let (_, doc) = current!(cx.editor);
+
+        // look up config for filetype
+        // if multiple available, open picker
+
+        log::error!("1");
+
+        let client = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
+        let mut client = block_on(client)?;
+        log::error!("2");
+
+        let request = client.initialize("go".to_owned());
+        let _ = block_on(request)?;
+        log::error!("3");
+
+        let mut args = HashMap::new();
+        args.insert("mode", "debug");
+        // args.insert("program", "path/to/program");
+
+        let request = client.launch(to_value(args)?);
+        let _ = block_on(request)?;
+
+        log::error!("4");
+        doc.debugger = Some(client);
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2137,6 +2172,13 @@ mod cmd {
             alias: None,
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
+            completer: None,
+        },
+        TypableCommand {
+            name: "debug",
+            alias: None,
+            doc: "Start a debug session.",
+            fun: debug,
             completer: None,
         }
     ];

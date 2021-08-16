@@ -324,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "helix-dap"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "fern",
@@ -375,6 +375,7 @@ dependencies = [
  "futures-util",
  "fuzzy-matcher",
  "helix-core",
+ "helix-dap",
  "helix-lsp",
  "helix-tui",
  "helix-view",
@@ -416,6 +417,7 @@ dependencies = [
  "encoding_rs",
  "futures-util",
  "helix-core",
+ "helix-dap",
  "helix-lsp",
  "helix-tui",
  "log",
@@ -423,6 +425,7 @@ dependencies = [
  "serde",
  "slotmap",
  "tokio",
+ "tokio-stream",
  "toml",
  "url",
  "which",

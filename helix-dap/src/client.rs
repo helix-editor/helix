@@ -186,12 +186,12 @@ impl Client {
         &self,
         arguments: R::Arguments,
     ) -> Result<R::Result> {
-        let (callback_rx, mut callback_tx) = channel(1);
+        let (callback_tx, mut callback_rx) = channel(1);
 
         let arguments = Some(serde_json::to_value(arguments)?);
 
         let req = Request {
-            back_ch: Some(callback_rx),
+            back_ch: Some(callback_tx),
             seq: self.next_request_id(),
             command: R::COMMAND.to_string(),
             arguments,
@@ -201,7 +201,7 @@ impl Client {
             .send(req)
             .expect("Failed to send request to debugger");
 
-        let response = callback_tx.recv().await.unwrap()?;
+        let response = callback_rx.recv().await.unwrap()?;
         let response = serde_json::from_value(response.body.unwrap_or_default())?;
         Ok(response)
     }
@@ -209,7 +209,7 @@ impl Client {
     pub fn capabilities(&self) -> &DebuggerCapabilities {
         self.capabilities
             .as_ref()
-            .expect("language server not yet initialized!")
+            .expect("debugger not yet initialized!")
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
@@ -240,21 +240,19 @@ impl Client {
     }
 
     pub async fn launch(&mut self, args: serde_json::Value) -> Result<()> {
-        let mut initialized = self.listen_for_event("initialized".to_owned()).await;
+        // TODO: buffer these until initialized arrives
 
-        let res = self.request::<requests::Launch>(args);
-        let ev = initialized.recv();
-        join!(res, ev).0?;
+        let response = self.request::<requests::Launch>(args).await?;
+        log::error!("launch response {}", response);
 
         Ok(())
     }
 
     pub async fn attach(&mut self, args: serde_json::Value) -> Result<()> {
-        let mut initialized = self.listen_for_event("initialized".to_owned()).await;
+        // TODO: buffer these until initialized arrives
 
-        let res = self.request::<requests::Attach>(args);
-        let ev = initialized.recv();
-        join!(res, ev).0?;
+        let response = self.request::<requests::Attach>(args).await?;
+        log::error!("attach response {}", response);
 
         Ok(())
     }

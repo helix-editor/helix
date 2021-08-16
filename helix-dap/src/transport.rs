@@ -159,20 +159,17 @@ impl Transport {
     }
 
     fn process_response(res: Response) -> Result<Response> {
-        match res.success {
-            true => {
-                info!("<- DAP success in response to {}", res.request_seq);
+        if res.success {
+            info!("<- DAP success in response to {}", res.request_seq);
 
-                Ok(res)
-            }
-            false => {
-                error!(
-                    "<- DAP error {:?} ({:?}) for command #{} {}",
-                    res.message, res.body, res.request_seq, res.command
-                );
+            Ok(res)
+        } else {
+            error!(
+                "<- DAP error {:?} ({:?}) for command #{} {}",
+                res.message, res.body, res.request_seq, res.command
+            );
 
-                Err(Error::Other(anyhow::format_err!("{:?}", res.body)))
-            }
+            Err(Error::Other(anyhow::format_err!("{:?}", res.body)))
         }
     }
 

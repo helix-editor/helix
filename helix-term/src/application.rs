@@ -245,6 +245,15 @@ impl Application {
         }
     }
 
+    pub async fn handle_debugger_message(
+        &mut self,
+        call: (),
+        server_id: usize,
+    ) {
+
+        //
+    }
+
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,

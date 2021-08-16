@@ -100,6 +100,7 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+    pub debugger: Option<helix_dap::Client>,
 }
 
 use std::fmt;
@@ -425,6 +426,7 @@ impl Document {
             history: Cell::new(History::default()),
             last_saved_revision: 0,
             language_server: None,
+            debugger: None,
             line_ending: DEFAULT_LINE_ENDING,
         }
     }
