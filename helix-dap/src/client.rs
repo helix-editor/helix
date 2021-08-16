@@ -115,6 +115,10 @@ impl Client {
         let process = Command::new(cmd)
             .args(args)
             .args(port_format.replace("{}", &port.to_string()).split(' '))
+            // silence messages
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             // make sure the process is reaped on drop
             .kill_on_drop(true)
             .spawn()?;
