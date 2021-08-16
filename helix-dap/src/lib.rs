@@ -3,7 +3,7 @@ mod transport;
 mod types;
 
 pub use client::Client;
-pub use transport::{Event, Payload, Request, Response, Transport};
+pub use transport::{Event, Payload, Response, Transport};
 pub use types::*;
 
 use thiserror::Error;

@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub trait Request {
+    type Arguments: serde::de::DeserializeOwned + serde::Serialize;
+    type Result: serde::de::DeserializeOwned + serde::Serialize;
+    const COMMAND: &'static str;
+}
+
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ColumnDescriptor {
@@ -76,28 +82,6 @@ impl std::ops::Deref for DebuggerCapabilities {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InitializeArguments {
-    #[serde(rename = "clientID")]
-    pub client_id: Option<String>,
-    pub client_name: Option<String>,
-    #[serde(rename = "adapterID")]
-    pub adapter_id: String,
-    pub locale: Option<String>,
-    #[serde(rename = "linesStartAt1")]
-    pub lines_start_at_one: Option<bool>,
-    #[serde(rename = "columnsStartAt1")]
-    pub columns_start_at_one: Option<bool>,
-    pub path_format: Option<String>,
-    pub supports_variable_type: Option<bool>,
-    pub supports_variable_paging: Option<bool>,
-    pub supports_run_in_terminal_request: Option<bool>,
-    pub supports_memory_references: Option<bool>,
-    pub supports_progress_reporting: Option<bool>,
-    pub supports_invalidated_event: Option<bool>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Checksum {
     pub algorithm: String,
     pub checksum: String,
@@ -128,15 +112,6 @@ pub struct SourceBreakpoint {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SetBreakpointsArguments {
-    pub source: Source,
-    pub breakpoints: Option<Vec<SourceBreakpoint>>,
-    // lines is deprecated
-    pub source_modified: Option<bool>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Breakpoint {
     pub id: Option<usize>,
     pub verified: bool,
@@ -152,24 +127,6 @@ pub struct Breakpoint {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SetBreakpointsResponseBody {
-    pub breakpoints: Option<Vec<Breakpoint>>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ContinueArguments {
-    pub thread_id: usize,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ContinueResponseBody {
-    pub all_threads_continued: Option<bool>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct StackFrameFormat {
     pub parameters: Option<bool>,
     pub parameter_types: Option<bool>,
@@ -178,15 +135,6 @@ pub struct StackFrameFormat {
     pub line: Option<bool>,
     pub module: Option<bool>,
     pub include_all: Option<bool>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StackTraceArguments {
-    pub thread_id: usize,
-    pub start_frame: Option<usize>,
-    pub levels: Option<usize>,
-    pub format: Option<StackFrameFormat>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -207,28 +155,9 @@ pub struct StackFrame {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct StackTraceResponseBody {
-    pub total_frames: Option<usize>,
-    pub stack_frames: Vec<StackFrame>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Thread {
     pub id: usize,
     pub name: String,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadsResponseBody {
-    pub threads: Vec<Thread>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScopesArguments {
-    pub frame_id: usize,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -249,24 +178,8 @@ pub struct Scope {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ScopesResponseBody {
-    pub scopes: Vec<Scope>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ValueFormat {
     pub hex: Option<bool>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VariablesArguments {
-    pub variables_reference: usize,
-    pub filter: Option<String>,
-    pub start: Option<usize>,
-    pub count: Option<usize>,
-    pub format: Option<ValueFormat>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -292,33 +205,188 @@ pub struct Variable {
     pub memory_reference: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VariablesResponseBody {
-    pub variables: Vec<Variable>,
+pub mod requests {
+    use super::*;
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct InitializeArguments {
+        #[serde(rename = "clientID")]
+        pub client_id: Option<String>,
+        pub client_name: Option<String>,
+        #[serde(rename = "adapterID")]
+        pub adapter_id: String,
+        pub locale: Option<String>,
+        #[serde(rename = "linesStartAt1")]
+        pub lines_start_at_one: Option<bool>,
+        #[serde(rename = "columnsStartAt1")]
+        pub columns_start_at_one: Option<bool>,
+        pub path_format: Option<String>,
+        pub supports_variable_type: Option<bool>,
+        pub supports_variable_paging: Option<bool>,
+        pub supports_run_in_terminal_request: Option<bool>,
+        pub supports_memory_references: Option<bool>,
+        pub supports_progress_reporting: Option<bool>,
+        pub supports_invalidated_event: Option<bool>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SetBreakpointsArguments {
+        pub source: Source,
+        pub breakpoints: Option<Vec<SourceBreakpoint>>,
+        // lines is deprecated
+        pub source_modified: Option<bool>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SetBreakpointsResponse {
+        pub breakpoints: Option<Vec<Breakpoint>>,
+    }
+
+    #[derive(Debug)]
+    pub enum SetBreakpoints {}
+
+    impl Request for SetBreakpoints {
+        type Arguments = SetBreakpointsArguments;
+        type Result = SetBreakpointsResponse;
+        const COMMAND: &'static str = "setBreakpoints";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ContinueArguments {
+        pub thread_id: usize,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ContinueResponse {
+        pub all_threads_continued: Option<bool>,
+    }
+
+    #[derive(Debug)]
+    pub enum Continue {}
+
+    impl Request for Continue {
+        type Arguments = ContinueArguments;
+        type Result = ContinueResponse;
+        const COMMAND: &'static str = "continue";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct StackTraceArguments {
+        pub thread_id: usize,
+        pub start_frame: Option<usize>,
+        pub levels: Option<usize>,
+        pub format: Option<StackFrameFormat>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct StackTraceResponse {
+        pub total_frames: Option<usize>,
+        pub stack_frames: Vec<StackFrame>,
+    }
+
+    #[derive(Debug)]
+    pub enum StackTrace {}
+
+    impl Request for StackTrace {
+        type Arguments = StackTraceArguments;
+        type Result = StackTraceResponse;
+        const COMMAND: &'static str = "stackTrace";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ThreadsResponse {
+        pub threads: Vec<Thread>,
+    }
+
+    #[derive(Debug)]
+    pub enum Threads {}
+
+    impl Request for Threads {
+        type Arguments = ();
+        type Result = ThreadsResponse;
+        const COMMAND: &'static str = "threads";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ScopesArguments {
+        pub frame_id: usize,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ScopesResponse {
+        pub scopes: Vec<Scope>,
+    }
+
+    #[derive(Debug)]
+    pub enum Scopes {}
+
+    impl Request for Scopes {
+        type Arguments = ScopesArguments;
+        type Result = ScopesResponse;
+        const COMMAND: &'static str = "scopes";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct VariablesArguments {
+        pub variables_reference: usize,
+        pub filter: Option<String>,
+        pub start: Option<usize>,
+        pub count: Option<usize>,
+        pub format: Option<ValueFormat>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct VariablesResponse {
+        pub variables: Vec<Variable>,
+    }
+
+    #[derive(Debug)]
+    pub enum Variables {}
+
+    impl Request for Variables {
+        type Arguments = VariablesArguments;
+        type Result = VariablesResponse;
+        const COMMAND: &'static str = "scopes";
+    }
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OutputEventBody {
-    pub output: String,
-    pub category: Option<String>,
-    pub group: Option<String>,
-    pub line: Option<usize>,
-    pub column: Option<usize>,
-    pub variables_reference: Option<usize>,
-    pub source: Option<Source>,
-    pub data: Option<Value>,
-}
+// Events
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StoppedEventBody {
-    pub reason: String,
-    pub description: Option<String>,
-    pub thread_id: Option<usize>,
-    pub preserve_focus_hint: Option<bool>,
-    pub text: Option<String>,
-    pub all_threads_stopped: Option<bool>,
-    pub hit_breakpoint_ids: Option<Vec<usize>>,
+pub mod events {
+    use super::*;
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Output {
+        pub output: String,
+        pub category: Option<String>,
+        pub group: Option<String>,
+        pub line: Option<usize>,
+        pub column: Option<usize>,
+        pub variables_reference: Option<usize>,
+        pub source: Option<Source>,
+        pub data: Option<Value>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Stopped {
+        pub reason: String,
+        pub description: Option<String>,
+        pub thread_id: Option<usize>,
+        pub preserve_focus_hint: Option<bool>,
+        pub text: Option<String>,
+        pub all_threads_stopped: Option<bool>,
+        pub hit_breakpoint_ids: Option<Vec<usize>>,
+    }
 }

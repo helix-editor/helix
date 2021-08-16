@@ -3,8 +3,8 @@ use crate::{
     types::*,
     Result,
 };
-use log::{error, info};
-use serde::{Deserialize, Serialize};
+pub use log::{error, info};
+use serde::Serialize;
 use serde_json::{from_value, to_value, Value};
 use std::{
     collections::HashMap,
@@ -208,7 +208,7 @@ impl Client {
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
-        let args = InitializeArguments {
+        let args = requests::InitializeArguments {
             client_id: Some("hx".to_owned()),
             client_name: Some("helix".to_owned()),
             adapter_id,
@@ -262,7 +262,7 @@ impl Client {
         file: String,
         breakpoints: Vec<SourceBreakpoint>,
     ) -> Result<Option<Vec<Breakpoint>>> {
-        let args = SetBreakpointsArguments {
+        let args = requests::SetBreakpointsArguments {
             source: Source {
                 path: Some(file),
                 name: None,
@@ -280,7 +280,7 @@ impl Client {
         let response = self
             .request("setBreakpoints".to_owned(), to_value(args).ok())
             .await?;
-        let body: Option<SetBreakpointsResponseBody> = from_value(response.body.unwrap()).ok();
+        let body: Option<requests::SetBreakpointsResponse> = from_value(response.body.unwrap()).ok();
 
         Ok(body.map(|b| b.breakpoints).unwrap())
     }
@@ -291,13 +291,13 @@ impl Client {
     }
 
     pub async fn continue_thread(&mut self, thread_id: usize) -> Result<Option<bool>> {
-        let args = ContinueArguments { thread_id };
+        let args = requests::ContinueArguments { thread_id };
 
         let response = self
             .request("continue".to_owned(), to_value(args).ok())
             .await?;
 
-        let body: Option<ContinueResponseBody> = from_value(response.body.unwrap()).ok();
+        let body: Option<requests::ContinueResponse> = from_value(response.body.unwrap()).ok();
 
         Ok(body.map(|b| b.all_threads_continued).unwrap())
     }
@@ -306,7 +306,7 @@ impl Client {
         &mut self,
         thread_id: usize,
     ) -> Result<(Vec<StackFrame>, Option<usize>)> {
-        let args = StackTraceArguments {
+        let args = requests::StackTraceArguments {
             thread_id,
             start_frame: None,
             levels: None,
@@ -317,7 +317,7 @@ impl Client {
             .request("stackTrace".to_owned(), to_value(args).ok())
             .await?;
 
-        let body: StackTraceResponseBody = from_value(response.body.unwrap()).unwrap();
+        let body: requests::StackTraceResponse = from_value(response.body.unwrap()).unwrap();
 
         Ok((body.stack_frames, body.total_frames))
     }
@@ -325,25 +325,25 @@ impl Client {
     pub async fn threads(&mut self) -> Result<Vec<Thread>> {
         let response = self.request("threads".to_owned(), None).await?;
 
-        let body: ThreadsResponseBody = from_value(response.body.unwrap()).unwrap();
+        let body: requests::ThreadsResponse = from_value(response.body.unwrap()).unwrap();
 
         Ok(body.threads)
     }
 
     pub async fn scopes(&mut self, frame_id: usize) -> Result<Vec<Scope>> {
-        let args = ScopesArguments { frame_id };
+        let args = requests::ScopesArguments { frame_id };
 
         let response = self
             .request("scopes".to_owned(), to_value(args).ok())
             .await?;
 
-        let body: ScopesResponseBody = from_value(response.body.unwrap()).unwrap();
+        let body: requests::ScopesResponse = from_value(response.body.unwrap()).unwrap();
 
         Ok(body.scopes)
     }
 
     pub async fn variables(&mut self, variables_reference: usize) -> Result<Vec<Variable>> {
-        let args = VariablesArguments {
+        let args = requests::VariablesArguments {
             variables_reference,
             filter: None,
             start: None,
@@ -355,7 +355,7 @@ impl Client {
             .request("variables".to_owned(), to_value(args).ok())
             .await?;
 
-        let body: VariablesResponseBody = from_value(response.body.unwrap()).unwrap();
+        let body: requests::VariablesResponse = from_value(response.body.unwrap()).unwrap();
 
         Ok(body.variables)
     }
