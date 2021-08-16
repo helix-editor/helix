@@ -402,7 +402,7 @@ pub mod requests {
     impl Request for Variables {
         type Arguments = VariablesArguments;
         type Result = VariablesResponse;
-        const COMMAND: &'static str = "scopes";
+        const COMMAND: &'static str = "variables";
     }
 }
 
