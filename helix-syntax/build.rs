@@ -105,6 +105,9 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
             }
         }
         command.arg("-xc").arg(parser_path);
+        if cfg!(all(unix, not(target_os = "macos"))) {
+            command.arg("-Wl,-z,relro,-z,now");
+        }
     }
 
     let output = command
