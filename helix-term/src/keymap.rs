@@ -145,7 +145,7 @@ impl From<KeyTrieNode> for Info {
                 .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
                 .collect();
         }
-        Info::key(node.name(), body)
+        Info::new(node.name(), body)
     }
 }
 

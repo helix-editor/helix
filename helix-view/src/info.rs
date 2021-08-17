@@ -16,45 +16,33 @@ pub struct Info {
 }
 
 impl Info {
-    // body is a BTreeMap instead of a HashMap because keymaps are represented
-    // with nested hashmaps with no ordering, and each invocation of infobox would
-    // show different orders of items
-    pub fn key(title: &str, body: Vec<(&str, Vec<KeyEvent>)>) -> Info {
-        let (lpad, mpad, rpad) = (1, 2, 1);
-        let keymaps_width: u16 = body
-            .iter()
-            .map(|r| r.1.iter().map(|e| e.width() as u16 + 2).sum::<u16>() - 2)
-            .max()
-            .unwrap();
+    pub fn new(title: &str, body: Vec<(&str, Vec<KeyEvent>)>) -> Info {
+        let body = body
+            .into_iter()
+            .map(|(desc, events)| {
+                let events = events.iter().map(ToString::to_string).collect::<Vec<_>>();
+                (desc, events.join(", "))
+            })
+            .collect::<Vec<_>>();
+
+        let keymaps_width = body.iter().map(|r| r.1.len()).max().unwrap();
         let mut text = String::new();
-        let mut width = 0;
-        let height = body.len() as u16;
-        for (desc, keyevents) in body {
-            let keyevent = keyevents[0];
-            let mut left = keymaps_width - keyevent.width() as u16;
-            for _ in 0..lpad {
-                text.push(' ');
-            }
-            write!(text, "{}", keyevent).ok();
-            for keyevent in &keyevents[1..] {
-                write!(text, ", {}", keyevent).ok();
-                left -= 2 + keyevent.width() as u16;
-            }
-            for _ in 0..left + mpad {
-                text.push(' ');
-            }
-            let desc = desc.trim();
-            let w = lpad + keymaps_width + mpad + (desc.width() as u16) + rpad;
-            if w > width {
-                width = w;
-            }
-            writeln!(text, "{}", desc).ok();
+
+        for (desc, keyevents) in &body {
+            let _ = writeln!(
+                text,
+                "{:width$}  {}",
+                keyevents,
+                desc,
+                width = keymaps_width
+            );
         }
+
         Info {
             title: title.to_string(),
+            width: text.lines().map(|l| l.width()).max().unwrap() as u16,
+            height: body.len() as u16,
             text,
-            width,
-            height,
         }
     }
 }
