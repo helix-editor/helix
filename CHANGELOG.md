@@ -1,5 +1,11 @@
 
-# 0.4.0 (2021-08-13)
+# 0.4.1 (2021-08-14)
+
+A minor release that includes:
+- A fix for rendering glitches that would occur after editing with multiple selections.
+- CI fix for grammars not being cross-compiled for aarch64 
+
+# 0.4.1 (2021-08-13)
 
 Two months have passed, so this is another big release. A big thank you to all
 the contributors and package maintainers!
@@ -19,7 +25,7 @@ selections in the future as well as resolves many bugs and edge cases.
 - Selection contents rotation via `Alt-(` and `Alt-)` ([02cba2a](https://github.com/helix-editor/helix/commit/02cba2a7f403f48eccb18100fb751f7b42373dba))
 - Completion behavior improvements ([f917b5a4](https://github.com/helix-editor/helix/commit/f917b5a441ff3ae582358b6939ffbf889f4aa530), [627b899](https://github.com/helix-editor/helix/commit/627b89931576f7af86166ae8d5cbc55537877473))
 - Fixed a language server crash ([385a6b5a](https://github.com/helix-editor/helix/commit/385a6b5a1adddfc26e917982641530e1a7c7aa81))
-- Case change commands (`\``, `~`, `<a-~>`) ([#441](https://github.com/helix-editor/helix/pull/441))
+- Case change commands (`` ` ``, `~`, ``<a-`>``) ([#441](https://github.com/helix-editor/helix/pull/441))
 - File pickers (including goto) now provide a preview! ([#534](https://github.com/helix-editor/helix/pull/534))
 - Injection query support. Rust macro calls and embedded languages are now properly highlighted ([#430](https://github.com/helix-editor/helix/pull/430))
 - Formatting is now asynchronous, and the async job infrastructure has been improved ([#285](https://github.com/helix-editor/helix/pull/285))
@@ -36,7 +42,7 @@ selections in the future as well as resolves many bugs and edge cases.
 - Java support ([#448](https://github.com/helix-editor/helix/pull/448))
 - Prompts have an (in-memory) history ([63e54e30](https://github.com/helix-editor/helix/commit/63e54e30a74bb0d1d782877ddbbcf95f2817d061))
 
-# 0.4.0 (2021-06-27)
+# 0.3.0 (2021-06-27)
 
 Another big release. 
 

@@ -656,8 +656,10 @@ impl LanguageLayer {
         let edits = Self::generate_edits(old_source.slice(..), changeset);
 
         // Notify the tree about all the changes
-        for edit in edits {
-            self.tree.as_mut().unwrap().edit(&edit);
+        for edit in edits.iter().rev() {
+            // apply the edits in reverse. If we applied them in order then edit 1 would disrupt
+            // the positioning of edit 2
+            self.tree.as_mut().unwrap().edit(edit);
         }
 
         self.parse(

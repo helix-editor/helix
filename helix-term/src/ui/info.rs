@@ -1,8 +1,8 @@
 use crate::compositor::{Component, Context};
-use helix_view::graphics::Rect;
+use helix_view::graphics::{Margin, Rect};
 use helix_view::info::Info;
 use tui::buffer::Buffer as Surface;
-use tui::widgets::{Block, Borders, Widget};
+use tui::widgets::{Block, Borders, Paragraph, Widget};
 
 impl Component for Info {
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
@@ -11,10 +11,11 @@ impl Component for Info {
         // Calculate the area of the terminal to modify. Because we want to
         // render at the bottom right, we use the viewport's width and height
         // which evaluate to the most bottom right coordinate.
-        let (width, height) = (self.width + 2, self.height + 2);
+        let width = self.width + 2 + 2; // +2 for border, +2 for margin
+        let height = self.height + 2; // +2 for border
         let area = viewport.intersection(Rect::new(
             viewport.width.saturating_sub(width),
-            viewport.height.saturating_sub(height + 2),
+            viewport.height.saturating_sub(height + 2), // +2 for statusline
             width,
             height,
         ));
@@ -24,15 +25,14 @@ impl Component for Info {
             .title(self.title.as_str())
             .borders(Borders::ALL)
             .border_style(style);
-        let inner = block.inner(area);
+
+        let margin = Margin {
+            vertical: 0,
+            horizontal: 1,
+        };
+        let inner = block.inner(area).inner(&margin);
         block.render(area, surface);
 
-        // Only write as many lines as there are rows available.
-        for (y, line) in (inner.y..)
-            .zip(self.text.lines())
-            .take(inner.height as usize)
-        {
-            surface.set_string(inner.x, y, line, style);
-        }
+        Paragraph::new(self.text.as_str()).render(inner, surface);
     }
 }

@@ -1883,6 +1883,20 @@ mod cmd {
         doc.reload(view.id)
     }
 
+    fn tree_sitter_scopes(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let pos = doc.selection(view.id).primary().cursor(text);
+        let scopes = indent::get_scopes(doc.syntax(), text, pos);
+        cx.editor.set_status(format!("scopes: {:?}", &scopes));
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2113,6 +2127,13 @@ mod cmd {
             alias: None,
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "tree-sitter-scopes",
+            alias: None,
+            doc: "Display tree sitter scopes, primarily for theming and development.",
+            fun: tree_sitter_scopes,
             completer: None,
         }
     ];
@@ -3905,6 +3926,7 @@ fn toggle_comments(cx: &mut Context) {
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+    exit_select_mode(cx);
 }
 
 fn rotate_selections(cx: &mut Context, direction: Direction) {

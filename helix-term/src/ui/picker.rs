@@ -141,7 +141,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 for x in inner.left()..inner.right() {
                     surface
                         .get_mut(x, inner.y + line.saturating_sub(first_line) as u16)
-                        .set_style(cx.editor.theme.get("ui.selection.primary"));
+                        .set_style(cx.editor.theme.get("ui.selection"));
                 }
             }
         }
@@ -393,6 +393,8 @@ impl<T: 'static> Component for Picker<T> {
             area
         };
 
+        let text_style = cx.editor.theme.get("ui.text");
+
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -409,6 +411,16 @@ impl<T: 'static> Component for Picker<T> {
         // -- Render the input bar:
 
         let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
+
+        let count = format!("{}/{}", self.matches.len(), self.options.len());
+        surface.set_stringn(
+            (area.x + area.width).saturating_sub(count.len() as u16 + 1),
+            area.y,
+            &count,
+            (count.len()).min(area.width as usize),
+            text_style,
+        );
+
         self.prompt.render(area, surface, cx);
 
         // -- Separator
@@ -425,7 +437,6 @@ impl<T: 'static> Component for Picker<T> {
         // subtract the area of the prompt (-2) and current item marker " > " (-3)
         let inner = Rect::new(inner.x + 3, inner.y + 2, inner.width - 3, inner.height - 2);
 
-        let style = cx.editor.theme.get("ui.text");
         let selected = Style::default().fg(Color::Rgb(255, 255, 255));
 
         let rows = inner.height;
@@ -448,7 +459,7 @@ impl<T: 'static> Component for Picker<T> {
                 if i == (self.cursor - offset) {
                     selected
                 } else {
-                    style
+                    text_style
                 },
                 true,
             );
