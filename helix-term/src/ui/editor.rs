@@ -205,7 +205,9 @@ impl EditorView {
             .find_scope_index("diagnostic")
             .or_else(|| theme.find_scope_index("ui.cursor"))
             .or_else(|| theme.find_scope_index("ui.selection"))
-            .expect("no selection scope found!");
+            .expect(
+                "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
+            );
 
         doc.diagnostics()
             .iter()
@@ -230,7 +232,7 @@ impl EditorView {
 
         let selection_scope = theme
             .find_scope_index("ui.selection")
-            .expect("no selection scope found!");
+            .expect("could not find `ui.selection` scope in the theme!");
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
