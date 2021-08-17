@@ -8,7 +8,7 @@ pub enum ClipboardType {
     Selection,
 }
 
-pub trait ClipboardProvider: std::fmt::Debug {
+pub trait ClipboardProvider: std::fmt::Debug + Send {
     fn name(&self) -> Cow<str>;
     fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String>;
     fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()>;

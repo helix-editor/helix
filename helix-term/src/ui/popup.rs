@@ -1,6 +1,7 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui::buffer::Buffer as Surface;
+use async_trait::async_trait;
 
 use helix_core::Position;
 use helix_view::graphics::Rect;
@@ -48,8 +49,9 @@ impl<T: Component> Popup<T> {
     }
 }
 
+#[async_trait(?Send)]
 impl<T: Component> Component for Popup<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, event: Event, cx: &mut Context<'_>) -> EventResult {
         let key = match event {
             Event::Key(event) => event,
             Event::Resize(_, _) => {
@@ -88,7 +90,7 @@ impl<T: Component> Component for Popup<T> {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
             }
-            _ => self.contents.handle_event(event, cx),
+            _ => self.contents.handle_event(event, cx).await,
         }
         // for some events, we want to process them but send ignore, specifically all input except
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.

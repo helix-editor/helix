@@ -3,6 +3,7 @@ use crate::ui;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
+use async_trait::async_trait;
 
 use helix_core::{
     unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
@@ -387,8 +388,9 @@ impl Prompt {
     }
 }
 
+#[async_trait(?Send)]
 impl Component for Prompt {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, event: Event, cx: &mut Context<'_>) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),

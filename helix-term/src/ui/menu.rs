@@ -1,6 +1,7 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui::{buffer::Buffer as Surface, widgets::Table};
+use async_trait::async_trait;
 
 pub use tui::widgets::{Cell, Row};
 
@@ -133,8 +134,9 @@ impl<T: Item> Menu<T> {
 
 use super::PromptEvent as MenuEvent;
 
+#[async_trait(?Send)]
 impl<T: Item + 'static> Component for Menu<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, event: Event, cx: &mut Context<'_>) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
             _ => return EventResult::Ignored,

@@ -3,6 +3,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent};
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
+use async_trait::async_trait;
 
 use helix_core::Transaction;
 use helix_view::{graphics::Rect, Document, Editor, View};
@@ -225,8 +226,9 @@ impl Completion {
 // - components register for hooks, then unregister when terminated
 // ... since completion is a special case, maybe just build it into doc/render?
 
+#[async_trait(?Send)]
 impl Component for Completion {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, event: Event, cx: &mut Context<'_>) -> EventResult {
         // let the Editor handle Esc instead
         if let Event::Key(KeyEvent {
             code: KeyCode::Esc, ..
@@ -234,7 +236,7 @@ impl Component for Completion {
         {
             return EventResult::Ignored;
         }
-        self.popup.handle_event(event, cx)
+        self.popup.handle_event(event, cx).await
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {

@@ -3,6 +3,7 @@
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
+use async_trait::async_trait;
 
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
@@ -33,9 +34,10 @@ pub struct Context<'a> {
     pub jobs: &'a mut Jobs,
 }
 
+#[async_trait(?Send)]
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, _event: Event, _ctx: &mut Context<'_>) -> EventResult {
         EventResult::Ignored
     }
     // , args: ()
@@ -125,11 +127,11 @@ impl Compositor {
         self.layers.pop()
     }
 
-    pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
+    pub async fn handle_event(&mut self, event: Event, cx: &mut Context<'_>) -> bool {
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
         for layer in self.layers.iter_mut().rev() {
-            match layer.handle_event(event, cx) {
+            match layer.handle_event(event, cx).await {
                 EventResult::Consumed(Some(callback)) => {
                     callback(self);
                     return true;

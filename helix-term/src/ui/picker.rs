@@ -13,7 +13,7 @@ use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
-
+use async_trait::async_trait;
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::{
@@ -68,6 +68,7 @@ impl<T> FilePicker<T> {
     }
 }
 
+#[async_trait(?Send)]
 impl<T: 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
@@ -147,9 +148,9 @@ impl<T: 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, event: Event, ctx: &mut Context<'_>) -> EventResult {
         // TODO: keybinds for scrolling preview
-        self.picker.handle_event(event, ctx)
+        self.picker.handle_event(event, ctx).await
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
@@ -293,8 +294,9 @@ fn inner_rect(area: Rect) -> Rect {
     )
 }
 
+#[async_trait(?Send)]
 impl<T: 'static> Component for Picker<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, event: Event, cx: &mut Context<'_>) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
@@ -376,7 +378,7 @@ impl<T: 'static> Component for Picker<T> {
                 self.save_filter();
             }
             _ => {
-                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+                if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx).await {
                     // TODO: recalculate only if pattern changed
                     self.score();
                 }

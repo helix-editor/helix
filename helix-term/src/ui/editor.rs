@@ -5,6 +5,7 @@ use crate::{
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
+use async_trait::async_trait;
 
 use helix_core::{
     coords_at_pos,
@@ -678,23 +679,23 @@ impl EditorView {
     /// if event was handled (a command was executed or a subkeymap was
     /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
     /// otherwise.
-    fn handle_keymap_event(
+    async fn handle_keymap_event(
         &mut self,
         mode: Mode,
-        cxt: &mut commands::Context,
+        cxt: &mut commands::Context<'_>,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         self.autoinfo = None;
         match self.keymaps.get_mut(&mode).unwrap().get(event) {
-            KeymapResult::Matched(command) => command.execute(cxt),
+            KeymapResult::Matched(command) => command.execute(cxt).await,
             KeymapResult::Pending(node) => self.autoinfo = Some(node.into()),
             k @ KeymapResult::NotFound | k @ KeymapResult::Cancelled(_) => return Some(k),
         }
         None
     }
 
-    fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
+    async fn insert_mode(&mut self, cx: &mut commands::Context<'_>, event: KeyEvent) {
+        if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event).await {
             match keyresult {
                 KeymapResult::NotFound => {
                     if let Some(ch) = event.char() {
@@ -709,7 +710,7 @@ impl EditorView {
                                 if let KeymapResult::Matched(command) =
                                     self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev)
                                 {
-                                    command.execute(cx);
+                                    command.execute(cx).await;
                                 }
                             }
                         }
@@ -720,7 +721,7 @@ impl EditorView {
         }
     }
 
-    fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
+    async fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context<'_>, event: KeyEvent) {
         match event {
             // count handling
             key!(i @ '0'..='9') => {
@@ -731,10 +732,10 @@ impl EditorView {
             // special handling for repeat operator
             key!('.') => {
                 // first execute whatever put us into insert mode
-                self.last_insert.0.execute(cxt);
+                self.last_insert.0.execute(cxt).await;
                 // then replay the inputs
                 for &key in &self.last_insert.1.clone() {
-                    self.insert_mode(cxt, key)
+                    self.insert_mode(cxt, key).await;
                 }
             }
             _ => {
@@ -747,7 +748,7 @@ impl EditorView {
                 // set the register
                 cxt.selected_register = cxt.editor.selected_register.take();
 
-                self.handle_keymap_event(mode, cxt, event);
+                self.handle_keymap_event(mode, cxt, event).await;
                 if self.keymaps.pending().is_empty() {
                     cxt.editor.count = None
                 }
@@ -770,10 +771,10 @@ impl EditorView {
 }
 
 impl EditorView {
-    fn handle_mouse_event(
+    async fn handle_mouse_event(
         &mut self,
         event: MouseEvent,
-        cxt: &mut commands::Context,
+        cxt: &mut commands::Context<'_>,
     ) -> EventResult {
         match event {
             MouseEvent {
@@ -875,7 +876,9 @@ impl EditorView {
                     return EventResult::Ignored;
                 }
 
-                commands::Command::yank_main_selection_to_primary_clipboard.execute(cxt);
+                commands::Command::yank_main_selection_to_primary_clipboard
+                    .execute(cxt)
+                    .await;
 
                 EventResult::Consumed(None)
             }
@@ -893,7 +896,9 @@ impl EditorView {
                 }
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {
-                    commands::Command::replace_selections_with_primary_clipboard.execute(cxt);
+                    commands::Command::replace_selections_with_primary_clipboard
+                        .execute(cxt)
+                        .await;
 
                     return EventResult::Consumed(None);
                 }
@@ -907,7 +912,9 @@ impl EditorView {
                     let doc = &mut editor.documents[editor.tree.get(view_id).doc];
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
-                    commands::Command::paste_primary_clipboard_before.execute(cxt);
+                    commands::Command::paste_primary_clipboard_before
+                        .execute(cxt)
+                        .await;
                     return EventResult::Consumed(None);
                 }
 
@@ -919,8 +926,9 @@ impl EditorView {
     }
 }
 
+#[async_trait(?Send)]
 impl Component for EditorView {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    async fn handle_event(&mut self, event: Event, cx: &mut Context<'_>) -> EventResult {
         let mut cxt = commands::Context {
             selected_register: helix_view::RegisterSelection::default(),
             editor: &mut cx.editor,
@@ -963,7 +971,7 @@ impl Component for EditorView {
                                     jobs: cxt.jobs,
                                     scroll: None,
                                 };
-                                let res = completion.handle_event(event, &mut cx);
+                                let res = completion.handle_event(event, &mut cx).await;
 
                                 if let EventResult::Consumed(callback) = res {
                                     consumed = true;
@@ -977,7 +985,7 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                self.insert_mode(&mut cxt, key);
+                                self.insert_mode(&mut cxt, key).await;
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
@@ -988,7 +996,7 @@ impl Component for EditorView {
                                 }
                             }
                         }
-                        mode => self.command_mode(mode, &mut cxt, key),
+                        mode => self.command_mode(mode, &mut cxt, key).await,
                     }
                 }
 
@@ -1031,7 +1039,7 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(event) => self.handle_mouse_event(event, &mut cxt),
+            Event::Mouse(event) => self.handle_mouse_event(event, &mut cxt).await,
         }
     }
 

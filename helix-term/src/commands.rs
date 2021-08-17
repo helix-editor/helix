@@ -31,7 +31,7 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::{FutureExt, TryFutureExt};
+use futures_util::{future::BoxFuture, FutureExt, TryFutureExt};
 use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
@@ -126,30 +126,64 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
 #[derive(Copy, Clone)]
 pub struct Command {
     name: &'static str,
-    fun: fn(cx: &mut Context),
+    fun: CommandFun,
     doc: &'static str,
 }
 
+#[derive(Copy, Clone)]
+pub enum CommandFun {
+    Sync(fn(cx: &mut Context)),
+    Async(fn(cx: &mut Context) -> BoxFuture<'static, ()>),
+}
+
+impl CommandFun {
+    async fn call(&self, cx: &mut Context<'_>) {
+        match self {
+            CommandFun::Sync(fun) => fun(cx),
+            CommandFun::Async(fun) => fun(cx).await,
+        }
+    }
+}
+
 macro_rules! commands {
-    ( $($name:ident, $doc:literal),* ) => {
+    ( $(($name:ident, $doc:literal $(, $mod:tt)?)),* ) => {
         $(
-            #[allow(non_upper_case_globals)]
-            pub const $name: Self = Self {
-                name: stringify!($name),
-                fun: $name,
-                doc: $doc
-            };
+            commands!(@single $name, $doc );
+            // #[allow(non_upper_case_globals)]
+            // pub const $name: Self = Self {
+            //     name: stringify!($name),
+            //     fun: $name,
+            //     doc: $doc
+            // };
         )*
 
         pub const COMMAND_LIST: &'static [Self] = &[
             $( Self::$name, )*
         ];
+    };
+
+    (@single $name:ident, $doc:literal ) => {
+        #[allow(non_upper_case_globals)]
+        pub const $name: Self = Self {
+            name: stringify!($name),
+            fun: CommandFun::Sync($name),
+            doc: $doc
+        };
+    };
+
+    (@single $name:ident, $doc:literal, async ) => {
+        #[allow(non_upper_case_globals)]
+        pub const $name: Self = Self {
+            name: stringify!($name),
+            fun: CommandFun::Async($name),
+            doc: $doc
+        };
     }
 }
 
 impl Command {
-    pub fn execute(&self, cx: &mut Context) {
-        (self.fun)(cx);
+    pub async fn execute(&self, cx: &mut Context<'_>) {
+        self.fun.call(cx).await
     }
 
     pub fn name(&self) -> &'static str {
@@ -162,147 +196,147 @@ impl Command {
 
     #[rustfmt::skip]
     commands!(
-        move_char_left, "Move left",
-        move_char_right, "Move right",
-        move_line_up, "Move up",
-        move_line_down, "Move down",
-        extend_char_left, "Extend left",
-        extend_char_right, "Extend right",
-        extend_line_up, "Extend up",
-        extend_line_down, "Extend down",
-        copy_selection_on_next_line, "Copy selection on next line",
-        copy_selection_on_prev_line, "Copy selection on previous line",
-        move_next_word_start, "Move to beginning of next word",
-        move_prev_word_start, "Move to beginning of previous word",
-        move_next_word_end, "Move to end of next word",
-        move_next_long_word_start, "Move to beginning of next long word",
-        move_prev_long_word_start, "Move to beginning of previous long word",
-        move_next_long_word_end, "Move to end of next long word",
-        extend_next_word_start, "Extend to beginning of next word",
-        extend_prev_word_start, "Extend to beginning of previous word",
-        extend_next_word_end, "Extend to end of next word",
-        find_till_char, "Move till next occurance of char",
-        find_next_char, "Move to next occurance of char",
-        extend_till_char, "Extend till next occurance of char",
-        extend_next_char, "Extend to next occurance of char",
-        till_prev_char, "Move till previous occurance of char",
-        find_prev_char, "Move to previous occurance of char",
-        extend_till_prev_char, "Extend till previous occurance of char",
-        extend_prev_char, "Extend to previous occurance of char",
-        replace, "Replace with new char",
-        switch_case, "Switch (toggle) case",
-        switch_to_uppercase, "Switch to uppercase",
-        switch_to_lowercase, "Switch to lowercase",
-        page_up, "Move page up",
-        page_down, "Move page down",
-        half_page_up, "Move half page up",
-        half_page_down, "Move half page down",
-        select_all, "Select whole document",
-        select_regex, "Select all regex matches inside selections",
-        split_selection, "Split selection into subselections on regex matches",
-        split_selection_on_newline, "Split selection on newlines",
-        search, "Search for regex pattern",
-        search_next, "Select next search match",
-        extend_search_next, "Add next search match to selection",
-        search_selection, "Use current selection as search pattern",
-        extend_line, "Select current line, if already selected, extend to next line",
-        extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
-        delete_selection, "Delete selection",
-        change_selection, "Change selection (delete and enter insert mode)",
-        collapse_selection, "Collapse selection onto a single cursor",
-        flip_selections, "Flip selection cursor and anchor",
-        insert_mode, "Insert before selection",
-        append_mode, "Insert after selection (append)",
-        command_mode, "Enter command mode",
-        file_picker, "Open file picker",
-        code_action, "Perform code action",
-        buffer_picker, "Open buffer picker",
-        symbol_picker, "Open symbol picker",
-        last_picker, "Open last picker",
-        prepend_to_line, "Insert at start of line",
-        append_to_line, "Insert at end of line",
-        open_below, "Open new line below selection",
-        open_above, "Open new line above selection",
-        normal_mode, "Enter normal mode",
-        select_mode, "Enter selection extend mode",
-        exit_select_mode, "Exit selection mode",
-        goto_definition, "Goto definition",
-        goto_type_definition, "Goto type definition",
-        goto_implementation, "Goto implementation",
-        goto_file_start, "Goto file start/line",
-        goto_file_end, "Goto file end",
-        goto_reference, "Goto references",
-        goto_window_top, "Goto window top",
-        goto_window_middle, "Goto window middle",
-        goto_window_bottom, "Goto window bottom",
-        goto_last_accessed_file, "Goto last accessed file",
-        goto_line, "Goto line",
-        goto_last_line, "Goto last line",
-        goto_first_diag, "Goto first diagnostic",
-        goto_last_diag, "Goto last diagnostic",
-        goto_next_diag, "Goto next diagnostic",
-        goto_prev_diag, "Goto previous diagnostic",
-        goto_line_start, "Goto line start",
-        goto_line_end, "Goto line end",
-        // TODO: different description ?
-        goto_line_end_newline, "Goto line end",
-        goto_first_nonwhitespace, "Goto first non-blank in line",
-        signature_help, "Show signature help",
-        insert_tab, "Insert tab char",
-        insert_newline, "Insert newline char",
-        delete_char_backward, "Delete previous char",
-        delete_char_forward, "Delete next char",
-        delete_word_backward, "Delete previous word",
-        undo, "Undo change",
-        redo, "Redo change",
-        yank, "Yank selection",
-        yank_joined_to_clipboard, "Join and yank selections to clipboard",
-        yank_main_selection_to_clipboard, "Yank main selection to clipboard",
-        yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
-        yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard",
-        replace_with_yanked, "Replace with yanked text",
-        replace_selections_with_clipboard, "Replace selections by clipboard content",
-        replace_selections_with_primary_clipboard, "Replace selections by primary clipboard content",
-        paste_after, "Paste after selection",
-        paste_before, "Paste before selection",
-        paste_clipboard_after, "Paste clipboard after selections",
-        paste_clipboard_before, "Paste clipboard before selections",
-        paste_primary_clipboard_after, "Paste primary clipboard after selections",
-        paste_primary_clipboard_before, "Paste primary clipboard before selections",
-        indent, "Indent selection",
-        unindent, "Unindent selection",
-        format_selections, "Format selection",
-        join_selections, "Join lines inside selection",
-        keep_selections, "Keep selections matching regex",
-        keep_primary_selection, "Keep primary selection",
-        completion, "Invoke completion popup",
-        hover, "Show docs for item under cursor",
-        toggle_comments, "Comment/uncomment selections",
-        rotate_selections_forward, "Rotate selections forward",
-        rotate_selections_backward, "Rotate selections backward",
-        rotate_selection_contents_forward, "Rotate selection contents forward",
-        rotate_selection_contents_backward, "Rotate selections contents backward",
-        expand_selection, "Expand selection to parent syntax node",
-        jump_forward, "Jump forward on jumplist",
-        jump_backward, "Jump backward on jumplist",
-        rotate_view, "Goto next window",
-        hsplit, "Horizontal bottom split",
-        vsplit, "Vertical right split",
-        wclose, "Close window",
-        select_register, "Select register",
-        align_view_middle, "Align view middle",
-        align_view_top, "Align view top",
-        align_view_center, "Align view center",
-        align_view_bottom, "Align view bottom",
-        scroll_up, "Scroll view up",
-        scroll_down, "Scroll view down",
-        match_brackets, "Goto matching bracket",
-        surround_add, "Surround add",
-        surround_replace, "Surround replace",
-        surround_delete, "Surround delete",
-        select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object",
-        suspend, "Suspend"
+        (move_char_left, "Move left"),
+        (move_char_right, "Move right"),
+        (move_line_up, "Move up"),
+        (move_line_down, "Move down"),
+        (extend_char_left, "Extend left"),
+        (extend_char_right, "Extend right"),
+        (extend_line_up, "Extend up"),
+        (extend_line_down, "Extend down"),
+        (copy_selection_on_next_line, "Copy selection on next line"),
+        (copy_selection_on_prev_line, "Copy selection on previous line"),
+        (move_next_word_start, "Move to beginning of next word"),
+        (move_prev_word_start, "Move to beginning of previous word"),
+        (move_next_word_end, "Move to end of next word"),
+        (move_next_long_word_start, "Move to beginning of next long word"),
+        (move_prev_long_word_start, "Move to beginning of previous long word"),
+        (move_next_long_word_end, "Move to end of next long word"),
+        (extend_next_word_start, "Extend to beginning of next word"),
+        (extend_prev_word_start, "Extend to beginning of previous word"),
+        (extend_next_word_end, "Extend to end of next word"),
+        (find_till_char, "Move till next occurance of char"),
+        (find_next_char, "Move to next occurance of char"),
+        (extend_till_char, "Extend till next occurance of char"),
+        (extend_next_char, "Extend to next occurance of char"),
+        (till_prev_char, "Move till previous occurance of char"),
+        (find_prev_char, "Move to previous occurance of char"),
+        (extend_till_prev_char, "Extend till previous occurance of char"),
+        (extend_prev_char, "Extend to previous occurance of char"),
+        (replace, "Replace with new char"),
+        (switch_case, "Switch (toggle) case"),
+        (switch_to_uppercase, "Switch to uppercase"),
+        (switch_to_lowercase, "Switch to lowercase"),
+        (page_up, "Move page up"),
+        (page_down, "Move page down"),
+        (half_page_up, "Move half page up"),
+        (half_page_down, "Move half page down"),
+        (select_all, "Select whole document"),
+        (select_regex, "Select all regex matches inside selections"),
+        (split_selection, "Split selection into subselections on regex matches"),
+        (split_selection_on_newline, "Split selection on newlines"),
+        (search, "Search for regex pattern"),
+        (search_next, "Select next search match"),
+        (extend_search_next, "Add next search match to selection"),
+        (search_selection, "Use current selection as search pattern"),
+        (extend_line, "Select current line, if already selected, extend to next line"),
+        (extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)"),
+        (delete_selection, "Delete selection"),
+        (change_selection, "Change selection (delete and enter insert mode)"),
+        (collapse_selection, "Collapse selection onto a single cursor"),
+        (flip_selections, "Flip selection cursor and anchor"),
+        (insert_mode, "Insert before selection"),
+        (append_mode, "Insert after selection (append)"),
+        (command_mode, "Enter command mode"),
+        (file_picker, "Open file picker"),
+        (code_action, "Perform code action"),
+        (buffer_picker, "Open buffer picker"),
+        (symbol_picker, "Open symbol picker"),
+        (last_picker, "Open last picker"),
+        (prepend_to_line, "Insert at start of line"),
+        (append_to_line, "Insert at end of line"),
+        (open_below, "Open new line below selection"),
+        (open_above, "Open new line above selection"),
+        (normal_mode, "Enter normal mode"),
+        (select_mode, "Enter selection extend mode"),
+        (exit_select_mode, "Exit selection mode"),
+        (goto_definition, "Goto definition"),
+        (goto_type_definition, "Goto type definition"),
+        (goto_implementation, "Goto implementation"),
+        (goto_file_start, "Goto file start/line"),
+        (goto_file_end, "Goto file end"),
+        (goto_reference, "Goto references"),
+        (goto_window_top, "Goto window top"),
+        (goto_window_middle, "Goto window middle"),
+        (goto_window_bottom, "Goto window bottom"),
+        (goto_last_accessed_file, "Goto last accessed file"),
+        (goto_line, "Goto line"),
+        (goto_last_line, "Goto last line"),
+        (goto_first_diag, "Goto first diagnostic"),
+        (goto_last_diag, "Goto last diagnostic"),
+        (goto_next_diag, "Goto next diagnostic"),
+        (goto_prev_diag, "Goto previous diagnostic"),
+        (goto_line_start, "Goto line start"),
+        (goto_line_end, "Goto line end"),
+        // different description )?
+        (goto_line_end_newline, "Goto line end"),
+        (goto_first_nonwhitespace, "Goto first non-blank in line"),
+        (signature_help, "Show signature help"),
+        (insert_tab, "Insert tab char"),
+        (insert_newline, "Insert newline char"),
+        (delete_char_backward, "Delete previous char"),
+        (delete_char_forward, "Delete next char"),
+        (delete_word_backward, "Delete previous word"),
+        (undo, "Undo change"),
+        (redo, "Redo change"),
+        (yank, "Yank selection"),
+        (yank_joined_to_clipboard, "Join and yank selections to clipboard"),
+        (yank_main_selection_to_clipboard, "Yank main selection to clipboard"),
+        (yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard"),
+        (yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard"),
+        (replace_with_yanked, "Replace with yanked text"),
+        (replace_selections_with_clipboard, "Replace selections by clipboard content"),
+        (replace_selections_with_primary_clipboard, "Replace selections by primary clipboard content"),
+        (paste_after, "Paste after selection"),
+        (paste_before, "Paste before selection"),
+        (paste_clipboard_after, "Paste clipboard after selections"),
+        (paste_clipboard_before, "Paste clipboard before selections"),
+        (paste_primary_clipboard_after, "Paste primary clipboard after selections"),
+        (paste_primary_clipboard_before, "Paste primary clipboard before selections"),
+        (indent, "Indent selection"),
+        (unindent, "Unindent selection"),
+        (format_selections, "Format selection"),
+        (join_selections, "Join lines inside selection"),
+        (keep_selections, "Keep selections matching regex"),
+        (keep_primary_selection, "Keep primary selection"),
+        (completion, "Invoke completion popup"),
+        (hover, "Show docs for item under cursor"),
+        (toggle_comments, "Comment/uncomment selections"),
+        (rotate_selections_forward, "Rotate selections forward"),
+        (rotate_selections_backward, "Rotate selections backward"),
+        (rotate_selection_contents_forward, "Rotate selection contents forward"),
+        (rotate_selection_contents_backward, "Rotate selections contents backward"),
+        (expand_selection, "Expand selection to parent syntax node"),
+        (jump_forward, "Jump forward on jumplist"),
+        (jump_backward, "Jump backward on jumplist"),
+        (rotate_view, "Goto next window"),
+        (hsplit, "Horizontal bottom split"),
+        (vsplit, "Vertical right split"),
+        (wclose, "Close window"),
+        (select_register, "Select register"),
+        (align_view_middle, "Align view middle"),
+        (align_view_top, "Align view top"),
+        (align_view_center, "Align view center"),
+        (align_view_bottom, "Align view bottom"),
+        (scroll_up, "Scroll view up"),
+        (scroll_down, "Scroll view down"),
+        (match_brackets, "Goto matching bracket"),
+        (surround_add, "Surround add"),
+        (surround_replace, "Surround replace"),
+        (surround_delete, "Surround delete"),
+        (select_textobject_around, "Select around object"),
+        (select_textobject_inner, "Select inside object"),
+        (suspend, "Suspend")
     );
 }
 
