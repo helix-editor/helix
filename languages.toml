@@ -214,6 +214,16 @@ roots = []
 comment-token = ";"
 indent = { tab-width = 4, unit = "    " }
 
+[[language]]
+name = "csharp"
+scope = "source.csharp"
+injection-regex = "csharp"
+file-types = ["cs"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-server = { command = "/home/yoeight/tools/omnisharp/run", args = ["-z", "-s", "$PWD", "--encoding", "utf-8", "--loglevel", "info"] }
+
 # [[language]]
 # name = "haskell"
 # scope = "source.haskell"
