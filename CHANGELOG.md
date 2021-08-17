@@ -5,7 +5,7 @@ A minor release that includes:
 - A fix for rendering glitches that would occur after editing with multiple selections.
 - CI fix for grammars not being cross-compiled for aarch64 
 
-# 0.4.1 (2021-08-13)
+# 0.4.0 (2021-08-13)
 
 Two months have passed, so this is another big release. A big thank you to all
 the contributors and package maintainers!
