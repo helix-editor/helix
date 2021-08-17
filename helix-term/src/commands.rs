@@ -1925,7 +1925,7 @@ mod cmd {
 
         let mut args = HashMap::new();
         args.insert("mode", "debug");
-        // args.insert("program", "path/to/program");
+        args.insert("program", "main");
 
         let request = client.launch(to_value(args)?);
         let _ = block_on(request)?;

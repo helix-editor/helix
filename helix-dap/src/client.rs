@@ -18,7 +18,6 @@ use std::{
 };
 use tokio::{
     io::{AsyncBufRead, AsyncWrite, BufReader, BufWriter},
-    join,
     net::TcpStream,
     process::{Child, Command},
     sync::{
