@@ -30,7 +30,7 @@ pub struct Menu<T: Item> {
 
     widths: Vec<Constraint>,
 
-    callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
+    callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent) + Send>,
 
     scroll: usize,
     size: (u16, u16),
@@ -41,7 +41,7 @@ impl<T: Item> Menu<T> {
     // rendering)
     pub fn new(
         options: Vec<T>,
-        callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
+        callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static + Send,
     ) -> Self {
         let mut menu = Self {
             options,
