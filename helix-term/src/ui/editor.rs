@@ -791,7 +791,12 @@ impl EditorView {
                 });
 
                 if let Some((pos, view_id)) = result {
+                    let scrolloff = editor.config.scrolloff;
                     let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+                    editor
+                        .tree
+                        .get_mut(view_id)
+                        .ensure_cursor_in_view(doc, scrolloff);
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
@@ -815,6 +820,7 @@ impl EditorView {
                 ..
             } => {
                 let (view, doc) = current!(cxt.editor);
+                view.ensure_cursor_in_view(doc, cxt.editor.config.scrolloff);
 
                 let pos = match view.pos_at_screen_coords(doc, row, column) {
                     Some(pos) => pos,
