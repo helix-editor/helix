@@ -13,10 +13,12 @@ this:
 [keys.normal]
 a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
-C-S-esc = "extend_line" # Maps Control-Shift-Escape to extend_line
+"C-S-esc" = "extend_line" # Maps Control-Shift-Escape to extend_line
+g = { a = "code_action" } # Maps `ga` to show possible code actions
 
 [keys.insert]
-A-x = "normal_mode" # Maps Alt-X to enter normal mode
+"A-x" = "normal_mode" # Maps Alt-X to enter normal mode
+j = { k = "normal_mode" } # Maps `jk` to exit insert mode
 ```
 
 Control, Shift and Alt modifiers are encoded respectively with the prefixes
