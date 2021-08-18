@@ -2,36 +2,36 @@
 
 "namespace" = { fg = "type" }
 "module" = { fg = "type" }
+
 "type" = { fg = "type" }
 "type.builtin" = { fg = "type" }
+"type.enum.variant" = { fg = "constant" } 
+"constructor" = { fg = "constant" }
+"property" = { fg = "variable" }
 
 "keyword" = { fg = "keyword" }
 "keyword.directive" = { fg = "keyword" }
-"function.macro" = { fg = "keyword" }
-"variable.builtin" = { fg = "keyword" }
+"keyword.control" = { fg = "special" }
 "label" = { fg = "keyword" }
-"constant.builtin" = { fg = "keyword" }
+
+"special" = { fg = "text" }
+"operator" = { fg = "text" }
 
 "punctuation" = { fg = "text" }
 "punctuation.delimiter" = { fg = "text" }
 
-"keyword.control" = { fg = "special" }
-"special" = { fg = "text" }
-"operator" = { fg = "text" }
-
 "variable" = { fg = "variable" }
 "variable.parameter" = { fg = "variable" }
-"property" = { fg = "variable" }
+"variable.builtin" = { fg = "keyword" }
+"constant" = { fg = "constant" }
+"constant.builtin" = { fg = "keyword" }
 
-"attribute" = { fg = "fn_declaration" }
 "function" = { fg = "fn_declaration" }
 "function.builtin" = { fg = "fn_declaration" }
+"function.macro" = { fg = "keyword" }
+"attribute" = { fg = "fn_declaration" }
 
 "comment" = { fg = "#6A9955" }
-
-"constant" = { fg = "constant" }
-"type.enum.variant" = { fg = "constant" } 
-"constructor" = { fg = "constant" }
 
 "string" = { fg = "#ce9178" }
 "number" = { fg = "#b5cea8" }
@@ -39,9 +39,9 @@
 
 "ui.background" = { fg = "#d4d4d4", bg = "#1e1e1e" }
 
-"ui.help" = { bg = "widget" }
-"ui.popup" = { bg = "widget" }
 "ui.window" = { bg = "widget" }
+"ui.popup" = { bg = "widget" }
+"ui.help" = { bg = "widget" }
 "ui.menu.selected" = { bg = "widget" }
 
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
@@ -64,6 +64,8 @@
 "error" = { fg = "#f48771" }
 "info" = { fg = "#75beff" }
 "hint" = { fg = "#eeeeeeb3" }
+
+diagnostic = { modifiers = ["underlined"] }
 
 [palette]
 type = "#4EC9B0"
