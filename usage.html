@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html" class="active"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">3.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">3.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.4.</strong> Hooks</a></li></ol></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html" class="active"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">4.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.4.</strong> Hooks</a></li></ol></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -147,6 +147,26 @@
                     <main>
                         <h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
 <p>(Currently not fully documented, see the <a href="./keymap.html">keymappings</a> list for more.)</p>
+<h2 id="registers"><a class="header" href="#registers">Registers</a></h2>
+<p>Vim-like registers can be used to yank and store text to be pasted later. Usage is similar, with <code>&quot;</code> being used to select a register:</p>
+<ul>
+<li><code>&quot;ay</code> - Yank the current selection to register <code>a</code>.</li>
+<li><code>&quot;op</code> - Paste the text in register <code>o</code> after the selection.</li>
+</ul>
+<p>If there is a selected register before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:</p>
+<ul>
+<li><code>&quot;hc</code> - Store the selection in register <code>h</code> and then change it (delete and enter insert mode).</li>
+<li><code>&quot;md</code> - Store the selection in register <code>m</code> and delete it.</li>
+</ul>
+<h3 id="special-registers"><a class="header" href="#special-registers">Special Registers</a></h3>
+<table><thead><tr><th>Register character</th><th>Contains</th></tr></thead><tbody>
+<tr><td><code>/</code></td><td>Last search</td></tr>
+<tr><td><code>:</code></td><td>Last executed command</td></tr>
+<tr><td><code>&quot;</code></td><td>Last yanked text</td></tr>
+</tbody></table>
+<blockquote>
+<p>There is no special register for copying to system clipboard, instead special commands and keybindings are provided. See the <a href="keymap.html#space-mode">keymap</a> for the specifics.</p>
+</blockquote>
 <h2 id="surround"><a class="header" href="#surround">Surround</a></h2>
 <p>Functionality similar to <a href="https://github.com/tpope/vim-surround">vim-surround</a> is built into
 helix. The keymappings have been inspired from <a href="https://github.com/machakann/vim-sandwich">vim-sandwich</a>:</p>
@@ -187,7 +207,7 @@ on the closest pairs found and selections are not required; use counts to act in
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
-                                                    <a rel="next" href="configuration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                                    <a rel="next" href="from-vim.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -201,7 +221,7 @@ on the closest pairs found and selections are not required; use counts to act in
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
-                                    <a rel="next" href="configuration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                    <a rel="next" href="from-vim.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                             </nav>

@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">3.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">3.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html" class="active"><strong aria-hidden="true">3.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">3.4.</strong> Hooks</a></li></ol></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">4.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html" class="active"><strong aria-hidden="true">4.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.4.</strong> Hooks</a></li></ol></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -156,10 +156,12 @@ this:</p>
 [keys.normal]
 a = &quot;move_char_left&quot; # Maps the 'a' key to the move_char_left command
 w = &quot;move_line_up&quot; # Maps the 'w' key move_line_up
-C-S-esc = &quot;extend_line&quot; # Maps Control-Shift-Escape to extend_line
+&quot;C-S-esc&quot; = &quot;extend_line&quot; # Maps Control-Shift-Escape to extend_line
+g = { a = &quot;code_action&quot; } # Maps `ga` to show possible code actions
 
 [keys.insert]
-A-x = &quot;normal_mode&quot; # Maps Alt-X to enter normal mode
+&quot;A-x&quot; = &quot;normal_mode&quot; # Maps Alt-X to enter normal mode
+j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
 </code></pre>
 <p>Control, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>

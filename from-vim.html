@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Installation</title>
+        <title>Migrating from Vim</title>
                 
 
         <!-- Custom HTML head -->
@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html" class="active"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">4.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.4.</strong> Hooks</a></li></ol></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="from-vim.html" class="active"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">4.2.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.3.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.4.</strong> Hooks</a></li></ol></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -145,41 +145,26 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
-<p>We provide pre-built binaries on the <a href="https://github.com/helix-editor/helix/releases">GitHub Releases page</a>.</p>
-<p><a href="https://repology.org/project/helix/versions"><img src="https://repology.org/badge/vertical-allrepos/helix.svg" alt="Packaging status" /></a></p>
-<h2 id="osx"><a class="header" href="#osx">OSX</a></h2>
-<p>A Homebrew tap is available:</p>
-<pre><code>brew tap helix-editor/helix
-brew install helix
-</code></pre>
-<h2 id="linux"><a class="header" href="#linux">Linux</a></h2>
-<h3 id="nixos"><a class="header" href="#nixos">NixOS</a></h3>
-<p>A <a href="https://nixos.wiki/wiki/Flakes">flake</a> containing the package is available in
-the project root. The flake can also be used to spin up a reproducible development
-shell for working on Helix.</p>
-<h3 id="arch-linux"><a class="header" href="#arch-linux">Arch Linux</a></h3>
-<p>Binary packages are available on AUR:</p>
-<ul>
-<li><a href="https://aur.archlinux.org/packages/helix-bin/">helix-bin</a> contains the pre-built release</li>
-<li><a href="https://aur.archlinux.org/packages/helix-git/">helix-git</a> builds the master branch</li>
-</ul>
-<h2 id="build-from-source"><a class="header" href="#build-from-source">Build from source</a></h2>
-<pre><code>git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
-cd helix
-cargo install --path helix-term
-</code></pre>
-<p>This will install the <code>hx</code> binary to <code>$HOME/.cargo/bin</code>.</p>
-<p>Helix also needs it's runtime files so make sure to copy/symlink the <code>runtime/</code> directory into the
-config directory (for example <code>~/.config/helix/runtime</code> on Linux/macOS). This location can be overriden
-via the <code>HELIX_RUNTIME</code> environment variable.</p>
+                        <h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
+<p>Helix's editing model is strongly inspired from vim and kakoune, and a notable
+difference from vim (and the most striking similarity to kakoune) is that Helix
+follows the <code>selection → action</code> model. This means that the whatever you are
+going to act on (a word, a paragraph, a line, etc) is selected first and the
+action itself (delete, change, yank, etc) comes second. A cursor is simply a
+single width selection.</p>
+<blockquote>
+<p>TODO: Mention texobjects, surround, registers</p>
+</blockquote>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                                                    <a rel="prev" href="usage.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
                         
-                                                    <a rel="next" href="usage.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                                    <a rel="next" href="configuration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -189,8 +174,11 @@ via the <code>HELIX_RUNTIME</code> environment variable.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                                    <a rel="prev" href="usage.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
                 
-                                    <a rel="next" href="usage.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                    <a rel="next" href="configuration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                             </nav>
