@@ -57,7 +57,7 @@ impl<T> FilePicker<T> {
             .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
     }
 
-    fn calculate_preview(&mut self, editor: &Editor) {
+    pub fn calculate_preview(&mut self, editor: &Editor) {
         if let Some((path, _line)) = self.current_file(editor) {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
                 // TODO: enable syntax highlighting; blocked by async rendering
