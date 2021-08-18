@@ -28,7 +28,6 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
 slotmap = "1"
-indexmap = "1.7.0"
 
 encoding_rs = "0.8"
 chardetng = "0.1"

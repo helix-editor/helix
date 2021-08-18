@@ -1,5 +1,4 @@
 use anyhow::Context;
-use indexmap::{IndexMap, IndexSet};
 use log::info;
 use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::{HashMap, HashSet};
@@ -175,7 +174,7 @@ pub enum Message {
 type NotifyEvent = notify::Result<notify::Event>;
 
 #[derive(Debug, Default)]
-pub struct Events(IndexMap<PathBuf, Operation>);
+pub struct Events(HashMap<PathBuf, Operation>);
 
 impl Events {
     fn insert(&mut self, event: Event) {
