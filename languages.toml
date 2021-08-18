@@ -31,6 +31,16 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "protobuf"
+scope = "source.proto"
+injection-regex = "protobuf"
+file-types = ["proto"]
+roots = []
+comment-token = "//"
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "elixir"
 scope = "source.elixir"
 injection-regex = "elixir"

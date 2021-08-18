@@ -98,3 +98,7 @@
 	path = helix-syntax/languages/tree-sitter-ledger
 	url = https://github.com/cbarrete/tree-sitter-ledger
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-protobuf"]
+	path = helix-syntax/languages/tree-sitter-protobuf
+	url = https://github.com/yusdacra/tree-sitter-protobuf.git
+	shallow = true
