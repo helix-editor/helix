@@ -88,7 +88,7 @@ indent = { tab-width = 4, unit = "\t" }
 name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
-file-types = ["js"]
+file-types = ["js", "mjs"]
 roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
