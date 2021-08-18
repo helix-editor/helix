@@ -84,6 +84,7 @@ fn handle_open(
 
         match next {
             Some(ch) if !close_before.contains(ch) => {
+                offs += 1;
                 // TODO: else return (use default handler that inserts open)
                 (pos, pos, Some(Tendril::from_char(open)))
             }
