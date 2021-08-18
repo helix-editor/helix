@@ -26,14 +26,13 @@ pub struct NotifyActor {
 }
 
 impl NotifyActor {
-    pub fn spawn() -> anyhow::Result<NotifyHandle> {
+    pub fn spawn(sender: Sender) -> anyhow::Result<NotifyHandle> {
         let (actor_tx, actor_rx) = unbounded_channel();
-        let (tx, rx) = unbounded_channel();
-        let actor = NotifyActor::new(Box::new(move |msg| tx.send(msg).unwrap()))?;
+        let actor = NotifyActor::new(sender)?;
         let task = tokio::spawn(async move { actor.run(actor_rx).await });
         Ok(NotifyHandle {
             sender: actor_tx,
-            receiver: rx,
+            // receiver: rx,
             task,
         })
     }
@@ -72,6 +71,7 @@ impl NotifyActor {
     fn handle_message(&mut self, msg: ActorMessage) {
         use ActorMessageKind::*;
 
+        log::info!("Handling message: {:?}", msg);
         // probably log errors
         match msg.kind {
             Watch(path) => {
@@ -87,7 +87,7 @@ impl NotifyActor {
                 self.ignored.remove(&path);
             }
         };
-        // msg.done.send(()).unwrap();
+        msg.done.send(()).unwrap();
     }
 
     async fn handle_notify_event(&mut self, msg: NotifyEvent) {
@@ -245,7 +245,6 @@ pub struct NotifyHandle {
     // Relative order of fields below is significant.
     pub sender: UnboundedSender<ActorMessage>,
     task: tokio::task::JoinHandle<()>,
-    pub receiver: UnboundedReceiver<Message>,
 }
 
 impl NotifyHandle {
@@ -253,7 +252,7 @@ impl NotifyHandle {
         let (tx, rx) = oneshot::channel();
         self.sender
             .send(ActorMessage {
-                kind: ActorMessageKind::Unwatch(path),
+                kind: ActorMessageKind::Watch(path),
                 done: tx,
             })
             .unwrap();
@@ -264,7 +263,7 @@ impl NotifyHandle {
         let (tx, rx) = oneshot::channel();
         self.sender
             .send(ActorMessage {
-                kind: ActorMessageKind::Watch(path),
+                kind: ActorMessageKind::Unwatch(path),
                 done: tx,
             })
             .unwrap();

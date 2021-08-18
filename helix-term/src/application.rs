@@ -192,7 +192,7 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
-                Some(msg) = self.editor.watcher.receiver.recv() => {
+                Some(msg) = self.editor.watcher_receiver.recv() => {
                     self.handle_watcher_message(msg)
                 }
             }

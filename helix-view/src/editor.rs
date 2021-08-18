@@ -9,16 +9,19 @@ use crate::{
 
 use futures_util::future;
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
-use tokio::sync::oneshot;
+use tokio::sync::{
+    mpsc::{unbounded_channel, UnboundedReceiver},
+    oneshot,
+};
 
-use rustc_hash::FxHashMap;
 use slotmap::SlotMap;
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -68,14 +71,15 @@ impl Default for Config {
 pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
-    pub path_to_doc: FxHashMap<PathBuf, DocumentId>,
+    pub path_to_doc: HashMap<PathBuf, DocumentId>,
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: RegisterSelection,
     pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
-    pub watcher: NotifyHandle,
+    pub watcher: Arc<NotifyHandle>,
+    pub watcher_receiver: UnboundedReceiver<file_watcher::Message>,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -101,6 +105,12 @@ impl Editor {
         config: Config,
     ) -> anyhow::Result<Self> {
         let language_servers = helix_lsp::Registry::new();
+        let (watcher, watcher_receiver) = {
+            let (watcher_sender, watcher_receiver) = unbounded_channel();
+            let watcher = NotifyActor::spawn(Box::new(move |e| watcher_sender.send(e).unwrap()))
+                .context("Failed to spawn watcher")?;
+            (Arc::new(watcher), watcher_receiver)
+        };
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -108,7 +118,7 @@ impl Editor {
         Ok(Self {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
-            path_to_doc: FxHashMap::default(),
+            path_to_doc: HashMap::default(),
             count: None,
             selected_register: RegisterSelection::default(),
             theme: themes.default(),
@@ -117,7 +127,8 @@ impl Editor {
             theme_loader: themes,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
-            watcher: NotifyActor::spawn()?,
+            watcher,
+            watcher_receiver,
             status_msg: None,
             config,
         })
@@ -270,17 +281,13 @@ impl Editor {
 
             let id = self.documents.insert(doc);
             self.documents[id].id = id;
-            let (tx, rx) = oneshot::channel();
-            self.watcher
-                .sender
-                .send(ActorMessage {
-                    kind: ActorMessageKind::Watch(path.clone()),
-                    done: tx,
-                })
-                .unwrap();
-            // let watcher = self.watcher;
-            // tokio::spawn(async { watcher.watch(path.clone()) });
-            self.path_to_doc.insert(path, id);
+            self.path_to_doc.insert(path.clone(), id);
+            {
+                let watcher = self.watcher.clone();
+                tokio::spawn(async move {
+                    watcher.watch(path.clone()).await;
+                });
+            }
             id
         };
 
