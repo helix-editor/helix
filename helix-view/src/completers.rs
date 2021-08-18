@@ -1,0 +1,162 @@
+use crate::completion::Completion;
+use crate::theme;
+use fuzzy_matcher::{skim::SkimMatcherV2 as Matcher, FuzzyMatcher};
+use std::borrow::Cow;
+use std::cmp::Reverse;
+
+pub type Completer = fn(&str) -> Vec<Completion>;
+
+pub fn theme(input: &str) -> Vec<Completion> {
+    let mut names = theme::Loader::read_names(&helix_core::runtime_dir().join("themes"));
+    names.extend(theme::Loader::read_names(
+        &helix_core::config_dir().join("themes"),
+    ));
+    names.push("default".into());
+
+    let mut names: Vec<_> = names
+        .into_iter()
+        .map(|name| ((0..), Cow::from(name)))
+        .collect();
+
+    let matcher = Matcher::default();
+
+    let mut matches: Vec<_> = names
+        .into_iter()
+        .filter_map(|(_range, name)| matcher.fuzzy_match(&name, input).map(|score| (name, score)))
+        .collect();
+
+    matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+    names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
+
+    names
+}
+
+pub fn filename(input: &str) -> Vec<Completion> {
+    filename_impl(input, |entry| {
+        let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+
+        if is_dir {
+            FileMatch::AcceptIncomplete
+        } else {
+            FileMatch::Accept
+        }
+    })
+}
+
+pub fn directory(input: &str) -> Vec<Completion> {
+    filename_impl(input, |entry| {
+        let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+
+        if is_dir {
+            FileMatch::Accept
+        } else {
+            FileMatch::Reject
+        }
+    })
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum FileMatch {
+    /// Entry should be ignored
+    Reject,
+    /// Entry is usable but can't be the end (for instance if the entry is a directory and we
+    /// try to match a file)
+    AcceptIncomplete,
+    /// Entry is usable and can be the end of the match
+    Accept,
+}
+
+// TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
+fn filename_impl<F>(input: &str, filter_fn: F) -> Vec<Completion>
+where
+    F: Fn(&ignore::DirEntry) -> FileMatch,
+{
+    // Rust's filename handling is really annoying.
+
+    use ignore::WalkBuilder;
+    use std::path::Path;
+
+    let is_tilde = input.starts_with('~') && input.len() == 1;
+    let path = crate::document::expand_tilde(Path::new(input));
+
+    let (dir, file_name) = if input.ends_with('/') {
+        (path, None)
+    } else {
+        let file_name = path
+            .file_name()
+            .map(|file| file.to_str().unwrap().to_owned());
+
+        let path = match path.parent() {
+            Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+            // Path::new("h")'s parent is Some("")...
+            _ => std::env::current_dir().expect("couldn't determine current directory"),
+        };
+
+        (path, file_name)
+    };
+
+    let end = input.len()..;
+
+    let mut files: Vec<_> = WalkBuilder::new(dir.clone())
+        .max_depth(Some(1))
+        .build()
+        .filter_map(|file| {
+            file.ok().and_then(|entry| {
+                let fmatch = filter_fn(&entry);
+
+                if fmatch == FileMatch::Reject {
+                    return None;
+                }
+
+                //let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+
+                let path = entry.path();
+                let mut path = if is_tilde {
+                    // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
+                    // one of the directories the tilde will be replaced with a valid path not with a relative
+                    // home directory name.
+                    // ~ -> <TAB> -> /home/user
+                    // ~/ -> <TAB> -> ~/first_entry
+                    path.to_path_buf()
+                } else {
+                    path.strip_prefix(&dir).unwrap_or(path).to_path_buf()
+                };
+
+                if fmatch == FileMatch::AcceptIncomplete {
+                    path.push("");
+                }
+
+                let path = path.to_str().unwrap().to_owned();
+                Some((end.clone(), Cow::from(path)))
+            })
+        }) // TODO: unwrap or skip
+        .filter(|(_, path)| !path.is_empty()) // TODO
+        .collect();
+
+    // if empty, return a list of dirs and files in current dir
+    if let Some(file_name) = file_name {
+        let matcher = Matcher::default();
+
+        // inefficient, but we need to calculate the scores, filter out None, then sort.
+        let mut matches: Vec<_> = files
+            .into_iter()
+            .filter_map(|(_range, file)| {
+                matcher
+                    .fuzzy_match(&file, &file_name)
+                    .map(|score| (file, score))
+            })
+            .collect();
+
+        let range = (input.len().saturating_sub(file_name.len()))..;
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        files = matches
+            .into_iter()
+            .map(|(file, _)| (range.clone(), file))
+            .collect();
+
+        // TODO: complete to longest common match
+    }
+
+    files
+}

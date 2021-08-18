@@ -2,6 +2,12 @@
 pub mod macros;
 
 pub mod clipboard;
+pub mod compositor;
+pub mod commands;
+pub mod completers;
+pub mod completion;
+pub mod job;
+pub mod widgets;
 pub mod document;
 pub mod editor;
 pub mod graphics;
@@ -23,3 +29,5 @@ pub use editor::Editor;
 pub use register_selection::RegisterSelection;
 pub use theme::Theme;
 pub use view::View;
+
+pub trait Frontend {}
