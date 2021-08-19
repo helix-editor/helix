@@ -288,6 +288,8 @@ impl EditorView {
         let tab_width = doc.tab_width();
         let tab = " ".repeat(tab_width);
 
+        let text_style = theme.get("ui.text");
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -304,7 +306,7 @@ impl EditorView {
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    let style = spans.iter().fold(theme.get("ui.text"), |acc, span| {
+                    let style = spans.iter().fold(text_style, |acc, span| {
                         let style = theme.get(theme.scopes()[span.0].as_str());
                         acc.patch(style)
                     });
