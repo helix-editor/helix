@@ -437,7 +437,7 @@ impl<T: 'static> Component for Picker<T> {
         // subtract the area of the prompt (-2) and current item marker " > " (-3)
         let inner = Rect::new(inner.x + 3, inner.y + 2, inner.width - 3, inner.height - 2);
 
-        let selected = Style::default().fg(Color::Rgb(255, 255, 255));
+        let selected = cx.editor.theme.get("ui.text.focus");
 
         let rows = inner.height;
         let offset = self.cursor / (rows as usize) * (rows as usize);
