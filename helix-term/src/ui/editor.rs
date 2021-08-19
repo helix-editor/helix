@@ -431,7 +431,7 @@ impl EditorView {
 
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
-        #[allow(clippy::clippy::needless_collect)]
+        #[allow(clippy::needless_collect)]
         let cursors: Vec<_> = doc
             .selection(view.id)
             .iter()
