@@ -194,7 +194,7 @@ impl Editor {
                     .primary()
                     .cursor(doc.text().slice(..));
                 let line = doc.text().char_to_line(pos);
-                view.offset.row = line.saturating_sub(view.area.height as usize / 2);
+                view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
 
                 return;
             }
@@ -344,7 +344,6 @@ impl Editor {
     // }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = view!(self);
         let doc = &self.documents[view.doc];
         let cursor = doc
@@ -352,8 +351,9 @@ impl Editor {
             .primary()
             .cursor(doc.text().slice(..));
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
-            pos.col += view.area.x as usize + OFFSET as usize;
-            pos.row += view.area.y as usize;
+            let inner = view.inner_area();
+            pos.col += inner.x as usize;
+            pos.row += inner.y as usize;
             (Some(pos), CursorKind::Hidden)
         } else {
             (None, CursorKind::Hidden)

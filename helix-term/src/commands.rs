@@ -110,7 +110,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
-    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+    let height = view.inner_area().height as usize;
 
     let relative = match align {
         Align::Center => height / 2,
@@ -455,7 +455,7 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 fn goto_window(cx: &mut Context, align: Align) {
     let (view, doc) = current!(cx.editor);
 
-    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+    let height = view.inner_area().height as usize;
 
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
@@ -898,11 +898,9 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         return;
     }
 
-    let scrolloff = cx
-        .editor
-        .config
-        .scrolloff
-        .min(view.area.height as usize / 2);
+    let height = view.inner_area().height;
+
+    let scrolloff = cx.editor.config.scrolloff.min(height as usize / 2);
 
     view.offset.row = match direction {
         Forward => view.offset.row + offset,
@@ -928,25 +926,25 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
 fn page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize;
+    let offset = view.inner_area().height as usize;
     scroll(cx, offset, Direction::Backward);
 }
 
 fn page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize;
+    let offset = view.inner_area().height as usize;
     scroll(cx, offset, Direction::Forward);
 }
 
 fn half_page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize / 2;
+    let offset = view.inner_area().height as usize / 2;
     scroll(cx, offset, Direction::Backward);
 }
 
 fn half_page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize / 2;
+    let offset = view.inner_area().height as usize / 2;
     scroll(cx, offset, Direction::Forward);
 }
 
@@ -4113,9 +4111,9 @@ fn align_view_middle(cx: &mut Context) {
         .cursor(doc.text().slice(..));
     let pos = coords_at_pos(doc.text().slice(..), pos);
 
-    view.offset.col = pos.col.saturating_sub(
-        ((view.area.width as usize).saturating_sub(crate::ui::editor::GUTTER_OFFSET as usize)) / 2,
-    );
+    view.offset.col = pos
+        .col
+        .saturating_sub((view.inner_area().width as usize) / 2);
 }
 
 fn scroll_up(cx: &mut Context) {

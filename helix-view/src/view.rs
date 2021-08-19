@@ -80,25 +80,32 @@ impl View {
         }
     }
 
+    pub fn inner_area(&self) -> Rect {
+        // TODO: not ideal
+        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+        Rect::new(
+            self.area.x + OFFSET,
+            self.area.y,
+            self.area.width - OFFSET,
+            self.area.height.saturating_sub(1), // -1 for statusline
+        )
+    }
+
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
         let cursor = doc
             .selection(self.id)
             .primary()
             .cursor(doc.text().slice(..));
-        let pos = coords_at_pos(doc.text().slice(..), cursor);
-        let line = pos.row;
-        let col = pos.col;
-        let height = self.area.height.saturating_sub(1); // - 1 for statusline
-        let last_line = (self.offset.row + height as usize).saturating_sub(1);
+        let Position { col, row: line } = coords_at_pos(doc.text().slice(..), cursor);
+        let inner_area = self.inner_area();
+        let last_line = (self.offset.row + inner_area.height as usize).saturating_sub(1);
 
         // - 1 so we have at least one gap in the middle.
         // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
         // as we type
-        let scrolloff = scrolloff.min(height.saturating_sub(1) as usize / 2);
+        let scrolloff = scrolloff.min(inner_area.height.saturating_sub(1) as usize / 2);
 
-        // TODO: not ideal
-        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        let last_col = (self.offset.col + self.area.width as usize).saturating_sub(OFFSET + 1);
+        let last_col = self.offset.col + inner_area.width.saturating_sub(1) as usize;
 
         if line > last_line.saturating_sub(scrolloff) {
             // scroll down
@@ -120,7 +127,7 @@ impl View {
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self, doc: &Document) -> usize {
-        let height = self.area.height.saturating_sub(1); // - 1 for statusline
+        let height = self.inner_area().height;
         std::cmp::min(
             // Saturating subs to make it inclusive zero indexing.
             (self.offset.row + height as usize).saturating_sub(1),
@@ -172,19 +179,17 @@ impl View {
         column: u16,
         tab_width: usize,
     ) -> Option<usize> {
-        // TODO: not ideal
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-
-        // 2 for status
-        if row < self.area.top() || row > self.area.bottom().saturating_sub(2) {
+        let inner = self.inner_area();
+        // 1 for status
+        if row < inner.top() || row >= inner.bottom() {
             return None;
         }
 
-        if column < self.area.left() + OFFSET || column > self.area.right() {
+        if column < inner.left() || column > inner.right() {
             return None;
         }
 
-        let line_number = (row - self.area.y) as usize + self.offset.row;
+        let line_number = (row - inner.y) as usize + self.offset.row;
 
         if line_number > text.len_lines() - 1 {
             return Some(text.len_chars());
@@ -194,7 +199,7 @@ impl View {
 
         let current_line = text.line(line_number);
 
-        let target = (column - OFFSET - self.area.x) as usize + self.offset.col;
+        let target = (column - inner.x) as usize + self.offset.col;
         let mut selected = 0;
 
         for grapheme in RopeGraphemes::new(current_line) {

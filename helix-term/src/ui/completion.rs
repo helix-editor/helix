@@ -314,7 +314,7 @@ impl Component for Completion {
             let half = area.height / 2;
             let height = 15.min(half);
             // we want to make sure the cursor is visible (not hidden behind the documentation)
-            let y = if cursor_pos + view.area.y
+            let y = if cursor_pos + area.y
                 >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
             {
                 0
