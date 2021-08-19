@@ -31,7 +31,7 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::{FutureExt, TryFutureExt};
+use futures_util::FutureExt;
 use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
@@ -1389,7 +1389,7 @@ mod cmd {
     fn write_impl<P: AsRef<Path>>(
         cx: &mut compositor::Context,
         path: Option<P>,
-    ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
+    ) -> anyhow::Result<()> {
         let jobs = &mut cx.jobs;
         let (_, doc) = current!(cx.editor);
 
@@ -1410,7 +1410,9 @@ mod cmd {
             jobs.callback(callback);
             shared
         });
-        Ok(tokio::spawn(doc.format_and_save(fmt)))
+        let future = doc.format_and_save(fmt);
+        cx.jobs.add(Job::new(future).wait_before_exiting());
+        Ok(())
     }
 
     fn write(
@@ -1418,11 +1420,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        cx.jobs
-            .add(Job::new(handle.unwrap_or_else(|e| Err(e.into()))).wait_before_exiting());
-
-        Ok(())
+        write_impl(cx, args.first())
     }
 
     fn new_file(
@@ -1565,8 +1563,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        let _ = helix_lsp::block_on(handle)?;
+        write_impl(cx, args.first())?;
         quit(cx, &[], event)
     }
 
@@ -1575,8 +1572,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        let _ = helix_lsp::block_on(handle)?;
+        write_impl(cx, args.first())?;
         force_quit(cx, &[], event)
     }
 
@@ -1603,7 +1599,7 @@ mod cmd {
     }
 
     fn write_all_impl(
-        editor: &mut Editor,
+        cx: &mut compositor::Context,
         _args: &[&str],
         _event: PromptEvent,
         quit: bool,
@@ -1612,25 +1608,26 @@ mod cmd {
         let mut errors = String::new();
 
         // save all documents
-        for (_, doc) in &mut editor.documents {
+        for (_, doc) in &mut cx.editor.documents {
             if doc.path().is_none() {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
             }
 
             // TODO: handle error.
-            let _ = helix_lsp::block_on(tokio::spawn(doc.save()));
+            let handle = doc.save();
+            cx.jobs.add(Job::new(handle).wait_before_exiting());
         }
 
         if quit {
             if !force {
-                buffers_remaining_impl(editor)?;
+                buffers_remaining_impl(cx.editor)?;
             }
 
             // close all views
-            let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+            let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
             for view_id in views {
-                editor.close(view_id, false);
+                cx.editor.close(view_id, false);
             }
         }
 
@@ -1642,7 +1639,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, false, false)
+        write_all_impl(cx, args, event, false, false)
     }
 
     fn write_all_quit(
@@ -1650,7 +1647,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, true, false)
+        write_all_impl(cx, args, event, true, false)
     }
 
     fn force_write_all_quit(
@@ -1658,7 +1655,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, true, true)
+        write_all_impl(cx, args, event, true, true)
     }
 
     fn quit_all_impl(
