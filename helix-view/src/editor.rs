@@ -180,7 +180,7 @@ impl Editor {
                 view.jumps.push(jump);
                 view.last_accessed_doc = Some(view.doc);
                 view.doc = id;
-                view.first_line = 0;
+                view.offset = Position::default();
 
                 let (view, doc) = current!(self);
 
@@ -194,7 +194,7 @@ impl Editor {
                     .primary()
                     .cursor(doc.text().slice(..));
                 let line = doc.text().char_to_line(pos);
-                view.first_line = line.saturating_sub(view.area.height as usize / 2);
+                view.offset.row = line.saturating_sub(view.area.height as usize / 2);
 
                 return;
             }

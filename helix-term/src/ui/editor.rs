@@ -80,10 +80,9 @@ impl EditorView {
             view.area.width - GUTTER_OFFSET,
             view.area.height.saturating_sub(1),
         ); // - 1 for statusline
-        let offset = Position::new(view.first_line, view.first_col);
         let height = view.area.height.saturating_sub(1); // - 1 for statusline
 
-        let highlights = Self::doc_syntax_highlights(doc, offset, height, theme, loader);
+        let highlights = Self::doc_syntax_highlights(doc, view.offset, height, theme, loader);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
@@ -94,7 +93,7 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(doc, offset, area, surface, theme, highlights);
+        Self::render_text_highlights(doc, view.offset, area, surface, theme, highlights);
         Self::render_gutter(doc, view, area, surface, theme, config);
 
         if is_focused {
@@ -382,7 +381,7 @@ impl EditorView {
         let selection = doc.selection(view.id);
         let last_line = view.last_line(doc);
         let screen = {
-            let start = text.line_to_char(view.first_line);
+            let start = text.line_to_char(view.offset.row);
             let end = text.line_to_char(last_line + 1) + 1; // +1 for cursor at end of text.
             Range::new(start, end)
         };
@@ -408,7 +407,7 @@ impl EditorView {
             );
             if let Some(head) = head {
                 // Highlight line number for selected lines.
-                let line_number = view.first_line + head.row;
+                let line_number = view.offset.row + head.row;
                 let line_number_text = if line_number == last_line && !draw_last {
                     "    ~".into()
                 } else {
@@ -435,8 +434,8 @@ impl EditorView {
 
                     if let Some(pos) = pos {
                         // ensure col is on screen
-                        if (pos.col as u16) < viewport.width + view.first_col as u16
-                            && pos.col >= view.first_col
+                        if (pos.col as u16) < viewport.width + view.offset.col as u16
+                            && pos.col >= view.offset.col
                         {
                             let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
                                 Style::default()
@@ -479,7 +478,7 @@ impl EditorView {
         let current_line = doc
             .text()
             .char_to_line(doc.selection(view.id).primary().anchor);
-        for (i, line) in (view.first_line..(last_line + 1)).enumerate() {
+        for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(

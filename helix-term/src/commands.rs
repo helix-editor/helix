@@ -118,7 +118,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
         Align::Bottom => height,
     };
 
-    view.first_line = line.saturating_sub(relative);
+    view.offset.row = line.saturating_sub(relative);
 }
 
 /// A command is composed of a static name, and a function that takes the current state plus a count,
@@ -465,8 +465,8 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.first_line + scrolloff),
-        Align::Center => (view.first_line + (height / 2)),
+        Align::Top => (view.offset.row + scrolloff),
+        Align::Center => (view.offset.row + (height / 2)),
         Align::Bottom => last_line.saturating_sub(scrolloff),
     }
     .min(last_line.saturating_sub(scrolloff));
@@ -892,7 +892,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     let last_line = view.last_line(doc);
 
-    if direction == Backward && view.first_line == 0
+    if direction == Backward && view.offset.row == 0
         || direction == Forward && last_line == doc_last_line
     {
         return;
@@ -904,9 +904,9 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         .scrolloff
         .min(view.area.height as usize / 2);
 
-    view.first_line = match direction {
-        Forward => view.first_line + offset,
-        Backward => view.first_line.saturating_sub(offset),
+    view.offset.row = match direction {
+        Forward => view.offset.row + offset,
+        Backward => view.offset.row.saturating_sub(offset),
     }
     .min(doc_last_line);
 
@@ -916,7 +916,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     // clamp into viewport
     let line = cursor
         .row
-        .max(view.first_line + scrolloff)
+        .max(view.offset.row + scrolloff)
         .min(last_line.saturating_sub(scrolloff));
 
     let text = doc.text().slice(..);
@@ -4058,13 +4058,13 @@ fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let first_line = view.first_line;
+    let offset = view.offset;
 
     cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
-    view.first_line = first_line;
+    view.offset = offset;
     doc.set_selection(view.id, selection);
 }
 
@@ -4113,7 +4113,7 @@ fn align_view_middle(cx: &mut Context) {
         .cursor(doc.text().slice(..));
     let pos = coords_at_pos(doc.text().slice(..), pos);
 
-    view.first_col = pos.col.saturating_sub(
+    view.offset.col = pos.col.saturating_sub(
         ((view.area.width as usize).saturating_sub(crate::ui::editor::GUTTER_OFFSET as usize)) / 2,
     );
 }

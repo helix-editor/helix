@@ -261,7 +261,7 @@ impl Component for Completion {
                 .primary()
                 .cursor(doc.text().slice(..));
             let cursor_pos = (helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row
-                - view.first_line) as u16;
+                - view.offset.row) as u16;
 
             let mut doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
