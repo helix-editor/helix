@@ -87,7 +87,7 @@ pub struct Checksum {
     pub checksum: String,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Source {
     pub name: Option<String>,
@@ -100,7 +100,7 @@ pub struct Source {
     pub checksums: Option<Vec<Checksum>>,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceBreakpoint {
     pub line: usize,

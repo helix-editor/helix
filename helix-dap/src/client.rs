@@ -6,11 +6,9 @@ use crate::{
 pub use log::{error, info};
 use std::{
     collections::HashMap,
-    net::{IpAddr, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::PathBuf,
     process::Stdio,
-};
-use std::{
-    net::SocketAddr,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -160,7 +158,7 @@ impl Client {
                             ),
                         },
                         None => {
-                            info!("unhandled event");
+                            info!("unhandled event {}", name);
                             // client_tx.send(Payload::Event(ev)).expect("Failed to send");
                         }
                     }
