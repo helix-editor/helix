@@ -73,7 +73,10 @@ pub struct Editor {
     pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
-    pub debuggers: SelectAll<UnboundedReceiverStream<(usize, helix_dap::Payload)>>,
+
+    pub debugger: Option<helix_dap::Client>,
+    pub debuggers: SelectAll<UnboundedReceiverStream<helix_dap::Payload>>,
+
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub syn_loader: Arc<syntax::Loader>,
@@ -111,6 +114,7 @@ impl Editor {
             selected_register: RegisterSelection::default(),
             theme: themes.default(),
             language_servers,
+            debugger: None,
             debuggers: SelectAll::new(),
             syn_loader: config_loader,
             theme_loader: themes,

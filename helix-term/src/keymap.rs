@@ -485,6 +485,9 @@ impl Default for Keymaps {
                 "s" => symbol_picker,
                 "a" => code_action,
                 "'" => last_picker,
+                "d" => { "Debug"
+                    "b" => toggle_breakpoint,
+                },
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,
                     "C-h" | "h" => hsplit,

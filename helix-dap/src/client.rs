@@ -33,6 +33,9 @@ pub struct Client {
     request_counter: AtomicU64,
     capabilities: Option<DebuggerCapabilities>,
     awaited_events: Arc<Mutex<HashMap<String, Sender<Event>>>>,
+
+    //
+    pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
 }
 
 impl Client {
@@ -51,6 +54,8 @@ impl Client {
             request_counter: AtomicU64::new(0),
             capabilities: None,
             awaited_events: Arc::new(Mutex::new(HashMap::default())),
+            //
+            breakpoints: HashMap::new(),
         };
 
         tokio::spawn(Self::recv(Arc::clone(&client.awaited_events), server_rx));

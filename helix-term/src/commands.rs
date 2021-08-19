@@ -302,6 +302,7 @@ impl Command {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        toggle_breakpoint, "Toggle breakpoint",
         suspend, "Suspend"
     );
 }
@@ -1913,25 +1914,21 @@ mod cmd {
         // look up config for filetype
         // if multiple available, open picker
 
-        log::error!("1");
-
         let client = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
         let mut client = block_on(client)?;
-        log::error!("2");
 
         let request = client.initialize("go".to_owned());
         let _ = block_on(request)?;
-        log::error!("3");
 
         let mut args = HashMap::new();
         args.insert("mode", "debug");
-        args.insert("program", "main");
+        args.insert("program", "main.go");
 
         let request = client.launch(to_value(args)?);
         let _ = block_on(request)?;
 
         log::error!("4");
-        doc.debugger = Some(client);
+        cx.editor.debugger = Some(client);
         Ok(())
     }
 
@@ -4281,4 +4278,37 @@ fn surround_delete(cx: &mut Context) {
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+}
+
+// DAP
+fn toggle_breakpoint(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view.id).primary().cursor(text);
+
+    let breakpoint = helix_dap::SourceBreakpoint {
+        line: text.char_to_line(pos),
+        ..Default::default()
+    };
+
+    let path = match doc.path() {
+        Some(path) => path.to_path_buf(),
+        None => {
+            cx.editor
+                .set_error("Can't set breakpoint: document has no path".to_string());
+            return;
+        }
+    };
+
+    // TODO: need to map breakpoints over edits and update them?
+    // we shouldn't really allow editing while debug is running though
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        let breakpoints = debugger.breakpoints.entry(path).or_default();
+        if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
+            breakpoints.remove(pos);
+        } else {
+            breakpoints.push(breakpoint);
+        }
+    }
 }

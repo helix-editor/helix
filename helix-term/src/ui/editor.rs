@@ -71,6 +71,7 @@ impl EditorView {
         is_focused: bool,
         loader: &syntax::Loader,
         config: &helix_view::editor::Config,
+        debugger: Option<&helix_dap::Client>,
     ) {
         let inner = view.inner_area();
         let area = view.area;
@@ -87,7 +88,9 @@ impl EditorView {
         };
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
-        Self::render_gutter(doc, view, view.area, surface, theme, is_focused, config);
+        Self::render_gutter(
+            doc, view, view.area, surface, theme, is_focused, config, debugger,
+        );
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -409,6 +412,7 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         config: &helix_view::editor::Config,
+        debugger: Option<&helix_dap::Client>,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -438,6 +442,10 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
+        let breakpoints = doc
+            .path()
+            .and_then(|path| debugger.and_then(|debugger| debugger.breakpoints.get(path)));
+
         for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
@@ -456,6 +464,14 @@ impl EditorView {
             }
 
             let selected = cursors.contains(&line);
+
+            if let Some(breakpoint) = breakpoints.and_then(|breakpoints| {
+                breakpoints
+                    .iter()
+                    .find(|breakpoint| breakpoint.line == line)
+            }) {
+                surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
+            }
 
             let text = if line == last_line && !draw_last {
                 "    ~".into()
@@ -1007,6 +1023,7 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             let loader = &cx.editor.syn_loader;
+            let debugger = cx.editor.debugger.as_ref();
             self.render_view(
                 doc,
                 view,
@@ -1016,6 +1033,7 @@ impl Component for EditorView {
                 is_focused,
                 loader,
                 &cx.editor.config,
+                debugger,
             );
         }
 
