@@ -303,8 +303,7 @@ impl Command {
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
         dap_toggle_breakpoint, "Toggle breakpoint",
-        dap_init, "Start debug session",
-        dap_launch, "Launch debugger",
+        dap_start, "Start debug session",
         dap_run, "Begin program execution",
         suspend, "Suspend"
     );
@@ -4245,9 +4244,11 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
-fn dap_init(cx: &mut Context) {
+fn dap_start(cx: &mut Context) {
     use helix_dap::Client;
     use helix_lsp::block_on;
+    use serde_json::to_value;
+
     let (_, _doc) = current!(cx.editor);
 
     // look up config for filetype
@@ -4257,6 +4258,13 @@ fn dap_init(cx: &mut Context) {
     let mut debugger = block_on(debugger).unwrap();
 
     let request = debugger.initialize("go".to_owned());
+    let _ = block_on(request).unwrap();
+
+    let mut args = HashMap::new();
+    args.insert("mode", "debug");
+    args.insert("program", "main.go");
+
+    let request = debugger.launch(to_value(args).unwrap());
     let _ = block_on(request).unwrap();
 
     // TODO: either await "initialized" or buffer commands until event is received
@@ -4299,20 +4307,6 @@ fn dap_toggle_breakpoint(cx: &mut Context) {
         let breakpoints = breakpoints.clone();
 
         let request = debugger.set_breakpoints(path, breakpoints);
-        let _ = block_on(request).unwrap();
-    }
-}
-
-fn dap_launch(cx: &mut Context) {
-    use helix_lsp::block_on;
-    use serde_json::to_value;
-
-    if let Some(debugger) = &mut cx.editor.debugger {
-        let mut args = HashMap::new();
-        args.insert("mode", "debug");
-        args.insert("program", "main.go");
-
-        let request = debugger.launch(to_value(args).unwrap());
         let _ = block_on(request).unwrap();
     }
 }

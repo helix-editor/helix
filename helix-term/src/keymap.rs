@@ -486,8 +486,7 @@ impl Default for Keymaps {
                 "a" => code_action,
                 "'" => last_picker,
                 "d" => { "Debug"
-                    "i" => dap_init,
-                    "s" => dap_launch,
+                    "s" => dap_start,
                     "b" => dap_toggle_breakpoint,
                     "r" => dap_run,
                 },
