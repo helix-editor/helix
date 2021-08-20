@@ -882,12 +882,11 @@ fn switch_to_lowercase(cx: &mut Context) {
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     use Direction::*;
     let (view, doc) = current!(cx.editor);
-    let cursor = coords_at_pos(
-        doc.text().slice(..),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-    );
+
+    let range = doc.selection(view.id).primary();
+    let text = doc.text().slice(..);
+
+    let cursor = coords_at_pos(text, range.cursor(text));
     let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
     let last_line = view.last_line(doc);
@@ -917,11 +916,16 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         .max(view.offset.row + scrolloff)
         .min(last_line.saturating_sub(scrolloff));
 
-    let text = doc.text().slice(..);
-    let pos = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+    let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+
+    let anchor = if doc.mode == Mode::Select {
+        range.anchor
+    } else {
+        head
+    };
 
     // TODO: only manipulate main selection
-    doc.set_selection(view.id, Selection::point(pos));
+    doc.set_selection(view.id, Selection::single(anchor, head));
 }
 
 fn page_up(cx: &mut Context) {
