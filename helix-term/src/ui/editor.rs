@@ -110,8 +110,8 @@ impl EditorView {
 
         let statusline_area = view
             .area
-            .chop_from_top(view.area.height.saturating_sub(1))
-            .chop_from_bottom(1); // -1 from bottom to remove commandline
+            .clip_top(view.area.height.saturating_sub(1))
+            .clip_bottom(1); // -1 from bottom to remove commandline
         self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
     }
 
@@ -994,7 +994,7 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
 
         // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor.resize(area.chop_from_bottom(1)); // -1 from bottom for commandline
+        cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();

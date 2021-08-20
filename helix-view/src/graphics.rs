@@ -95,7 +95,7 @@ impl Rect {
     // Returns a new Rect with width reduced from the left side.
     // This changes the `x` coordinate and clamps it to the right
     // edge of the original Rect.
-    pub fn chop_from_left(self, width: u16) -> Rect {
+    pub fn clip_left(self, width: u16) -> Rect {
         let width = std::cmp::min(width, self.width);
         Rect {
             x: self.x.saturating_add(width),
@@ -106,7 +106,7 @@ impl Rect {
 
     // Returns a new Rect with width reduced from the right side.
     // This does _not_ change the `x` coordinate.
-    pub fn chop_from_right(self, width: u16) -> Rect {
+    pub fn clip_right(self, width: u16) -> Rect {
         Rect {
             width: self.width.saturating_sub(width),
             ..self
@@ -116,7 +116,7 @@ impl Rect {
     // Returns a new Rect with height reduced from the top.
     // This changes the `y` coordinate and clamps it to the bottom
     // edge of the original Rect.
-    pub fn chop_from_top(self, height: u16) -> Rect {
+    pub fn clip_top(self, height: u16) -> Rect {
         let height = std::cmp::min(height, self.height);
         Rect {
             y: self.y.saturating_add(height),
@@ -127,7 +127,7 @@ impl Rect {
 
     // Returns a new Rect with height reduced from the bottom.
     // This does _not_ change the `y` coordinate.
-    pub fn chop_from_bottom(self, height: u16) -> Rect {
+    pub fn clip_bottom(self, height: u16) -> Rect {
         Rect {
             height: self.height.saturating_sub(height),
             ..self
@@ -549,10 +549,10 @@ mod tests {
     #[test]
     fn test_rect_chop_from_left() {
         let rect = Rect::new(0, 0, 20, 30);
-        assert_eq!(Rect::new(10, 0, 10, 30), rect.chop_from_left(10));
+        assert_eq!(Rect::new(10, 0, 10, 30), rect.clip_left(10));
         assert_eq!(
             Rect::new(20, 0, 0, 30),
-            rect.chop_from_left(40),
+            rect.clip_left(40),
             "x should be clamped to original width if new width is bigger"
         );
     }
@@ -560,16 +560,16 @@ mod tests {
     #[test]
     fn test_rect_chop_from_right() {
         let rect = Rect::new(0, 0, 20, 30);
-        assert_eq!(Rect::new(0, 0, 10, 30), rect.chop_from_right(10));
+        assert_eq!(Rect::new(0, 0, 10, 30), rect.clip_right(10));
     }
 
     #[test]
     fn test_rect_chop_from_top() {
         let rect = Rect::new(0, 0, 20, 30);
-        assert_eq!(Rect::new(0, 10, 20, 20), rect.chop_from_top(10));
+        assert_eq!(Rect::new(0, 10, 20, 20), rect.clip_top(10));
         assert_eq!(
             Rect::new(0, 30, 20, 0),
-            rect.chop_from_top(50),
+            rect.clip_top(50),
             "y should be clamped to original height if new height is bigger"
         );
     }
@@ -577,7 +577,7 @@ mod tests {
     #[test]
     fn test_rect_chop_from_bottom() {
         let rect = Rect::new(0, 0, 20, 30);
-        assert_eq!(Rect::new(0, 0, 20, 20), rect.chop_from_bottom(10));
+        assert_eq!(Rect::new(0, 0, 20, 20), rect.clip_bottom(10));
     }
 
     fn styles() -> Vec<Style> {

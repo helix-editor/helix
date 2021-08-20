@@ -97,7 +97,7 @@ impl<T: 'static> Component for FilePicker<T> {
             return;
         }
 
-        let preview_area = area.chop_from_left(picker_width);
+        let preview_area = area.clip_left(picker_width);
 
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
@@ -409,7 +409,7 @@ impl<T: 'static> Component for Picker<T> {
 
         // -- Render the input bar:
 
-        let area = inner.chop_from_left(1).with_height(1);
+        let area = inner.clip_left(1).with_height(1);
 
         let count = format!("{}/{}", self.matches.len(), self.options.len());
         surface.set_stringn(
@@ -434,7 +434,7 @@ impl<T: 'static> Component for Picker<T> {
 
         // -- Render the contents:
         // subtract area of prompt from top and current item marker " > " from left
-        let inner = inner.chop_from_top(2).chop_from_left(3);
+        let inner = inner.clip_top(2).clip_left(3);
 
         let selected = cx.editor.theme.get("ui.text.focus");
 
@@ -473,7 +473,7 @@ impl<T: 'static> Component for Picker<T> {
         let inner = block.inner(area);
 
         // prompt area
-        let area = inner.chop_from_left(1).with_height(1);
+        let area = inner.clip_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
     }
