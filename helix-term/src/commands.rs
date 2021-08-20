@@ -304,6 +304,7 @@ impl Command {
         select_textobject_inner, "Select inside object",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_launch, "Launch debugger",
+        dap_run, "Begin program execution",
         suspend, "Suspend"
     );
 }
@@ -4323,6 +4324,15 @@ fn dap_launch(cx: &mut Context) {
         args.insert("program", "main.go");
 
         let request = debugger.launch(to_value(args).unwrap());
+        let _ = block_on(request).unwrap();
+    }
+}
+
+fn dap_run(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        let request = debugger.configuration_done();
         let _ = block_on(request).unwrap();
     }
 }

@@ -486,8 +486,9 @@ impl Default for Keymaps {
                 "a" => code_action,
                 "'" => last_picker,
                 "d" => { "Debug"
+                    "s" => dap_launch,
                     "b" => dap_toggle_breakpoint,
-                    "r" => dap_launch,
+                    "r" => dap_run,
                 },
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,
