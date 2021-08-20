@@ -245,9 +245,8 @@ impl Application {
         }
     }
 
-    pub async fn handle_debugger_message(&mut self, call: ()) {
-
-        //
+    pub async fn handle_debugger_message(&mut self, _call: ()) {
+        // TODO
     }
 
     pub async fn handle_language_server_message(

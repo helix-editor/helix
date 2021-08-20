@@ -1908,7 +1908,7 @@ mod cmd {
     ) -> anyhow::Result<()> {
         use helix_dap::Client;
         use helix_lsp::block_on;
-        let (_, doc) = current!(cx.editor);
+        let (_, _doc) = current!(cx.editor);
 
         // look up config for filetype
         // if multiple available, open picker

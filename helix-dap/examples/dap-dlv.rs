@@ -56,7 +56,7 @@ pub async fn main() -> Result<()> {
         "breakpoints: {:#?}",
         client
             .set_breakpoints(
-                "/tmp/godebug/main.go".to_owned(),
+                "/tmp/godebug/main.go".into(),
                 vec![SourceBreakpoint {
                     line: 8,
                     column: Some(2),

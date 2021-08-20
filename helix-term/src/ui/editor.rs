@@ -465,7 +465,7 @@ impl EditorView {
 
             let selected = cursors.contains(&line);
 
-            if let Some(breakpoint) = breakpoints.and_then(|breakpoints| {
+            if let Some(_breakpoint) = breakpoints.and_then(|breakpoints| {
                 breakpoints
                     .iter()
                     .find(|breakpoint| breakpoint.line == line)

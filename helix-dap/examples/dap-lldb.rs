@@ -56,7 +56,7 @@ pub async fn main() -> Result<()> {
         "breakpoints: {:#?}",
         client
             .set_breakpoints(
-                "/tmp/cdebug/main.c".to_owned(),
+                "/tmp/cdebug/main.c".into(),
                 vec![SourceBreakpoint {
                     line: 6,
                     column: Some(2),
