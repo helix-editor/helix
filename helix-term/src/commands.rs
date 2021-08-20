@@ -33,7 +33,7 @@ use crate::{
 use crate::job::{self, Job, Jobs};
 use futures_util::FutureExt;
 use std::num::NonZeroUsize;
-use std::{fmt, future::Future};
+use std::{collections::HashMap, fmt, future::Future};
 
 use std::{
     borrow::Cow,
@@ -302,7 +302,8 @@ impl Command {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
-        toggle_breakpoint, "Toggle breakpoint",
+        dap_toggle_breakpoint, "Toggle breakpoint",
+        dap_launch, "Launch debugger",
         suspend, "Suspend"
     );
 }
@@ -1337,7 +1338,6 @@ fn append_mode(cx: &mut Context) {
 
 mod cmd {
     use super::*;
-    use std::collections::HashMap;
 
     use helix_view::editor::Action;
     use ui::completers::{self, Completer};
@@ -1908,27 +1908,20 @@ mod cmd {
     ) -> anyhow::Result<()> {
         use helix_dap::Client;
         use helix_lsp::block_on;
-        use serde_json::to_value;
         let (_, doc) = current!(cx.editor);
 
         // look up config for filetype
         // if multiple available, open picker
 
-        let client = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
-        let mut client = block_on(client)?;
+        let debugger = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
+        let mut debugger = block_on(debugger)?;
 
-        let request = client.initialize("go".to_owned());
+        let request = debugger.initialize("go".to_owned());
         let _ = block_on(request)?;
 
-        let mut args = HashMap::new();
-        args.insert("mode", "debug");
-        args.insert("program", "main.go");
+        // TODO: either await "initialized" or buffer commands until event is received
 
-        let request = client.launch(to_value(args)?);
-        let _ = block_on(request)?;
-
-        log::error!("4");
-        cx.editor.debugger = Some(client);
+        cx.editor.debugger = Some(debugger);
         Ok(())
     }
 
@@ -4281,13 +4274,15 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
-fn toggle_breakpoint(cx: &mut Context) {
+fn dap_toggle_breakpoint(cx: &mut Context) {
+    use helix_lsp::block_on;
+
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let pos = doc.selection(view.id).primary().cursor(text);
 
     let breakpoint = helix_dap::SourceBreakpoint {
-        line: text.char_to_line(pos),
+        line: text.char_to_line(pos) + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
         ..Default::default()
     };
 
@@ -4304,11 +4299,30 @@ fn toggle_breakpoint(cx: &mut Context) {
     // we shouldn't really allow editing while debug is running though
 
     if let Some(debugger) = &mut cx.editor.debugger {
-        let breakpoints = debugger.breakpoints.entry(path).or_default();
+        let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
         if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
             breakpoints.remove(pos);
         } else {
             breakpoints.push(breakpoint);
         }
+
+        let breakpoints = breakpoints.clone();
+
+        let request = debugger.set_breakpoints(path, breakpoints);
+        let _ = block_on(request).unwrap();
+    }
+}
+
+fn dap_launch(cx: &mut Context) {
+    use helix_lsp::block_on;
+    use serde_json::to_value;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        let mut args = HashMap::new();
+        args.insert("mode", "debug");
+        args.insert("program", "main.go");
+
+        let request = debugger.launch(to_value(args).unwrap());
+        let _ = block_on(request).unwrap();
     }
 }

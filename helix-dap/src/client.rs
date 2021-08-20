@@ -265,7 +265,7 @@ impl Client {
 
     pub async fn set_breakpoints(
         &mut self,
-        file: String,
+        file: PathBuf,
         breakpoints: Vec<SourceBreakpoint>,
     ) -> Result<Option<Vec<Breakpoint>>> {
         let args = requests::SetBreakpointsArguments {

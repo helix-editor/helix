@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::path::PathBuf;
 
 pub trait Request {
     type Arguments: serde::de::DeserializeOwned + serde::Serialize;
@@ -91,7 +92,7 @@ pub struct Checksum {
 #[serde(rename_all = "camelCase")]
 pub struct Source {
     pub name: Option<String>,
-    pub path: Option<String>,
+    pub path: Option<PathBuf>,
     pub source_reference: Option<usize>,
     pub presentation_hint: Option<String>,
     pub origin: Option<String>,
@@ -207,7 +208,7 @@ pub struct Variable {
 
 pub mod requests {
     use super::*;
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct InitializeArguments {
         #[serde(rename = "clientID")]
@@ -274,7 +275,7 @@ pub mod requests {
         const COMMAND: &'static str = "configurationDone";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetBreakpointsArguments {
         pub source: Source,
@@ -283,7 +284,7 @@ pub mod requests {
         pub source_modified: Option<bool>,
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetBreakpointsResponse {
         pub breakpoints: Option<Vec<Breakpoint>>,
@@ -298,7 +299,7 @@ pub mod requests {
         const COMMAND: &'static str = "setBreakpoints";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ContinueArguments {
         pub thread_id: usize,
@@ -319,7 +320,7 @@ pub mod requests {
         const COMMAND: &'static str = "continue";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StackTraceArguments {
         pub thread_id: usize,
@@ -380,7 +381,7 @@ pub mod requests {
         const COMMAND: &'static str = "scopes";
     }
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct VariablesArguments {
         pub variables_reference: usize,
