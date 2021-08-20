@@ -2633,20 +2633,21 @@ fn push_jump(editor: &mut Editor) {
 }
 
 fn goto_line(cx: &mut Context) {
-    if let Some(count) = cx.count {
-        push_jump(cx.editor);
+    push_jump(cx.editor);
 
-        let (view, doc) = current!(cx.editor);
-        let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
-            // If the last line is blank, don't jump to it.
-            doc.text().len_lines().saturating_sub(2)
-        } else {
-            doc.text().len_lines() - 1
-        };
-        let line_idx = std::cmp::min(count.get() - 1, max_line);
-        let pos = doc.text().line_to_char(line_idx);
-        doc.set_selection(view.id, Selection::point(pos));
-    }
+    let (view, doc) = current!(cx.editor);
+    let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
+        // If the last line is blank, don't jump to it.
+        doc.text().len_lines().saturating_sub(2)
+    } else {
+        doc.text().len_lines() - 1
+    };
+    let line_idx = match cx.count {
+        None => max_line,
+        Some(count) => std::cmp::min(count.get() - 1, max_line),
+    };
+    let pos = doc.text().line_to_char(line_idx);
+    doc.set_selection(view.id, Selection::point(pos));
 }
 
 fn goto_last_line(cx: &mut Context) {
