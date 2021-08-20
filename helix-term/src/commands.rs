@@ -1838,7 +1838,7 @@ mod cmd {
         let dir = args.first().context("target directory not provided")?;
 
         if let Err(e) = std::env::set_current_dir(dir) {
-            bail!("Couldn't change the current working directory: {:?}", e);
+            bail!("Couldn't change the current working directory: {}", e);
         }
 
         let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
@@ -3399,7 +3399,7 @@ fn yank_main_selection_to_clipboard_impl(
         .clipboard_provider
         .set_contents(value.into_owned(), clipboard_type)
     {
-        bail!("Couldn't set system clipboard content: {:?}", e);
+        bail!("Couldn't set system clipboard content: {}", e);
     }
 
     editor.set_status("yanked main selection to system clipboard".to_owned());
