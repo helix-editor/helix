@@ -888,7 +888,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
             .primary()
             .cursor(doc.text().slice(..)),
     );
-    let doc_last_line = doc.text().len_lines() - 1;
+    let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
     let last_line = view.last_line(doc);
 
@@ -1509,18 +1509,19 @@ mod cmd {
             return Ok(());
         }
 
+        let arg = args.get(0).context("argument missing")?.to_ascii_lowercase();
+
         // Attempt to parse argument as a line ending.
-        let line_ending = match args.get(0) {
+        let line_ending = match arg {
             // We check for CR first because it shares a common prefix with CRLF.
-            Some(arg) if "cr".starts_with(&arg.to_lowercase()) => Some(CR),
-            Some(arg) if "crlf".starts_with(&arg.to_lowercase()) => Some(Crlf),
-            Some(arg) if "lf".starts_with(&arg.to_lowercase()) => Some(LF),
-            Some(arg) if "ff".starts_with(&arg.to_lowercase()) => Some(FF),
-            Some(arg) if "nel".starts_with(&arg.to_lowercase()) => Some(Nel),
-            _ => None,
+            arg if arg.starts_with("cr") => CR,
+            arg if arg.starts_with("crlf") => Crlf,
+            arg if arg.starts_with("lf") => LF,
+            arg if arg.starts_with("ff") => FF,
+            arg if arg.starts_with("nel") => Nel,
+            _ => bail!("invalid line ending") 
         };
 
-        let line_ending = line_ending.context("invalid line ending")?;
         doc_mut!(cx.editor).line_ending = line_ending;
         Ok(())
     }

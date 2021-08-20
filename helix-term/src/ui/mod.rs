@@ -76,7 +76,7 @@ pub fn regex_prompt(
 pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
     use ignore::Walk;
     use std::time;
-    let files = Walk::new(root.clone()).filter_map(|entry| {
+    let files = Walk::new(&root).filter_map(|entry| {
         let entry = entry.ok()?;
         // Path::is_dir() traverses symlinks, so we use it over DirEntry::is_dir
         if entry.path().is_dir() {
