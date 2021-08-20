@@ -152,6 +152,8 @@ mod provider {
     }
 
     impl NopProvider {
+        #[allow(dead_code)]
+        // Only dead_code on Windows.
         pub fn new() -> Self {
             Self {
                 buf: String::new(),
@@ -217,7 +219,7 @@ mod provider {
         fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()> {
             match clipboard_type {
                 ClipboardType::Clipboard => {
-                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents);
+                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
                 }
                 ClipboardType::Selection => {}
             };

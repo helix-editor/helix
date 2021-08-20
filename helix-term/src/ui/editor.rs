@@ -17,6 +17,7 @@ use helix_core::{
 };
 use helix_view::{
     document::Mode,
+    editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -36,8 +37,6 @@ pub struct EditorView {
     spinners: ProgressSpinners,
     autoinfo: Option<Info>,
 }
-
-pub const GUTTER_OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
 impl Default for EditorView {
     fn default() -> Self {
@@ -71,13 +70,12 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         loader: &syntax::Loader,
+        config: &helix_view::editor::Config,
     ) {
-        // -1 from bottom for statusline
-        let area = view.area.chop_from_left(GUTTER_OFFSET).chop_from_bottom(1);
-        let offset = Position::new(view.first_line, view.first_col);
-        let height = view.area.height.saturating_sub(1); // - 1 for statusline
+        let inner = view.inner_area();
+        let area = view.area;
 
-        let highlights = Self::doc_syntax_highlights(doc, offset, height, theme, loader);
+        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, loader);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
@@ -88,11 +86,11 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(doc, offset, area, surface, theme, highlights);
-        Self::render_gutter(doc, view, area, surface, theme);
+        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
+        Self::render_gutter(doc, view, view.area, surface, theme, is_focused, config);
 
         if is_focused {
-            Self::render_focused_view_elements(view, doc, area, theme, surface);
+            Self::render_focused_view_elements(view, doc, inner, theme, surface);
         }
 
         // if we're not at the edge of the screen, draw a right border
@@ -108,7 +106,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, area, surface, theme);
+        self.render_diagnostics(doc, view, inner, surface, theme);
 
         let statusline_area = view
             .area
@@ -288,6 +286,8 @@ impl EditorView {
         let tab_width = doc.tab_width();
         let tab = " ".repeat(tab_width);
 
+        let text_style = theme.get("ui.text");
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
@@ -304,7 +304,7 @@ impl EditorView {
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    let style = spans.iter().fold(theme.get("ui.text"), |acc, span| {
+                    let style = spans.iter().fold(text_style, |acc, span| {
                         let style = theme.get(theme.scopes()[span.0].as_str());
                         acc.patch(style)
                     });
@@ -362,7 +362,7 @@ impl EditorView {
         }
     }
 
-    /// Render brace match, selected line numbers, etc (meant for the focused view only)
+    /// Render brace match, etc (meant for the focused view only)
     pub fn render_focused_view_elements(
         view: &View,
         doc: &Document,
@@ -370,77 +370,29 @@ impl EditorView {
         theme: &Theme,
         surface: &mut Surface,
     ) {
-        let text = doc.text().slice(..);
-        let selection = doc.selection(view.id);
-        let last_line = view.last_line(doc);
-        let screen = {
-            let start = text.line_to_char(view.first_line);
-            let end = text.line_to_char(last_line + 1) + 1; // +1 for cursor at end of text.
-            Range::new(start, end)
-        };
+        // Highlight matching braces
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            use helix_core::match_brackets;
+            let pos = doc.selection(view.id).primary().cursor(text);
 
-        // render selected linenr(s)
-        let linenr_select: Style = theme
-            .try_get("ui.linenr.selected")
-            .unwrap_or_else(|| theme.get("ui.linenr"));
+            let pos = match_brackets::find(syntax, doc.text(), pos)
+                .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
-        // Whether to draw the line number for the last line of the
-        // document or not.  We only draw it if it's not an empty line.
-        let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+            if let Some(pos) = pos {
+                // ensure col is on screen
+                if (pos.col as u16) < viewport.width + view.offset.col as u16
+                    && pos.col >= view.offset.col
+                {
+                    let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
+                        Style::default()
+                            .add_modifier(Modifier::REVERSED)
+                            .add_modifier(Modifier::DIM)
+                    });
 
-        for selection in selection.iter().filter(|range| range.overlaps(&screen)) {
-            let head = view.screen_coords_at_pos(
-                doc,
-                text,
-                if selection.head > selection.anchor {
-                    selection.head - 1
-                } else {
-                    selection.head
-                },
-            );
-            if let Some(head) = head {
-                // Highlight line number for selected lines.
-                let line_number = view.first_line + head.row;
-                let line_number_text = if line_number == last_line && !draw_last {
-                    "    ~".into()
-                } else {
-                    format!("{:>5}", line_number + 1)
-                };
-                surface.set_stringn(
-                    viewport.x - GUTTER_OFFSET + 1,
-                    viewport.y + head.row as u16,
-                    line_number_text,
-                    5,
-                    linenr_select,
-                );
-
-                // Highlight matching braces
-                // TODO: set cursor position for IME
-                if let Some(syntax) = doc.syntax() {
-                    use helix_core::match_brackets;
-                    let pos = doc
-                        .selection(view.id)
-                        .primary()
-                        .cursor(doc.text().slice(..));
-                    let pos = match_brackets::find(syntax, doc.text(), pos)
-                        .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
-
-                    if let Some(pos) = pos {
-                        // ensure col is on screen
-                        if (pos.col as u16) < viewport.width + view.first_col as u16
-                            && pos.col >= view.first_col
-                        {
-                            let style = theme.try_get("ui.cursor.match").unwrap_or_else(|| {
-                                Style::default()
-                                    .add_modifier(Modifier::REVERSED)
-                                    .add_modifier(Modifier::DIM)
-                            });
-
-                            surface
-                                .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
-                                .set_style(style);
-                        }
-                    }
+                    surface
+                        .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
+                        .set_style(style);
                 }
             }
         }
@@ -453,11 +405,15 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        is_focused: bool,
+        config: &helix_view::editor::Config,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
         let linenr = theme.get("ui.linenr");
+        let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
+
         let warning = theme.get("warning");
         let error = theme.get("error");
         let info = theme.get("info");
@@ -467,11 +423,24 @@ impl EditorView {
         // document or not.  We only draw it if it's not an empty line.
         let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
-        for (i, line) in (view.first_line..(last_line + 1)).enumerate() {
+        let current_line = doc
+            .text()
+            .char_to_line(doc.selection(view.id).primary().anchor);
+
+        // it's used inside an iterator so the collect isn't needless:
+        // https://github.com/rust-lang/rust-clippy/issues/6164
+        #[allow(clippy::needless_collect)]
+        let cursors: Vec<_> = doc
+            .selection(view.id)
+            .iter()
+            .map(|range| range.cursor_line(text))
+            .collect();
+
+        for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
             if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
                 surface.set_stringn(
-                    viewport.x - GUTTER_OFFSET,
+                    viewport.x,
                     viewport.y + i as u16,
                     "●",
                     1,
@@ -484,19 +453,27 @@ impl EditorView {
                 );
             }
 
-            // Line numbers having selections are rendered
-            // differently, further below.
-            let line_number_text = if line == last_line && !draw_last {
+            let selected = cursors.contains(&line);
+
+            let text = if line == last_line && !draw_last {
                 "    ~".into()
             } else {
-                format!("{:>5}", line + 1)
+                let line = match config.line_number {
+                    LineNumber::Absolute => line + 1,
+                    LineNumber::Relative => abs_diff(current_line, line),
+                };
+                format!("{:>5}", line)
             };
             surface.set_stringn(
-                viewport.x + 1 - GUTTER_OFFSET,
+                viewport.x + 1,
                 viewport.y + i as u16,
-                line_number_text,
+                text,
                 5,
-                linenr,
+                if selected && is_focused {
+                    linenr_select
+                } else {
+                    linenr
+                },
             );
         }
     }
@@ -1030,6 +1007,7 @@ impl Component for EditorView {
                 &cx.editor.theme,
                 is_focused,
                 loader,
+                &cx.editor.config,
             );
         }
 
@@ -1101,5 +1079,14 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
+    }
+}
+
+#[inline]
+fn abs_diff(a: usize, b: usize) -> usize {
+    if a > b {
+        a - b
+    } else {
+        b - a
     }
 }

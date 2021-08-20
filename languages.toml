@@ -31,6 +31,16 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "protobuf"
+scope = "source.proto"
+injection-regex = "protobuf"
+file-types = ["proto"]
+roots = []
+comment-token = "//"
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "elixir"
 scope = "source.elixir"
 injection-regex = "elixir"
@@ -64,7 +74,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
-file-types = ["cc", "cpp", "hpp", "h"]
+file-types = ["cc", "hh", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino"]
 roots = []
 comment-token = "//"
 
@@ -88,7 +98,7 @@ indent = { tab-width = 4, unit = "\t" }
 name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
-file-types = ["js"]
+file-types = ["js", "mjs"]
 roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
@@ -203,6 +213,15 @@ scope = "source.java"
 injection-regex = "java"
 file-types = ["java"]
 roots = []
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "ledger"
+scope = "source.ledger"
+injection-regex = "ledger"
+file-types = ["ldg", "ledger", "journal"]
+roots = []
+comment-token = ";"
 indent = { tab-width = 4, unit = "    " }
 
 # [[language]]

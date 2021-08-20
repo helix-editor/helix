@@ -144,7 +144,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 for x in inner.left()..inner.right() {
                     surface
                         .get_mut(x, inner.y + line.saturating_sub(first_line) as u16)
-                        .set_style(cx.editor.theme.get("ui.selection.primary"));
+                        .set_style(cx.editor.theme.get("ui.selection"));
                 }
             }
         }
@@ -392,6 +392,8 @@ impl<T: 'static> Component for Picker<T> {
             area
         };
 
+        let text_style = cx.editor.theme.get("ui.text");
+
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -408,6 +410,16 @@ impl<T: 'static> Component for Picker<T> {
         // -- Render the input bar:
 
         let area = inner.chop_from_left(1).with_height(1);
+
+        let count = format!("{}/{}", self.matches.len(), self.options.len());
+        surface.set_stringn(
+            (area.x + area.width).saturating_sub(count.len() as u16 + 1),
+            area.y,
+            &count,
+            (count.len()).min(area.width as usize),
+            text_style,
+        );
+
         self.prompt.render(area, surface, cx);
 
         // -- Separator
@@ -424,8 +436,7 @@ impl<T: 'static> Component for Picker<T> {
         // subtract area of prompt from top and current item marker " > " from left
         let inner = inner.chop_from_top(2).chop_from_left(3);
 
-        let style = cx.editor.theme.get("ui.text");
-        let selected = Style::default().fg(Color::Rgb(255, 255, 255));
+        let selected = cx.editor.theme.get("ui.text.focus");
 
         let rows = inner.height;
         let offset = self.cursor / (rows as usize) * (rows as usize);
@@ -447,7 +458,7 @@ impl<T: 'static> Component for Picker<T> {
                 if i == (self.cursor - offset) {
                     selected
                 } else {
-                    style
+                    text_style
                 },
                 true,
             );

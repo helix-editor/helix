@@ -31,7 +31,7 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::{FutureExt, TryFutureExt};
+use futures_util::FutureExt;
 use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
@@ -110,7 +110,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
-    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+    let height = view.inner_area().height as usize;
 
     let relative = match align {
         Align::Center => height / 2,
@@ -118,7 +118,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
         Align::Bottom => height,
     };
 
-    view.first_line = line.saturating_sub(relative);
+    view.offset.row = line.saturating_sub(relative);
 }
 
 /// A command is composed of a static name, and a function that takes the current state plus a count,
@@ -455,7 +455,7 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 fn goto_window(cx: &mut Context, align: Align) {
     let (view, doc) = current!(cx.editor);
 
-    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+    let height = view.inner_area().height as usize;
 
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
@@ -465,8 +465,8 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.first_line + scrolloff),
-        Align::Center => (view.first_line + (height / 2)),
+        Align::Top => (view.offset.row + scrolloff),
+        Align::Center => (view.offset.row + (height / 2)),
         Align::Bottom => last_line.saturating_sub(scrolloff),
     }
     .min(last_line.saturating_sub(scrolloff));
@@ -888,25 +888,23 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
             .primary()
             .cursor(doc.text().slice(..)),
     );
-    let doc_last_line = doc.text().len_lines() - 1;
+    let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
     let last_line = view.last_line(doc);
 
-    if direction == Backward && view.first_line == 0
+    if direction == Backward && view.offset.row == 0
         || direction == Forward && last_line == doc_last_line
     {
         return;
     }
 
-    let scrolloff = cx
-        .editor
-        .config
-        .scrolloff
-        .min(view.area.height as usize / 2);
+    let height = view.inner_area().height;
 
-    view.first_line = match direction {
-        Forward => view.first_line + offset,
-        Backward => view.first_line.saturating_sub(offset),
+    let scrolloff = cx.editor.config.scrolloff.min(height as usize / 2);
+
+    view.offset.row = match direction {
+        Forward => view.offset.row + offset,
+        Backward => view.offset.row.saturating_sub(offset),
     }
     .min(doc_last_line);
 
@@ -916,7 +914,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     // clamp into viewport
     let line = cursor
         .row
-        .max(view.first_line + scrolloff)
+        .max(view.offset.row + scrolloff)
         .min(last_line.saturating_sub(scrolloff));
 
     let text = doc.text().slice(..);
@@ -928,25 +926,25 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
 fn page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize;
+    let offset = view.inner_area().height as usize;
     scroll(cx, offset, Direction::Backward);
 }
 
 fn page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize;
+    let offset = view.inner_area().height as usize;
     scroll(cx, offset, Direction::Forward);
 }
 
 fn half_page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize / 2;
+    let offset = view.inner_area().height as usize / 2;
     scroll(cx, offset, Direction::Backward);
 }
 
 fn half_page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize / 2;
+    let offset = view.inner_area().height as usize / 2;
     scroll(cx, offset, Direction::Forward);
 }
 
@@ -1389,7 +1387,7 @@ mod cmd {
     fn write_impl<P: AsRef<Path>>(
         cx: &mut compositor::Context,
         path: Option<P>,
-    ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
+    ) -> anyhow::Result<()> {
         let jobs = &mut cx.jobs;
         let (_, doc) = current!(cx.editor);
 
@@ -1410,7 +1408,9 @@ mod cmd {
             jobs.callback(callback);
             shared
         });
-        Ok(tokio::spawn(doc.format_and_save(fmt)))
+        let future = doc.format_and_save(fmt);
+        cx.jobs.add(Job::new(future).wait_before_exiting());
+        Ok(())
     }
 
     fn write(
@@ -1418,11 +1418,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        cx.jobs
-            .add(Job::new(handle.unwrap_or_else(|e| Err(e.into()))).wait_before_exiting());
-
-        Ok(())
+        write_impl(cx, args.first())
     }
 
     fn new_file(
@@ -1513,18 +1509,22 @@ mod cmd {
             return Ok(());
         }
 
+        let arg = args
+            .get(0)
+            .context("argument missing")?
+            .to_ascii_lowercase();
+
         // Attempt to parse argument as a line ending.
-        let line_ending = match args.get(0) {
+        let line_ending = match arg {
             // We check for CR first because it shares a common prefix with CRLF.
-            Some(arg) if "cr".starts_with(&arg.to_lowercase()) => Some(CR),
-            Some(arg) if "crlf".starts_with(&arg.to_lowercase()) => Some(Crlf),
-            Some(arg) if "lf".starts_with(&arg.to_lowercase()) => Some(LF),
-            Some(arg) if "ff".starts_with(&arg.to_lowercase()) => Some(FF),
-            Some(arg) if "nel".starts_with(&arg.to_lowercase()) => Some(Nel),
-            _ => None,
+            arg if arg.starts_with("cr") => CR,
+            arg if arg.starts_with("crlf") => Crlf,
+            arg if arg.starts_with("lf") => LF,
+            arg if arg.starts_with("ff") => FF,
+            arg if arg.starts_with("nel") => Nel,
+            _ => bail!("invalid line ending"),
         };
 
-        let line_ending = line_ending.context("invalid line ending")?;
         doc_mut!(cx.editor).line_ending = line_ending;
         Ok(())
     }
@@ -1565,8 +1565,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        let _ = helix_lsp::block_on(handle)?;
+        write_impl(cx, args.first())?;
         quit(cx, &[], event)
     }
 
@@ -1575,8 +1574,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        let _ = helix_lsp::block_on(handle)?;
+        write_impl(cx, args.first())?;
         force_quit(cx, &[], event)
     }
 
@@ -1603,7 +1601,7 @@ mod cmd {
     }
 
     fn write_all_impl(
-        editor: &mut Editor,
+        cx: &mut compositor::Context,
         _args: &[&str],
         _event: PromptEvent,
         quit: bool,
@@ -1612,25 +1610,26 @@ mod cmd {
         let mut errors = String::new();
 
         // save all documents
-        for (_, doc) in &mut editor.documents {
+        for (_, doc) in &mut cx.editor.documents {
             if doc.path().is_none() {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
             }
 
             // TODO: handle error.
-            let _ = helix_lsp::block_on(tokio::spawn(doc.save()));
+            let handle = doc.save();
+            cx.jobs.add(Job::new(handle).wait_before_exiting());
         }
 
         if quit {
             if !force {
-                buffers_remaining_impl(editor)?;
+                buffers_remaining_impl(cx.editor)?;
             }
 
             // close all views
-            let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+            let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
             for view_id in views {
-                editor.close(view_id, false);
+                cx.editor.close(view_id, false);
             }
         }
 
@@ -1642,7 +1641,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, false, false)
+        write_all_impl(cx, args, event, false, false)
     }
 
     fn write_all_quit(
@@ -1650,7 +1649,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, true, false)
+        write_all_impl(cx, args, event, true, false)
     }
 
     fn force_write_all_quit(
@@ -1658,7 +1657,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, true, true)
+        write_all_impl(cx, args, event, true, true)
     }
 
     fn quit_all_impl(
@@ -1881,6 +1880,20 @@ mod cmd {
     ) -> anyhow::Result<()> {
         let (view, doc) = current!(cx.editor);
         doc.reload(view.id)
+    }
+
+    fn tree_sitter_scopes(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let pos = doc.selection(view.id).primary().cursor(text);
+        let scopes = indent::get_scopes(doc.syntax(), text, pos);
+        cx.editor.set_status(format!("scopes: {:?}", &scopes));
+        Ok(())
     }
 
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -2113,6 +2126,13 @@ mod cmd {
             alias: None,
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "tree-sitter-scopes",
+            alias: None,
+            doc: "Display tree sitter scopes, primarily for theming and development.",
+            fun: tree_sitter_scopes,
             completer: None,
         }
     ];
@@ -3905,6 +3925,7 @@ fn toggle_comments(cx: &mut Context) {
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+    exit_select_mode(cx);
 }
 
 fn rotate_selections(cx: &mut Context, direction: Direction) {
@@ -4039,13 +4060,13 @@ fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let first_line = view.first_line;
+    let offset = view.offset;
 
     cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
-    view.first_line = first_line;
+    view.offset = offset;
     doc.set_selection(view.id, selection);
 }
 
@@ -4094,9 +4115,9 @@ fn align_view_middle(cx: &mut Context) {
         .cursor(doc.text().slice(..));
     let pos = coords_at_pos(doc.text().slice(..), pos);
 
-    view.first_col = pos.col.saturating_sub(
-        ((view.area.width as usize).saturating_sub(crate::ui::editor::GUTTER_OFFSET as usize)) / 2,
-    );
+    view.offset.col = pos
+        .col
+        .saturating_sub((view.inner_area().width as usize) / 2);
 }
 
 fn scroll_up(cx: &mut Context) {
