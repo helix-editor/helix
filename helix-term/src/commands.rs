@@ -32,7 +32,7 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::FutureExt;
-use std::num::NonZeroUsize;
+use std::{array, num::NonZeroUsize};
 use std::{fmt, future::Future};
 
 use std::{
@@ -227,6 +227,10 @@ impl Command {
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
         goto_definition, "Goto definition",
+        add_newline_above, "Add newline above",
+        add_newline_below, "Add newline below",
+        move_selection_above, "Move selection above",
+        move_selection_below, "Move selection below",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
@@ -4233,4 +4237,80 @@ fn surround_delete(cx: &mut Context) {
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+}
+
+fn add_newline_above(cx: &mut Context) {
+    add_newline_impl(cx, true);
+}
+
+fn add_newline_below(cx: &mut Context) {
+    add_newline_impl(cx, false)
+}
+
+fn add_newline_impl(cx: &mut Context, above: bool) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text();
+    let slice = text.slice(..);
+
+    let changes = selection.into_iter().map(|range| {
+        let (start, end) = range.line_range(slice);
+        let line = if above { start } else { end + 1 };
+        let pos = text.line_to_char(line);
+        (pos, pos, Some("\n".repeat(count).into()))
+    });
+
+    let transaction = Transaction::change(text, changes);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn move_selection_above(cx: &mut Context) {
+    move_selection_impl(cx, true)
+}
+
+fn move_selection_below(cx: &mut Context) {
+    move_selection_impl(cx, false)
+}
+
+fn move_selection_impl(cx: &mut Context, above: bool) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text();
+    let slice = text.slice(..);
+
+    let changes = selection
+        .into_iter()
+        .map(|range| {
+            let (start_ln, end_ln) = range.line_range(slice);
+            let (start_ln2, end_ln2) = (
+                if above {
+                    start_ln - count
+                } else {
+                    start_ln + count
+                },
+                if above {
+                    end_ln - count
+                } else {
+                    start_ln + count
+                },
+            );
+            let (start, end) = (text.line_to_char(start_ln), text.line_to_char(end_ln));
+            let (start2, end2) = (text.line_to_char(start_ln2), text.line_to_char(end_ln2));
+            array::IntoIter::new([
+                (start, end, None),
+                (
+                    start2,
+                    end2,
+                    Some(Tendril::from(text.slice(start..end).as_str().unwrap())),
+                ),
+            ])
+        })
+        .flatten();
+
+    let transaction = Transaction::change(text, changes);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }
