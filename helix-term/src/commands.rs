@@ -1154,7 +1154,7 @@ fn search(cx: &mut Context) {
         move |view, doc, registers, regex| {
             search_impl(doc, view, &contents, &regex, false);
             // TODO: only store on enter (accept), not update
-            registers.write('\\', vec![regex.as_str().to_string()]);
+            registers.write('/', vec![regex.as_str().to_string()]);
         },
     );
 
@@ -1164,7 +1164,7 @@ fn search(cx: &mut Context) {
 fn search_next_impl(cx: &mut Context, extend: bool) {
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
-    if let Some(query) = registers.read('\\') {
+    if let Some(query) = registers.read('/') {
         let query = query.first().unwrap();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(query).unwrap();
@@ -1185,7 +1185,7 @@ fn search_selection(cx: &mut Context) {
     let contents = doc.text().slice(..);
     let query = doc.selection(view.id).primary().fragment(contents);
     let regex = regex::escape(&query);
-    cx.editor.registers.write('\\', vec![regex]);
+    cx.editor.registers.write('/', vec![regex]);
     search_next(cx);
 }
 
