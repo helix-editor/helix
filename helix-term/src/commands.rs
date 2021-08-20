@@ -4113,11 +4113,9 @@ fn align_view_bottom(cx: &mut Context) {
 
 fn align_view_middle(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
-    let pos = coords_at_pos(doc.text().slice(..), pos);
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view.id).primary().cursor(text);
+    let pos = coords_at_pos(text, pos);
 
     view.offset.col = pos
         .col
