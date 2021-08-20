@@ -1509,7 +1509,10 @@ mod cmd {
             return Ok(());
         }
 
-        let arg = args.get(0).context("argument missing")?.to_ascii_lowercase();
+        let arg = args
+            .get(0)
+            .context("argument missing")?
+            .to_ascii_lowercase();
 
         // Attempt to parse argument as a line ending.
         let line_ending = match arg {
@@ -1519,7 +1522,7 @@ mod cmd {
             arg if arg.starts_with("lf") => LF,
             arg if arg.starts_with("ff") => FF,
             arg if arg.starts_with("nel") => Nel,
-            _ => bail!("invalid line ending") 
+            _ => bail!("invalid line ending"),
         };
 
         doc_mut!(cx.editor).line_ending = line_ending;
