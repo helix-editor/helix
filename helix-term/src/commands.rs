@@ -303,6 +303,7 @@ impl Command {
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
         dap_toggle_breakpoint, "Toggle breakpoint",
+        dap_init, "Start debug session",
         dap_launch, "Launch debugger",
         dap_run, "Begin program execution",
         suspend, "Suspend"
@@ -1902,30 +1903,6 @@ mod cmd {
         Ok(())
     }
 
-    fn debug(
-        cx: &mut compositor::Context,
-        _args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        use helix_dap::Client;
-        use helix_lsp::block_on;
-        let (_, _doc) = current!(cx.editor);
-
-        // look up config for filetype
-        // if multiple available, open picker
-
-        let debugger = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
-        let mut debugger = block_on(debugger)?;
-
-        let request = debugger.initialize("go".to_owned());
-        let _ = block_on(request)?;
-
-        // TODO: either await "initialized" or buffer commands until event is received
-
-        cx.editor.debugger = Some(debugger);
-        Ok(())
-    }
-
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2163,13 +2140,6 @@ mod cmd {
             alias: None,
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
-            completer: None,
-        },
-        TypableCommand {
-            name: "debug",
-            alias: None,
-            doc: "Start a debug session.",
-            fun: debug,
             completer: None,
         }
     ];
@@ -4275,6 +4245,25 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
+fn dap_init(cx: &mut Context) {
+    use helix_dap::Client;
+    use helix_lsp::block_on;
+    let (_, _doc) = current!(cx.editor);
+
+    // look up config for filetype
+    // if multiple available, open picker
+
+    let debugger = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
+    let mut debugger = block_on(debugger).unwrap();
+
+    let request = debugger.initialize("go".to_owned());
+    let _ = block_on(request).unwrap();
+
+    // TODO: either await "initialized" or buffer commands until event is received
+
+    cx.editor.debugger = Some(debugger);
+}
+
 fn dap_toggle_breakpoint(cx: &mut Context) {
     use helix_lsp::block_on;
 
