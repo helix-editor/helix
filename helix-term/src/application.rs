@@ -222,6 +222,17 @@ impl Application {
                                     self.editor.set_status(status);
                                     self.render();
                                 }
+                                "output" => {
+                                    let body: helix_dap::events::Output = from_value(ev.body.expect("`output` event must have a body")).unwrap();
+
+                                    let prefix = match body.category {
+                                        Some(category) => format!("Debug ({}):", category),
+                                        None => "Debug:".to_owned(),
+                                    };
+
+                                    self.editor.set_status(format!("{} {}", prefix, body.output));
+                                    self.render();
+                                }
                                 "initialized" => {
                                     self.editor.set_status("Debugged application started".to_owned());
                                     self.render();
