@@ -306,6 +306,7 @@ impl Command {
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_start, "Start debug session",
         dap_run, "Begin program execution",
+        dap_continue, "Continue program execution",
         dap_terminate, "End debug session",
         suspend, "Suspend"
     );
@@ -4319,6 +4320,17 @@ fn dap_run(cx: &mut Context) {
 
     if let Some(debugger) = &mut cx.editor.debugger {
         let request = debugger.configuration_done();
+        let _ = block_on(request).unwrap();
+    }
+}
+
+fn dap_continue(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        // assume 0 to continue all threads for now
+        // FIXME: spec conformant behavior here
+        let request = debugger.continue_thread(0);
         let _ = block_on(request).unwrap();
     }
 }
