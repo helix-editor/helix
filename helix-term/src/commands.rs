@@ -4329,5 +4329,6 @@ fn dap_terminate(cx: &mut Context) {
     if let Some(debugger) = &mut cx.editor.debugger {
         let request = debugger.disconnect();
         let _ = block_on(request).unwrap();
+        cx.editor.debugger = None;
     }
 }

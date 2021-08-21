@@ -187,6 +187,9 @@ impl Application {
                     }
                 }
                 Some(payload) = self.editor.debugger_events.next() => {
+                    if self.editor.debugger.is_none() {
+                        continue;
+                    }
                     let mut debugger = self.editor.debugger.as_mut().unwrap();
                     match payload {
                         Payload::Event(ev) => {
