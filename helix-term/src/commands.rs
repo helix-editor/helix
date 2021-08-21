@@ -296,10 +296,10 @@ impl Command {
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
         shell_pipe, "Pipe selections through shell command",
-        shell_pipe_ignore, "Pipe selections into shell command, ignoring command output",
-        shell_insert, "Insert output of shell command before each selection",
-        shell_append, "Append output of shell command after each selection",
-        shell_filter, "Filter selections with shell predicate",
+        shell_pipe_to, "Pipe selections into shell command, ignoring command output",
+        shell_insert_output, "Insert output of shell command before each selection",
+        shell_append_output, "Append output of shell command after each selection",
+        shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
     );
 }
@@ -4068,19 +4068,19 @@ fn shell_pipe(cx: &mut Context) {
     shell(cx, "pipe:", true, ShellBehavior::Replace);
 }
 
-fn shell_pipe_ignore(cx: &mut Context) {
+fn shell_pipe_to(cx: &mut Context) {
     shell(cx, "pipe-to:", true, ShellBehavior::None);
 }
 
-fn shell_insert(cx: &mut Context) {
+fn shell_insert_output(cx: &mut Context) {
     shell(cx, "insert-output:", false, ShellBehavior::Insert);
 }
 
-fn shell_append(cx: &mut Context) {
+fn shell_append_output(cx: &mut Context) {
     shell(cx, "append-output:", false, ShellBehavior::Append);
 }
 
-fn shell_filter(cx: &mut Context) {
+fn shell_keep_pipe(cx: &mut Context) {
     shell(cx, "keep-pipe:", true, ShellBehavior::Filter);
 }
 

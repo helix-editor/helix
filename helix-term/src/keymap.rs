@@ -509,10 +509,10 @@ impl Default for Keymaps {
 
             "\"" => select_register,
             "|" => shell_pipe,
-            "A-|" => shell_pipe_ignore,
-            "!" => shell_insert,
-            "A-!" => shell_append,
-            "$" => shell_filter,
+            "A-|" => shell_pipe_to,
+            "!" => shell_insert_output,
+            "A-!" => shell_append_output,
+            "$" => shell_keep_pipe,
             "C-z" => suspend,
         });
         let mut select = normal.clone();
