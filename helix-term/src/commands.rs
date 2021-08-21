@@ -4087,8 +4087,7 @@ fn shell_filter(cx: &mut Context) {
 fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
     use std::io::Write;
     use std::process::{Command, Stdio};
-    let shell = cx.editor.config.shell.clone();
-    if shell.is_empty() {
+    if cx.editor.config.shell.is_empty() {
         return;
     }
     let prompt = Prompt::new(
@@ -4096,6 +4095,7 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
         Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
             if event == PromptEvent::Validate {
                 let (view, doc) = current!(cx.editor);
                 let selection = doc.selection(view.id);
