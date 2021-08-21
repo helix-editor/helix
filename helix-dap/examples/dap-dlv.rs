@@ -1,7 +1,7 @@
-use helix_dap::{events, Client, Event, Result, SourceBreakpoint};
+use helix_dap::{events, Client, Payload, Result, SourceBreakpoint};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, to_value};
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,15 +10,26 @@ struct LaunchArguments {
     program: String,
 }
 
-async fn output(mut output_event: Receiver<Event>) {
+async fn dispatch(mut rx: UnboundedReceiver<Payload>) {
     loop {
-        let body: events::Output =
-            from_value(output_event.recv().await.unwrap().body.unwrap()).unwrap();
-        println!(
-            "> [{}] {}",
-            body.category.unwrap_or("unknown".to_owned()),
-            body.output
-        );
+        match rx.recv().await.unwrap() {
+            Payload::Event(ev) => match &ev.event[..] {
+                "output" => {
+                    let body: events::Output = from_value(ev.body.unwrap()).unwrap();
+                    println!(
+                        "> [{}] {}",
+                        body.category.unwrap_or("unknown".to_owned()),
+                        body.output
+                    );
+                }
+                "stopped" => {
+                    println!("stopped");
+                }
+                _ => {}
+            },
+            Payload::Response(_) => unreachable!(),
+            Payload::Request(_) => todo!(),
+        };
     }
 }
 
@@ -35,12 +46,11 @@ pub async fn main() -> Result<()> {
         .apply()
         .expect("Failed to set up logging");
 
-    let client = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0).await;
+    let (mut client, events) =
+        Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0).await?;
     println!("create: {:?}", client);
-    let mut client = client?;
 
-    let output_event = client.listen_for_event("output".to_owned()).await;
-    tokio::spawn(output(output_event));
+    tokio::spawn(dispatch(events));
 
     println!("init: {:?}", client.initialize("go".to_owned()).await);
     println!("caps: {:?}", client.capabilities());
@@ -73,13 +83,7 @@ pub async fn main() -> Result<()> {
         .read_line(&mut _in)
         .expect("Failed to read line");
 
-    let mut stopped_event = client.listen_for_event("stopped".to_owned()).await;
-
     println!("configurationDone: {:?}", client.configuration_done().await);
-
-    let stop: events::Stopped =
-        from_value(stopped_event.recv().await.unwrap().body.unwrap()).unwrap();
-    println!("stopped: {:?}", stop);
 
     let threads = client.threads().await?;
     println!("threads: {:#?}", threads);
