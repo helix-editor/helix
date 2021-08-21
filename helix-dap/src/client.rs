@@ -36,6 +36,8 @@ pub struct Client {
 
     //
     pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
+    // TODO: multiple threads support
+    pub stack_pointer: Option<StackFrame>,
 }
 
 impl Client {
@@ -56,6 +58,7 @@ impl Client {
             awaited_events: Arc::new(Mutex::new(HashMap::default())),
             //
             breakpoints: HashMap::new(),
+            stack_pointer: None,
         };
 
         tokio::spawn(Self::recv(Arc::clone(&client.awaited_events), server_rx));

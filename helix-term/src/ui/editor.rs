@@ -15,6 +15,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection,
 };
+use helix_dap::{SourceBreakpoint, StackFrame};
 use helix_view::{
     document::Mode,
     editor::LineNumber,
@@ -24,7 +25,8 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
+use tokio::sync::Mutex;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
@@ -71,7 +73,7 @@ impl EditorView {
         is_focused: bool,
         loader: &syntax::Loader,
         config: &helix_view::editor::Config,
-        debugger: Option<&helix_dap::Client>,
+        debugger: Option<Arc<Mutex<helix_dap::Client>>>,
     ) {
         let inner = view.inner_area();
         let area = view.area;
@@ -412,8 +414,9 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         config: &helix_view::editor::Config,
-        debugger: Option<&helix_dap::Client>,
+        debugger: Option<Arc<Mutex<helix_dap::Client>>>,
     ) {
+        use helix_lsp::block_on;
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
@@ -442,9 +445,15 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        let breakpoints = doc
-            .path()
-            .and_then(|path| debugger.and_then(|debugger| debugger.breakpoints.get(path)));
+        let mut breakpoints: Option<Vec<SourceBreakpoint>> = None;
+        let mut stack_pointer: Option<StackFrame> = None;
+        if let Some(debugger) = debugger {
+            if let Some(path) = doc.path() {
+                let dbg = block_on(debugger.lock());
+                breakpoints = dbg.breakpoints.get(path).and_then(|bps| Some(bps.clone()));
+                stack_pointer = dbg.stack_pointer.clone()
+            }
+        }
 
         for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
@@ -465,12 +474,23 @@ impl EditorView {
 
             let selected = cursors.contains(&line);
 
-            if let Some(_breakpoint) = breakpoints.and_then(|breakpoints| {
-                breakpoints
-                    .iter()
-                    .find(|breakpoint| breakpoint.line == line)
-            }) {
-                surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
+            if let Some(bps) = breakpoints.as_ref() {
+                if let Some(_) = bps.iter().find(|breakpoint| breakpoint.line == line) {
+                    surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
+                }
+            }
+
+            if let Some(sp) = stack_pointer.as_ref() {
+                if let Some(src) = sp.source.as_ref() {
+                    if doc
+                        .path()
+                        .and_then(|path| Some(src.path == Some(path.clone())))
+                        .unwrap_or(false)
+                        && sp.line == line
+                    {
+                        surface.set_stringn(viewport.x, viewport.y + i as u16, "⇒", 1, warning);
+                    }
+                }
             }
 
             let text = if line == last_line && !draw_last {
@@ -1023,7 +1043,10 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             let loader = &cx.editor.syn_loader;
-            let debugger = cx.editor.debugger.as_ref();
+            let mut dbg: Option<Arc<Mutex<helix_dap::Client>>> = None;
+            if let Some(debugger) = &cx.editor.debugger {
+                dbg = Some(Arc::clone(&debugger));
+            }
             self.render_view(
                 doc,
                 view,
@@ -1033,7 +1056,7 @@ impl Component for EditorView {
                 is_focused,
                 loader,
                 &cx.editor.config,
-                debugger,
+                dbg,
             );
         }
 
