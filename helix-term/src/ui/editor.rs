@@ -450,7 +450,7 @@ impl EditorView {
         if let Some(debugger) = debugger {
             if let Some(path) = doc.path() {
                 let dbg = block_on(debugger.lock());
-                breakpoints = dbg.breakpoints.get(path).and_then(|bps| Some(bps.clone()));
+                breakpoints = dbg.breakpoints.get(path).cloned();
                 stack_pointer = dbg.stack_pointer.clone()
             }
         }
@@ -475,7 +475,7 @@ impl EditorView {
             let selected = cursors.contains(&line);
 
             if let Some(bps) = breakpoints.as_ref() {
-                if let Some(_) = bps.iter().find(|breakpoint| breakpoint.line == line) {
+                if bps.iter().any(|breakpoint| breakpoint.line == line) {
                     surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
                 }
             }
@@ -484,7 +484,7 @@ impl EditorView {
                 if let Some(src) = sp.source.as_ref() {
                     if doc
                         .path()
-                        .and_then(|path| Some(src.path == Some(path.clone())))
+                        .map(|path| src.path == Some(path.clone()))
                         .unwrap_or(false)
                         && sp.line == line
                     {
@@ -1045,7 +1045,7 @@ impl Component for EditorView {
             let loader = &cx.editor.syn_loader;
             let mut dbg: Option<Arc<Mutex<helix_dap::Client>>> = None;
             if let Some(debugger) = &cx.editor.debugger {
-                dbg = Some(Arc::clone(&debugger));
+                dbg = Some(Arc::clone(debugger));
             }
             self.render_view(
                 doc,

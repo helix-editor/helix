@@ -4288,10 +4288,10 @@ async fn dap_listen_stopped(
             .threads()
             .await
             .ok()
-            .and_then(|threads| threads.get(0).and_then(|x| Some(x.clone())));
+            .and_then(|threads| threads.get(0).cloned());
         if let Some(main) = main {
             let (a, _) = dbg.stack_trace(main.id).await.unwrap();
-            dbg.stack_pointer = a.get(0).and_then(|x| Some(x.clone()));
+            dbg.stack_pointer = a.get(0).cloned();
         }
     }
 }
