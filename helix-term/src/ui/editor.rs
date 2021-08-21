@@ -475,7 +475,7 @@ impl EditorView {
             let selected = cursors.contains(&line);
 
             if let Some(bps) = breakpoints.as_ref() {
-                if bps.iter().any(|breakpoint| breakpoint.line == line) {
+                if bps.iter().any(|breakpoint| breakpoint.line - 1 == line) {
                     surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
                 }
             }
@@ -486,7 +486,7 @@ impl EditorView {
                         .path()
                         .map(|path| src.path == Some(path.clone()))
                         .unwrap_or(false)
-                        && sp.line == line
+                        && sp.line - 1 == line
                     {
                         surface.set_style(
                             Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
