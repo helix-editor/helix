@@ -4319,8 +4319,14 @@ fn dap_run(cx: &mut Context) {
     use helix_lsp::block_on;
 
     if let Some(debugger) = &mut cx.editor.debugger {
+        if debugger.is_running {
+            cx.editor
+                .set_status("Debuggee is already running".to_owned());
+            return;
+        }
         let request = debugger.configuration_done();
         let _ = block_on(request).unwrap();
+        debugger.is_running = true;
     }
 }
 
@@ -4328,10 +4334,16 @@ fn dap_continue(cx: &mut Context) {
     use helix_lsp::block_on;
 
     if let Some(debugger) = &mut cx.editor.debugger {
+        if debugger.is_running {
+            cx.editor
+                .set_status("Debuggee is already running".to_owned());
+            return;
+        }
         // assume 0 to continue all threads for now
         // FIXME: spec conformant behavior here
         let request = debugger.continue_thread(0);
         let _ = block_on(request).unwrap();
+        debugger.is_running = true;
     }
 }
 

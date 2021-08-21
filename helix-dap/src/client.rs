@@ -30,6 +30,7 @@ pub struct Client {
     pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
     // TODO: multiple threads support
     pub stack_pointer: Option<StackFrame>,
+    pub is_running: bool,
 }
 
 impl Client {
@@ -51,6 +52,7 @@ impl Client {
             //
             breakpoints: HashMap::new(),
             stack_pointer: None,
+            is_running: false,
         };
 
         tokio::spawn(Self::recv(server_rx, client_rx));

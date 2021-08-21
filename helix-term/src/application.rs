@@ -195,6 +195,7 @@ impl Application {
                         Payload::Event(ev) => {
                             match &ev.event[..] {
                                 "stopped" => {
+                                    debugger.is_running = false;
                                     let main = debugger
                                         .threads()
                                         .await
