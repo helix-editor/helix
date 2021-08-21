@@ -1,4 +1,5 @@
 use helix_core::syntax;
+use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
 
@@ -182,6 +183,29 @@ impl Application {
                     if last || last_render.elapsed() > deadline {
                         self.render();
                         last_render = Instant::now();
+                    }
+                }
+                Some(payload) = self.editor.debugger_events.next() => {
+                    let mut debugger = self.editor.debugger.as_mut().unwrap();
+                    match payload {
+                        Payload::Event(ev) => {
+                            match &ev.event[..] {
+                                "stopped" => {
+                                    let main = debugger
+                                        .threads()
+                                        .await
+                                        .ok()
+                                        .and_then(|threads| threads.get(0).cloned());
+                                    if let Some(main) = main {
+                                        let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
+                                        debugger.stack_pointer = bt.get(0).cloned();
+                                    }
+                                }
+                                _ => {}
+                            }
+                        },
+                        Payload::Response(_) => unreachable!(),
+                        Payload::Request(_) => todo!(),
                     }
                 }
                 Some(callback) = self.jobs.futures.next() => {

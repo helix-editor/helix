@@ -24,17 +24,17 @@ use helix_lsp::{
 };
 use insert::*;
 use movement::Movement;
-use tokio::sync::{mpsc::Receiver, Mutex};
 
 use crate::{
     compositor::{self, Component, Compositor},
     ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::job::{self, Job, Jobs};
 use futures_util::FutureExt;
+use std::num::NonZeroUsize;
 use std::{collections::HashMap, fmt, future::Future};
-use std::{num::NonZeroUsize, sync::Arc};
 
 use std::{
     borrow::Cow,
@@ -4255,8 +4255,8 @@ fn dap_start(cx: &mut Context) {
     // look up config for filetype
     // if multiple available, open picker
 
-    let debugger = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
-    let mut debugger = block_on(debugger).unwrap();
+    let started = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
+    let (mut debugger, events) = block_on(started).unwrap();
 
     let request = debugger.initialize("go".to_owned());
     let _ = block_on(request).unwrap();
@@ -4268,32 +4268,10 @@ fn dap_start(cx: &mut Context) {
     let request = debugger.launch(to_value(args).unwrap());
     let _ = block_on(request).unwrap();
 
-    let stopped = block_on(debugger.listen_for_event("stopped".to_owned()));
-    let debugger = Arc::new(Mutex::new(debugger));
-    tokio::spawn(dap_listen_stopped(stopped, Arc::clone(&debugger)));
-
     // TODO: either await "initialized" or buffer commands until event is received
     cx.editor.debugger = Some(debugger);
-}
-
-async fn dap_listen_stopped(
-    mut stopped: Receiver<helix_dap::Event>,
-    debugger: Arc<Mutex<helix_dap::Client>>,
-) {
-    loop {
-        stopped.recv().await;
-
-        let mut dbg = debugger.lock().await;
-        let main = dbg
-            .threads()
-            .await
-            .ok()
-            .and_then(|threads| threads.get(0).cloned());
-        if let Some(main) = main {
-            let (a, _) = dbg.stack_trace(main.id).await.unwrap();
-            dbg.stack_pointer = a.get(0).cloned();
-        }
-    }
+    let stream = UnboundedReceiverStream::new(events);
+    cx.editor.debugger_events.push(stream);
 }
 
 fn dap_toggle_breakpoint(cx: &mut Context) {
@@ -4321,7 +4299,6 @@ fn dap_toggle_breakpoint(cx: &mut Context) {
     // we shouldn't really allow editing while debug is running though
 
     if let Some(debugger) = &mut cx.editor.debugger {
-        let mut debugger = block_on(debugger.lock());
         let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
         if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
             breakpoints.remove(pos);
@@ -4340,7 +4317,6 @@ fn dap_run(cx: &mut Context) {
     use helix_lsp::block_on;
 
     if let Some(debugger) = &mut cx.editor.debugger {
-        let mut debugger = block_on(debugger.lock());
         let request = debugger.configuration_done();
         let _ = block_on(request).unwrap();
     }

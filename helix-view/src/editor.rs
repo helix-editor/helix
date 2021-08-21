@@ -8,7 +8,6 @@ use crate::{
 
 use futures_util::future;
 use futures_util::stream::select_all::SelectAll;
-use tokio::sync::Mutex;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -75,8 +74,8 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
-    pub debugger: Option<Arc<Mutex<helix_dap::Client>>>,
-    pub debuggers: SelectAll<UnboundedReceiverStream<helix_dap::Payload>>,
+    pub debugger: Option<helix_dap::Client>,
+    pub debugger_events: SelectAll<UnboundedReceiverStream<helix_dap::Payload>>,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
@@ -116,7 +115,7 @@ impl Editor {
             theme: themes.default(),
             language_servers,
             debugger: None,
-            debuggers: SelectAll::new(),
+            debugger_events: SelectAll::new(),
             syn_loader: config_loader,
             theme_loader: themes,
             registers: Registers::default(),

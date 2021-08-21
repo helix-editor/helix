@@ -25,8 +25,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, sync::Arc};
-use tokio::sync::Mutex;
+use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
@@ -73,7 +72,7 @@ impl EditorView {
         is_focused: bool,
         loader: &syntax::Loader,
         config: &helix_view::editor::Config,
-        debugger: Option<Arc<Mutex<helix_dap::Client>>>,
+        debugger: &Option<helix_dap::Client>,
     ) {
         let inner = view.inner_area();
         let area = view.area;
@@ -414,9 +413,8 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         config: &helix_view::editor::Config,
-        debugger: Option<Arc<Mutex<helix_dap::Client>>>,
+        debugger: &Option<helix_dap::Client>,
     ) {
-        use helix_lsp::block_on;
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
@@ -449,9 +447,8 @@ impl EditorView {
         let mut stack_pointer: Option<StackFrame> = None;
         if let Some(debugger) = debugger {
             if let Some(path) = doc.path() {
-                let dbg = block_on(debugger.lock());
-                breakpoints = dbg.breakpoints.get(path).cloned();
-                stack_pointer = dbg.stack_pointer.clone()
+                breakpoints = debugger.breakpoints.get(path).cloned();
+                stack_pointer = debugger.stack_pointer.clone()
             }
         }
 
@@ -1047,10 +1044,6 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             let loader = &cx.editor.syn_loader;
-            let mut dbg: Option<Arc<Mutex<helix_dap::Client>>> = None;
-            if let Some(debugger) = &cx.editor.debugger {
-                dbg = Some(Arc::clone(debugger));
-            }
             self.render_view(
                 doc,
                 view,
@@ -1060,7 +1053,7 @@ impl Component for EditorView {
                 is_focused,
                 loader,
                 &cx.editor.config,
-                dbg,
+                &cx.editor.debugger,
             );
         }
 
