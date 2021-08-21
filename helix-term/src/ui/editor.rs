@@ -488,7 +488,11 @@ impl EditorView {
                         .unwrap_or(false)
                         && sp.line == line
                     {
-                        surface.set_stringn(viewport.x, viewport.y + i as u16, "⇒", 1, warning);
+                        surface.set_style(
+                            Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
+                            helix_view::graphics::Style::default()
+                                .bg(helix_view::graphics::Color::LightYellow),
+                        );
                     }
                 }
             }
