@@ -1,7 +1,11 @@
-use crate::{Range, Rope, Selection, Tendril};
+use crate::{SelectionRange, Rope, Selections, Tendril, text_size::TextRange};
 use std::borrow::Cow;
 
 /// (from, to, replacement)
+// pub struct Change {
+//     insert: Tendril,
+//     delete: TextRange,
+// }
 pub type Change = (usize, usize, Option<Tendril>);
 
 // TODO: pub(crate)
@@ -419,7 +423,7 @@ impl ChangeSet {
 #[derive(Debug, Default, Clone)]
 pub struct Transaction {
     changes: ChangeSet,
-    selection: Option<Selection>,
+    selection: Option<Selections>,
     // effects, annotations
     // scroll_into_view
 }
@@ -439,7 +443,7 @@ impl Transaction {
     }
 
     /// When set, explicitly updates the selection.
-    pub fn selection(&self) -> Option<&Selection> {
+    pub fn selection(&self) -> Option<&Selections> {
         self.selection.as_ref()
     }
 
@@ -465,7 +469,7 @@ impl Transaction {
         }
     }
 
-    pub fn with_selection(mut self, selection: Selection) -> Self {
+    pub fn with_selection(mut self, selection: Selections) -> Self {
         self.selection = Some(selection);
         self
     }
@@ -506,15 +510,15 @@ impl Transaction {
     }
 
     /// Generate a transaction with a change per selection range.
-    pub fn change_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
+    pub fn change_by_selection<F>(doc: &Rope, selection: &Selections, f: F) -> Self
     where
-        F: FnMut(&Range) -> Change,
+        F: FnMut(&SelectionRange) -> Change,
     {
         Self::change(doc, selection.iter().map(f))
     }
 
     /// Insert text at each selection head.
-    pub fn insert(doc: &Rope, selection: &Selection, text: Tendril) -> Self {
+    pub fn insert(doc: &Rope, selection: &Selections, text: Tendril) -> Self {
         Self::change_by_selection(doc, selection, |range| {
             (range.head, range.head, Some(text.clone()))
         })
@@ -660,6 +664,7 @@ mod test {
         assert_eq!(cs.map_pos(4, Assoc::Before), 4); // at insert, track before
         assert_eq!(cs.map_pos(4, Assoc::After), 6); // at insert, track after
         assert_eq!(cs.map_pos(5, Assoc::Before), 7); // after insert region
+        assert_eq!(cs.map_pos(5, Assoc::After), 7);
 
         // maps deletes
         let cs = ChangeSet {

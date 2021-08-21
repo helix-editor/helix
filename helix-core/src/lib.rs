@@ -20,7 +20,7 @@ pub mod surround;
 pub mod syntax;
 pub mod textobject;
 mod transaction;
-mod text_size;
+pub mod text_size;
 
 pub mod unicode {
     pub use unicode_general_category as category;
@@ -111,7 +111,7 @@ pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
 pub use position::{coords_at_pos, pos_at_coords, Position};
-pub use selection::{Range, Selection};
+pub use selection::{SelectionRange, Selections};
 pub use smallvec::SmallVec;
 pub use syntax::Syntax;
 

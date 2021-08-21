@@ -56,7 +56,7 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
-    use helix_core::{Range, Rope, Transaction};
+    use helix_core::{SelectionRange, Rope, Transaction};
 
     /// Converts [`lsp::Position`] to a position in the document.
     ///
@@ -132,7 +132,7 @@ pub mod util {
     /// Converts a range in the document to [`lsp::Range`].
     pub fn range_to_lsp_range(
         doc: &Rope,
-        range: Range,
+        range: SelectionRange,
         offset_encoding: OffsetEncoding,
     ) -> lsp::Range {
         let start = pos_to_lsp_pos(doc, range.from(), offset_encoding);
@@ -145,11 +145,11 @@ pub mod util {
         doc: &Rope,
         range: lsp::Range,
         offset_encoding: OffsetEncoding,
-    ) -> Option<Range> {
+    ) -> Option<SelectionRange> {
         let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
-        Some(Range::new(start, end))
+        Some(SelectionRange::new(start, end))
     }
 
     pub fn generate_transaction_from_edits(

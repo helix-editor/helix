@@ -25,3 +25,10 @@ mod range;
 mod size;
 #[cfg(not(doctest))]
 mod traits;
+
+pub use range::TextRange;
+pub use size::TextSize;
+pub use traits::TextLen;
+
+#[cfg(target_pointer_width = "16")]
+compile_error!("text-size assumes usize >= u32 and does not work on 16-bit targets");

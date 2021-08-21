@@ -4,7 +4,7 @@ use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::next_grapheme_boundary;
 use crate::movement::Direction;
 use crate::surround;
-use crate::Range;
+use crate::SelectionRange;
 
 fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) -> usize {
     use CharCategory::{Eol, Whitespace};
@@ -54,10 +54,10 @@ pub enum TextObject {
 // count doesn't do anything yet
 pub fn textobject_word(
     slice: RopeSlice,
-    range: Range,
+    range: SelectionRange,
     textobject: TextObject,
     _count: usize,
-) -> Range {
+) -> SelectionRange {
     let pos = range.cursor(slice);
 
     let word_start = find_word_boundary(slice, pos, Direction::Backward);
@@ -68,11 +68,11 @@ pub fn textobject_word(
 
     // Special case.
     if word_start == word_end {
-        return Range::new(word_start, word_end);
+        return SelectionRange::new(word_start, word_end);
     }
 
     match textobject {
-        TextObject::Inside => Range::new(word_start, word_end),
+        TextObject::Inside => SelectionRange::new(word_start, word_end),
         TextObject::Around => {
             let whitespace_count_right = slice
                 .chars_at(word_end)
@@ -80,14 +80,14 @@ pub fn textobject_word(
                 .count();
 
             if whitespace_count_right > 0 {
-                Range::new(word_start, word_end + whitespace_count_right)
+                SelectionRange::new(word_start, word_end + whitespace_count_right)
             } else {
                 let whitespace_count_left = {
                     let mut iter = slice.chars_at(word_start);
                     iter.reverse();
                     iter.take_while(|c| char_is_whitespace(*c)).count()
                 };
-                Range::new(word_start - whitespace_count_left, word_end)
+                SelectionRange::new(word_start - whitespace_count_left, word_end)
             }
         }
     }
@@ -95,15 +95,15 @@ pub fn textobject_word(
 
 pub fn textobject_surround(
     slice: RopeSlice,
-    range: Range,
+    range: SelectionRange,
     textobject: TextObject,
     ch: char,
     count: usize,
-) -> Range {
+) -> SelectionRange {
     surround::find_nth_pairs_pos(slice, ch, range.head, count)
         .map(|(anchor, head)| match textobject {
-            TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
-            TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
+            TextObject::Inside => SelectionRange::new(next_grapheme_boundary(slice, anchor), head),
+            TextObject::Around => SelectionRange::new(anchor, next_grapheme_boundary(slice, head)),
         })
         .unwrap_or(range)
 }
@@ -113,7 +113,7 @@ mod test {
     use super::TextObject::*;
     use super::*;
 
-    use crate::Range;
+    use crate::SelectionRange;
     use ropey::Rope;
 
     #[test]
@@ -217,7 +217,7 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range) = case;
-                let result = textobject_word(slice, Range::point(pos), objtype, 1);
+                let result = textobject_word(slice, SelectionRange::point(pos), objtype, 1);
                 assert_eq!(
                     result,
                     expected_range.into(),
@@ -307,7 +307,7 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range, ch, count) = case;
-                let result = textobject_surround(slice, Range::point(pos), objtype, ch, count);
+                let result = textobject_surround(slice, SelectionRange::point(pos), objtype, ch, count);
                 assert_eq!(
                     result,
                     expected_range.into(),

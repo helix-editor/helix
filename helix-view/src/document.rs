@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Error};
-use helix_core::Range;
+use helix_core::SelectionRange;
 use serde::de::{self, Deserialize, Deserializer};
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, State, Syntax, Transaction,
+    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selections, State, Syntax, Transaction,
     DEFAULT_LINE_ENDING,
 };
 use helix_lsp::util::LspFormatting;
@@ -68,7 +68,7 @@ impl<'de> Deserialize<'de> for Mode {
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
-    pub(crate) selections: HashMap<ViewId, Selection>,
+    pub(crate) selections: HashMap<ViewId, Selections>,
 
     path: Option<PathBuf>,
     encoding: &'static encoding_rs::Encoding,
@@ -682,7 +682,7 @@ impl Document {
     }
 
     /// Select text within the [`Document`].
-    pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
+    pub fn set_selection(&mut self, view_id: ViewId, selection: Selections) {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
@@ -928,11 +928,11 @@ impl Document {
     }
 
     #[inline]
-    pub fn selection(&self, view_id: ViewId) -> &Selection {
+    pub fn selection(&self, view_id: ViewId) -> &Selections {
         &self.selections[&view_id]
     }
 
-    pub fn selections(&self) -> &HashMap<ViewId, Selection> {
+    pub fn selections(&self) -> &HashMap<ViewId, Selections> {
         &self.selections
     }
 
@@ -992,7 +992,7 @@ mod test {
         let text = Rope::from("hello");
         let mut doc = Document::from(text, None);
         let view = ViewId::default();
-        doc.set_selection(view, Selection::single(5, 5));
+        doc.set_selection(view, Selections::single(5, 5));
 
         // insert
 
@@ -1052,7 +1052,7 @@ mod test {
 
         // also tests that changes are layered, positions depend on previous changes.
 
-        doc.set_selection(view, Selection::single(0, 5));
+        doc.set_selection(view, Selections::single(0, 5));
         let transaction = Transaction::change(
             doc.text(),
             vec![(0, 2, Some("aei".into())), (3, 5, Some("ou".into()))].into_iter(),

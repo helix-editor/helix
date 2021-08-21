@@ -7,8 +7,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     register::Register,
-    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    search, selection, surround, textobject, LineEnding, Position, SelectionRange, Rope, RopeGraphemes,
+    RopeSlice, Selections, SmallVec, Tendril, Transaction,
 };
 
 use helix_view::{
@@ -473,7 +473,7 @@ fn goto_window(cx: &mut Context, align: Align) {
 
     let pos = doc.text().line_to_char(line);
 
-    doc.set_selection(view.id, Selection::point(pos));
+    doc.set_selection(view.id, Selections::point(pos));
 }
 
 fn goto_window_top(cx: &mut Context) {
@@ -566,14 +566,14 @@ fn goto_file_start(cx: &mut Context) {
     } else {
         push_jump(cx.editor);
         let (view, doc) = current!(cx.editor);
-        doc.set_selection(view.id, Selection::point(0));
+        doc.set_selection(view.id, Selections::point(0));
     }
 }
 
 fn goto_file_end(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(view.id, Selection::point(doc.text().len_chars()));
+    doc.set_selection(view.id, Selections::point(doc.text().len_chars()));
 }
 
 fn extend_next_word_start(cx: &mut Context) {
@@ -671,7 +671,7 @@ where
                 if extend {
                     range.put_cursor(text, pos, true)
                 } else {
-                    Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                    SelectionRange::point(range.cursor(text)).put_cursor(text, pos, true)
                 }
             })
         });
@@ -921,7 +921,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let pos = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
 
     // TODO: only manipulate main selection
-    doc.set_selection(view.id, Selection::point(pos));
+    doc.set_selection(view.id, Selections::point(pos));
 }
 
 fn page_up(cx: &mut Context) {
@@ -1020,7 +1020,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 if is_primary {
                     primary_index = ranges.len();
                 }
-                ranges.push(Range::new(anchor, head));
+                ranges.push(SelectionRange::new(anchor, head));
                 sels += 1;
             }
 
@@ -1028,7 +1028,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
         }
     }
 
-    let selection = Selection::new(ranges, primary_index);
+    let selection = Selections::new(ranges, primary_index);
     doc.set_selection(view.id, selection);
 }
 
@@ -1066,7 +1066,7 @@ fn select_all(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let end = doc.text().len_chars();
-    doc.set_selection(view.id, Selection::single(0, end))
+    doc.set_selection(view.id, Selections::single(0, end))
 }
 
 fn select_regex(cx: &mut Context) {
@@ -1128,9 +1128,9 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
         }
 
         let selection = if extend {
-            selection.clone().push(Range::new(start, end))
+            selection.clone().push(SelectionRange::new(start, end))
         } else {
-            Selection::single(start, end)
+            Selections::single(start, end)
         };
 
         doc.set_selection(view.id, selection);
@@ -1204,7 +1204,7 @@ fn extend_line(cx: &mut Context) {
         end = text.line_to_char((end_line + count + 1).min(text.len_lines()));
     }
 
-    doc.set_selection(view.id, Selection::single(start, end));
+    doc.set_selection(view.id, Selections::single(start, end));
 }
 
 fn extend_to_line_bounds(cx: &mut Context) {
@@ -1220,9 +1220,9 @@ fn extend_to_line_bounds(cx: &mut Context) {
             let end = text.line_to_char((end_line + 1).min(text.len_lines()));
 
             if range.anchor <= range.head {
-                Range::new(start, end)
+                SelectionRange::new(start, end)
             } else {
-                Range::new(end, start)
+                SelectionRange::new(end, start)
             }
         }),
     );
@@ -1271,7 +1271,7 @@ fn collapse_selection(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let pos = range.cursor(text);
-        Range::new(pos, pos)
+        SelectionRange::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
 }
@@ -1282,7 +1282,7 @@ fn flip_selections(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| Range::new(range.head, range.anchor));
+        .transform(|range| SelectionRange::new(range.head, range.anchor));
     doc.set_selection(view.id, selection);
 }
 
@@ -1298,7 +1298,7 @@ fn insert_mode(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| Range::new(range.to(), range.from()));
+        .transform(|range| SelectionRange::new(range.to(), range.from()));
     doc.set_selection(view.id, selection);
 }
 
@@ -1322,7 +1322,7 @@ fn append_mode(cx: &mut Context) {
     }
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        Range::new(
+        SelectionRange::new(
             range.from(),
             graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
         )
@@ -2322,7 +2322,7 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+                            doc.set_selection(view.id, Selections::single(range.anchor, range.head));
                             align_view(doc, view, Align::Center);
                         }
                     },
@@ -2472,7 +2472,7 @@ fn append_to_line(cx: &mut Context) {
         let text = doc.text().slice(..);
         let line = range.cursor_line(text);
         let pos = line_end_char_index(&text, line);
-        Range::new(pos, pos)
+        SelectionRange::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
 }
@@ -2572,7 +2572,7 @@ fn open(cx: &mut Context, open: Open) {
             // pos                    -> beginning of reference line,
             // + (i * (1+indent_len)) -> beginning of i'th line from pos
             // + indent_len ->        -> indent for i'th line
-            ranges.push(Range::point(pos + (i * (1 + indent_len)) + indent_len));
+            ranges.push(SelectionRange::point(pos + (i * (1 + indent_len)) + indent_len));
         }
 
         offs += text.chars().count();
@@ -2580,7 +2580,7 @@ fn open(cx: &mut Context, open: Open) {
         (line_end_index, line_end_index, Some(text.into()))
     });
 
-    transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+    transaction = transaction.with_selection(Selections::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
 }
@@ -2606,7 +2606,7 @@ fn normal_mode(cx: &mut Context) {
     if doc.restore_cursor {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id).clone().transform(|range| {
-            Range::new(
+            SelectionRange::new(
                 range.from(),
                 graphemes::prev_grapheme_boundary(text, range.to()),
             )
@@ -2637,7 +2637,7 @@ fn goto_line(cx: &mut Context) {
         };
         let line_idx = std::cmp::min(count.get() - 1, max_line);
         let pos = doc.text().line_to_char(line_idx);
-        doc.set_selection(view.id, Selection::point(pos));
+        doc.set_selection(view.id, Selections::point(pos));
     }
 }
 
@@ -2652,7 +2652,7 @@ fn goto_last_line(cx: &mut Context) {
         doc.text().len_lines() - 1
     };
     let pos = doc.text().line_to_char(line_idx);
-    doc.set_selection(view.id, Selection::point(pos));
+    doc.set_selection(view.id, Selections::point(pos));
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
@@ -2672,7 +2672,7 @@ fn select_mode(cx: &mut Context) {
     // (With the exception of being in an empty document, of course.)
     let selection = doc.selection(view.id).clone().transform(|range| {
         if range.is_empty() && range.head == text.len_chars() {
-            Range::new(
+            SelectionRange::new(
                 graphemes::prev_grapheme_boundary(text, range.anchor),
                 range.head,
             )
@@ -2720,7 +2720,7 @@ fn goto_impl(
             } else {
                 return;
             };
-        doc.set_selection(view.id, Selection::point(new_pos));
+        doc.set_selection(view.id, Selections::point(new_pos));
         align_view(doc, view, Align::Center);
     }
 
@@ -2935,7 +2935,7 @@ fn goto_pos(editor: &mut Editor, pos: usize) {
 
     let (view, doc) = current!(editor);
 
-    doc.set_selection(view.id, Selection::point(pos));
+    doc.set_selection(view.id, Selections::point(pos));
     align_view(doc, view, Align::Center);
 }
 
@@ -3057,7 +3057,7 @@ fn signature_help(cx: &mut Context) {
 // NOTE: Transactions in this module get appended to history when we switch back to normal mode.
 pub mod insert {
     use super::*;
-    pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
+    pub type Hook = fn(&Rope, &Selections, char) -> Option<Transaction>;
     pub type PostHook = fn(&mut Context, char);
 
     fn completion(cx: &mut Context, ch: char) {
@@ -3134,7 +3134,7 @@ pub mod insert {
 
     // The default insert hook: simply insert the character
     #[allow(clippy::unnecessary_wraps)] // need to use Option<> because of the Hook signature
-    fn insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
+    fn insert(doc: &Rope, selection: &Selections, ch: char) -> Option<Transaction> {
         let t = Tendril::from_char(ch);
         let transaction = Transaction::insert(doc, selection, t);
         Some(transaction)
@@ -3219,7 +3219,7 @@ pub mod insert {
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
-            ranges.push(Range::new(
+            ranges.push(SelectionRange::new(
                 if range.is_empty() {
                     head
                 } else {
@@ -3241,7 +3241,7 @@ pub mod insert {
             (pos, pos, Some(text.into()))
         });
 
-        transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+        transaction = transaction.with_selection(Selections::new(ranges, selection.primary_index()));
         //
 
         doc.apply(&transaction, view.id);
@@ -3765,7 +3765,7 @@ fn keep_primary_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let range = doc.selection(view.id).primary();
-    doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+    doc.set_selection(view.id, Selections::single(range.anchor, range.head));
 }
 
 fn completion(cx: &mut Context) {
@@ -4007,7 +4007,7 @@ fn match_brackets(cx: &mut Context) {
             .primary()
             .cursor(doc.text().slice(..));
         if let Some(pos) = match_brackets::find(syntax, doc.text(), pos) {
-            let selection = Selection::point(pos);
+            let selection = Selections::point(pos);
             doc.set_selection(view.id, selection);
         };
     }

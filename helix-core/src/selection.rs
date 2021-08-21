@@ -47,7 +47,7 @@ use std::borrow::Cow;
 /// variety of helper methods on `Range` for working in terms of
 /// that block cursor, all of which have `cursor` in their name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Range {
+pub struct SelectionRange {
     /// The anchor of the range: the side that doesn't move when extending.
     pub anchor: usize,
     /// The head of the range, moved when extending.
@@ -55,7 +55,7 @@ pub struct Range {
     pub horiz: Option<u32>,
 }
 
-impl Range {
+impl SelectionRange {
     pub fn new(anchor: usize, head: usize) -> Self {
         Self {
             anchor,
@@ -172,13 +172,13 @@ impl Range {
     #[must_use]
     pub fn merge(&self, other: Self) -> Self {
         if self.anchor > self.head && other.anchor > other.head {
-            Range {
+            SelectionRange {
                 anchor: self.anchor.max(other.anchor),
                 head: self.head.min(other.head),
                 horiz: None,
             }
         } else {
-            Range {
+            SelectionRange {
                 anchor: self.from().min(other.from()),
                 head: self.to().max(other.to()),
                 horiz: None,
@@ -218,7 +218,7 @@ impl Range {
                 ensure_grapheme_boundary_prev(slice, self.head),
             ),
         };
-        Range {
+        SelectionRange {
             anchor: new_anchor,
             head: new_head,
             horiz: if new_anchor == self.anchor {
@@ -245,7 +245,7 @@ impl Range {
     #[inline]
     pub fn min_width_1(&self, slice: RopeSlice) -> Self {
         if self.anchor == self.head {
-            Range {
+            SelectionRange {
                 anchor: self.anchor,
                 head: next_grapheme_boundary(slice, self.head),
                 horiz: self.horiz,
@@ -279,7 +279,7 @@ impl Range {
     /// grapheme-aligned.
     #[must_use]
     #[inline]
-    pub fn put_cursor(self, text: RopeSlice, char_idx: usize, extend: bool) -> Range {
+    pub fn put_cursor(self, text: RopeSlice, char_idx: usize, extend: bool) -> SelectionRange {
         if extend {
             let anchor = if self.head >= self.anchor && char_idx < self.anchor {
                 next_grapheme_boundary(text, self.anchor)
@@ -290,12 +290,12 @@ impl Range {
             };
 
             if anchor <= char_idx {
-                Range::new(anchor, next_grapheme_boundary(text, char_idx))
+                SelectionRange::new(anchor, next_grapheme_boundary(text, char_idx))
             } else {
-                Range::new(anchor, char_idx)
+                SelectionRange::new(anchor, char_idx)
             }
         } else {
-            Range::point(char_idx)
+            SelectionRange::point(char_idx)
         }
     }
 
@@ -307,7 +307,7 @@ impl Range {
     }
 }
 
-impl From<(usize, usize)> for Range {
+impl From<(usize, usize)> for SelectionRange {
     fn from(tuple: (usize, usize)) -> Self {
         Self {
             anchor: tuple.0,
@@ -320,24 +320,24 @@ impl From<(usize, usize)> for Range {
 /// A selection consists of one or more selection ranges.
 /// invariant: A selection can never be empty (always contains at least primary range).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Selection {
-    ranges: SmallVec<[Range; 1]>,
+pub struct Selections {
+    ranges: SmallVec<[SelectionRange; 1]>,
     primary_index: usize,
 }
 
 #[allow(clippy::len_without_is_empty)] // a Selection is never empty
-impl Selection {
+impl Selections {
     // eq
 
     #[inline]
     #[must_use]
-    pub fn primary(&self) -> Range {
+    pub fn primary(&self) -> SelectionRange {
         self.ranges[self.primary_index]
     }
 
     #[inline]
     #[must_use]
-    pub fn primary_mut(&mut self) -> &mut Range {
+    pub fn primary_mut(&mut self) -> &mut SelectionRange {
         &mut self.ranges[self.primary_index]
     }
 
@@ -354,7 +354,7 @@ impl Selection {
     }
 
     /// Adds a new range to the selection and makes it the primary range.
-    pub fn push(mut self, range: Range) -> Self {
+    pub fn push(mut self, range: SelectionRange) -> Self {
         self.ranges.push(range);
         self.set_primary_index(self.ranges().len() - 1);
         self.normalize()
@@ -376,7 +376,7 @@ impl Selection {
         )
     }
 
-    pub fn ranges(&self) -> &[Range] {
+    pub fn ranges(&self) -> &[SelectionRange] {
         &self.ranges
     }
 
@@ -393,7 +393,7 @@ impl Selection {
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {
         Self {
-            ranges: smallvec![Range {
+            ranges: smallvec![SelectionRange {
                 anchor,
                 head,
                 horiz: None
@@ -410,7 +410,7 @@ impl Selection {
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
         let primary = self.ranges[self.primary_index];
-        self.ranges.sort_unstable_by_key(Range::from);
+        self.ranges.sort_unstable_by_key(SelectionRange::from);
         self.primary_index = self
             .ranges
             .iter()
@@ -437,7 +437,7 @@ impl Selection {
 
     // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
-    pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
+    pub fn new(ranges: SmallVec<[SelectionRange; 1]>, primary_index: usize) -> Self {
         assert!(!ranges.is_empty());
         debug_assert!(primary_index < ranges.len());
 
@@ -457,7 +457,7 @@ impl Selection {
     /// Takes a closure and maps each `Range` over the closure.
     pub fn transform<F>(mut self, f: F) -> Self
     where
-        F: Fn(Range) -> Range,
+        F: Fn(SelectionRange) -> SelectionRange,
     {
         for range in self.ranges.iter_mut() {
             *range = f(*range)
@@ -479,7 +479,7 @@ impl Selection {
     /// Transforms the selection into all of the left-side head positions,
     /// using block-cursor semantics.
     pub fn cursors(self, text: RopeSlice) -> Self {
-        self.transform(|range| Range::point(range.cursor(text)))
+        self.transform(|range| SelectionRange::point(range.cursor(text)))
     }
 
     pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
@@ -487,7 +487,7 @@ impl Selection {
     }
 
     #[inline(always)]
-    pub fn iter(&self) -> std::slice::Iter<'_, Range> {
+    pub fn iter(&self) -> std::slice::Iter<'_, SelectionRange> {
         self.ranges.iter()
     }
 
@@ -497,11 +497,11 @@ impl Selection {
     }
 }
 
-impl<'a> IntoIterator for &'a Selection {
-    type Item = &'a Range;
-    type IntoIter = std::slice::Iter<'a, Range>;
+impl<'a> IntoIterator for &'a Selections {
+    type Item = &'a SelectionRange;
+    type IntoIter = std::slice::Iter<'a, SelectionRange>;
 
-    fn into_iter(self) -> std::slice::Iter<'a, Range> {
+    fn into_iter(self) -> std::slice::Iter<'a, SelectionRange> {
         self.ranges().iter()
     }
 }
@@ -510,9 +510,9 @@ impl<'a> IntoIterator for &'a Selection {
 
 pub fn keep_matches(
     text: RopeSlice,
-    selection: &Selection,
+    selection: &Selections,
     regex: &crate::regex::Regex,
-) -> Option<Selection> {
+) -> Option<Selections> {
     let result: SmallVec<_> = selection
         .iter()
         .filter(|range| regex.is_match(&range.fragment(text)))
@@ -521,16 +521,16 @@ pub fn keep_matches(
 
     // TODO: figure out a new primary index
     if !result.is_empty() {
-        return Some(Selection::new(result, 0));
+        return Some(Selections::new(result, 0));
     }
     None
 }
 
 pub fn select_on_matches(
     text: RopeSlice,
-    selection: &Selection,
+    selection: &Selections,
     regex: &crate::regex::Regex,
-) -> Option<Selection> {
+) -> Option<Selections> {
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
@@ -545,13 +545,13 @@ pub fn select_on_matches(
 
             let start = text.byte_to_char(start_byte + mat.start());
             let end = text.byte_to_char(start_byte + mat.end());
-            result.push(Range::new(start, end));
+            result.push(SelectionRange::new(start, end));
         }
     }
 
     // TODO: figure out a new primary index
     if !result.is_empty() {
-        return Some(Selection::new(result, 0));
+        return Some(Selections::new(result, 0));
     }
 
     None
@@ -560,9 +560,9 @@ pub fn select_on_matches(
 // TODO: support to split on capture #N instead of whole match
 pub fn split_on_matches(
     text: RopeSlice,
-    selection: &Selection,
+    selection: &Selections,
     regex: &crate::regex::Regex,
-) -> Selection {
+) -> Selections {
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
@@ -585,17 +585,17 @@ pub fn split_on_matches(
         for mat in regex.find_iter(&fragment) {
             // TODO: retain range direction
             let end = text.byte_to_char(start_byte + mat.start());
-            result.push(Range::new(start, end));
+            result.push(SelectionRange::new(start, end));
             start = text.byte_to_char(start_byte + mat.end());
         }
 
         if start < sel_end {
-            result.push(Range::new(start, sel_end));
+            result.push(SelectionRange::new(start, sel_end));
         }
     }
 
     // TODO: figure out a new primary index
-    Selection::new(result, 0)
+    Selections::new(result, 0)
 }
 
 #[cfg(test)]
@@ -606,21 +606,21 @@ mod test {
     #[test]
     #[should_panic]
     fn test_new_empty() {
-        let _ = Selection::new(smallvec![], 0);
+        let _ = Selections::new(smallvec![], 0);
     }
 
     #[test]
     fn test_create_normalizes_and_merges() {
-        let sel = Selection::new(
+        let sel = Selections::new(
             smallvec![
-                Range::new(10, 12),
-                Range::new(6, 7),
-                Range::new(4, 5),
-                Range::new(3, 4),
-                Range::new(0, 6),
-                Range::new(7, 8),
-                Range::new(9, 13),
-                Range::new(13, 14),
+                SelectionRange::new(10, 12),
+                SelectionRange::new(6, 7),
+                SelectionRange::new(4, 5),
+                SelectionRange::new(3, 4),
+                SelectionRange::new(0, 6),
+                SelectionRange::new(7, 8),
+                SelectionRange::new(9, 13),
+                SelectionRange::new(13, 14),
             ],
             0,
         );
@@ -635,8 +635,8 @@ mod test {
         assert_eq!(res, "0/6,6/7,7/8,9/13,13/14");
 
         // it correctly calculates a new primary index
-        let sel = Selection::new(
-            smallvec![Range::new(0, 2), Range::new(1, 5), Range::new(4, 7)],
+        let sel = Selections::new(
+            smallvec![SelectionRange::new(0, 2), SelectionRange::new(1, 5), SelectionRange::new(4, 7)],
             2,
         );
 
@@ -653,13 +653,13 @@ mod test {
 
     #[test]
     fn test_create_merges_adjacent_points() {
-        let sel = Selection::new(
+        let sel = Selections::new(
             smallvec![
-                Range::new(10, 12),
-                Range::new(12, 12),
-                Range::new(12, 12),
-                Range::new(10, 10),
-                Range::new(8, 10),
+                SelectionRange::new(10, 12),
+                SelectionRange::new(12, 12),
+                SelectionRange::new(12, 12),
+                SelectionRange::new(10, 10),
+                SelectionRange::new(8, 10),
             ],
             0,
         );
@@ -676,7 +676,7 @@ mod test {
 
     #[test]
     fn test_contains() {
-        let range = Range::new(10, 12);
+        let range = SelectionRange::new(10, 12);
 
         assert_eq!(range.contains(9), false);
         assert_eq!(range.contains(10), true);
@@ -684,7 +684,7 @@ mod test {
         assert_eq!(range.contains(12), false);
         assert_eq!(range.contains(13), false);
 
-        let range = Range::new(9, 6);
+        let range = SelectionRange::new(9, 6);
         assert_eq!(range.contains(9), false);
         assert_eq!(range.contains(7), true);
         assert_eq!(range.contains(6), true);
@@ -693,7 +693,7 @@ mod test {
     #[test]
     fn test_overlaps() {
         fn overlaps(a: (usize, usize), b: (usize, usize)) -> bool {
-            Range::new(a.0, a.1).overlaps(&Range::new(b.0, b.1))
+            SelectionRange::new(a.0, a.1).overlaps(&SelectionRange::new(b.0, b.1))
         }
 
         // Two non-zero-width ranges, no overlap.
@@ -747,41 +747,41 @@ mod test {
         let s = r.slice(..);
 
         // Zero-width.
-        assert_eq!(Range::new(0, 0).grapheme_aligned(s), Range::new(0, 0));
-        assert_eq!(Range::new(1, 1).grapheme_aligned(s), Range::new(0, 0));
-        assert_eq!(Range::new(2, 2).grapheme_aligned(s), Range::new(2, 2));
-        assert_eq!(Range::new(3, 3).grapheme_aligned(s), Range::new(3, 3));
-        assert_eq!(Range::new(4, 4).grapheme_aligned(s), Range::new(4, 4));
-        assert_eq!(Range::new(5, 5).grapheme_aligned(s), Range::new(4, 4));
-        assert_eq!(Range::new(6, 6).grapheme_aligned(s), Range::new(6, 6));
+        assert_eq!(SelectionRange::new(0, 0).grapheme_aligned(s), SelectionRange::new(0, 0));
+        assert_eq!(SelectionRange::new(1, 1).grapheme_aligned(s), SelectionRange::new(0, 0));
+        assert_eq!(SelectionRange::new(2, 2).grapheme_aligned(s), SelectionRange::new(2, 2));
+        assert_eq!(SelectionRange::new(3, 3).grapheme_aligned(s), SelectionRange::new(3, 3));
+        assert_eq!(SelectionRange::new(4, 4).grapheme_aligned(s), SelectionRange::new(4, 4));
+        assert_eq!(SelectionRange::new(5, 5).grapheme_aligned(s), SelectionRange::new(4, 4));
+        assert_eq!(SelectionRange::new(6, 6).grapheme_aligned(s), SelectionRange::new(6, 6));
 
         // Forward.
-        assert_eq!(Range::new(0, 1).grapheme_aligned(s), Range::new(0, 2));
-        assert_eq!(Range::new(1, 2).grapheme_aligned(s), Range::new(0, 2));
-        assert_eq!(Range::new(2, 3).grapheme_aligned(s), Range::new(2, 3));
-        assert_eq!(Range::new(3, 4).grapheme_aligned(s), Range::new(3, 4));
-        assert_eq!(Range::new(4, 5).grapheme_aligned(s), Range::new(4, 6));
-        assert_eq!(Range::new(5, 6).grapheme_aligned(s), Range::new(4, 6));
+        assert_eq!(SelectionRange::new(0, 1).grapheme_aligned(s), SelectionRange::new(0, 2));
+        assert_eq!(SelectionRange::new(1, 2).grapheme_aligned(s), SelectionRange::new(0, 2));
+        assert_eq!(SelectionRange::new(2, 3).grapheme_aligned(s), SelectionRange::new(2, 3));
+        assert_eq!(SelectionRange::new(3, 4).grapheme_aligned(s), SelectionRange::new(3, 4));
+        assert_eq!(SelectionRange::new(4, 5).grapheme_aligned(s), SelectionRange::new(4, 6));
+        assert_eq!(SelectionRange::new(5, 6).grapheme_aligned(s), SelectionRange::new(4, 6));
 
-        assert_eq!(Range::new(0, 2).grapheme_aligned(s), Range::new(0, 2));
-        assert_eq!(Range::new(1, 3).grapheme_aligned(s), Range::new(0, 3));
-        assert_eq!(Range::new(2, 4).grapheme_aligned(s), Range::new(2, 4));
-        assert_eq!(Range::new(3, 5).grapheme_aligned(s), Range::new(3, 6));
-        assert_eq!(Range::new(4, 6).grapheme_aligned(s), Range::new(4, 6));
+        assert_eq!(SelectionRange::new(0, 2).grapheme_aligned(s), SelectionRange::new(0, 2));
+        assert_eq!(SelectionRange::new(1, 3).grapheme_aligned(s), SelectionRange::new(0, 3));
+        assert_eq!(SelectionRange::new(2, 4).grapheme_aligned(s), SelectionRange::new(2, 4));
+        assert_eq!(SelectionRange::new(3, 5).grapheme_aligned(s), SelectionRange::new(3, 6));
+        assert_eq!(SelectionRange::new(4, 6).grapheme_aligned(s), SelectionRange::new(4, 6));
 
         // Reverse.
-        assert_eq!(Range::new(1, 0).grapheme_aligned(s), Range::new(2, 0));
-        assert_eq!(Range::new(2, 1).grapheme_aligned(s), Range::new(2, 0));
-        assert_eq!(Range::new(3, 2).grapheme_aligned(s), Range::new(3, 2));
-        assert_eq!(Range::new(4, 3).grapheme_aligned(s), Range::new(4, 3));
-        assert_eq!(Range::new(5, 4).grapheme_aligned(s), Range::new(6, 4));
-        assert_eq!(Range::new(6, 5).grapheme_aligned(s), Range::new(6, 4));
+        assert_eq!(SelectionRange::new(1, 0).grapheme_aligned(s), SelectionRange::new(2, 0));
+        assert_eq!(SelectionRange::new(2, 1).grapheme_aligned(s), SelectionRange::new(2, 0));
+        assert_eq!(SelectionRange::new(3, 2).grapheme_aligned(s), SelectionRange::new(3, 2));
+        assert_eq!(SelectionRange::new(4, 3).grapheme_aligned(s), SelectionRange::new(4, 3));
+        assert_eq!(SelectionRange::new(5, 4).grapheme_aligned(s), SelectionRange::new(6, 4));
+        assert_eq!(SelectionRange::new(6, 5).grapheme_aligned(s), SelectionRange::new(6, 4));
 
-        assert_eq!(Range::new(2, 0).grapheme_aligned(s), Range::new(2, 0));
-        assert_eq!(Range::new(3, 1).grapheme_aligned(s), Range::new(3, 0));
-        assert_eq!(Range::new(4, 2).grapheme_aligned(s), Range::new(4, 2));
-        assert_eq!(Range::new(5, 3).grapheme_aligned(s), Range::new(6, 3));
-        assert_eq!(Range::new(6, 4).grapheme_aligned(s), Range::new(6, 4));
+        assert_eq!(SelectionRange::new(2, 0).grapheme_aligned(s), SelectionRange::new(2, 0));
+        assert_eq!(SelectionRange::new(3, 1).grapheme_aligned(s), SelectionRange::new(3, 0));
+        assert_eq!(SelectionRange::new(4, 2).grapheme_aligned(s), SelectionRange::new(4, 2));
+        assert_eq!(SelectionRange::new(5, 3).grapheme_aligned(s), SelectionRange::new(6, 3));
+        assert_eq!(SelectionRange::new(6, 4).grapheme_aligned(s), SelectionRange::new(6, 4));
     }
 
     #[test]
@@ -790,29 +790,29 @@ mod test {
         let s = r.slice(..);
 
         // Zero-width.
-        assert_eq!(Range::new(0, 0).min_width_1(s), Range::new(0, 2));
-        assert_eq!(Range::new(1, 1).min_width_1(s), Range::new(1, 2));
-        assert_eq!(Range::new(2, 2).min_width_1(s), Range::new(2, 3));
-        assert_eq!(Range::new(3, 3).min_width_1(s), Range::new(3, 4));
-        assert_eq!(Range::new(4, 4).min_width_1(s), Range::new(4, 6));
-        assert_eq!(Range::new(5, 5).min_width_1(s), Range::new(5, 6));
-        assert_eq!(Range::new(6, 6).min_width_1(s), Range::new(6, 6));
+        assert_eq!(SelectionRange::new(0, 0).min_width_1(s), SelectionRange::new(0, 2));
+        assert_eq!(SelectionRange::new(1, 1).min_width_1(s), SelectionRange::new(1, 2));
+        assert_eq!(SelectionRange::new(2, 2).min_width_1(s), SelectionRange::new(2, 3));
+        assert_eq!(SelectionRange::new(3, 3).min_width_1(s), SelectionRange::new(3, 4));
+        assert_eq!(SelectionRange::new(4, 4).min_width_1(s), SelectionRange::new(4, 6));
+        assert_eq!(SelectionRange::new(5, 5).min_width_1(s), SelectionRange::new(5, 6));
+        assert_eq!(SelectionRange::new(6, 6).min_width_1(s), SelectionRange::new(6, 6));
 
         // Forward.
-        assert_eq!(Range::new(0, 1).min_width_1(s), Range::new(0, 1));
-        assert_eq!(Range::new(1, 2).min_width_1(s), Range::new(1, 2));
-        assert_eq!(Range::new(2, 3).min_width_1(s), Range::new(2, 3));
-        assert_eq!(Range::new(3, 4).min_width_1(s), Range::new(3, 4));
-        assert_eq!(Range::new(4, 5).min_width_1(s), Range::new(4, 5));
-        assert_eq!(Range::new(5, 6).min_width_1(s), Range::new(5, 6));
+        assert_eq!(SelectionRange::new(0, 1).min_width_1(s), SelectionRange::new(0, 1));
+        assert_eq!(SelectionRange::new(1, 2).min_width_1(s), SelectionRange::new(1, 2));
+        assert_eq!(SelectionRange::new(2, 3).min_width_1(s), SelectionRange::new(2, 3));
+        assert_eq!(SelectionRange::new(3, 4).min_width_1(s), SelectionRange::new(3, 4));
+        assert_eq!(SelectionRange::new(4, 5).min_width_1(s), SelectionRange::new(4, 5));
+        assert_eq!(SelectionRange::new(5, 6).min_width_1(s), SelectionRange::new(5, 6));
 
         // Reverse.
-        assert_eq!(Range::new(1, 0).min_width_1(s), Range::new(1, 0));
-        assert_eq!(Range::new(2, 1).min_width_1(s), Range::new(2, 1));
-        assert_eq!(Range::new(3, 2).min_width_1(s), Range::new(3, 2));
-        assert_eq!(Range::new(4, 3).min_width_1(s), Range::new(4, 3));
-        assert_eq!(Range::new(5, 4).min_width_1(s), Range::new(5, 4));
-        assert_eq!(Range::new(6, 5).min_width_1(s), Range::new(6, 5));
+        assert_eq!(SelectionRange::new(1, 0).min_width_1(s), SelectionRange::new(1, 0));
+        assert_eq!(SelectionRange::new(2, 1).min_width_1(s), SelectionRange::new(2, 1));
+        assert_eq!(SelectionRange::new(3, 2).min_width_1(s), SelectionRange::new(3, 2));
+        assert_eq!(SelectionRange::new(4, 3).min_width_1(s), SelectionRange::new(4, 3));
+        assert_eq!(SelectionRange::new(5, 4).min_width_1(s), SelectionRange::new(5, 4));
+        assert_eq!(SelectionRange::new(6, 5).min_width_1(s), SelectionRange::new(6, 5));
     }
 
     #[test]
@@ -821,28 +821,28 @@ mod test {
         let s = r.slice(..);
 
         // Zero-width ranges.
-        assert_eq!(Range::new(0, 0).line_range(s), (0, 0));
-        assert_eq!(Range::new(1, 1).line_range(s), (0, 0));
-        assert_eq!(Range::new(2, 2).line_range(s), (1, 1));
-        assert_eq!(Range::new(3, 3).line_range(s), (1, 1));
+        assert_eq!(SelectionRange::new(0, 0).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(1, 1).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(2, 2).line_range(s), (1, 1));
+        assert_eq!(SelectionRange::new(3, 3).line_range(s), (1, 1));
 
         // Forward ranges.
-        assert_eq!(Range::new(0, 1).line_range(s), (0, 0));
-        assert_eq!(Range::new(0, 2).line_range(s), (0, 0));
-        assert_eq!(Range::new(0, 3).line_range(s), (0, 1));
-        assert_eq!(Range::new(1, 2).line_range(s), (0, 0));
-        assert_eq!(Range::new(2, 3).line_range(s), (1, 1));
-        assert_eq!(Range::new(3, 8).line_range(s), (1, 2));
-        assert_eq!(Range::new(0, 12).line_range(s), (0, 2));
+        assert_eq!(SelectionRange::new(0, 1).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(0, 2).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(0, 3).line_range(s), (0, 1));
+        assert_eq!(SelectionRange::new(1, 2).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(2, 3).line_range(s), (1, 1));
+        assert_eq!(SelectionRange::new(3, 8).line_range(s), (1, 2));
+        assert_eq!(SelectionRange::new(0, 12).line_range(s), (0, 2));
 
         // Reverse ranges.
-        assert_eq!(Range::new(1, 0).line_range(s), (0, 0));
-        assert_eq!(Range::new(2, 0).line_range(s), (0, 0));
-        assert_eq!(Range::new(3, 0).line_range(s), (0, 1));
-        assert_eq!(Range::new(2, 1).line_range(s), (0, 0));
-        assert_eq!(Range::new(3, 2).line_range(s), (1, 1));
-        assert_eq!(Range::new(8, 3).line_range(s), (1, 2));
-        assert_eq!(Range::new(12, 0).line_range(s), (0, 2));
+        assert_eq!(SelectionRange::new(1, 0).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(2, 0).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(3, 0).line_range(s), (0, 1));
+        assert_eq!(SelectionRange::new(2, 1).line_range(s), (0, 0));
+        assert_eq!(SelectionRange::new(3, 2).line_range(s), (1, 1));
+        assert_eq!(SelectionRange::new(8, 3).line_range(s), (1, 2));
+        assert_eq!(SelectionRange::new(12, 0).line_range(s), (0, 2));
     }
 
     #[test]
@@ -851,19 +851,19 @@ mod test {
         let s = r.slice(..);
 
         // Zero-width ranges.
-        assert_eq!(Range::new(0, 0).cursor(s), 0);
-        assert_eq!(Range::new(2, 2).cursor(s), 2);
-        assert_eq!(Range::new(3, 3).cursor(s), 3);
+        assert_eq!(SelectionRange::new(0, 0).cursor(s), 0);
+        assert_eq!(SelectionRange::new(2, 2).cursor(s), 2);
+        assert_eq!(SelectionRange::new(3, 3).cursor(s), 3);
 
         // Forward ranges.
-        assert_eq!(Range::new(0, 2).cursor(s), 0);
-        assert_eq!(Range::new(0, 3).cursor(s), 2);
-        assert_eq!(Range::new(3, 6).cursor(s), 4);
+        assert_eq!(SelectionRange::new(0, 2).cursor(s), 0);
+        assert_eq!(SelectionRange::new(0, 3).cursor(s), 2);
+        assert_eq!(SelectionRange::new(3, 6).cursor(s), 4);
 
         // Reverse ranges.
-        assert_eq!(Range::new(2, 0).cursor(s), 0);
-        assert_eq!(Range::new(6, 2).cursor(s), 2);
-        assert_eq!(Range::new(6, 3).cursor(s), 3);
+        assert_eq!(SelectionRange::new(2, 0).cursor(s), 0);
+        assert_eq!(SelectionRange::new(6, 2).cursor(s), 2);
+        assert_eq!(SelectionRange::new(6, 3).cursor(s), 3);
     }
 
     #[test]
@@ -872,27 +872,27 @@ mod test {
         let s = r.slice(..);
 
         // Zero-width ranges.
-        assert_eq!(Range::new(0, 0).put_cursor(s, 0, true), Range::new(0, 2));
-        assert_eq!(Range::new(0, 0).put_cursor(s, 2, true), Range::new(0, 3));
-        assert_eq!(Range::new(2, 3).put_cursor(s, 4, true), Range::new(2, 6));
-        assert_eq!(Range::new(2, 8).put_cursor(s, 4, true), Range::new(2, 6));
-        assert_eq!(Range::new(8, 8).put_cursor(s, 4, true), Range::new(9, 4));
+        assert_eq!(SelectionRange::new(0, 0).put_cursor(s, 0, true), SelectionRange::new(0, 2));
+        assert_eq!(SelectionRange::new(0, 0).put_cursor(s, 2, true), SelectionRange::new(0, 3));
+        assert_eq!(SelectionRange::new(2, 3).put_cursor(s, 4, true), SelectionRange::new(2, 6));
+        assert_eq!(SelectionRange::new(2, 8).put_cursor(s, 4, true), SelectionRange::new(2, 6));
+        assert_eq!(SelectionRange::new(8, 8).put_cursor(s, 4, true), SelectionRange::new(9, 4));
 
         // Forward ranges.
-        assert_eq!(Range::new(3, 6).put_cursor(s, 0, true), Range::new(4, 0));
-        assert_eq!(Range::new(3, 6).put_cursor(s, 2, true), Range::new(4, 2));
-        assert_eq!(Range::new(3, 6).put_cursor(s, 3, true), Range::new(3, 4));
-        assert_eq!(Range::new(3, 6).put_cursor(s, 4, true), Range::new(3, 6));
-        assert_eq!(Range::new(3, 6).put_cursor(s, 6, true), Range::new(3, 7));
-        assert_eq!(Range::new(3, 6).put_cursor(s, 8, true), Range::new(3, 9));
+        assert_eq!(SelectionRange::new(3, 6).put_cursor(s, 0, true), SelectionRange::new(4, 0));
+        assert_eq!(SelectionRange::new(3, 6).put_cursor(s, 2, true), SelectionRange::new(4, 2));
+        assert_eq!(SelectionRange::new(3, 6).put_cursor(s, 3, true), SelectionRange::new(3, 4));
+        assert_eq!(SelectionRange::new(3, 6).put_cursor(s, 4, true), SelectionRange::new(3, 6));
+        assert_eq!(SelectionRange::new(3, 6).put_cursor(s, 6, true), SelectionRange::new(3, 7));
+        assert_eq!(SelectionRange::new(3, 6).put_cursor(s, 8, true), SelectionRange::new(3, 9));
 
         // Reverse ranges.
-        assert_eq!(Range::new(6, 3).put_cursor(s, 0, true), Range::new(6, 0));
-        assert_eq!(Range::new(6, 3).put_cursor(s, 2, true), Range::new(6, 2));
-        assert_eq!(Range::new(6, 3).put_cursor(s, 3, true), Range::new(6, 3));
-        assert_eq!(Range::new(6, 3).put_cursor(s, 4, true), Range::new(6, 4));
-        assert_eq!(Range::new(6, 3).put_cursor(s, 6, true), Range::new(4, 7));
-        assert_eq!(Range::new(6, 3).put_cursor(s, 8, true), Range::new(4, 9));
+        assert_eq!(SelectionRange::new(6, 3).put_cursor(s, 0, true), SelectionRange::new(6, 0));
+        assert_eq!(SelectionRange::new(6, 3).put_cursor(s, 2, true), SelectionRange::new(6, 2));
+        assert_eq!(SelectionRange::new(6, 3).put_cursor(s, 3, true), SelectionRange::new(6, 3));
+        assert_eq!(SelectionRange::new(6, 3).put_cursor(s, 4, true), SelectionRange::new(6, 4));
+        assert_eq!(SelectionRange::new(6, 3).put_cursor(s, 6, true), SelectionRange::new(4, 7));
+        assert_eq!(SelectionRange::new(6, 3).put_cursor(s, 8, true), SelectionRange::new(4, 9));
     }
 
     #[test]
@@ -901,7 +901,7 @@ mod test {
 
         let text = Rope::from(" abcd efg wrs   xyz 123 456");
 
-        let selection = Selection::new(smallvec![Range::new(0, 9), Range::new(11, 20),], 0);
+        let selection = Selections::new(smallvec![SelectionRange::new(0, 9), SelectionRange::new(11, 20),], 0);
 
         let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
 
@@ -916,11 +916,11 @@ mod test {
                 // the left.  Imagine, for example, if the entire
                 // selection range were matched: you'd still want
                 // at least one range to remain after the split.
-                Range::new(0, 0),
-                Range::new(1, 5),
-                Range::new(6, 9),
-                Range::new(11, 13),
-                Range::new(16, 19),
+                SelectionRange::new(0, 0),
+                SelectionRange::new(1, 5),
+                SelectionRange::new(6, 9),
+                SelectionRange::new(11, 13),
+                SelectionRange::new(16, 19),
                 // In contrast to the comment above, there is no
                 // _trailing_ zero-width range despite the trailing
                 // match, because ranges are exclusive on the right.

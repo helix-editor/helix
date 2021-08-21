@@ -1,4 +1,4 @@
-use crate::{search, Selection};
+use crate::{search, Selections};
 use ropey::RopeSlice;
 
 pub const PAIRS: &[(char, char)] = &[
@@ -154,7 +154,7 @@ fn find_nth_close_pair(
 /// `ch` can be either closing or opening pair.
 pub fn get_surround_pos(
     text: RopeSlice,
-    selection: &Selection,
+    selection: &Selections,
     ch: char,
     skip: usize,
 ) -> Option<Vec<usize>> {
@@ -173,7 +173,7 @@ pub fn get_surround_pos(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Range;
+    use crate::SelectionRange;
 
     use ropey::Rope;
     use smallvec::SmallVec;
@@ -245,8 +245,8 @@ mod test {
     fn test_get_surround_pos() {
         let doc = Rope::from("(some) (chars)\n(newline)");
         let slice = doc.slice(..);
-        let selection = Selection::new(
-            SmallVec::from_slice(&[Range::point(2), Range::point(9), Range::point(20)]),
+        let selection = Selections::new(
+            SmallVec::from_slice(&[SelectionRange::point(2), SelectionRange::point(9), SelectionRange::point(20)]),
             0,
         );
 
@@ -265,7 +265,7 @@ mod test {
         let slice = doc.slice(..);
 
         let selection =
-            Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(9)]), 0);
+            Selections::new(SmallVec::from_slice(&[SelectionRange::point(2), SelectionRange::point(9)]), 0);
 
         // cursor on s[o]me, c[h]ars
         assert_eq!(
@@ -273,8 +273,8 @@ mod test {
             None // different surround chars
         );
 
-        let selection = Selection::new(
-            SmallVec::from_slice(&[Range::point(14), Range::point(24)]),
+        let selection = Selections::new(
+            SmallVec::from_slice(&[SelectionRange::point(14), SelectionRange::point(24)]),
             0,
         );
         // cursor on [x]x, newli[n]e

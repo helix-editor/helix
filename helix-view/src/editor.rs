@@ -161,7 +161,7 @@ impl Editor {
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
-        use helix_core::Selection;
+        use helix_core::Selections;
 
         if !self.documents.contains_key(id) {
             log::error!("cannot switch to document that does not exist (anymore)");
@@ -187,7 +187,7 @@ impl Editor {
                 // initialize selection for view
                 doc.selections
                     .entry(view.id)
-                    .or_insert_with(|| Selection::point(0));
+                    .or_insert_with(|| Selections::point(0));
                 // TODO: reuse align_view
                 let pos = doc
                     .selection(view.id)
@@ -206,14 +206,14 @@ impl Editor {
                 let view_id = self.tree.split(view, Layout::Horizontal);
                 // initialize selection for view
                 let doc = &mut self.documents[id];
-                doc.selections.insert(view_id, Selection::point(0));
+                doc.selections.insert(view_id, Selections::point(0));
             }
             Action::VerticalSplit => {
                 let view = View::new(id);
                 let view_id = self.tree.split(view, Layout::Vertical);
                 // initialize selection for view
                 let doc = &mut self.documents[id];
-                doc.selections.insert(view_id, Selection::point(0));
+                doc.selections.insert(view_id, Selections::point(0));
             }
         }
 

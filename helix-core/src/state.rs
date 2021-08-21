@@ -1,10 +1,10 @@
-use crate::{Rope, Selection};
+use crate::{Rope, Selections};
 
 /// A state represents the current editor state of a single buffer.
 #[derive(Debug, Clone)]
 pub struct State {
     pub doc: Rope,
-    pub selection: Selection,
+    pub selection: Selections,
 }
 
 impl State {
@@ -12,7 +12,7 @@ impl State {
     pub fn new(doc: Rope) -> Self {
         Self {
             doc,
-            selection: Selection::point(0),
+            selection: Selections::point(0),
         }
     }
 

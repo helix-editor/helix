@@ -1,5 +1,5 @@
 use crate::{
-    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
+    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selections, Tendril, Transaction,
 };
 use std::borrow::Cow;
 
@@ -54,7 +54,7 @@ fn find_line_comment(
 }
 
 #[must_use]
-pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&str>) -> Transaction {
+pub fn toggle_line_comments(doc: &Rope, selection: &Selections, token: Option<&str>) -> Transaction {
     let text = doc.slice(..);
 
     let token = token.unwrap_or("//");
@@ -104,7 +104,7 @@ mod test {
 
         let mut state = State::new(doc);
         // select whole document
-        state.selection = Selection::single(0, state.doc.len_chars() - 1);
+        state.selection = Selections::single(0, state.doc.len_chars() - 1);
 
         let text = state.doc.slice(..);
 
@@ -128,7 +128,7 @@ mod test {
         // 0 margin comments
         state.doc = Rope::from("  //1\n\n  //2\n  //3");
         // reset the selection.
-        state.selection = Selection::single(0, state.doc.len_chars() - 1);
+        state.selection = Selections::single(0, state.doc.len_chars() - 1);
 
         let transaction = toggle_line_comments(&state.doc, &state.selection, None);
         transaction.apply(&mut state.doc);

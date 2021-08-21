@@ -9,7 +9,7 @@ use crate::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
-    pos_at_coords, Position, Range, RopeSlice,
+    pos_at_coords, Position, SelectionRange, RopeSlice,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -26,11 +26,11 @@ pub enum Movement {
 
 pub fn move_horizontally(
     slice: RopeSlice,
-    range: Range,
+    range: SelectionRange,
     dir: Direction,
     count: usize,
     behaviour: Movement,
-) -> Range {
+) -> SelectionRange {
     let pos = range.cursor(slice);
 
     // Compute the new position.
@@ -45,11 +45,11 @@ pub fn move_horizontally(
 
 pub fn move_vertically(
     slice: RopeSlice,
-    range: Range,
+    range: SelectionRange,
     dir: Direction,
     count: usize,
     behaviour: Movement,
-) -> Range {
+) -> SelectionRange {
     let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
@@ -74,35 +74,35 @@ pub fn move_vertically(
     new_range
 }
 
-pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn move_next_word_start(slice: RopeSlice, range: SelectionRange, count: usize) -> SelectionRange {
     word_move(slice, range, count, WordMotionTarget::NextWordStart)
 }
 
-pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn move_next_word_end(slice: RopeSlice, range: SelectionRange, count: usize) -> SelectionRange {
     word_move(slice, range, count, WordMotionTarget::NextWordEnd)
 }
 
-pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn move_prev_word_start(slice: RopeSlice, range: SelectionRange, count: usize) -> SelectionRange {
     word_move(slice, range, count, WordMotionTarget::PrevWordStart)
 }
 
-pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn move_next_long_word_start(slice: RopeSlice, range: SelectionRange, count: usize) -> SelectionRange {
     word_move(slice, range, count, WordMotionTarget::NextLongWordStart)
 }
 
-pub fn move_next_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn move_next_long_word_end(slice: RopeSlice, range: SelectionRange, count: usize) -> SelectionRange {
     word_move(slice, range, count, WordMotionTarget::NextLongWordEnd)
 }
 
-pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn move_prev_long_word_start(slice: RopeSlice, range: SelectionRange, count: usize) -> SelectionRange {
     word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
 }
 
-pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+pub fn move_prev_word_end(slice: RopeSlice, range: SelectionRange, count: usize) -> SelectionRange {
     word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
 }
 
-fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
+fn word_move(slice: RopeSlice, range: SelectionRange, count: usize, target: WordMotionTarget) -> SelectionRange {
     let is_prev = matches!(
         target,
         WordMotionTarget::PrevWordStart
@@ -123,15 +123,15 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     #[allow(clippy::collapsible_else_if)] // Makes the structure clearer in this case.
     let start_range = if is_prev {
         if range.anchor < range.head {
-            Range::new(range.head, prev_grapheme_boundary(slice, range.head))
+            SelectionRange::new(range.head, prev_grapheme_boundary(slice, range.head))
         } else {
-            Range::new(next_grapheme_boundary(slice, range.head), range.head)
+            SelectionRange::new(next_grapheme_boundary(slice, range.head), range.head)
         }
     } else {
         if range.anchor < range.head {
-            Range::new(prev_grapheme_boundary(slice, range.head), range.head)
+            SelectionRange::new(prev_grapheme_boundary(slice, range.head), range.head)
         } else {
-            Range::new(range.head, next_grapheme_boundary(slice, range.head))
+            SelectionRange::new(range.head, next_grapheme_boundary(slice, range.head))
         }
     };
 
@@ -191,14 +191,14 @@ pub enum WordMotionTarget {
 }
 
 pub trait CharHelpers {
-    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range;
+    fn range_to_target(&mut self, target: WordMotionTarget, origin: SelectionRange) -> SelectionRange;
 }
 
 impl CharHelpers for Chars<'_> {
     /// Note: this only changes the anchor of the range if the head is effectively
     /// starting on a boundary (either directly or after skipping newline characters).
     /// Any other changes to the anchor should be handled by the calling code.
-    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
+    fn range_to_target(&mut self, target: WordMotionTarget, origin: SelectionRange) -> SelectionRange {
         let is_prev = matches!(
             target,
             WordMotionTarget::PrevWordStart
@@ -263,7 +263,7 @@ impl CharHelpers for Chars<'_> {
             self.reverse();
         }
 
-        Range::new(anchor, head)
+        SelectionRange::new(anchor, head)
     }
 }
 
@@ -329,7 +329,7 @@ mod test {
         let slice = text.slice(..);
         let pos = pos_at_coords(slice, (0, 4).into(), true);
 
-        let range = Range::new(pos, pos);
+        let range = SelectionRange::new(pos, pos);
         assert_eq!(
             coords_at_pos(
                 slice,
@@ -345,7 +345,7 @@ mod test {
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into(), true);
 
-        let mut range = Range::point(position);
+        let mut range = SelectionRange::point(position);
 
         let moves_and_expected_coordinates = [
             ((Direction::Forward, 1usize), (0, 1)), // T|his is a simple alphabetic line
@@ -368,7 +368,7 @@ mod test {
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into(), true);
 
-        let mut range = Range::point(position);
+        let mut range = SelectionRange::point(position);
 
         let moves_and_expected_coordinates = IntoIter::new([
             ((Direction::Forward, 11usize), (1, 1)), // Multiline\nt|ext sample\n...
@@ -395,7 +395,7 @@ mod test {
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into(), true);
 
-        let mut range = Range::point(position);
+        let mut range = SelectionRange::point(position);
         let original_anchor = range.anchor;
 
         let moves = IntoIter::new([
@@ -415,7 +415,7 @@ mod test {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into(), true);
-        let mut range = Range::point(position);
+        let mut range = SelectionRange::point(position);
         let moves_and_expected_coordinates = IntoIter::new([
             ((Direction::Forward, 1usize), (1, 0)),
             ((Direction::Forward, 2usize), (3, 0)),
@@ -440,7 +440,7 @@ mod test {
         let text = Rope::from(MULTILINE_SAMPLE);
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into(), true);
-        let mut range = Range::point(position);
+        let mut range = SelectionRange::point(position);
 
         enum Axis {
             H,
@@ -476,7 +476,7 @@ mod test {
         let text = Rope::from(MULTIBYTE_CHARACTER_SAMPLE);
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into(), true);
-        let mut range = Range::point(position);
+        let mut range = SelectionRange::point(position);
 
         // FIXME: The behaviour captured in this test diverges from both Kakoune and Vim. These
         // will attempt to preserve the horizontal position of the cursor, rather than
@@ -509,96 +509,96 @@ mod test {
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_forward_movement_attempt_in_debug_mode() {
-        move_next_word_start(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        move_next_word_start(Rope::from("Sample").slice(..), SelectionRange::point(99999999), 1);
     }
 
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_forward_to_end_movement_attempt_in_debug_mode() {
-        move_next_word_end(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        move_next_word_end(Rope::from("Sample").slice(..), SelectionRange::point(99999999), 1);
     }
 
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_backwards_movement_attempt_in_debug_mode() {
-        move_prev_word_start(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        move_prev_word_start(Rope::from("Sample").slice(..), SelectionRange::point(99999999), 1);
     }
 
     #[test]
     fn test_behaviour_when_moving_to_start_of_next_words() {
         let tests = array::IntoIter::new([
             ("Basic forward motion stops at the first space",
-                vec![(1, Range::new(0, 0), Range::new(0, 6))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 6))]),
             (" Starting from a boundary advances the anchor",
-                vec![(1, Range::new(0, 0), Range::new(1, 10))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(1, 10))]),
             ("Long       whitespace gap is bridged by the head",
-                vec![(1, Range::new(0, 0), Range::new(0, 11))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 11))]),
             ("Previous anchor is irrelevant for forward motions",
-                vec![(1, Range::new(12, 0), Range::new(0, 9))]),
+                vec![(1, SelectionRange::new(12, 0), SelectionRange::new(0, 9))]),
             ("    Starting from whitespace moves to last space in sequence",
-                vec![(1, Range::new(0, 0), Range::new(0, 4))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 4))]),
             ("Starting from mid-word leaves anchor at start position and moves head",
-                vec![(1, Range::new(3, 3), Range::new(3, 9))]),
+                vec![(1, SelectionRange::new(3, 3), SelectionRange::new(3, 9))]),
             ("Identifiers_with_underscores are considered a single word",
-                vec![(1, Range::new(0, 0), Range::new(0, 29))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 29))]),
             ("Jumping\n    into starting whitespace selects the spaces before 'into'",
-                vec![(1, Range::new(0, 7), Range::new(8, 12))]),
+                vec![(1, SelectionRange::new(0, 7), SelectionRange::new(8, 12))]),
             ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 12)),
-                    (1, Range::new(0, 12), Range::new(12, 15)),
-                    (1, Range::new(12, 15), Range::new(15, 18))
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 12)),
+                    (1, SelectionRange::new(0, 12), SelectionRange::new(12, 15)),
+                    (1, SelectionRange::new(12, 15), SelectionRange::new(15, 18))
                 ]),
             ("...   ... punctuation and spaces behave as expected",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 6)),
-                    (1, Range::new(0, 6), Range::new(6, 10)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 6)),
+                    (1, SelectionRange::new(0, 6), SelectionRange::new(6, 10)),
                 ]),
             (".._.._ punctuation is not joined by underscores into a single block",
-                vec![(1, Range::new(0, 0), Range::new(0, 2))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 2))]),
             ("Newlines\n\nare bridged seamlessly.",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 8)),
-                    (1, Range::new(0, 8), Range::new(10, 14)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 8)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(10, 14)),
                 ]),
             ("Jumping\n\n\n\n\n\n   from newlines to whitespace selects whitespace.",
                 vec![
-                    (1, Range::new(0, 9), Range::new(13, 16)),
+                    (1, SelectionRange::new(0, 9), SelectionRange::new(13, 16)),
                 ]),
             ("A failed motion does not modify the range",
                 vec![
-                    (3, Range::new(37, 41), Range::new(37, 41)),
+                    (3, SelectionRange::new(37, 41), SelectionRange::new(37, 41)),
                 ]),
             ("oh oh oh two character words!",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 3)),
-                    (1, Range::new(0, 3), Range::new(3, 6)),
-                    (1, Range::new(0, 2), Range::new(1, 3)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 3)),
+                    (1, SelectionRange::new(0, 3), SelectionRange::new(3, 6)),
+                    (1, SelectionRange::new(0, 2), SelectionRange::new(1, 3)),
                 ]),
             ("Multiple motions at once resolve correctly",
                 vec![
-                    (3, Range::new(0, 0), Range::new(17, 20)),
+                    (3, SelectionRange::new(0, 0), SelectionRange::new(17, 20)),
                 ]),
             ("Excessive motions are performed partially",
                 vec![
-                    (999, Range::new(0, 0), Range::new(32, 41)),
+                    (999, SelectionRange::new(0, 0), SelectionRange::new(32, 41)),
                 ]),
             ("", // Edge case of moving forward in empty string
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 0)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 0)),
                 ]),
             ("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
-                    (1, Range::new(0, 0), Range::new(5, 5)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(5, 5)),
                 ]),
             ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
                 vec![
-                    (1, Range::new(0, 0), Range::new(1, 4)),
-                    (1, Range::new(1, 4), Range::new(5, 8)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(1, 4)),
+                    (1, SelectionRange::new(1, 4), SelectionRange::new(5, 8)),
                 ]),
             ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 6)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 6)),
                 ]),
         ]);
 
@@ -614,75 +614,75 @@ mod test {
     fn test_behaviour_when_moving_to_start_of_next_long_words() {
         let tests = array::IntoIter::new([
             ("Basic forward motion stops at the first space",
-                vec![(1, Range::new(0, 0), Range::new(0, 6))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 6))]),
             (" Starting from a boundary advances the anchor",
-                vec![(1, Range::new(0, 0), Range::new(1, 10))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(1, 10))]),
             ("Long       whitespace gap is bridged by the head",
-                vec![(1, Range::new(0, 0), Range::new(0, 11))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 11))]),
             ("Previous anchor is irrelevant for forward motions",
-                vec![(1, Range::new(12, 0), Range::new(0, 9))]),
+                vec![(1, SelectionRange::new(12, 0), SelectionRange::new(0, 9))]),
             ("    Starting from whitespace moves to last space in sequence",
-                vec![(1, Range::new(0, 0), Range::new(0, 4))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 4))]),
             ("Starting from mid-word leaves anchor at start position and moves head",
-                vec![(1, Range::new(3, 3), Range::new(3, 9))]),
+                vec![(1, SelectionRange::new(3, 3), SelectionRange::new(3, 9))]),
             ("Identifiers_with_underscores are considered a single word",
-                vec![(1, Range::new(0, 0), Range::new(0, 29))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 29))]),
             ("Jumping\n    into starting whitespace selects the spaces before 'into'",
-                vec![(1, Range::new(0, 7), Range::new(8, 12))]),
+                vec![(1, SelectionRange::new(0, 7), SelectionRange::new(8, 12))]),
             ("alphanumeric.!,and.?=punctuation are not treated any differently than alphanumerics",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 33)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 33)),
                 ]),
             ("...   ... punctuation and spaces behave as expected",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 6)),
-                    (1, Range::new(0, 6), Range::new(6, 10)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 6)),
+                    (1, SelectionRange::new(0, 6), SelectionRange::new(6, 10)),
                 ]),
             (".._.._ punctuation is joined by underscores into a single word, as it behaves like alphanumerics",
-                vec![(1, Range::new(0, 0), Range::new(0, 7))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 7))]),
             ("Newlines\n\nare bridged seamlessly.",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 8)),
-                    (1, Range::new(0, 8), Range::new(10, 14)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 8)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(10, 14)),
                 ]),
             ("Jumping\n\n\n\n\n\n   from newlines to whitespace selects whitespace.",
                 vec![
-                    (1, Range::new(0, 9), Range::new(13, 16)),
+                    (1, SelectionRange::new(0, 9), SelectionRange::new(13, 16)),
                 ]),
             ("A failed motion does not modify the range",
                 vec![
-                    (3, Range::new(37, 41), Range::new(37, 41)),
+                    (3, SelectionRange::new(37, 41), SelectionRange::new(37, 41)),
                 ]),
             ("oh oh oh two character words!",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 3)),
-                    (1, Range::new(0, 3), Range::new(3, 6)),
-                    (1, Range::new(0, 1), Range::new(0, 3)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 3)),
+                    (1, SelectionRange::new(0, 3), SelectionRange::new(3, 6)),
+                    (1, SelectionRange::new(0, 1), SelectionRange::new(0, 3)),
                 ]),
             ("Multiple motions at once resolve correctly",
                 vec![
-                    (3, Range::new(0, 0), Range::new(17, 20)),
+                    (3, SelectionRange::new(0, 0), SelectionRange::new(17, 20)),
                 ]),
             ("Excessive motions are performed partially",
                 vec![
-                    (999, Range::new(0, 0), Range::new(32, 41)),
+                    (999, SelectionRange::new(0, 0), SelectionRange::new(32, 41)),
                 ]),
             ("", // Edge case of moving forward in empty string
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 0)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 0)),
                 ]),
             ("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
-                    (1, Range::new(0, 0), Range::new(5, 5)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(5, 5)),
                 ]),
             ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
                 vec![
-                    (1, Range::new(0, 0), Range::new(1, 4)),
-                    (1, Range::new(1, 4), Range::new(5, 8)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(1, 4)),
+                    (1, SelectionRange::new(1, 4), SelectionRange::new(5, 8)),
                 ]),
             ("ヒー..リクス multibyte characters behave as normal characters, including their interaction with punctuation",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 8)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 8)),
                 ]),
         ]);
 
@@ -698,7 +698,7 @@ mod test {
     fn test_behaviour_when_moving_to_start_of_previous_words() {
         let tests = array::IntoIter::new([
             ("Basic backward motion from the middle of a word",
-                vec![(1, Range::new(3, 3), Range::new(4, 0))]),
+                vec![(1, SelectionRange::new(3, 3), SelectionRange::new(4, 0))]),
 
             // // Why do we want this behavior?  The current behavior fails this
             // // test, but seems better and more consistent.
@@ -706,68 +706,68 @@ mod test {
             //     vec![(1, Range::new(0, 9), Range::new(8, 0))]),
 
             ("    Jump to start of a word preceded by whitespace",
-                vec![(1, Range::new(5, 5), Range::new(6, 4))]),
+                vec![(1, SelectionRange::new(5, 5), SelectionRange::new(6, 4))]),
             ("    Jump to start of line from start of word preceded by whitespace",
-                vec![(1, Range::new(4, 4), Range::new(4, 0))]),
+                vec![(1, SelectionRange::new(4, 4), SelectionRange::new(4, 0))]),
             ("Previous anchor is irrelevant for backward motions",
-                vec![(1, Range::new(12, 5), Range::new(6, 0))]),
+                vec![(1, SelectionRange::new(12, 5), SelectionRange::new(6, 0))]),
             ("    Starting from whitespace moves to first space in sequence",
-                vec![(1, Range::new(0, 4), Range::new(4, 0))]),
+                vec![(1, SelectionRange::new(0, 4), SelectionRange::new(4, 0))]),
             ("Identifiers_with_underscores are considered a single word",
-                vec![(1, Range::new(0, 20), Range::new(20, 0))]),
+                vec![(1, SelectionRange::new(0, 20), SelectionRange::new(20, 0))]),
             ("Jumping\n    \nback through a newline selects whitespace",
-                vec![(1, Range::new(0, 13), Range::new(12, 8))]),
+                vec![(1, SelectionRange::new(0, 13), SelectionRange::new(12, 8))]),
             ("Jumping to start of word from the end selects the word",
-                vec![(1, Range::new(6, 7), Range::new(7, 0))]),
+                vec![(1, SelectionRange::new(6, 7), SelectionRange::new(7, 0))]),
             ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
                 vec![
-                    (1, Range::new(29, 30), Range::new(30, 21)),
-                    (1, Range::new(30, 21), Range::new(21, 18)),
-                    (1, Range::new(21, 18), Range::new(18, 15))
+                    (1, SelectionRange::new(29, 30), SelectionRange::new(30, 21)),
+                    (1, SelectionRange::new(30, 21), SelectionRange::new(21, 18)),
+                    (1, SelectionRange::new(21, 18), SelectionRange::new(18, 15))
                 ]),
             ("...   ... punctuation and spaces behave as expected",
                 vec![
-                    (1, Range::new(0, 10), Range::new(10, 6)),
-                    (1, Range::new(10, 6), Range::new(6, 0)),
+                    (1, SelectionRange::new(0, 10), SelectionRange::new(10, 6)),
+                    (1, SelectionRange::new(10, 6), SelectionRange::new(6, 0)),
                 ]),
             (".._.._ punctuation is not joined by underscores into a single block",
-                vec![(1, Range::new(0, 6), Range::new(5, 3))]),
+                vec![(1, SelectionRange::new(0, 6), SelectionRange::new(5, 3))]),
             ("Newlines\n\nare bridged seamlessly.",
                 vec![
-                    (1, Range::new(0, 10), Range::new(8, 0)),
+                    (1, SelectionRange::new(0, 10), SelectionRange::new(8, 0)),
                 ]),
             ("Jumping    \n\n\n\n\nback from within a newline group selects previous block",
                 vec![
-                    (1, Range::new(0, 13), Range::new(11, 0)),
+                    (1, SelectionRange::new(0, 13), SelectionRange::new(11, 0)),
                 ]),
             ("Failed motions do not modify the range",
                 vec![
-                    (0, Range::new(3, 0), Range::new(3, 0)),
+                    (0, SelectionRange::new(3, 0), SelectionRange::new(3, 0)),
                 ]),
             ("Multiple motions at once resolve correctly",
                 vec![
-                    (3, Range::new(18, 18), Range::new(9, 0)),
+                    (3, SelectionRange::new(18, 18), SelectionRange::new(9, 0)),
                 ]),
             ("Excessive motions are performed partially",
                 vec![
-                    (999, Range::new(40, 40), Range::new(10, 0)),
+                    (999, SelectionRange::new(40, 40), SelectionRange::new(10, 0)),
                 ]),
             ("", // Edge case of moving backwards in empty string
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 0)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 0)),
                 ]),
             ("\n\n\n\n\n", // Edge case of moving backwards in all newlines
                 vec![
-                    (1, Range::new(5, 5), Range::new(0, 0)),
+                    (1, SelectionRange::new(5, 5), SelectionRange::new(0, 0)),
                 ]),
             ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
                 vec![
-                    (1, Range::new(0, 8), Range::new(7, 4)),
-                    (1, Range::new(7, 4), Range::new(3, 0)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(7, 4)),
+                    (1, SelectionRange::new(7, 4), SelectionRange::new(3, 0)),
                 ]),
             ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 6), Range::new(6, 0)),
+                    (1, SelectionRange::new(0, 6), SelectionRange::new(6, 0)),
                 ]),
         ]);
 
@@ -784,7 +784,7 @@ mod test {
         let tests = array::IntoIter::new([
             (
                 "Basic backward motion from the middle of a word",
-                vec![(1, Range::new(3, 3), Range::new(4, 0))],
+                vec![(1, SelectionRange::new(3, 3), SelectionRange::new(4, 0))],
             ),
 
             // // Why do we want this behavior?  The current behavior fails this
@@ -794,77 +794,77 @@ mod test {
 
             (
                 "    Jump to start of a word preceded by whitespace",
-                vec![(1, Range::new(5, 5), Range::new(6, 4))],
+                vec![(1, SelectionRange::new(5, 5), SelectionRange::new(6, 4))],
             ),
             (
                 "    Jump to start of line from start of word preceded by whitespace",
-                vec![(1, Range::new(3, 4), Range::new(4, 0))],
+                vec![(1, SelectionRange::new(3, 4), SelectionRange::new(4, 0))],
             ),
             ("Previous anchor is irrelevant for backward motions",
-                vec![(1, Range::new(12, 5), Range::new(6, 0))]),
+                vec![(1, SelectionRange::new(12, 5), SelectionRange::new(6, 0))]),
             (
                 "    Starting from whitespace moves to first space in sequence",
-                vec![(1, Range::new(0, 4), Range::new(4, 0))],
+                vec![(1, SelectionRange::new(0, 4), SelectionRange::new(4, 0))],
             ),
             ("Identifiers_with_underscores are considered a single word",
-                vec![(1, Range::new(0, 20), Range::new(20, 0))]),
+                vec![(1, SelectionRange::new(0, 20), SelectionRange::new(20, 0))]),
             (
                 "Jumping\n    \nback through a newline selects whitespace",
-                vec![(1, Range::new(0, 13), Range::new(12, 8))],
+                vec![(1, SelectionRange::new(0, 13), SelectionRange::new(12, 8))],
             ),
             (
                 "Jumping to start of word from the end selects the word",
-                vec![(1, Range::new(6, 7), Range::new(7, 0))],
+                vec![(1, SelectionRange::new(6, 7), SelectionRange::new(7, 0))],
             ),
             (
                 "alphanumeric.!,and.?=punctuation are treated exactly the same",
-                vec![(1, Range::new(29, 30), Range::new(30, 0))],
+                vec![(1, SelectionRange::new(29, 30), SelectionRange::new(30, 0))],
             ),
             (
                 "...   ... punctuation and spaces behave as expected",
                 vec![
-                    (1, Range::new(0, 10), Range::new(10, 6)),
-                    (1, Range::new(10, 6), Range::new(6, 0)),
+                    (1, SelectionRange::new(0, 10), SelectionRange::new(10, 6)),
+                    (1, SelectionRange::new(10, 6), SelectionRange::new(6, 0)),
                 ],
             ),
             (".._.._ punctuation is joined by underscores into a single block",
-                vec![(1, Range::new(0, 6), Range::new(6, 0))]),
+                vec![(1, SelectionRange::new(0, 6), SelectionRange::new(6, 0))]),
             (
                 "Newlines\n\nare bridged seamlessly.",
-                vec![(1, Range::new(0, 10), Range::new(8, 0))],
+                vec![(1, SelectionRange::new(0, 10), SelectionRange::new(8, 0))],
             ),
             (
                 "Jumping    \n\n\n\n\nback from within a newline group selects previous block",
-                vec![(1, Range::new(0, 13), Range::new(11, 0))],
+                vec![(1, SelectionRange::new(0, 13), SelectionRange::new(11, 0))],
             ),
             (
                 "Failed motions do not modify the range",
-                vec![(0, Range::new(3, 0), Range::new(3, 0))],
+                vec![(0, SelectionRange::new(3, 0), SelectionRange::new(3, 0))],
             ),
             (
                 "Multiple motions at once resolve correctly",
-                vec![(3, Range::new(19, 19), Range::new(9, 0))],
+                vec![(3, SelectionRange::new(19, 19), SelectionRange::new(9, 0))],
             ),
             (
                 "Excessive motions are performed partially",
-                vec![(999, Range::new(40, 40), Range::new(10, 0))],
+                vec![(999, SelectionRange::new(40, 40), SelectionRange::new(10, 0))],
             ),
             (
                 "", // Edge case of moving backwards in empty string
-                vec![(1, Range::new(0, 0), Range::new(0, 0))],
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 0))],
             ),
             (
                 "\n\n\n\n\n", // Edge case of moving backwards in all newlines
-                vec![(1, Range::new(5, 5), Range::new(0, 0))],
+                vec![(1, SelectionRange::new(5, 5), SelectionRange::new(0, 0))],
             ),
             ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
                 vec![
-                    (1, Range::new(0, 8), Range::new(7, 4)),
-                    (1, Range::new(7, 4), Range::new(3, 0)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(7, 4)),
+                    (1, SelectionRange::new(7, 4), SelectionRange::new(3, 0)),
                 ]),
             ("ヒーリ..クス multibyte characters behave as normal characters, including when interacting with punctuation",
                 vec![
-                    (1, Range::new(0, 8), Range::new(8, 0)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(8, 0)),
                 ]),
         ]);
 
@@ -880,13 +880,13 @@ mod test {
     fn test_behaviour_when_moving_to_end_of_next_words() {
         let tests = array::IntoIter::new([
             ("Basic forward motion from the start of a word to the end of it",
-                vec![(1, Range::new(0, 0), Range::new(0, 5))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 5))]),
             ("Basic forward motion from the end of a word to the end of the next",
-                vec![(1, Range::new(0, 5), Range::new(5, 13))]),
+                vec![(1, SelectionRange::new(0, 5), SelectionRange::new(5, 13))]),
             ("Basic forward motion from the middle of a word to the end of it",
-                vec![(1, Range::new(2, 2), Range::new(2, 5))]),
+                vec![(1, SelectionRange::new(2, 2), SelectionRange::new(2, 5))]),
             ("    Jumping to end of a word preceded by whitespace",
-                vec![(1, Range::new(0, 0), Range::new(0, 11))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 11))]),
 
             // // Why do we want this behavior?  The current behavior fails this
             // // test, but seems better and more consistent.
@@ -894,61 +894,61 @@ mod test {
             //     vec![(1, Range::new(0, 0), Range::new(1, 9))]),
 
             ("Previous anchor is irrelevant for end of word motion",
-                vec![(1, Range::new(12, 2), Range::new(2, 8))]),
+                vec![(1, SelectionRange::new(12, 2), SelectionRange::new(2, 8))]),
             ("Identifiers_with_underscores are considered a single word",
-                vec![(1, Range::new(0, 0), Range::new(0, 28))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 28))]),
             ("Jumping\n    into starting whitespace selects up to the end of next word",
-                vec![(1, Range::new(0, 7), Range::new(8, 16))]),
+                vec![(1, SelectionRange::new(0, 7), SelectionRange::new(8, 16))]),
             ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 12)),
-                    (1, Range::new(0, 12), Range::new(12, 15)),
-                    (1, Range::new(12, 15), Range::new(15, 18))
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 12)),
+                    (1, SelectionRange::new(0, 12), SelectionRange::new(12, 15)),
+                    (1, SelectionRange::new(12, 15), SelectionRange::new(15, 18))
                 ]),
             ("...   ... punctuation and spaces behave as expected",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 3)),
-                    (1, Range::new(0, 3), Range::new(3, 9)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 3)),
+                    (1, SelectionRange::new(0, 3), SelectionRange::new(3, 9)),
                 ]),
             (".._.._ punctuation is not joined by underscores into a single block",
-                vec![(1, Range::new(0, 0), Range::new(0, 2))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 2))]),
             ("Newlines\n\nare bridged seamlessly.",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 8)),
-                    (1, Range::new(0, 8), Range::new(10, 13)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 8)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(10, 13)),
                 ]),
             ("Jumping\n\n\n\n\n\n   from newlines to whitespace selects to end of next word.",
                 vec![
-                    (1, Range::new(0, 8), Range::new(13, 20)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(13, 20)),
                 ]),
             ("A failed motion does not modify the range",
                 vec![
-                    (3, Range::new(37, 41), Range::new(37, 41)),
+                    (3, SelectionRange::new(37, 41), SelectionRange::new(37, 41)),
                 ]),
             ("Multiple motions at once resolve correctly",
                 vec![
-                    (3, Range::new(0, 0), Range::new(16, 19)),
+                    (3, SelectionRange::new(0, 0), SelectionRange::new(16, 19)),
                 ]),
             ("Excessive motions are performed partially",
                 vec![
-                    (999, Range::new(0, 0), Range::new(31, 41)),
+                    (999, SelectionRange::new(0, 0), SelectionRange::new(31, 41)),
                 ]),
             ("", // Edge case of moving forward in empty string
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 0)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 0)),
                 ]),
             ("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
-                    (1, Range::new(0, 0), Range::new(5, 5)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(5, 5)),
                 ]),
             ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
                 vec![
-                    (1, Range::new(0, 0), Range::new(1, 4)),
-                    (1, Range::new(1, 4), Range::new(5, 8)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(1, 4)),
+                    (1, SelectionRange::new(1, 4), SelectionRange::new(5, 8)),
                 ]),
             ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 5)),
                 ]),
         ]);
 
@@ -964,73 +964,73 @@ mod test {
     fn test_behaviour_when_moving_to_end_of_previous_words() {
         let tests = array::IntoIter::new([
             ("Basic backward motion from the middle of a word",
-                vec![(1, Range::new(9, 9), Range::new(10, 5))]),
+                vec![(1, SelectionRange::new(9, 9), SelectionRange::new(10, 5))]),
             ("Starting from after boundary retreats the anchor",
-                vec![(1, Range::new(0, 14), Range::new(13, 8))]),
+                vec![(1, SelectionRange::new(0, 14), SelectionRange::new(13, 8))]),
             ("Jump     to end of a word succeeded by whitespace",
-                vec![(1, Range::new(11, 11), Range::new(11, 4))]),
+                vec![(1, SelectionRange::new(11, 11), SelectionRange::new(11, 4))]),
             ("    Jump to start of line from end of word preceded by whitespace",
-                vec![(1, Range::new(8, 8), Range::new(8, 0))]),
+                vec![(1, SelectionRange::new(8, 8), SelectionRange::new(8, 0))]),
             ("Previous anchor is irrelevant for backward motions",
-                vec![(1, Range::new(26, 12), Range::new(13, 8))]),
+                vec![(1, SelectionRange::new(26, 12), SelectionRange::new(13, 8))]),
             ("    Starting from whitespace moves to first space in sequence",
-                vec![(1, Range::new(0, 4), Range::new(4, 0))]),
+                vec![(1, SelectionRange::new(0, 4), SelectionRange::new(4, 0))]),
             ("Test identifiers_with_underscores are considered a single word",
-                vec![(1, Range::new(0, 25), Range::new(25, 4))]),
+                vec![(1, SelectionRange::new(0, 25), SelectionRange::new(25, 4))]),
             ("Jumping\n    \nback through a newline selects whitespace",
-                vec![(1, Range::new(0, 13), Range::new(12, 8))]),
+                vec![(1, SelectionRange::new(0, 13), SelectionRange::new(12, 8))]),
             ("Jumping to start of word from the end selects the whole word",
-                vec![(1, Range::new(16, 16), Range::new(16, 10))]),
+                vec![(1, SelectionRange::new(16, 16), SelectionRange::new(16, 10))]),
             ("alphanumeric.!,and.?=punctuation are considered 'words' for the purposes of word motion",
                 vec![
-                    (1, Range::new(30, 30), Range::new(31, 21)),
-                    (1, Range::new(31, 21), Range::new(21, 18)),
-                    (1, Range::new(21, 18), Range::new(18, 15))
+                    (1, SelectionRange::new(30, 30), SelectionRange::new(31, 21)),
+                    (1, SelectionRange::new(31, 21), SelectionRange::new(21, 18)),
+                    (1, SelectionRange::new(21, 18), SelectionRange::new(18, 15))
                 ]),
 
             ("...   ... punctuation and spaces behave as expected",
                 vec![
-                    (1, Range::new(0, 10), Range::new(9, 3)),
-                    (1, Range::new(9, 3), Range::new(3, 0)),
+                    (1, SelectionRange::new(0, 10), SelectionRange::new(9, 3)),
+                    (1, SelectionRange::new(9, 3), SelectionRange::new(3, 0)),
                 ]),
             (".._.._ punctuation is not joined by underscores into a single block",
-                vec![(1, Range::new(0, 5), Range::new(5, 3))]),
+                vec![(1, SelectionRange::new(0, 5), SelectionRange::new(5, 3))]),
             ("Newlines\n\nare bridged seamlessly.",
                 vec![
-                    (1, Range::new(0, 10), Range::new(8, 0)),
+                    (1, SelectionRange::new(0, 10), SelectionRange::new(8, 0)),
                 ]),
             ("Jumping    \n\n\n\n\nback from within a newline group selects previous block",
                 vec![
-                    (1, Range::new(0, 13), Range::new(11, 7)),
+                    (1, SelectionRange::new(0, 13), SelectionRange::new(11, 7)),
                 ]),
             ("Failed motions do not modify the range",
                 vec![
-                    (0, Range::new(3, 0), Range::new(3, 0)),
+                    (0, SelectionRange::new(3, 0), SelectionRange::new(3, 0)),
                 ]),
             ("Multiple motions at once resolve correctly",
                 vec![
-                    (3, Range::new(24, 24), Range::new(16, 8)),
+                    (3, SelectionRange::new(24, 24), SelectionRange::new(16, 8)),
                 ]),
             ("Excessive motions are performed partially",
                 vec![
-                    (999, Range::new(40, 40), Range::new(9, 0)),
+                    (999, SelectionRange::new(40, 40), SelectionRange::new(9, 0)),
                 ]),
             ("", // Edge case of moving backwards in empty string
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 0)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 0)),
                 ]),
             ("\n\n\n\n\n", // Edge case of moving backwards in all newlines
                 vec![
-                    (1, Range::new(5, 5), Range::new(0, 0)),
+                    (1, SelectionRange::new(5, 5), SelectionRange::new(0, 0)),
                 ]),
             ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
                 vec![
-                    (1, Range::new(0, 8), Range::new(7, 4)),
-                    (1, Range::new(7, 4), Range::new(3, 0)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(7, 4)),
+                    (1, SelectionRange::new(7, 4), SelectionRange::new(3, 0)),
                 ]),
             ("Test ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 10), Range::new(10, 4)),
+                    (1, SelectionRange::new(0, 10), SelectionRange::new(10, 4)),
                 ]),
         ]);
 
@@ -1046,13 +1046,13 @@ mod test {
     fn test_behaviour_when_moving_to_end_of_next_long_words() {
         let tests = array::IntoIter::new([
             ("Basic forward motion from the start of a word to the end of it",
-                vec![(1, Range::new(0, 0), Range::new(0, 5))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 5))]),
             ("Basic forward motion from the end of a word to the end of the next",
-                vec![(1, Range::new(0, 5), Range::new(5, 13))]),
+                vec![(1, SelectionRange::new(0, 5), SelectionRange::new(5, 13))]),
             ("Basic forward motion from the middle of a word to the end of it",
-                vec![(1, Range::new(2, 2), Range::new(2, 5))]),
+                vec![(1, SelectionRange::new(2, 2), SelectionRange::new(2, 5))]),
             ("    Jumping to end of a word preceded by whitespace",
-                vec![(1, Range::new(0, 0), Range::new(0, 11))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 11))]),
 
             // // Why do we want this behavior?  The current behavior fails this
             // // test, but seems better and more consistent.
@@ -1060,59 +1060,59 @@ mod test {
             //     vec![(1, Range::new(0, 0), Range::new(1, 9))]),
 
             ("Previous anchor is irrelevant for end of word motion",
-                vec![(1, Range::new(12, 2), Range::new(2, 8))]),
+                vec![(1, SelectionRange::new(12, 2), SelectionRange::new(2, 8))]),
             ("Identifiers_with_underscores are considered a single word",
-                vec![(1, Range::new(0, 0), Range::new(0, 28))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 28))]),
             ("Jumping\n    into starting whitespace selects up to the end of next word",
-                vec![(1, Range::new(0, 7), Range::new(8, 16))]),
+                vec![(1, SelectionRange::new(0, 7), SelectionRange::new(8, 16))]),
             ("alphanumeric.!,and.?=punctuation are treated the same way",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 32)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 32)),
                 ]),
             ("...   ... punctuation and spaces behave as expected",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 3)),
-                    (1, Range::new(0, 3), Range::new(3, 9)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 3)),
+                    (1, SelectionRange::new(0, 3), SelectionRange::new(3, 9)),
                 ]),
             (".._.._ punctuation is joined by underscores into a single block",
-                vec![(1, Range::new(0, 0), Range::new(0, 6))]),
+                vec![(1, SelectionRange::new(0, 0), SelectionRange::new(0, 6))]),
             ("Newlines\n\nare bridged seamlessly.",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 8)),
-                    (1, Range::new(0, 8), Range::new(10, 13)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 8)),
+                    (1, SelectionRange::new(0, 8), SelectionRange::new(10, 13)),
                 ]),
             ("Jumping\n\n\n\n\n\n   from newlines to whitespace selects to end of next word.",
                 vec![
-                    (1, Range::new(0, 9), Range::new(13, 20)),
+                    (1, SelectionRange::new(0, 9), SelectionRange::new(13, 20)),
                 ]),
             ("A failed motion does not modify the range",
                 vec![
-                    (3, Range::new(37, 41), Range::new(37, 41)),
+                    (3, SelectionRange::new(37, 41), SelectionRange::new(37, 41)),
                 ]),
             ("Multiple motions at once resolve correctly",
                 vec![
-                    (3, Range::new(0, 0), Range::new(16, 19)),
+                    (3, SelectionRange::new(0, 0), SelectionRange::new(16, 19)),
                 ]),
             ("Excessive motions are performed partially",
                 vec![
-                    (999, Range::new(0, 0), Range::new(31, 41)),
+                    (999, SelectionRange::new(0, 0), SelectionRange::new(31, 41)),
                 ]),
             ("", // Edge case of moving forward in empty string
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 0)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 0)),
                 ]),
             ("\n\n\n\n\n", // Edge case of moving forward in all newlines
                 vec![
-                    (1, Range::new(0, 0), Range::new(5, 5)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(5, 5)),
                 ]),
             ("\n   \n   \n Jumping through alternated space blocks and newlines selects the space blocks",
                 vec![
-                    (1, Range::new(0, 0), Range::new(1, 4)),
-                    (1, Range::new(1, 4), Range::new(5, 8)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(1, 4)),
+                    (1, SelectionRange::new(1, 4), SelectionRange::new(5, 8)),
                 ]),
             ("ヒーリ..クス multibyte characters behave as normal characters, including  when they interact with punctuation",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 7)),
+                    (1, SelectionRange::new(0, 0), SelectionRange::new(0, 7)),
                 ]),
         ]);
 

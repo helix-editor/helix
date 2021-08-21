@@ -5,10 +5,10 @@ use helix_core::{
     coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
     line_ending::line_end_char_index,
-    Position, RopeSlice, Selection,
+    Position, RopeSlice, Selections,
 };
 
-type Jump = (DocumentId, Selection);
+type Jump = (DocumentId, Selections);
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
@@ -75,7 +75,7 @@ impl View {
             doc,
             offset: Position::new(0, 0),
             area: Rect::default(), // will get calculated upon inserting into tree
-            jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
+            jumps: JumpList::new((doc, Selections::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
         }
     }

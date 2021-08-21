@@ -13,7 +13,7 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range, Selection,
+    LineEnding, Position, SelectionRange, Selections,
 };
 use helix_view::{
     document::Mode,
@@ -756,9 +756,9 @@ impl EditorView {
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
-                        doc.set_selection(view_id, selection.push(Range::point(pos)));
+                        doc.set_selection(view_id, selection.push(SelectionRange::point(pos)));
                     } else {
-                        doc.set_selection(view_id, Selection::point(pos));
+                        doc.set_selection(view_id, Selections::point(pos));
                     }
 
                     editor.tree.focus = view_id;
@@ -784,7 +784,7 @@ impl EditorView {
 
                 let mut selection = doc.selection(view.id).clone();
                 let primary = selection.primary_mut();
-                *primary = Range::new(primary.anchor, pos);
+                *primary = SelectionRange::new(primary.anchor, pos);
                 doc.set_selection(view.id, selection);
                 EventResult::Consumed(None)
             }
@@ -866,7 +866,7 @@ impl EditorView {
 
                 if let Some((pos, view_id)) = result {
                     let doc = &mut editor.documents[editor.tree.get(view_id).doc];
-                    doc.set_selection(view_id, Selection::point(pos));
+                    doc.set_selection(view_id, Selections::point(pos));
                     editor.tree.focus = view_id;
                     commands::Command::paste_primary_clipboard_before.execute(cxt);
                     return EventResult::Consumed(None);

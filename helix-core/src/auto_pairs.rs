@@ -1,4 +1,4 @@
-use crate::{Range, Rope, Selection, Tendril, Transaction};
+use crate::{SelectionRange, Rope, Selections, Tendril, Transaction};
 use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
@@ -25,7 +25,7 @@ const CLOSE_BEFORE: &str = ")]}'\":;> \n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{202
 // TODO: delete implementation where it erases the whole bracket (|) -> |
 
 #[must_use]
-pub fn hook(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
+pub fn hook(doc: &Rope, selection: &Selections, ch: char) -> Option<Transaction> {
     for &(open, close) in PAIRS {
         if open == ch {
             if open == close {
@@ -58,7 +58,7 @@ fn next_char(doc: &Rope, pos: usize) -> Option<char> {
 // TODO: if not cursor but selection, wrap on both sides of selection (surround)
 fn handle_open(
     doc: &Rope,
-    selection: &Selection,
+    selection: &Selections,
     open: char,
     close: char,
     close_before: &str,
@@ -73,7 +73,7 @@ fn handle_open(
 
         let head = pos + offs + open.len_utf8();
         // if selection, retain anchor, if cursor, move over
-        ranges.push(Range::new(
+        ranges.push(SelectionRange::new(
             if range.is_empty() {
                 head
             } else {
@@ -102,10 +102,10 @@ fn handle_open(
         }
     });
 
-    transaction.with_selection(Selection::new(ranges, selection.primary_index()))
+    transaction.with_selection(Selections::new(ranges, selection.primary_index()))
 }
 
-fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> Transaction {
+fn handle_close(doc: &Rope, selection: &Selections, _open: char, close: char) -> Transaction {
     let mut ranges = SmallVec::with_capacity(selection.len());
 
     let mut offs = 0;
@@ -116,7 +116,7 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
 
         let head = pos + offs + close.len_utf8();
         // if selection, retain anchor, if cursor, move over
-        ranges.push(Range::new(
+        ranges.push(SelectionRange::new(
             if range.is_empty() {
                 head
             } else {
@@ -136,11 +136,11 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
         }
     });
 
-    transaction.with_selection(Selection::new(ranges, selection.primary_index()))
+    transaction.with_selection(Selections::new(ranges, selection.primary_index()))
 }
 
 // handle cases where open and close is the same, or in triples ("""docstring""")
-fn handle_same(_doc: &Rope, _selection: &Selection, _token: char) -> Option<Transaction> {
+fn handle_same(_doc: &Rope, _selection: &Selections, _token: char) -> Option<Transaction> {
     // if not cursor but selection, wrap
     // let next = next char
 
