@@ -200,6 +200,7 @@ impl Application {
                                         let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
                                         debugger.stack_pointer = bt.get(0).cloned();
                                     }
+                                    self.render();
                                 }
                                 _ => {}
                             }
