@@ -306,6 +306,7 @@ impl Command {
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_start, "Start debug session",
         dap_run, "Begin program execution",
+        dap_terminate, "End debug session",
         suspend, "Suspend"
     );
 }
@@ -4318,6 +4319,15 @@ fn dap_run(cx: &mut Context) {
 
     if let Some(debugger) = &mut cx.editor.debugger {
         let request = debugger.configuration_done();
+        let _ = block_on(request).unwrap();
+    }
+}
+
+fn dap_terminate(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        let request = debugger.disconnect();
         let _ = block_on(request).unwrap();
     }
 }

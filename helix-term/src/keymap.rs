@@ -489,6 +489,7 @@ impl Default for Keymaps {
                     "s" => dap_start,
                     "b" => dap_toggle_breakpoint,
                     "r" => dap_run,
+                    "t" => dap_terminate,
                 },
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,
