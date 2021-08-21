@@ -4069,19 +4069,19 @@ fn shell_pipe(cx: &mut Context) {
 }
 
 fn shell_pipe_ignore(cx: &mut Context) {
-    shell(cx, "pipe:", true, ShellBehavior::None);
+    shell(cx, "pipe-to:", true, ShellBehavior::None);
 }
 
 fn shell_insert(cx: &mut Context) {
-    shell(cx, "command:", false, ShellBehavior::Insert);
+    shell(cx, "insert-output:", false, ShellBehavior::Insert);
 }
 
 fn shell_append(cx: &mut Context) {
-    shell(cx, "command:", false, ShellBehavior::Append);
+    shell(cx, "append-output:", false, ShellBehavior::Append);
 }
 
 fn shell_filter(cx: &mut Context) {
-    shell(cx, "filter:", true, ShellBehavior::Filter);
+    shell(cx, "keep-pipe:", true, ShellBehavior::Filter);
 }
 
 fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
