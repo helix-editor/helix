@@ -4344,6 +4344,7 @@ fn dap_continue(cx: &mut Context) {
         let request = debugger.continue_thread(0);
         let _ = block_on(request).unwrap();
         debugger.is_running = true;
+        debugger.stack_pointer = None;
     }
 }
 
