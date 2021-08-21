@@ -2,6 +2,7 @@ use helix_core::syntax;
 use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
+use serde_json::from_value;
 
 use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
@@ -200,6 +201,29 @@ impl Application {
                                         let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
                                         debugger.stack_pointer = bt.get(0).cloned();
                                     }
+
+                                    let body: helix_dap::events::Stopped = from_value(ev.body.expect("`stopped` event must have a body")).unwrap();
+                                    let scope = match body.thread_id {
+                                        Some(id) => format!("Thread {}", id),
+                                        None => "Target".to_owned(),
+                                    };
+
+                                    let mut status = format!("{} stopped because of {}", scope, body.reason);
+                                    if let Some(desc) = body.description {
+                                        status.push_str(&format!(" {}", desc));
+                                    }
+                                    if let Some(text) = body.text {
+                                        status.push_str(&format!(" {}", text));
+                                    }
+                                    if body.all_threads_stopped == Some(true) {
+                                        status.push_str(" (all threads stopped)");
+                                    }
+
+                                    self.editor.set_status(status);
+                                    self.render();
+                                }
+                                "initialized" => {
+                                    self.editor.set_status("Debugged application started".to_owned());
                                     self.render();
                                 }
                                 _ => {}
