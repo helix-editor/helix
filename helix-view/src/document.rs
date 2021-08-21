@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Error};
+use helix_core::Range;
 use serde::de::{self, Deserialize, Deserializer};
 use std::cell::Cell;
 use std::collections::HashMap;

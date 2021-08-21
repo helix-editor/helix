@@ -581,6 +581,8 @@ impl<'a> Iterator for ChangeIterator<'a> {
 
 #[cfg(test)]
 mod test {
+    use std::array;
+
     use super::*;
     use crate::State;
 
@@ -774,5 +776,16 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
+    }
+
+    #[test]
+    fn smoke() {
+        let rope = Rope::from("hello world!");
+        let changes = [
+            (0, 1, None),
+            (3, 3, Some(Tendril::from("hello"))),
+            (0, 1, None),
+        ];
+        let trans = Transaction::change(&rope, array::IntoIter::new(changes));
     }
 }
