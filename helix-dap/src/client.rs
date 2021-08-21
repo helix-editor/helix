@@ -124,8 +124,7 @@ impl Client {
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            // make sure the process is reaped on drop
-            .kill_on_drop(true)
+            // Do not kill debug adapter when leaving, it should exit automatically
             .spawn()?;
 
         // Wait for adapter to become ready for connection
