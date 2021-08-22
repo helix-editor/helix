@@ -1,9 +1,16 @@
-use helix_core::syntax;
+use helix_core::{syntax, Selection};
 use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
 
-use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
+use crate::{
+    args::Args,
+    commands::{align_view, Align},
+    compositor::Compositor,
+    config::Config,
+    job::Jobs,
+    ui,
+};
 
 use log::error;
 
@@ -300,13 +307,22 @@ impl Application {
                             Some(helix_dap::Source {
                                 path: Some(src), ..
                             }),
+                        line,
+                        column,
                         ..
                     }) = &debugger.stack_pointer
                     {
                         let path = src.clone();
+                        let line = *line;
+                        let column = *column;
                         self.editor
                             .open(path, helix_view::editor::Action::Replace)
                             .unwrap();
+
+                        let (view, doc) = current!(self.editor);
+                        let pos = doc.text().line_to_char(line - 1) + column;
+                        doc.set_selection(view.id, Selection::point(pos));
+                        align_view(doc, view, Align::Center);
                     }
                     self.editor.set_status(status);
                 }

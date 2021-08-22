@@ -98,13 +98,13 @@ impl<'a> Context<'a> {
     }
 }
 
-enum Align {
+pub enum Align {
     Top,
     Center,
     Bottom,
 }
 
-fn align_view(doc: &Document, view: &mut View, align: Align) {
+pub fn align_view(doc: &Document, view: &mut View, align: Align) {
     let pos = doc
         .selection(view.id)
         .primary()
