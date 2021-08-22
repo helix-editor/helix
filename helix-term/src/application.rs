@@ -187,66 +187,7 @@ impl Application {
                     }
                 }
                 Some(payload) = self.editor.debugger_events.next() => {
-                    if self.editor.debugger.is_none() {
-                        continue;
-                    }
-                    let mut debugger = self.editor.debugger.as_mut().unwrap();
-                    match payload {
-                        Payload::Event(ev) => {
-                            match &ev.event[..] {
-                                "stopped" => {
-                                    debugger.is_running = false;
-                                    let main = debugger
-                                        .threads()
-                                        .await
-                                        .ok()
-                                        .and_then(|threads| threads.get(0).cloned());
-                                    if let Some(main) = main {
-                                        let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
-                                        debugger.stack_pointer = bt.get(0).cloned();
-                                    }
-
-                                    let body: helix_dap::events::Stopped = from_value(ev.body.expect("`stopped` event must have a body")).unwrap();
-                                    let scope = match body.thread_id {
-                                        Some(id) => format!("Thread {}", id),
-                                        None => "Target".to_owned(),
-                                    };
-
-                                    let mut status = format!("{} stopped because of {}", scope, body.reason);
-                                    if let Some(desc) = body.description {
-                                        status.push_str(&format!(" {}", desc));
-                                    }
-                                    if let Some(text) = body.text {
-                                        status.push_str(&format!(" {}", text));
-                                    }
-                                    if body.all_threads_stopped == Some(true) {
-                                        status.push_str(" (all threads stopped)");
-                                    }
-
-                                    self.editor.set_status(status);
-                                    self.render();
-                                }
-                                "output" => {
-                                    let body: helix_dap::events::Output = from_value(ev.body.expect("`output` event must have a body")).unwrap();
-
-                                    let prefix = match body.category {
-                                        Some(category) => format!("Debug ({}):", category),
-                                        None => "Debug:".to_owned(),
-                                    };
-
-                                    self.editor.set_status(format!("{} {}", prefix, body.output));
-                                    self.render();
-                                }
-                                "initialized" => {
-                                    self.editor.set_status("Debugged application started".to_owned());
-                                    self.render();
-                                }
-                                _ => {}
-                            }
-                        },
-                        Payload::Response(_) => unreachable!(),
-                        Payload::Request(_) => todo!(),
-                    }
+                    self.handle_debugger_message(payload).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -309,7 +250,70 @@ impl Application {
         }
     }
 
-    pub async fn handle_debugger_message(&mut self, _call: ()) {
+    pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
+        let mut debugger = match self.editor.debugger.as_mut() {
+            Some(debugger) => debugger,
+            None => return,
+        };
+
+        match payload {
+            Payload::Event(ev) => match &ev.event[..] {
+                "stopped" => {
+                    debugger.is_running = false;
+                    let main = debugger
+                        .threads()
+                        .await
+                        .ok()
+                        .and_then(|threads| threads.get(0).cloned());
+                    if let Some(main) = main {
+                        let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
+                        debugger.stack_pointer = bt.get(0).cloned();
+                    }
+
+                    let body: helix_dap::events::Stopped =
+                        from_value(ev.body.expect("`stopped` event must have a body")).unwrap();
+                    let scope = match body.thread_id {
+                        Some(id) => format!("Thread {}", id),
+                        None => "Target".to_owned(),
+                    };
+
+                    let mut status = format!("{} stopped because of {}", scope, body.reason);
+                    if let Some(desc) = body.description {
+                        status.push_str(&format!(" {}", desc));
+                    }
+                    if let Some(text) = body.text {
+                        status.push_str(&format!(" {}", text));
+                    }
+                    if body.all_threads_stopped == Some(true) {
+                        status.push_str(" (all threads stopped)");
+                    }
+
+                    self.editor.set_status(status);
+                    self.render();
+                }
+                "output" => {
+                    let body: helix_dap::events::Output =
+                        from_value(ev.body.expect("`output` event must have a body")).unwrap();
+
+                    let prefix = match body.category {
+                        Some(category) => format!("Debug ({}):", category),
+                        None => "Debug:".to_owned(),
+                    };
+
+                    self.editor
+                        .set_status(format!("{} {}", prefix, body.output));
+                    self.render();
+                }
+                "initialized" => {
+                    self.editor
+                        .set_status("Debugged application started".to_owned());
+                    self.render();
+                }
+                _ => {}
+            },
+            Payload::Response(_) => unreachable!(),
+            Payload::Request(_) => todo!(),
+        }
         // TODO
     }
 
