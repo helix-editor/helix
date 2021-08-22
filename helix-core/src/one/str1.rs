@@ -1,5 +1,17 @@
 use std::ops::{Deref, DerefMut};
 
+#[macro_export]
+macro_rules! _str1 {
+    ("") => {
+        compile_error!("String cannot be empty!")
+    };
+    ($s:expr) => {
+        Str1($s.into())
+    };
+}
+// so evil
+pub use _str1 as str1;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct Str1<T>(T);
@@ -67,10 +79,6 @@ impl<T: AsRef<str>> Str1<T> {
     }
 }
 
-pub fn str1<T, U: From<T>>(s: T) -> Str1<U> {
-    Str1(s.into())
-}
-
 #[cfg(test)]
 mod tests {
     use crate::Tendril1;
@@ -88,8 +96,9 @@ mod tests {
         fn hello(s: Tendril1) {}
 
         let s: &str = "hello";
-        hello(str1(s));
-        hello(str1("interesting"));
+        hello(str1!(s));
+        hello(str1!("interesting"));
         hello(Str1::new("hello".into()).unwrap());
+        // let wrong = str1!("");
     }
 }

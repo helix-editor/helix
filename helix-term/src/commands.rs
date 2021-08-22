@@ -2323,6 +2323,7 @@ fn symbol_picker(cx: &mut Context) {
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
                             doc.set_selection(view.id, Selections::single(range.anchor, range.head));
+
                             align_view(doc, view, Align::Center);
                         }
                     },
