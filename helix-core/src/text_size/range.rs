@@ -355,6 +355,18 @@ where
     }
 }
 
+impl<T> From<ops::Range<T>> for TextRange
+where
+    T: Into<TextSize>,
+{
+    fn from(r: ops::Range<T>) -> Self {
+        TextRange {
+            start: r.start.into(),
+            end: r.end.into(),
+        }
+    }
+}
+
 impl From<&TextRange> for TextRange {
     fn from(value: &TextRange) -> Self {
         *value

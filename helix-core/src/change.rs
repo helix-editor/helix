@@ -1,5 +1,4 @@
 use std::{
-    borrow::{self, Borrow},
     convert::{TryFrom, TryInto},
     iter::FromIterator,
     ops,
@@ -10,7 +9,6 @@ use crate::{
     Tendril, Tendril1,
 };
 use ropey::Rope;
-use similar::DiffableStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change {
@@ -176,6 +174,12 @@ impl ChangeSet {
     }
 }
 
+impl FromIterator<Change> for ChangeSet {
+    fn from_iter<T: IntoIterator<Item = Change>>(iter: T) -> Self {
+        iter.into_iter().collect::<ChangeSetBuilder>().build()
+    }
+}
+
 fn assert_disjoint(changes: &mut [Change]) {
     assert!(check_disjoint(changes), "Changes were not disjoint");
 }
@@ -195,19 +199,65 @@ fn check_disjoint(changes: &mut [Change]) -> bool {
     check_disjoint_impl(changes, false)
 }
 
-fn check_disjoint_impl(indels: &mut [Change], unstable: bool) -> bool {
+fn check_disjoint_impl(changes: &mut [Change], unstable: bool) -> bool {
     let key = |change: &Change| {
         let change = change.range().unwrap_or(TextRange::empty(1));
         (change.start(), change.end())
     };
     if unstable {
-        indels.sort_unstable_by_key(key);
+        changes.sort_unstable_by_key(key);
     } else {
-        indels.sort_by_key(key);
+        changes.sort_by_key(key);
     }
-    indels
+    changes
         .iter()
-        .zip(indels.iter().skip(1))
+        .zip(changes.iter().skip(1))
         .filter_map(|(l, r)| l.range().and_then(|l| r.range().map(|r| (l, r))))
         .all(|(l, r)| l.end() <= r.start())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::array;
+
+    use super::*;
+
+    fn check_apply<T: Into<Rope>, U: Into<Rope>, W: Into<Tendril>, const N: usize>(
+        changes: [(u32, u32, W); N],
+        before: T,
+        after: U,
+    ) {
+        let change_set: ChangeSet = array::IntoIter::new(changes)
+            .map(|(start, end, contents)| Change::new((start..end).into(), contents.into()))
+            .collect();
+        let mut before = before.into();
+        let after = after.into();
+        change_set.apply(&mut before);
+        assert_eq!(before, after);
+    }
+
+    #[test]
+    fn test_apply() {
+        check_apply(
+            [(5, 6, "   "), (0, 0, "prefix "), (0, 0, "another ")],
+            "hello world!",
+            "prefix another hello   world!",
+        );
+    }
+
+    #[should_panic]
+    #[test]
+    fn apply_not_disjoint() {
+        check_apply(
+            [(5, 6, "asdfasdf"), (5, 6, "asdfasd;fkas")],
+            "asdpfoiuapdsiofuadpoif",
+            "adspfoiuadf",
+        );
+    }
+
+    #[should_panic]
+    #[test]
+    fn not_long_enough() {
+        check_apply([(3, 4, "")], "", "");
+    }
 }
