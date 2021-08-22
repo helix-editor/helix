@@ -206,6 +206,21 @@ pub struct Variable {
     pub memory_reference: Option<String>,
 }
 
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Module {
+    pub id: String, // TODO: || number
+    pub name: String,
+    pub path: Option<PathBuf>,
+    pub is_optimized: Option<bool>,
+    pub is_user_code: Option<bool>,
+    pub version: Option<String>,
+    pub symbol_status: Option<String>,
+    pub symbol_file_path: Option<String>,
+    pub date_time_stamp: Option<String>,
+    pub address_range: Option<String>,
+}
+
 pub mod requests {
     use super::*;
     #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
@@ -411,6 +426,69 @@ pub mod requests {
 
 pub mod events {
     use super::*;
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[serde(tag = "event", content = "body")]
+    // seq is omitted as unused and is not sent by some implementations
+    pub enum Event {
+        Initialized,
+        Stopped(Stopped),
+        Continued(Continued),
+        Exited(Exited),
+        Terminated(Terminated),
+        Thread(Thread),
+        Output(Output),
+        Breakpoint(Breakpoint),
+        Module(Module),
+        LoadedSource(LoadedSource),
+        Process(Process),
+        Capabilities(Capabilities),
+        // ProgressStart(),
+        // ProgressUpdate(),
+        // ProgressEnd(),
+        // Invalidated(),
+        Memory(Memory),
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Stopped {
+        pub reason: String,
+        pub description: Option<String>,
+        pub thread_id: Option<usize>,
+        pub preserve_focus_hint: Option<bool>,
+        pub text: Option<String>,
+        pub all_threads_stopped: Option<bool>,
+        pub hit_breakpoint_ids: Option<Vec<usize>>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Continued {
+        pub thread_id: usize,
+        pub all_threads_continued: Option<bool>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Exited {
+        pub exit_code: usize,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Terminated {
+        pub restart: Option<Value>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Thread {
+        pub reason: String,
+        pub thread_id: usize,
+    }
+
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Output {
@@ -426,13 +504,54 @@ pub mod events {
 
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Stopped {
+    pub struct Breakpoint {
         pub reason: String,
-        pub description: Option<String>,
-        pub thread_id: Option<usize>,
-        pub preserve_focus_hint: Option<bool>,
-        pub text: Option<String>,
-        pub all_threads_stopped: Option<bool>,
-        pub hit_breakpoint_ids: Option<Vec<usize>>,
+        pub breakpoint: super::Breakpoint,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Module {
+        pub reason: String,
+        pub module: super::Module,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct LoadedSource {
+        pub reason: String,
+        pub source: super::Source,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Process {
+        pub name: String,
+        pub system_process_id: Option<usize>,
+        pub is_local_process: Option<bool>,
+        pub start_method: String, // TODO: use enum
+        pub pointer_size: Option<usize>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Capabilities {
+        pub module: super::DebuggerCapabilities,
+    }
+
+    // #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    // #[serde(rename_all = "camelCase")]
+    // pub struct Invalidated {
+    // pub areas: Vec<InvalidatedArea>,
+    // pub thread_id: Option<usize>,
+    // pub stack_frame_id: Option<usize>,
+    // }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Memory {
+        pub memory_reference: String,
+        pub offset: usize,
+        pub count: usize,
     }
 }

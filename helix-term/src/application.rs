@@ -2,7 +2,6 @@ use helix_core::syntax;
 use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
-use serde_json::from_value;
 
 use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
@@ -251,40 +250,47 @@ impl Application {
     }
 
     pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
+        use helix_dap::{events, Event};
         let mut debugger = match self.editor.debugger.as_mut() {
             Some(debugger) => debugger,
             None => return,
         };
 
         match payload {
-            Payload::Event(ev) => match &ev.event[..] {
-                "stopped" => {
+            Payload::Event(ev) => match ev {
+                Event::Stopped(events::Stopped {
+                    thread_id,
+                    description,
+                    text,
+                    reason,
+                    all_threads_stopped,
+                    ..
+                }) => {
                     debugger.is_running = false;
                     let main = debugger
                         .threads()
                         .await
                         .ok()
                         .and_then(|threads| threads.get(0).cloned());
+
                     if let Some(main) = main {
                         let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
                         debugger.stack_pointer = bt.get(0).cloned();
                     }
 
-                    let body: helix_dap::events::Stopped =
-                        from_value(ev.body.expect("`stopped` event must have a body")).unwrap();
-                    let scope = match body.thread_id {
+                    let scope = match thread_id {
                         Some(id) => format!("Thread {}", id),
                         None => "Target".to_owned(),
                     };
 
-                    let mut status = format!("{} stopped because of {}", scope, body.reason);
-                    if let Some(desc) = body.description {
+                    let mut status = format!("{} stopped because of {}", scope, reason);
+                    if let Some(desc) = description {
                         status.push_str(&format!(" {}", desc));
                     }
-                    if let Some(text) = body.text {
+                    if let Some(text) = text {
                         status.push_str(&format!(" {}", text));
                     }
-                    if body.all_threads_stopped == Some(true) {
+                    if all_threads_stopped.unwrap_or_default() {
                         status.push_str(" (all threads stopped)");
                     }
 
@@ -302,31 +308,30 @@ impl Application {
                             .unwrap();
                     }
                     self.editor.set_status(status);
-                    self.render();
                 }
-                "output" => {
-                    let body: helix_dap::events::Output =
-                        from_value(ev.body.expect("`output` event must have a body")).unwrap();
-
-                    let prefix = match body.category {
+                Event::Output(events::Output {
+                    category, output, ..
+                }) => {
+                    let prefix = match category {
                         Some(category) => format!("Debug ({}):", category),
                         None => "Debug:".to_owned(),
                     };
 
-                    self.editor
-                        .set_status(format!("{} {}", prefix, body.output));
-                    self.render();
+                    self.editor.set_status(format!("{} {}", prefix, output));
                 }
-                "initialized" => {
+                Event::Initialized => {
                     self.editor
                         .set_status("Debugged application started".to_owned());
-                    self.render();
                 }
-                _ => {}
+                ev => {
+                    log::warn!("Unhandled event {:?}", ev);
+                    return; // return early to skip render
+                }
             },
             Payload::Response(_) => unreachable!(),
             Payload::Request(_) => todo!(),
         }
+        self.render();
     }
 
     pub async fn handle_language_server_message(

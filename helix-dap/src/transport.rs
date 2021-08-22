@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{Error, Event, Result};
 use anyhow::Context;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -29,13 +29,6 @@ pub struct Response {
     pub success: bool,
     pub command: String,
     pub message: Option<String>,
-    pub body: Option<Value>,
-}
-
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
-pub struct Event {
-    // seq is omitted as unused and is not sent by some implementations
-    pub event: String,
     pub body: Option<Value>,
 }
 
@@ -208,8 +201,8 @@ impl Transport {
                 client_tx.send(msg).expect("Failed to send");
                 Ok(())
             }
-            Payload::Event(Event { ref event, .. }) => {
-                info!("<- DAP event {}", event);
+            Payload::Event(ref event) => {
+                info!("<- DAP event {:?}", event);
                 client_tx.send(msg).expect("Failed to send");
                 Ok(())
             }
