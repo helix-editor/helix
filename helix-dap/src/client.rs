@@ -30,6 +30,7 @@ pub struct Client {
     pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
     // TODO: multiple threads support
     pub stack_pointer: Option<StackFrame>,
+    pub stopped_thread: Option<usize>,
     pub is_running: bool,
 }
 
@@ -52,6 +53,7 @@ impl Client {
             //
             breakpoints: HashMap::new(),
             stack_pointer: None,
+            stopped_thread: None,
             is_running: false,
         };
 
@@ -346,9 +348,7 @@ impl Client {
     }
 
     pub async fn pause(&mut self, thread_id: usize) -> Result<()> {
-        let args = requests::PauseArguments {
-            thread_id,
-        };
+        let args = requests::PauseArguments { thread_id };
 
         self.request::<requests::Pause>(args).await
     }

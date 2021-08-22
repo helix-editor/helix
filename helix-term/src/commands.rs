@@ -307,6 +307,10 @@ impl Command {
         dap_start, "Start debug session",
         dap_run, "Begin program execution",
         dap_continue, "Continue program execution",
+        dap_pause, "Pause program execution",
+        dap_in, "Step in",
+        dap_out, "Step out",
+        dap_next, "Step to next",
         dap_variable_scopes, "List variable scopes",
         dap_terminate, "End debug session",
         suspend, "Suspend"
@@ -4394,12 +4398,70 @@ fn dap_continue(cx: &mut Context) {
                 .set_status("Debuggee is already running".to_owned());
             return;
         }
-        // assume 0 to continue all threads for now
-        // FIXME: spec conformant behavior here
-        let request = debugger.continue_thread(0);
+
+        let request = debugger.continue_thread(debugger.stopped_thread.unwrap());
         let _ = block_on(request).unwrap();
         debugger.is_running = true;
         debugger.stack_pointer = None;
+    }
+}
+
+fn dap_pause(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        if !debugger.is_running {
+            cx.editor.set_status("Debuggee is not running".to_owned());
+            return;
+        }
+
+        let request = debugger.pause(debugger.stopped_thread.unwrap());
+        let _ = block_on(request).unwrap();
+    }
+}
+
+fn dap_in(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        if debugger.is_running {
+            cx.editor
+                .set_status("Debuggee is already running".to_owned());
+            return;
+        }
+
+        let request = debugger.step_in(debugger.stopped_thread.unwrap());
+        let _ = block_on(request).unwrap();
+    }
+}
+
+fn dap_out(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        if debugger.is_running {
+            cx.editor
+                .set_status("Debuggee is already running".to_owned());
+            return;
+        }
+
+        let request = debugger.step_out(debugger.stopped_thread.unwrap());
+        let _ = block_on(request).unwrap();
+    }
+}
+
+fn dap_next(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        if debugger.is_running {
+            cx.editor
+                .set_status("Debuggee is already running".to_owned());
+            return;
+        }
+
+        let request = debugger.next(debugger.stopped_thread.unwrap());
+        let _ = block_on(request).unwrap();
     }
 }
 

@@ -276,6 +276,7 @@ impl Application {
                     if let Some(main) = main {
                         let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
                         debugger.stack_pointer = bt.get(0).cloned();
+                        debugger.stopped_thread = Some(main.id);
                     }
 
                     let scope = match thread_id {
