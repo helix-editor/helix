@@ -1,6 +1,6 @@
-use helix_dap::{events, Client, Payload, Result, SourceBreakpoint};
+use helix_dap::{events, Client, Event, Payload, Result, SourceBreakpoint};
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, to_value};
+use serde_json::to_value;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -13,22 +13,19 @@ struct LaunchArguments {
 async fn dispatch(mut rx: UnboundedReceiver<Payload>) {
     loop {
         match rx.recv().await.unwrap() {
-            Payload::Event(ev) => match &ev.event[..] {
-                "output" => {
-                    let body: events::Output = from_value(ev.body.unwrap()).unwrap();
-                    println!(
-                        "> [{}] {}",
-                        body.category.unwrap_or("unknown".to_owned()),
-                        body.output
-                    );
-                }
-                "stopped" => {
-                    println!("stopped");
-                }
-                _ => {}
-            },
-            Payload::Response(_) => unreachable!(),
-            Payload::Request(_) => todo!(),
+            Payload::Event(Event::Output(events::Output {
+                category, output, ..
+            })) => {
+                println!(
+                    "> [{}] {}",
+                    category.unwrap_or("unknown".to_owned()),
+                    output
+                );
+            }
+            Payload::Event(Event::Stopped(_)) => {
+                println!("stopped");
+            }
+            _ => {}
         };
     }
 }
