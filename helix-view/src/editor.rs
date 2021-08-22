@@ -7,7 +7,11 @@ use crate::{
 };
 
 use futures_util::future;
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use slotmap::SlotMap;
 
@@ -21,26 +25,45 @@ use helix_core::Position;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", default)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
+    /// Number of lines to scroll at once. Defaults to 3
+    pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
     pub shell: Vec<String>,
+    /// Line number mode.
+    pub line_number: LineNumber,
+    /// Middle click paste support. Defaults to true
+    pub middle_click_paste: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineNumber {
+    /// Show absolute line number
+    Absolute,
+
+    /// Show relative line number to the primary cursor
+    Relative,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             scrolloff: 5,
+            scroll_lines: 3,
             mouse: true,
             shell: if cfg!(windows) {
                 vec!["cmd".to_owned(), "/C".to_owned()]
             } else {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
+            line_number: LineNumber::Absolute,
+            middle_click_paste: true,
         }
     }
 }
@@ -164,7 +187,7 @@ impl Editor {
                 view.jumps.push(jump);
                 view.last_accessed_doc = Some(view.doc);
                 view.doc = id;
-                view.first_line = 0;
+                view.offset = Position::default();
 
                 let (view, doc) = current!(self);
 
@@ -178,7 +201,7 @@ impl Editor {
                     .primary()
                     .cursor(doc.text().slice(..));
                 let line = doc.text().char_to_line(pos);
-                view.first_line = line.saturating_sub(view.area.height as usize / 2);
+                view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
 
                 return;
             }
@@ -223,7 +246,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(path, None, Some(&self.theme), Some(&self.syn_loader))?;
+            let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
             let language_server = doc
@@ -317,13 +340,17 @@ impl Editor {
         self.documents.iter_mut().map(|(_id, doc)| doc)
     }
 
+    pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
+        self.documents()
+            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+    }
+
     // pub fn current_document(&self) -> Document {
     //     let id = self.view().doc;
     //     let doc = &mut editor.documents[id];
     // }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = view!(self);
         let doc = &self.documents[view.doc];
         let cursor = doc
@@ -331,8 +358,9 @@ impl Editor {
             .primary()
             .cursor(doc.text().slice(..));
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
-            pos.col += view.area.x as usize + OFFSET as usize;
-            pos.row += view.area.y as usize;
+            let inner = view.inner_area();
+            pos.col += inner.x as usize;
+            pos.row += inner.y as usize;
             (Some(pos), CursorKind::Hidden)
         } else {
             (None, CursorKind::Hidden)

@@ -13,7 +13,7 @@ use helix_core::{
     Rope,
 };
 use helix_view::{
-    graphics::{Color, Rect, Style},
+    graphics::{Color, Margin, Rect, Style},
     Theme,
 };
 
@@ -198,7 +198,7 @@ fn parse<'a>(
     Text::from(lines)
 }
 impl Component for Markdown {
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
         let text = parse(&self.contents, Some(&cx.editor.theme), &self.config_loader);
@@ -207,8 +207,11 @@ impl Component for Markdown {
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
 
-        let area = Rect::new(area.x + 1, area.y + 1, area.width - 2, area.height - 2);
-        par.render(area, surface);
+        let margin = Margin {
+            vertical: 1,
+            horizontal: 1,
+        };
+        par.render(area.inner(&margin), surface);
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {

@@ -1,4 +1,48 @@
-# 0.3.0
+
+# 0.4.1 (2021-08-14)
+
+A minor release that includes:
+- A fix for rendering glitches that would occur after editing with multiple selections.
+- CI fix for grammars not being cross-compiled for aarch64 
+
+# 0.4.0 (2021-08-13)
+
+Two months have passed, so this is another big release. A big thank you to all
+the contributors and package maintainers!
+
+Helix has popped up in [Arch, Manjaro, Nix, MacPorts and Parabola and Termux repositories](https://repology.org/project/helix/versions)!
+
+A [large scale refactor](https://github.com/helix-editor/helix/pull/376) landed that allows us to support zero width (empty)
+selections in the future as well as resolves many bugs and edge cases.
+
+- Multi-key remapping! Key binds now support much more complex usecases ([#454](https://github.com/helix-editor/helix/pull/454))
+- Pending keys are shown in the statusline ([#515](https://github.com/helix-editor/helix/pull/515))
+- Object selection / textobjects. `mi(` to select text inside parentheses ([#385](https://github.com/helix-editor/helix/pull/385))
+- Autoinfo: `whichkey`-like popups which show available sub-mode shortcuts ([#316](https://github.com/helix-editor/helix/pull/316))
+- Added WORD movements (W/B/E) ([#390](https://github.com/helix-editor/helix/pull/390))
+- Vertical selections (repeat selection above/below) ([#462](https://github.com/helix-editor/helix/pull/462))
+- Selection rotation via `(` and `)` ([66a90130](https://github.com/helix-editor/helix/commit/66a90130a5f99d769e9f6034025297f78ecaa3ec))
+- Selection contents rotation via `Alt-(` and `Alt-)` ([02cba2a](https://github.com/helix-editor/helix/commit/02cba2a7f403f48eccb18100fb751f7b42373dba))
+- Completion behavior improvements ([f917b5a4](https://github.com/helix-editor/helix/commit/f917b5a441ff3ae582358b6939ffbf889f4aa530), [627b899](https://github.com/helix-editor/helix/commit/627b89931576f7af86166ae8d5cbc55537877473))
+- Fixed a language server crash ([385a6b5a](https://github.com/helix-editor/helix/commit/385a6b5a1adddfc26e917982641530e1a7c7aa81))
+- Case change commands (`` ` ``, `~`, ``<a-`>``) ([#441](https://github.com/helix-editor/helix/pull/441))
+- File pickers (including goto) now provide a preview! ([#534](https://github.com/helix-editor/helix/pull/534))
+- Injection query support. Rust macro calls and embedded languages are now properly highlighted ([#430](https://github.com/helix-editor/helix/pull/430))
+- Formatting is now asynchronous, and the async job infrastructure has been improved ([#285](https://github.com/helix-editor/helix/pull/285))
+- Grammars are now compiled as separate shared libraries and loaded on-demand at runtime ([#432](https://github.com/helix-editor/helix/pull/432))
+- Code action support ([#478](https://github.com/helix-editor/helix/pull/478))
+- Mouse support ([#509](https://github.com/helix-editor/helix/pull/509), [#548](https://github.com/helix-editor/helix/pull/548))
+- Native Windows clipboard support ([#373](https://github.com/helix-editor/helix/pull/373))
+- Themes can now use color palettes ([#393](https://github.com/helix-editor/helix/pull/393))
+- `:reload` command ([#374](https://github.com/helix-editor/helix/pull/374))
+- Ctrl-z to suspend ([#464](https://github.com/helix-editor/helix/pull/464))
+- Language servers can now be configured with a custom JSON config ([#460](https://github.com/helix-editor/helix/pull/460))
+- Comment toggling now uses a language specific comment token ([#463](https://github.com/helix-editor/helix/pull/463))
+- Julia support ([#413](https://github.com/helix-editor/helix/pull/413))
+- Java support ([#448](https://github.com/helix-editor/helix/pull/448))
+- Prompts have an (in-memory) history ([63e54e30](https://github.com/helix-editor/helix/commit/63e54e30a74bb0d1d782877ddbbcf95f2817d061))
+
+# 0.3.0 (2021-06-27)
 
 Another big release. 
 

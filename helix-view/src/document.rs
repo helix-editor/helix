@@ -20,6 +20,7 @@ use helix_lsp::util::LspFormatting;
 
 use crate::{DocumentId, Theme, ViewId};
 
+/// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -432,14 +433,15 @@ impl Document {
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
     pub fn open(
-        path: PathBuf,
+        path: &Path,
         encoding: Option<&'static encoding_rs::Encoding>,
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
+        // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
             let mut file =
-                std::fs::File::open(&path).context(format!("unable to open {:?}", path))?;
+                std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
             let encoding = encoding.unwrap_or(encoding_rs::UTF_8);
@@ -449,7 +451,7 @@ impl Document {
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
-        doc.set_path(&path)?;
+        doc.set_path(path)?;
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
         }
@@ -564,6 +566,7 @@ impl Document {
         }
     }
 
+    /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
         if let Some(path) = &self.path {
             let language_config = config_loader.language_config_for_file_name(path);
@@ -571,6 +574,10 @@ impl Document {
         }
     }
 
+    /// Detect the indentation used in the file, or otherwise defaults to the language indentation
+    /// configured in `languages.toml`, with a fallback  back to 2 space indentation if it isn't
+    /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
+    /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             IndentStyle::from_str(
@@ -596,6 +603,9 @@ impl Document {
         let mut file = std::fs::File::open(path.unwrap())?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
+        // Calculate the difference between the buffer and source text, and apply it.
+        // This is not considered a modification of the contents of the file regardless
+        // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
@@ -630,6 +640,8 @@ impl Document {
         Ok(())
     }
 
+    /// Set the programming language for the file and load associated data (e.g. highlighting)
+    /// if it exists.
     pub fn set_language(
         &mut self,
         theme: Option<&Theme>,
@@ -650,6 +662,8 @@ impl Document {
         };
     }
 
+    /// Set the programming language for the file if you know the name (scope) but don't have the
+    /// [`syntax::LanguageConfiguration`] for it.
     pub fn set_language2(
         &mut self,
         scope: &str,
@@ -661,16 +675,19 @@ impl Document {
         self.set_language(theme, language_config);
     }
 
+    /// Set the LSP.
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
         self.language_server = language_server;
     }
 
+    /// Select text within the [`Document`].
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
     }
 
+    /// Apply a [`Transaction`] to the [`Document`] to change its text.
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         let old_doc = self.text().clone();
 
@@ -733,6 +750,7 @@ impl Document {
         success
     }
 
+    /// Apply a [`Transaction`] to the [`Document`] to change its text.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -754,6 +772,7 @@ impl Document {
         success
     }
 
+    /// Undo the last modification to the [`Document`].
     pub fn undo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
@@ -769,6 +788,7 @@ impl Document {
         }
     }
 
+    /// Redo the last modification to the [`Document`].
     pub fn redo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.redo() {
@@ -784,6 +804,7 @@ impl Document {
         }
     }
 
+    /// Undo modifications to the [`Document`] according to `uk`.
     pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
         let txns = self.history.get_mut().earlier(uk);
         for txn in txns {
@@ -791,6 +812,7 @@ impl Document {
         }
     }
 
+    /// Redo modifications to the [`Document`] according to `uk`.
     pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
         let txns = self.history.get_mut().later(uk);
         for txn in txns {
@@ -823,6 +845,7 @@ impl Document {
         self.id
     }
 
+    /// If there are unsaved modifications.
     pub fn is_modified(&self) -> bool {
         let history = self.history.take();
         let current_revision = history.current_revision();
@@ -830,6 +853,7 @@ impl Document {
         current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
+    /// Save modifications to history, and so [`Self::is_modified`] will return false.
     pub fn reset_modified(&mut self) {
         let history = self.history.take();
         let current_revision = history.current_revision();
@@ -837,6 +861,7 @@ impl Document {
         self.last_saved_revision = current_revision;
     }
 
+    /// Current editing mode for the [`Document`].
     pub fn mode(&self) -> Mode {
         self.mode
     }
@@ -848,6 +873,7 @@ impl Document {
             .map(|language| language.scope.as_str())
     }
 
+    /// Corresponding [`LanguageConfiguration`].
     pub fn language_config(&self) -> Option<&LanguageConfiguration> {
         self.language.as_deref()
     }
@@ -890,6 +916,7 @@ impl Document {
         self.path.as_ref()
     }
 
+    /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
         self.path().map(|path| Url::from_file_path(path).unwrap())
     }
@@ -902,6 +929,10 @@ impl Document {
     #[inline]
     pub fn selection(&self, view_id: ViewId) -> &Selection {
         &self.selections[&view_id]
+    }
+
+    pub fn selections(&self) -> &HashMap<ViewId, Selection> {
+        &self.selections
     }
 
     pub fn relative_path(&self) -> Option<PathBuf> {

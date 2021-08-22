@@ -17,6 +17,7 @@ constructor = "lilac"
 function = "white"
 "function.macro" = "lilac"
 "function.builtin" = "white"
+tag = "almond"
 comment = "sirocco"
 constant = "white"
 "constant.builtin" = "white"
@@ -41,7 +42,7 @@ module = "#ff0000"
 "ui.help" = { bg = "#7958DC", fg = "#171452" }
 
 "ui.text" = { fg = "lavender" }
-"ui.text.focus" = { fg = "lilac" }
+"ui.text.focus" = { fg = "white" }
 
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }

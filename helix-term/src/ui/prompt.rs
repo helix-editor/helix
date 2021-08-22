@@ -284,7 +284,8 @@ const BASE_WIDTH: u16 = 30;
 impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
-        let text_color = theme.get("ui.text.focus");
+        let prompt_color = theme.get("ui.text");
+        let completion_color = theme.get("ui.statusline");
         let selected_color = theme.get("ui.menu.selected");
         // completion
 
@@ -326,15 +327,13 @@ impl Prompt {
             let mut row = 0;
             let mut col = 0;
 
-            // TODO: paginate
             for (i, (_range, completion)) in
                 self.completion.iter().enumerate().skip(offset).take(items)
             {
                 let color = if Some(i) == self.selection {
-                    // Style::default().bg(Color::Rgb(104, 60, 232))
                     selected_color // TODO: just invert bg
                 } else {
-                    text_color
+                    completion_color
                 };
                 surface.set_stringn(
                     area.x + col * (1 + col_width),
@@ -352,7 +351,7 @@ impl Prompt {
         }
 
         if let Some(doc) = (self.doc_fn)(&self.line) {
-            let text = ui::Text::new(doc.to_string());
+            let mut text = ui::Text::new(doc.to_string());
 
             let viewport = area;
             let area = viewport.intersection(Rect::new(
@@ -377,12 +376,12 @@ impl Prompt {
 
         let line = area.height - 1;
         // render buffer text
-        surface.set_string(area.x, area.y + line, &self.prompt, text_color);
+        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
             &self.line,
-            text_color,
+            prompt_color,
         );
     }
 }
@@ -546,7 +545,7 @@ impl Component for Prompt {
         EventResult::Consumed(None)
     }
 
-    fn render(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.render_prompt(area, surface, cx)
     }
 

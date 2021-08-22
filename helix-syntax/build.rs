@@ -77,7 +77,8 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
         command
             .args(&["/nologo", "/LD", "/I"])
             .arg(header_path)
-            .arg("/Od");
+            .arg("/Od")
+            .arg("/utf-8");
         if let Some(scanner_path) = scanner_path.as_ref() {
             command.arg(scanner_path);
         }
@@ -105,6 +106,9 @@ fn build_library(src_path: &Path, language: &str) -> Result<()> {
             }
         }
         command.arg("-xc").arg(parser_path);
+        if cfg!(all(unix, not(target_os = "macos"))) {
+            command.arg("-Wl,-z,relro,-z,now");
+        }
     }
 
     let output = command

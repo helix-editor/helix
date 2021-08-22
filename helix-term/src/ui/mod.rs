@@ -13,7 +13,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::Picker;
+pub use picker::{FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -73,29 +73,26 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
+pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
     use ignore::Walk;
     use std::time;
-    let files = Walk::new(root.clone()).filter_map(|entry| match entry {
-        Ok(entry) => {
-            // filter dirs, but we might need special handling for symlinks!
-            if !entry.file_type().map_or(false, |entry| entry.is_dir()) {
-                let time = if let Ok(metadata) = entry.metadata() {
-                    metadata
-                        .accessed()
-                        .or_else(|_| metadata.modified())
-                        .or_else(|_| metadata.created())
-                        .unwrap_or(time::UNIX_EPOCH)
-                } else {
-                    time::UNIX_EPOCH
-                };
-
-                Some((entry.into_path(), time))
-            } else {
-                None
-            }
+    let files = Walk::new(&root).filter_map(|entry| {
+        let entry = entry.ok()?;
+        // Path::is_dir() traverses symlinks, so we use it over DirEntry::is_dir
+        if entry.path().is_dir() {
+            // Will give a false positive if metadata cannot be read (eg. permission error)
+            return None;
         }
-        Err(_err) => None,
+
+        let time = entry.metadata().map_or(time::UNIX_EPOCH, |metadata| {
+            metadata
+                .accessed()
+                .or_else(|_| metadata.modified())
+                .or_else(|_| metadata.created())
+                .unwrap_or(time::UNIX_EPOCH)
+        });
+
+        Some((entry.into_path(), time))
     });
 
     let mut files: Vec<_> = if root.join(".git").is_dir() {
@@ -109,7 +106,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
 
     let files = files.into_iter().map(|(path, _)| path).collect();
 
-    Picker::new(
+    FilePicker::new(
         files,
         move |path: &PathBuf| {
             // format_fn
@@ -124,6 +121,7 @@ pub fn file_picker(root: PathBuf) -> Picker<PathBuf> {
                 .open(path.into(), action)
                 .expect("editor.open failed");
         },
+        |_editor, path| Some((path.clone(), None)),
     )
 }
 

@@ -2,6 +2,28 @@
 
 (Currently not fully documented, see the [keymappings](./keymap.md) list for more.)
 
+## Registers
+
+Vim-like registers can be used to yank and store text to be pasted later. Usage is similar, with `"` being used to select a register:
+
+- `"ay` - Yank the current selection to register `a`.
+- `"op` - Paste the text in register `o` after the selection.
+
+If there is a selected register before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:
+
+- `"hc` - Store the selection in register `h` and then change it (delete and enter insert mode).
+- `"md` - Store the selection in register `m` and delete it.
+
+### Special Registers
+
+| Register character | Contains              |
+| ---                | ---                   |
+| `/`                | Last search           |
+| `:`                | Last executed command |
+| `"`                | Last yanked text      |
+
+> There is no special register for copying to system clipboard, instead special commands and keybindings are provided. See the [keymap](keymap.md#space-mode) for the specifics.
+
 ## Surround
 
 Functionality similar to [vim-surround](https://github.com/tpope/vim-surround) is built into

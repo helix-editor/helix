@@ -105,13 +105,12 @@ impl<T: Component> Component for Popup<T> {
         Some(self.size)
     }
 
-    fn render(&self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         cx.scroll = Some(self.scroll);
 
         let position = self
             .position
-            .or_else(|| cx.editor.cursor().0)
-            .unwrap_or_default();
+            .get_or_insert_with(|| cx.editor.cursor().0.unwrap_or_default());
 
         let (width, height) = self.size;
 

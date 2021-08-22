@@ -1,0 +1,12 @@
+indent = [
+  "messageBody",
+  "enumBody",
+  "oneofBody",
+  "serviceBody",
+  "rpcBody",
+  "msgLit",
+]
+
+outdent = [
+  "}",
+]

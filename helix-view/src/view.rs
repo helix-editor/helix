@@ -10,7 +10,7 @@ use helix_core::{
 
 type Jump = (DocumentId, Selection);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JumpList {
     jumps: Vec<Jump>,
     current: usize,
@@ -61,8 +61,7 @@ impl JumpList {
 pub struct View {
     pub id: ViewId,
     pub doc: DocumentId,
-    pub first_line: usize,
-    pub first_col: usize,
+    pub offset: Position,
     pub area: Rect,
     pub jumps: JumpList,
     /// the last accessed file before the current one
@@ -74,12 +73,17 @@ impl View {
         Self {
             id: ViewId::default(),
             doc,
-            first_line: 0,
-            first_col: 0,
+            offset: Position::new(0, 0),
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
         }
+    }
+
+    pub fn inner_area(&self) -> Rect {
+        // TODO: not ideal
+        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+        self.area.clip_left(OFFSET).clip_bottom(1) // -1 for statusline
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
@@ -87,42 +91,41 @@ impl View {
             .selection(self.id)
             .primary()
             .cursor(doc.text().slice(..));
-        let pos = coords_at_pos(doc.text().slice(..), cursor);
-        let line = pos.row;
-        let col = pos.col;
-        let height = self.area.height.saturating_sub(1); // - 1 for statusline
-        let last_line = (self.first_line + height as usize).saturating_sub(1);
+        let Position { col, row: line } = coords_at_pos(doc.text().slice(..), cursor);
+        let inner_area = self.inner_area();
+        let last_line = (self.offset.row + inner_area.height as usize).saturating_sub(1);
 
-        let scrolloff = scrolloff.min(self.area.height as usize / 2);
+        // - 1 so we have at least one gap in the middle.
+        // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
+        // as we type
+        let scrolloff = scrolloff.min(inner_area.height.saturating_sub(1) as usize / 2);
 
-        // TODO: not ideal
-        const OFFSET: usize = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        let last_col = (self.first_col + self.area.width as usize).saturating_sub(OFFSET + 1);
+        let last_col = self.offset.col + inner_area.width.saturating_sub(1) as usize;
 
         if line > last_line.saturating_sub(scrolloff) {
             // scroll down
-            self.first_line += line - (last_line.saturating_sub(scrolloff));
-        } else if line < self.first_line + scrolloff {
+            self.offset.row += line - (last_line.saturating_sub(scrolloff));
+        } else if line < self.offset.row + scrolloff {
             // scroll up
-            self.first_line = line.saturating_sub(scrolloff);
+            self.offset.row = line.saturating_sub(scrolloff);
         }
 
         if col > last_col.saturating_sub(scrolloff) {
             // scroll right
-            self.first_col += col - (last_col.saturating_sub(scrolloff));
-        } else if col < self.first_col + scrolloff {
+            self.offset.col += col - (last_col.saturating_sub(scrolloff));
+        } else if col < self.offset.col + scrolloff {
             // scroll left
-            self.first_col = col.saturating_sub(scrolloff);
+            self.offset.col = col.saturating_sub(scrolloff);
         }
     }
 
     /// Calculates the last visible line on screen
     #[inline]
     pub fn last_line(&self, doc: &Document) -> usize {
-        let height = self.area.height.saturating_sub(1); // - 1 for statusline
+        let height = self.inner_area().height;
         std::cmp::min(
             // Saturating subs to make it inclusive zero indexing.
-            (self.first_line + height as usize).saturating_sub(1),
+            (self.offset.row + height as usize).saturating_sub(1),
             doc.text().len_lines().saturating_sub(1),
         )
     }
@@ -138,7 +141,7 @@ impl View {
     ) -> Option<Position> {
         let line = text.char_to_line(pos);
 
-        if line < self.first_line || line > self.last_line(doc) {
+        if line < self.offset.row || line > self.last_line(doc) {
             // Line is not visible on screen
             return None;
         }
@@ -158,8 +161,8 @@ impl View {
         }
 
         // It is possible for underflow to occur if the buffer length is larger than the terminal width.
-        let row = line.saturating_sub(self.first_line);
-        let col = col.saturating_sub(self.first_col);
+        let row = line.saturating_sub(self.offset.row);
+        let col = col.saturating_sub(self.offset.col);
 
         Some(Position::new(row, col))
     }
@@ -171,19 +174,17 @@ impl View {
         column: u16,
         tab_width: usize,
     ) -> Option<usize> {
-        // TODO: not ideal
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-
-        // 2 for status
-        if row < self.area.top() || row > self.area.bottom().saturating_sub(2) {
+        let inner = self.inner_area();
+        // 1 for status
+        if row < inner.top() || row >= inner.bottom() {
             return None;
         }
 
-        if column < self.area.left() + OFFSET || column > self.area.right() {
+        if column < inner.left() || column > inner.right() {
             return None;
         }
 
-        let line_number = (row - self.area.y) as usize + self.first_line;
+        let line_number = (row - inner.y) as usize + self.offset.row;
 
         if line_number > text.len_lines() - 1 {
             return Some(text.len_chars());
@@ -193,7 +194,7 @@ impl View {
 
         let current_line = text.line(line_number);
 
-        let target = (column - OFFSET - self.area.x) as usize + self.first_col;
+        let target = (column - inner.x) as usize + self.offset.col;
         let mut selected = 0;
 
         for grapheme in RopeGraphemes::new(current_line) {
