@@ -1900,6 +1900,38 @@ mod cmd {
         Ok(())
     }
 
+    fn vsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        cx.editor.switch(id, Action::VerticalSplit);
+
+        let path = args.get(0).context("wrong argument count")?;
+
+        let _ = cx.editor.open(path.into(), Action::Replace)?;
+        Ok(())
+    }
+
+    fn hsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        cx.editor.switch(id, Action::HorizontalSplit);
+
+        let path = args.get(0).context("wrong argument count")?;
+
+        let _ = cx.editor.open(path.into(), Action::Replace)?;
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2138,6 +2170,20 @@ mod cmd {
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
             completer: None,
+        },
+        TypableCommand {
+            name: "vsplit",
+            alias: Some("vsp"),
+            doc: "Open the file in a vertical split.",
+            fun: vsplit,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "hsplit",
+            alias: Some("sp"),
+            doc: "Open the file in a horizontal split.",
+            fun: hsplit,
+            completer: Some(completers::filename),
         }
     ];
 
