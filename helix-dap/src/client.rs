@@ -316,4 +316,40 @@ impl Client {
         let response = self.request::<requests::Variables>(args).await?;
         Ok(response.variables)
     }
+
+    pub async fn step_in(&mut self, thread_id: usize) -> Result<()> {
+        let args = requests::StepInArguments {
+            thread_id,
+            target_id: None,
+            granularity: None,
+        };
+
+        self.request::<requests::StepIn>(args).await
+    }
+
+    pub async fn step_out(&mut self, thread_id: usize) -> Result<()> {
+        let args = requests::StepOutArguments {
+            thread_id,
+            granularity: None,
+        };
+
+        self.request::<requests::StepOut>(args).await
+    }
+
+    pub async fn next(&mut self, thread_id: usize) -> Result<()> {
+        let args = requests::NextArguments {
+            thread_id,
+            granularity: None,
+        };
+
+        self.request::<requests::Next>(args).await
+    }
+
+    pub async fn pause(&mut self, thread_id: usize) -> Result<()> {
+        let args = requests::PauseArguments {
+            thread_id,
+        };
+
+        self.request::<requests::Pause>(args).await
+    }
 }

@@ -420,6 +420,70 @@ pub mod requests {
         type Result = VariablesResponse;
         const COMMAND: &'static str = "variables";
     }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct StepInArguments {
+        pub thread_id: usize,
+        pub target_id: Option<usize>,
+        pub granularity: Option<String>,
+    }
+
+    #[derive(Debug)]
+    pub enum StepIn {}
+
+    impl Request for StepIn {
+        type Arguments = StepInArguments;
+        type Result = ();
+        const COMMAND: &'static str = "stepIn";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct StepOutArguments {
+        pub thread_id: usize,
+        pub granularity: Option<String>,
+    }
+
+    #[derive(Debug)]
+    pub enum StepOut {}
+
+    impl Request for StepOut {
+        type Arguments = StepOutArguments;
+        type Result = ();
+        const COMMAND: &'static str = "stepOut";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct NextArguments {
+        pub thread_id: usize,
+        pub granularity: Option<String>,
+    }
+
+    #[derive(Debug)]
+    pub enum Next {}
+
+    impl Request for Next {
+        type Arguments = NextArguments;
+        type Result = ();
+        const COMMAND: &'static str = "next";
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct PauseArguments {
+        pub thread_id: usize,
+    }
+
+    #[derive(Debug)]
+    pub enum Pause {}
+
+    impl Request for Pause {
+        type Arguments = PauseArguments;
+        type Result = ();
+        const COMMAND: &'static str = "pause";
+    }
 }
 
 // Events
