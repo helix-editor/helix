@@ -1,6 +1,6 @@
-use super::{traits::TextLen, TextRange};
+use super::{traits::TextLen, TextOffset, TextRange};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt, iter,
     num::TryFromIntError,
     ops::{Add, AddAssign, Sub, SubAssign},
@@ -8,16 +8,7 @@ use std::{
 
 /// A measure of text length. Also, equivalently, an index into text.
 ///
-/// This is a UTF-8 bytes offset stored as `u32`, but
-/// most clients should treat it as an opaque measure.
-///
-/// For cases that need to escape `TextSize` and return to working directly
-/// with primitive integers, `TextSize` can be converted losslessly to/from
-/// `u32` via [`From`] conversions as well as losslessly be converted [`Into`]
-/// `usize`. The `usize -> TextSize` direction can be done via [`TryFrom`].
-///
-/// These escape hatches are primarily required for unit testing and when
-/// converting from UTF-8 size to another coordinate space, such as UTF-16.
+/// This is a UTF-8 bytes offset or a char offset stored as `u32`
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TextSize {
     pub(crate) raw: u32,
@@ -76,11 +67,31 @@ impl From<TextSize> for u32 {
     }
 }
 
+impl From<&TextSize> for TextSize {
+    fn from(value: &TextSize) -> Self {
+        *value
+    }
+}
+
 impl TryFrom<usize> for TextSize {
     type Error = TryFromIntError;
     #[inline]
     fn try_from(value: usize) -> Result<Self, TryFromIntError> {
         Ok(u32::try_from(value)?.into())
+    }
+}
+
+impl TryFrom<i32> for TextSize {
+    type Error = TryFromIntError;
+    #[inline]
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        Ok(u32::try_from(value)?.into())
+    }
+}
+
+impl From<TextSize> for i32 {
+    fn from(value: TextSize) -> Self {
+        value.raw as i32
     }
 }
 
@@ -95,7 +106,7 @@ impl TryFrom<TextRange> for TextSize {
     type Error = ();
     fn try_from(value: TextRange) -> Result<Self, Self::Error> {
         if value.is_empty() {
-            Ok(TextSize::of(value.start))
+            Ok(TextSize::of(value.start()))
         } else {
             Err(())
         }
@@ -133,6 +144,19 @@ macro_rules! ops {
 
 ops!(impl Add for TextSize by fn add = +);
 ops!(impl Sub for TextSize by fn sub = -);
+
+impl Add<TextOffset> for TextSize {
+    type Output = TextSize;
+    fn add(self, rhs: TextOffset) -> Self::Output {
+        if rhs.raw.is_negative() {
+            self.raw - ((-rhs.raw) as u32)
+        } else {
+            self.raw + (rhs.raw as u32)
+        }
+        .try_into()
+        .unwrap()
+    }
+}
 
 impl<A> AddAssign<A> for TextSize
 where

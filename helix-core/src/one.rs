@@ -4,5 +4,5 @@
 mod str1;
 mod vec1;
 
-pub use str1::Str1;
+pub use str1::{Str1, str1};
 pub use vec1::Vec1;

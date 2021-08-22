@@ -29,6 +29,12 @@ impl<T> AsMut<T> for Str1<T> {
     }
 }
 
+impl<T> From<T> for Str1<T> {
+    fn from(t: T) -> Self {
+        Str1(t)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Str1View<'a>(pub char, pub &'a str);
 
@@ -61,8 +67,14 @@ impl<T: AsRef<str>> Str1<T> {
     }
 }
 
+pub fn str1<T, U: From<T>>(s: T) -> Str1<U> {
+    Str1(s.into())
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::Tendril1;
+
     use super::*;
 
     #[test]
@@ -72,5 +84,12 @@ mod tests {
 
         let s = Str1::new("interesting").unwrap().chars();
         let s = Str1::new(Tendril::from("wow")).unwrap();
+
+        fn hello(s: Tendril1) {}
+
+        let s: &str = "hello";
+        hello(str1(s));
+        hello(str1("interesting"));
+        hello(Str1::new("hello".into()).unwrap());
     }
 }

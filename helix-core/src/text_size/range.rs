@@ -2,7 +2,7 @@ use core::fmt;
 use std::{
     cmp::{self, Ordering},
     convert::TryFrom,
-    ops::{self, Deref, DerefMut},
+    ops::{self, Add, Deref, DerefMut, Sub},
 };
 
 use super::size::TextSize;
@@ -13,8 +13,8 @@ use super::size::TextSize;
 #[derive(Default, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TextRange {
     // Invariant: start <= end
-    pub start: TextSize,
-    pub end: TextSize,
+    start: TextSize,
+    end: TextSize,
 }
 
 impl fmt::Debug for TextRange {
@@ -355,6 +355,42 @@ where
     }
 }
 
+impl From<&TextRange> for TextRange {
+    fn from(value: &TextRange) -> Self {
+        *value
+    }
+}
+
+impl<T> Add<T> for TextRange
+where
+    TextSize: Add<T, Output = TextSize>,
+    T: Copy,
+{
+    type Output = TextRange;
+
+    fn add(self, rhs: T) -> Self::Output {
+        TextRange {
+            start: self.start + rhs,
+            end: self.end + rhs,
+        }
+    }
+}
+
+impl<T> Sub<T> for TextRange
+where
+    TextSize: Sub<T, Output = TextSize>,
+    T: Copy,
+{
+    type Output = TextRange;
+
+    fn sub(self, rhs: T) -> Self::Output {
+        TextRange {
+            start: self.start - rhs,
+            end: self.end - rhs,
+        }
+    }
+}
+
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TextRange1(TextRange);
 
@@ -393,3 +429,28 @@ impl TryFrom<TextRange> for TextRange1 {
         }
     }
 }
+
+impl From<TextRange1> for TextRange {
+    fn from(value: TextRange1) -> Self {
+        value.0
+    }
+}
+
+impl From<&TextRange1> for TextRange {
+    fn from(value: &TextRange1) -> Self {
+        value.0
+    }
+}
+
+impl<T> Add<T> for TextRange1
+where
+    TextSize: Add<T, Output = TextSize>,
+    T: Copy,
+{
+    type Output = TextRange1;
+
+    fn add(self, rhs: T) -> Self::Output {
+        TextRange1(self.0 + rhs)
+    }
+}
+

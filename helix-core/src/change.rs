@@ -1,14 +1,16 @@
 use std::{
-    borrow,
+    borrow::{self, Borrow},
     convert::{TryFrom, TryInto},
     iter::FromIterator,
+    ops,
 };
 
 use crate::{
-    text_size::{TextRange, TextRange1, TextSize},
+    text_size::{TextOffset, TextRange, TextRange1, TextSize},
     Tendril, Tendril1,
 };
 use ropey::Rope;
+use similar::DiffableStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change {
@@ -30,6 +32,75 @@ impl Change {
                 at: range.try_into().unwrap(),
                 contents,
             },
+        }
+    }
+
+    fn apply(&self, rope: &mut Rope) {
+        use Change::*;
+        match self {
+            Insert { at, contents } => rope.insert((*at).into(), contents.as_ref()),
+            Delete(range) => {
+                let bounds: ops::Range<usize> = TextRange::from(*range).into();
+                rope.remove(bounds);
+            }
+            Replace(kind) => match kind {
+                ReplaceKind::Normal { range, contents } => {
+                    let bounds: ops::Range<usize> = TextRange::from(*range).into();
+                    rope.remove(bounds);
+                    rope.insert(range.start().into(), contents.as_ref());
+                }
+                _ => unimplemented!(),
+                // ReplaceKind::Entire { contents } => *rope = contents,
+            },
+            Empty => (),
+        }
+    }
+
+    fn add_offset(self, offset: TextOffset) -> Self {
+        use Change::*;
+        match self {
+            Insert { at, contents } => Insert {
+                at: at + offset,
+                contents,
+            },
+            Delete(range) => Delete(range + offset),
+            Replace(kind) => Replace(match kind {
+                ReplaceKind::Normal { range, contents } => ReplaceKind::Normal {
+                    range: range + offset,
+                    contents,
+                },
+                _ => unimplemented!(),
+            }),
+            Empty => Empty,
+        }
+    }
+
+    fn offset(&self) -> TextOffset {
+        use Change::*;
+        match self {
+            Insert { contents, .. } => contents.len().try_into().unwrap(),
+            Delete(range) => range.len().try_into().unwrap(),
+            Replace(kind) => match kind {
+                ReplaceKind::Normal { range, contents } => (contents.len()
+                    - usize::from(range.len()))
+                .try_into()
+                .unwrap(),
+                _ => unimplemented!(),
+            },
+            Empty => 0.into(),
+        }
+    }
+
+    fn range(&self) -> Option<TextRange> {
+        use Change::*;
+        match self {
+            Insert { at, contents } => Some(TextRange::empty(at)),
+            Delete(range) => Some(range.into()),
+            Replace(kind) => match kind {
+                &ReplaceKind::Normal { range, .. } => Some(range.into()),
+                _ => unimplemented!(),
+            },
+            Empty => None,
         }
     }
 }
@@ -69,32 +140,69 @@ impl ChangeSetBuilder {
         Self::default()
     }
 
-    // fn finish() -> ChangeSet {
+    fn build(mut self) -> ChangeSet {
+        assert_disjoint(&mut self.changes);
+        self.build_unchecked()
+    }
 
-    // }
+    fn build_unstable(mut self) -> ChangeSet {
+        assert_disjoint_unstable(&mut self.changes);
+        self.build_unchecked()
+    }
+
+    fn build_unchecked(self) -> ChangeSet {
+        ChangeSet {
+            changes: self.changes,
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ChangeSet {
-    pub(crate) changes: Vec<Change>,
-    len: TextSize,
-    len_after: TextSize,
+    changes: Vec<Change>,
 }
 
 impl ChangeSet {
-    fn union(&mut self, other: ChangeSet) {
-        self.changes.extend(other.changes)
-    }
+    // fn apply(&self, text: &mut Rope) {
+    //     let mut offset  = 0;
+    //     for change in changes {
+
+    //     }
+    // }
 }
 
-fn assert_disjoint(indels: &mut [impl borrow::Borrow<Change>]) {
-    assert!(check_disjoint(indels));
+fn assert_disjoint(changes: &mut [Change]) {
+    assert!(check_disjoint(changes), "Changes were not disjoint");
 }
-fn check_disjoint(indels: &mut [impl borrow::Borrow<Change>]) -> bool {
-    true
-    // indels.sort_by_key(|indel| (indel.borrow().delete.start(), indel.borrow().delete.end()));
-    // indels
-    //     .iter()
-    //     .zip(indels.iter().skip(1))
-    //     .all(|(l, r)| l.borrow().delete.end() <= r.borrow().delete.start())
+
+fn assert_disjoint_unstable(changes: &mut [Change]) {
+    assert!(
+        check_disjoint_unstable(changes),
+        "Changes were not disjoint"
+    )
+}
+
+fn check_disjoint_unstable(changes: &mut [Change]) -> bool {
+    check_disjoint_impl(changes, true)
+}
+
+fn check_disjoint(changes: &mut [Change]) -> bool {
+    check_disjoint_impl(changes, false)
+}
+
+fn check_disjoint_impl(indels: &mut [Change], unstable: bool) -> bool {
+    let key = |change: &Change| {
+        let change = change.range().unwrap_or(TextRange::empty(1));
+        (change.start(), change.end())
+    };
+    if unstable {
+        indels.sort_unstable_by_key(key);
+    } else {
+        indels.sort_by_key(key);
+    }
+    indels
+        .iter()
+        .zip(indels.iter().skip(1))
+        .filter_map(|(l, r)| l.range().and_then(|l| r.range().map(|r| (l, r))))
+        .all(|(l, r)| l.end() <= r.start())
 }
