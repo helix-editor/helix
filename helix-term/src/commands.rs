@@ -4415,7 +4415,8 @@ fn dap_pause(cx: &mut Context) {
             return;
         }
 
-        let request = debugger.pause(debugger.stopped_thread.unwrap());
+        // FIXME: correct number here
+        let request = debugger.pause(0);
         let _ = block_on(request).unwrap();
     }
 }
