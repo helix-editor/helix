@@ -1,4 +1,4 @@
-use helix_core::{syntax, Selection};
+use helix_core::{syntax, Range, Selection};
 use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
@@ -13,7 +13,7 @@ use crate::{
 };
 
 use log::error;
-
+use smallvec::smallvec;
 use std::{
     io::{stdout, Write},
     sync::Arc,
@@ -309,19 +309,32 @@ impl Application {
                             }),
                         line,
                         column,
+                        end_line,
+                        end_column,
                         ..
                     }) = &debugger.stack_pointer
                     {
                         let path = src.clone();
                         let line = *line;
                         let column = *column;
+                        let end_line = *end_line;
+                        let end_column = *end_column;
                         self.editor
                             .open(path, helix_view::editor::Action::Replace)
                             .unwrap();
 
                         let (view, doc) = current!(self.editor);
-                        let pos = doc.text().line_to_char(line - 1) + column;
-                        doc.set_selection(view.id, Selection::point(pos));
+                        let start = doc.text().line_to_char(line - 1) + column;
+                        if let Some(end_line) = end_line {
+                            let end =
+                                doc.text().line_to_char(end_line - 1) + end_column.unwrap_or(0);
+                            doc.set_selection(
+                                view.id,
+                                Selection::new(smallvec![Range::new(start, end)], 0),
+                            );
+                        } else {
+                            doc.set_selection(view.id, Selection::point(start));
+                        }
                         align_view(doc, view, Align::Center);
                     }
                     self.editor.set_status(status);
