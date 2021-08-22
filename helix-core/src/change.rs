@@ -18,10 +18,8 @@ impl Change {
     }
 
     fn apply(&self, text: &mut Rope) {
-        let bounds: ops::Range<usize> = TextRange::from(self.delete).into();
-        text.remove(bounds);
-        let char_idx = self.delete.start();
-        text.insert(char_idx.into(), &self.insert)
+        text.remove(ops::Range::<usize>::from(self.delete));
+        text.insert(self.delete.start().into(), &self.insert)
     }
 
     fn add_offset(self, offset: TextOffset) -> Self {
