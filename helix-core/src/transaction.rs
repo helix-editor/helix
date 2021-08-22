@@ -1,11 +1,6 @@
-use crate::{SelectionRange, Rope, Selections, Tendril, text_size::TextRange};
+use crate::{SelectionRange, Rope, Selections, Tendril};
 use std::borrow::Cow;
 
-/// (from, to, replacement)
-// pub struct Change {
-//     insert: Tendril,
-//     delete: TextRange,
-// }
 pub type Change = (usize, usize, Option<Tendril>);
 
 // TODO: pub(crate)

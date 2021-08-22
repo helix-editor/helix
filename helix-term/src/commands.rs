@@ -1294,6 +1294,7 @@ fn enter_insert_mode(doc: &mut Document) {
 fn insert_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     enter_insert_mode(doc);
+    enter_insert_mode(doc);
 
     let selection = doc
         .selection(view.id)
