@@ -1,13 +1,8 @@
-use std::{
-    borrow::Cow,
-    convert::{TryFrom, TryInto},
-    iter::FromIterator,
-    ops,
-};
+use std::{borrow::Cow, convert::TryInto, iter::FromIterator, ops};
 
 use crate::{
-    text_size::{TextOffset, TextRange, TextRange1, TextSize},
-    Tendril, Tendril1,
+    text_size::{TextOffset, TextRange, TextSize},
+    Tendril,
 };
 use ropey::Rope;
 
@@ -37,42 +32,16 @@ impl Change {
     }
 
     fn offset(&self) -> TextOffset {
-        (self.insert.len() - usize::from(self.delete.len()))
-            .try_into()
-            .unwrap()
+        (self.insert.len() as i32 - i32::from(self.delete.len())).into()
     }
 
-    // fn invert(&self, original_text: &Rope) -> Self {
-    //     use Change::*;
-    //     match self {
-    //         Delete(range) => {
-    //             let text = Cow::from(original_text.slice(range.into1::<ops::Range<usize>>()));
-    //             Insert {
-    //                 at: range.start(),
-    //                 contents: Tendril::from_slice(&text).into(),
-    //             }
-    //         }
-    //         // Insert { at, contents} => {
-    //         //     // let chars_len = contents.chars.count();
-    //         //     // // Delete {
-    //         //     // //     at: range,
-    //         //     // // }
-    //         //     // changes.delete(chars)
-    //         // }
-    //         _ => unimplemented!(),
-    //     }
-    // }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReplaceKind {
-    Normal {
-        range: TextRange1,
-        contents: Tendril1,
-    },
-    Entire {
-        contents: Rope,
-    },
+    fn invert(&self, original_text: &Rope) -> Self {
+        let insert = Tendril::from_slice(&Cow::from(
+            original_text.slice(ops::Range::<usize>::from(self.delete)),
+        ));
+        let delete = TextRange::new(self.delete.start(), self.insert.len().try_into().unwrap());
+        Change { delete, insert }
+    }
 }
 
 #[derive(Default, Debug)]

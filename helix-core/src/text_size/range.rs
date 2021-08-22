@@ -1,8 +1,7 @@
 use core::fmt;
 use std::{
     cmp::{self, Ordering},
-    convert::TryFrom,
-    ops::{self, Add, Deref, DerefMut, Sub},
+    ops::{self, Add, Sub},
 };
 
 use super::size::TextSize;
@@ -44,7 +43,7 @@ impl TextRange {
     /// assert_eq!(range.len(), end - start);
     /// ```
     #[inline]
-    pub fn new<T: Into<TextSize>, U: Into<TextSize>>(start: T, end: U) -> TextRange {
+    pub fn new(start: TextSize, end: TextSize) -> TextRange {
         let start = start.into();
         let end = end.into();
         assert!(start <= end);
@@ -67,9 +66,7 @@ impl TextRange {
     /// assert_eq!(&text[range], "23456")
     /// ```
     #[inline]
-    pub fn at<T: Into<TextSize>, U: Into<TextSize>>(offset: T, len: U) -> TextRange {
-        let offset = offset.into();
-        let len = len.into();
+    pub fn at(offset: TextSize, len: TextSize) -> TextRange {
         TextRange::new(offset, offset + len)
     }
 
@@ -86,8 +83,7 @@ impl TextRange {
     /// assert_eq!(range, TextRange::new(point, point));
     /// ```
     #[inline]
-    pub fn empty<T: Into<TextSize>>(offset: T) -> TextRange {
-        let offset = offset.into();
+    pub fn empty(offset: TextSize) -> TextRange {
         TextRange::new(offset, offset)
     }
 
@@ -106,8 +102,8 @@ impl TextRange {
     /// assert_eq!(range, TextRange::at(0.into(), point));
     /// ```
     #[inline]
-    pub fn up_to<T: Into<TextSize>>(end: T) -> TextRange {
-        TextRange::new(0, end)
+    pub fn up_to(end: TextSize) -> TextRange {
+        TextRange::new(0.into(), end)
     }
 }
 
@@ -262,7 +258,7 @@ impl TextRange {
     /// )
     /// ```
     #[inline]
-    pub fn cover_offset<T: Into<TextSize>>(self, offset: T) -> TextRange {
+    pub fn cover_offset(self, offset: TextSize) -> TextRange {
         self.cover(TextRange::empty(offset))
     }
 
@@ -400,73 +396,5 @@ where
             start: self.start - rhs,
             end: self.end - rhs,
         }
-    }
-}
-
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct TextRange1(TextRange);
-
-impl Deref for TextRange1 {
-    type Target = TextRange;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for TextRange1 {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl TextRange1 {
-    pub fn new<T: Into<TextSize>, U: Into<TextSize>>(start: T, end: U) -> TextRange1 {
-        let inner = TextRange::new(start, end);
-        Self::assert(inner)
-    }
-
-    /// lifted into
-    pub fn into1<T: From<TextRange>>(self) -> T {
-        TextRange::from(self).into()
-    }
-
-    pub fn assert(inner: TextRange) -> TextRange1 {
-        Self::try_from(inner).unwrap_or_else(|_| panic!("NonEmptyTextRange cannot be empty"))
-    }
-}
-
-impl TryFrom<TextRange> for TextRange1 {
-    type Error = ();
-
-    fn try_from(inner: TextRange) -> Result<Self, Self::Error> {
-        if inner.is_empty() {
-            Err(())
-        } else {
-            Ok(TextRange1(inner))
-        }
-    }
-}
-
-impl From<TextRange1> for TextRange {
-    fn from(value: TextRange1) -> Self {
-        value.0
-    }
-}
-
-impl From<&TextRange1> for TextRange {
-    fn from(value: &TextRange1) -> Self {
-        value.0
-    }
-}
-
-impl<T> Add<T> for TextRange1
-where
-    TextSize: Add<T, Output = TextSize>,
-    T: Copy,
-{
-    type Output = TextRange1;
-
-    fn add(self, rhs: T) -> Self::Output {
-        TextRange1(self.0 + rhs)
     }
 }

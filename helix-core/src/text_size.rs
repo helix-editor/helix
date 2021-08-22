@@ -28,7 +28,7 @@ mod traits;
 #[cfg(not(doctest))]
 mod offset;
 
-pub use range::{TextRange, TextRange1};
+pub use range::TextRange;
 pub use size::TextSize;
 pub use traits::TextLen;
 pub use offset::TextOffset;

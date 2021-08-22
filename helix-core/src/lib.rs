@@ -22,7 +22,6 @@ pub mod syntax;
 pub mod text_size;
 pub mod textobject;
 mod transaction;
-pub mod one;
 
 pub mod unicode {
     pub use unicode_general_category as category;
@@ -106,7 +105,6 @@ use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 
 pub use ropey::{Rope, RopeBuilder, RopeSlice};
 
-use one::Str1;
 pub use tendril::StrTendril as Tendril;
 
 #[doc(inline)]
@@ -123,5 +121,3 @@ pub use state::State;
 
 pub use line_ending::{LineEnding, DEFAULT_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};
-
-pub type Tendril1 = Str1<Tendril>;
