@@ -1937,7 +1937,11 @@ mod cmd {
                 Ok(vars) => {
                     let mut s = String::new();
                     for var in vars {
-                        s.push_str(&format!("{} = {}; ", var.name, var.value));
+                        let prefix = match var.data_type {
+                            Some(data_type) => format!("{} ", data_type),
+                            None => "".to_owned(),
+                        };
+                        s.push_str(&format!("{}{} = {}; ", prefix, var.name, var.value));
                     }
                     s
                 }
