@@ -26,7 +26,7 @@ mod size;
 #[cfg(not(doctest))]
 mod traits;
 
-pub use range::TextRange;
+pub use range::{TextRange, TextRange1};
 pub use size::TextSize;
 pub use traits::TextLen;
 

@@ -1,7 +1,8 @@
 use core::fmt;
 use std::{
     cmp::{self, Ordering},
-    ops,
+    convert::TryFrom,
+    ops::{self, Deref, DerefMut},
 };
 
 use super::size::TextSize;
@@ -351,5 +352,44 @@ where
     #[inline]
     fn from(r: TextRange) -> Self {
         r.start.into()..r.end.into()
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct TextRange1(TextRange);
+
+impl Deref for TextRange1 {
+    type Target = TextRange;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for TextRange1 {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl TextRange1 {
+    pub fn new<T: Into<TextSize>, U: Into<TextSize>>(start: T, end: U) -> TextRange1 {
+        let inner = TextRange::new(start, end);
+        Self::assert(inner)
+    }
+
+    pub fn assert(inner: TextRange) -> TextRange1 {
+        Self::try_from(inner).unwrap_or_else(|_| panic!("NonEmptyTextRange cannot be empty"))
+    }
+}
+
+impl TryFrom<TextRange> for TextRange1 {
+    type Error = ();
+
+    fn try_from(inner: TextRange) -> Result<Self, Self::Error> {
+        if inner.is_empty() {
+            Err(())
+        } else {
+            Ok(TextRange1(inner))
+        }
     }
 }

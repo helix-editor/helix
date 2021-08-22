@@ -1,4 +1,4 @@
-use super::traits::TextLen;
+use super::{traits::TextLen, TextRange};
 use std::{
     convert::TryFrom,
     fmt, iter,
@@ -88,6 +88,17 @@ impl From<TextSize> for usize {
     #[inline]
     fn from(value: TextSize) -> Self {
         value.raw as usize
+    }
+}
+
+impl TryFrom<TextRange> for TextSize {
+    type Error = ();
+    fn try_from(value: TextRange) -> Result<Self, Self::Error> {
+        if value.is_empty() {
+            Ok(TextSize::of(value.start))
+        } else {
+            Err(())
+        }
     }
 }
 
