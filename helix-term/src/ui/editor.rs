@@ -110,7 +110,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme);
+        self.render_diagnostics(doc, view, inner, surface, theme, debugger);
 
         let area = Rect::new(
             view.area.x,
@@ -529,6 +529,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        debugger: &Option<helix_dap::Client>,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -564,6 +565,25 @@ impl EditorView {
                 },
             );
             lines.extend(text.lines);
+        }
+
+        if let Some(debugger) = debugger {
+            if let Some(path) = doc.path() {
+                if let Some(breakpoints) = debugger.breakpoints.get(path) {
+                    let line = doc.text().char_to_line(cursor);
+                    if let Some(breakpoint) = breakpoints
+                        .iter()
+                        .find(|breakpoint| breakpoint.line - 1 == line)
+                    {
+                        if let Some(condition) = &breakpoint.condition {
+                            lines.extend(
+                                Text::styled(condition, info.add_modifier(Modifier::UNDERLINED))
+                                    .lines,
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         let paragraph = Paragraph::new(lines).alignment(Alignment::Right);
