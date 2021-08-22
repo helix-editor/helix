@@ -324,6 +324,13 @@ impl Application {
                     self.editor
                         .set_status("Debugged application started".to_owned());
                 }
+                Event::Continued(_) => {
+                    if let Some(debugger) = self.editor.debugger.as_mut() {
+                        debugger.stopped_thread = None;
+                        debugger.stack_pointer = None;
+                        debugger.is_running = true;
+                    }
+                }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);
                     return; // return early to skip render
