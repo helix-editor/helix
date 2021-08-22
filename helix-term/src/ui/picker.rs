@@ -54,7 +54,10 @@ impl<T> FilePicker<T> {
         self.picker
             .selection()
             .and_then(|current| (self.file_fn)(editor, current))
-            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
+            .and_then(|(path, line)| {
+                debug_assert!(path.exists());
+                canonicalize_path(&path).ok().zip(Some(line))
+            })
     }
 
     fn calculate_preview(&mut self, editor: &Editor) {

@@ -2240,11 +2240,11 @@ fn buffer_picker(cx: &mut Context) {
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (id, doc.relative_path()))
+            .map(|(id, doc)| (id, doc.path().cloned(), doc.relative_path()))
             .collect(),
-        move |(id, path): &(DocumentId, Option<PathBuf>)| {
+        move |(id, _, relative_path): &(DocumentId, Option<PathBuf>, Option<PathBuf>)| {
             // format_fn
-            match path.as_ref().and_then(|path| path.to_str()) {
+            match relative_path.as_ref().and_then(|path| path.to_str()) {
                 Some(path) => {
                     if *id == current {
                         format!("{} (*)", path).into()
@@ -2255,10 +2255,12 @@ fn buffer_picker(cx: &mut Context) {
                 None => "[scratch buffer]".into(),
             }
         },
-        |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
+        |editor: &mut Editor,
+         (id, ..): &(DocumentId, Option<PathBuf>, Option<PathBuf>),
+         _action| {
             editor.switch(*id, Action::Replace);
         },
-        |editor, (id, path)| {
+        |editor, (id, path, ..)| {
             let doc = &editor.documents.get(*id)?;
             let &view_id = doc.selections().keys().next()?;
             let line = doc
