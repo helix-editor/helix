@@ -1932,10 +1932,10 @@ mod cmd {
         use helix_lsp::block_on;
 
         let condition = args.join(" ");
-        let condition = if condition.len() > 0 {
-            Some(condition)
-        } else {
+        let condition = if condition.is_empty() {
             None
+        } else {
+            Some(condition)
         };
 
         let (view, doc) = current!(cx.editor);
