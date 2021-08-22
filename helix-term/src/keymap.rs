@@ -490,6 +490,7 @@ impl Default for Keymaps {
                     "b" => dap_toggle_breakpoint,
                     "r" => dap_run,
                     "c" => dap_continue,
+                    "z" => dap_variable_scopes,
                     "t" => dap_terminate,
                 },
                 "w" => { "Window"

@@ -307,6 +307,7 @@ impl Command {
         dap_start, "Start debug session",
         dap_run, "Begin program execution",
         dap_continue, "Continue program execution",
+        dap_variable_scopes, "List variable scopes",
         dap_terminate, "End debug session",
         suspend, "Suspend"
     );
@@ -1905,6 +1906,49 @@ mod cmd {
         Ok(())
     }
 
+    fn variables(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        use helix_lsp::block_on;
+
+        let scope = args.get(0).and_then(|arg| arg.parse::<usize>().ok());
+        if scope.is_none() {
+            cx.editor.set_status("Please provide scope ID".to_owned());
+            return Ok(());
+        }
+
+        if let Some(debugger) = &mut cx.editor.debugger {
+            if debugger.is_running {
+                cx.editor
+                    .set_status("Cannot access variables while target is running".to_owned());
+                return Ok(());
+            }
+            if debugger.stack_pointer.is_none() {
+                cx.editor
+                    .set_status("Cannot find current stack pointer to access variables".to_owned());
+                return Ok(());
+            }
+
+            let response = block_on(debugger.variables(scope.unwrap()));
+
+            let status = match response {
+                Ok(vars) => {
+                    let mut s = String::new();
+                    for var in vars {
+                        s.push_str(&format!("{} = {}; ", var.name, var.value));
+                    }
+                    s
+                }
+                Err(_) => "Failed to get variables".to_owned(),
+            };
+
+            cx.editor.set_status(status);
+        }
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2142,6 +2186,13 @@ mod cmd {
             alias: None,
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
+            completer: None,
+        },
+        TypableCommand {
+            name: "variables",
+            alias: None,
+            doc: "Display variables of scope. Get scope names using a command in debug menu",
+            fun: variables,
             completer: None,
         }
     ];
@@ -4345,6 +4396,32 @@ fn dap_continue(cx: &mut Context) {
         let _ = block_on(request).unwrap();
         debugger.is_running = true;
         debugger.stack_pointer = None;
+    }
+}
+
+fn dap_variable_scopes(cx: &mut Context) {
+    use helix_lsp::block_on;
+
+    if let Some(debugger) = &mut cx.editor.debugger {
+        if debugger.is_running {
+            cx.editor
+                .set_status("Cannot access variables while target is running".to_owned());
+            return;
+        }
+        if debugger.stack_pointer.is_none() {
+            cx.editor
+                .set_status("Cannot find current stack pointer to access variables".to_owned());
+            return;
+        }
+
+        let frame_id = debugger.stack_pointer.clone().unwrap().id;
+        let scopes = block_on(debugger.scopes(frame_id)).unwrap();
+
+        let mut status = String::new();
+        for scope in scopes.iter() {
+            status.push_str(&format!("{}: {}; ", scope.variables_reference, scope.name))
+        }
+        cx.editor.set_status(status);
     }
 }
 
