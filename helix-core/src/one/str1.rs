@@ -1,20 +1,36 @@
 use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
 pub struct Str1<T>(T);
 
-impl<T> Deref for Str1<T> {
-    type Target = T;
+impl<T: Deref<Target = str>> Deref for Str1<T> {
+    type Target = str;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<T> DerefMut for Str1<T> {
+impl<T: Deref<Target = str> + DerefMut> DerefMut for Str1<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0 
+        &mut self.0
     }
 }
+
+impl<T> AsRef<T> for Str1<T> {
+    fn as_ref(&self) -> &T {
+        &self.0
+    }
+}
+
+impl<T> AsMut<T> for Str1<T> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Str1View<'a>(pub char, pub &'a str);
 
 impl<T: AsRef<str>> Str1<T> {
     pub fn new(t: T) -> Option<Str1<T>> {
@@ -25,6 +41,13 @@ impl<T: AsRef<str>> Str1<T> {
         }
     }
 
+    pub fn view(&self) -> Str1View<'_> {
+        let mut chars = self.0.as_ref().chars();
+        let head = chars.next().unwrap();
+        let tail = chars.as_str();
+        Str1View(head, tail)
+    }
+
     pub fn head(&self) -> char {
         self.0.as_ref().chars().next().unwrap()
     }
@@ -33,11 +56,21 @@ impl<T: AsRef<str>> Str1<T> {
         self.0.as_ref().chars().rev().next().unwrap()
     }
 
-    pub fn inner(&self) -> &T {
-        &self.0
-    }
-
     pub fn into_inner(self) -> T {
         self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[allow(unused_variables)]
+    fn smoke() {
+        use crate::Tendril;
+
+        let s = Str1::new("interesting").unwrap().chars();
+        let s = Str1::new(Tendril::from("wow")).unwrap();
     }
 }

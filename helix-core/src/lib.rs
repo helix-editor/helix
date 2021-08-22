@@ -125,4 +125,3 @@ pub use line_ending::{LineEnding, DEFAULT_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Operation, Transaction};
 
 pub type Tendril1 = Str1<Tendril>;
-pub type Rope1 = Str1<Rope>;
