@@ -296,7 +296,7 @@ impl Application {
                         ..
                     }) = &debugger.stack_pointer
                     {
-                        let path = src.clone().into();
+                        let path = src.clone();
                         self.editor
                             .open(path, helix_view::editor::Action::Replace)
                             .unwrap();
@@ -327,7 +327,6 @@ impl Application {
             Payload::Response(_) => unreachable!(),
             Payload::Request(_) => todo!(),
         }
-        // TODO
     }
 
     pub async fn handle_language_server_message(
