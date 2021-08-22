@@ -223,6 +223,16 @@ impl Application {
                                         status.push_str(" (all threads stopped)");
                                     }
 
+                                    if let Some(helix_dap::StackFrame {
+                                        source: Some(helix_dap::Source {
+                                            path: Some(src),
+                                            ..
+                                        }),
+                                        ..
+                                    }) = &debugger.stack_pointer {
+                                        let path = src.clone().into();
+                                        self.editor.open(path, helix_view::editor::Action::Replace).unwrap();
+                                    }
                                     self.editor.set_status(status);
                                     self.render();
                                 }
