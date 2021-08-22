@@ -311,7 +311,7 @@ impl Command {
         dap_in, "Step in",
         dap_out, "Step out",
         dap_next, "Step to next",
-        dap_variable_scopes, "List variable scopes",
+        dap_variables, "List variables",
         dap_terminate, "End debug session",
         suspend, "Suspend"
     );
@@ -1910,53 +1910,6 @@ mod cmd {
         Ok(())
     }
 
-    fn variables(
-        cx: &mut compositor::Context,
-        args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        use helix_lsp::block_on;
-
-        let scope = args.get(0).and_then(|arg| arg.parse::<usize>().ok());
-        if scope.is_none() {
-            cx.editor.set_status("Please provide scope ID".to_owned());
-            return Ok(());
-        }
-
-        if let Some(debugger) = &mut cx.editor.debugger {
-            if debugger.is_running {
-                cx.editor
-                    .set_status("Cannot access variables while target is running".to_owned());
-                return Ok(());
-            }
-            if debugger.stack_pointer.is_none() {
-                cx.editor
-                    .set_status("Cannot find current stack pointer to access variables".to_owned());
-                return Ok(());
-            }
-
-            let response = block_on(debugger.variables(scope.unwrap()));
-
-            let status = match response {
-                Ok(vars) => {
-                    let mut s = String::new();
-                    for var in vars {
-                        let prefix = match var.data_type {
-                            Some(data_type) => format!("{} ", data_type),
-                            None => "".to_owned(),
-                        };
-                        s.push_str(&format!("{}{} = {}; ", prefix, var.name, var.value));
-                    }
-                    s
-                }
-                Err(_) => "Failed to get variables".to_owned(),
-            };
-
-            cx.editor.set_status(status);
-        }
-        Ok(())
-    }
-
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2194,13 +2147,6 @@ mod cmd {
             alias: None,
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
-            completer: None,
-        },
-        TypableCommand {
-            name: "variables",
-            alias: None,
-            doc: "Display variables of scope. Get scope names using a command in debug menu",
-            fun: variables,
             completer: None,
         }
     ];
@@ -4466,7 +4412,7 @@ fn dap_next(cx: &mut Context) {
     }
 }
 
-fn dap_variable_scopes(cx: &mut Context) {
+fn dap_variables(cx: &mut Context) {
     use helix_lsp::block_on;
 
     if let Some(debugger) = &mut cx.editor.debugger {
@@ -4483,12 +4429,22 @@ fn dap_variable_scopes(cx: &mut Context) {
 
         let frame_id = debugger.stack_pointer.clone().unwrap().id;
         let scopes = block_on(debugger.scopes(frame_id)).unwrap();
+        let mut s = String::new();
 
-        let mut status = String::new();
         for scope in scopes.iter() {
-            status.push_str(&format!("{}: {}; ", scope.variables_reference, scope.name))
+            let response = block_on(debugger.variables(scope.variables_reference));
+
+            if let Ok(vars) = response {
+                for var in vars {
+                    let prefix = match var.data_type {
+                        Some(data_type) => format!("{} ", data_type),
+                        None => "".to_owned(),
+                    };
+                    s.push_str(&format!("{}{} = {}; ", prefix, var.name, var.value));
+                }
+            }
         }
-        cx.editor.set_status(status);
+        cx.editor.set_status(s);
     }
 }
 

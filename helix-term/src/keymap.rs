@@ -494,7 +494,7 @@ impl Default for Keymaps {
                     "j" => dap_in,
                     "k" => dap_out,
                     "l" => dap_next,
-                    "z" => dap_variable_scopes,
+                    "v" => dap_variables,
                     "t" => dap_terminate,
                 },
                 "w" => { "Window"
