@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     convert::{TryFrom, TryInto},
     iter::FromIterator,
     ops,
@@ -12,9 +13,15 @@ use ropey::Rope;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change {
-    Insert { at: TextSize, contents: Tendril1 },
+    Insert {
+        at: TextSize,
+        contents: Tendril1,
+    },
     Delete(TextRange1),
-    Replace(ReplaceKind),
+    Replace {
+        range: TextRange1,
+        contents: Tendril1,
+    },
     // we love our monoids
     Empty,
 }
@@ -24,7 +31,7 @@ impl Change {
         use Change::*;
         match (TextRange1::try_from(range), Tendril1::new(contents)) {
             (Ok(range), None) => Delete(range),
-            (Ok(range), Some(contents)) => Replace(ReplaceKind::Normal { range, contents }),
+            (Ok(range), Some(contents)) => Replace { range, contents },
             (Err(()), None) => Empty,
             (Err(()), Some(contents)) => Insert {
                 at: range.try_into().unwrap(),
@@ -41,15 +48,11 @@ impl Change {
                 let bounds: ops::Range<usize> = TextRange::from(*range).into();
                 rope.remove(bounds);
             }
-            Replace(kind) => match kind {
-                ReplaceKind::Normal { range, contents } => {
-                    let bounds: ops::Range<usize> = TextRange::from(*range).into();
-                    rope.remove(bounds);
-                    rope.insert(range.start().into(), contents.as_ref());
-                }
-                _ => unimplemented!(),
-                // ReplaceKind::Entire { contents } => *rope = contents,
-            },
+            Replace { range, contents } => {
+                let bounds: ops::Range<usize> = TextRange::from(*range).into();
+                rope.remove(bounds);
+                rope.insert(range.start().into(), contents.as_ref());
+            }
             Empty => (),
         }
     }
@@ -62,13 +65,10 @@ impl Change {
                 contents,
             },
             Delete(range) => Delete(range + offset),
-            Replace(kind) => Replace(match kind {
-                ReplaceKind::Normal { range, contents } => ReplaceKind::Normal {
-                    range: range + offset,
-                    contents,
-                },
-                _ => unimplemented!(),
-            }),
+            Replace { range, contents } => Replace {
+                range: range + offset,
+                contents,
+            },
             Empty => Empty,
         }
     }
@@ -78,13 +78,9 @@ impl Change {
         match self {
             Insert { contents, .. } => contents.len().try_into().unwrap(),
             Delete(range) => range.len().try_into().unwrap(),
-            Replace(kind) => match kind {
-                ReplaceKind::Normal { range, contents } => (contents.len()
-                    - usize::from(range.len()))
+            Replace { range, contents } => (contents.len() - usize::from(range.len()))
                 .try_into()
                 .unwrap(),
-                _ => unimplemented!(),
-            },
             Empty => 0.into(),
         }
     }
@@ -94,11 +90,29 @@ impl Change {
         match self {
             Insert { at, .. } => Some(TextRange::empty(at)),
             Delete(range) => Some(range.into()),
-            Replace(kind) => match kind {
-                &ReplaceKind::Normal { range, .. } => Some(range.into()),
-                _ => unimplemented!(),
-            },
+            Replace { range, contents } => Some(range.into()),
             Empty => None,
+        }
+    }
+
+    fn invert(&self, original_text: &Rope) -> Self {
+        use Change::*;
+        match self {
+            Delete(range) => {
+                let text = Cow::from(original_text.slice(range.into1::<ops::Range<usize>>()));
+                Insert {
+                    at: range.start(),
+                    contents: Tendril::from_slice(&text).into(),
+                }
+            }
+            // Insert { at, contents} => {
+            //     // let chars_len = contents.chars.count();
+            //     // // Delete {
+            //     // //     at: range, 
+            //     // // }
+            //     // changes.delete(chars)
+            // }
+            _ => unimplemented!(),
         }
     }
 }

@@ -425,6 +425,11 @@ impl TextRange1 {
         Self::assert(inner)
     }
 
+    /// lifted into
+    pub fn into1<T: From<TextRange>>(self) -> T {
+        TextRange::from(self).into()
+    }
+
     pub fn assert(inner: TextRange) -> TextRange1 {
         Self::try_from(inner).unwrap_or_else(|_| panic!("NonEmptyTextRange cannot be empty"))
     }
@@ -465,4 +470,3 @@ where
         TextRange1(self.0 + rhs)
     }
 }
-
