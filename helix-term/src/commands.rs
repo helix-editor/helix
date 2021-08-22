@@ -2330,7 +2330,9 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
                             align_view(doc, view, Align::Center);
                         }
                     },
