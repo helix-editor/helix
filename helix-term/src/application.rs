@@ -199,6 +199,11 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
+                _ = &mut self.editor.idle_timer => {
+                    self.editor.clear_idle_timer();
+                    println!("idle!")
+                 // idle timeout
+                }
             }
         }
     }

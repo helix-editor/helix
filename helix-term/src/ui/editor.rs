@@ -901,6 +901,7 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(key) => {
+                cxt.editor.reset_idle_timer();
                 let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
                 // clear status

@@ -9,9 +9,11 @@ use crate::{
 use futures_util::future;
 use std::{
     path::{Path, PathBuf},
+    pin::Pin,
     sync::Arc,
-    time::Duration,
 };
+
+use tokio::time::{sleep, Duration, Instant, Sleep};
 
 use slotmap::SlotMap;
 
@@ -91,6 +93,8 @@ pub struct Editor {
     pub status_msg: Option<(String, Severity)>,
 
     pub config: Config,
+
+    pub idle_timer: Pin<Box<Sleep>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -125,8 +129,22 @@ impl Editor {
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
+            idle_timer: Box::pin(sleep(Duration::from_millis(500))),
             config,
         }
+    }
+
+    pub fn clear_idle_timer(&mut self) {
+        // equivalent to internal Instant::far_future() (30 years)
+        self.idle_timer
+            .as_mut()
+            .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+    }
+
+    pub fn reset_idle_timer(&mut self) {
+        self.idle_timer
+            .as_mut()
+            .reset(Instant::now() + Duration::from_millis(500));
     }
 
     pub fn clear_status(&mut self) {
