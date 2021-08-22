@@ -1910,6 +1910,20 @@ mod cmd {
         Ok(())
     }
 
+    fn debug_eval(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        use helix_lsp::block_on;
+        if let Some(debugger) = cx.editor.debugger.as_mut() {
+            let id = debugger.stack_pointer.clone().map(|x| x.id);
+            let response = block_on(debugger.eval(args.join(" "), id))?;
+            cx.editor.set_status(response.result);
+        }
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2147,6 +2161,13 @@ mod cmd {
             alias: None,
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
+            completer: None,
+        },
+        TypableCommand {
+            name: "debug-eval",
+            alias: None,
+            doc: "Evaluate expression in current debug context.",
+            fun: debug_eval,
             completer: None,
         }
     ];

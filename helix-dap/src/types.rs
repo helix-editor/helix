@@ -484,6 +484,37 @@ pub mod requests {
         type Result = ();
         const COMMAND: &'static str = "pause";
     }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct EvaluateArguments {
+        pub expression: String,
+        pub frame_id: Option<usize>,
+        pub context: Option<String>,
+        pub format: Option<ValueFormat>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct EvaluateResponse {
+        pub result: String,
+        #[serde(rename = "type")]
+        pub data_type: Option<String>,
+        pub presentation_hint: Option<VariablePresentationHint>,
+        pub variables_reference: usize,
+        pub named_variables: Option<usize>,
+        pub indexed_variables: Option<usize>,
+        pub memory_reference: Option<String>,
+    }
+
+    #[derive(Debug)]
+    pub enum Evaluate {}
+
+    impl Request for Evaluate {
+        type Arguments = EvaluateArguments;
+        type Result = EvaluateResponse;
+        const COMMAND: &'static str = "evaluate";
+    }
 }
 
 // Events

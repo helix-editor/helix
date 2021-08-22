@@ -352,4 +352,19 @@ impl Client {
 
         self.request::<requests::Pause>(args).await
     }
+
+    pub async fn eval(
+        &mut self,
+        expression: String,
+        frame_id: Option<usize>,
+    ) -> Result<requests::EvaluateResponse> {
+        let args = requests::EvaluateArguments {
+            expression,
+            frame_id,
+            context: None,
+            format: None,
+        };
+
+        self.request::<requests::Evaluate>(args).await
+    }
 }
