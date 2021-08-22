@@ -1924,6 +1924,57 @@ mod cmd {
         Ok(())
     }
 
+    fn debug_breakpoint_condition(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        use helix_lsp::block_on;
+
+        let condition = args.join(" ");
+        let condition = if condition.len() > 0 {
+            Some(condition)
+        } else {
+            None
+        };
+
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let pos = doc.selection(view.id).primary().cursor(text);
+
+        let breakpoint = helix_dap::SourceBreakpoint {
+            line: text.char_to_line(pos) + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
+            condition,
+            ..Default::default()
+        };
+
+        let path = match doc.path() {
+            Some(path) => path.to_path_buf(),
+            None => {
+                cx.editor
+                    .set_error("Can't edit breakpoint: document has no path".to_string());
+                return Ok(());
+            }
+        };
+
+        // TODO: need to map breakpoints over edits and update them?
+        // we shouldn't really allow editing while debug is running though
+
+        if let Some(debugger) = &mut cx.editor.debugger {
+            let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
+            if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
+                breakpoints.remove(pos);
+                breakpoints.push(breakpoint);
+
+                let breakpoints = breakpoints.clone();
+
+                let request = debugger.set_breakpoints(path, breakpoints);
+                let _ = block_on(request).unwrap();
+            }
+        }
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2168,6 +2219,13 @@ mod cmd {
             alias: None,
             doc: "Evaluate expression in current debug context.",
             fun: debug_eval,
+            completer: None,
+        },
+        TypableCommand {
+            name: "debug-breakpoint-condition",
+            alias: None,
+            doc: "Set current breakpoint condition.",
+            fun: debug_breakpoint_condition,
             completer: None,
         }
     ];

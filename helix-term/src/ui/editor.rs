@@ -472,8 +472,13 @@ impl EditorView {
             let selected = cursors.contains(&line);
 
             if let Some(bps) = breakpoints.as_ref() {
-                if bps.iter().any(|breakpoint| breakpoint.line - 1 == line) {
-                    surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
+                if let Some(breakpoint) = bps.iter().find(|breakpoint| breakpoint.line - 1 == line)
+                {
+                    if breakpoint.condition.is_some() {
+                        surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, error);
+                    } else {
+                        surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
+                    }
                 }
             }
 
