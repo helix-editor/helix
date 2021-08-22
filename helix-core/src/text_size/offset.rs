@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, num::TryFromIntError};
+use std::{convert::TryFrom, num::TryFromIntError, ops::{Add, AddAssign, Sub, SubAssign}};
 
 use super::TextSize;
 
@@ -37,3 +37,41 @@ impl TryFrom<TextSize> for TextOffset {
     }
 }
 
+impl Add<TextOffset> for TextOffset {
+    type Output = TextOffset;
+
+    fn add(self, rhs: TextOffset) -> Self::Output {
+        TextOffset {
+            raw: self.raw + rhs.raw,
+        }
+    }
+}
+
+impl Sub<TextOffset> for TextOffset {
+    type Output = TextOffset;
+
+    fn sub(self, rhs: TextOffset) -> Self::Output {
+        TextOffset {
+            raw: self.raw - rhs.raw,
+        }
+    }
+}
+
+impl<A> AddAssign<A> for TextOffset 
+where
+    TextOffset: Add<A, Output = TextOffset>
+{
+    fn add_assign(&mut self, rhs: A) {
+        *self = *self + rhs
+    }
+}
+
+impl<S> SubAssign<S> for TextOffset
+where
+    TextOffset: Sub<S, Output = TextOffset>,
+{
+    #[inline]
+    fn sub_assign(&mut self, rhs: S) {
+        *self = *self - rhs
+    }
+}

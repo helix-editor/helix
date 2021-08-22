@@ -94,7 +94,7 @@ impl Change {
     fn range(&self) -> Option<TextRange> {
         use Change::*;
         match self {
-            Insert { at, contents } => Some(TextRange::empty(at)),
+            Insert { at, .. } => Some(TextRange::empty(at)),
             Delete(range) => Some(range.into()),
             Replace(kind) => match kind {
                 &ReplaceKind::Normal { range, .. } => Some(range.into()),
@@ -135,22 +135,25 @@ impl FromIterator<Change> for ChangeSetBuilder {
     }
 }
 impl ChangeSetBuilder {
-    #[inline]
-    fn new() -> ChangeSetBuilder {
+    pub fn new() -> ChangeSetBuilder {
         Self::default()
     }
 
-    fn build(mut self) -> ChangeSet {
+    pub fn push(&mut self, change: Change) {
+        self.changes.push(change)
+    }
+
+    pub fn build(mut self) -> ChangeSet {
         assert_disjoint(&mut self.changes);
         self.build_unchecked()
     }
 
-    fn build_unstable(mut self) -> ChangeSet {
+    pub fn build_unstable(mut self) -> ChangeSet {
         assert_disjoint_unstable(&mut self.changes);
         self.build_unchecked()
     }
 
-    fn build_unchecked(self) -> ChangeSet {
+    pub fn build_unchecked(self) -> ChangeSet {
         ChangeSet {
             changes: self.changes,
         }
@@ -163,12 +166,14 @@ pub struct ChangeSet {
 }
 
 impl ChangeSet {
-    // fn apply(&self, text: &mut Rope) {
-    //     let mut offset  = 0;
-    //     for change in changes {
-
-    //     }
-    // }
+    pub fn apply(self, text: &mut Rope) {
+        let mut offset = 0.into();
+        for change in self.changes {
+            let change_offset = change.offset();
+            change.add_offset(offset).apply(text);
+            offset += change_offset;
+        }
+    }
 }
 
 fn assert_disjoint(changes: &mut [Change]) {
