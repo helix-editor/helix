@@ -1,10 +1,12 @@
 use core::fmt;
 use std::{
     cmp::{self, Ordering},
+    convert::TryInto,
+    num::TryFromIntError,
     ops::{self, Add, Sub},
 };
 
-use super::size::TextSize;
+use super::TextSize;
 
 /// A range in text, represented as a pair of [`TextSize`][struct@TextSize].
 ///
@@ -103,7 +105,7 @@ impl TextRange {
     /// ```
     #[inline]
     pub fn up_to(end: TextSize) -> TextRange {
-        TextRange::new(0.into(), end)
+        TextRange::new(0, end)
     }
 }
 
@@ -125,16 +127,14 @@ impl TextRange {
     #[inline]
     pub const fn len(self) -> TextSize {
         // HACK for const fn: math on primitives only
-        TextSize {
-            raw: self.end().raw - self.start().raw,
-        }
+        self.end() - self.start()
     }
 
     /// Check if this range is empty.
     #[inline]
     pub const fn is_empty(self) -> bool {
         // HACK for const fn: math on primitives only
-        self.start().raw == self.end().raw
+        self.start() == self.end()
     }
 }
 
@@ -155,8 +155,7 @@ impl TextRange {
     /// assert!(!range.contains(end));
     /// ```
     #[inline]
-    pub fn contains<T: Into<TextSize>>(self, offset: T) -> bool {
-        let offset = offset.into();
+    pub fn contains(self, offset: TextSize) -> bool {
         self.start() <= offset && offset < self.end()
     }
 
@@ -175,8 +174,7 @@ impl TextRange {
     /// assert!(range.contains_inclusive(end));
     /// ```
     #[inline]
-    pub fn contains_inclusive<T: Into<TextSize>>(self, offset: T) -> bool {
-        let offset = offset.into();
+    pub fn contains_inclusive(self, offset: TextSize) -> bool {
         self.start() <= offset && offset <= self.end()
     }
 
@@ -338,6 +336,14 @@ impl TextRange {
         } else {
             Ordering::Equal
         }
+    }
+}
+
+impl TextRange {
+    pub fn try_into_usize_range(self) -> Result<ops::Range<usize>, TryFromIntError> {
+        let start = self.start().try_into()?;
+        let end = self.end.try_into()?;
+        Ok(start..end)
     }
 }
 

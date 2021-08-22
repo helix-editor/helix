@@ -251,7 +251,7 @@ impl ChangeSet {
     }
 
     /// Given another change set starting in the same document, maps this
-    /// change set over the other, producing a new change set that can be
+
     /// applied to the document produced by applying `other`. When
     /// `before` is `true`, order changes as if `this` comes before
     /// `other`, otherwise (the default) treat `other` as coming first.

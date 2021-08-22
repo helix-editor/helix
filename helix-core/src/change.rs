@@ -1,7 +1,7 @@
-use std::{borrow::Cow, convert::TryInto, iter::FromIterator, ops};
+use std::{borrow::Cow, convert::TryInto, iter::FromIterator};
 
 use crate::{
-    text_size::{TextOffset, TextRange, TextSize},
+    text_size::{TextRange, TextSize},
     Tendril,
 };
 use ropey::Rope;
@@ -18,24 +18,27 @@ impl Change {
     }
 
     fn apply(&self, text: &mut Rope) {
-        text.remove(ops::Range::<usize>::from(self.delete));
-        text.insert(self.delete.start().into(), &self.insert)
+        text.remove(self.delete.try_into_usize_range().unwrap());
+        text.insert(self.delete.start().try_into().unwrap(), &self.insert)
     }
 
-    fn add_offset(self, offset: TextOffset) -> Self {
+    fn add_offset(self, offset: i64) -> Self {
         Change {
-            delete: self.delete + offset,
+            delete: TextRange::new(
+                (self.delete.start() as i64 + offset).try_into().unwrap(),
+                (self.delete.end() as i64 + offset).try_into().unwrap(),
+            ),
             insert: self.insert,
         }
     }
 
-    fn offset(&self) -> TextOffset {
-        (self.insert.len() as i32 - i32::from(self.delete.len())).into()
+    fn offset(&self) -> i64 {
+        self.insert.len() as i64 - i64::from(self.delete.len())
     }
 
     fn invert(&self, original_text: &Rope) -> Self {
         let insert = Tendril::from_slice(&Cow::from(
-            original_text.slice(ops::Range::<usize>::from(self.delete)),
+            original_text.slice(self.delete.try_into_usize_range().unwrap()),
         ));
         let delete = TextRange::new(self.delete.start(), self.insert.len().try_into().unwrap());
         Change { delete, insert }

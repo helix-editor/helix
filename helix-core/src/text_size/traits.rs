@@ -1,25 +1,24 @@
-use super::size::TextSize;
+use std::convert::TryInto;
+
+use super::TextSize;
 pub trait TextLen: Copy {
     fn text_len(&self) -> TextSize;
 }
 
 impl TextLen for &'_ str {
     fn text_len(&self) -> TextSize {
-        TextSize {
-            raw: self.len() as u32,
-        }
+        self.chars().count().try_into().unwrap()
     }
 }
 
 impl TextLen for char {
     fn text_len(&self) -> TextSize {
-        (self.len_utf8() as u32).into()
+        1
     }
 }
 
-/// identity
 impl TextLen for TextSize {
     fn text_len(&self) -> TextSize {
-        *self 
+        *self
     }
 }

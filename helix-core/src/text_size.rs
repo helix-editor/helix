@@ -22,16 +22,10 @@
 #[cfg(not(doctest))]
 mod range;
 #[cfg(not(doctest))]
-mod size;
-#[cfg(not(doctest))]
 mod traits;
-#[cfg(not(doctest))]
-mod offset;
 
 pub use range::TextRange;
-pub use size::TextSize;
-pub use traits::TextLen;
-pub use offset::TextOffset;
+pub type TextSize = u32;
 
 #[cfg(target_pointer_width = "16")]
 compile_error!("text-size assumes usize >= u32 and does not work on 16-bit targets");
