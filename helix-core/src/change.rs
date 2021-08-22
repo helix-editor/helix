@@ -12,109 +12,56 @@ use crate::{
 use ropey::Rope;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Change {
-    Insert {
-        at: TextSize,
-        contents: Tendril1,
-    },
-    Delete(TextRange1),
-    Replace {
-        range: TextRange1,
-        contents: Tendril1,
-    },
-    // we love our monoids
-    Empty,
+pub struct Change {
+    pub delete: TextRange,
+    pub insert: Tendril,
 }
 
 impl Change {
-    fn new(range: TextRange, contents: Tendril) -> Change {
-        use Change::*;
-        match (TextRange1::try_from(range), Tendril1::new(contents)) {
-            (Ok(range), None) => Delete(range),
-            (Ok(range), Some(contents)) => Replace { range, contents },
-            (Err(()), None) => Empty,
-            (Err(()), Some(contents)) => Insert {
-                at: range.try_into().unwrap(),
-                contents,
-            },
-        }
+    fn new(delete: TextRange, insert: Tendril) -> Change {
+        Change { delete, insert }
     }
 
-    fn apply(&self, rope: &mut Rope) {
-        use Change::*;
-        match self {
-            Insert { at, contents } => rope.insert((*at).into(), contents.as_ref()),
-            Delete(range) => {
-                let bounds: ops::Range<usize> = TextRange::from(*range).into();
-                rope.remove(bounds);
-            }
-            Replace { range, contents } => {
-                let bounds: ops::Range<usize> = TextRange::from(*range).into();
-                rope.remove(bounds);
-                rope.insert(range.start().into(), contents.as_ref());
-            }
-            Empty => (),
-        }
+    fn apply(&self, text: &mut Rope) {
+        let bounds: ops::Range<usize> = TextRange::from(self.delete).into();
+        text.remove(bounds);
+        let char_idx = self.delete.start();
+        text.insert(char_idx.into(), &self.insert)
     }
 
     fn add_offset(self, offset: TextOffset) -> Self {
-        use Change::*;
-        match self {
-            Insert { at, contents } => Insert {
-                at: at + offset,
-                contents,
-            },
-            Delete(range) => Delete(range + offset),
-            Replace { range, contents } => Replace {
-                range: range + offset,
-                contents,
-            },
-            Empty => Empty,
+        Change {
+            delete: self.delete + offset,
+            insert: self.insert,
         }
     }
 
     fn offset(&self) -> TextOffset {
-        use Change::*;
-        match self {
-            Insert { contents, .. } => contents.len().try_into().unwrap(),
-            Delete(range) => range.len().try_into().unwrap(),
-            Replace { range, contents } => (contents.len() - usize::from(range.len()))
-                .try_into()
-                .unwrap(),
-            Empty => 0.into(),
-        }
+        (self.insert.len() - usize::from(self.delete.len()))
+            .try_into()
+            .unwrap()
     }
 
-    fn range(&self) -> Option<TextRange> {
-        use Change::*;
-        match self {
-            Insert { at, .. } => Some(TextRange::empty(at)),
-            Delete(range) => Some(range.into()),
-            Replace { range, contents } => Some(range.into()),
-            Empty => None,
-        }
-    }
-
-    fn invert(&self, original_text: &Rope) -> Self {
-        use Change::*;
-        match self {
-            Delete(range) => {
-                let text = Cow::from(original_text.slice(range.into1::<ops::Range<usize>>()));
-                Insert {
-                    at: range.start(),
-                    contents: Tendril::from_slice(&text).into(),
-                }
-            }
-            // Insert { at, contents} => {
-            //     // let chars_len = contents.chars.count();
-            //     // // Delete {
-            //     // //     at: range, 
-            //     // // }
-            //     // changes.delete(chars)
-            // }
-            _ => unimplemented!(),
-        }
-    }
+    // fn invert(&self, original_text: &Rope) -> Self {
+    //     use Change::*;
+    //     match self {
+    //         Delete(range) => {
+    //             let text = Cow::from(original_text.slice(range.into1::<ops::Range<usize>>()));
+    //             Insert {
+    //                 at: range.start(),
+    //                 contents: Tendril::from_slice(&text).into(),
+    //             }
+    //         }
+    //         // Insert { at, contents} => {
+    //         //     // let chars_len = contents.chars.count();
+    //         //     // // Delete {
+    //         //     // //     at: range,
+    //         //     // // }
+    //         //     // changes.delete(chars)
+    //         // }
+    //         _ => unimplemented!(),
+    //     }
+    // }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -214,10 +161,9 @@ fn check_disjoint(changes: &mut [Change]) -> bool {
 }
 
 fn check_disjoint_impl(changes: &mut [Change], unstable: bool) -> bool {
-    let key = |change: &Change| {
-        let change = change.range().unwrap_or(TextRange::empty(1));
-        (change.start(), change.end())
-    };
+    fn key(change: &Change) -> (TextSize, TextSize) {
+        (change.delete.start(), change.delete.end())
+    }
     if unstable {
         changes.sort_unstable_by_key(key);
     } else {
@@ -226,8 +172,7 @@ fn check_disjoint_impl(changes: &mut [Change], unstable: bool) -> bool {
     changes
         .iter()
         .zip(changes.iter().skip(1))
-        .filter_map(|(l, r)| l.range().and_then(|l| r.range().map(|r| (l, r))))
-        .all(|(l, r)| l.end() <= r.start())
+        .all(|(l, r)| l.delete.end() <= r.delete.start())
 }
 
 #[cfg(test)]
