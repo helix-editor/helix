@@ -1908,11 +1908,12 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
         let id = doc.id();
 
-        cx.editor.switch(id, Action::VerticalSplit);
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::VerticalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::VerticalSplit);
+        }
 
-        let path = args.get(0).context("wrong argument count")?;
-
-        let _ = cx.editor.open(path.into(), Action::Replace)?;
         Ok(())
     }
 
@@ -1924,11 +1925,12 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
         let id = doc.id();
 
-        cx.editor.switch(id, Action::HorizontalSplit);
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::HorizontalSplit);
+        }
 
-        let path = args.get(0).context("wrong argument count")?;
-
-        let _ = cx.editor.open(path.into(), Action::Replace)?;
         Ok(())
     }
 
