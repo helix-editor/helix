@@ -458,6 +458,8 @@ where
                     unit: String::from("    "),
                 }),
                 indent_query: OnceCell::new(),
+                debug_adapter: None,
+                debug_configs: None,
             }],
         });
 
