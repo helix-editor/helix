@@ -1,8 +1,9 @@
 use crate::{
     transport::{Payload, Request, Transport},
     types::*,
-    Result,
+    Error, Result,
 };
+use anyhow::anyhow;
 pub use log::{error, info};
 use std::{
     collections::HashMap,
@@ -35,6 +36,33 @@ pub struct Client {
 }
 
 impl Client {
+    // Spawn a process and communicate with it by either TCP or stdio
+    pub async fn process(
+        cfg: DebugAdapterConfig,
+        id: usize,
+    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+        if cfg.transport == "tcp" && cfg.port_arg.is_some() {
+            Self::tcp_process(
+                &cfg.command,
+                cfg.args.iter().map(|s| s.as_str()).collect(),
+                &cfg.port_arg.unwrap(),
+                id,
+            )
+            .await
+        } else if cfg.transport == "stdio" {
+            Self::stdio(
+                &cfg.command,
+                cfg.args.iter().map(|s| s.as_str()).collect(),
+                id,
+            )
+        } else {
+            Result::Err(Error::Other(anyhow!(
+                "Incorrect transport {}",
+                cfg.transport
+            )))
+        }
+    }
+
     pub fn streams(
         rx: Box<dyn AsyncBufRead + Unpin + Send>,
         tx: Box<dyn AsyncWrite + Unpin + Send>,
@@ -113,14 +141,16 @@ impl Client {
     }
 
     pub async fn tcp_process(
-        config: DebugAdapterConfig,
+        cmd: &str,
+        args: Vec<&str>,
+        port_format: &str,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         let port = Self::get_port().await.unwrap();
 
-        let process = Command::new(config.command)
-            .args(config.args)
-            .args(config.port_arg.replace("{}", &port.to_string()).split(' '))
+        let process = Command::new(cmd)
+            .args(args)
+            .args(port_format.replace("{}", &port.to_string()).split(' '))
             // silence messages
             .stdin(Stdio::null())
             .stdout(Stdio::null())

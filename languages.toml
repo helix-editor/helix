@@ -93,7 +93,7 @@ comment-token = "//"
 language-server = { command = "gopls" }
 # TODO: gopls needs utf-8 offsets?
 indent = { tab-width = 4, unit = "\t" }
-debug-adapter = { command = "dlv", args = ["dap"], port-arg = "-l 127.0.0.1:{}" }
+debug-adapter = { transport = "tcp", command = "dlv", args = ["dap"], port-arg = "-l 127.0.0.1:{}" }
 
 [[language.debug-configs]]
 request = "launch"
