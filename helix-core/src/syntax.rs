@@ -58,6 +58,8 @@ pub struct LanguageConfiguration {
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debug_adapter: Option<DebugAdapterConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_configs: Option<Vec<HashMap<String, serde_json::Value>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

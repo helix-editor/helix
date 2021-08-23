@@ -95,6 +95,21 @@ language-server = { command = "gopls" }
 indent = { tab-width = 4, unit = "\t" }
 debug-adapter = { command = "dlv", args = ["dap"], port-arg = "-l 127.0.0.1:{}" }
 
+[[language.debug-configs]]
+request = "launch"
+mode = "debug"
+program = "main.go"
+
+[[language.debug-configs]]
+request = "launch"
+mode = "exec"
+program = "main"
+
+[[language.debug-configs]]
+request = "launch"
+mode = "test"
+program = "."
+
 [[language]]
 name = "javascript"
 scope = "source.js"

@@ -4368,9 +4368,24 @@ fn dap_start(cx: &mut Context) {
     let request = debugger.initialize("go".to_owned());
     let _ = block_on(request).unwrap();
 
-    let mut args = HashMap::new();
-    args.insert("mode", "debug");
-    args.insert("program", "main.go");
+    let sessions = cx
+        .editor
+        .syn_loader
+        .language_config_for_file_name(&path)
+        .and_then(|x| x.debug_configs.clone());
+
+    let sessions = match sessions {
+        Some(c) => c,
+        None => {
+            cx.editor.set_error(
+                "Can't start debug: no debug sessions available for language".to_string(),
+            );
+            return;
+        }
+    };
+
+    // TODO: picker
+    let args = sessions.get(0);
 
     let request = debugger.launch(to_value(args).unwrap());
     let _ = block_on(request).unwrap();
