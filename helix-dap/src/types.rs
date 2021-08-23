@@ -634,14 +634,14 @@ pub mod events {
         pub name: String,
         pub system_process_id: Option<usize>,
         pub is_local_process: Option<bool>,
-        pub start_method: String, // TODO: use enum
+        pub start_method: Option<String>, // TODO: use enum
         pub pointer_size: Option<usize>,
     }
 
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Capabilities {
-        pub module: super::DebuggerCapabilities,
+        pub capabilities: super::DebuggerCapabilities,
     }
 
     // #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
