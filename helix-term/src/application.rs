@@ -343,7 +343,12 @@ impl Application {
                     category, output, ..
                 }) => {
                     let prefix = match category {
-                        Some(category) => format!("Debug ({}):", category),
+                        Some(category) => {
+                            if &category == "telemetry" {
+                                return;
+                            }
+                            format!("Debug ({}):", category)
+                        }
                         None => "Debug:".to_owned(),
                     };
 
