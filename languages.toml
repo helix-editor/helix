@@ -85,6 +85,11 @@ comment-token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
+debug-adapter = { name = "lldb", transport = "tcp", command = "lldb-vscode", args = [], port-arg = "-p {}" }
+
+[[language.debug-configs]]
+console = "internalConsole"
+program = "main"
 
 [[language]]
 name = "go"
