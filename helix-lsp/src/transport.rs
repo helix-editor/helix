@@ -222,10 +222,13 @@ impl Transport {
         loop {
             match Self::recv_server_message(&mut server_stdout, &mut recv_buffer).await {
                 Ok(msg) => {
-                    transport
-                        .process_server_message(&client_tx, msg)
-                        .await
-                        .unwrap();
+                    match transport.process_server_message(&client_tx, msg).await {
+                        Ok(_) => {}
+                        Err(err) => {
+                            error!("err: <- {:?}", err);
+                            break;
+                        }
+                    };
                 }
                 Err(err) => {
                     error!("err: <- {:?}", err);
@@ -254,10 +257,15 @@ impl Transport {
         mut client_rx: UnboundedReceiver<Payload>,
     ) {
         while let Some(msg) = client_rx.recv().await {
-            transport
+            match transport
                 .send_payload_to_server(&mut server_stdin, msg)
                 .await
-                .unwrap()
+            {
+                Ok(_) => {}
+                Err(err) => {
+                    error!("err: <- {:?}", err);
+                }
+            }
         }
     }
 }
