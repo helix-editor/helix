@@ -113,16 +113,14 @@ impl Client {
     }
 
     pub async fn tcp_process(
-        cmd: &str,
-        args: Vec<&str>,
-        port_format: &str,
+        config: DebugAdapterConfig,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         let port = Self::get_port().await.unwrap();
 
-        let process = Command::new(cmd)
-            .args(args)
-            .args(port_format.replace("{}", &port.to_string()).split(' '))
+        let process = Command::new(config.command)
+            .args(config.args)
+            .args(config.port_arg.replace("{}", &port.to_string()).split(' '))
             // silence messages
             .stdin(Stdio::null())
             .stdout(Stdio::null())

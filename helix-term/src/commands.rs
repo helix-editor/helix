@@ -4336,12 +4336,33 @@ fn dap_start(cx: &mut Context) {
     use helix_lsp::block_on;
     use serde_json::to_value;
 
-    let (_, _doc) = current!(cx.editor);
+    let (_, doc) = current!(cx.editor);
 
-    // look up config for filetype
-    // if multiple available, open picker
+    // TODO config picker
+    let path = match doc.path() {
+        Some(path) => path.to_path_buf(),
+        None => {
+            cx.editor
+                .set_error("Can't start debug: document has no path".to_string());
+            return;
+        }
+    };
 
-    let started = Client::tcp_process("dlv", vec!["dap"], "-l 127.0.0.1:{}", 0);
+    let config = cx
+        .editor
+        .syn_loader
+        .language_config_for_file_name(&path)
+        .and_then(|x| x.debug_adapter.clone());
+    let config = match config {
+        Some(c) => c,
+        None => {
+            cx.editor.set_error(
+                "Can't start debug: no debug adapter available for language".to_string(),
+            );
+            return;
+        }
+    };
+    let started = Client::tcp_process(config, 0);
     let (mut debugger, events) = block_on(started).unwrap();
 
     let request = debugger.initialize("go".to_owned());

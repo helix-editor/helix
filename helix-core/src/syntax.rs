@@ -5,6 +5,7 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
+use helix_dap::DebugAdapterConfig;
 pub use helix_syntax::get_language;
 
 use arc_swap::ArcSwap;
@@ -55,6 +56,8 @@ pub struct LanguageConfiguration {
 
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_adapter: Option<DebugAdapterConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

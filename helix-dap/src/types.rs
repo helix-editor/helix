@@ -2,6 +2,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebugAdapterConfig {
+    pub command: String,
+    pub args: Vec<String>,
+    pub port_arg: String,
+}
+
 pub trait Request {
     type Arguments: serde::de::DeserializeOwned + serde::Serialize;
     type Result: serde::de::DeserializeOwned + serde::Serialize;
