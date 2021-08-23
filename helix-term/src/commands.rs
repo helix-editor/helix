@@ -4362,10 +4362,10 @@ fn dap_start(cx: &mut Context) {
             return;
         }
     };
-    let started = Client::process(config, 0);
+    let started = Client::process(config.clone(), 0);
     let (mut debugger, events) = block_on(started).unwrap();
 
-    let request = debugger.initialize("go".to_owned());
+    let request = debugger.initialize(config.name);
     let _ = block_on(request).unwrap();
 
     let sessions = cx

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugAdapterConfig {
+    pub name: String,
     pub transport: String,
     pub command: String,
     pub args: Vec<String>,
