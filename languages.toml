@@ -19,6 +19,11 @@ config = """
 
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
+debug-adapter = { name = "lldb", transport = "tcp", command = "lldb-vscode", args = [], port-arg = "-p {}" }
+
+[[language.debug-configs]]
+console = "internalConsole"
+program = "target/debug/rustdebug"
 
 [[language]]
 name = "toml"

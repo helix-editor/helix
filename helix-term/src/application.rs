@@ -324,6 +324,7 @@ impl Application {
                             .unwrap();
 
                         let (view, doc) = current!(self.editor);
+                        log::info!("{:?}", doc);
                         let start = doc.text().line_to_char(line - 1) + column;
                         if let Some(end_line) = end_line {
                             let end =
