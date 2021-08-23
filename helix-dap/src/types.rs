@@ -541,7 +541,7 @@ pub mod events {
         Stopped(Stopped),
         Continued(Continued),
         Exited(Exited),
-        Terminated(Terminated),
+        Terminated(Option<Terminated>),
         Thread(Thread),
         Output(Output),
         Breakpoint(Breakpoint),
