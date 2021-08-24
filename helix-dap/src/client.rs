@@ -225,7 +225,9 @@ impl Client {
     }
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
-        self.caps.as_ref().expect("debugger not yet initialized!")
+        self.caps
+            .as_ref()
+            .expect("debugger not yet initialized!")
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
@@ -237,7 +239,7 @@ impl Client {
             lines_start_at_one: Some(true),
             columns_start_at_one: Some(true),
             path_format: Some("path".to_owned()),
-            supports_variable_type: Some(false),
+            supports_variable_type: Some(true),
             supports_variable_paging: Some(false),
             supports_run_in_terminal_request: Some(false),
             supports_memory_references: Some(false),
