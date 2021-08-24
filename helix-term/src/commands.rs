@@ -2288,16 +2288,17 @@ fn buffer_picker(cx: &mut Context) {
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (id, doc.relative_path()))
+            .map(|(id, doc)| (id, doc.path().cloned()))
             .collect(),
         move |(id, path): &(DocumentId, Option<PathBuf>)| {
-            // format_fn
+            use helix_view::document::relative_path;
+            let path = path.as_deref().map(relative_path);
             match path.as_ref().and_then(|path| path.to_str()) {
                 Some(path) => {
                     if *id == current {
-                        format!("{} (*)", path).into()
+                        format!("{} (*)", &path).into()
                     } else {
-                        path.into()
+                        path.to_owned().into()
                     }
                 }
                 None => "[scratch buffer]".into(),

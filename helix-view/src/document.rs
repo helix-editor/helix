@@ -398,6 +398,14 @@ pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
     Ok(normalize_path(&path))
 }
 
+pub fn relative_path(mut path: &Path) -> PathBuf {
+    let cwdir = std::env::current_dir().expect("couldn't determine current directory");
+    if path.is_absolute() {
+        path = path.strip_prefix(cwdir).unwrap_or(path)
+    };
+    fold_home_dir(path)
+}
+
 use helix_lsp::lsp;
 use url::Url;
 
@@ -936,15 +944,7 @@ impl Document {
     }
 
     pub fn relative_path(&self) -> Option<PathBuf> {
-        let cwdir = std::env::current_dir().expect("couldn't determine current directory");
-
-        self.path.as_ref().map(|path| {
-            let mut path = path.as_path();
-            if path.is_absolute() {
-                path = path.strip_prefix(cwdir).unwrap_or(path)
-            };
-            fold_home_dir(path)
-        })
+        self.path.as_deref().map(relative_path)
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {
