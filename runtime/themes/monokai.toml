@@ -4,7 +4,7 @@
 "module" = { fg = "type" }
 
 "type" = { fg = "type" }
-"type.builtin" = { fg = "type" }
+"type.builtin" = { fg = "#66D9EF" }
 "type.enum.variant" = { fg = "constant" } 
 "constructor" = { fg = "constant" }
 "property" = { fg = "variable" }
@@ -14,7 +14,7 @@
 "keyword.control" = { fg = "keyword" }
 "label" = { fg = "keyword" }
 
-"special" = { fg = "text" }
+"special" = { fg = "keyword" }
 "operator" = { fg = "text" }
 
 "punctuation" = { fg = "text" }
@@ -24,7 +24,7 @@
 "variable.parameter" = { fg = "#fd971f" }
 "variable.builtin" = { fg = "keyword" }
 "constant" = { fg = "variable" }
-"constant.builtin" = { fg = "keyword" }
+"constant.builtin" = { fg = "#ae81ff" }
 
 "function" = { fg = "fn_declaration" }
 "function.builtin" = { fg = "fn_declaration" }
@@ -45,8 +45,8 @@
 "ui.menu.selected" = { bg = "widget" }
 
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
-"ui.cursor.primary" = { bg = "cursor" }
-"ui.cursor.match" = { bg = "inactive_cursor", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "#888888", modifiers = ["reversed"] }
 
 "ui.selection" = { bg = "#878b91" }
 "ui.selection.primary" = { bg = "#575b61" } # editor.selectionHighlightBackground
