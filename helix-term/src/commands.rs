@@ -24,6 +24,7 @@ use helix_lsp::{
 };
 use insert::*;
 use movement::Movement;
+use serde_json::Value;
 
 use crate::{
     compositor::{self, Component, Compositor},
@@ -4454,7 +4455,7 @@ fn dap_start_impl(editor: &mut Editor, name: Option<&str>, params: Option<Vec<&s
     };
 
     let template = start_config.args.clone();
-    let mut args = HashMap::new();
+    let mut args: HashMap<String, Value> = HashMap::new();
 
     if let Some(params) = params {
         for (k, t) in template {
@@ -4464,7 +4465,11 @@ fn dap_start_impl(editor: &mut Editor, name: Option<&str>, params: Option<Vec<&s
                 value = value.replace(format!("{{{}}}", i).as_str(), x);
             }
 
-            args.insert(k, value);
+            if let Ok(integer) = value.parse::<usize>() {
+                args.insert(k, Value::Number(serde_json::Number::from(integer)));
+            } else {
+                args.insert(k, Value::String(value));
+            }
         }
     }
 

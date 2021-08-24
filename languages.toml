@@ -32,6 +32,11 @@ name = "binary"
 request = "launch"
 args = { console = "internalConsole", program = "{0}" }
 
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+args = { console = "internalConsole", pid = "{0}" }
+
 [[language]]
 name = "toml"
 scope = "source.toml"
@@ -94,6 +99,11 @@ name = "binary"
 request = "launch"
 args = { console = "internalConsole", program = "main" }
 
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+args = { console = "internalConsole", pid = "{0}" }
+
 [[language]]
 name = "cpp"
 scope = "source.cpp"
@@ -116,6 +126,11 @@ port-arg = "-p {}"
 name = "binary"
 request = "launch"
 args = { console = "internalConsole", program = "main" }
+
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+args = { console = "internalConsole", pid = "{0}" }
 
 [[language]]
 name = "go"
@@ -151,6 +166,11 @@ args = { mode = "exec", program = "./main" }
 name = "test"
 request = "launch"
 args = { mode = "test", program = "{0}" }
+
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+args = { mode = "local", processId = "{0}" }
 
 [[language]]
 name = "javascript"
