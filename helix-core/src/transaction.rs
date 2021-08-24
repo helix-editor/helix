@@ -689,21 +689,21 @@ mod test {
 
     #[test]
     fn transaction_change() {
-        let mut state = State::new("hello world!\ntest 123".into());
+        let mut doc = Rope::from("hello world!\ntest 123".into());
         let transaction = Transaction::change(
             &state.doc,
             // (1, 1, None) is a useless 0-width delete
             vec![(1, 1, None), (6, 11, Some("void".into())), (12, 17, None)].into_iter(),
         );
-        transaction.apply(&mut state.doc);
-        assert_eq!(state.doc, Rope::from_str("hello void! 123"));
+        transaction.apply(&mut doc);
+        assert_eq!(doc, Rope::from_str("hello void! 123"));
     }
 
     #[test]
     fn changes_iter() {
-        let state = State::new("hello world!\ntest 123".into());
+        let doc = Rope::from("hello world!\ntest 123".into());
         let changes = vec![(6, 11, Some("void".into())), (12, 17, None)];
-        let transaction = Transaction::change(&state.doc, changes.clone().into_iter());
+        let transaction = Transaction::change(&doc, changes.clone().into_iter());
         assert_eq!(transaction.changes_iter().collect::<Vec<_>>(), changes);
     }
 

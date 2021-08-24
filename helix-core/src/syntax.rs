@@ -1828,15 +1828,14 @@ mod test {
 
     #[test]
     fn test_input_edits() {
-        use crate::State;
         use tree_sitter::InputEdit;
 
-        let state = State::new("hello world!\ntest 123".into());
+        let doc = Rope::from("hello world!\ntest 123");
         let transaction = Transaction::change(
-            &state.doc,
+            &doc,
             vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
         );
-        let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
+        let edits = LanguageLayer::generate_edits(doc.slice(..), transaction.changes());
         // transaction.apply(&mut state);
 
         assert_eq!(
@@ -1862,13 +1861,13 @@ mod test {
         );
 
         // Testing with the official example from tree-sitter
-        let mut state = State::new("fn test() {}".into());
+        let mut doc = Rope::from("fn test() {}");
         let transaction =
-            Transaction::change(&state.doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-        let edits = LanguageLayer::generate_edits(state.doc.slice(..), transaction.changes());
-        transaction.apply(&mut state.doc);
+            Transaction::change(&doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
+        let edits = LanguageLayer::generate_edits(doc.slice(..), transaction.changes());
+        transaction.apply(&mut doc);
 
-        assert_eq!(state.doc, "fn test(a: u32) {}");
+        assert_eq!(doc, "fn test(a: u32) {}");
         assert_eq!(
             edits,
             &[InputEdit {
