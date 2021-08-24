@@ -19,11 +19,6 @@ config = """
 
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
-debug-adapter = { name = "lldb", transport = "tcp", command = "lldb-vscode", args = [], port-arg = "-p {}" }
-
-[[language.debug-configs]]
-console = "internalConsole"
-program = "target/debug/rustdebug"
 
 [[language]]
 name = "toml"
@@ -74,11 +69,6 @@ comment-token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
-debug-adapter = { name = "lldb", transport = "tcp", command = "lldb-vscode", args = [], port-arg = "-p {}" }
-
-[[language.debug-configs]]
-console = "internalConsole"
-program = "main"
 
 [[language]]
 name = "cpp"
@@ -90,11 +80,6 @@ comment-token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
-debug-adapter = { name = "lldb", transport = "tcp", command = "lldb-vscode", args = [], port-arg = "-p {}" }
-
-[[language.debug-configs]]
-console = "internalConsole"
-program = "main"
 
 [[language]]
 name = "go"
@@ -108,19 +93,28 @@ comment-token = "//"
 language-server = { command = "gopls" }
 # TODO: gopls needs utf-8 offsets?
 indent = { tab-width = 4, unit = "\t" }
-debug-adapter = { name = "go", transport = "tcp", command = "dlv", args = ["dap"], port-arg = "-l 127.0.0.1:{}" }
 
-[[language.debug-configs]]
-mode = "debug"
-program = "main.go"
+[language.debugger]
+name = "go"
+transport = "tcp"
+command = "dlv"
+args = ["dap"]
+port-arg = "-l 127.0.0.1:{}"
 
-[[language.debug-configs]]
-mode = "exec"
-program = "main"
+[[language.debugger.templates]]
+name = "source"
+request = "launch"
+args = { mode = "debug", program = "main.go" }
 
-[[language.debug-configs]]
-mode = "test"
-program = "."
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+args = { mode = "exec", program = "main" }
+
+[[language.debugger.templates]]
+name = "test"
+request = "launch"
+args = { mode = "test", program = "." }
 
 [[language]]
 name = "javascript"

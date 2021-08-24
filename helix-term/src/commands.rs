@@ -4392,7 +4392,6 @@ fn dap_start(cx: &mut Context) {
 
     let (_, doc) = current!(cx.editor);
 
-    // TODO config picker
     let path = match doc.path() {
         Some(path) => path.to_path_buf(),
         None => {
@@ -4406,7 +4405,7 @@ fn dap_start(cx: &mut Context) {
         .editor
         .syn_loader
         .language_config_for_file_name(&path)
-        .and_then(|x| x.debug_adapter.clone());
+        .and_then(|x| x.debugger.clone());
     let config = match config {
         Some(c) => c,
         None => {
@@ -4416,29 +4415,25 @@ fn dap_start(cx: &mut Context) {
             return;
         }
     };
+
     let started = Client::process(config.clone(), 0);
     let (mut debugger, events) = block_on(started).unwrap();
 
-    let request = debugger.initialize(config.name);
+    let request = debugger.initialize(config.name.clone());
     let _ = block_on(request).unwrap();
 
-    let sessions = doc.language_config().and_then(|x| x.debug_configs.clone());
+    // TODO: picker
+    let start_config = config.templates.get(0).unwrap();
+    let args = to_value(start_config.args.clone()).unwrap();
 
-    let sessions = match sessions {
-        Some(c) => c,
-        None => {
-            cx.editor.set_error(
-                "Can't start debug: no debug sessions available for language".to_string(),
-            );
+    match &start_config.request[..] {
+        "launch" => block_on(debugger.launch(args)).unwrap(),
+        "attach" => block_on(debugger.attach(args)).unwrap(),
+        _ => {
+            cx.editor.set_error("Unsupported request".to_string());
             return;
         }
     };
-
-    // TODO: picker
-    let args = sessions.get(0);
-
-    let request = debugger.launch(to_value(args).unwrap());
-    let _ = block_on(request).unwrap();
 
     // TODO: either await "initialized" or buffer commands until event is received
     cx.editor.debugger = Some(debugger);

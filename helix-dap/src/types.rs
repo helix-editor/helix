@@ -1,6 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebugTemplate {
+    pub name: String,
+    pub request: String,
+    pub args: HashMap<String, Value>
+}
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -10,6 +18,7 @@ pub struct DebugAdapterConfig {
     pub command: String,
     pub args: Vec<String>,
     pub port_arg: Option<String>,
+    pub templates: Vec<DebugTemplate>,
 }
 
 pub trait Request {
