@@ -5,8 +5,8 @@
 
 "type" = { fg = "type" }
 "type.builtin" = { fg = "#66D9EF" }
-"type.enum.variant" = { fg = "constant" } 
-"constructor" = { fg = "constant" }
+"type.enum.variant" = { fg = "text" } 
+"constructor" = { fg = "text" }
 "property" = { fg = "variable" }
 
 "keyword" = { fg = "keyword" }
@@ -49,12 +49,12 @@
 "ui.cursor.match" = { fg = "#888888", modifiers = ["reversed"] }
 
 "ui.selection" = { bg = "#878b91" }
-"ui.selection.primary" = { bg = "#575b61" } # editor.selectionHighlightBackground
+"ui.selection.primary" = { bg = "#575b61" }
 
-"ui.linenr" = { fg = "#90908a" } # editorLineNumber.foreground
-"ui.linenr.selected" = { fg = "#c2c2bf" } # editorLineNumber.activeForeground
+"ui.linenr" = { fg = "#90908a" }
+"ui.linenr.selected" = { fg = "#c2c2bf" }
 
-"ui.statusline" = { fg = "active_text", bg = "#75715e" } # activityBarBadge.background
+"ui.statusline" = { fg = "active_text", bg = "#75715e" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
 "ui.text" = { fg = "text", bg = "background" }
@@ -68,17 +68,16 @@
 diagnostic = { modifiers = ["underlined"] }
 
 [palette]
-type = "#A6E22E" # entity.name.type
+type = "#A6E22E"
 keyword = "#F92672"
-regex = "#CE9178" # string
-special = "#C586C0" # debugTokenExpression.name
+regex = "#CE9178"
+special = "#C586C0"
 variable = "#F8F8F2"
-fn_declaration = "#A6E22E" # entity.name.function
-# constant = "#AE81FF" # variable.other.constant
+fn_declaration = "#A6E22E"
 
-background = "#272822" # editor.background
-text = "#f8f8f2" # editor.foreground
+background = "#272822"
+text = "#f8f8f2"
 active_text = "#ffffff"
-cursor = "#a6a6a6" # input.placeholderForeground
-inactive_cursor = "#878b91" # editor.inactiveSelectionBackground
-widget = "#1e1f1c" # menu.background
+cursor = "#a6a6a6"
+inactive_cursor = "#878b91"
+widget = "#1e1f1c"
