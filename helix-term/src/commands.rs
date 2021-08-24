@@ -1949,6 +1949,34 @@ mod cmd {
             }
         };
         if let Some(debugger) = &mut cx.editor.debugger {
+            if breakpoint.condition.is_some()
+                && !debugger
+                    .caps
+                    .clone()
+                    .unwrap()
+                    .supports_conditional_breakpoints
+                    .unwrap_or_default()
+            {
+                cx.editor.set_error(
+                    "Can't edit breakpoint: debugger does not support conditional breakpoints"
+                        .to_string(),
+                );
+                return;
+            }
+            if breakpoint.log_message.is_some()
+                && !debugger
+                    .caps
+                    .clone()
+                    .unwrap()
+                    .supports_log_points
+                    .unwrap_or_default()
+            {
+                cx.editor.set_error(
+                    "Can't edit breakpoint: debugger does not support logpoints".to_string(),
+                );
+                return;
+            }
+
             let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
             if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
                 breakpoints.remove(pos);

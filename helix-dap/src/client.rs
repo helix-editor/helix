@@ -26,7 +26,7 @@ pub struct Client {
     _process: Option<Child>,
     server_tx: UnboundedSender<Request>,
     request_counter: AtomicU64,
-    capabilities: Option<DebuggerCapabilities>,
+    pub caps: Option<DebuggerCapabilities>,
     //
     pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
     // TODO: multiple threads support
@@ -77,7 +77,7 @@ impl Client {
             _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
-            capabilities: None,
+            caps: None,
             //
             breakpoints: HashMap::new(),
             stack_pointer: None,
@@ -225,9 +225,7 @@ impl Client {
     }
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
-        self.capabilities
-            .as_ref()
-            .expect("debugger not yet initialized!")
+        self.caps.as_ref().expect("debugger not yet initialized!")
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
@@ -248,7 +246,7 @@ impl Client {
         };
 
         let response = self.request::<requests::Initialize>(args).await?;
-        self.capabilities = Some(response);
+        self.caps = Some(response);
 
         Ok(())
     }
