@@ -1924,7 +1924,7 @@ mod cmd {
         Ok(())
     }
 
-    fn impl_edit_breakpoint(
+    fn edit_breakpoint_impl(
         cx: &mut compositor::Context,
         condition: Option<String>,
         log_message: Option<String>,
@@ -2002,7 +2002,7 @@ mod cmd {
             Some(condition)
         };
 
-        impl_edit_breakpoint(cx, condition, None);
+        edit_breakpoint_impl(cx, condition, None);
         Ok(())
     }
 
@@ -2018,7 +2018,7 @@ mod cmd {
             Some(log_message)
         };
 
-        impl_edit_breakpoint(cx, None, log_message);
+        edit_breakpoint_impl(cx, None, log_message);
         Ok(())
     }
 
@@ -2027,7 +2027,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        impl_dap_start(&mut cx.editor, args.get(0).map(|name| name.to_string()));
+        dap_start_impl(&mut cx.editor, args.get(0).map(|name| name.to_string()));
         // TODO templating
         Ok(())
     }
@@ -4402,7 +4402,7 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
-fn impl_dap_start(editor: &mut Editor, name: Option<String>) {
+fn dap_start_impl(editor: &mut Editor, name: Option<String>) {
     use helix_dap::Client;
     use helix_lsp::block_on;
     use serde_json::to_value;
@@ -4470,7 +4470,7 @@ fn impl_dap_start(editor: &mut Editor, name: Option<String>) {
 fn dap_start(cx: &mut Context) {
     // TODO: check that first config does not have templates
     // which cannot be handled with a shortcut
-    impl_dap_start(&mut cx.editor, None);
+    dap_start_impl(&mut cx.editor, None);
 }
 
 fn dap_toggle_breakpoint(cx: &mut Context) {
