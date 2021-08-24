@@ -476,6 +476,8 @@ impl EditorView {
                 {
                     if breakpoint.condition.is_some() {
                         surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, error);
+                    } else if breakpoint.log_message.is_some() {
+                        surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, info);
                     } else {
                         surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
                     }
@@ -578,6 +580,12 @@ impl EditorView {
                         if let Some(condition) = &breakpoint.condition {
                             lines.extend(
                                 Text::styled(condition, info.add_modifier(Modifier::UNDERLINED))
+                                    .lines,
+                            );
+                        }
+                        if let Some(log_message) = &breakpoint.log_message {
+                            lines.extend(
+                                Text::styled(log_message, info.add_modifier(Modifier::UNDERLINED))
                                     .lines,
                             );
                         }

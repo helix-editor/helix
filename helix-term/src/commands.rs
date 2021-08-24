@@ -1924,42 +1924,30 @@ mod cmd {
         Ok(())
     }
 
-    fn debug_breakpoint_condition(
+    fn impl_edit_breakpoint(
         cx: &mut compositor::Context,
-        args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
+        condition: Option<String>,
+        log_message: Option<String>,
+    ) {
         use helix_lsp::block_on;
-
-        let condition = args.join(" ");
-        let condition = if condition.is_empty() {
-            None
-        } else {
-            Some(condition)
-        };
 
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let pos = doc.selection(view.id).primary().cursor(text);
-
         let breakpoint = helix_dap::SourceBreakpoint {
             line: text.char_to_line(pos) + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
             condition,
+            log_message,
             ..Default::default()
         };
-
         let path = match doc.path() {
             Some(path) => path.to_path_buf(),
             None => {
                 cx.editor
                     .set_error("Can't edit breakpoint: document has no path".to_string());
-                return Ok(());
+                return;
             }
         };
-
-        // TODO: need to map breakpoints over edits and update them?
-        // we shouldn't really allow editing while debug is running though
-
         if let Some(debugger) = &mut cx.editor.debugger {
             let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
             if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
@@ -1972,6 +1960,37 @@ mod cmd {
                 let _ = block_on(request).unwrap();
             }
         }
+    }
+
+    fn debug_breakpoint_condition(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let condition = args.join(" ");
+        let condition = if condition.is_empty() {
+            None
+        } else {
+            Some(condition)
+        };
+
+        impl_edit_breakpoint(cx, condition, None);
+        Ok(())
+    }
+
+    fn debug_set_logpoint(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let log_message = args.join(" ");
+        let log_message = if log_message.is_empty() {
+            None
+        } else {
+            Some(log_message)
+        };
+
+        impl_edit_breakpoint(cx, None, log_message);
         Ok(())
     }
 
@@ -2226,6 +2245,13 @@ mod cmd {
             alias: None,
             doc: "Set current breakpoint condition.",
             fun: debug_breakpoint_condition,
+            completer: None,
+        },
+        TypableCommand {
+            name: "debug-set-logpoint",
+            alias: None,
+            doc: "Make current breakpoint a log point.",
+            fun: debug_set_logpoint,
             completer: None,
         }
     ];
