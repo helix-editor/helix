@@ -2027,8 +2027,12 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        dap_start_impl(&mut cx.editor, args.get(0).map(|name| name.to_string()));
-        // TODO templating
+        let mut args = args.to_owned();
+        let name = match args.len() {
+            0 => None,
+            _ => Some(args.remove(0)),
+        };
+        dap_start_impl(&mut cx.editor, name, Some(args));
         Ok(())
     }
 
@@ -4402,7 +4406,7 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
-fn dap_start_impl(editor: &mut Editor, name: Option<String>) {
+fn dap_start_impl(editor: &mut Editor, name: Option<&str>, params: Option<Vec<&str>>) {
     use helix_dap::Client;
     use helix_lsp::block_on;
     use serde_json::to_value;
@@ -4449,7 +4453,22 @@ fn dap_start_impl(editor: &mut Editor, name: Option<String>) {
         }
     };
 
-    let args = to_value(start_config.args.clone()).unwrap();
+    let template = start_config.args.clone();
+    let mut args = HashMap::new();
+
+    if let Some(params) = params {
+        for (k, t) in template {
+            let mut value = t;
+            for (i, x) in params.iter().enumerate() {
+                // For param #0 replace {0} in args
+                value = value.replace(format!("{{{}}}", i).as_str(), x);
+            }
+
+            args.insert(k, value);
+        }
+    }
+
+    let args = to_value(args).unwrap();
 
     // TODO gracefully handle errors from debugger
     match &start_config.request[..] {
@@ -4470,7 +4489,7 @@ fn dap_start_impl(editor: &mut Editor, name: Option<String>) {
 fn dap_start(cx: &mut Context) {
     // TODO: check that first config does not have templates
     // which cannot be handled with a shortcut
-    dap_start_impl(&mut cx.editor, None);
+    dap_start_impl(&mut cx.editor, None, None);
 }
 
 fn dap_toggle_breakpoint(cx: &mut Context) {

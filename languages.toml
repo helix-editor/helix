@@ -30,7 +30,7 @@ port-arg = "-p {}"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-args = { console = "internalConsole", program = "target/debug/rustdebug" }
+args = { console = "internalConsole", program = "{0}" }
 
 [[language]]
 name = "toml"
@@ -150,7 +150,7 @@ args = { mode = "exec", program = "./main" }
 [[language.debugger.templates]]
 name = "test"
 request = "launch"
-args = { mode = "test", program = "." }
+args = { mode = "test", program = "{0}" }
 
 [[language]]
 name = "javascript"
