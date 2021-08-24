@@ -17,7 +17,6 @@ use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::{
-    document::canonicalize_path,
     editor::Action,
     graphics::{Color, CursorKind, Margin, Rect, Style},
     Document, Editor,
@@ -54,7 +53,11 @@ impl<T> FilePicker<T> {
         self.picker
             .selection()
             .and_then(|current| (self.file_fn)(editor, current))
-            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
+            .and_then(|(path, line)| {
+                helix_core::path::get_canonicalized_path(&path)
+                    .ok()
+                    .zip(Some(line))
+            })
     }
 
     fn calculate_preview(&mut self, editor: &Editor) {
