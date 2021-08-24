@@ -20,6 +20,18 @@ config = """
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
 
+[language.debugger]
+name = "lldb"
+transport = "tcp"
+command = "lldb-vscode"
+args = []
+port-arg = "-p {}"
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+args = { console = "internalConsole", program = "target/debug/rustdebug" }
+
 [[language]]
 name = "toml"
 scope = "source.toml"
@@ -70,6 +82,18 @@ comment-token = "//"
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
+[language.debugger]
+name = "lldb"
+transport = "tcp"
+command = "lldb-vscode"
+args = []
+port-arg = "-p {}"
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+args = { console = "internalConsole", program = "main" }
+
 [[language]]
 name = "cpp"
 scope = "source.cpp"
@@ -80,6 +104,18 @@ comment-token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
+
+[language.debugger]
+name = "lldb"
+transport = "tcp"
+command = "lldb-vscode"
+args = []
+port-arg = "-p {}"
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+args = { console = "internalConsole", program = "main" }
 
 [[language]]
 name = "go"
