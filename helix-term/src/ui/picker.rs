@@ -153,7 +153,10 @@ impl<T: 'static> Component for FilePicker<T> {
                         (end.saturating_sub(start) as u16 + 1)
                             .min(inner.height.saturating_sub(offset)),
                     ),
-                    cx.editor.theme.get("ui.selection"),
+                    cx.editor
+                        .theme
+                        .try_get("ui.highlight")
+                        .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
                 );
             }
         }
