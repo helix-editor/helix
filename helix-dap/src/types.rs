@@ -7,7 +7,7 @@ use std::{collections::HashMap, path::PathBuf};
 pub struct DebugTemplate {
     pub name: String,
     pub request: String,
-    pub args: HashMap<String, Value>
+    pub args: HashMap<String, Value>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
