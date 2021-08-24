@@ -605,13 +605,20 @@ impl EditorView {
         //     _ => "indent:ERROR",
         // };
         let position_info = {
-            let pos = coords_at_pos(
-                doc.text().slice(..),
-                doc.selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..)),
-            );
-            format!("{}:{}", pos.row + 1, pos.col + 1) // convert to 1-indexing
+            let text = doc.text();
+            let slice = text.slice(..);
+            let cursor_pos = doc.selection(view.id).primary().cursor(slice);
+            let pos = coords_at_pos(slice, cursor_pos);
+            // let line = text.line(text.char_to_line(cursor_pos));
+            // let line_lens = line.len_chars();
+            let total_lines = text.len_lines();
+            format!(
+                "{}% :{}/{} {}",
+                (pos.row + 1) * 100 / total_lines,
+                pos.row + 1,
+                total_lines,
+                pos.col + 1
+            ) // convert to 1-indexing
         };
 
         // Render them to the status line together.
