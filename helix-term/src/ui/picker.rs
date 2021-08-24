@@ -106,8 +106,8 @@ impl<T: 'static> Component for FilePicker<T> {
         let inner = block.inner(preview_area);
         // 1 column gap on either side
         let margin = Margin {
-            vertical: 1,
-            horizontal: 0,
+            vertical: 0,
+            horizontal: 1,
         };
         let inner = inner.inner(&margin);
 
