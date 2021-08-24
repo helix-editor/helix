@@ -228,7 +228,8 @@ pub mod completers {
 
         let end = input.len()..;
 
-        let mut files: Vec<_> = WalkBuilder::new(dir.clone())
+        let mut files: Vec<_> = WalkBuilder::new(&dir)
+            .hidden(false)
             .max_depth(Some(1))
             .build()
             .filter_map(|file| {
