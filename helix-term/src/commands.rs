@@ -2314,7 +2314,7 @@ fn buffer_picker(cx: &mut Context) {
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, Some(line)))
+            Some((path.clone()?, Some((line, line))))
         },
     );
     cx.push_layer(Box::new(picker));
@@ -2387,7 +2387,10 @@ fn symbol_picker(cx: &mut Context) {
                     },
                     move |_editor, symbol| {
                         let path = symbol.location.uri.to_file_path().unwrap();
-                        let line = Some(symbol.location.range.start.line as usize);
+                        let line = Some((
+                            symbol.location.range.start.line as usize,
+                            symbol.location.range.end.line as usize,
+                        ));
                         Some((path, line))
                     },
                 );
@@ -2820,7 +2823,10 @@ fn goto_impl(
                 },
                 |_editor, location| {
                     let path = location.uri.to_file_path().unwrap();
-                    let line = Some(location.range.start.line as usize);
+                    let line = Some((
+                        location.range.start.line as usize,
+                        location.range.end.line as usize,
+                    ));
                     Some((path, line))
                 },
             );
