@@ -2277,10 +2277,10 @@ mod cmd {
         },
         TypableCommand {
             name: "debug-start",
-            alias: None,
+            alias: Some("dbg"),
             doc: "Start a debug session from a given template with given parameters.",
             fun: debug_start,
-            completer: None,
+            completer: Some(completers::filename),
         },
         TypableCommand {
             name: "debug-eval",
