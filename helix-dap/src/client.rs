@@ -225,9 +225,7 @@ impl Client {
     }
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
-        self.caps
-            .as_ref()
-            .expect("debugger not yet initialized!")
+        self.caps.as_ref().expect("debugger not yet initialized!")
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {

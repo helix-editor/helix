@@ -390,7 +390,6 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "signal-hook-tokio",
- "smallvec",
  "tokio",
  "tokio-stream",
  "toml",

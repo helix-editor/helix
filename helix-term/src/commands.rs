@@ -4422,11 +4422,7 @@ fn dap_start(cx: &mut Context) {
     let request = debugger.initialize(config.name);
     let _ = block_on(request).unwrap();
 
-    let sessions = cx
-        .editor
-        .syn_loader
-        .language_config_for_file_name(&path)
-        .and_then(|x| x.debug_configs.clone());
+    let sessions = doc.language_config().and_then(|x| x.debug_configs.clone());
 
     let sessions = match sessions {
         Some(c) => c,

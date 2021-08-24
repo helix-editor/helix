@@ -13,7 +13,6 @@ use crate::{
 };
 
 use log::error;
-use smallvec::smallvec;
 use std::{
     io::{stdout, Write},
     sync::Arc,
@@ -305,20 +304,17 @@ impl Application {
                     if let Some(helix_dap::StackFrame {
                         source:
                             Some(helix_dap::Source {
-                                path: Some(src), ..
+                                path: Some(ref src),
+                                ..
                             }),
                         line,
                         column,
                         end_line,
                         end_column,
                         ..
-                    }) = &debugger.stack_pointer
+                    }) = debugger.stack_pointer
                     {
                         let path = src.clone();
-                        let line = *line;
-                        let column = *column;
-                        let end_line = *end_line;
-                        let end_column = *end_column;
                         self.editor
                             .open(path, helix_view::editor::Action::Replace)
                             .unwrap();
@@ -333,7 +329,10 @@ impl Application {
                             doc.set_selection(
                                 view.id,
                                 Selection::new(
-                                    smallvec![Range::new(start.min(text_end), end.min(text_end))],
+                                    helix_core::SmallVec::from_vec(vec![Range::new(
+                                        start.min(text_end),
+                                        end.min(text_end),
+                                    )]),
                                     0,
                                 ),
                             );
