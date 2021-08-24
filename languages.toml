@@ -97,7 +97,7 @@ port-arg = "-p {}"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-args = { console = "internalConsole", program = "main" }
+args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "attach"
@@ -125,7 +125,7 @@ port-arg = "-p {}"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-args = { console = "internalConsole", program = "main" }
+args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "attach"
@@ -155,12 +155,12 @@ port-arg = "-l 127.0.0.1:{}"
 [[language.debugger.templates]]
 name = "source"
 request = "launch"
-args = { mode = "debug", program = "main.go" }
+args = { mode = "debug", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-args = { mode = "exec", program = "./main" }
+args = { mode = "exec", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "test"

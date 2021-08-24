@@ -305,7 +305,6 @@ impl Command {
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
         dap_toggle_breakpoint, "Toggle breakpoint",
-        dap_start, "Start debug session",
         dap_run, "Begin program execution",
         dap_continue, "Continue program execution",
         dap_pause, "Pause program execution",
@@ -4489,12 +4488,6 @@ fn dap_start_impl(editor: &mut Editor, name: Option<&str>, params: Option<Vec<&s
     editor.debugger = Some(debugger);
     let stream = UnboundedReceiverStream::new(events);
     editor.debugger_events.push(stream);
-}
-
-fn dap_start(cx: &mut Context) {
-    // TODO: check that first config does not have templates
-    // which cannot be handled with a shortcut
-    dap_start_impl(&mut cx.editor, None, None);
 }
 
 fn dap_toggle_breakpoint(cx: &mut Context) {
