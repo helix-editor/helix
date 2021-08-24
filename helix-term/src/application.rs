@@ -273,11 +273,14 @@ impl Application {
                     ..
                 }) => {
                     debugger.is_running = false;
-                    let main = debugger
-                        .threads()
-                        .await
-                        .ok()
-                        .and_then(|threads| threads.get(0).cloned());
+                    let main = debugger.threads().await.ok().and_then(|threads| {
+                        // Workaround for debugging Go tests. Main thread has * in beginning of its name
+                        let mut main = threads.iter().find(|t| t.name.starts_with('*')).cloned();
+                        if main.is_none() {
+                            main = threads.get(0).cloned();
+                        }
+                        main
+                    });
 
                     if let Some(main) = main {
                         let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
