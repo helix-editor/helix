@@ -4287,6 +4287,7 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
             if event == PromptEvent::Validate {
                 let (view, doc) = current!(cx.editor);
                 let selection = doc.selection(view.id);
+                let mut error_occurred = false;
                 let transaction =
                     Transaction::change_by_selection(doc.text(), selection, |range| {
                         let mut process = Command::new(&shell[0])
@@ -4294,7 +4295,7 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
                             .arg(input)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
-                            .stderr(Stdio::null())
+                            .stderr(Stdio::piped())
                             .spawn()
                             .unwrap();
                         if pipe {
@@ -4303,9 +4304,21 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
                             stdin.write_all(fragment.as_bytes()).unwrap();
                         }
 
+                        let output = process.wait_with_output().unwrap();
                         if behavior != ShellBehavior::Filter {
-                            let output = process.wait_with_output().unwrap().stdout;
-                            let tendril = Tendril::try_from_byte_slice(&output).unwrap();
+                            if !output.status.success() {
+                                let stderr = output.stderr;
+                                if !stderr.is_empty() {
+                                    log::error!(
+                                        "Shell error: {}",
+                                        String::from_utf8_lossy(&stderr)
+                                    );
+                                }
+                                error_occurred = true;
+                                return (0, 0, None);
+                            }
+                            let stdout = output.stdout;
+                            let tendril = Tendril::try_from_byte_slice(&stdout).unwrap();
                             let (from, to) = match behavior {
                                 ShellBehavior::Replace => (range.from(), range.to()),
                                 ShellBehavior::Insert => (range.from(), range.from()),
@@ -4315,10 +4328,10 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
                             (from, to, Some(tendril))
                         } else {
                             // if the process exits successfully, keep the selection, otherwise delete it.
-                            let output = process.wait_with_output().unwrap().status.success();
+                            let keep = output.status.success();
                             (
                                 range.from(),
-                                if output { range.from() } else { range.to() },
+                                if keep { range.from() } else { range.to() },
                                 None,
                             )
                         }
@@ -4327,6 +4340,10 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
                 if behavior != ShellBehavior::None {
                     doc.apply(&transaction, view.id);
                     doc.append_changes_to_history(view.id);
+                }
+
+                if error_occurred {
+                    cx.editor.set_error("Command failed".to_owned());
                 }
             }
         },
