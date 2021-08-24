@@ -2022,6 +2022,16 @@ mod cmd {
         Ok(())
     }
 
+    fn debug_start(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        impl_dap_start(&mut cx.editor, args.get(0).map(|name| name.to_string()));
+        // TODO templating
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2259,6 +2269,13 @@ mod cmd {
             alias: None,
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
+            completer: None,
+        },
+        TypableCommand {
+            name: "debug-start",
+            alias: None,
+            doc: "Start a debug session from a given template with given parameters.",
+            fun: debug_start,
             completer: None,
         },
         TypableCommand {
@@ -4385,31 +4402,29 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
-fn dap_start(cx: &mut Context) {
+fn impl_dap_start(editor: &mut Editor, name: Option<String>) {
     use helix_dap::Client;
     use helix_lsp::block_on;
     use serde_json::to_value;
 
-    let (_, doc) = current!(cx.editor);
+    let (_, doc) = current!(editor);
 
     let path = match doc.path() {
         Some(path) => path.to_path_buf(),
         None => {
-            cx.editor
-                .set_error("Can't start debug: document has no path".to_string());
+            editor.set_error("Can't start debug: document has no path".to_string());
             return;
         }
     };
 
-    let config = cx
-        .editor
+    let config = editor
         .syn_loader
         .language_config_for_file_name(&path)
         .and_then(|x| x.debugger.clone());
     let config = match config {
         Some(c) => c,
         None => {
-            cx.editor.set_error(
+            editor.set_error(
                 "Can't start debug: no debug adapter available for language".to_string(),
             );
             return;
@@ -4422,23 +4437,40 @@ fn dap_start(cx: &mut Context) {
     let request = debugger.initialize(config.name.clone());
     let _ = block_on(request).unwrap();
 
-    // TODO: picker
-    let start_config = config.templates.get(0).unwrap();
+    let start_config = match name {
+        Some(name) => config.templates.iter().find(|t| t.name == name),
+        None => config.templates.get(0),
+    };
+    let start_config = match start_config {
+        Some(c) => c,
+        None => {
+            editor.set_error("Can't start debug: no debug config with given name".to_string());
+            return;
+        }
+    };
+
     let args = to_value(start_config.args.clone()).unwrap();
 
+    // TODO gracefully handle errors from debugger
     match &start_config.request[..] {
         "launch" => block_on(debugger.launch(args)).unwrap(),
         "attach" => block_on(debugger.attach(args)).unwrap(),
         _ => {
-            cx.editor.set_error("Unsupported request".to_string());
+            editor.set_error("Unsupported request".to_string());
             return;
         }
     };
 
     // TODO: either await "initialized" or buffer commands until event is received
-    cx.editor.debugger = Some(debugger);
+    editor.debugger = Some(debugger);
     let stream = UnboundedReceiverStream::new(events);
-    cx.editor.debugger_events.push(stream);
+    editor.debugger_events.push(stream);
+}
+
+fn dap_start(cx: &mut Context) {
+    // TODO: check that first config does not have templates
+    // which cannot be handled with a shortcut
+    impl_dap_start(&mut cx.editor, None);
 }
 
 fn dap_toggle_breakpoint(cx: &mut Context) {

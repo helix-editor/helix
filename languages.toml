@@ -145,7 +145,7 @@ args = { mode = "debug", program = "main.go" }
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-args = { mode = "exec", program = "main" }
+args = { mode = "exec", program = "./main" }
 
 [[language.debugger.templates]]
 name = "test"
