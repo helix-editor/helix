@@ -325,7 +325,7 @@ impl Application {
 
                         let (view, doc) = current!(self.editor);
 
-                        let text_end = doc.text().len_chars() - 1;
+                        let text_end = doc.text().len_chars().saturating_sub(1);
                         let start = doc.text().try_line_to_char(line - 1).unwrap_or(0) + column;
                         if let Some(end_line) = end_line {
                             let end = doc.text().try_line_to_char(end_line - 1).unwrap_or(0)
