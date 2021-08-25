@@ -2032,7 +2032,25 @@ mod cmd {
             0 => None,
             _ => Some(args.remove(0)),
         };
-        dap_start_impl(&mut cx.editor, name, Some(args));
+        dap_start_impl(&mut cx.editor, name, None, Some(args));
+        Ok(())
+    }
+
+    fn debug_remote(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let mut args = args.to_owned();
+        let address = match args.len() {
+            0 => None,
+            _ => Some(args.remove(0).parse().unwrap()),
+        };
+        let name = match args.len() {
+            0 => None,
+            _ => Some(args.remove(0)),
+        };
+        dap_start_impl(&mut cx.editor, name, address, Some(args));
         Ok(())
     }
 
@@ -2280,6 +2298,13 @@ mod cmd {
             alias: Some("dbg"),
             doc: "Start a debug session from a given template with given parameters.",
             fun: debug_start,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "debug-remote",
+            alias: Some("dbg-tcp"),
+            doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
+            fun: debug_remote,
             completer: Some(completers::filename),
         },
         TypableCommand {
@@ -4406,7 +4431,12 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
-fn dap_start_impl(editor: &mut Editor, name: Option<&str>, params: Option<Vec<&str>>) {
+fn dap_start_impl(
+    editor: &mut Editor,
+    name: Option<&str>,
+    socket: Option<std::net::SocketAddr>,
+    params: Option<Vec<&str>>,
+) {
     use helix_dap::Client;
     use helix_lsp::block_on;
     use serde_json::to_value;
@@ -4435,8 +4465,10 @@ fn dap_start_impl(editor: &mut Editor, name: Option<&str>, params: Option<Vec<&s
         }
     };
 
-    let started = Client::process(config.clone(), 0);
-    let (mut debugger, events) = block_on(started).unwrap();
+    let (mut debugger, events) = match socket {
+        Some(socket) => block_on(Client::tcp(socket, 0)).unwrap(),
+        None => block_on(Client::process(config.clone(), 0)).unwrap(),
+    };
 
     let request = debugger.initialize(config.name.clone());
     let _ = block_on(request).unwrap();
