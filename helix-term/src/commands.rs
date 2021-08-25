@@ -4238,14 +4238,14 @@ fn suspend(_cx: &mut Context) {
 }
 
 fn add_newline_above(cx: &mut Context) {
-    add_newline_impl(cx, true);
+    add_newline_impl(cx, Open::Above);
 }
 
 fn add_newline_below(cx: &mut Context) {
-    add_newline_impl(cx, false)
+    add_newline_impl(cx, Open::Below)
 }
 
-fn add_newline_impl(cx: &mut Context, above: bool) {
+fn add_newline_impl(cx: &mut Context, open: Open) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
@@ -4254,7 +4254,10 @@ fn add_newline_impl(cx: &mut Context, above: bool) {
 
     let changes = selection.into_iter().map(|range| {
         let (start, end) = range.line_range(slice);
-        let line = if above { start } else { end + 1 };
+        let line = match open {
+            Open::Above => start,
+            Open::Below => end + 1,
+        };
         let pos = text.line_to_char(line);
         (pos, pos, Some("\n".repeat(count).into()))
     });
