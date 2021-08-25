@@ -32,7 +32,7 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::FutureExt;
-use std::{array, num::NonZeroUsize};
+use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
 use std::{
