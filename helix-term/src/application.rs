@@ -1,4 +1,4 @@
-use helix_core::syntax;
+use helix_core::{merge_toml_values, syntax};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
 
@@ -59,11 +59,16 @@ impl Application {
         let theme_loader =
             std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
 
-        // load $HOME/.config/helix/languages.toml, fallback to default config
-        let lang_conf = std::fs::read(conf_dir.join("languages.toml"));
-        let lang_conf = lang_conf
-            .as_deref()
-            .unwrap_or(include_bytes!("../../languages.toml"));
+        // load default and user config, and merge both
+        let def_lang_conf: toml::Value = toml::from_slice(include_bytes!("../../languages.toml"))
+            .expect("Could not parse built-in languages.toml, something must be very wrong");
+        let user_lang_conf: Option<toml::Value> = std::fs::read(conf_dir.join("languages.toml"))
+            .ok()
+            .map(|raw| toml::from_slice(&raw).expect("Could not parse user languages.toml"));
+        let lang_conf = match user_lang_conf {
+            Some(value) => merge_toml_values(def_lang_conf, value),
+            None => def_lang_conf,
+        };
 
         let theme = if let Some(theme) = &config.theme {
             match theme_loader.load(theme) {
@@ -77,7 +82,9 @@ impl Application {
             theme_loader.default()
         };
 
-        let syn_loader_conf = toml::from_slice(lang_conf).expect("Could not parse languages.toml");
+        let syn_loader_conf: helix_core::syntax::Configuration = lang_conf
+            .try_into()
+            .expect("Could not parse merged (built-in + user) languages.toml");
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut editor = Editor::new(
