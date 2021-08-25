@@ -4259,7 +4259,11 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
             Open::Below => end + 1,
         };
         let pos = text.line_to_char(line);
-        (pos, pos, Some("\n".repeat(count).into()))
+        (
+            pos,
+            pos,
+            Some(doc.line_ending.as_str().repeat(count).into()),
+        )
     });
 
     let transaction = Transaction::change(text, changes);
