@@ -17,16 +17,15 @@ use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::{
-    document::canonicalize_path,
     editor::Action,
-    graphics::{Color, CursorKind, Rect, Style},
+    graphics::{Color, CursorKind, Margin, Rect, Style},
     Document, Editor,
 };
 
 pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
 
 /// File path and line number (used to align and highlight a line)
-type FileLocation = (PathBuf, Option<usize>);
+type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
@@ -54,7 +53,11 @@ impl<T> FilePicker<T> {
         self.picker
             .selection()
             .and_then(|current| (self.file_fn)(editor, current))
-            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
+            .and_then(|(path, line)| {
+                helix_core::path::get_canonicalized_path(&path)
+                    .ok()
+                    .zip(Some(line))
+            })
     }
 
     fn calculate_preview(&mut self, editor: &Editor) {
@@ -90,34 +93,40 @@ impl<T: 'static> Component for FilePicker<T> {
             area.width
         };
 
-        let picker_area = Rect::new(area.x, area.y, picker_width, area.height);
+        let picker_area = area.with_width(picker_width);
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
             return;
         }
 
-        let preview_area = Rect::new(area.x + picker_width, area.y, area.width / 2, area.height);
+        let preview_area = area.clip_left(picker_width);
 
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
 
         // calculate the inner area inside the box
-        let mut inner = block.inner(preview_area);
+        let inner = block.inner(preview_area);
         // 1 column gap on either side
-        inner.x += 1;
-        inner.width = inner.width.saturating_sub(2);
+        let margin = Margin {
+            vertical: 0,
+            horizontal: 1,
+        };
+        let inner = inner.inner(&margin);
 
         block.render(preview_area, surface);
 
-        if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, line)| {
+        if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, range)| {
             cx.editor
                 .document_by_path(&path)
                 .or_else(|| self.preview_cache.get(&path))
-                .zip(Some(line))
+                .zip(Some(range))
         }) {
             // align to middle
-            let first_line = line.unwrap_or(0).saturating_sub(inner.height as usize / 2);
+            let first_line = line
+                .map(|(start, _)| start)
+                .unwrap_or(0)
+                .saturating_sub(inner.height as usize / 2);
             let offset = Position::new(first_line, 0);
 
             let highlights = EditorView::doc_syntax_highlights(
@@ -137,12 +146,21 @@ impl<T: 'static> Component for FilePicker<T> {
             );
 
             // highlight the line
-            if let Some(line) = line {
-                for x in inner.left()..inner.right() {
-                    surface
-                        .get_mut(x, inner.y + line.saturating_sub(first_line) as u16)
-                        .set_style(cx.editor.theme.get("ui.selection"));
-                }
+            if let Some((start, end)) = line {
+                let offset = start.saturating_sub(first_line) as u16;
+                surface.set_style(
+                    Rect::new(
+                        inner.x,
+                        inner.y + offset,
+                        inner.width,
+                        (end.saturating_sub(start) as u16 + 1)
+                            .min(inner.height.saturating_sub(offset)),
+                    ),
+                    cx.editor
+                        .theme
+                        .try_get("ui.highlight")
+                        .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
+                );
             }
         }
     }
@@ -282,15 +300,11 @@ impl<T> Picker<T> {
 //  - score all the names in relation to input
 
 fn inner_rect(area: Rect) -> Rect {
-    let padding_vertical = area.height * 10 / 100;
-    let padding_horizontal = area.width * 10 / 100;
-
-    Rect::new(
-        area.x + padding_horizontal,
-        area.y + padding_vertical,
-        area.width - padding_horizontal * 2,
-        area.height - padding_vertical * 2,
-    )
+    let margin = Margin {
+        vertical: area.height * 10 / 100,
+        horizontal: area.width * 10 / 100,
+    };
+    area.inner(&margin)
 }
 
 impl<T: 'static> Component for Picker<T> {
@@ -410,7 +424,7 @@ impl<T: 'static> Component for Picker<T> {
 
         // -- Render the input bar:
 
-        let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
+        let area = inner.clip_left(1).with_height(1);
 
         let count = format!("{}/{}", self.matches.len(), self.options.len());
         surface.set_stringn(
@@ -434,8 +448,8 @@ impl<T: 'static> Component for Picker<T> {
         }
 
         // -- Render the contents:
-        // subtract the area of the prompt (-2) and current item marker " > " (-3)
-        let inner = Rect::new(inner.x + 3, inner.y + 2, inner.width - 3, inner.height - 2);
+        // subtract area of prompt from top and current item marker " > " from left
+        let inner = inner.clip_top(2).clip_left(3);
 
         let selected = cx.editor.theme.get("ui.text.focus");
 
@@ -474,7 +488,7 @@ impl<T: 'static> Component for Picker<T> {
         let inner = block.inner(area);
 
         // prompt area
-        let area = Rect::new(inner.x + 1, inner.y, inner.width - 1, 1);
+        let area = inner.clip_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
     }

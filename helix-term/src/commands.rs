@@ -2006,7 +2006,24 @@ mod cmd {
         Ok(())
     }
 
-    fn debug_set_logpoint(
+    fn vsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::VerticalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::VerticalSplit);
+        }
+
+        Ok(())
+    }
+
+    fn hsplit(
         cx: &mut compositor::Context,
         args: &[&str],
         _event: PromptEvent,
@@ -2051,6 +2068,24 @@ mod cmd {
             _ => Some(args.remove(0)),
         };
         dap_start_impl(&mut cx.editor, name, address, Some(args));
+
+        Ok(())
+    }
+
+    fn debug_set_logpoint(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::HorizontalSplit);
+        }
+
         Ok(())
     }
 
@@ -2327,6 +2362,20 @@ mod cmd {
             doc: "Make current breakpoint a log point.",
             fun: debug_set_logpoint,
             completer: None,
+        },
+        TypableCommand {
+            name: "vsplit",
+            alias: Some("vsp"),
+            doc: "Open the file in a vertical split.",
+            fun: vsplit,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "hsplit",
+            alias: Some("sp"),
+            doc: "Open the file in a horizontal split.",
+            fun: hsplit,
+            completer: Some(completers::filename),
         }
     ];
 
@@ -2429,16 +2478,16 @@ fn buffer_picker(cx: &mut Context) {
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (id, doc.relative_path()))
+            .map(|(id, doc)| (id, doc.path().cloned()))
             .collect(),
         move |(id, path): &(DocumentId, Option<PathBuf>)| {
-            // format_fn
+            let path = path.as_deref().map(helix_core::path::get_relative_path);
             match path.as_ref().and_then(|path| path.to_str()) {
                 Some(path) => {
                     if *id == current {
-                        format!("{} (*)", path).into()
+                        format!("{} (*)", &path).into()
                     } else {
-                        path.into()
+                        path.to_owned().into()
                     }
                 }
                 None => "[scratch buffer]".into(),
@@ -2454,7 +2503,7 @@ fn buffer_picker(cx: &mut Context) {
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, Some(line)))
+            Some((path.clone()?, Some((line, line))))
         },
     );
     cx.push_layer(Box::new(picker));
@@ -2519,13 +2568,18 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
                             align_view(doc, view, Align::Center);
                         }
                     },
                     move |_editor, symbol| {
                         let path = symbol.location.uri.to_file_path().unwrap();
-                        let line = Some(symbol.location.range.start.line as usize);
+                        let line = Some((
+                            symbol.location.range.start.line as usize,
+                            symbol.location.range.end.line as usize,
+                        ));
                         Some((path, line))
                     },
                 );
@@ -2958,7 +3012,10 @@ fn goto_impl(
                 },
                 |_editor, location| {
                     let path = location.uri.to_file_path().unwrap();
-                    let line = Some(location.range.start.line as usize);
+                    let line = Some((
+                        location.range.start.line as usize,
+                        location.range.end.line as usize,
+                    ));
                     Some((path, line))
                 },
             );

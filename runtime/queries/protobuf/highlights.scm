@@ -14,6 +14,7 @@
   "to"
   "stream"
   "extend"
+  "optional"
 ] @keyword
 
 [
@@ -23,7 +24,6 @@
 
 [
   (mapName)
-  (oneofName)
   (enumName)
   (messageName)
   (extendName)

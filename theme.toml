@@ -51,6 +51,7 @@ module = "#ff0000"
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
+"ui.highlight" = { bg = "bossanova" }
 
 "ui.menu.selected" = { fg = "revolver", bg = "white" }
 
