@@ -1910,6 +1910,40 @@ mod cmd {
         Ok(())
     }
 
+    fn vsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::VerticalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::VerticalSplit);
+        }
+
+        Ok(())
+    }
+
+    fn hsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::HorizontalSplit);
+        }
+
+        Ok(())
+    }
+
     fn debug_eval(
         cx: &mut compositor::Context,
         args: &[&str],
@@ -1985,58 +2019,12 @@ mod cmd {
                 let breakpoints = breakpoints.clone();
 
                 let request = debugger.set_breakpoints(path, breakpoints);
-                let _ = block_on(request).unwrap();
+                if let Err(e) = block_on(request) {
+                    cx.editor
+                        .set_error(format!("Failed to set breakpoints: {:?}", e));
+                }
             }
         }
-    }
-
-    fn debug_breakpoint_condition(
-        cx: &mut compositor::Context,
-        args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        let condition = args.join(" ");
-        let condition = if condition.is_empty() {
-            None
-        } else {
-            Some(condition)
-        };
-
-        edit_breakpoint_impl(cx, condition, None);
-        Ok(())
-    }
-
-    fn vsplit(
-        cx: &mut compositor::Context,
-        args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-        let id = doc.id();
-
-        if let Some(path) = args.get(0) {
-            cx.editor.open(path.into(), Action::VerticalSplit)?;
-        } else {
-            cx.editor.switch(id, Action::VerticalSplit);
-        }
-
-        Ok(())
-    }
-
-    fn hsplit(
-        cx: &mut compositor::Context,
-        args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        let log_message = args.join(" ");
-        let log_message = if log_message.is_empty() {
-            None
-        } else {
-            Some(log_message)
-        };
-
-        edit_breakpoint_impl(cx, None, log_message);
-        Ok(())
     }
 
     fn debug_start(
@@ -2061,7 +2049,7 @@ mod cmd {
         let mut args = args.to_owned();
         let address = match args.len() {
             0 => None,
-            _ => Some(args.remove(0).parse().unwrap()),
+            _ => Some(args.remove(0).parse()?),
         };
         let name = match args.len() {
             0 => None,
@@ -2072,20 +2060,35 @@ mod cmd {
         Ok(())
     }
 
+    fn debug_breakpoint_condition(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let condition = args.join(" ");
+        let condition = if condition.is_empty() {
+            None
+        } else {
+            Some(condition)
+        };
+
+        edit_breakpoint_impl(cx, condition, None);
+        Ok(())
+    }
+
     fn debug_set_logpoint(
         cx: &mut compositor::Context,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-        let id = doc.id();
-
-        if let Some(path) = args.get(0) {
-            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+        let log_message = args.join(" ");
+        let log_message = if log_message.is_empty() {
+            None
         } else {
-            cx.editor.switch(id, Action::HorizontalSplit);
-        }
+            Some(log_message)
+        };
 
+        edit_breakpoint_impl(cx, None, log_message);
         Ok(())
     }
 
@@ -4522,13 +4525,24 @@ fn dap_start_impl(
         }
     };
 
-    let (mut debugger, events) = match socket {
-        Some(socket) => block_on(Client::tcp(socket, 0)).unwrap(),
-        None => block_on(Client::process(config.clone(), 0)).unwrap(),
+    let result = match socket {
+        Some(socket) => block_on(Client::tcp(socket, 0)),
+        None => block_on(Client::process(config.clone(), 0)),
+    };
+
+    let (mut debugger, events) = match result {
+        Ok(r) => r,
+        Err(e) => {
+            editor.set_error(format!("Failed to start debug session: {:?}", e));
+            return;
+        }
     };
 
     let request = debugger.initialize(config.name.clone());
-    let _ = block_on(request).unwrap();
+    if let Err(e) = block_on(request) {
+        editor.set_error(format!("Failed to initialize debug adapter: {:?}", e));
+        return;
+    }
 
     let start_config = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
@@ -4563,15 +4577,18 @@ fn dap_start_impl(
 
     let args = to_value(args).unwrap();
 
-    // TODO gracefully handle errors from debugger
-    match &start_config.request[..] {
-        "launch" => block_on(debugger.launch(args)).unwrap(),
-        "attach" => block_on(debugger.attach(args)).unwrap(),
+    let result = match &start_config.request[..] {
+        "launch" => block_on(debugger.launch(args)),
+        "attach" => block_on(debugger.attach(args)),
         _ => {
             editor.set_error("Unsupported request".to_string());
             return;
         }
     };
+    if let Err(e) = result {
+        editor.set_error(format!("Failed {} target: {:?}", start_config.request, e));
+        return;
+    }
 
     // TODO: either await "initialized" or buffer commands until event is received
     editor.debugger = Some(debugger);
@@ -4614,7 +4631,10 @@ fn dap_toggle_breakpoint(cx: &mut Context) {
         let breakpoints = breakpoints.clone();
 
         let request = debugger.set_breakpoints(path, breakpoints);
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor
+                .set_error(format!("Failed to set breakpoints: {:?}", e));
+        }
     }
 }
 
@@ -4628,7 +4648,10 @@ fn dap_run(cx: &mut Context) {
             return;
         }
         let request = debugger.configuration_done();
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to run: {:?}", e));
+            return;
+        }
         debugger.is_running = true;
     }
 }
@@ -4644,7 +4667,10 @@ fn dap_continue(cx: &mut Context) {
         }
 
         let request = debugger.continue_thread(debugger.stopped_thread.unwrap());
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to continue: {:?}", e));
+            return;
+        }
         debugger.is_running = true;
         debugger.stack_pointer = None;
     }
@@ -4661,7 +4687,9 @@ fn dap_pause(cx: &mut Context) {
 
         // FIXME: correct number here
         let request = debugger.pause(0);
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to pause: {:?}", e));
+        }
     }
 }
 
@@ -4676,7 +4704,9 @@ fn dap_in(cx: &mut Context) {
         }
 
         let request = debugger.step_in(debugger.stopped_thread.unwrap());
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to step: {:?}", e));
+        }
     }
 }
 
@@ -4691,7 +4721,9 @@ fn dap_out(cx: &mut Context) {
         }
 
         let request = debugger.step_out(debugger.stopped_thread.unwrap());
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to step: {:?}", e));
+        }
     }
 }
 
@@ -4706,7 +4738,9 @@ fn dap_next(cx: &mut Context) {
         }
 
         let request = debugger.next(debugger.stopped_thread.unwrap());
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to step: {:?}", e));
+        }
     }
 }
 
@@ -4726,7 +4760,14 @@ fn dap_variables(cx: &mut Context) {
         }
 
         let frame_id = debugger.stack_pointer.clone().unwrap().id;
-        let scopes = block_on(debugger.scopes(frame_id)).unwrap();
+        let scopes = match block_on(debugger.scopes(frame_id)) {
+            Ok(s) => s,
+            Err(e) => {
+                cx.editor
+                    .set_error(format!("Failed to get scopes: {:?}", e));
+                return;
+            }
+        };
         let mut s = String::new();
 
         for scope in scopes.iter() {
@@ -4752,7 +4793,11 @@ fn dap_terminate(cx: &mut Context) {
 
     if let Some(debugger) = &mut cx.editor.debugger {
         let request = debugger.disconnect();
-        let _ = block_on(request).unwrap();
+        if let Err(e) = block_on(request) {
+            cx.editor
+                .set_error(format!("Failed to disconnect: {:?}", e));
+            return;
+        }
         cx.editor.debugger = None;
     }
 }
