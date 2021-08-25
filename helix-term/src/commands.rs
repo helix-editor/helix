@@ -229,8 +229,6 @@ impl Command {
         goto_definition, "Goto definition",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
-        move_selection_above, "Move selection above",
-        move_selection_below, "Move selection below",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
