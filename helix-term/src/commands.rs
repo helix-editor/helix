@@ -4649,7 +4649,8 @@ fn dap_variables(cx: &mut Context) {
                         Some(data_type) => format!("{} ", data_type),
                         None => "".to_owned(),
                     };
-                    s.push_str(&format!("{}{} = {}; ", prefix, var.name, var.value));
+                    // s.push_str(&format!("{}{} = {}; ", prefix, var.name, var.value));
+                    s.push_str(&format!("{}{}; ", prefix, var.name,));
                 }
             }
         }
