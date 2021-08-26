@@ -31,7 +31,7 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::FutureExt;
+use futures_util::{FutureExt, StreamExt};
 use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
@@ -46,6 +46,7 @@ use serde::de::{self, Deserialize, Deserializer};
 use grep_regex::RegexMatcher;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct Context<'a> {
     pub register: Option<char>,
@@ -1190,7 +1191,7 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
-    let (all_matches_sx, mut all_matches_rx) =
+    let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let prompt = ui::regex_prompt(
         cx,
@@ -1251,10 +1252,8 @@ fn global_search(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 
     let show_picker = async move {
-        let mut all_matches = vec![];
-        while let Some(gs_match) = all_matches_rx.recv().await {
-            all_matches.push(gs_match);
-        }
+        let all_matches: Vec<(usize, PathBuf)> =
+            UnboundedReceiverStream::new(all_matches_rx).collect().await;
         let call: job::Callback =
             Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
                 if all_matches.is_empty() {
