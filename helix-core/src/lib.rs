@@ -141,7 +141,7 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
 }
 
 #[cfg(test)]
-mod merge_toml {
+mod merge_toml_tests {
     use super::merge_toml_values;
 
     #[test]
