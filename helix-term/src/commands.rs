@@ -31,14 +31,9 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::{future, FutureExt};
-use std::{
-    fmt,
-    future::Future,
-    sync::{mpsc, Mutex},
-    task::Waker,
-};
-use std::{num::NonZeroUsize, sync::Arc};
+use futures_util::FutureExt;
+use std::num::NonZeroUsize;
+use std::{fmt, future::Future};
 
 use std::{
     borrow::Cow,
@@ -1194,22 +1189,9 @@ fn search_selection(cx: &mut Context) {
     cx.editor.set_status(msg);
 }
 
-type GlobalSearchMatches = Arc<Mutex<Option<Vec<(u64, PathBuf)>>>>;
 fn global_search(cx: &mut Context) {
-    let all_matches_opt: GlobalSearchMatches = Arc::new(Mutex::new(None));
-    let all_matched_opt_cl = all_matches_opt.clone();
-    let all_matched_waker: Arc<Mutex<Option<Waker>>> = Arc::new(Mutex::new(None));
-    let all_matched_waker_cl = all_matched_waker.clone();
-    let matches_future = future::poll_fn(move |cxt| -> std::task::Poll<Vec<(u64, PathBuf)>> {
-        if let Some(v) = all_matched_opt_cl.lock().unwrap().as_ref() {
-            return std::task::Poll::Ready(v.clone());
-        }
-        all_matched_waker_cl
-            .lock()
-            .unwrap()
-            .replace(cxt.waker().clone());
-        std::task::Poll::Pending
-    });
+    let (all_matches_sx, mut all_matches_rx) =
+        tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let prompt = ui::regex_prompt(
         cx,
         "global search:".into(),
@@ -1222,15 +1204,12 @@ fn global_search(cx: &mut Context) {
                     .binary_detection(BinaryDetection::quit(b'\x00'))
                     .build();
 
-                let mut all_matches = vec![];
-
                 let search_root =
                     std::env::current_dir().expect("Global Search: Failed to get current dir");
-                let (sx, rx) = mpsc::channel::<(u64, PathBuf)>();
                 WalkBuilder::new(search_root).build_parallel().run(|| {
-                    let sx_cl = sx.clone();
                     let mut searcher_cl = searcher.clone();
                     let matcher_cl = matcher.clone();
+                    let all_matches_sx_cl = all_matches_sx.clone();
                     Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
                         let dent = match dent {
                             Ok(dent) => dent,
@@ -1247,11 +1226,12 @@ fn global_search(cx: &mut Context) {
                         }
 
                         let result_sink = sinks::UTF8(|line_num, _| {
-                            // this is weird, why do we need to decrease line_num by 1
-                            sx_cl
-                                .send((line_num - 1, dent.path().to_path_buf()))
-                                .unwrap();
-                            Ok(true)
+                            match all_matches_sx_cl
+                                .send((line_num as usize - 1, dent.path().to_path_buf()))
+                            {
+                                Ok(_) => Ok(true),
+                                Err(_) => Ok(false),
+                            }
                         });
                         let result = searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
 
@@ -1261,14 +1241,6 @@ fn global_search(cx: &mut Context) {
                         WalkState::Continue
                     })
                 });
-                drop(sx);
-                for recv in rx {
-                    all_matches.push(recv);
-                }
-                all_matches_opt.clone().lock().unwrap().replace(all_matches);
-                if let Some(wk) = all_matched_waker.lock().unwrap().take() {
-                    wk.wake();
-                }
             } else {
                 // Otherwise do nothing
                 // log::warn!("Global Search Invalid Pattern")
@@ -1278,10 +1250,16 @@ fn global_search(cx: &mut Context) {
 
     cx.push_layer(Box::new(prompt));
 
-    let show_picker = async {
-        let all_matches = matches_future.await;
+    let show_picker = async move {
+        let mut all_matches = vec![];
+        while let Some(gs_match) = all_matches_rx.recv().await {
+            all_matches.push(gs_match);
+        }
         let call: job::Callback =
             Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+                if all_matches.is_empty() {
+                    return;
+                }
                 let picker = FilePicker::new(
                     all_matches,
                     move |(_line_num, path)| path.to_str().unwrap().into(),
@@ -1290,7 +1268,7 @@ fn global_search(cx: &mut Context) {
                             .open(path.into(), action)
                             .expect("editor.open failed");
 
-                        let line_num = *line_num as usize;
+                        let line_num = *line_num;
                         let (view, doc) = current!(editor);
                         let text = doc.text();
                         let start = text.line_to_char(line_num);
@@ -1299,9 +1277,7 @@ fn global_search(cx: &mut Context) {
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
                     },
-                    |_editor, (line_num, path)| {
-                        Some((path.clone(), Some((*line_num as usize, *line_num as usize))))
-                    },
+                    |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
                 );
                 compositor.push(Box::new(picker));
             });
