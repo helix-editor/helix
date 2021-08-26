@@ -4287,17 +4287,25 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
             if event == PromptEvent::Validate {
                 let (view, doc) = current!(cx.editor);
                 let selection = doc.selection(view.id);
-                let mut error_occurred = false;
+                let mut error: Option<&str> = None;
                 let transaction =
                     Transaction::change_by_selection(doc.text(), selection, |range| {
-                        let mut process = Command::new(&shell[0])
+                        let mut process;
+                        match Command::new(&shell[0])
                             .args(&shell[1..])
                             .arg(input)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped())
                             .spawn()
-                            .unwrap();
+                        {
+                            Ok(p) => process = p,
+                            Err(e) => {
+                                log::error!("Failed to start shell: {}", e);
+                                error = Some("Failed to start shell");
+                                return (0, 0, None);
+                            }
+                        }
                         if pipe {
                             let stdin = process.stdin.as_mut().unwrap();
                             let fragment = range.fragment(doc.text().slice(..));
@@ -4314,11 +4322,18 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
                                         String::from_utf8_lossy(&stderr)
                                     );
                                 }
-                                error_occurred = true;
+                                error = Some("Command failed");
                                 return (0, 0, None);
                             }
                             let stdout = output.stdout;
-                            let tendril = Tendril::try_from_byte_slice(&stdout).unwrap();
+                            let tendril;
+                            match Tendril::try_from_byte_slice(&stdout) {
+                                Ok(t) => tendril = t,
+                                Err(_) => {
+                                    error = Some("Process did not output valid UTF-8");
+                                    return (0, 0, None);
+                                }
+                            }
                             let (from, to) = match behavior {
                                 ShellBehavior::Replace => (range.from(), range.to()),
                                 ShellBehavior::Insert => (range.from(), range.from()),
@@ -4337,13 +4352,11 @@ fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
                         }
                     });
 
-                if behavior != ShellBehavior::None {
+                if let Some(error) = error {
+                    cx.editor.set_error(error.to_owned());
+                } else if behavior != ShellBehavior::None {
                     doc.apply(&transaction, view.id);
                     doc.append_changes_to_history(view.id);
-                }
-
-                if error_occurred {
-                    cx.editor.set_error("Command failed".to_owned());
                 }
             }
         },
