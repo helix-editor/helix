@@ -15,6 +15,24 @@ pub enum Operation {
     Insert(Tendril),
 }
 
+pub enum OperationView {
+    Retain(usize),
+    Delete(usize),
+    Insert(usize),
+}
+
+impl From<&Operation> for OperationView {
+    fn from(op: &Operation) -> Self {
+        use Operation::*;
+        use OperationView as V;
+        match op {
+            Retain(n) => V::Retain(n),
+            Delete(n) => V::Delete(n),
+            Insert(s) => V::Insert(s.chars().count()),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Assoc {
     Before,
@@ -49,6 +67,10 @@ impl ChangeSet {
         }
     }
 
+    pub fn shrink_to_fit(&mut self) {
+        self.changes.shrink_to_fit();
+    }
+
     #[must_use]
     pub fn new(doc: &Rope) -> Self {
         let len = doc.len_chars();
@@ -65,6 +87,16 @@ impl ChangeSet {
     #[doc(hidden)] // used by lsp to convert to LSP changes
     pub fn changes(&self) -> &[Operation] {
         &self.changes
+    }
+
+    fn add(&mut self, operation: Operation) {
+        use Operation::*;
+
+        match operation {
+            Insert(s) => self.insert(s),
+            Delete(n) => self.delete(n),
+            Retain(n) => self.retain(n),
+        }
     }
 
     // Changeset builder operations: delete/insert/retain
@@ -144,8 +176,9 @@ impl ChangeSet {
         let mut changes = Self::with_capacity(len); // TODO: max(a, b), shrink_to_fit() afterwards
 
         loop {
-            use std::cmp::Ordering;
+            use std::cmp::Ordering::*;
             use Operation::*;
+
             match (head_a, head_b) {
                 // we are done
                 (None, None) => {
@@ -165,17 +198,17 @@ impl ChangeSet {
                 }
                 (None, val) | (val, None) => unreachable!("({:?})", val),
                 (Some(Retain(i)), Some(Retain(j))) => match i.cmp(&j) {
-                    Ordering::Less => {
+                    Less => {
                         changes.retain(i);
                         head_a = changes_a.next();
                         head_b = Some(Retain(j - i));
                     }
-                    Ordering::Equal => {
+                    Equal => {
                         changes.retain(i);
                         head_a = changes_a.next();
                         head_b = changes_b.next();
                     }
-                    Ordering::Greater => {
+                    Greater => {
                         changes.retain(j);
                         head_a = Some(Retain(i - j));
                         head_b = changes_b.next();
@@ -184,15 +217,15 @@ impl ChangeSet {
                 (Some(Insert(mut s)), Some(Delete(j))) => {
                     let len = s.chars().count();
                     match len.cmp(&j) {
-                        Ordering::Less => {
+                        Less => {
                             head_a = changes_a.next();
                             head_b = Some(Delete(j - len));
                         }
-                        Ordering::Equal => {
+                        Equal => {
                             head_a = changes_a.next();
                             head_b = changes_b.next();
                         }
-                        Ordering::Greater => {
+                        Greater => {
                             // TODO: cover this with a test
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(j).unwrap();
@@ -205,17 +238,17 @@ impl ChangeSet {
                 (Some(Insert(s)), Some(Retain(j))) => {
                     let len = s.chars().count();
                     match len.cmp(&j) {
-                        Ordering::Less => {
+                        Less => {
                             changes.insert(s);
                             head_a = changes_a.next();
                             head_b = Some(Retain(j - len));
                         }
-                        Ordering::Equal => {
+                        Equal => {
                             changes.insert(s);
                             head_a = changes_a.next();
                             head_b = changes_b.next();
                         }
-                        Ordering::Greater => {
+                        Greater => {
                             // figure out the byte index of the truncated string end
                             let (pos, _) = s.char_indices().nth(j).unwrap();
                             let pos = pos as u32;
@@ -226,17 +259,17 @@ impl ChangeSet {
                     }
                 }
                 (Some(Retain(i)), Some(Delete(j))) => match i.cmp(&j) {
-                    Ordering::Less => {
+                    Less => {
                         changes.delete(i);
                         head_a = changes_a.next();
                         head_b = Some(Delete(j - i));
                     }
-                    Ordering::Equal => {
+                    Equal => {
                         changes.delete(j);
                         head_a = changes_a.next();
                         head_b = changes_b.next();
                     }
-                    Ordering::Greater => {
+                    Greater => {
                         changes.delete(j);
                         head_a = Some(Retain(i - j));
                         head_b = changes_b.next();
@@ -262,8 +295,227 @@ impl ChangeSet {
     /// provides a basic form of [operational
     /// transformation](https://en.wikipedia.org/wiki/Operational_transformation),
     /// and can be used for collaborative editing.
-    pub fn map(self, _other: Self) -> Self {
-        unimplemented!()
+    pub fn map(self, other: &Self) -> Self {
+        use Operation::*;
+        use OperationView as V;
+
+        assert!(self.len == other.len);
+
+        let mut a = self.changes.into_iter();
+        let mut b = other.changes.iter().map(OperationView::from);
+
+        let mut a_ = Self::with_capacity(a.len()); // probably not the best
+        let mut head_a = a.next();
+        let mut head_b = b.next();
+
+        loop {
+            use std::cmp::Ordering::*;
+
+            let ord = match (&head_a, head_b) {
+                (None, None) => {
+                    break;
+                }
+                (Some(Insert(_)), _) => {
+                    a_.add(head_a.take().unwrap());
+                    Less
+                }
+                (_, Some(V::Insert(n))) => {
+                    a_.retain(n);
+                    Greater
+                }
+                (None, _) | (_, None) => unreachable!(),
+                (&Some(Retain(n)), Some(V::Retain(m))) => {
+                    let ord = n.cmp(&m);
+                    let mut retain = |n| {
+                        a_.retain(n);
+                    };
+                    match ord {
+                        Less => {
+                            retain(n);
+                            head_b = Some(V::Retain(m - n));
+                        }
+                        Equal => retain(n),
+                        Greater => {
+                            retain(m);
+                            head_a = Some(Retain(n - m));
+                        }
+                    };
+                    ord
+                }
+                (Some(Delete(n)), Some(V::Delete(m))) => {
+                    let ord = n.cmp(&m);
+                    match ord {
+                        Less => {
+                            head_b = Some(V::Delete(m - n));
+                        }
+                        Equal => (),
+                        Greater => {
+                            head_a = Some(Delete(n - m));
+                        }
+                    };
+                    ord
+                }
+                (&Some(Retain(n)), Some(V::Delete(m))) => {
+                    let ord = n.cmp(&m);
+                    match ord {
+                        Less => {
+                            head_b = Some(V::Delete(m - n));
+                        }
+                        Equal => {}
+                        Greater => {
+                            head_a = Some(Retain(n - m));
+                        }
+                    };
+                    ord
+                }
+                (&Some(Delete(n)), Some(V::Retain(m))) => {
+                    let ord = n.cmp(&m);
+                    match ord {
+                        Less => {
+                            a_.delete(n);
+                            head_b = Some(V::Retain(m - n));
+                        }
+                        Equal => {
+                            a_.delete(n);
+                        }
+                        Greater => {
+                            a_.delete(n);
+                            head_a = Some(Delete(n - m));
+                        }
+                    };
+                    ord
+                }
+            };
+
+            match ord {
+                Less => head_a = a.next(),
+                Equal => {
+                    head_a = a.next();
+                    head_b = b.next();
+                }
+                Greater => {
+                    head_b = b.next();
+                }
+            }
+        }
+
+        a_.shrink_to_fit();
+        a_
+    }
+
+    pub fn map_both(self, other: Self) -> (Self, Self) {
+        assert!(self.len == other.len);
+
+        let mut a = self.changes.into_iter();
+        let mut b = other.changes.into_iter();
+        let mut a_ = Self::with_capacity(a.len()); // probably not the best
+        let mut b_ = Self::with_capacity(b.len());
+        let mut head_a = a.next();
+        let mut head_b = b.next();
+
+        loop {
+            use std::cmp::Ordering::*;
+            use Operation::*;
+
+            let ord = match (&head_a, &head_b) {
+                (None, None) => {
+                    break;
+                }
+                (Some(Insert(s)), _) => {
+                    b_.retain(s.chars().count());
+                    a_.add(head_a.take().unwrap());
+                    Less
+                }
+                (_, Some(Insert(s))) => {
+                    a_.retain(s.chars().count());
+                    b_.add(head_b.take().unwrap());
+                    Greater
+                }
+                (None, _) | (_, None) => unreachable!(),
+                (&Some(Retain(n)), &Some(Retain(m))) => {
+                    let ord = n.cmp(&m);
+                    let mut retain = |n| {
+                        a_.retain(n);
+                        b_.retain(n);
+                    };
+                    match ord {
+                        Less => {
+                            retain(n);
+                            head_b = Some(Retain(m - n));
+                        }
+                        Equal => retain(n),
+                        Greater => {
+                            retain(m);
+                            head_a = Some(Retain(n - m));
+                        }
+                    };
+                    ord
+                }
+                (Some(Delete(n)), Some(Delete(m))) => {
+                    let ord = n.cmp(m);
+                    match ord {
+                        Less => {
+                            head_b = Some(Delete(m - n));
+                        }
+                        Equal => (),
+                        Greater => {
+                            head_a = Some(Delete(n - m));
+                        }
+                    };
+                    ord
+                }
+                (&Some(Retain(n)), &Some(Delete(m))) => {
+                    let ord = n.cmp(&m);
+                    match ord {
+                        Less => {
+                            b_.delete(n);
+                            head_b = Some(Delete(m - n));
+                        }
+                        Equal => {
+                            b_.delete(n);
+                        }
+                        Greater => {
+                            b_.delete(m);
+                            head_a = Some(Retain(n - m));
+                        }
+                    };
+                    ord
+                }
+                (&Some(Delete(n)), &Some(Retain(m))) => {
+                    let ord = n.cmp(&m);
+                    match ord {
+                        Less => {
+                            a_.delete(n);
+                            head_b = Some(Retain(m - n));
+                        }
+                        Equal => {
+                            a_.delete(n);
+                        }
+                        Greater => {
+                            a_.delete(n);
+                            head_a = Some(Delete(n - m));
+                        }
+                    };
+                    ord
+                }
+            };
+
+            match ord {
+                Less => head_a = a.next(),
+                Equal => {
+                    head_a = a.next();
+                    head_b = b.next();
+                }
+                Greater => {
+                    head_b = b.next();
+                }
+            }
+        }
+
+        a_.shrink_to_fit();
+        b_.shrink_to_fit();
+
+        (a_, b_)
     }
 
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
