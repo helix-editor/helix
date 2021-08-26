@@ -46,6 +46,13 @@ pub fn regex_prompt(
                 }
                 PromptEvent::Validate => {
                     // TODO: push_jump to store selection just before jump
+
+                    match Regex::new(input) {
+                        Ok(regex) => {
+                            let (view, _doc) = current!(cx.editor);
+                        }
+                        Err(_err) => (), // TODO: mark command line as error
+                    }
                 }
                 PromptEvent::Update => {
                     // skip empty input, TODO: trigger default
