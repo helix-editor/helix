@@ -140,6 +140,47 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
     }
 }
 
+#[cfg(test)]
+mod merge_toml {
+    use super::merge_toml_values;
+
+    #[test]
+    fn language_tomls() {
+        use toml::Value;
+
+        const USER: &str = "
+        [[language]]
+        name = \"nix\"
+        test = \"bbb\"
+        indent = { tab-width = 4, unit = \"    \", test = \"aaa\" }
+        ";
+
+        let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
+            .expect("Couldn't parse built-in langauges config");
+        let user: Value = toml::from_str(USER).unwrap();
+
+        let merged = merge_toml_values(base, user);
+        let languages = merged.get("language").unwrap().as_array().unwrap();
+        let nix = languages
+            .iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "nix")
+            .unwrap();
+        let nix_indent = nix.get("indent").unwrap();
+
+        // We changed tab-width and unit in indent so check them if they are the new values
+        assert_eq!(
+            nix_indent.get("tab-width").unwrap().as_integer().unwrap(),
+            4
+        );
+        assert_eq!(nix_indent.get("unit").unwrap().as_str().unwrap(), "    ");
+        // We added a new keys, so check them
+        assert_eq!(nix.get("test").unwrap().as_str().unwrap(), "bbb");
+        assert_eq!(nix_indent.get("test").unwrap().as_str().unwrap(), "aaa");
+        // We didn't change comment-token so it should be same
+        assert_eq!(nix.get("comment-token").unwrap().as_str().unwrap(), "#");
+    }
+}
+
 pub use etcetera::home_dir;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
