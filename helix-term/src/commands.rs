@@ -2175,7 +2175,7 @@ mod cmd {
         },
         TypableCommand {
             name: "vsplit",
-            alias: Some("vsp"),
+            alias: Some("vs"),
             doc: "Open the file in a vertical split.",
             fun: vsplit,
             completer: Some(completers::filename),
