@@ -102,7 +102,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
-use std::fmt;
+use std::{fmt, mem};
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Document")
@@ -301,20 +301,13 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
-/// Like std::mem::replace() except it allows the replacement value to be mapped from the
-/// original value.
-fn take_with<T, F>(mut_ref: &mut T, closure: F)
+fn take_with<T, F>(mut_ref: &mut T, f: F)
 where
+    T: Default,
     F: FnOnce(T) -> T,
 {
-    use std::{panic, ptr};
-
-    unsafe {
-        let old_t = ptr::read(mut_ref);
-        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
-            .unwrap_or_else(|_| ::std::process::abort());
-        ptr::write(mut_ref, new_t);
-    }
+    let t = mem::take(mut_ref);
+    let _ = mem::replace(mut_ref, f(t));
 }
 
 use helix_lsp::lsp;
