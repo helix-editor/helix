@@ -689,9 +689,9 @@ mod test {
 
     #[test]
     fn transaction_change() {
-        let mut doc = Rope::from("hello world!\ntest 123".into());
+        let mut doc = Rope::from("hello world!\ntest 123");
         let transaction = Transaction::change(
-            &state.doc,
+            &doc,
             // (1, 1, None) is a useless 0-width delete
             vec![(1, 1, None), (6, 11, Some("void".into())), (12, 17, None)].into_iter(),
         );
@@ -701,7 +701,7 @@ mod test {
 
     #[test]
     fn changes_iter() {
-        let doc = Rope::from("hello world!\ntest 123".into());
+        let doc = Rope::from("hello world!\ntest 123");
         let changes = vec![(6, 11, Some("void".into())), (12, 17, None)];
         let transaction = Transaction::change(&doc, changes.clone().into_iter());
         assert_eq!(transaction.changes_iter().collect::<Vec<_>>(), changes);
