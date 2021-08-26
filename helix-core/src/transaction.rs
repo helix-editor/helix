@@ -26,8 +26,8 @@ impl From<&Operation> for OperationView {
         use Operation::*;
         use OperationView as V;
         match op {
-            Retain(n) => V::Retain(n),
-            Delete(n) => V::Delete(n),
+            Retain(n) => V::Retain(*n),
+            Delete(n) => V::Delete(*n),
             Insert(s) => V::Insert(s.chars().count()),
         }
     }
@@ -311,7 +311,7 @@ impl ChangeSet {
         loop {
             use std::cmp::Ordering::*;
 
-            let ord = match (&head_a, head_b) {
+            let ord = match (&head_a, &head_b) {
                 (None, None) => {
                     break;
                 }
@@ -319,12 +319,12 @@ impl ChangeSet {
                     a_.add(head_a.take().unwrap());
                     Less
                 }
-                (_, Some(V::Insert(n))) => {
+                (_, &Some(V::Insert(n))) => {
                     a_.retain(n);
                     Greater
                 }
                 (None, _) | (_, None) => unreachable!(),
-                (&Some(Retain(n)), Some(V::Retain(m))) => {
+                (&Some(Retain(n)), &Some(V::Retain(m))) => {
                     let ord = n.cmp(&m);
                     let mut retain = |n| {
                         a_.retain(n);
