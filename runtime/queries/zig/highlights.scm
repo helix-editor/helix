@@ -4,59 +4,17 @@
   (line_comment)
 ] @comment
 
-;field in top level decl, and in struct, union...
+; field in top level decl, and in struct, union...
 (ContainerField
   (IDENTIFIER) @property
   (SuffixExpr (IDENTIFIER) @type)?
 )
 
-; INFO: field become a function if type is a function?
-; const u = union { this_is_function: fn () void };
-(ContainerField
-  (IDENTIFIER) @function
-  (SuffixExpr (FnProto))
-)
-
-;enum and tag union field is constant
-(
-  [
-    ; union(Tag){}
-    (ContainerDeclType (SuffixExpr (IDENTIFIER) @type))
-
-    ; enum{}
-    (ContainerDeclType "enum")
-  ]
-  (ContainerField (IDENTIFIER) @constant)?
-)
-
-; INFO: .IDENTIFIER is a field?
-(SuffixExpr 
-  "."
-  (IDENTIFIER) @property
-)
-
 ; error.OutOfMemory;
-(SuffixExpr 
+(SuffixExpr
   "error"
   "."
   (IDENTIFIER) @constant
-)
-
-(VarDecl
-  (IDENTIFIER) @type
-  [
-    ; const IDENTIFIER = struct/enum/union...
-    (SuffixExpr (ContainerDecl))
-
-    ; const A = u8;
-    (SuffixExpr (BuildinTypeExpr))
-  ]
-)
-
-; const fn_no_comma = fn (i32, i32) void;
-(VarDecl
-  (IDENTIFIER) @function
-  (SuffixExpr (FnProto))
 )
 
 ; var x: IDENTIFIER
@@ -65,22 +23,20 @@ type: (SuffixExpr (IDENTIFIER) @type)
 ; IDENTIFIER{}
 constructor: (SuffixExpr (IDENTIFIER) @constructor)
 
-;{.IDENTIFIER = 1}
+; fields
 (FieldInit (IDENTIFIER) @property)
 
-; var.field
-(SuffixOp (IDENTIFIER) @property)
-
-; var.func().func().field
-( 
+; foo.bar.baz.function() calls
+(
   (SuffixOp
     (IDENTIFIER) @function
   )
   .
   (FnCallArguments)
 )
-; func()
-( 
+
+; function() calls
+(
   (
     (IDENTIFIER) @function
   )
@@ -95,11 +51,8 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   ("!")? @function.macro
 )
 
-(ParamDecl 
-  (ParamType (SuffixExpr (IDENTIFIER) @variable.parameter))
-)
-
-(ParamDecl 
+; function parameters and types
+(ParamDecl
   (IDENTIFIER) @variable.parameter
   ":"
   [
@@ -108,7 +61,8 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   ]
 )
 
-(SwitchItem 
+; switch
+(SwitchItem
   (SuffixExpr
     "."
     .
