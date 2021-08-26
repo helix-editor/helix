@@ -135,11 +135,6 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
             }
             Value::Table(left_map)
         }
-        (Value::String(_), Value::String(value)) => Value::String(value),
-        (Value::Boolean(_), Value::Boolean(value)) => Value::Boolean(value),
-        (Value::Integer(_), Value::Integer(value)) => Value::Integer(value),
-        (Value::Float(_), Value::Float(value)) => Value::Float(value),
-        (Value::Datetime(_), Value::Datetime(value)) => Value::Datetime(value),
         // Catch everything else we didn't handle, and use the right value
         (_, value) => value,
     }
