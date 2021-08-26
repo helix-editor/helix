@@ -110,17 +110,18 @@ in reverse, or searching via smartcase.
 | `N`   | Add next search match to selection          |
 | `*`   | Use current selection as the search pattern |
 
-### Diagnostics
+### Unimpaired
 
-> NOTE: `[` and `]` will likely contain more pair mappings in the style of
-> [vim-unimpaired](https://github.com/tpope/vim-unimpaired)
+Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired)
 
-| Key   | Description                        |
-| ----- | -----------                        |
-| `[d`  | Go to previous diagnostic          |
-| `]d`  | Go to next diagnostic              |
-| `[D`  | Go to first diagnostic in document |
-| `]D`  | Go to last diagnostic in document  |
+| Key       | Description                        |
+| -----     | -----------                        |
+| `[d`      | Go to previous diagnostic          |
+| `]d`      | Go to next diagnostic              |
+| `[D`      | Go to first diagnostic in document |
+| `]D`      | Go to last diagnostic in document  |
+| `[space`  | Add newline above                  |
+| `]space`  | Add newline below                  |
 
 ## Select / extend mode
 
