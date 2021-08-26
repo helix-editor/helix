@@ -4246,10 +4246,10 @@ fn surround_delete(cx: &mut Context) {
 #[derive(Eq, PartialEq)]
 enum ShellBehavior {
     Replace,
+    Ignore,
     Insert,
     Append,
     Filter,
-    None,
 }
 
 fn shell_pipe(cx: &mut Context) {
@@ -4257,7 +4257,7 @@ fn shell_pipe(cx: &mut Context) {
 }
 
 fn shell_pipe_to(cx: &mut Context) {
-    shell(cx, "pipe-to:", ShellBehavior::None);
+    shell(cx, "pipe-to:", ShellBehavior::Ignore);
 }
 
 fn shell_insert_output(cx: &mut Context) {
@@ -4279,7 +4279,7 @@ fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
         return;
     }
     let pipe = match behavior {
-        ShellBehavior::Replace | ShellBehavior::Filter | ShellBehavior::None => true,
+        ShellBehavior::Replace | ShellBehavior::Ignore | ShellBehavior::Filter => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
     let prompt = Prompt::new(
@@ -4358,7 +4358,7 @@ fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
 
                 if let Some(error) = error {
                     cx.editor.set_error(error.to_owned());
-                } else if behavior != ShellBehavior::None {
+                } else if behavior != ShellBehavior::Ignore {
                     doc.apply(&transaction, view.id);
                     doc.append_changes_to_history(view.id);
                 }
