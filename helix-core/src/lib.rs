@@ -98,6 +98,89 @@ pub fn cache_dir() -> std::path::PathBuf {
     path
 }
 
+// right overrides left
+pub fn merge_toml_values(left: toml::Value, right: toml::Value) -> toml::Value {
+    use toml::Value;
+
+    fn get_name(v: &Value) -> Option<&str> {
+        v.get("name").and_then(Value::as_str)
+    }
+
+    match (left, right) {
+        (Value::Array(mut left_items), Value::Array(right_items)) => {
+            left_items.reserve(right_items.len());
+            for rvalue in right_items {
+                let lvalue = get_name(&rvalue)
+                    .and_then(|rname| left_items.iter().position(|v| get_name(v) == Some(rname)))
+                    .map(|lpos| left_items.remove(lpos));
+                let mvalue = match lvalue {
+                    Some(lvalue) => merge_toml_values(lvalue, rvalue),
+                    None => rvalue,
+                };
+                left_items.push(mvalue);
+            }
+            Value::Array(left_items)
+        }
+        (Value::Table(mut left_map), Value::Table(right_map)) => {
+            for (rname, rvalue) in right_map {
+                match left_map.remove(&rname) {
+                    Some(lvalue) => {
+                        let merged_value = merge_toml_values(lvalue, rvalue);
+                        left_map.insert(rname, merged_value);
+                    }
+                    None => {
+                        left_map.insert(rname, rvalue);
+                    }
+                }
+            }
+            Value::Table(left_map)
+        }
+        // Catch everything else we didn't handle, and use the right value
+        (_, value) => value,
+    }
+}
+
+#[cfg(test)]
+mod merge_toml_tests {
+    use super::merge_toml_values;
+
+    #[test]
+    fn language_tomls() {
+        use toml::Value;
+
+        const USER: &str = "
+        [[language]]
+        name = \"nix\"
+        test = \"bbb\"
+        indent = { tab-width = 4, unit = \"    \", test = \"aaa\" }
+        ";
+
+        let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
+            .expect("Couldn't parse built-in langauges config");
+        let user: Value = toml::from_str(USER).unwrap();
+
+        let merged = merge_toml_values(base, user);
+        let languages = merged.get("language").unwrap().as_array().unwrap();
+        let nix = languages
+            .iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "nix")
+            .unwrap();
+        let nix_indent = nix.get("indent").unwrap();
+
+        // We changed tab-width and unit in indent so check them if they are the new values
+        assert_eq!(
+            nix_indent.get("tab-width").unwrap().as_integer().unwrap(),
+            4
+        );
+        assert_eq!(nix_indent.get("unit").unwrap().as_str().unwrap(), "    ");
+        // We added a new keys, so check them
+        assert_eq!(nix.get("test").unwrap().as_str().unwrap(), "bbb");
+        assert_eq!(nix_indent.get("test").unwrap().as_str().unwrap(), "aaa");
+        // We didn't change comment-token so it should be same
+        assert_eq!(nix.get("comment-token").unwrap().as_str().unwrap(), "#");
+    }
+}
+
 pub use etcetera::home_dir;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
