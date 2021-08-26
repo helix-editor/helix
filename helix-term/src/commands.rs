@@ -4253,31 +4253,35 @@ enum ShellBehavior {
 }
 
 fn shell_pipe(cx: &mut Context) {
-    shell(cx, "pipe:", true, ShellBehavior::Replace);
+    shell(cx, "pipe:", ShellBehavior::Replace);
 }
 
 fn shell_pipe_to(cx: &mut Context) {
-    shell(cx, "pipe-to:", true, ShellBehavior::None);
+    shell(cx, "pipe-to:", ShellBehavior::None);
 }
 
 fn shell_insert_output(cx: &mut Context) {
-    shell(cx, "insert-output:", false, ShellBehavior::Insert);
+    shell(cx, "insert-output:", ShellBehavior::Insert);
 }
 
 fn shell_append_output(cx: &mut Context) {
-    shell(cx, "append-output:", false, ShellBehavior::Append);
+    shell(cx, "append-output:", ShellBehavior::Append);
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
-    shell(cx, "keep-pipe:", true, ShellBehavior::Filter);
+    shell(cx, "keep-pipe:", ShellBehavior::Filter);
 }
 
-fn shell(cx: &mut Context, prompt: &str, pipe: bool, behavior: ShellBehavior) {
+fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
     use std::io::Write;
     use std::process::{Command, Stdio};
     if cx.editor.config.shell.is_empty() {
         return;
     }
+    let pipe = match behavior {
+        ShellBehavior::Replace | ShellBehavior::Filter | ShellBehavior::None => true,
+        ShellBehavior::Insert | ShellBehavior::Append => false,
+    };
     let prompt = Prompt::new(
         prompt.to_owned(),
         Some('|'),
