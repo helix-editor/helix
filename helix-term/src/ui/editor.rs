@@ -33,7 +33,7 @@ pub struct EditorView {
     keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
-    completion: Option<Completion>,
+    pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
     autoinfo: Option<Info>,
 }

@@ -200,9 +200,9 @@ impl Application {
                     self.render();
                 }
                 _ = &mut self.editor.idle_timer => {
+                    // idle timeout
                     self.editor.clear_idle_timer();
-                    println!("idle!")
-                 // idle timeout
+                    self.handle_idle_timeout();
                 }
             }
         }
@@ -231,6 +231,40 @@ impl Application {
             }
             _ => unreachable!(),
         }
+    }
+
+    pub fn handle_idle_timeout(&mut self) {
+        use helix_view::document::Mode;
+        use crate::commands::{Context, completion};
+
+
+        if doc_mut!(self.editor).mode != Mode::Insert {
+            return;
+        }
+        let editor_view = self
+            .compositor
+            .find(std::any::type_name::<ui::EditorView>())
+            .expect("expected at least one EditorView");
+        let editor_view = editor_view
+            .as_any_mut()
+            .downcast_mut::<ui::EditorView>()
+            .unwrap();
+
+        if editor_view.completion.is_some() {
+            return;
+        }
+
+        let mut cx = Context {
+            selected_register: helix_view::RegisterSelection::default(),
+            editor: &mut self.editor,
+            jobs: &mut self.jobs,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+        };
+       completion(&mut cx);
+       // TODO: scan backwards for trigger and filter the box
+       self.render();
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {

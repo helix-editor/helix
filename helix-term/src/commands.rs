@@ -4045,7 +4045,7 @@ fn remove_primary_selection(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn completion(cx: &mut Context) {
+pub fn completion(cx: &mut Context) {
     // trigger on trigger char, or if user calls it
     // (or on word char typing??)
     // after it's triggered, if response marked is_incomplete, update on every subsequent keypress
