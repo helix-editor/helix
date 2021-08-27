@@ -17,7 +17,6 @@ use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
 use helix_view::{
-    document::canonicalize_path,
     editor::Action,
     graphics::{Color, CursorKind, Margin, Rect, Style},
     Document, Editor,
@@ -26,7 +25,7 @@ use helix_view::{
 pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
 
 /// File path and line number (used to align and highlight a line)
-type FileLocation = (PathBuf, Option<usize>);
+type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
@@ -54,7 +53,11 @@ impl<T> FilePicker<T> {
         self.picker
             .selection()
             .and_then(|current| (self.file_fn)(editor, current))
-            .and_then(|(path, line)| canonicalize_path(&path).ok().zip(Some(line)))
+            .and_then(|(path, line)| {
+                helix_core::path::get_canonicalized_path(&path)
+                    .ok()
+                    .zip(Some(line))
+            })
     }
 
     fn calculate_preview(&mut self, editor: &Editor) {
@@ -106,21 +109,24 @@ impl<T: 'static> Component for FilePicker<T> {
         let inner = block.inner(preview_area);
         // 1 column gap on either side
         let margin = Margin {
-            vertical: 1,
-            horizontal: 0,
+            vertical: 0,
+            horizontal: 1,
         };
         let inner = inner.inner(&margin);
 
         block.render(preview_area, surface);
 
-        if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, line)| {
+        if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, range)| {
             cx.editor
                 .document_by_path(&path)
                 .or_else(|| self.preview_cache.get(&path))
-                .zip(Some(line))
+                .zip(Some(range))
         }) {
             // align to middle
-            let first_line = line.unwrap_or(0).saturating_sub(inner.height as usize / 2);
+            let first_line = line
+                .map(|(start, _)| start)
+                .unwrap_or(0)
+                .saturating_sub(inner.height as usize / 2);
             let offset = Position::new(first_line, 0);
 
             let highlights = EditorView::doc_syntax_highlights(
@@ -140,12 +146,21 @@ impl<T: 'static> Component for FilePicker<T> {
             );
 
             // highlight the line
-            if let Some(line) = line {
-                for x in inner.left()..inner.right() {
-                    surface
-                        .get_mut(x, inner.y + line.saturating_sub(first_line) as u16)
-                        .set_style(cx.editor.theme.get("ui.selection"));
-                }
+            if let Some((start, end)) = line {
+                let offset = start.saturating_sub(first_line) as u16;
+                surface.set_style(
+                    Rect::new(
+                        inner.x,
+                        inner.y + offset,
+                        inner.width,
+                        (end.saturating_sub(start) as u16 + 1)
+                            .min(inner.height.saturating_sub(offset)),
+                    ),
+                    cx.editor
+                        .theme
+                        .try_get("ui.highlight")
+                        .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
+                );
             }
         }
     }

@@ -1,6 +1,5 @@
 use crate::{Rope, Selection};
 
-/// A state represents the current editor state of a single buffer.
 #[derive(Debug, Clone)]
 pub struct State {
     pub doc: Rope,
@@ -15,27 +14,4 @@ impl State {
             selection: Selection::point(0),
         }
     }
-
-    // update/transact:
-    // update(desc) => transaction ?  transaction.doc() for applied doc
-    // transaction.apply(doc)
-    // doc.transact(fn -> ... end)
-
-    // replaceSelection (transaction that replaces selection)
-    // changeByRange
-    // changes
-    // slice
-    //
-    // getters:
-    // tabSize
-    // indentUnit
-    // languageDataAt()
-    //
-    // config:
-    // indentation
-    // tabSize
-    // lineUnit
-    // syntax
-    // foldable
-    // changeFilter/transactionFilter
 }
