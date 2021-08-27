@@ -2727,10 +2727,6 @@ fn goto_last_accessed_file(cx: &mut Context) {
 
 fn select_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    if doc.mode == Mode::Select {
-        normal_mode(cx);
-        return;
-    }
     let text = doc.text().slice(..);
 
     // Make sure end-of-document selections are also 1-width.

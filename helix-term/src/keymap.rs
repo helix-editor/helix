@@ -529,6 +529,8 @@ impl Default for Keymaps {
             "home" => goto_line_start,
             "end" => goto_line_end,
             "esc" => exit_select_mode,
+
+            "v" => normal_mode,
         }));
         let insert = keymap!({ "Insert mode"
             "esc" => normal_mode,
