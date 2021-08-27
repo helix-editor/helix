@@ -193,7 +193,7 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | -----         | -------------           | -------       |
 | `w`, `Ctrl-w` | Switch to next window   | `rotate_view` |
 | `v`, `Ctrl-v` | Vertical right split    | `vsplit`      |
-| `h`, `Ctrl-h` | Horizontal bottom split | `hsplit       |
+| `h`, `Ctrl-h` | Horizontal bottom split | `hsplit`      |
 | `q`, `Ctrl-q` | Close current window    | `wclose`      |
 
 ## Space mode
