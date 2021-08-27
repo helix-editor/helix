@@ -36,3 +36,4 @@ etcetera = "0.3"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
+rand = "0.8.4"

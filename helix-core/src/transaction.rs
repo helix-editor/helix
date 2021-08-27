@@ -403,121 +403,6 @@ impl ChangeSet {
         a_
     }
 
-    pub fn map_both(self, other: Self) -> (Self, Self) {
-        assert!(self.len == other.len);
-
-        let mut a = self.changes.into_iter();
-        let mut b = other.changes.into_iter();
-        let mut a_ = Self::with_capacity(a.len()); // probably not the best
-        let mut b_ = Self::with_capacity(b.len());
-        let mut head_a = a.next();
-        let mut head_b = b.next();
-
-        loop {
-            use std::cmp::Ordering::*;
-            use Operation::*;
-
-            let ord = match (&head_a, &head_b) {
-                (None, None) => {
-                    break;
-                }
-                (Some(Insert(s)), _) => {
-                    b_.retain(s.chars().count());
-                    a_.add(head_a.take().unwrap());
-                    Less
-                }
-                (_, Some(Insert(s))) => {
-                    a_.retain(s.chars().count());
-                    b_.add(head_b.take().unwrap());
-                    Greater
-                }
-                (None, _) | (_, None) => unreachable!(),
-                (&Some(Retain(n)), &Some(Retain(m))) => {
-                    let ord = n.cmp(&m);
-                    let mut retain = |n| {
-                        a_.retain(n);
-                        b_.retain(n);
-                    };
-                    match ord {
-                        Less => {
-                            retain(n);
-                            head_b = Some(Retain(m - n));
-                        }
-                        Equal => retain(n),
-                        Greater => {
-                            retain(m);
-                            head_a = Some(Retain(n - m));
-                        }
-                    };
-                    ord
-                }
-                (Some(Delete(n)), Some(Delete(m))) => {
-                    let ord = n.cmp(m);
-                    match ord {
-                        Less => {
-                            head_b = Some(Delete(m - n));
-                        }
-                        Equal => (),
-                        Greater => {
-                            head_a = Some(Delete(n - m));
-                        }
-                    };
-                    ord
-                }
-                (&Some(Retain(n)), &Some(Delete(m))) => {
-                    let ord = n.cmp(&m);
-                    match ord {
-                        Less => {
-                            b_.delete(n);
-                            head_b = Some(Delete(m - n));
-                        }
-                        Equal => {
-                            b_.delete(n);
-                        }
-                        Greater => {
-                            b_.delete(m);
-                            head_a = Some(Retain(n - m));
-                        }
-                    };
-                    ord
-                }
-                (&Some(Delete(n)), &Some(Retain(m))) => {
-                    let ord = n.cmp(&m);
-                    match ord {
-                        Less => {
-                            a_.delete(n);
-                            head_b = Some(Retain(m - n));
-                        }
-                        Equal => {
-                            a_.delete(n);
-                        }
-                        Greater => {
-                            a_.delete(n);
-                            head_a = Some(Delete(n - m));
-                        }
-                    };
-                    ord
-                }
-            };
-
-            match ord {
-                Less => head_a = a.next(),
-                Equal => {
-                    head_a = a.next();
-                    head_b = b.next();
-                }
-                Greater => {
-                    head_b = b.next();
-                }
-            }
-        }
-
-        a_.shrink_to_fit();
-        b_.shrink_to_fit();
-
-        (a_, b_)
-    }
-
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
     /// The document parameter expects the original document before this change was applied.
     pub fn invert(&self, original_doc: &Rope) -> Self {
@@ -1026,5 +911,11 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
+    }
+
+    fn map_both(a: ChangeSet, b: ChangeSet) -> (ChangeSet, ChangeSet) {
+        let a_ = a.clone().map(&b);
+        let b_ = b.map(&a);
+        (a_, b_)
     }
 }
