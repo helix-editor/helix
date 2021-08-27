@@ -1,4 +1,4 @@
-The Helix project still has a ways to go before reaching its goals.  This document outlines some of those goals and the over-all vision for the project.
+The Helix project still has a ways to go before reaching its goals.  This document outlines some of those goals and the overall vision for the project.
 
 # Vision
 
@@ -17,8 +17,8 @@ Vision statements are all well and good, but are also vague and subjective.  Her
 * **Modal.**  Vim is a great idea.
 * **Selection -> Action**, not Verb -> Object.  Interaction models aren't linguistics, and "selection first" lets you see what you're doing (among other benefits).
 * **We aren't playing code golf.**  It's more important for the keymap to be consistent and easy to memorize than it is to save a key stroke or two when editing.
-* **Built-in tools** for working with code bases efficiently.  Most projects aren't a single file, and an editor should handle that as a first-class use-case.  In Helix's case, this means (among other things) a fuzzy-search file navigator and LSP support.
-* **Edit anything** that comes up when coding, within reason.  Whether it's a 200 MB XML file, a megabyte of minified javascript on a single line, or Japanese text encoded in ShiftJIS, you should be able to open it and edit it without problems.  (Note: this doesn't mean handle every esoteric use-case.  Sometimes you do just need a specialized tool, and Helix isn't that.)
+* **Built-in tools** for working with code bases efficiently.  Most projects aren't a single file, and an editor should handle that as a first-class use case.  In Helix's case, this means (among other things) a fuzzy-search file navigator and LSP support.
+* **Edit anything** that comes up when coding, within reason.  Whether it's a 200 MB XML file, a megabyte of minified javascript on a single line, or Japanese text encoded in ShiftJIS, you should be able to open it and edit it without problems.  (Note: this doesn't mean handle every esoteric use case.  Sometimes you do just need a specialized tool, and Helix isn't that.)
 * **Configurable**, within reason.  Although the defaults should be good, not everyone will agree on what "good" is.  Within the bounds of Helix's core interaction models, it should be reasonably configurable so that it can be "good" for more people.  This means, for example, custom key maps among other things.
-* **Extensible**, within reason.  Although we want Helix to be productive out-of-the-box, it's not practical or desirable to cram every useful feature and use-case into the core editor.  The basics should be built-in, but you should be able to extend it with additional functionality as needed.  Right now we're thinking WASM-based plugins.
+* **Extensible**, within reason.  Although we want Helix to be productive out-of-the-box, it's not practical or desirable to cram every useful feature and use case into the core editor.  The basics should be built-in, but you should be able to extend it with additional functionality as needed.  Right now we're thinking Wasm-based plugins.
 * **Clean code base.**  Sometimes other factors (e.g. significant performance gains, important features, correctness, etc.) will trump strict readability, but we nevertheless want to keep the code base straightforward and easy to understand to the extent we can.
