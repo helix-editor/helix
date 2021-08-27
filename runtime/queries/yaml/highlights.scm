@@ -1,5 +1,5 @@
-(block_mapping_pair key: (_) @field)
-(flow_mapping (_ key: (_) @field))
+(block_mapping_pair key: (_) @property)
+(flow_mapping (_ key: (_) @property))
 (boolean_scalar) @boolean
 (null_scalar) @constant.builtin
 (double_quote_scalar) @string
