@@ -104,10 +104,10 @@
  "}"
 ] @punctuation.bracket
 
-;; Variables
-(identifier) @variable
+; ;; Variables
+; (identifier) @variable
 
-;; Constants
+; ;; Constants
 [
 (false)
 (true)
@@ -117,7 +117,7 @@
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
 
-;; Functions
+; ;; Functions
 (function [(function_name) (identifier)] @function)
 (function ["function" "end"] @keyword.function)
 
