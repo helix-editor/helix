@@ -234,9 +234,8 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
+        use crate::commands::{completion, Context};
         use helix_view::document::Mode;
-        use crate::commands::{Context, completion};
-
 
         if doc_mut!(self.editor).mode != Mode::Insert {
             return;
@@ -254,6 +253,8 @@ impl Application {
             return;
         }
 
+        // TODO: if completion window was closed with enter (and no selection) we shouldn't retrigger
+
         let mut cx = Context {
             selected_register: helix_view::RegisterSelection::default(),
             editor: &mut self.editor,
@@ -262,9 +263,9 @@ impl Application {
             callback: None,
             on_next_key_callback: None,
         };
-       completion(&mut cx);
-       // TODO: scan backwards for trigger and filter the box
-       self.render();
+        completion(&mut cx);
+        // TODO: scan backwards for trigger and filter the box
+        self.render();
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {

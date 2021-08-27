@@ -721,12 +721,15 @@ impl EditorView {
 
     pub fn set_completion(
         &mut self,
+        editor: &Editor,
         items: Vec<helix_lsp::lsp::CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
+        start_offset: usize,
         trigger_offset: usize,
         size: Rect,
     ) {
-        let mut completion = Completion::new(items, offset_encoding, trigger_offset);
+        let mut completion =
+            Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);

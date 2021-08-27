@@ -4090,16 +4090,23 @@ pub fn completion(cx: &mut Context) {
     };
 
     let offset_encoding = language_server.offset_encoding();
-    let cursor = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
 
     let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
 
     let future = language_server.completion(doc.identifier(), pos, None);
 
     let trigger_offset = cursor;
+
+    // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
+    // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
+
+    use helix_core::chars;
+    let mut iter = text.chars_at(cursor);
+    iter.reverse();
+    let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
+    let start_offset = cursor.saturating_sub(offset);
 
     cx.callback(
         future,
@@ -4131,7 +4138,7 @@ pub fn completion(cx: &mut Context) {
                 .find(std::any::type_name::<ui::EditorView>())
                 .unwrap();
             if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                ui.set_completion(items, offset_encoding, trigger_offset, size);
+                ui.set_completion(editor, items, offset_encoding, start_offset, trigger_offset, size);
             };
         },
     );

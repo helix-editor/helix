@@ -69,14 +69,17 @@ impl menu::Item for CompletionItem {
 /// Wraps a Menu.
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>,
+    start_offset: usize,
     trigger_offset: usize,
     // TODO: maintain a completioncontext with trigger kind & trigger char
 }
 
 impl Completion {
     pub fn new(
+        editor: &Editor,
         items: Vec<CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
+        start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
         // let items: Vec<CompletionItem> = Vec::new();
@@ -175,16 +178,22 @@ impl Completion {
             };
         });
         let popup = Popup::new(menu);
-        Self {
+        let mut completion = Self {
             popup,
+            start_offset,
             trigger_offset,
-        }
+        };
+
+        // need to recompute immediately in case start_offset != trigger_offset
+        completion.recompute_filter(editor);
+
+        completion
     }
 
-    pub fn update(&mut self, cx: &mut commands::Context) {
+    pub fn recompute_filter(&mut self, editor: &Editor) {
         // recompute menu based on matches
         let menu = self.popup.contents_mut();
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current_ref!(editor);
 
         // cx.hooks()
         // cx.add_hook(enum type,  ||)
@@ -200,12 +209,16 @@ impl Completion {
             .selection(view.id)
             .primary()
             .cursor(doc.text().slice(..));
-        if self.trigger_offset <= cursor {
-            let fragment = doc.text().slice(self.trigger_offset..cursor);
+        if self.start_offset <= cursor {
+            let fragment = doc.text().slice(self.start_offset..cursor);
             let text = Cow::from(fragment);
             // TODO: logic is same as ui/picker
             menu.score(&text);
         }
+    }
+
+    pub fn update(&mut self, cx: &mut commands::Context) {
+        self.recompute_filter(cx.editor)
     }
 
     pub fn is_empty(&self) -> bool {
