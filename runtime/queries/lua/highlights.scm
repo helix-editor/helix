@@ -56,9 +56,8 @@
  "local"
  (break_statement)
  "goto"
+ "return"
 ] @keyword
-
-"return" @keyword.return
 
 ;; Operators
 
@@ -152,7 +151,7 @@
 (number) @number
 (label_statement) @label
 ; A bit of a tricky one, this will only match field names
-(field . (identifier) @field (_))
+(field . (identifier) @property (_))
 (shebang) @comment
 
 ;; Error
