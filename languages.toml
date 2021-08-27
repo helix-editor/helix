@@ -224,6 +224,14 @@ roots = []
 comment-token = ";"
 indent = { tab-width = 4, unit = "    " }
 
+[[ocaml]]
+name = "ocaml"
+scope = "source.ocaml"
+file-types = ["ml", "mli"]
+roots = []
+comment-token = "(**)"
+indent = { tab-width = 2, unit = "  " }
+
 # [[language]]
 # name = "haskell"
 # scope = "source.haskell"
