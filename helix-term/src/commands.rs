@@ -4330,6 +4330,7 @@ fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
     use std::io::Write;
     use std::process::{Command, Stdio};
     if cx.editor.config.shell.is_empty() {
+        cx.editor.set_error("No shell set".to_owned());
         return;
     }
     let pipe = match behavior {
