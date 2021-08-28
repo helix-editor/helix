@@ -261,7 +261,7 @@ impl<T: Item + 'static> Component for Menu<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let style = theme
-            .try_get("ui.menu.text")
+            .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
 
