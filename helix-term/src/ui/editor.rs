@@ -25,6 +25,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
+use log::warn;
 use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
@@ -729,14 +730,30 @@ impl EditorView {
                     code: KeyCode::Char(char),
                     ..
                 } => {
-                    let name = match picker.iter().find(|t| t.starts_with(char)) {
-                        Some(n) => n.clone(),
+                    let (i, name) = match picker.iter().position(|t| t.starts_with(char)) {
+                        Some(pos) => (pos, picker.get(pos).unwrap().clone()),
                         None => return None,
+                    };
+                    let completions = cxt.editor.debug_config_completions.clone().unwrap();
+                    let noop = |_input: &str| Vec::new();
+                    let completer = match completions.get(i) {
+                        Some(Some(completion)) => {
+                            match completion.get(0).and_then(|x| Some(x.as_str())) {
+                                Some("filename") => super::completers::filename,
+                                Some("directory") => super::completers::directory,
+                                Some(complete) => {
+                                    warn!("Unknown debug config autocompleter: {}", complete);
+                                    noop
+                                }
+                                None => noop,
+                            }
+                        }
+                        _ => noop,
                     };
                     let prompt = Prompt::new(
                         "arg:".to_owned(),
                         None,
-                        super::completers::filename,
+                        completer,
                         move |cx: &mut crate::compositor::Context,
                               input: &str,
                               event: PromptEvent| {

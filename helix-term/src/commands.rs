@@ -4630,6 +4630,13 @@ fn dap_launch(cx: &mut Context) {
     };
 
     cx.editor.debug_config_picker = Some(config.templates.iter().map(|t| t.name.clone()).collect());
+    cx.editor.debug_config_completions = Some(
+        config
+            .templates
+            .iter()
+            .map(|t| t.completion.clone())
+            .collect(),
+    );
 }
 
 fn dap_toggle_breakpoint(cx: &mut Context) {

@@ -7,6 +7,7 @@ use std::{collections::HashMap, path::PathBuf};
 pub struct DebugTemplate {
     pub name: String,
     pub request: String,
+    pub completion: Option<Vec<String>>,
     pub args: HashMap<String, String>,
 }
 
