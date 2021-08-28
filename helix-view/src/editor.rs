@@ -33,8 +33,20 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Line number mode.
+    pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true
     pub middle_click_paste: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineNumber {
+    /// Show absolute line number
+    Absolute,
+
+    /// Show relative line number to the primary cursor
+    Relative,
 }
 
 impl Default for Config {
@@ -43,6 +55,7 @@ impl Default for Config {
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
+            line_number: LineNumber::Absolute,
             middle_click_paste: true,
         }
     }
@@ -167,7 +180,7 @@ impl Editor {
                 view.jumps.push(jump);
                 view.last_accessed_doc = Some(view.doc);
                 view.doc = id;
-                view.first_line = 0;
+                view.offset = Position::default();
 
                 let (view, doc) = current!(self);
 
@@ -181,7 +194,7 @@ impl Editor {
                     .primary()
                     .cursor(doc.text().slice(..));
                 let line = doc.text().char_to_line(pos);
-                view.first_line = line.saturating_sub(view.area.height as usize / 2);
+                view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
 
                 return;
             }
@@ -216,7 +229,7 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let path = crate::document::canonicalize_path(&path)?;
+        let path = helix_core::path::get_canonicalized_path(&path)?;
 
         let id = self
             .documents()
@@ -331,7 +344,6 @@ impl Editor {
     // }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
         let view = view!(self);
         let doc = &self.documents[view.doc];
         let cursor = doc
@@ -339,8 +351,9 @@ impl Editor {
             .primary()
             .cursor(doc.text().slice(..));
         if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
-            pos.col += view.area.x as usize + OFFSET as usize;
-            pos.row += view.area.y as usize;
+            let inner = view.inner_area();
+            pos.col += inner.x as usize;
+            pos.row += inner.y as usize;
             (Some(pos), CursorKind::Hidden)
         } else {
             (None, CursorKind::Hidden)

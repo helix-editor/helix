@@ -41,8 +41,9 @@
 
 (field_initializer
   (field_identifier) @property)
-(shorthand_field_initializer) @variable
-(shorthand_field_identifier) @variable
+(shorthand_field_initializer
+  (identifier) @variable.property)
+(shorthand_field_identifier) @variable.property
 
 (lifetime
   "'" @label
@@ -65,6 +66,8 @@
   ")"
   "["
   "]"
+  "{"
+  "}"
 ] @punctuation.bracket
 (type_arguments
   [
@@ -333,4 +336,4 @@
 
 (type_identifier) @type
 (identifier) @variable
-(field_identifier) @variable
+(field_identifier) @property

@@ -261,7 +261,7 @@ impl Component for Completion {
                 .primary()
                 .cursor(doc.text().slice(..));
             let cursor_pos = (helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row
-                - view.first_line) as u16;
+                - view.offset.row) as u16;
 
             let mut doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
@@ -314,7 +314,7 @@ impl Component for Completion {
             let half = area.height / 2;
             let height = 15.min(half);
             // we want to make sure the cursor is visible (not hidden behind the documentation)
-            let y = if cursor_pos + view.area.y
+            let y = if cursor_pos + area.y
                 >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
             {
                 0

@@ -84,7 +84,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         // FIXME: check performance of is_exit_success
         command_provider! {
             paste => "xsel", "-o", "-b";
-            copy => "xsel", "--nodetach", "-i", "-b";
+            copy => "xsel", "-i", "-b";
             primary_paste => "xsel", "-o";
             primary_copy => "xsel", "-i";
         }
@@ -152,6 +152,8 @@ mod provider {
     }
 
     impl NopProvider {
+        #[allow(dead_code)]
+        // Only dead_code on Windows.
         pub fn new() -> Self {
             Self {
                 buf: String::new(),
@@ -217,7 +219,7 @@ mod provider {
         fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()> {
             match clipboard_type {
                 ClipboardType::Clipboard => {
-                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents);
+                    clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
                 }
                 ClipboardType::Selection => {}
             };

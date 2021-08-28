@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -20,6 +20,7 @@ use helix_lsp::util::LspFormatting;
 
 use crate::{DocumentId, Theme, ViewId};
 
+/// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -101,7 +102,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
-use std::fmt;
+use std::{fmt, mem};
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Document")
@@ -300,101 +301,13 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
-/// Like std::mem::replace() except it allows the replacement value to be mapped from the
-/// original value.
-fn take_with<T, F>(mut_ref: &mut T, closure: F)
+fn take_with<T, F>(mut_ref: &mut T, f: F)
 where
+    T: Default,
     F: FnOnce(T) -> T,
 {
-    use std::{panic, ptr};
-
-    unsafe {
-        let old_t = ptr::read(mut_ref);
-        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
-            .unwrap_or_else(|_| ::std::process::abort());
-        ptr::write(mut_ref, new_t);
-    }
-}
-
-/// Expands tilde `~` into users home directory if avilable, otherwise returns the path
-/// unchanged. The tilde will only be expanded when present as the first component of the path
-/// and only slash follows it.
-pub fn expand_tilde(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
-    if let Some(Component::Normal(c)) = components.peek() {
-        if c == &"~" {
-            if let Ok(home) = helix_core::home_dir() {
-                // it's ok to unwrap, the path starts with `~`
-                return home.join(path.strip_prefix("~").unwrap());
-            }
-        }
-    }
-
-    path.to_path_buf()
-}
-
-/// Replaces users home directory from `path` with tilde `~` if the directory
-/// is available, otherwise returns the path unchanged.
-pub fn fold_home_dir(path: &Path) -> PathBuf {
-    if let Ok(home) = helix_core::home_dir() {
-        if path.starts_with(&home) {
-            // it's ok to unwrap, the path starts with home dir
-            return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
-        }
-    }
-
-    path.to_path_buf()
-}
-
-/// Normalize a path, removing things like `.` and `..`.
-///
-/// CAUTION: This does not resolve symlinks (unlike
-/// [`std::fs::canonicalize`]). This may cause incorrect or surprising
-/// behavior at times. This should be used carefully. Unfortunately,
-/// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
-/// fail, or on Windows returns annoying device paths. This is a problem Cargo
-/// needs to improve on.
-/// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
-pub fn normalize_path(path: &Path) -> PathBuf {
-    let path = expand_tilde(path);
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
-        components.next();
-        PathBuf::from(c.as_os_str())
-    } else {
-        PathBuf::new()
-    };
-
-    for component in components {
-        match component {
-            Component::Prefix(..) => unreachable!(),
-            Component::RootDir => {
-                ret.push(component.as_os_str());
-            }
-            Component::CurDir => {}
-            Component::ParentDir => {
-                ret.pop();
-            }
-            Component::Normal(c) => {
-                ret.push(c);
-            }
-        }
-    }
-    ret
-}
-
-/// Returns the canonical, absolute form of a path with all intermediate components normalized.
-///
-/// This function is used instead of `std::fs::canonicalize` because we don't want to verify
-/// here if the path exists, just normalize it's components.
-pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
-    let path = if path.is_relative() {
-        std::env::current_dir().map(|current_dir| current_dir.join(path))?
-    } else {
-        path.to_path_buf()
-    };
-
-    Ok(normalize_path(&path))
+    let t = mem::take(mut_ref);
+    let _ = mem::replace(mut_ref, f(t));
 }
 
 use helix_lsp::lsp;
@@ -437,6 +350,7 @@ impl Document {
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
+        // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
@@ -564,6 +478,7 @@ impl Document {
         }
     }
 
+    /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
         if let Some(path) = &self.path {
             let language_config = config_loader.language_config_for_file_name(path);
@@ -571,6 +486,10 @@ impl Document {
         }
     }
 
+    /// Detect the indentation used in the file, or otherwise defaults to the language indentation
+    /// configured in `languages.toml`, with a fallback  back to 2 space indentation if it isn't
+    /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
+    /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             IndentStyle::from_str(
@@ -596,6 +515,9 @@ impl Document {
         let mut file = std::fs::File::open(path.unwrap())?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
+        // Calculate the difference between the buffer and source text, and apply it.
+        // This is not considered a modification of the contents of the file regardless
+        // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
         self.apply(&transaction, view_id);
         self.append_changes_to_history(view_id);
@@ -621,7 +543,7 @@ impl Document {
     }
 
     pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        let path = canonicalize_path(path)?;
+        let path = helix_core::path::get_canonicalized_path(path)?;
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -630,6 +552,8 @@ impl Document {
         Ok(())
     }
 
+    /// Set the programming language for the file and load associated data (e.g. highlighting)
+    /// if it exists.
     pub fn set_language(
         &mut self,
         theme: Option<&Theme>,
@@ -650,6 +574,8 @@ impl Document {
         };
     }
 
+    /// Set the programming language for the file if you know the name (scope) but don't have the
+    /// [`syntax::LanguageConfiguration`] for it.
     pub fn set_language2(
         &mut self,
         scope: &str,
@@ -661,16 +587,19 @@ impl Document {
         self.set_language(theme, language_config);
     }
 
+    /// Set the LSP.
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
         self.language_server = language_server;
     }
 
+    /// Select text within the [`Document`].
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
     }
 
+    /// Apply a [`Transaction`] to the [`Document`] to change its text.
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         let old_doc = self.text().clone();
 
@@ -733,6 +662,7 @@ impl Document {
         success
     }
 
+    /// Apply a [`Transaction`] to the [`Document`] to change its text.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -754,6 +684,7 @@ impl Document {
         success
     }
 
+    /// Undo the last modification to the [`Document`].
     pub fn undo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
@@ -769,6 +700,7 @@ impl Document {
         }
     }
 
+    /// Redo the last modification to the [`Document`].
     pub fn redo(&mut self, view_id: ViewId) {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.redo() {
@@ -784,6 +716,7 @@ impl Document {
         }
     }
 
+    /// Undo modifications to the [`Document`] according to `uk`.
     pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
         let txns = self.history.get_mut().earlier(uk);
         for txn in txns {
@@ -791,6 +724,7 @@ impl Document {
         }
     }
 
+    /// Redo modifications to the [`Document`] according to `uk`.
     pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
         let txns = self.history.get_mut().later(uk);
         for txn in txns {
@@ -823,6 +757,7 @@ impl Document {
         self.id
     }
 
+    /// If there are unsaved modifications.
     pub fn is_modified(&self) -> bool {
         let history = self.history.take();
         let current_revision = history.current_revision();
@@ -830,6 +765,7 @@ impl Document {
         current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
+    /// Save modifications to history, and so [`Self::is_modified`] will return false.
     pub fn reset_modified(&mut self) {
         let history = self.history.take();
         let current_revision = history.current_revision();
@@ -837,6 +773,7 @@ impl Document {
         self.last_saved_revision = current_revision;
     }
 
+    /// Current editing mode for the [`Document`].
     pub fn mode(&self) -> Mode {
         self.mode
     }
@@ -848,6 +785,7 @@ impl Document {
             .map(|language| language.scope.as_str())
     }
 
+    /// Corresponding [`LanguageConfiguration`].
     pub fn language_config(&self) -> Option<&LanguageConfiguration> {
         self.language.as_deref()
     }
@@ -890,6 +828,7 @@ impl Document {
         self.path.as_ref()
     }
 
+    /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
         self.path().map(|path| Url::from_file_path(path).unwrap())
     }
@@ -909,15 +848,9 @@ impl Document {
     }
 
     pub fn relative_path(&self) -> Option<PathBuf> {
-        let cwdir = std::env::current_dir().expect("couldn't determine current directory");
-
-        self.path.as_ref().map(|path| {
-            let mut path = path.as_path();
-            if path.is_absolute() {
-                path = path.strip_prefix(cwdir).unwrap_or(path)
-            };
-            fold_home_dir(path)
-        })
+        self.path
+            .as_deref()
+            .map(helix_core::path::get_relative_path)
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

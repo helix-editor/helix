@@ -31,7 +31,7 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::{FutureExt, TryFutureExt};
+use futures_util::FutureExt;
 use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
@@ -110,7 +110,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
         .cursor(doc.text().slice(..));
     let line = doc.text().char_to_line(pos);
 
-    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+    let height = view.inner_area().height as usize;
 
     let relative = match align {
         Align::Center => height / 2,
@@ -118,7 +118,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
         Align::Bottom => height,
     };
 
-    view.first_line = line.saturating_sub(relative);
+    view.offset.row = line.saturating_sub(relative);
 }
 
 /// A command is composed of a static name, and a function that takes the current state plus a count,
@@ -455,7 +455,7 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 fn goto_window(cx: &mut Context, align: Align) {
     let (view, doc) = current!(cx.editor);
 
-    let height = view.area.height.saturating_sub(1) as usize; // -1 for statusline
+    let height = view.inner_area().height as usize;
 
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
@@ -465,8 +465,8 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.first_line + scrolloff),
-        Align::Center => (view.first_line + (height / 2)),
+        Align::Top => (view.offset.row + scrolloff),
+        Align::Center => (view.offset.row + (height / 2)),
         Align::Bottom => last_line.saturating_sub(scrolloff),
     }
     .min(last_line.saturating_sub(scrolloff));
@@ -882,31 +882,28 @@ fn switch_to_lowercase(cx: &mut Context) {
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     use Direction::*;
     let (view, doc) = current!(cx.editor);
-    let cursor = coords_at_pos(
-        doc.text().slice(..),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-    );
-    let doc_last_line = doc.text().len_lines() - 1;
+
+    let range = doc.selection(view.id).primary();
+    let text = doc.text().slice(..);
+
+    let cursor = coords_at_pos(text, range.cursor(text));
+    let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
     let last_line = view.last_line(doc);
 
-    if direction == Backward && view.first_line == 0
+    if direction == Backward && view.offset.row == 0
         || direction == Forward && last_line == doc_last_line
     {
         return;
     }
 
-    let scrolloff = cx
-        .editor
-        .config
-        .scrolloff
-        .min(view.area.height as usize / 2);
+    let height = view.inner_area().height;
 
-    view.first_line = match direction {
-        Forward => view.first_line + offset,
-        Backward => view.first_line.saturating_sub(offset),
+    let scrolloff = cx.editor.config.scrolloff.min(height as usize / 2);
+
+    view.offset.row = match direction {
+        Forward => view.offset.row + offset,
+        Backward => view.offset.row.saturating_sub(offset),
     }
     .min(doc_last_line);
 
@@ -916,37 +913,42 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     // clamp into viewport
     let line = cursor
         .row
-        .max(view.first_line + scrolloff)
+        .max(view.offset.row + scrolloff)
         .min(last_line.saturating_sub(scrolloff));
 
-    let text = doc.text().slice(..);
-    let pos = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+    let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+
+    let anchor = if doc.mode == Mode::Select {
+        range.anchor
+    } else {
+        head
+    };
 
     // TODO: only manipulate main selection
-    doc.set_selection(view.id, Selection::point(pos));
+    doc.set_selection(view.id, Selection::single(anchor, head));
 }
 
 fn page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize;
+    let offset = view.inner_area().height as usize;
     scroll(cx, offset, Direction::Backward);
 }
 
 fn page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize;
+    let offset = view.inner_area().height as usize;
     scroll(cx, offset, Direction::Forward);
 }
 
 fn half_page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize / 2;
+    let offset = view.inner_area().height as usize / 2;
     scroll(cx, offset, Direction::Backward);
 }
 
 fn half_page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.area.height as usize / 2;
+    let offset = view.inner_area().height as usize / 2;
     scroll(cx, offset, Direction::Forward);
 }
 
@@ -1156,7 +1158,7 @@ fn search(cx: &mut Context) {
         move |view, doc, registers, regex| {
             search_impl(doc, view, &contents, &regex, false);
             // TODO: only store on enter (accept), not update
-            registers.write('\\', vec![regex.as_str().to_string()]);
+            registers.write('/', vec![regex.as_str().to_string()]);
         },
     );
 
@@ -1166,7 +1168,7 @@ fn search(cx: &mut Context) {
 fn search_next_impl(cx: &mut Context, extend: bool) {
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
-    if let Some(query) = registers.read('\\') {
+    if let Some(query) = registers.read('/') {
         let query = query.first().unwrap();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(query).unwrap();
@@ -1187,7 +1189,7 @@ fn search_selection(cx: &mut Context) {
     let contents = doc.text().slice(..);
     let query = doc.selection(view.id).primary().fragment(contents);
     let regex = regex::escape(&query);
-    cx.editor.registers.write('\\', vec![regex]);
+    cx.editor.registers.write('/', vec![regex]);
     search_next(cx);
 }
 
@@ -1389,7 +1391,7 @@ mod cmd {
     fn write_impl<P: AsRef<Path>>(
         cx: &mut compositor::Context,
         path: Option<P>,
-    ) -> Result<tokio::task::JoinHandle<Result<(), anyhow::Error>>, anyhow::Error> {
+    ) -> anyhow::Result<()> {
         let jobs = &mut cx.jobs;
         let (_, doc) = current!(cx.editor);
 
@@ -1410,7 +1412,9 @@ mod cmd {
             jobs.callback(callback);
             shared
         });
-        Ok(tokio::spawn(doc.format_and_save(fmt)))
+        let future = doc.format_and_save(fmt);
+        cx.jobs.add(Job::new(future).wait_before_exiting());
+        Ok(())
     }
 
     fn write(
@@ -1418,11 +1422,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        cx.jobs
-            .add(Job::new(handle.unwrap_or_else(|e| Err(e.into()))).wait_before_exiting());
-
-        Ok(())
+        write_impl(cx, args.first())
     }
 
     fn new_file(
@@ -1513,18 +1513,22 @@ mod cmd {
             return Ok(());
         }
 
+        let arg = args
+            .get(0)
+            .context("argument missing")?
+            .to_ascii_lowercase();
+
         // Attempt to parse argument as a line ending.
-        let line_ending = match args.get(0) {
+        let line_ending = match arg {
             // We check for CR first because it shares a common prefix with CRLF.
-            Some(arg) if "cr".starts_with(&arg.to_lowercase()) => Some(CR),
-            Some(arg) if "crlf".starts_with(&arg.to_lowercase()) => Some(Crlf),
-            Some(arg) if "lf".starts_with(&arg.to_lowercase()) => Some(LF),
-            Some(arg) if "ff".starts_with(&arg.to_lowercase()) => Some(FF),
-            Some(arg) if "nel".starts_with(&arg.to_lowercase()) => Some(Nel),
-            _ => None,
+            arg if arg.starts_with("cr") => CR,
+            arg if arg.starts_with("crlf") => Crlf,
+            arg if arg.starts_with("lf") => LF,
+            arg if arg.starts_with("ff") => FF,
+            arg if arg.starts_with("nel") => Nel,
+            _ => bail!("invalid line ending"),
         };
 
-        let line_ending = line_ending.context("invalid line ending")?;
         doc_mut!(cx.editor).line_ending = line_ending;
         Ok(())
     }
@@ -1565,8 +1569,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        let _ = helix_lsp::block_on(handle)?;
+        write_impl(cx, args.first())?;
         quit(cx, &[], event)
     }
 
@@ -1575,8 +1578,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let handle = write_impl(cx, args.first())?;
-        let _ = helix_lsp::block_on(handle)?;
+        write_impl(cx, args.first())?;
         force_quit(cx, &[], event)
     }
 
@@ -1603,7 +1605,7 @@ mod cmd {
     }
 
     fn write_all_impl(
-        editor: &mut Editor,
+        cx: &mut compositor::Context,
         _args: &[&str],
         _event: PromptEvent,
         quit: bool,
@@ -1612,25 +1614,26 @@ mod cmd {
         let mut errors = String::new();
 
         // save all documents
-        for (_, doc) in &mut editor.documents {
+        for (_, doc) in &mut cx.editor.documents {
             if doc.path().is_none() {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
             }
 
             // TODO: handle error.
-            let _ = helix_lsp::block_on(tokio::spawn(doc.save()));
+            let handle = doc.save();
+            cx.jobs.add(Job::new(handle).wait_before_exiting());
         }
 
         if quit {
             if !force {
-                buffers_remaining_impl(editor)?;
+                buffers_remaining_impl(cx.editor)?;
             }
 
             // close all views
-            let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+            let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
             for view_id in views {
-                editor.close(view_id, false);
+                cx.editor.close(view_id, false);
             }
         }
 
@@ -1642,7 +1645,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, false, false)
+        write_all_impl(cx, args, event, false, false)
     }
 
     fn write_all_quit(
@@ -1650,7 +1653,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, true, false)
+        write_all_impl(cx, args, event, true, false)
     }
 
     fn force_write_all_quit(
@@ -1658,7 +1661,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(&mut cx.editor, args, event, true, true)
+        write_all_impl(cx, args, event, true, true)
     }
 
     fn quit_all_impl(
@@ -1835,7 +1838,7 @@ mod cmd {
         let dir = args.first().context("target directory not provided")?;
 
         if let Err(e) = std::env::set_current_dir(dir) {
-            bail!("Couldn't change the current working directory: {:?}", e);
+            bail!("Couldn't change the current working directory: {}", e);
         }
 
         let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
@@ -1894,6 +1897,40 @@ mod cmd {
         let pos = doc.selection(view.id).primary().cursor(text);
         let scopes = indent::get_scopes(doc.syntax(), text, pos);
         cx.editor.set_status(format!("scopes: {:?}", &scopes));
+        Ok(())
+    }
+
+    fn vsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::VerticalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::VerticalSplit);
+        }
+
+        Ok(())
+    }
+
+    fn hsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::HorizontalSplit);
+        }
+
         Ok(())
     }
 
@@ -2135,6 +2172,20 @@ mod cmd {
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
             completer: None,
+        },
+        TypableCommand {
+            name: "vsplit",
+            alias: Some("vs"),
+            doc: "Open the file in a vertical split.",
+            fun: vsplit,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "hsplit",
+            alias: Some("sp"),
+            doc: "Open the file in a horizontal split.",
+            fun: hsplit,
+            completer: Some(completers::filename),
         }
     ];
 
@@ -2237,16 +2288,16 @@ fn buffer_picker(cx: &mut Context) {
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (id, doc.relative_path()))
+            .map(|(id, doc)| (id, doc.path().cloned()))
             .collect(),
         move |(id, path): &(DocumentId, Option<PathBuf>)| {
-            // format_fn
+            let path = path.as_deref().map(helix_core::path::get_relative_path);
             match path.as_ref().and_then(|path| path.to_str()) {
                 Some(path) => {
                     if *id == current {
-                        format!("{} (*)", path).into()
+                        format!("{} (*)", &path).into()
                     } else {
-                        path.into()
+                        path.to_owned().into()
                     }
                 }
                 None => "[scratch buffer]".into(),
@@ -2262,7 +2313,7 @@ fn buffer_picker(cx: &mut Context) {
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, Some(line)))
+            Some((path.clone()?, Some((line, line))))
         },
     );
     cx.push_layer(Box::new(picker));
@@ -2327,13 +2378,18 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
                             align_view(doc, view, Align::Center);
                         }
                     },
                     move |_editor, symbol| {
                         let path = symbol.location.uri.to_file_path().unwrap();
-                        let line = Some(symbol.location.range.start.line as usize);
+                        let line = Some((
+                            symbol.location.range.start.line as usize,
+                            symbol.location.range.end.line as usize,
+                        ));
                         Some((path, line))
                     },
                 );
@@ -2766,7 +2822,10 @@ fn goto_impl(
                 },
                 |_editor, location| {
                     let path = location.uri.to_file_path().unwrap();
-                    let line = Some(location.range.start.line as usize);
+                    let line = Some((
+                        location.range.start.line as usize,
+                        location.range.end.line as usize,
+                    ));
                     Some((path, line))
                 },
             );
@@ -3396,7 +3455,7 @@ fn yank_main_selection_to_clipboard_impl(
         .clipboard_provider
         .set_contents(value.into_owned(), clipboard_type)
     {
-        bail!("Couldn't set system clipboard content: {:?}", e);
+        bail!("Couldn't set system clipboard content: {}", e);
     }
 
     editor.set_status("yanked main selection to system clipboard".to_owned());
@@ -3926,6 +3985,7 @@ fn toggle_comments(cx: &mut Context) {
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+    exit_select_mode(cx);
 }
 
 fn rotate_selections(cx: &mut Context, direction: Direction) {
@@ -4060,13 +4120,13 @@ fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let first_line = view.first_line;
+    let offset = view.offset;
 
     cx.editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(cx.editor);
-    view.first_line = first_line;
+    view.offset = offset;
     doc.set_selection(view.id, selection);
 }
 
@@ -4109,15 +4169,13 @@ fn align_view_bottom(cx: &mut Context) {
 
 fn align_view_middle(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
-    let pos = coords_at_pos(doc.text().slice(..), pos);
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view.id).primary().cursor(text);
+    let pos = coords_at_pos(text, pos);
 
-    view.first_col = pos.col.saturating_sub(
-        ((view.area.width as usize).saturating_sub(crate::ui::editor::GUTTER_OFFSET as usize)) / 2,
-    );
+    view.offset.col = pos
+        .col
+        .saturating_sub((view.inner_area().width as usize) / 2);
 }
 
 fn scroll_up(cx: &mut Context) {

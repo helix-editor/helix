@@ -151,7 +151,7 @@ impl From<KeyTrieNode> for Info {
                 .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
                 .collect();
         }
-        Info::key(node.name(), body)
+        Info::new(node.name(), body)
     }
 }
 
@@ -543,6 +543,8 @@ impl Default for Keymaps {
             "home" => goto_line_start,
             "end" => goto_line_end,
             "esc" => exit_select_mode,
+
+            "v" => normal_mode,
         }));
         let insert = keymap!({ "Insert mode"
             "esc" => normal_mode,

@@ -94,3 +94,15 @@
 	path = helix-syntax/languages/tree-sitter-latex
 	url = https://github.com/latex-lsp/tree-sitter-latex
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-ledger"]
+	path = helix-syntax/languages/tree-sitter-ledger
+	url = https://github.com/cbarrete/tree-sitter-ledger
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-protobuf"]
+	path = helix-syntax/languages/tree-sitter-protobuf
+	url = https://github.com/yusdacra/tree-sitter-protobuf.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-zig"]
+	path = helix-syntax/languages/tree-sitter-zig
+	url = https://github.com/maxxnino/tree-sitter-zig
+	shallow = true
