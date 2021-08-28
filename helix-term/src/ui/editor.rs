@@ -508,7 +508,13 @@ impl EditorView {
             } else {
                 let line = match config.line_number {
                     LineNumber::Absolute => line + 1,
-                    LineNumber::Relative => abs_diff(current_line, line),
+                    LineNumber::Relative => {
+                        if current_line == line {
+                            line + 1
+                        } else {
+                            abs_diff(current_line, line)
+                        }
+                    }
                 };
                 format!("{:>5}", line)
             };
