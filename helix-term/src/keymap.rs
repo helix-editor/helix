@@ -270,6 +270,7 @@ impl Keymap {
         let &first = self.state.get(0).unwrap_or(&key);
         let trie = match self.root.search(&[first]) {
             Some(&KeyTrie::Leaf(cmd)) => return KeymapResult::Matched(cmd),
+            Some(&KeyTrie::Sequence(ref cmds)) => return KeymapResult::MatchedSequence(cmds),
             None => return KeymapResult::NotFound,
             Some(t) => t,
         };
