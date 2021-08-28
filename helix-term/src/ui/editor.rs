@@ -736,7 +736,7 @@ impl EditorView {
                     let prompt = Prompt::new(
                         "arg:".to_owned(),
                         None,
-                        |_input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
+                        super::completers::filename,
                         move |cx: &mut crate::compositor::Context,
                               input: &str,
                               event: PromptEvent| {
