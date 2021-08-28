@@ -93,7 +93,7 @@ Possible keys:
 | `ui.text.focus`          |                                     |
 | `ui.info`                |                                     |
 | `ui.info.text`           |                                     |
-| `ui.menu.text`           |                                     |
+| `ui.menu`                |                                     |
 | `ui.menu.selected`       |                                     |
 | `ui.selection`           | For selections in the editing area  |
 | `ui.selection.primary`   |                                     |
