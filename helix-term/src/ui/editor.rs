@@ -737,17 +737,15 @@ impl EditorView {
                     let completions = cxt.editor.debug_config_completions.clone().unwrap();
                     let noop = |_input: &str| Vec::new();
                     let completer = match completions.get(i) {
-                        Some(Some(completion)) => {
-                            match completion.get(0).and_then(|x| Some(x.as_str())) {
-                                Some("filename") => super::completers::filename,
-                                Some("directory") => super::completers::directory,
-                                Some(complete) => {
-                                    warn!("Unknown debug config autocompleter: {}", complete);
-                                    noop
-                                }
-                                None => noop,
+                        Some(Some(completion)) => match completion.get(0).map(|x| x.as_str()) {
+                            Some("filename") => super::completers::filename,
+                            Some("directory") => super::completers::directory,
+                            Some(complete) => {
+                                warn!("Unknown debug config autocompleter: {}", complete);
+                                noop
                             }
-                        }
+                            None => noop,
+                        },
                         _ => noop,
                     };
                     let prompt = Prompt::new(
