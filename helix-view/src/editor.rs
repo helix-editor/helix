@@ -76,6 +76,8 @@ pub struct Editor {
 
     pub debugger: Option<helix_dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<helix_dap::Payload>>,
+    pub variables: Option<Vec<String>>,
+    pub variables_page: usize,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
@@ -116,6 +118,8 @@ impl Editor {
             language_servers,
             debugger: None,
             debugger_events: SelectAll::new(),
+            variables: None,
+            variables_page: 0,
             syn_loader: config_loader,
             theme_loader: themes,
             registers: Registers::default(),

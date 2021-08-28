@@ -4768,7 +4768,7 @@ fn dap_variables(cx: &mut Context) {
                 return;
             }
         };
-        let mut s = String::new();
+        let mut variables = Vec::new();
 
         for scope in scopes.iter() {
             let response = block_on(debugger.variables(scope.variables_reference));
@@ -4779,12 +4779,15 @@ fn dap_variables(cx: &mut Context) {
                         Some(data_type) => format!("{} ", data_type),
                         None => "".to_owned(),
                     };
-                    // s.push_str(&format!("{}{} = {}; ", prefix, var.name, var.value));
-                    s.push_str(&format!("{}{}; ", prefix, var.name,));
+                    variables.push(format!("{}{} = {}\n", prefix, var.name, var.value));
                 }
             }
         }
-        cx.editor.set_status(s);
+
+        if !variables.is_empty() {
+            cx.editor.variables = Some(variables);
+            cx.editor.variables_page = 0;
+        }
     }
 }
 
