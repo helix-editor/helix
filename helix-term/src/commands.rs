@@ -304,6 +304,7 @@ impl Command {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        dap_launch, "Launch debug target",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_run, "Begin program execution",
         dap_continue, "Continue program execution",
@@ -4491,7 +4492,7 @@ fn suspend(_cx: &mut Context) {
 }
 
 // DAP
-fn dap_start_impl(
+pub fn dap_start_impl(
     editor: &mut Editor,
     name: Option<&str>,
     socket: Option<std::net::SocketAddr>,
@@ -4594,6 +4595,41 @@ fn dap_start_impl(
     editor.debugger = Some(debugger);
     let stream = UnboundedReceiverStream::new(events);
     editor.debugger_events.push(stream);
+}
+
+fn dap_launch(cx: &mut Context) {
+    if cx.editor.debugger.is_some() {
+        cx.editor
+            .set_error("Can't start debug: debugger is running".to_string());
+        return;
+    }
+
+    let (_, doc) = current!(cx.editor);
+    let path = match doc.path() {
+        Some(path) => path.to_path_buf(),
+        None => {
+            cx.editor
+                .set_error("Can't start debug: document has no path".to_string());
+            return;
+        }
+    };
+
+    let config = cx
+        .editor
+        .syn_loader
+        .language_config_for_file_name(&path)
+        .and_then(|x| x.debugger.clone());
+    let config = match config {
+        Some(c) => c,
+        None => {
+            cx.editor.set_error(
+                "Can't start debug: no debug adapter available for language".to_string(),
+            );
+            return;
+        }
+    };
+
+    cx.editor.debug_config_picker = Some(config.templates.iter().map(|t| t.name.clone()).collect());
 }
 
 fn dap_toggle_breakpoint(cx: &mut Context) {

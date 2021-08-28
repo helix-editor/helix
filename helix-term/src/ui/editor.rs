@@ -30,6 +30,8 @@ use std::borrow::Cow;
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
+use super::{Prompt, PromptEvent};
+
 pub struct EditorView {
     keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
@@ -712,6 +714,45 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         self.autoinfo = None;
 
+        if let Some(picker) = cxt.editor.debug_config_picker.clone() {
+            match event {
+                KeyEvent {
+                    code: KeyCode::Esc, ..
+                } => {}
+                KeyEvent {
+                    code: KeyCode::Char(char),
+                    ..
+                } => {
+                    let name = match picker.iter().find(|t| t.starts_with(char)) {
+                        Some(n) => n.clone(),
+                        None => return None,
+                    };
+                    let prompt = Prompt::new(
+                        "arg:".to_owned(),
+                        None,
+                        |_input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
+                        move |cx: &mut crate::compositor::Context,
+                              input: &str,
+                              event: PromptEvent| {
+                            if event != PromptEvent::Validate {
+                                return;
+                            }
+                            commands::dap_start_impl(
+                                cx.editor,
+                                Some(&name),
+                                None,
+                                Some(vec![input]),
+                            );
+                        },
+                    );
+                    cxt.push_layer(Box::new(prompt));
+                }
+                _ => return None,
+            }
+            cxt.editor.debug_config_picker = None;
+            return None;
+        }
+
         if cxt.editor.variables.is_some() {
             match event {
                 KeyEvent {
@@ -735,6 +776,7 @@ impl EditorView {
             }
             return None;
         }
+
         match self.keymaps.get_mut(&mode).unwrap().get(event) {
             KeymapResult::Matched(command) => command.execute(cxt),
             KeymapResult::Pending(node) => self.autoinfo = Some(node.into()),
@@ -1133,6 +1175,26 @@ impl Component for EditorView {
                 width: 70.min(max_len),
                 title: format!("{} variables", num_vars),
                 text: text + "\nExit Esc",
+            };
+            info.render(area, surface, cx);
+        }
+
+        if let Some(ref configs) = cx.editor.debug_config_picker {
+            let mut text = String::new();
+            let mut height = 0;
+            let mut max_len = 20;
+
+            for line in configs {
+                max_len = max_len.max(line.len() as u16 + 2);
+                height += 1;
+                text.push_str(&format!("{} {}\n", line.chars().next().unwrap(), line));
+            }
+
+            let mut info = Info {
+                height: 20.min(height + 1),
+                width: 70.min(max_len),
+                title: "Debug targets".to_owned(),
+                text: text + "Exit Esc",
             };
             info.render(area, surface, cx);
         }
