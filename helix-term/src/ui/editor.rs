@@ -1111,7 +1111,7 @@ impl Component for EditorView {
         if let Some(ref vars) = cx.editor.variables {
             let mut text = String::new();
             let mut height = 0;
-            let mut max_len = 0;
+            let mut max_len = 20;
 
             let per_page = 15;
             let num_vars = vars.len();
