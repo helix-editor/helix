@@ -148,21 +148,21 @@ impl EditorView {
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |language| {
                         loader
-                                .language_config_for_scope(&format!("source.{}", language))
-                                .and_then(|language_config| {
-                                    let config = language_config.highlight_config(scopes)?;
-                                    let config_ref = config.as_ref();
-                                    // SAFETY: the referenced `HighlightConfiguration` behind
-                                    // the `Arc` is guaranteed to remain valid throughout the
-                                    // duration of the highlight.
-                                    let config_ref = unsafe {
-                                        std::mem::transmute::<
-                                            _,
-                                            &'static syntax::HighlightConfiguration,
-                                        >(config_ref)
-                                    };
-                                    Some(config_ref)
-                                })
+                            .language_config_for_scope(&format!("source.{}", language))
+                            .and_then(|language_config| {
+                                let config = language_config.highlight_config(scopes)?;
+                                let config_ref = config.as_ref();
+                                // SAFETY: the referenced `HighlightConfiguration` behind
+                                // the `Arc` is guaranteed to remain valid throughout the
+                                // duration of the highlight.
+                                let config_ref = unsafe {
+                                    std::mem::transmute::<
+                                        _,
+                                        &'static syntax::HighlightConfiguration,
+                                    >(config_ref)
+                                };
+                                Some(config_ref)
+                            })
                     })
                     .map(|event| event.unwrap())
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
