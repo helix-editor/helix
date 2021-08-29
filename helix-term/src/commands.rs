@@ -4528,7 +4528,13 @@ pub fn dap_start_impl(
 
     let result = match socket {
         Some(socket) => block_on(Client::tcp(socket, 0)),
-        None => block_on(Client::process(config.clone(), 0)),
+        None => block_on(Client::process(
+            config.transport.clone(),
+            config.command.clone(),
+            config.args.clone(),
+            config.port_arg.clone(),
+            0,
+        )),
     };
 
     let (mut debugger, events) = match result {

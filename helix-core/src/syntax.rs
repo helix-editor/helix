@@ -5,7 +5,6 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
-use helix_dap::DebugAdapterConfig;
 pub use helix_syntax::get_language;
 
 use arc_swap::ArcSwap;
@@ -67,6 +66,41 @@ pub struct LanguageServerConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AdvancedCompletion {
+    pub name: Option<String>,
+    pub completion: Option<String>,
+    pub default: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case", untagged)]
+pub enum DebugConfigCompletion {
+    Named(String),
+    Advanced(AdvancedCompletion),
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebugTemplate {
+    pub name: String,
+    pub request: String,
+    pub completion: Vec<DebugConfigCompletion>,
+    pub args: HashMap<String, String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebugAdapterConfig {
+    pub name: String,
+    pub transport: String,
+    pub command: String,
+    pub args: Vec<String>,
+    pub port_arg: Option<String>,
+    pub templates: Vec<DebugTemplate>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

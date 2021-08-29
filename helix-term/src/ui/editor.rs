@@ -11,7 +11,7 @@ use helix_core::{
     coords_at_pos,
     graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
-    syntax::{self, HighlightEvent},
+    syntax::{self, DebugConfigCompletion, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection,
@@ -710,28 +710,38 @@ impl EditorView {
     }
 
     fn debug_parameter_prompt(
-        completions: Vec<String>,
+        completions: Vec<DebugConfigCompletion>,
         config_name: String,
         mut params: Vec<String>,
     ) -> Prompt {
         let i = params.len();
-        let field_type = completions.get(i).map(|x| x.as_str());
+        let completion = completions.get(i).unwrap();
+        let field_type = if let DebugConfigCompletion::Advanced(cfg) = completion {
+            cfg.completion.clone().unwrap_or_else(|| "".to_owned())
+        } else {
+            "".to_owned()
+        };
+        let name = match completion {
+            DebugConfigCompletion::Advanced(cfg) => {
+                cfg.name.clone().unwrap_or_else(|| field_type.to_owned())
+            }
+            DebugConfigCompletion::Named(name) => name.clone(),
+        };
+        let default_val = match completion {
+            DebugConfigCompletion::Advanced(cfg) => {
+                cfg.default.clone().unwrap_or_else(|| "".to_owned())
+            }
+            _ => "".to_owned(),
+        };
 
         let noop = |_input: &str| Vec::new();
-        let completer = match field_type {
-            Some(field_type) => {
-                if field_type.starts_with("filename") {
-                    super::completers::filename
-                } else if field_type.starts_with("directory") {
-                    super::completers::directory
-                } else {
-                    noop
-                }
-            }
-            None => noop,
+        let completer = match &field_type[..] {
+            "filename" => super::completers::filename,
+            "directory" => super::completers::directory,
+            _ => noop,
         };
         Prompt::new(
-            format!("{}: ", field_type.unwrap_or("arg")),
+            format!("{}: ", name),
             None,
             completer,
             move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
@@ -739,7 +749,11 @@ impl EditorView {
                     return;
                 }
 
-                params.push(input.to_owned());
+                let mut value = input.to_owned();
+                if value.is_empty() {
+                    value = default_val.clone();
+                }
+                params.push(value);
 
                 if params.len() < completions.len() {
                     let completions = completions.clone();

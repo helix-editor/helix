@@ -38,28 +38,24 @@ pub struct Client {
 impl Client {
     // Spawn a process and communicate with it by either TCP or stdio
     pub async fn process(
-        cfg: DebugAdapterConfig,
+        transport: String,
+        command: String,
+        args: Vec<String>,
+        port_arg: Option<String>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
-        if cfg.transport == "tcp" && cfg.port_arg.is_some() {
+        if transport == "tcp" && port_arg.is_some() {
             Self::tcp_process(
-                &cfg.command,
-                cfg.args.iter().map(|s| s.as_str()).collect(),
-                &cfg.port_arg.unwrap(),
+                &command,
+                args.iter().map(|s| s.as_str()).collect(),
+                &port_arg.unwrap(),
                 id,
             )
             .await
-        } else if cfg.transport == "stdio" {
-            Self::stdio(
-                &cfg.command,
-                cfg.args.iter().map(|s| s.as_str()).collect(),
-                id,
-            )
+        } else if transport == "stdio" {
+            Self::stdio(&command, args.iter().map(|s| s.as_str()).collect(), id)
         } else {
-            Result::Err(Error::Other(anyhow!(
-                "Incorrect transport {}",
-                cfg.transport
-            )))
+            Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport)))
         }
     }
 

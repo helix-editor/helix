@@ -22,7 +22,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::syntax;
+use helix_core::syntax::{self, DebugConfigCompletion};
 use helix_core::Position;
 
 use serde::Deserialize;
@@ -77,7 +77,7 @@ pub struct Editor {
     pub debugger: Option<helix_dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<helix_dap::Payload>>,
     pub debug_config_picker: Option<Vec<String>>,
-    pub debug_config_completions: Option<Vec<Vec<String>>>,
+    pub debug_config_completions: Option<Vec<Vec<DebugConfigCompletion>>>,
     pub variables: Option<Vec<String>>,
     pub variables_page: usize,
 
