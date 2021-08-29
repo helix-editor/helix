@@ -309,8 +309,8 @@ impl Command {
         dap_run, "Begin program execution",
         dap_continue, "Continue program execution",
         dap_pause, "Pause program execution",
-        dap_in, "Step in",
-        dap_out, "Step out",
+        dap_step_in, "Step in",
+        dap_step_out, "Step out",
         dap_next, "Step to next",
         dap_variables, "List variables",
         dap_terminate, "End debug session",
@@ -4742,7 +4742,7 @@ fn dap_pause(cx: &mut Context) {
     }
 }
 
-fn dap_in(cx: &mut Context) {
+fn dap_step_in(cx: &mut Context) {
     use helix_lsp::block_on;
 
     if let Some(debugger) = &mut cx.editor.debugger {
@@ -4759,7 +4759,7 @@ fn dap_in(cx: &mut Context) {
     }
 }
 
-fn dap_out(cx: &mut Context) {
+fn dap_step_out(cx: &mut Context) {
     use helix_lsp::block_on;
 
     if let Some(debugger) = &mut cx.editor.debugger {
