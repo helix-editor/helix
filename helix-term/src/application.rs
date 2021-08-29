@@ -350,13 +350,7 @@ impl Application {
                             let end = dap_pos_to_pos(doc.text(), end_line, end_column.unwrap_or(0))
                                 .unwrap_or(0);
 
-                            Selection::new(
-                                helix_core::smallvec![Range::new(
-                                    start.min(text_end),
-                                    end.min(text_end),
-                                )],
-                                0,
-                            )
+                            Selection::single(start.min(text_end), end.min(text_end))
                         } else {
                             Selection::point(start.min(text_end))
                         };
