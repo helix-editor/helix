@@ -1,7 +1,7 @@
 use crate::Result;
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use jsonrpc_core as jsonrpc;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -92,7 +92,12 @@ impl Transport {
                     content_length = Some(value.parse().context("invalid content length")?);
                 }
                 Some((_, _)) => {}
-                None => return Err(anyhow!("Failed to parse header: {:?}", header).into()),
+                None => {
+                    // Workaround: Some non-conformant language servers will output logging and other garbage
+                    // into the same stream as JSON-RPC messages. This can also happen from shell scripts that spawn
+                    // the server. Skip such lines and log a warning.
+                    warn!("Failed to parse header: {:?}", header);
+                }
             }
         }
 
