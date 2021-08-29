@@ -327,7 +327,7 @@ impl Application {
                         let path = path.clone();
                         self.editor
                             .open(path, helix_view::editor::Action::Replace)
-                            .unwrap();
+                            .unwrap(); // TODO: there should be no unwrapping!
 
                         let (view, doc) = current!(self.editor);
 
@@ -351,10 +351,10 @@ impl Application {
                                 .unwrap_or(0);
 
                             Selection::new(
-                                helix_core::SmallVec::from_vec(vec![Range::new(
+                                helix_core::smallvec![Range::new(
                                     start.min(text_end),
                                     end.min(text_end),
-                                )]),
+                                )],
                                 0,
                             )
                         } else {
