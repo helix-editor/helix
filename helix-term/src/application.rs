@@ -314,7 +314,7 @@ impl Application {
                     if let Some(helix_dap::StackFrame {
                         source:
                             Some(helix_dap::Source {
-                                path: Some(ref src),
+                                path: Some(ref path),
                                 ..
                             }),
                         line,
@@ -324,7 +324,7 @@ impl Application {
                         ..
                     }) = debugger.stack_pointer
                     {
-                        let path = src.clone();
+                        let path = path.clone();
                         self.editor
                             .open(path, helix_view::editor::Action::Replace)
                             .unwrap();
@@ -385,11 +385,9 @@ impl Application {
                         .set_status("Debugged application started".to_owned());
                 }
                 Event::Continued(_) => {
-                    if let Some(debugger) = self.editor.debugger.as_mut() {
-                        debugger.stopped_thread = None;
-                        debugger.stack_pointer = None;
-                        debugger.is_running = true;
-                    }
+                    debugger.stopped_thread = None;
+                    debugger.stack_pointer = None;
+                    debugger.is_running = true;
                 }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);
