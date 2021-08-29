@@ -1,7 +1,7 @@
 use crate::Result;
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use jsonrpc_core as jsonrpc;
-use log::{error, info};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -83,20 +83,16 @@ impl Transport {
                 break;
             }
 
-            let mut parts = header.split(": ");
+            debug!("<- header {}", header);
 
-            match (parts.next(), parts.next(), parts.next()) {
-                (Some("Content-Length"), Some(value), None) => {
+            let parts = header.split_once(": ");
+
+            match parts {
+                Some(("Content-Length", value)) => {
                     content_length = Some(value.parse().context("invalid content length")?);
                 }
-                (Some(_), Some(_), None) => {}
-                _ => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "Failed to parse header",
-                    )
-                    .into());
-                }
+                Some((_, _)) => {}
+                None => return Err(anyhow!("Failed to parse header: {:?}", header).into()),
             }
         }
 
