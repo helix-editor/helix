@@ -1,4 +1,5 @@
 use super::{Context, Editor};
+use crate::ui::Picker;
 use helix_dap::Client;
 use helix_lsp::block_on;
 
@@ -221,7 +222,7 @@ pub fn dap_continue(cx: &mut Context) {
             return;
         }
 
-        let request = debugger.continue_thread(debugger.stopped_thread.unwrap());
+        let request = debugger.continue_thread(debugger.thread_id.unwrap());
         if let Err(e) = block_on(request) {
             cx.editor.set_error(format!("Failed to continue: {:?}", e));
             return;
@@ -254,7 +255,7 @@ pub fn dap_step_in(cx: &mut Context) {
             return;
         }
 
-        let request = debugger.step_in(debugger.stopped_thread.unwrap());
+        let request = debugger.step_in(debugger.thread_id.unwrap());
         if let Err(e) = block_on(request) {
             cx.editor.set_error(format!("Failed to step: {:?}", e));
         }
@@ -269,7 +270,7 @@ pub fn dap_step_out(cx: &mut Context) {
             return;
         }
 
-        let request = debugger.step_out(debugger.stopped_thread.unwrap());
+        let request = debugger.step_out(debugger.thread_id.unwrap());
         if let Err(e) = block_on(request) {
             cx.editor.set_error(format!("Failed to step: {:?}", e));
         }
@@ -284,7 +285,7 @@ pub fn dap_next(cx: &mut Context) {
             return;
         }
 
-        let request = debugger.next(debugger.stopped_thread.unwrap());
+        let request = debugger.next(debugger.thread_id.unwrap());
         if let Err(e) = block_on(request) {
             cx.editor.set_error(format!("Failed to step: {:?}", e));
         }
@@ -345,5 +346,32 @@ pub fn dap_terminate(cx: &mut Context) {
             return;
         }
         cx.editor.debugger = None;
+    }
+}
+
+pub fn dap_switch_thread(cx: &mut Context) {
+    if let Some(debugger) = &mut cx.editor.debugger {
+        let request = debugger.threads();
+        let threads = match block_on(request) {
+            Ok(threads) => threads,
+            Err(e) => {
+                cx.editor
+                    .set_error(format!("Failed to retrieve threads: {:?}", e));
+                return;
+            }
+        };
+
+        let picker = Picker::new(
+            true,
+            threads,
+            |thread| thread.name.clone().into(),
+            |editor, thread, _action| {
+                if let Some(debugger) = &mut editor.debugger {
+                    debugger.thread_id = Some(thread.id);
+                    // TODO: probably need to refetch stack frames?
+                }
+            },
+        );
+        cx.push_layer(Box::new(picker))
     }
 }

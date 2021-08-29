@@ -316,6 +316,7 @@ impl Command {
         dap_next, "Step to next",
         dap_variables, "List variables",
         dap_terminate, "End debug session",
+        dap_switch_thread, "Switch current thread",
         suspend, "Suspend"
     );
 }

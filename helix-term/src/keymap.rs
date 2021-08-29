@@ -486,16 +486,21 @@ impl Default for Keymaps {
                 "a" => code_action,
                 "'" => last_picker,
                 "d" => { "Debug"
-                    "s" => dap_launch,
+                    "l" => dap_launch,
                     "b" => dap_toggle_breakpoint,
                     "r" => dap_run,
                     "c" => dap_continue,
                     "h" => dap_pause,
-                    "j" => dap_step_in,
-                    "k" => dap_step_out,
-                    "l" => dap_next,
+                    "i" => dap_step_in,
+                    "o" => dap_step_out,
+                    "n" => dap_next,
                     "v" => dap_variables,
                     "t" => dap_terminate,
+                    "s" => { "Switch"
+                        "t" => dap_switch_thread,
+                        // f = stack frame
+                        // sl, sb
+                    },
                 },
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,

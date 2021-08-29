@@ -1,4 +1,4 @@
-use helix_core::{merge_toml_values, syntax, Range, Selection};
+use helix_core::{merge_toml_values, syntax, Selection};
 use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
@@ -280,19 +280,13 @@ impl Application {
                     ..
                 }) => {
                     debugger.is_running = false;
-                    let main = debugger.threads().await.ok().and_then(|threads| {
-                        // Workaround for debugging Go tests. Main thread has * in beginning of its name
-                        let mut main = threads.iter().find(|t| t.name.starts_with('*')).cloned();
-                        if main.is_none() {
-                            main = threads.get(0).cloned();
-                        }
-                        main
-                    });
 
-                    if let Some(main) = main {
-                        let (bt, _) = debugger.stack_trace(main.id).await.unwrap();
+                    // whichever thread stops is made "current".
+                    debugger.thread_id = thread_id;
+
+                    if let Some(thread_id) = thread_id {
+                        let (bt, _) = debugger.stack_trace(thread_id).await.unwrap();
                         debugger.stack_pointer = bt.get(0).cloned();
-                        debugger.stopped_thread = Some(main.id);
                     }
 
                     let scope = match thread_id {
@@ -379,7 +373,6 @@ impl Application {
                         .set_status("Debugged application started".to_owned());
                 }
                 Event::Continued(_) => {
-                    debugger.stopped_thread = None;
                     debugger.stack_pointer = None;
                     debugger.is_running = true;
                 }

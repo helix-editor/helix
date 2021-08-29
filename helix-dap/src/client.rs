@@ -31,7 +31,7 @@ pub struct Client {
     pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
     // TODO: multiple threads support
     pub stack_pointer: Option<StackFrame>,
-    pub stopped_thread: Option<usize>,
+    pub thread_id: Option<usize>,
     pub is_running: bool,
 }
 
@@ -77,7 +77,7 @@ impl Client {
             //
             breakpoints: HashMap::new(),
             stack_pointer: None,
-            stopped_thread: None,
+            thread_id: None,
             is_running: false,
         };
 
