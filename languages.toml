@@ -36,7 +36,7 @@ args = { console = "internalConsole", program = "{0}" }
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "none" ]
+completion = [ "pid" ]
 args = { console = "internalConsole", pid = "{0}" }
 
 [[language]]
@@ -105,7 +105,7 @@ args = { console = "internalConsole", program = "{0}" }
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "none" ]
+completion = [ "pid" ]
 args = { console = "internalConsole", pid = "{0}" }
 
 [[language]]
@@ -135,7 +135,7 @@ args = { console = "internalConsole", program = "{0}" }
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "none" ]
+completion = [ "pid" ]
 args = { console = "internalConsole", pid = "{0}" }
 
 [[language]]
@@ -179,7 +179,7 @@ args = { mode = "test", program = "{0}", output = "{1}" }
 [[language.debugger.templates]]
 name = "attach"
 request = "attach"
-completion = [ "none" ]
+completion = [ "pid" ]
 args = { mode = "local", processId = "{0}" }
 
 [[language]]

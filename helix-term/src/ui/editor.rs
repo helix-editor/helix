@@ -26,7 +26,6 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use log::warn;
 use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
@@ -715,18 +714,17 @@ impl EditorView {
         config_name: String,
         mut params: Vec<String>,
     ) -> Prompt {
+        let i = params.len();
+        let field_type = completions.get(i).map(|x| x.as_str());
+
         let noop = |_input: &str| Vec::new();
-        let completer = match completions.get(0).map(|x| x.as_str()) {
+        let completer = match field_type {
             Some("filename") => super::completers::filename,
             Some("directory") => super::completers::directory,
-            Some(complete) => {
-                warn!("Unknown debug config autocompleter: {}", complete);
-                noop
-            }
-            None => noop,
+            _ => noop,
         };
         Prompt::new(
-            "arg: ".to_owned(),
+            format!("{}: ", field_type.unwrap_or("arg")),
             None,
             completer,
             move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
