@@ -331,24 +331,36 @@ impl Application {
 
                         let (view, doc) = current!(self.editor);
 
-                        let text_end = doc.text().len_chars().saturating_sub(1);
-                        let start = doc.text().try_line_to_char(line - 1).unwrap_or(0) + column;
-                        if let Some(end_line) = end_line {
-                            let end = doc.text().try_line_to_char(end_line - 1).unwrap_or(0)
-                                + end_column.unwrap_or(0);
-                            doc.set_selection(
-                                view.id,
-                                Selection::new(
-                                    helix_core::SmallVec::from_vec(vec![Range::new(
-                                        start.min(text_end),
-                                        end.min(text_end),
-                                    )]),
-                                    0,
-                                ),
-                            );
-                        } else {
-                            doc.set_selection(view.id, Selection::point(start.min(text_end)));
+                        fn dap_pos_to_pos(
+                            doc: &helix_core::Rope,
+                            line: usize,
+                            column: usize,
+                        ) -> Option<usize> {
+                            // 1-indexing to 0 indexing
+                            let line = doc.try_line_to_char(line - 1).ok()?;
+                            let pos = line + column;
+                            // TODO: this is probably utf-16 offsets
+                            Some(pos)
                         }
+
+                        let text_end = doc.text().len_chars().saturating_sub(1);
+                        let start = dap_pos_to_pos(doc.text(), line, column).unwrap_or(0);
+
+                        let selection = if let Some(end_line) = end_line {
+                            let end = dap_pos_to_pos(doc.text(), end_line, end_column.unwrap_or(0))
+                                .unwrap_or(0);
+
+                            Selection::new(
+                                helix_core::SmallVec::from_vec(vec![Range::new(
+                                    start.min(text_end),
+                                    end.min(text_end),
+                                )]),
+                                0,
+                            )
+                        } else {
+                            Selection::point(start.min(text_end))
+                        };
+                        doc.set_selection(view.id, selection);
                         align_view(doc, view, Align::Center);
                     }
                     self.editor.set_status(status);
