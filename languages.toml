@@ -173,8 +173,8 @@ args = { mode = "exec", program = "{0}" }
 [[language.debugger.templates]]
 name = "test"
 request = "launch"
-completion = [ "directory" ]
-args = { mode = "test", program = "{0}" }
+completion = [ "directory", "directory" ]
+args = { mode = "test", program = "{0}", output = "{1}" }
 
 [[language.debugger.templates]]
 name = "attach"

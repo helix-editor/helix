@@ -1,6 +1,7 @@
 use crate::{
     commands,
-    compositor::{Component, Context, EventResult},
+    compositor::{Component, Compositor, Context, EventResult},
+    job::Callback,
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{Completion, ProgressSpinners},
@@ -709,12 +710,11 @@ impl EditorView {
         );
     }
 
-    fn request_parameter(
+    fn debug_parameter_prompt(
         completions: Vec<String>,
         config_name: String,
-        cxt: &mut commands::Context,
         mut params: Vec<String>,
-    ) {
+    ) -> Prompt {
         let noop = |_input: &str| Vec::new();
         let completer = match completions.get(0).map(|x| x.as_str()) {
             Some("filename") => super::completers::filename,
@@ -725,7 +725,7 @@ impl EditorView {
             }
             None => noop,
         };
-        let prompt = Prompt::new(
+        Prompt::new(
             "arg: ".to_owned(),
             None,
             completer,
@@ -737,13 +737,19 @@ impl EditorView {
                 params.push(input.to_owned());
 
                 if params.len() < completions.len() {
-                    todo!();
-                    // Self::request_parameter(
-                    //     completions.clone(),
-                    //     config_name.clone(),
-                    //     cxt,
-                    //     params.clone(),
-                    // );
+                    let completions = completions.clone();
+                    let config_name = config_name.clone();
+                    let params = params.clone();
+                    let callback = Box::pin(async move {
+                        let call: Callback =
+                            Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+                                let prompt =
+                                    Self::debug_parameter_prompt(completions, config_name, params);
+                                compositor.push(Box::new(prompt));
+                            });
+                        Ok(call)
+                    });
+                    cx.jobs.callback(callback);
                 } else {
                     commands::dap_start_impl(
                         cx.editor,
@@ -753,8 +759,7 @@ impl EditorView {
                     );
                 }
             },
-        );
-        cxt.push_layer(Box::new(prompt));
+        )
     }
 
     /// Handle events by looking them up in `self.keymaps`. Returns None
@@ -785,7 +790,8 @@ impl EditorView {
                     let completions = cxt.editor.debug_config_completions.clone().unwrap();
                     let completion = completions.get(i).unwrap().clone();
                     if !completion.is_empty() {
-                        Self::request_parameter(completion, name, cxt, Vec::new());
+                        let prompt = Self::debug_parameter_prompt(completion, name, Vec::new());
+                        cxt.push_layer(Box::new(prompt));
                     }
                 }
                 _ => return None,
