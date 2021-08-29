@@ -719,9 +719,16 @@ impl EditorView {
 
         let noop = |_input: &str| Vec::new();
         let completer = match field_type {
-            Some("filename") => super::completers::filename,
-            Some("directory") => super::completers::directory,
-            _ => noop,
+            Some(field_type) => {
+                if field_type.starts_with("filename") {
+                    super::completers::filename
+                } else if field_type.starts_with("directory") {
+                    super::completers::directory
+                } else {
+                    noop
+                }
+            }
+            None => noop,
         };
         Prompt::new(
             format!("{}: ", field_type.unwrap_or("arg")),
