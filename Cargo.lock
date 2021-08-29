@@ -313,7 +313,6 @@ dependencies = [
  "regex",
  "ropey",
  "serde",
- "serde_json",
  "similar",
  "smallvec",
  "tendril",
