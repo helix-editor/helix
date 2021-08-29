@@ -77,7 +77,7 @@ pub struct Editor {
     pub debugger: Option<helix_dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<helix_dap::Payload>>,
     pub debug_config_picker: Option<Vec<String>>,
-    pub debug_config_completions: Option<Vec<Option<Vec<String>>>>,
+    pub debug_config_completions: Option<Vec<Vec<String>>>,
     pub variables: Option<Vec<String>>,
     pub variables_page: usize,
 

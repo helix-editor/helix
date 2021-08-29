@@ -709,6 +709,54 @@ impl EditorView {
         );
     }
 
+    fn request_parameter(
+        completions: Vec<String>,
+        config_name: String,
+        cxt: &mut commands::Context,
+        mut params: Vec<String>,
+    ) {
+        let noop = |_input: &str| Vec::new();
+        let completer = match completions.get(0).map(|x| x.as_str()) {
+            Some("filename") => super::completers::filename,
+            Some("directory") => super::completers::directory,
+            Some(complete) => {
+                warn!("Unknown debug config autocompleter: {}", complete);
+                noop
+            }
+            None => noop,
+        };
+        let prompt = Prompt::new(
+            "arg: ".to_owned(),
+            None,
+            completer,
+            move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                params.push(input.to_owned());
+
+                if params.len() < completions.len() {
+                    todo!();
+                    // Self::request_parameter(
+                    //     completions.clone(),
+                    //     config_name.clone(),
+                    //     cxt,
+                    //     params.clone(),
+                    // );
+                } else {
+                    commands::dap_start_impl(
+                        cx.editor,
+                        Some(&config_name),
+                        None,
+                        Some(params.iter().map(|x| x.as_str()).collect()),
+                    );
+                }
+            },
+        );
+        cxt.push_layer(Box::new(prompt));
+    }
+
     /// Handle events by looking them up in `self.keymaps`. Returns None
     /// if event was handled (a command was executed or a subkeymap was
     /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
@@ -735,38 +783,10 @@ impl EditorView {
                         None => return None,
                     };
                     let completions = cxt.editor.debug_config_completions.clone().unwrap();
-                    let noop = |_input: &str| Vec::new();
-                    let completer = match completions.get(i) {
-                        Some(Some(completion)) => match completion.get(0).map(|x| x.as_str()) {
-                            Some("filename") => super::completers::filename,
-                            Some("directory") => super::completers::directory,
-                            Some(complete) => {
-                                warn!("Unknown debug config autocompleter: {}", complete);
-                                noop
-                            }
-                            None => noop,
-                        },
-                        _ => noop,
-                    };
-                    let prompt = Prompt::new(
-                        "arg:".to_owned(),
-                        None,
-                        completer,
-                        move |cx: &mut crate::compositor::Context,
-                              input: &str,
-                              event: PromptEvent| {
-                            if event != PromptEvent::Validate {
-                                return;
-                            }
-                            commands::dap_start_impl(
-                                cx.editor,
-                                Some(&name),
-                                None,
-                                Some(vec![input]),
-                            );
-                        },
-                    );
-                    cxt.push_layer(Box::new(prompt));
+                    let completion = completions.get(i).unwrap().clone();
+                    if !completion.is_empty() {
+                        Self::request_parameter(completion, name, cxt, Vec::new());
+                    }
                 }
                 _ => return None,
             }
