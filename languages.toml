@@ -30,7 +30,7 @@ port-arg = "-p {}"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ "filename" ]
+completion = [ { name = "binary", completion = "filename" } ]
 args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
@@ -99,7 +99,7 @@ port-arg = "-p {}"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ "filename" ]
+completion = [ { name = "binary", completion = "filename" } ]
 args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
@@ -129,7 +129,7 @@ port-arg = "-p {}"
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ "filename" ]
+completion = [ { name = "binary", completion = "filename" } ]
 args = { console = "internalConsole", program = "{0}" }
 
 [[language.debugger.templates]]
@@ -161,13 +161,13 @@ port-arg = "-l 127.0.0.1:{}"
 [[language.debugger.templates]]
 name = "source"
 request = "launch"
-completion = [ "filename" ]
+completion = [ { name = "entrypoint", completion = "filename", default = "." } ]
 args = { mode = "debug", program = "{0}" }
 
 [[language.debugger.templates]]
 name = "binary"
 request = "launch"
-completion = [ "filename" ]
+completion = [ { name = "binary", completion = "filename" } ]
 args = { mode = "exec", program = "{0}" }
 
 [[language.debugger.templates]]
