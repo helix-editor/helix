@@ -400,18 +400,6 @@ impl Component for Prompt {
         })));
 
         match event {
-            // char or shift char
-            KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::SHIFT,
-            } => {
-                self.insert_char(c);
-                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
-            }
             KeyEvent {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
@@ -539,6 +527,14 @@ impl Component for Prompt {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.exit_selection(),
+            // any char event that's not combined with control or mapped to any other combo
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers,
+            } if !modifiers.contains(KeyModifiers::CONTROL) => {
+                self.insert_char(c);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            }
             _ => (),
         };
 
