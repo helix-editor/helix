@@ -452,9 +452,19 @@ impl EditorView {
             if let Some(path) = doc.path() {
                 breakpoints = debugger.breakpoints.get(path);
 
+                // if we have a frame, and the frame path matches document
                 if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
                 {
-                    stack_frame = debugger.stack_frames[&thread_id].get(frame); // TODO: drop the clone..
+                    let frame = debugger.stack_frames[&thread_id].get(frame); // TODO: drop the clone..
+                    if let Some(StackFrame {
+                        source: Some(source),
+                        ..
+                    }) = &frame
+                    {
+                        if source.path.as_ref() == Some(path) {
+                            stack_frame = frame;
+                        }
+                    };
                 };
             }
         }
@@ -493,19 +503,12 @@ impl EditorView {
             }
 
             if let Some(frame) = stack_frame {
-                if let Some(src) = &frame.source {
-                    if doc
-                        .path()
-                        .map(|path| src.path.as_ref() == Some(path))
-                        .unwrap_or(false)
-                        && frame.line - 1 == line
-                    {
-                        surface.set_style(
-                            Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
-                            helix_view::graphics::Style::default()
-                                .bg(helix_view::graphics::Color::LightYellow),
-                        );
-                    }
+                if frame.line - 1 == line {
+                    surface.set_style(
+                        Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
+                        helix_view::graphics::Style::default()
+                            .bg(helix_view::graphics::Color::LightYellow),
+                    );
                 }
             }
 
