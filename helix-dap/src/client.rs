@@ -29,10 +29,12 @@ pub struct Client {
     pub caps: Option<DebuggerCapabilities>,
     //
     pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
-    // TODO: multiple threads support
-    pub stack_pointer: Option<StackFrame>,
+    // thread_id -> frames
+    pub stack_frames: HashMap<usize, Vec<StackFrame>>,
     pub thread_id: Option<usize>,
-    pub is_running: bool,
+    /// Currently active frame for the current thread.
+    pub active_frame: Option<usize>,
+    pub is_running: bool, // TODO: track is_running per thread
 }
 
 impl Client {
@@ -76,8 +78,9 @@ impl Client {
             caps: None,
             //
             breakpoints: HashMap::new(),
-            stack_pointer: None,
+            stack_frames: HashMap::new(),
             thread_id: None,
+            active_frame: None,
             is_running: false,
         };
 

@@ -1,4 +1,4 @@
-mod dap;
+pub(crate) mod dap;
 
 pub use dap::*;
 
@@ -1955,8 +1955,17 @@ mod cmd {
     ) -> anyhow::Result<()> {
         use helix_lsp::block_on;
         if let Some(debugger) = cx.editor.debugger.as_mut() {
-            let id = debugger.stack_pointer.clone().map(|x| x.id);
-            let response = block_on(debugger.eval(args.join(" "), id))?;
+            let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
+                (Some(frame), Some(thread_id)) => (frame, thread_id),
+                _ => {
+                    bail!("Cannot find current stack frame to access variables")
+                }
+            };
+
+            // TODO: support no frame_id
+
+            let frame_id = debugger.stack_frames[&thread_id][frame].id;
+            let response = block_on(debugger.eval(args.join(" "), Some(frame_id)))?;
             cx.editor.set_status(response.result);
         }
         Ok(())
@@ -1966,7 +1975,7 @@ mod cmd {
         cx: &mut compositor::Context,
         condition: Option<String>,
         log_message: Option<String>,
-    ) {
+    ) -> anyhow::Result<()> {
         use helix_lsp::block_on;
 
         let (view, doc) = current!(cx.editor);
@@ -1981,38 +1990,29 @@ mod cmd {
         let path = match doc.path() {
             Some(path) => path.to_path_buf(),
             None => {
-                cx.editor
-                    .set_error("Can't edit breakpoint: document has no path".to_string());
-                return;
+                bail!("Can't edit breakpoint: document has no path")
             }
         };
         if let Some(debugger) = &mut cx.editor.debugger {
             if breakpoint.condition.is_some()
                 && !debugger
                     .caps
-                    .clone()
+                    .as_ref()
                     .unwrap()
                     .supports_conditional_breakpoints
                     .unwrap_or_default()
             {
-                cx.editor.set_error(
-                    "Can't edit breakpoint: debugger does not support conditional breakpoints"
-                        .to_string(),
-                );
-                return;
+                bail!("Can't edit breakpoint: debugger does not support conditional breakpoints")
             }
             if breakpoint.log_message.is_some()
                 && !debugger
                     .caps
-                    .clone()
+                    .as_ref()
                     .unwrap()
                     .supports_log_points
                     .unwrap_or_default()
             {
-                cx.editor.set_error(
-                    "Can't edit breakpoint: debugger does not support logpoints".to_string(),
-                );
-                return;
+                bail!("Can't edit breakpoint: debugger does not support logpoints")
             }
 
             let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
@@ -2024,11 +2024,11 @@ mod cmd {
 
                 let request = debugger.set_breakpoints(path, breakpoints);
                 if let Err(e) = block_on(request) {
-                    cx.editor
-                        .set_error(format!("Failed to set breakpoints: {:?}", e));
+                    bail!("Failed to set breakpoints: {:?}", e)
                 }
             }
         }
+        Ok(())
     }
 
     fn debug_start(
@@ -2076,8 +2076,7 @@ mod cmd {
             Some(condition)
         };
 
-        edit_breakpoint_impl(cx, condition, None);
-        Ok(())
+        edit_breakpoint_impl(cx, condition, None)
     }
 
     fn debug_set_logpoint(
@@ -2092,8 +2091,7 @@ mod cmd {
             Some(log_message)
         };
 
-        edit_breakpoint_impl(cx, None, log_message);
-        Ok(())
+        edit_breakpoint_impl(cx, None, log_message)
     }
 
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[

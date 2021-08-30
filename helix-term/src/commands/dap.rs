@@ -1,5 +1,6 @@
-use super::{Context, Editor};
+use super::{align_view, Align, Context, Editor};
 use crate::ui::Picker;
+use helix_core::Selection;
 use helix_dap::Client;
 use helix_lsp::block_on;
 
@@ -7,6 +8,68 @@ use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::collections::HashMap;
+
+// general utils:
+pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
+    // 1-indexing to 0 indexing
+    let line = doc.try_line_to_char(line - 1).ok()?;
+    let pos = line + column;
+    // TODO: this is probably utf-16 offsets
+    Some(pos)
+}
+
+pub async fn select_thread_id(editor: &mut Editor, thread_id: usize, force: bool) {
+    let debugger = match &mut editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if !force && debugger.thread_id.is_some() {
+        return;
+    }
+
+    debugger.thread_id = Some(thread_id);
+
+    // fetch stack trace
+    // TODO: handle requesting more total frames
+    let (frames, _) = debugger.stack_trace(thread_id).await.unwrap();
+    debugger.stack_frames.insert(thread_id, frames);
+    debugger.active_frame = Some(0); // TODO: check how to determine this
+
+    let frame = debugger.stack_frames[&thread_id].get(0).cloned();
+    if let Some(frame) = &frame {
+        jump_to_stack_frame(editor, frame);
+    }
+}
+
+pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
+    let path = if let Some(helix_dap::Source {
+        path: Some(ref path),
+        ..
+    }) = frame.source
+    {
+        path.clone()
+    } else {
+        return;
+    };
+
+    editor
+        .open(path, helix_view::editor::Action::Replace)
+        .unwrap(); // TODO: there should be no unwrapping!
+
+    let (view, doc) = current!(editor);
+
+    let text_end = doc.text().len_chars().saturating_sub(1);
+    let start = dap_pos_to_pos(doc.text(), frame.line, frame.column).unwrap_or(0);
+    let end = frame
+        .end_line
+        .and_then(|end_line| dap_pos_to_pos(doc.text(), end_line, frame.end_column.unwrap_or(0)))
+        .unwrap_or(start);
+
+    let selection = Selection::single(start.min(text_end), end.min(text_end));
+    doc.set_selection(view.id, selection);
+    align_view(doc, view, Align::Center);
+}
 
 // DAP
 pub fn dap_start_impl(
@@ -222,13 +285,18 @@ pub fn dap_continue(cx: &mut Context) {
             return;
         }
 
-        let request = debugger.continue_thread(debugger.thread_id.unwrap());
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {:?}", e));
-            return;
+        if let Some(thread_id) = debugger.thread_id {
+            let request = debugger.continue_thread(debugger.thread_id.unwrap());
+            if let Err(e) = block_on(request) {
+                cx.editor.set_error(format!("Failed to continue: {:?}", e));
+                return;
+            }
+            debugger.is_running = true;
+            debugger.stack_frames.remove(&thread_id);
+        } else {
+            cx.editor
+                .set_error("Currently active thread is not stopped. Switch the thread.".into());
         }
-        debugger.is_running = true;
-        debugger.stack_pointer = None;
     }
 }
 
@@ -299,13 +367,16 @@ pub fn dap_variables(cx: &mut Context) {
                 .set_status("Cannot access variables while target is running".to_owned());
             return;
         }
-        if debugger.stack_pointer.is_none() {
-            cx.editor
-                .set_status("Cannot find current stack pointer to access variables".to_owned());
-            return;
-        }
+        let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
+            (Some(frame), Some(thread_id)) => (frame, thread_id),
+            _ => {
+                cx.editor
+                    .set_status("Cannot find current stack frame to access variables".to_owned());
+                return;
+            }
+        };
 
-        let frame_id = debugger.stack_pointer.clone().unwrap().id;
+        let frame_id = debugger.stack_frames[&thread_id][frame].id;
         let scopes = match block_on(debugger.scopes(frame_id)) {
             Ok(s) => s,
             Err(e) => {
@@ -366,10 +437,7 @@ pub fn dap_switch_thread(cx: &mut Context) {
             threads,
             |thread| thread.name.clone().into(),
             |editor, thread, _action| {
-                if let Some(debugger) = &mut editor.debugger {
-                    debugger.thread_id = Some(thread.id);
-                    // TODO: probably need to refetch stack frames?
-                }
+                block_on(select_thread_id(editor, thread.id, true));
             },
         );
         cx.push_layer(Box::new(picker))

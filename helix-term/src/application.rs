@@ -3,14 +3,7 @@ use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
 
-use crate::{
-    args::Args,
-    commands::{align_view, Align},
-    compositor::Compositor,
-    config::Config,
-    job::Jobs,
-    ui,
-};
+use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
 use log::error;
 use std::{
@@ -263,6 +256,7 @@ impl Application {
     }
 
     pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
+        use crate::commands::dap::select_thread_id;
         use helix_dap::{events, Event};
         let mut debugger = match self.editor.debugger.as_mut() {
             Some(debugger) => debugger,
@@ -281,12 +275,9 @@ impl Application {
                 }) => {
                     debugger.is_running = false;
 
-                    // whichever thread stops is made "current".
-                    debugger.thread_id = thread_id;
-
+                    // whichever thread stops is made "current" (if no previously selected thread).
                     if let Some(thread_id) = thread_id {
-                        let (bt, _) = debugger.stack_trace(thread_id).await.unwrap();
-                        debugger.stack_pointer = bt.get(0).cloned();
+                        select_thread_id(&mut self.editor, thread_id, false).await;
                     }
 
                     let scope = match thread_id {
@@ -305,52 +296,6 @@ impl Application {
                         status.push_str(" (all threads stopped)");
                     }
 
-                    if let Some(helix_dap::StackFrame {
-                        source:
-                            Some(helix_dap::Source {
-                                path: Some(ref path),
-                                ..
-                            }),
-                        line,
-                        column,
-                        end_line,
-                        end_column,
-                        ..
-                    }) = debugger.stack_pointer
-                    {
-                        let path = path.clone();
-                        self.editor
-                            .open(path, helix_view::editor::Action::Replace)
-                            .unwrap(); // TODO: there should be no unwrapping!
-
-                        let (view, doc) = current!(self.editor);
-
-                        fn dap_pos_to_pos(
-                            doc: &helix_core::Rope,
-                            line: usize,
-                            column: usize,
-                        ) -> Option<usize> {
-                            // 1-indexing to 0 indexing
-                            let line = doc.try_line_to_char(line - 1).ok()?;
-                            let pos = line + column;
-                            // TODO: this is probably utf-16 offsets
-                            Some(pos)
-                        }
-
-                        let text_end = doc.text().len_chars().saturating_sub(1);
-                        let start = dap_pos_to_pos(doc.text(), line, column).unwrap_or(0);
-
-                        let selection = if let Some(end_line) = end_line {
-                            let end = dap_pos_to_pos(doc.text(), end_line, end_column.unwrap_or(0))
-                                .unwrap_or(0);
-
-                            Selection::single(start.min(text_end), end.min(text_end))
-                        } else {
-                            Selection::point(start.min(text_end))
-                        };
-                        doc.set_selection(view.id, selection);
-                        align_view(doc, view, Align::Center);
-                    }
                     self.editor.set_status(status);
                 }
                 Event::Output(events::Output {
@@ -373,8 +318,9 @@ impl Application {
                         .set_status("Debugged application started".to_owned());
                 }
                 Event::Continued(_) => {
-                    debugger.stack_pointer = None;
                     debugger.is_running = true;
+                    debugger.active_frame = None;
+                    debugger.thread_id = None;
                 }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);

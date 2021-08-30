@@ -446,12 +446,16 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        let mut breakpoints: Option<Vec<SourceBreakpoint>> = None;
-        let mut stack_pointer: Option<StackFrame> = None;
+        let mut breakpoints: Option<&Vec<SourceBreakpoint>> = None;
+        let mut stack_frame: Option<&StackFrame> = None;
         if let Some(debugger) = debugger {
             if let Some(path) = doc.path() {
-                breakpoints = debugger.breakpoints.get(path).cloned();
-                stack_pointer = debugger.stack_pointer.clone()
+                breakpoints = debugger.breakpoints.get(path);
+
+                if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
+                {
+                    stack_frame = debugger.stack_frames[&thread_id].get(frame); // TODO: drop the clone..
+                };
             }
         }
 
@@ -477,23 +481,24 @@ impl EditorView {
             if let Some(bps) = breakpoints.as_ref() {
                 if let Some(breakpoint) = bps.iter().find(|breakpoint| breakpoint.line - 1 == line)
                 {
-                    if breakpoint.condition.is_some() {
-                        surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, error);
+                    let style = if breakpoint.condition.is_some() {
+                        error
                     } else if breakpoint.log_message.is_some() {
-                        surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, info);
+                        info
                     } else {
-                        surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, warning);
-                    }
+                        warning
+                    };
+                    surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, style);
                 }
             }
 
-            if let Some(sp) = stack_pointer.as_ref() {
-                if let Some(src) = sp.source.as_ref() {
+            if let Some(frame) = stack_frame {
+                if let Some(src) = &frame.source {
                     if doc
                         .path()
-                        .map(|path| src.path == Some(path.clone()))
+                        .map(|path| src.path.as_ref() == Some(path))
                         .unwrap_or(false)
-                        && sp.line - 1 == line
+                        && frame.line - 1 == line
                     {
                         surface.set_style(
                             Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
