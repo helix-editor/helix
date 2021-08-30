@@ -21,7 +21,7 @@ language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
 
 [language.debugger]
-name = "lldb"
+name = "lldb-vscode"
 transport = "tcp"
 command = "lldb-vscode"
 args = []
@@ -90,7 +90,7 @@ language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
-name = "lldb"
+name = "lldb-vscode"
 transport = "tcp"
 command = "lldb-vscode"
 args = []
@@ -120,7 +120,7 @@ language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
-name = "lldb"
+name = "lldb-vscode"
 transport = "tcp"
 command = "lldb-vscode"
 args = []

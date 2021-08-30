@@ -48,7 +48,10 @@ pub async fn main() -> Result<()> {
 
     tokio::spawn(dispatch(events));
 
-    println!("init: {:?}", client.initialize("lldb".to_owned()).await);
+    println!(
+        "init: {:?}",
+        client.initialize("lldb-vscode".to_owned()).await
+    );
     println!("caps: {:?}", client.capabilities());
 
     let args = LaunchArguments {
