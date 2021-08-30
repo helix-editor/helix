@@ -427,7 +427,7 @@ impl EditorView {
 
         let current_line = doc
             .text()
-            .char_to_line(doc.selection(view.id).primary().head);
+            .char_to_line(doc.selection(view.id).primary().cursor(text));
 
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
