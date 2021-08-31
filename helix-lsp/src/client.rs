@@ -13,7 +13,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
-    sync::mpsc::{channel, UnboundedReceiver, UnboundedSender},
+    sync::{
+        mpsc::{channel, UnboundedReceiver, UnboundedSender},
+        OnceCell,
+    },
 };
 
 #[derive(Debug)]
@@ -22,7 +25,7 @@ pub struct Client {
     _process: Child,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
-    capabilities: Option<lsp::ServerCapabilities>,
+    pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
 }
@@ -57,13 +60,10 @@ impl Client {
             _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
-            capabilities: None,
+            capabilities: OnceCell::new(),
             offset_encoding: OffsetEncoding::Utf8,
             config,
         };
-
-        // TODO: async client.initialize()
-        // maybe use an arc<atomic> flag
 
         Ok((client, server_rx))
     }
@@ -90,7 +90,7 @@ impl Client {
 
     pub fn capabilities(&self) -> &lsp::ServerCapabilities {
         self.capabilities
-            .as_ref()
+            .get()
             .expect("language server not yet initialized!")
     }
 
@@ -151,7 +151,7 @@ impl Client {
     }
 
     /// Send a RPC notification to the language server.
-    fn notify<R: lsp::notification::Notification>(
+    pub fn notify<R: lsp::notification::Notification>(
         &self,
         params: R::Params,
     ) -> impl Future<Output = Result<()>>
@@ -213,7 +213,7 @@ impl Client {
     // General messages
     // -------------------------------------------------------------------------------------------
 
-    pub(crate) async fn initialize(&mut self) -> Result<()> {
+    pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
         // TODO: delay any requests that are triggered prior to initialize
         let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
 
@@ -281,14 +281,7 @@ impl Client {
             locale: None, // TODO
         };
 
-        let response = self.request::<lsp::request::Initialize>(params).await?;
-        self.capabilities = Some(response.capabilities);
-
-        // next up, notify<initialized>
-        self.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await?;
-
-        Ok(())
+        self.request::<lsp::request::Initialize>(params).await
     }
 
     pub async fn shutdown(&self) -> Result<()> {
@@ -445,7 +438,7 @@ impl Client {
     ) -> Option<impl Future<Output = Result<()>>> {
         // figure out what kind of sync the server supports
 
-        let capabilities = self.capabilities.as_ref().unwrap();
+        let capabilities = self.capabilities.get().unwrap();
 
         let sync_capabilities = match capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Kind(kind))
@@ -496,7 +489,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         text: &Rope,
     ) -> Result<()> {
-        let capabilities = self.capabilities.as_ref().unwrap();
+        let capabilities = self.capabilities.get().unwrap();
 
         let include_text = match &capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
@@ -590,7 +583,7 @@ impl Client {
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
-        let capabilities = self.capabilities.as_ref().unwrap();
+        let capabilities = self.capabilities.get().unwrap();
 
         // check if we're able to format
         match capabilities.document_formatting_provider {
@@ -618,7 +611,7 @@ impl Client {
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
-        let capabilities = self.capabilities.as_ref().unwrap();
+        let capabilities = self.capabilities.get().unwrap();
 
         // check if we're able to format
         match capabilities.document_range_formatting_provider {

@@ -312,16 +312,39 @@ impl Registry {
                 Entry::Vacant(entry) => {
                     // initialize a new client
                     let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                    let (mut client, incoming) = Client::start(
+                    let (client, incoming) = Client::start(
                         &config.command,
                         &config.args,
                         serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
                         id,
                     )?;
-                    // TODO: run this async without blocking
-                    futures_executor::block_on(client.initialize())?;
                     s_incoming.push(UnboundedReceiverStream::new(incoming));
                     let client = Arc::new(client);
+
+                    let _client = client.clone();
+                    let initialize = tokio::spawn(async move {
+                        use futures_util::TryFutureExt;
+
+                        let value = _client
+                            .capabilities
+                            .get_or_try_init(|| {
+                                _client
+                                    .initialize()
+                                    .map_ok(|response| response.capabilities)
+                            })
+                            .await;
+
+                        value.expect("failed to initialize capabilities");
+
+                        // next up, notify<initialized>
+                        _client
+                            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+                            .await
+                            .unwrap();
+                    });
+
+                    // TODO: remove this block
+                    futures_executor::block_on(initialize).map_err(|_| anyhow::anyhow!("bail"))?;
 
                     entry.insert((id, client.clone()));
                     Ok(client)
