@@ -4342,80 +4342,77 @@ fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
         Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
             let shell = &cx.editor.config.shell;
-            if event == PromptEvent::Validate {
-                let (view, doc) = current!(cx.editor);
-                let selection = doc.selection(view.id);
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
 
-                let mut changes = Vec::with_capacity(selection.len());
+            let mut changes = Vec::with_capacity(selection.len());
 
-                for range in selection.ranges() {
-                    let mut process;
-                    match Command::new(&shell[0])
-                        .args(&shell[1..])
-                        .arg(input)
-                        .stdin(Stdio::piped())
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .spawn()
-                    {
-                        Ok(p) => process = p,
-                        Err(e) => {
-                            log::error!("Failed to start shell: {}", e);
-                            cx.editor.set_error("Failed to start shell".to_owned());
+            for range in selection.ranges() {
+                let mut process = match Command::new(&shell[0])
+                    .args(&shell[1..])
+                    .arg(input)
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                {
+                    Ok(process) => process,
+                    Err(e) => {
+                        log::error!("Failed to start shell: {}", e);
+                        cx.editor.set_error("Failed to start shell".to_owned());
+                        return;
+                    }
+                };
+                if pipe {
+                    let stdin = process.stdin.as_mut().unwrap();
+                    let fragment = range.fragment(doc.text().slice(..));
+                    stdin.write_all(fragment.as_bytes()).unwrap();
+                }
+                let output = process.wait_with_output().unwrap();
+
+                if behavior != ShellBehavior::Filter {
+                    if !output.status.success() {
+                        if !output.stderr.is_empty() {
+                            log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+                        }
+                        cx.editor.set_error("Command failed".to_owned());
+                        return;
+                    }
+                    let tendril = match Tendril::try_from_byte_slice(&output.stdout) {
+                        Ok(tendril) => tendril,
+                        Err(_) => {
+                            cx.editor
+                                .set_error("Process did not output valid UTF-8".to_owned());
                             return;
                         }
-                    }
-                    if pipe {
-                        let stdin = process.stdin.as_mut().unwrap();
-                        let fragment = range.fragment(doc.text().slice(..));
-                        stdin.write_all(fragment.as_bytes()).unwrap();
-                    }
-
-                    let output = process.wait_with_output().unwrap();
-                    if behavior != ShellBehavior::Filter {
-                        if !output.status.success() {
-                            let stderr = output.stderr;
-                            if !stderr.is_empty() {
-                                log::error!("Shell error: {}", String::from_utf8_lossy(&stderr));
-                            }
-                            cx.editor.set_error("Command failed".to_owned());
-                            return;
-                        }
-                        let stdout = output.stdout;
-                        let tendril;
-                        match Tendril::try_from_byte_slice(&stdout) {
-                            Ok(t) => tendril = t,
-                            Err(_) => {
-                                cx.editor
-                                    .set_error("Process did not output valid UTF-8".to_owned());
-                                return;
-                            }
-                        }
-                        let (from, to) = match behavior {
-                            ShellBehavior::Replace => (range.from(), range.to()),
-                            ShellBehavior::Insert => (range.from(), range.from()),
-                            ShellBehavior::Append => (range.to(), range.to()),
-                            _ => (range.from(), range.from()),
-                        };
-                        changes.push((from, to, Some(tendril)));
-                    } else {
-                        // if the process exits successfully, keep the selection, otherwise delete it.
-                        let keep = output.status.success();
-                        changes.push((
-                            range.from(),
-                            if keep { range.from() } else { range.to() },
-                            None,
-                        ));
-                    }
+                    };
+                    let (from, to) = match behavior {
+                        ShellBehavior::Replace => (range.from(), range.to()),
+                        ShellBehavior::Insert => (range.from(), range.from()),
+                        ShellBehavior::Append => (range.to(), range.to()),
+                        _ => (range.from(), range.from()),
+                    };
+                    changes.push((from, to, Some(tendril)));
+                } else {
+                    // if the process exits successfully, keep the selection, otherwise delete it.
+                    let keep = output.status.success();
+                    changes.push((
+                        range.from(),
+                        if keep { range.from() } else { range.to() },
+                        None,
+                    ));
                 }
+            }
 
-                let transaction = Transaction::change(doc.text(), changes.into_iter());
+            let transaction = Transaction::change(doc.text(), changes.into_iter());
 
-                if behavior != ShellBehavior::Ignore {
-                    doc.apply(&transaction, view.id);
-                    doc.append_changes_to_history(view.id);
-                }
+            if behavior != ShellBehavior::Ignore {
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
             }
         },
     );
