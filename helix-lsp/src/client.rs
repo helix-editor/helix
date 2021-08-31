@@ -241,6 +241,12 @@ impl Client {
                         context_support: None, // additional context information Some(true)
                         ..Default::default()
                     }),
+                    rename: Some(lsp::RenameClientCapabilities {
+                        dynamic_registration: Some(false),
+                        prepare_support: Some(false),
+                        prepare_support_default_behavior: None,
+                        honors_change_annotations: Some(false),
+                    }),
                     hover: Some(lsp::HoverClientCapabilities {
                         // if not specified, rust-analyzer returns plaintext marked as markdown but
                         // badly formatted.
@@ -759,5 +765,26 @@ impl Client {
         };
 
         self.call::<lsp::request::CodeActionRequest>(params)
+    }
+
+    pub async fn rename_symbol(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        new_name: String
+    ) -> anyhow::Result<lsp::WorkspaceEdit> {
+        let params = lsp::RenameParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            new_name,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::Rename>(params).await?;
+        Ok(response.unwrap_or_default())
     }
 }

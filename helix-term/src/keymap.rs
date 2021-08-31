@@ -484,6 +484,7 @@ impl Default for Keymaps {
                 "b" => buffer_picker,
                 "s" => symbol_picker,
                 "a" => code_action,
+                "r" => rename,
                 "'" => last_picker,
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,

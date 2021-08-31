@@ -18,7 +18,7 @@ use helix_view::{
 
 use anyhow::{anyhow, bail, Context as _};
 use helix_lsp::{
-    lsp,
+    block_on, lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -308,6 +308,7 @@ impl Command {
         shell_append_output, "Append output of shell command after each selection",
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
+        rename, "Rename symbol",
     );
 }
 
@@ -4418,4 +4419,40 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+}
+
+fn rename(cx: &mut Context) {
+    let prompt = Prompt::new(
+        "Rename to: ".into(),
+        None,
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+
+            log::debug!("renaming to: {:?}", input);
+
+            let (view, doc) = current!(cx.editor);
+            let language_server = match doc.language_server() {
+                Some(language_server) => language_server,
+                None => return,
+            };
+
+            let offset_encoding = language_server.offset_encoding();
+
+            let pos = pos_to_lsp_pos(
+                doc.text(),
+                doc.selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..)),
+                offset_encoding,
+            );
+
+            let result = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
+            let edits = block_on(result).unwrap_or_default();
+            log::debug!("Edits from LSP: {:?}", edits);
+        },
+    );
+    cx.push_layer(Box::new(prompt));
 }
