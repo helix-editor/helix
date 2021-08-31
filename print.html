@@ -460,6 +460,14 @@ in reverse, or searching via smartcase.</p>
 <tr><td><code>[D</code></td><td>Go to first diagnostic in document</td><td><code>goto_first_diag</code></td></tr>
 <tr><td><code>]D</code></td><td>Go to last diagnostic in document</td><td><code>goto_last_diag</code></td></tr>
 </tbody></table>
+<h3 id="shell"><a class="header" href="#shell">Shell</a></h3>
+<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>\|</code></td><td>Pipe each selection through shell command, replacing with output</td><td><code>shell_pipe</code></td></tr>
+<tr><td><code>A-\|</code></td><td>Pipe each selection into shell command, ignoring output</td><td><code>shell_pipe_to</code></td></tr>
+<tr><td><code>!</code></td><td>Run shell command, inserting output before each selection</td><td><code>shell_insert_output</code></td></tr>
+<tr><td><code>A-!</code></td><td>Run shell command, appending output after each selection</td><td><code>shell_append_output</code></td></tr>
+<tr><td><code>$</code></td><td>Pipe each selection into shell command, removing if the command exits &gt;0</td><td><code>shell_keep_pipe</code></td></tr>
+</tbody></table>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
 <p>I'm still pondering whether to keep this mode or not. It changes movement
 commands to extend the existing selection instead of replacing it.</p>
