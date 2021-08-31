@@ -9,13 +9,16 @@ use lsp_types as lsp;
 use serde_json::Value;
 use std::future::Future;
 use std::process::Stdio;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
     sync::{
         mpsc::{channel, UnboundedReceiver, UnboundedSender},
-        OnceCell,
+        Notify, OnceCell,
     },
 };
 
@@ -31,12 +34,13 @@ pub struct Client {
 }
 
 impl Client {
+    #[allow(clippy::type_complexity)]
     pub fn start(
         cmd: &str,
         args: &[String],
         config: Option<Value>,
         id: usize,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>)> {
+    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -53,7 +57,8 @@ impl Client {
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (server_rx, server_tx) = Transport::start(reader, writer, stderr, id);
+        let (server_rx, server_tx, initialize_notify) =
+            Transport::start(reader, writer, stderr, id);
 
         let client = Self {
             id,
@@ -65,7 +70,7 @@ impl Client {
             config,
         };
 
-        Ok((client, server_rx))
+        Ok((client, server_rx, initialize_notify))
     }
 
     pub fn id(&self) -> usize {

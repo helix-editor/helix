@@ -312,7 +312,7 @@ impl Registry {
                 Entry::Vacant(entry) => {
                     // initialize a new client
                     let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                    let (client, incoming) = Client::start(
+                    let (client, incoming, initialize_notify) = Client::start(
                         &config.command,
                         &config.args,
                         serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
@@ -322,9 +322,9 @@ impl Registry {
                     let client = Arc::new(client);
 
                     let _client = client.clone();
-                    let initialize = tokio::spawn(async move {
+                    // Initialize the client asynchronously
+                    tokio::spawn(async move {
                         use futures_util::TryFutureExt;
-
                         let value = _client
                             .capabilities
                             .get_or_try_init(|| {
@@ -341,10 +341,9 @@ impl Registry {
                             .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
                             .await
                             .unwrap();
-                    });
 
-                    // TODO: remove this block
-                    futures_executor::block_on(initialize).map_err(|_| anyhow::anyhow!("bail"))?;
+                        initialize_notify.notify_one();
+                    });
 
                     entry.insert((id, client.clone()));
                     Ok(client)
