@@ -105,3 +105,4 @@
 [submodule "helix-syntax/languages/tree-sitter-yaml"]
 	path = helix-syntax/languages/tree-sitter-yaml
 	url = https://github.com/ikatyang/tree-sitter-yaml
+	shallow = true
