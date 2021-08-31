@@ -148,7 +148,8 @@ impl Client {
                 })
                 .map_err(|e| Error::Other(e.into()))?;
 
-            timeout(Duration::from_secs(2), rx.recv())
+            // TODO: specifiable timeout, delay other calls until initialize success
+            timeout(Duration::from_secs(20), rx.recv())
                 .await
                 .map_err(|_| Error::Timeout)? // return Timeout
                 .ok_or(Error::StreamClosed)?
