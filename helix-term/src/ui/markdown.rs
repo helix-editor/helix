@@ -217,8 +217,24 @@ impl Component for Markdown {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let contents = parse(&self.contents, None, &self.config_loader);
         let padding = 2;
-        let width = std::cmp::min(contents.width() as u16 + padding, viewport.0);
-        let height = std::cmp::min(contents.height() as u16 + padding, viewport.1);
+        let area_width = viewport.0 - padding;
+        let mut width = 0;
+        let mut height = 0;
+        for content in contents {
+            let cw = content.width() as u16;
+            height += 1;
+            if cw > area_width {
+                width = area_width;
+                height += cw / area_width;
+                continue;
+            }
+            if cw > width {
+                width = cw;
+            }
+        }
+        // let width = std::cmp::min(contents.width() as u16 + padding, viewport.0);
+        // let height = std::cmp::min(contents.height() as u16 + padding, viewport.1);
+        let height = std::cmp::min(height + padding, viewport.1);
         Some((width, height))
     }
 }
