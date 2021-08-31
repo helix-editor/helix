@@ -15,7 +15,7 @@ use helix_view::{
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 
 pub struct Prompt {
-    prompt: String,
+    prompt: Cow<'static, str>,
     pub line: String,
     cursor: usize,
     completion: Vec<Completion>,
@@ -55,7 +55,7 @@ pub enum Movement {
 
 impl Prompt {
     pub fn new(
-        prompt: String,
+        prompt: Cow<'static, str>,
         history_register: Option<char>,
         mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,

@@ -202,7 +202,7 @@ impl<T> Picker<T> {
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
-            "".to_string(),
+            "".into(),
             None,
             |_pattern: &str| Vec::new(),
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {

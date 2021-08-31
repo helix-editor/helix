@@ -1079,7 +1079,7 @@ fn select_all(cx: &mut Context) {
 }
 
 fn select_regex(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "select:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "select:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
         {
@@ -1091,7 +1091,7 @@ fn select_regex(cx: &mut Context) {
 }
 
 fn split_selection(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "split:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "split:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
         doc.set_selection(view.id, selection);
@@ -1157,15 +1157,11 @@ fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let prompt = ui::regex_prompt(
-        cx,
-        "search:".to_string(),
-        move |view, doc, registers, regex| {
-            search_impl(doc, view, &contents, &regex, false);
-            // TODO: only store on enter (accept), not update
-            registers.write('/', vec![regex.as_str().to_string()]);
-        },
-    );
+    let prompt = ui::regex_prompt(cx, "search:".into(), move |view, doc, registers, regex| {
+        search_impl(doc, view, &contents, &regex, false);
+        // TODO: only store on enter (accept), not update
+        registers.write('/', vec![regex.as_str().to_string()]);
+    });
 
     cx.push_layer(Box::new(prompt));
 }
@@ -2210,7 +2206,7 @@ mod cmd {
 
 fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
-        ":".to_owned(),
+        ":".into(),
         Some(':'),
         |input: &str| {
             // we use .this over split_whitespace() because we care about empty segments
@@ -3819,7 +3815,7 @@ fn join_selections(cx: &mut Context) {
 
 fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
-    let prompt = ui::regex_prompt(cx, "keep:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "keep:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
 
         if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
@@ -4307,26 +4303,26 @@ enum ShellBehavior {
 }
 
 fn shell_pipe(cx: &mut Context) {
-    shell(cx, "pipe:", ShellBehavior::Replace);
+    shell(cx, "pipe:".into(), ShellBehavior::Replace);
 }
 
 fn shell_pipe_to(cx: &mut Context) {
-    shell(cx, "pipe-to:", ShellBehavior::Ignore);
+    shell(cx, "pipe-to:".into(), ShellBehavior::Ignore);
 }
 
 fn shell_insert_output(cx: &mut Context) {
-    shell(cx, "insert-output:", ShellBehavior::Insert);
+    shell(cx, "insert-output:".into(), ShellBehavior::Insert);
 }
 
 fn shell_append_output(cx: &mut Context) {
-    shell(cx, "append-output:", ShellBehavior::Append);
+    shell(cx, "append-output:".into(), ShellBehavior::Append);
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
-    shell(cx, "keep-pipe:", ShellBehavior::Filter);
+    shell(cx, "keep-pipe:".into(), ShellBehavior::Filter);
 }
 
-fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
+fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     use std::io::Write;
     use std::process::{Command, Stdio};
     if cx.editor.config.shell.is_empty() {
@@ -4338,7 +4334,7 @@ fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
     let prompt = Prompt::new(
-        prompt.to_owned(),
+        prompt,
         Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
@@ -4408,9 +4404,8 @@ fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
                 }
             }
 
-            let transaction = Transaction::change(doc.text(), changes.into_iter());
-
             if behavior != ShellBehavior::Ignore {
+                let transaction = Transaction::change(doc.text(), changes.into_iter());
                 doc.apply(&transaction, view.id);
                 doc.append_changes_to_history(view.id);
             }
