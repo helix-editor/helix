@@ -204,7 +204,23 @@ injection-regex = "julia"
 file-types = ["jl"]
 roots = []
 comment-token = "#"
-language-server = { command = "julia", args = [ "--startup-file=no", "--history-file=no", "-e", "using LanguageServer;using Pkg;import StaticLint;import SymbolServer;env_path = dirname(Pkg.Types.Context().env.project_file);server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, \"\");server.runlinter = true;run(server);" ] }
+language-server = { command = "julia", args = [
+        "--startup-file=no",
+        "--history-file=no",
+        "--quiet",
+        "-e",
+        """
+                using LanguageServer;
+                using Pkg;
+                import StaticLint;
+                import SymbolServer;
+                env_path = dirname(Pkg.Types.Context().env.project_file);
+
+                server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, "");
+                server.runlinter = true;
+                run(server);
+        """,
+        ] }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
