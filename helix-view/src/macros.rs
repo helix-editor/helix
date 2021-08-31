@@ -32,6 +32,7 @@
 //! // uh-oh
 //! let field2 = test.mut_field2();
 //! ```
+
 #[macro_export]
 macro_rules! current {
     ( $( $editor:ident ).+ ) => {{

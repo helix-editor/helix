@@ -338,11 +338,6 @@ impl Editor {
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
-    // pub fn current_document(&self) -> Document {
-    //     let id = self.view().doc;
-    //     let doc = &mut editor.documents[id];
-    // }
-
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let view = view!(self);
         let doc = &self.documents[view.doc];
