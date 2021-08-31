@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{Error, Result};
 use anyhow::Context;
 use jsonrpc_core as jsonrpc;
 use log::{debug, error, info, warn};
@@ -76,14 +76,17 @@ impl Transport {
         let mut content_length = None;
         loop {
             buffer.truncate(0);
-            reader.read_line(buffer).await?;
-            let header = buffer.trim();
+            if reader.read_line(buffer).await? == 0 {
+                return Err(Error::StreamClosed);
+            };
+
+            // debug!("<- header {:?}", buffer);
 
             if header.is_empty() {
                 break;
             }
 
-            debug!("<- header {}", header);
+            let header = buffer.trim();
 
             let parts = header.split_once(": ");
 
@@ -121,8 +124,10 @@ impl Transport {
         buffer: &mut String,
     ) -> Result<()> {
         buffer.truncate(0);
-        err.read_line(buffer).await?;
-        error!("err <- {}", buffer);
+        if err.read_line(buffer).await? == 0 {
+            return Err(Error::StreamClosed);
+        };
+        error!("err <- {:?}", buffer);
 
         Ok(())
     }
