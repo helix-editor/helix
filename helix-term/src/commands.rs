@@ -131,7 +131,7 @@ pub struct Command {
 }
 
 macro_rules! commands {
-    ( $($name:ident, $doc:literal),* ) => {
+    ( $($name:ident, $doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self {
@@ -302,7 +302,12 @@ impl Command {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
-        suspend, "Suspend"
+        shell_pipe, "Pipe selections through shell command",
+        shell_pipe_to, "Pipe selections into shell command, ignoring command output",
+        shell_insert_output, "Insert output of shell command before each selection",
+        shell_append_output, "Append output of shell command after each selection",
+        shell_keep_pipe, "Filter selections with shell predicate",
+        suspend, "Suspend",
     );
 }
 
@@ -4290,6 +4295,133 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+#[derive(Eq, PartialEq)]
+enum ShellBehavior {
+    Replace,
+    Ignore,
+    Insert,
+    Append,
+    Filter,
+}
+
+fn shell_pipe(cx: &mut Context) {
+    shell(cx, "pipe:", ShellBehavior::Replace);
+}
+
+fn shell_pipe_to(cx: &mut Context) {
+    shell(cx, "pipe-to:", ShellBehavior::Ignore);
+}
+
+fn shell_insert_output(cx: &mut Context) {
+    shell(cx, "insert-output:", ShellBehavior::Insert);
+}
+
+fn shell_append_output(cx: &mut Context) {
+    shell(cx, "append-output:", ShellBehavior::Append);
+}
+
+fn shell_keep_pipe(cx: &mut Context) {
+    shell(cx, "keep-pipe:", ShellBehavior::Filter);
+}
+
+fn shell(cx: &mut Context, prompt: &str, behavior: ShellBehavior) {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    if cx.editor.config.shell.is_empty() {
+        cx.editor.set_error("No shell set".to_owned());
+        return;
+    }
+    let pipe = match behavior {
+        ShellBehavior::Replace | ShellBehavior::Ignore | ShellBehavior::Filter => true,
+        ShellBehavior::Insert | ShellBehavior::Append => false,
+    };
+    let prompt = Prompt::new(
+        prompt.to_owned(),
+        Some('|'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
+            if event == PromptEvent::Validate {
+                let (view, doc) = current!(cx.editor);
+                let selection = doc.selection(view.id);
+                let mut error: Option<&str> = None;
+                let transaction =
+                    Transaction::change_by_selection(doc.text(), selection, |range| {
+                        let mut process;
+                        match Command::new(&shell[0])
+                            .args(&shell[1..])
+                            .arg(input)
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn()
+                        {
+                            Ok(p) => process = p,
+                            Err(e) => {
+                                log::error!("Failed to start shell: {}", e);
+                                error = Some("Failed to start shell");
+                                return (0, 0, None);
+                            }
+                        }
+                        if pipe {
+                            let stdin = process.stdin.as_mut().unwrap();
+                            let fragment = range.fragment(doc.text().slice(..));
+                            stdin.write_all(fragment.as_bytes()).unwrap();
+                        }
+
+                        let output = process.wait_with_output().unwrap();
+                        if behavior != ShellBehavior::Filter {
+                            if !output.status.success() {
+                                let stderr = output.stderr;
+                                if !stderr.is_empty() {
+                                    log::error!(
+                                        "Shell error: {}",
+                                        String::from_utf8_lossy(&stderr)
+                                    );
+                                }
+                                error = Some("Command failed");
+                                return (0, 0, None);
+                            }
+                            let stdout = output.stdout;
+                            let tendril;
+                            match Tendril::try_from_byte_slice(&stdout) {
+                                Ok(t) => tendril = t,
+                                Err(_) => {
+                                    error = Some("Process did not output valid UTF-8");
+                                    return (0, 0, None);
+                                }
+                            }
+                            let (from, to) = match behavior {
+                                ShellBehavior::Replace => (range.from(), range.to()),
+                                ShellBehavior::Insert => (range.from(), range.from()),
+                                ShellBehavior::Append => (range.to(), range.to()),
+                                _ => (range.from(), range.from()),
+                            };
+                            (from, to, Some(tendril))
+                        } else {
+                            // if the process exits successfully, keep the selection, otherwise delete it.
+                            let keep = output.status.success();
+                            (
+                                range.from(),
+                                if keep { range.from() } else { range.to() },
+                                None,
+                            )
+                        }
+                    });
+
+                if let Some(error) = error {
+                    cx.editor.set_error(error.to_owned());
+                } else if behavior != ShellBehavior::Ignore {
+                    doc.apply(&transaction, view.id);
+                    doc.append_changes_to_history(view.id);
+                }
+            }
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
 }
 
 fn suspend(_cx: &mut Context) {
