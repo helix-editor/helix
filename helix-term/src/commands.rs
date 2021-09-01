@@ -131,7 +131,7 @@ pub struct Command {
 }
 
 macro_rules! commands {
-    ( $($name:ident, $doc:literal),* ) => {
+    ( $($name:ident, $doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self {
@@ -302,7 +302,12 @@ impl Command {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
-        suspend, "Suspend"
+        shell_pipe, "Pipe selections through shell command",
+        shell_pipe_to, "Pipe selections into shell command, ignoring command output",
+        shell_insert_output, "Insert output of shell command before each selection",
+        shell_append_output, "Append output of shell command after each selection",
+        shell_keep_pipe, "Filter selections with shell predicate",
+        suspend, "Suspend",
     );
 }
 
@@ -1074,7 +1079,7 @@ fn select_all(cx: &mut Context) {
 }
 
 fn select_regex(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "select:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "select:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
         {
@@ -1086,7 +1091,7 @@ fn select_regex(cx: &mut Context) {
 }
 
 fn split_selection(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "split:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "split:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
         doc.set_selection(view.id, selection);
@@ -1152,15 +1157,11 @@ fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let prompt = ui::regex_prompt(
-        cx,
-        "search:".to_string(),
-        move |view, doc, registers, regex| {
-            search_impl(doc, view, &contents, &regex, false);
-            // TODO: only store on enter (accept), not update
-            registers.write('/', vec![regex.as_str().to_string()]);
-        },
-    );
+    let prompt = ui::regex_prompt(cx, "search:".into(), move |view, doc, registers, regex| {
+        search_impl(doc, view, &contents, &regex, false);
+        // TODO: only store on enter (accept), not update
+        registers.write('/', vec![regex.as_str().to_string()]);
+    });
 
     cx.push_layer(Box::new(prompt));
 }
@@ -2205,7 +2206,7 @@ mod cmd {
 
 fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
-        ":".to_owned(),
+        ":".into(),
         Some(':'),
         |input: &str| {
             // we use .this over split_whitespace() because we care about empty segments
@@ -3814,7 +3815,7 @@ fn join_selections(cx: &mut Context) {
 
 fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
-    let prompt = ui::regex_prompt(cx, "keep:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "keep:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
 
         if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
@@ -4290,6 +4291,182 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+#[derive(Eq, PartialEq)]
+enum ShellBehavior {
+    Replace,
+    Ignore,
+    Insert,
+    Append,
+}
+
+fn shell_pipe(cx: &mut Context) {
+    shell(cx, "pipe:".into(), ShellBehavior::Replace);
+}
+
+fn shell_pipe_to(cx: &mut Context) {
+    shell(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+}
+
+fn shell_insert_output(cx: &mut Context) {
+    shell(cx, "insert-output:".into(), ShellBehavior::Insert);
+}
+
+fn shell_append_output(cx: &mut Context) {
+    shell(cx, "append-output:".into(), ShellBehavior::Append);
+}
+
+fn shell_keep_pipe(cx: &mut Context) {
+    let prompt = Prompt::new(
+        "keep-pipe:".into(),
+        Some('|'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut ranges = SmallVec::with_capacity(selection.len());
+            let old_index = selection.primary_index();
+            let mut index: Option<usize> = None;
+            let text = doc.text().slice(..);
+
+            for (i, range) in selection.ranges().iter().enumerate() {
+                let fragment = range.fragment(text);
+                let (_output, success) = match shell_impl(shell, input, Some(fragment.as_bytes())) {
+                    Ok(result) => result,
+                    Err(err) => {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+                };
+
+                // if the process exits successfully, keep the selection
+                if success {
+                    ranges.push(*range);
+                    if i >= old_index && index.is_none() {
+                        index = Some(ranges.len() - 1);
+                    }
+                }
+            }
+
+            if ranges.is_empty() {
+                cx.editor.set_error("No selections remaining".to_string());
+                return;
+            }
+
+            let index = index.unwrap_or_else(|| ranges.len() - 1);
+            doc.set_selection(view.id, Selection::new(ranges, index));
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
+}
+
+fn shell_impl(
+    shell: &[String],
+    cmd: &str,
+    input: Option<&[u8]>,
+) -> anyhow::Result<(Tendril, bool)> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    if shell.is_empty() {
+        bail!("No shell set");
+    }
+
+    let mut process = match Command::new(&shell[0])
+        .args(&shell[1..])
+        .arg(cmd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(process) => process,
+        Err(e) => {
+            log::error!("Failed to start shell: {}", e);
+            return Err(e.into());
+        }
+    };
+    if let Some(input) = input {
+        let mut stdin = process.stdin.take().unwrap();
+        stdin.write_all(input)?;
+    }
+    let output = process.wait_with_output()?;
+
+    if !output.stderr.is_empty() {
+        log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    let tendril = Tendril::try_from_byte_slice(&output.stdout)
+        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
+    Ok((tendril, output.status.success()))
+}
+
+fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
+    let pipe = match behavior {
+        ShellBehavior::Replace | ShellBehavior::Ignore => true,
+        ShellBehavior::Insert | ShellBehavior::Append => false,
+    };
+    let prompt = Prompt::new(
+        prompt,
+        Some('|'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut changes = Vec::with_capacity(selection.len());
+            let text = doc.text().slice(..);
+
+            for range in selection.ranges() {
+                let fragment = range.fragment(text);
+                let (output, success) =
+                    match shell_impl(shell, input, pipe.then(|| fragment.as_bytes())) {
+                        Ok(result) => result,
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
+                            return;
+                        }
+                    };
+
+                if !success {
+                    cx.editor.set_error("Command failed".to_string());
+                    return;
+                }
+
+                let (from, to) = match behavior {
+                    ShellBehavior::Replace => (range.from(), range.to()),
+                    ShellBehavior::Insert => (range.from(), range.from()),
+                    ShellBehavior::Append => (range.to(), range.to()),
+                    _ => (range.from(), range.from()),
+                };
+                changes.push((from, to, Some(output)));
+            }
+
+            if behavior != ShellBehavior::Ignore {
+                let transaction = Transaction::change(doc.text(), changes.into_iter());
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
+            }
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
 }
 
 fn suspend(_cx: &mut Context) {

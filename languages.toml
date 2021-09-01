@@ -249,3 +249,15 @@ indent = { tab-width = 2, unit = "  "}
 # comment-token = "--"
 #
 # indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "zig"
+scope = "source.zig"
+injection-regex = "zig"
+file-types = ["zig"]
+roots = ["build.zig"]
+auto-format = true
+comment-token = "//"
+
+language-server = { command = "zls" }
+indent = { tab-width = 4, unit = "    " }
