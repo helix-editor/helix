@@ -101,13 +101,13 @@
 
 ["fun" "function" "functor"] @keyword.function
 
-["if" "then" "else"] @conditional
+["if" "then" "else"] @keyword.control.conditional
 
-["exception" "try"] @exception
+["exception" "try"] @keyword.control.exception
 
 ["include" "open"] @include
 
-["for" "to" "downto" "while" "do" "done"] @repeat
+["for" "to" "downto" "while" "do" "done"] @keyword.control.loop
 
 ; Punctuation
 ;------------
