@@ -326,17 +326,14 @@ impl ChangeSet {
                 (None, _) | (_, None) => unreachable!(),
                 (&Some(Retain(n)), &Some(V::Retain(m))) => {
                     let ord = n.cmp(&m);
-                    let mut retain = |n| {
-                        a_.retain(n);
-                    };
                     match ord {
                         Less => {
-                            retain(n);
+                            a_.retain(n);
                             head_b = Some(V::Retain(m - n));
                         }
-                        Equal => retain(n),
+                        Equal => a_.retain(n),
                         Greater => {
-                            retain(m);
+                            a_.retain(m);
                             head_a = Some(Retain(n - m));
                         }
                     };
@@ -348,7 +345,7 @@ impl ChangeSet {
                         Less => {
                             head_b = Some(V::Delete(m - n));
                         }
-                        Equal => (),
+                        Equal => {}
                         Greater => {
                             head_a = Some(Delete(n - m));
                         }
@@ -718,6 +715,10 @@ impl<'a> Iterator for ChangeIterator<'a> {
 
 #[cfg(test)]
 mod test {
+    use std::cmp;
+
+    use rand::{prelude::StdRng, thread_rng, Rng, SeedableRng};
+
     use super::*;
     use crate::State;
 
@@ -917,5 +918,107 @@ mod test {
         let a_ = a.clone().map(&b);
         let b_ = b.map(&a);
         (a_, b_)
+    }
+
+    fn gen_tendril<R: Rng + ?Sized>(len: usize, rng: &mut R) -> Tendril {
+        (0..len).map(|_| rng.gen::<char>()).collect()
+    }
+
+    fn gen_rope<R: Rng + ?Sized>(len: usize, rng: &mut R) -> Rope {
+        (0..len)
+            .map(|_| rng.gen::<char>())
+            .collect::<String>()
+            .into()
+    }
+
+    fn gen_changeset<R: Rng + ?Sized>(text: &Rope, rng: &mut R) -> ChangeSet {
+        let mut cs = ChangeSet::default();
+        loop {
+            let left = text.len_chars() - cs.len;
+            if left == 0 {
+                break;
+            }
+            let i = if left == 1 {
+                1
+            } else {
+                1 + rng.gen_range(0..cmp::min(left - 1, 20))
+            };
+            match rng.gen_range(0..5) {
+                0 => cs.insert(gen_tendril(i, rng)),
+                1 => cs.delete(i),
+                _ => cs.retain(i),
+            }
+        }
+        cs
+    }
+
+    const TEST_ROPE_SIZE: usize = 20;
+    const TEST_ITERATIONS: usize = 1000;
+
+    fn apply(cs: &ChangeSet, mut s: Rope) -> Rope {
+        cs.apply(&mut s);
+        s
+    }
+
+    fn new_rng() -> StdRng {
+        StdRng::from_rng(thread_rng()).unwrap()
+    }
+
+    fn check_compose<R: Rng + ?Sized>(s: Rope, rng: &mut R) {
+        let a = gen_changeset(&s, rng);
+        let after_a = apply(&a, s.clone());
+        assert_eq!(a.len_after, after_a.len_chars());
+        let b = gen_changeset(&after_a, rng);
+        let after_b = apply(&b, after_a);
+        assert_eq!(b.len_after, after_b.len_chars());
+        let ab = a.compose(b);
+        let after_ab = apply(&ab, s.clone());
+        assert_eq!(after_b, after_ab);
+    }
+
+    #[test]
+    fn compose() {
+        let rng = &mut new_rng();
+        for _ in 0..TEST_ITERATIONS {
+            let s = gen_rope(TEST_ROPE_SIZE, rng);
+            check_compose(s, rng);
+        }
+    }
+
+    fn check_transform_impl<R: Rng + ?Sized>(text: Rope, rng: &mut R, a: ChangeSet, b: ChangeSet) {
+        dbg!(&a);
+        dbg!(&b);
+        let (a_, b_) = dbg!(map_both(a.clone(), b.clone()));
+        let ab_ = a.clone().compose(b_);
+        let ba_ = b.clone().compose(a_);
+        assert_eq!(ab_, ba_);
+        let after_ab_ = apply(&ab_, text.clone());
+        let after_ba_ = apply(&ba_, text.clone());
+        assert_eq!(after_ab_, after_ba_);
+    }
+
+    fn check_transform<R: Rng + ?Sized>(text: Rope, rng: &mut R) {
+        let a = gen_changeset(&text, rng);
+        let b = gen_changeset(&text, rng);
+        check_transform_impl(text.clone(), rng, a, b);
+    }
+
+    #[test]
+    fn transform() {
+        let rng = &mut new_rng();
+        for _ in 0..TEST_ITERATIONS {
+            let s = gen_rope(TEST_ROPE_SIZE, rng);
+            check_transform(s, rng);
+        }
+    }
+
+    #[test]
+    fn smoke() {
+        let rng = &mut new_rng();
+        let s =
+            "𰆓\u{43a4c}\u{69d4c}\u{7d788}\u{47c16}\u{6cdfa}\u{3fed1}\u{3d11c}\u{e7013}봚\u{b824f}ׯ\u{af7fd}\u{ca93b}\u{c31b3}\u{c4cfe}\u{a3c8d}\u{5f3d4}\u{f259}\u{54d72}";
+        let text = Rope::from_str(s);
+        let cs = gen_changeset(&text, rng);
+        panic!("changeset {:?} len {}", cs, cs.changes.len());
     }
 }
