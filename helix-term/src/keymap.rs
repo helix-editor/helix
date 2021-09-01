@@ -412,10 +412,12 @@ impl Default for Keymaps {
             "[" => { "Left bracket"
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
+                "space" => add_newline_above,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
+                "space" => add_newline_below,
             },
 
             "/" => search,
