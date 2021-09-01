@@ -4322,9 +4322,46 @@ fn shell_keep_pipe(cx: &mut Context) {
     shell(cx, "keep-pipe:".into(), ShellBehavior::Filter);
 }
 
-fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
+fn shell_impl(
+    shell: &[String],
+    cmd: &str,
+    input: Option<&[u8]>,
+) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
+    let mut process = match Command::new(&shell[0])
+        .args(&shell[1..])
+        .arg(cmd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(process) => process,
+        Err(e) => {
+            log::error!("Failed to start shell: {}", e);
+            return Err(e.into());
+        }
+    };
+    if let Some(input) = input {
+        let mut stdin = process.stdin.take().unwrap();
+        stdin.write_all(input)?;
+    }
+    let output = process.wait_with_output()?;
+
+    if !output.status.success() {
+        if !output.stderr.is_empty() {
+            log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+        }
+        bail!("Command failed");
+    }
+
+    let tendril = Tendril::try_from_byte_slice(&output.stdout)
+        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
+    Ok((tendril, output.status.success()))
+}
+
+fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     if cx.editor.config.shell.is_empty() {
         cx.editor.set_error("No shell set".to_owned());
         return;
@@ -4338,67 +4375,40 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
         Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
             if event != PromptEvent::Validate {
                 return;
             }
-            let shell = &cx.editor.config.shell;
             let (view, doc) = current!(cx.editor);
             let selection = doc.selection(view.id);
 
             let mut changes = Vec::with_capacity(selection.len());
+            let text = doc.text().slice(..);
 
             for range in selection.ranges() {
-                let mut process = match Command::new(&shell[0])
-                    .args(&shell[1..])
-                    .arg(input)
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                {
-                    Ok(process) => process,
-                    Err(e) => {
-                        log::error!("Failed to start shell: {}", e);
-                        cx.editor.set_error("Failed to start shell".to_owned());
-                        return;
-                    }
-                };
-                if pipe {
-                    let stdin = process.stdin.as_mut().unwrap();
-                    let fragment = range.fragment(doc.text().slice(..));
-                    stdin.write_all(fragment.as_bytes()).unwrap();
-                }
-                let output = process.wait_with_output().unwrap();
-
-                if behavior != ShellBehavior::Filter {
-                    if !output.status.success() {
-                        if !output.stderr.is_empty() {
-                            log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
-                        }
-                        cx.editor.set_error("Command failed".to_owned());
-                        return;
-                    }
-                    let tendril = match Tendril::try_from_byte_slice(&output.stdout) {
-                        Ok(tendril) => tendril,
-                        Err(_) => {
-                            cx.editor
-                                .set_error("Process did not output valid UTF-8".to_owned());
+                let fragment = range.fragment(text);
+                let (output, success) =
+                    match shell_impl(shell, input, pipe.then(|| fragment.as_bytes())) {
+                        Ok(result) => result,
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
                             return;
                         }
                     };
+
+                if behavior != ShellBehavior::Filter {
                     let (from, to) = match behavior {
                         ShellBehavior::Replace => (range.from(), range.to()),
                         ShellBehavior::Insert => (range.from(), range.from()),
                         ShellBehavior::Append => (range.to(), range.to()),
                         _ => (range.from(), range.from()),
                     };
-                    changes.push((from, to, Some(tendril)));
+                    changes.push((from, to, Some(output)));
                 } else {
                     // if the process exits successfully, keep the selection, otherwise delete it.
-                    let keep = output.status.success();
                     changes.push((
                         range.from(),
-                        if keep { range.from() } else { range.to() },
+                        if success { range.from() } else { range.to() },
                         None,
                     ));
                 }
