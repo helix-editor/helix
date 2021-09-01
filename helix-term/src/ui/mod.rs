@@ -27,7 +27,7 @@ use std::path::PathBuf;
 
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
-    prompt: String,
+    prompt: std::borrow::Cow<'static, str>,
     fun: impl Fn(&mut View, &mut Document, &mut Registers, Regex) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
