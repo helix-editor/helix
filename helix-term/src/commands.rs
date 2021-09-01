@@ -1838,7 +1838,11 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let dir = args.first().context("target directory not provided")?;
+        let dir = helix_core::path::expand_tilde(
+            args.first()
+                .context("target directory not provided")?
+                .as_ref(),
+        );
 
         if let Err(e) = std::env::set_current_dir(dir) {
             bail!("Couldn't change the current working directory: {}", e);
