@@ -219,22 +219,23 @@ impl Component for Markdown {
         let padding = 2;
         let area_width = viewport.0 - padding;
         let mut width = 0;
-        let mut height = 0;
+        let mut height = padding;
         for content in contents {
-            let cw = content.width() as u16;
+            if height >= viewport.1 {
+                break;
+            }
+            let mut content_width = content.width() as u16;
             height += 1;
-            if cw > area_width {
-                width = area_width;
-                height += cw / area_width;
+            if content_width > area_width {
+                width = viewport.0;
+                height += content_width / area_width;
                 continue;
             }
-            if cw > width {
-                width = cw;
+            content_width += padding;
+            if content_width > width {
+                width = content_width
             }
         }
-        // let width = std::cmp::min(contents.width() as u16 + padding, viewport.0);
-        // let height = std::cmp::min(contents.height() as u16 + padding, viewport.1);
-        let height = std::cmp::min(height + padding, viewport.1);
         Some((width, height))
     }
 }

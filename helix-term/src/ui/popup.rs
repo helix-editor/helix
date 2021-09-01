@@ -134,30 +134,11 @@ impl<T: Component> Component for Popup<T> {
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         cx.scroll = Some(self.scroll);
-
-        let position = self
-            .position
-            .get_or_insert_with(|| cx.editor.cursor().0.unwrap_or_default());
-
-        let (width, height) = self.size;
-
-        // -- make sure frame doesn't stick out of bounds
-        let mut rel_x = position.col as u16;
-        let mut rel_y = position.row as u16;
-        if viewport.width <= rel_x + width {
-            rel_x = rel_x.saturating_sub((rel_x + width).saturating_sub(viewport.width));
-        };
-
-        // TODO: be able to specify orientation preference. We want above for most popups, below
-        // for menus/autocomplete.
-        if height <= rel_y {
-            rel_y = rel_y.saturating_sub(height) // position above point
-        } else {
-            rel_y += 1 // position below point
-        }
-
+        
+        let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
+        
         // clip to viewport
-        let area = viewport.intersection(Rect::new(rel_x, rel_y, width, height));
+        let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");

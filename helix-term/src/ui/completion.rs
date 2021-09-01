@@ -251,13 +251,18 @@ impl Component for Completion {
             // ---
             // option.documentation
 
-            // let (_view, doc) = current!(cx.editor);
-            let doc = doc_mut!(cx.editor);
+            let (view, doc) = current!(cx.editor);
             let language = doc
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))
                 .unwrap_or("");
-            let mut doc = match &option.documentation {
+            let cursor_pos = doc
+                .selection(view.id)
+                .primary()
+                .cursor(doc.text().slice(..));
+            let cursor_pos = (helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row
+                - view.offset.row) as u16;
+            let mut markdown_doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
                     kind: lsp::MarkupKind::PlainText,
@@ -308,34 +313,36 @@ impl Component for Completion {
             let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
             let (popup_width, _popup_height) = self.popup.get_size();
             let mut width = area.width - popup_x - popup_width;
-            let mut height = area.height - popup_y;
-            let x = popup_x + popup_width;
-            let y = popup_y;
+            let area = if width > 30 {
+                let mut height = area.height - popup_y;
+                let x = popup_x + popup_width;
+                let y = popup_y;
 
-            if let Some((rel_width, rel_height)) = doc.required_size((width, height)) {
-                width = rel_width;
-                height = rel_height;
-            }
-            let area = Rect::new(x, y, width, height);
+                if let Some((rel_width, rel_height)) = markdown_doc.required_size((width, height)) {
+                    width = rel_width;
+                    height = rel_height;
+                }
+                Rect::new(x, y, width, height)
+            } else {
+                let half = area.height / 2;
+                let height = 15.min(half);
+                // we want to make sure the cursor is visible (not hidden behind the documentation)
+                let y = if cursor_pos + area.y
+                    >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
+                {
+                    0
+                } else {
+                    // -2 to subtract command line + statusline. a bit of a hack, because of splits.
+                    area.height.saturating_sub(height).saturating_sub(2)
+                };
 
-            // let half = area.height / 2;
-            // let height = 15.min(half);
-            // // we want to make sure the cursor is visible (not hidden behind the documentation)
-            // let y = if cursor_pos + area.y
-            //     >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
-            // {
-            //     0
-            // } else {
-            //     // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-            //     area.height.saturating_sub(height).saturating_sub(2)
-            // };
-
-            // Rect::new(0, y, area.width, height)
+                Rect::new(0, y, area.width, height)
+            };
 
             // clear area
             let background = cx.editor.theme.get("ui.popup");
             surface.clear_with(area, background);
-            doc.render(area, surface, cx);
+            markdown_doc.render(area, surface, cx);
         }
     }
 }
