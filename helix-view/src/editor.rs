@@ -33,6 +33,8 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
+    pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true
@@ -55,6 +57,11 @@ impl Default for Config {
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
+            shell: if cfg!(windows) {
+                vec!["cmd".to_owned(), "/C".to_owned()]
+            } else {
+                vec!["sh".to_owned(), "-c".to_owned()]
+            },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
         }
@@ -229,7 +236,7 @@ impl Editor {
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
-        let path = crate::document::canonicalize_path(&path)?;
+        let path = helix_core::path::get_canonicalized_path(&path)?;
 
         let id = self
             .documents()

@@ -84,7 +84,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         // FIXME: check performance of is_exit_success
         command_provider! {
             paste => "xsel", "-o", "-b";
-            copy => "xsel", "--nodetach", "-i", "-b";
+            copy => "xsel", "-i", "-b";
             primary_paste => "xsel", "-o";
             primary_copy => "xsel", "-i";
         }

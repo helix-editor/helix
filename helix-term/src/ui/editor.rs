@@ -108,13 +108,11 @@ impl EditorView {
 
         self.render_diagnostics(doc, view, inner, surface, theme);
 
-        let area = Rect::new(
-            view.area.x,
-            view.area.y + view.area.height.saturating_sub(1),
-            view.area.width,
-            1,
-        );
-        self.render_statusline(doc, view, area, surface, theme, is_focused);
+        let statusline_area = view
+            .area
+            .clip_top(view.area.height.saturating_sub(1))
+            .clip_bottom(1); // -1 from bottom to remove commandline
+        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
     }
 
     /// Get syntax highlights for a document in a view represented by the first line
@@ -150,21 +148,21 @@ impl EditorView {
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |language| {
                         loader
-                                .language_config_for_scope(&format!("source.{}", language))
-                                .and_then(|language_config| {
-                                    let config = language_config.highlight_config(scopes)?;
-                                    let config_ref = config.as_ref();
-                                    // SAFETY: the referenced `HighlightConfiguration` behind
-                                    // the `Arc` is guaranteed to remain valid throughout the
-                                    // duration of the highlight.
-                                    let config_ref = unsafe {
-                                        std::mem::transmute::<
-                                            _,
-                                            &'static syntax::HighlightConfiguration,
-                                        >(config_ref)
-                                    };
-                                    Some(config_ref)
-                                })
+                            .language_config_for_scope(&format!("source.{}", language))
+                            .and_then(|language_config| {
+                                let config = language_config.highlight_config(scopes)?;
+                                let config_ref = config.as_ref();
+                                // SAFETY: the referenced `HighlightConfiguration` behind
+                                // the `Arc` is guaranteed to remain valid throughout the
+                                // duration of the highlight.
+                                let config_ref = unsafe {
+                                    std::mem::transmute::<
+                                        _,
+                                        &'static syntax::HighlightConfiguration,
+                                    >(config_ref)
+                                };
+                                Some(config_ref)
+                            })
                     })
                     .map(|event| event.unwrap())
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
@@ -197,7 +195,9 @@ impl EditorView {
             .find_scope_index("diagnostic")
             .or_else(|| theme.find_scope_index("ui.cursor"))
             .or_else(|| theme.find_scope_index("ui.selection"))
-            .expect("no selection scope found!");
+            .expect(
+                "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
+            );
 
         doc.diagnostics()
             .iter()
@@ -222,7 +222,7 @@ impl EditorView {
 
         let selection_scope = theme
             .find_scope_index("ui.selection")
-            .expect("no selection scope found!");
+            .expect("could not find `ui.selection` scope in the theme!");
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
@@ -427,7 +427,7 @@ impl EditorView {
 
         let current_line = doc
             .text()
-            .char_to_line(doc.selection(view.id).primary().anchor);
+            .char_to_line(doc.selection(view.id).primary().cursor(text));
 
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
@@ -462,7 +462,13 @@ impl EditorView {
             } else {
                 let line = match config.line_number {
                     LineNumber::Absolute => line + 1,
-                    LineNumber::Relative => abs_diff(current_line, line),
+                    LineNumber::Relative => {
+                        if current_line == line {
+                            line + 1
+                        } else {
+                            abs_diff(current_line, line)
+                        }
+                    }
                 };
                 format!("{:>5}", line)
             };
@@ -528,12 +534,7 @@ impl EditorView {
         let width = 80.min(viewport.width);
         let height = 15.min(viewport.height);
         paragraph.render(
-            Rect::new(
-                viewport.right() - width,
-                viewport.y as u16 + 1,
-                width,
-                height,
-            ),
+            Rect::new(viewport.right() - width, viewport.y + 1, width, height),
             surface,
         );
     }
@@ -572,7 +573,7 @@ impl EditorView {
             theme.get("ui.statusline.inactive")
         };
         // statusline
-        surface.set_style(Rect::new(viewport.x, viewport.y, viewport.width, 1), style);
+        surface.set_style(viewport.with_height(1), style);
         if is_focused {
             surface.set_string(viewport.x + 1, viewport.y, mode, style);
         }
@@ -1001,8 +1002,7 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
 
         // if the terminal size suddenly changed, we need to trigger a resize
-        cx.editor
-            .resize(Rect::new(area.x, area.y, area.width, area.height - 1)); // - 1 to account for commandline
+        cx.editor.resize(area.clip_bottom(1)); // -1 from bottom for commandline
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();

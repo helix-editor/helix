@@ -83,12 +83,7 @@ impl View {
     pub fn inner_area(&self) -> Rect {
         // TODO: not ideal
         const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        Rect::new(
-            self.area.x + OFFSET,
-            self.area.y,
-            self.area.width - OFFSET,
-            self.area.height.saturating_sub(1), // -1 for statusline
-        )
+        self.area.clip_left(OFFSET).clip_bottom(1) // -1 for statusline
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {

@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -102,7 +102,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 }
 
-use std::fmt;
+use std::{fmt, mem};
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Document")
@@ -301,101 +301,13 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
-/// Like std::mem::replace() except it allows the replacement value to be mapped from the
-/// original value.
-fn take_with<T, F>(mut_ref: &mut T, closure: F)
+fn take_with<T, F>(mut_ref: &mut T, f: F)
 where
+    T: Default,
     F: FnOnce(T) -> T,
 {
-    use std::{panic, ptr};
-
-    unsafe {
-        let old_t = ptr::read(mut_ref);
-        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
-            .unwrap_or_else(|_| ::std::process::abort());
-        ptr::write(mut_ref, new_t);
-    }
-}
-
-/// Expands tilde `~` into users home directory if avilable, otherwise returns the path
-/// unchanged. The tilde will only be expanded when present as the first component of the path
-/// and only slash follows it.
-pub fn expand_tilde(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
-    if let Some(Component::Normal(c)) = components.peek() {
-        if c == &"~" {
-            if let Ok(home) = helix_core::home_dir() {
-                // it's ok to unwrap, the path starts with `~`
-                return home.join(path.strip_prefix("~").unwrap());
-            }
-        }
-    }
-
-    path.to_path_buf()
-}
-
-/// Replaces users home directory from `path` with tilde `~` if the directory
-/// is available, otherwise returns the path unchanged.
-pub fn fold_home_dir(path: &Path) -> PathBuf {
-    if let Ok(home) = helix_core::home_dir() {
-        if path.starts_with(&home) {
-            // it's ok to unwrap, the path starts with home dir
-            return PathBuf::from("~").join(path.strip_prefix(&home).unwrap());
-        }
-    }
-
-    path.to_path_buf()
-}
-
-/// Normalize a path, removing things like `.` and `..`.
-///
-/// CAUTION: This does not resolve symlinks (unlike
-/// [`std::fs::canonicalize`]). This may cause incorrect or surprising
-/// behavior at times. This should be used carefully. Unfortunately,
-/// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
-/// fail, or on Windows returns annoying device paths. This is a problem Cargo
-/// needs to improve on.
-/// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
-pub fn normalize_path(path: &Path) -> PathBuf {
-    let path = expand_tilde(path);
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
-        components.next();
-        PathBuf::from(c.as_os_str())
-    } else {
-        PathBuf::new()
-    };
-
-    for component in components {
-        match component {
-            Component::Prefix(..) => unreachable!(),
-            Component::RootDir => {
-                ret.push(component.as_os_str());
-            }
-            Component::CurDir => {}
-            Component::ParentDir => {
-                ret.pop();
-            }
-            Component::Normal(c) => {
-                ret.push(c);
-            }
-        }
-    }
-    ret
-}
-
-/// Returns the canonical, absolute form of a path with all intermediate components normalized.
-///
-/// This function is used instead of `std::fs::canonicalize` because we don't want to verify
-/// here if the path exists, just normalize it's components.
-pub fn canonicalize_path(path: &Path) -> std::io::Result<PathBuf> {
-    let path = if path.is_relative() {
-        std::env::current_dir().map(|current_dir| current_dir.join(path))?
-    } else {
-        path.to_path_buf()
-    };
-
-    Ok(normalize_path(&path))
+    let t = mem::take(mut_ref);
+    let _ = mem::replace(mut_ref, f(t));
 }
 
 use helix_lsp::lsp;
@@ -631,7 +543,7 @@ impl Document {
     }
 
     pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        let path = canonicalize_path(path)?;
+        let path = helix_core::path::get_canonicalized_path(path)?;
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -936,15 +848,9 @@ impl Document {
     }
 
     pub fn relative_path(&self) -> Option<PathBuf> {
-        let cwdir = std::env::current_dir().expect("couldn't determine current directory");
-
-        self.path.as_ref().map(|path| {
-            let mut path = path.as_path();
-            if path.is_absolute() {
-                path = path.strip_prefix(cwdir).unwrap_or(path)
-            };
-            fold_home_dir(path)
-        })
+        self.path
+            .as_deref()
+            .map(helix_core::path::get_relative_path)
     }
 
     // pub fn slice<R>(&self, range: R) -> RopeSlice where R: RangeBounds {

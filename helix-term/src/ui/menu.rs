@@ -259,8 +259,11 @@ impl<T: Item + 'static> Component for Menu<T> {
     // TODO: required size should re-trigger when we filter items so we can draw a smaller menu
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let style = cx.editor.theme.get("ui.text");
-        let selected = cx.editor.theme.get("ui.menu.selected");
+        let theme = &cx.editor.theme;
+        let style = theme
+            .try_get("ui.menu")
+            .unwrap_or_else(|| theme.get("ui.text"));
+        let selected = theme.get("ui.menu.selected");
 
         let scroll = self.scroll;
 
@@ -303,14 +306,6 @@ impl<T: Item + 'static> Component for Menu<T> {
                 selected: self.cursor,
             },
         );
-
-        // // TODO: set bg for the whole row if selected
-        // if line == self.cursor {
-        //     surface.set_style(
-        //         Rect::new(area.x, area.y + i as u16, area.width - 1, 1),
-        //         selected,
-        //     )
-        // }
 
         for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;

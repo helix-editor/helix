@@ -27,7 +27,7 @@ use std::path::PathBuf;
 
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
-    prompt: String,
+    prompt: std::borrow::Cow<'static, str>,
     fun: impl Fn(&mut View, &mut Document, &mut Registers, Regex) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
@@ -76,7 +76,7 @@ pub fn regex_prompt(
 pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
     use ignore::Walk;
     use std::time;
-    let files = Walk::new(root.clone()).filter_map(|entry| {
+    let files = Walk::new(&root).filter_map(|entry| {
         let entry = entry.ok()?;
         // Path::is_dir() traverses symlinks, so we use it over DirEntry::is_dir
         if entry.path().is_dir() {
@@ -208,7 +208,7 @@ pub mod completers {
         use std::path::Path;
 
         let is_tilde = input.starts_with('~') && input.len() == 1;
-        let path = helix_view::document::expand_tilde(Path::new(input));
+        let path = helix_core::path::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with('/') {
             (path, None)
@@ -228,7 +228,8 @@ pub mod completers {
 
         let end = input.len()..;
 
-        let mut files: Vec<_> = WalkBuilder::new(dir.clone())
+        let mut files: Vec<_> = WalkBuilder::new(&dir)
+            .hidden(false)
             .max_depth(Some(1))
             .build()
             .filter_map(|file| {

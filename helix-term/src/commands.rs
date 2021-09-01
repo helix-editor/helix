@@ -131,7 +131,7 @@ pub struct Command {
 }
 
 macro_rules! commands {
-    ( $($name:ident, $doc:literal),* ) => {
+    ( $($name:ident, $doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self {
@@ -304,7 +304,12 @@ impl Command {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
-        suspend, "Suspend"
+        shell_pipe, "Pipe selections through shell command",
+        shell_pipe_to, "Pipe selections into shell command, ignoring command output",
+        shell_insert_output, "Insert output of shell command before each selection",
+        shell_append_output, "Append output of shell command after each selection",
+        shell_keep_pipe, "Filter selections with shell predicate",
+        suspend, "Suspend",
     );
 }
 
@@ -884,13 +889,12 @@ fn switch_to_lowercase(cx: &mut Context) {
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     use Direction::*;
     let (view, doc) = current!(cx.editor);
-    let cursor = coords_at_pos(
-        doc.text().slice(..),
-        doc.selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..)),
-    );
-    let doc_last_line = doc.text().len_lines() - 1;
+
+    let range = doc.selection(view.id).primary();
+    let text = doc.text().slice(..);
+
+    let cursor = coords_at_pos(text, range.cursor(text));
+    let doc_last_line = doc.text().len_lines().saturating_sub(1);
 
     let last_line = view.last_line(doc);
 
@@ -919,11 +923,16 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         .max(view.offset.row + scrolloff)
         .min(last_line.saturating_sub(scrolloff));
 
-    let text = doc.text().slice(..);
-    let pos = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+    let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+
+    let anchor = if doc.mode == Mode::Select {
+        range.anchor
+    } else {
+        head
+    };
 
     // TODO: only manipulate main selection
-    doc.set_selection(view.id, Selection::point(pos));
+    doc.set_selection(view.id, Selection::single(anchor, head));
 }
 
 fn page_up(cx: &mut Context) {
@@ -1072,7 +1081,7 @@ fn select_all(cx: &mut Context) {
 }
 
 fn select_regex(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "select:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "select:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
         {
@@ -1084,7 +1093,7 @@ fn select_regex(cx: &mut Context) {
 }
 
 fn split_selection(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "split:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "split:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
         let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
         doc.set_selection(view.id, selection);
@@ -1150,15 +1159,11 @@ fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let prompt = ui::regex_prompt(
-        cx,
-        "search:".to_string(),
-        move |view, doc, registers, regex| {
-            search_impl(doc, view, &contents, &regex, false);
-            // TODO: only store on enter (accept), not update
-            registers.write('\\', vec![regex.as_str().to_string()]);
-        },
-    );
+    let prompt = ui::regex_prompt(cx, "search:".into(), move |view, doc, registers, regex| {
+        search_impl(doc, view, &contents, &regex, false);
+        // TODO: only store on enter (accept), not update
+        registers.write('/', vec![regex.as_str().to_string()]);
+    });
 
     cx.push_layer(Box::new(prompt));
 }
@@ -1166,7 +1171,7 @@ fn search(cx: &mut Context) {
 fn search_next_impl(cx: &mut Context, extend: bool) {
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
-    if let Some(query) = registers.read('\\') {
+    if let Some(query) = registers.read('/') {
         let query = query.first().unwrap();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(query).unwrap();
@@ -1187,7 +1192,7 @@ fn search_selection(cx: &mut Context) {
     let contents = doc.text().slice(..);
     let query = doc.selection(view.id).primary().fragment(contents);
     let regex = regex::escape(&query);
-    cx.editor.registers.write('\\', vec![regex]);
+    cx.editor.registers.write('/', vec![regex]);
     search_next(cx);
 }
 
@@ -1511,18 +1516,22 @@ mod cmd {
             return Ok(());
         }
 
+        let arg = args
+            .get(0)
+            .context("argument missing")?
+            .to_ascii_lowercase();
+
         // Attempt to parse argument as a line ending.
-        let line_ending = match args.get(0) {
+        let line_ending = match arg {
             // We check for CR first because it shares a common prefix with CRLF.
-            Some(arg) if "cr".starts_with(&arg.to_lowercase()) => Some(CR),
-            Some(arg) if "crlf".starts_with(&arg.to_lowercase()) => Some(Crlf),
-            Some(arg) if "lf".starts_with(&arg.to_lowercase()) => Some(LF),
-            Some(arg) if "ff".starts_with(&arg.to_lowercase()) => Some(FF),
-            Some(arg) if "nel".starts_with(&arg.to_lowercase()) => Some(Nel),
-            _ => None,
+            arg if arg.starts_with("cr") => CR,
+            arg if arg.starts_with("crlf") => Crlf,
+            arg if arg.starts_with("lf") => LF,
+            arg if arg.starts_with("ff") => FF,
+            arg if arg.starts_with("nel") => Nel,
+            _ => bail!("invalid line ending"),
         };
 
-        let line_ending = line_ending.context("invalid line ending")?;
         doc_mut!(cx.editor).line_ending = line_ending;
         Ok(())
     }
@@ -1832,7 +1841,7 @@ mod cmd {
         let dir = args.first().context("target directory not provided")?;
 
         if let Err(e) = std::env::set_current_dir(dir) {
-            bail!("Couldn't change the current working directory: {:?}", e);
+            bail!("Couldn't change the current working directory: {}", e);
         }
 
         let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
@@ -1891,6 +1900,40 @@ mod cmd {
         let pos = doc.selection(view.id).primary().cursor(text);
         let scopes = indent::get_scopes(doc.syntax(), text, pos);
         cx.editor.set_status(format!("scopes: {:?}", &scopes));
+        Ok(())
+    }
+
+    fn vsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::VerticalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::VerticalSplit);
+        }
+
+        Ok(())
+    }
+
+    fn hsplit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (_, doc) = current!(cx.editor);
+        let id = doc.id();
+
+        if let Some(path) = args.get(0) {
+            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+        } else {
+            cx.editor.switch(id, Action::HorizontalSplit);
+        }
+
         Ok(())
     }
 
@@ -2132,6 +2175,20 @@ mod cmd {
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
             completer: None,
+        },
+        TypableCommand {
+            name: "vsplit",
+            alias: Some("vs"),
+            doc: "Open the file in a vertical split.",
+            fun: vsplit,
+            completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "hsplit",
+            alias: Some("sp"),
+            doc: "Open the file in a horizontal split.",
+            fun: hsplit,
+            completer: Some(completers::filename),
         }
     ];
 
@@ -2151,7 +2208,7 @@ mod cmd {
 
 fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
-        ":".to_owned(),
+        ":".into(),
         Some(':'),
         |input: &str| {
             // we use .this over split_whitespace() because we care about empty segments
@@ -2234,16 +2291,16 @@ fn buffer_picker(cx: &mut Context) {
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (id, doc.relative_path()))
+            .map(|(id, doc)| (id, doc.path().cloned()))
             .collect(),
         move |(id, path): &(DocumentId, Option<PathBuf>)| {
-            // format_fn
+            let path = path.as_deref().map(helix_core::path::get_relative_path);
             match path.as_ref().and_then(|path| path.to_str()) {
                 Some(path) => {
                     if *id == current {
-                        format!("{} (*)", path).into()
+                        format!("{} (*)", &path).into()
                     } else {
-                        path.into()
+                        path.to_owned().into()
                     }
                 }
                 None => "[scratch buffer]".into(),
@@ -2259,7 +2316,7 @@ fn buffer_picker(cx: &mut Context) {
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, Some(line)))
+            Some((path.clone()?, Some((line, line))))
         },
     );
     cx.push_layer(Box::new(picker));
@@ -2324,13 +2381,18 @@ fn symbol_picker(cx: &mut Context) {
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
                         {
-                            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
                             align_view(doc, view, Align::Center);
                         }
                     },
                     move |_editor, symbol| {
                         let path = symbol.location.uri.to_file_path().unwrap();
-                        let line = Some(symbol.location.range.start.line as usize);
+                        let line = Some((
+                            symbol.location.range.start.line as usize,
+                            symbol.location.range.end.line as usize,
+                        ));
                         Some((path, line))
                     },
                 );
@@ -2763,7 +2825,10 @@ fn goto_impl(
                 },
                 |_editor, location| {
                     let path = location.uri.to_file_path().unwrap();
-                    let line = Some(location.range.start.line as usize);
+                    let line = Some((
+                        location.range.start.line as usize,
+                        location.range.end.line as usize,
+                    ));
                     Some((path, line))
                 },
             );
@@ -3393,7 +3458,7 @@ fn yank_main_selection_to_clipboard_impl(
         .clipboard_provider
         .set_contents(value.into_owned(), clipboard_type)
     {
-        bail!("Couldn't set system clipboard content: {:?}", e);
+        bail!("Couldn't set system clipboard content: {}", e);
     }
 
     editor.set_status("yanked main selection to system clipboard".to_owned());
@@ -3752,7 +3817,7 @@ fn join_selections(cx: &mut Context) {
 
 fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
-    let prompt = ui::regex_prompt(cx, "keep:".to_string(), move |view, doc, _, regex| {
+    let prompt = ui::regex_prompt(cx, "keep:".into(), move |view, doc, _, regex| {
         let text = doc.text().slice(..);
 
         if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
@@ -4107,11 +4172,9 @@ fn align_view_bottom(cx: &mut Context) {
 
 fn align_view_middle(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
-    let pos = coords_at_pos(doc.text().slice(..), pos);
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view.id).primary().cursor(text);
+    let pos = coords_at_pos(text, pos);
 
     view.offset.col = pos
         .col
@@ -4230,6 +4293,182 @@ fn surround_delete(cx: &mut Context) {
             doc.append_changes_to_history(view.id);
         }
     })
+}
+
+#[derive(Eq, PartialEq)]
+enum ShellBehavior {
+    Replace,
+    Ignore,
+    Insert,
+    Append,
+}
+
+fn shell_pipe(cx: &mut Context) {
+    shell(cx, "pipe:".into(), ShellBehavior::Replace);
+}
+
+fn shell_pipe_to(cx: &mut Context) {
+    shell(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+}
+
+fn shell_insert_output(cx: &mut Context) {
+    shell(cx, "insert-output:".into(), ShellBehavior::Insert);
+}
+
+fn shell_append_output(cx: &mut Context) {
+    shell(cx, "append-output:".into(), ShellBehavior::Append);
+}
+
+fn shell_keep_pipe(cx: &mut Context) {
+    let prompt = Prompt::new(
+        "keep-pipe:".into(),
+        Some('|'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut ranges = SmallVec::with_capacity(selection.len());
+            let old_index = selection.primary_index();
+            let mut index: Option<usize> = None;
+            let text = doc.text().slice(..);
+
+            for (i, range) in selection.ranges().iter().enumerate() {
+                let fragment = range.fragment(text);
+                let (_output, success) = match shell_impl(shell, input, Some(fragment.as_bytes())) {
+                    Ok(result) => result,
+                    Err(err) => {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+                };
+
+                // if the process exits successfully, keep the selection
+                if success {
+                    ranges.push(*range);
+                    if i >= old_index && index.is_none() {
+                        index = Some(ranges.len() - 1);
+                    }
+                }
+            }
+
+            if ranges.is_empty() {
+                cx.editor.set_error("No selections remaining".to_string());
+                return;
+            }
+
+            let index = index.unwrap_or_else(|| ranges.len() - 1);
+            doc.set_selection(view.id, Selection::new(ranges, index));
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
+}
+
+fn shell_impl(
+    shell: &[String],
+    cmd: &str,
+    input: Option<&[u8]>,
+) -> anyhow::Result<(Tendril, bool)> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    if shell.is_empty() {
+        bail!("No shell set");
+    }
+
+    let mut process = match Command::new(&shell[0])
+        .args(&shell[1..])
+        .arg(cmd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(process) => process,
+        Err(e) => {
+            log::error!("Failed to start shell: {}", e);
+            return Err(e.into());
+        }
+    };
+    if let Some(input) = input {
+        let mut stdin = process.stdin.take().unwrap();
+        stdin.write_all(input)?;
+    }
+    let output = process.wait_with_output()?;
+
+    if !output.stderr.is_empty() {
+        log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    let tendril = Tendril::try_from_byte_slice(&output.stdout)
+        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
+    Ok((tendril, output.status.success()))
+}
+
+fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
+    let pipe = match behavior {
+        ShellBehavior::Replace | ShellBehavior::Ignore => true,
+        ShellBehavior::Insert | ShellBehavior::Append => false,
+    };
+    let prompt = Prompt::new(
+        prompt,
+        Some('|'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut changes = Vec::with_capacity(selection.len());
+            let text = doc.text().slice(..);
+
+            for range in selection.ranges() {
+                let fragment = range.fragment(text);
+                let (output, success) =
+                    match shell_impl(shell, input, pipe.then(|| fragment.as_bytes())) {
+                        Ok(result) => result,
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
+                            return;
+                        }
+                    };
+
+                if !success {
+                    cx.editor.set_error("Command failed".to_string());
+                    return;
+                }
+
+                let (from, to) = match behavior {
+                    ShellBehavior::Replace => (range.from(), range.to()),
+                    ShellBehavior::Insert => (range.from(), range.from()),
+                    ShellBehavior::Append => (range.to(), range.to()),
+                    _ => (range.from(), range.from()),
+                };
+                changes.push((from, to, Some(output)));
+            }
+
+            if behavior != ShellBehavior::Ignore {
+                let transaction = Transaction::change(doc.text(), changes.into_iter());
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view.id);
+            }
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
 }
 
 fn suspend(_cx: &mut Context) {
