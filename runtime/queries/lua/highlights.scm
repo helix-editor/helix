@@ -114,9 +114,18 @@
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
 
+;; Parameters
+(parameters
+  (identifier) @parameter)
+
 ; ;; Functions
 (function [(function_name) (identifier)] @function)
 (function ["function" "end"] @keyword.function)
+
+(function
+  (function_name
+   (function_name_field
+    (property_identifier) @function .)))
 
 (local_function (identifier) @function)
 (local_function ["function" "end"] @keyword.function)
@@ -128,18 +137,14 @@
 
 (function_definition ["function" "end"] @keyword.function)
 
-(property_identifier) @property
-
 (function_call
-  [((identifier) @variable (method) @method)
+  [
+   ((identifier) @variable (method) @method)
    ((_) (method) @method)
    (identifier) @function
-   (field_expression (property_identifier) @function)]
+   (field_expression (property_identifier) @function)
+  ]
   . (arguments))
-
-;; Parameters
-(parameters
-  (identifier) @parameter)
 
 ;; Nodes
 (table ["{" "}"] @constructor)
@@ -150,6 +155,12 @@
 ; A bit of a tricky one, this will only match field names
 (field . (identifier) @property (_))
 (shebang) @comment
+
+;; Property
+(property_identifier) @property
+
+;; Variable
+(identifier) @variable
 
 ;; Error
 (ERROR) @error
