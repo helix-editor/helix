@@ -225,6 +225,14 @@ comment-token = ";"
 indent = { tab-width = 4, unit = "    " }
 
 [[language]]
+name = "lua"
+scope = "source.lua"
+file-types = ["lua"]
+roots = []
+comment-token = "--"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "yaml"
 scope = "source.yaml"
 file-types = ["yml", "yaml"]

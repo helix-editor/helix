@@ -102,6 +102,10 @@
 	path = helix-syntax/languages/tree-sitter-protobuf
 	url = https://github.com/yusdacra/tree-sitter-protobuf.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-lua"]
+	path = helix-syntax/languages/tree-sitter-lua
+	url = https://github.com/nvim-treesitter/tree-sitter-lua
+	shallow = true
 [submodule "helix-syntax/languages/tree-sitter-yaml"]
 	path = helix-syntax/languages/tree-sitter-yaml
 	url = https://github.com/ikatyang/tree-sitter-yaml
