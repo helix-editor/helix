@@ -471,10 +471,10 @@ impl Document {
             let mut file = File::create(path).await?;
             to_writer(&mut file, encoding, &text).await?;
 
-            if let Some(language_server) = language_server {
-                language_server
-                    .text_document_did_save(identifier, &text)
-                    .await?;
+            if let Some(notification) = language_server.and_then(|language_server| {
+                language_server.text_document_did_save(identifier, &text)
+            }) {
+                notification.await?;
             }
 
             Ok(())

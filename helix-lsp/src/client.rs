@@ -490,11 +490,11 @@ impl Client {
 
     // will_save / will_save_wait_until
 
-    pub async fn text_document_did_save(
+    pub fn text_document_did_save(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         text: &Rope,
-    ) -> Result<()> {
+    ) -> Option<impl Future<Output = Result<()>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         let include_text = match &capabilities.text_document_sync {
@@ -507,17 +507,18 @@ impl Client {
                     include_text,
                 }) => include_text.unwrap_or(false),
                 // Supported(false)
-                _ => return Ok(()),
+                _ => return None,
             },
             // unsupported
-            _ => return Ok(()),
+            _ => return None,
         };
 
-        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
-            text_document,
-            text: include_text.then(|| text.into()),
-        })
-        .await
+        Some(self.notify::<lsp::notification::DidSaveTextDocument>(
+            lsp::DidSaveTextDocumentParams {
+                text_document,
+                text: include_text.then(|| text.into()),
+            },
+        ))
     }
 
     pub fn completion(
