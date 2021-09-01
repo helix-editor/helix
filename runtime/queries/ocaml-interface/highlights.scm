@@ -50,6 +50,11 @@
 (application_expression
   function: (value_path (value_name) @function))
 
+(
+  (value_name) @function.builtin
+  (#match? @function.builtin "^(raise(_notrace)?|failwith|invalid_arg)$")
+)
+
 ; Properties
 ;-----------
 
@@ -96,17 +101,18 @@
 
 ["for" "to" "downto" "while" "do" "done"] @keyword.control.loop
 
-; Macros
-;-------
+; Punctuation
+;------------
 
-(attribute ["[@" "]"] @attribute)
-(item_attribute ["[@@" "]"] @attribute)
-(floating_attribute ["[@@@" "]"] @function.macro)
-(extension ["[%" "]"] @function.macro)
-(item_extension ["[%%" "]"] @function.macro)
-(quoted_extension ["{%" "}"] @function.macro)
-(quoted_item_extension ["{%%" "}"] @function.macro)
-"%" @function.macro
+(attribute ["[@" "]"] @punctuation.special)
+(item_attribute ["[@@" "]"] @punctuation.special)
+(floating_attribute ["[@@@" "]"] @punctuation.special)
+(extension ["[%" "]"] @punctuation.special)
+(item_extension ["[%%" "]"] @punctuation.special)
+(quoted_extension ["{%" "}"] @punctuation.special)
+(quoted_item_extension ["{%%" "}"] @punctuation.special)
+
+"%" @punctuation.special
 
 ["(" ")" "[" "]" "{" "}" "[|" "|]" "[<" "[>"] @punctuation.bracket
 
