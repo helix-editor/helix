@@ -469,6 +469,7 @@ impl Default for Keymaps {
                 "C-h" | "h" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-q" | "q" => wclose,
+                "C-x" | "x" => wclose_force,
             },
 
             // move under <space>c

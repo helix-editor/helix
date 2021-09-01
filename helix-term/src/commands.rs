@@ -291,6 +291,7 @@ impl Command {
         hsplit, "Horizontal bottom split",
         vsplit, "Vertical right split",
         wclose, "Close window",
+        wclose_force, "Close window discarding unsaved changes",
         select_register, "Select register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
@@ -4142,7 +4143,31 @@ fn vsplit(cx: &mut Context) {
 }
 
 fn wclose(cx: &mut Context) {
-    let view_id = view!(cx.editor).id;
+    wclose_impl(cx, false)
+}
+
+fn wclose_force(cx: &mut Context) {
+    wclose_impl(cx, true)
+}
+
+fn wclose_impl(cx: &mut Context, force: bool) {
+    let view = view!(cx.editor);
+    let view_id = view.id;
+
+    if !force {
+        let is_modified = cx
+            .editor
+            .document(view.doc)
+            .map(|doc| doc.is_modified())
+            .unwrap_or_default();
+
+        if is_modified {
+            cx.editor
+                .set_error("There are unsaved changes in the view.".to_string()); // ?
+            return;
+        }
+    }
+
     // close current split
     cx.editor.close(view_id, /* close_buffer */ false);
 }
