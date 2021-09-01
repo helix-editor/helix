@@ -234,7 +234,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "ocaml-interface"
-scope = "source.ocaml-interface"
+scope = "source.ocaml.interface"
 file-types = ["mli"]
 roots = []
 comment-token = "(**)"
