@@ -365,7 +365,7 @@ impl ChangeSet {
                     };
                     ord
                 }
-                (&Some(Delete(n)), Some(V::Retain(m))) => {
+                (&Some(Delete(n)), &Some(V::Retain(m))) => {
                     let ord = n.cmp(&m);
                     match ord {
                         Less => {
@@ -376,7 +376,7 @@ impl ChangeSet {
                             a_.delete(n);
                         }
                         Greater => {
-                            a_.delete(n);
+                            a_.delete(m);
                             head_a = Some(Delete(n - m));
                         }
                     };
@@ -985,7 +985,7 @@ mod test {
         }
     }
 
-    fn check_transform_impl<R: Rng + ?Sized>(text: Rope, rng: &mut R, a: ChangeSet, b: ChangeSet) {
+    fn check_transform_impl(text: Rope, a: ChangeSet, b: ChangeSet) {
         dbg!(&a);
         dbg!(&b);
         let (a_, b_) = dbg!(map_both(a.clone(), b.clone()));
@@ -998,9 +998,10 @@ mod test {
     }
 
     fn check_transform<R: Rng + ?Sized>(text: Rope, rng: &mut R) {
+        dbg!(&text);
         let a = gen_changeset(&text, rng);
         let b = gen_changeset(&text, rng);
-        check_transform_impl(text.clone(), rng, a, b);
+        check_transform_impl(text.clone(), a, b);
     }
 
     #[test]
@@ -1014,11 +1015,39 @@ mod test {
 
     #[test]
     fn smoke() {
-        let rng = &mut new_rng();
-        let s =
-            "𰆓\u{43a4c}\u{69d4c}\u{7d788}\u{47c16}\u{6cdfa}\u{3fed1}\u{3d11c}\u{e7013}봚\u{b824f}ׯ\u{af7fd}\u{ca93b}\u{c31b3}\u{c4cfe}\u{a3c8d}\u{5f3d4}\u{f259}\u{54d72}";
+        use Operation::*; 
+        let alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let alpha = "ABCDEFGHIJKLMNOPQRST";
+        let s = "ABCDEFGHIJKLMNOPQRST"; // 20
+        let s_ = "ABCDEFGHIJKLMNOPQ"; // 17
+        let s__ = "ABCD"; // 9
+        let s___ = "AB";
         let text = Rope::from_str(s);
-        let cs = gen_changeset(&text, rng);
-        panic!("changeset {:?} len {}", cs, cs.changes.len());
+        let text = Rope::from_str(s);
+        let a: ChangeSet = ChangeSet {
+            changes: vec![
+                Insert(Tendril::from(s_)), // 17
+                Delete(
+                    16,
+                ),
+                Retain(
+                    4,
+                )
+            ],
+            len: 20,
+            len_after: 21,
+        };
+        let b = ChangeSet {
+            changes: vec![
+                Insert(Tendril::from(s__)), // 9
+                Delete(17),
+                Retain(2),
+                Insert(Tendril::from(s___)),
+                Retain(1),
+            ],
+            len: 20,
+            len_after: 9,
+        };
+        check_transform_impl(text, a, b);
     }
 }
