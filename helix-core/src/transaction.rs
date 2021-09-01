@@ -125,7 +125,7 @@ impl ChangeSet {
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
     pub fn compose(self, other: Self) -> Self {
-        debug_assert!(self.len_after == other.len);
+        assert!(self.len_after == other.len);
 
         // composing fails in weird ways if one of the sets is empty
         // a: [] len: 0 len_after: 1 | b: [Insert(Tendril<UTF8>(inline: "\n")), Retain(1)] len 1

@@ -105,4 +105,7 @@
 [submodule "helix-syntax/languages/tree-sitter-lua"]
 	path = helix-syntax/languages/tree-sitter-lua
 	url = https://github.com/nvim-treesitter/tree-sitter-lua
+[submodule "helix-syntax/languages/tree-sitter-zig"]
+	path = helix-syntax/languages/tree-sitter-zig
+	url = https://github.com/maxxnino/tree-sitter-zig
 	shallow = true

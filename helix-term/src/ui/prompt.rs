@@ -15,7 +15,7 @@ use helix_view::{
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 
 pub struct Prompt {
-    prompt: String,
+    prompt: Cow<'static, str>,
     pub line: String,
     cursor: usize,
     completion: Vec<Completion>,
@@ -55,7 +55,7 @@ pub enum Movement {
 
 impl Prompt {
     pub fn new(
-        prompt: String,
+        prompt: Cow<'static, str>,
         history_register: Option<char>,
         mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
@@ -400,18 +400,6 @@ impl Component for Prompt {
         })));
 
         match event {
-            // char or shift char
-            KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::SHIFT,
-            } => {
-                self.insert_char(c);
-                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
-            }
             KeyEvent {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
@@ -539,6 +527,14 @@ impl Component for Prompt {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.exit_selection(),
+            // any char event that's not combined with control or mapped to any other combo
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers,
+            } if !modifiers.contains(KeyModifiers::CONTROL) => {
+                self.insert_char(c);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            }
             _ => (),
         };
 
