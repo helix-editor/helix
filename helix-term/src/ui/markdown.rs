@@ -222,6 +222,7 @@ impl Component for Markdown {
         let mut height = padding;
         for content in contents {
             if height >= viewport.1 {
+                height = viewport.1;
                 break;
             }
             let mut content_width = content.width() as u16;
@@ -236,6 +237,7 @@ impl Component for Markdown {
                 width = content_width
             }
         }
+
         Some((width, height))
     }
 }

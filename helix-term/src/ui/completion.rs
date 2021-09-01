@@ -314,7 +314,7 @@ impl Component for Completion {
             let (popup_width, _popup_height) = self.popup.get_size();
             let mut width = area.width - popup_x - popup_width;
             let area = if width > 30 {
-                let mut height = area.height - popup_y;
+                let mut height = area.height.saturating_sub(popup_y);
                 let x = popup_x + popup_width;
                 let y = popup_y;
 
