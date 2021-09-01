@@ -99,7 +99,7 @@
 
 (attribute ["[@" "]"] @attribute)
 (item_attribute ["[@@" "]"] @attribute)
-(floating_attribute ["[@@@" "]"] @function.macro)
+(floating_attribute ["[@@@" "]"] @attribute)
 (extension ["[%" "]"] @function.macro)
 (item_extension ["[%%" "]"] @function.macro)
 (quoted_extension ["{%" "}"] @function.macro)
