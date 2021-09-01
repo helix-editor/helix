@@ -106,3 +106,7 @@
 	path = helix-syntax/languages/tree-sitter-yaml
 	url = https://github.com/ikatyang/tree-sitter-yaml
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-zig"]
+	path = helix-syntax/languages/tree-sitter-zig
+	url = https://github.com/maxxnino/tree-sitter-zig
+	shallow = true
