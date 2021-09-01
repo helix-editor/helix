@@ -22,12 +22,3 @@ oudent = [
   "}",
   ")",
 ]
-# [
-#   "{"
-#   "("
-#   "then"
-#   (else)
-#   (elseif)
-# ] @branch
-
-# (comment) @ignore
