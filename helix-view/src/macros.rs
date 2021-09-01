@@ -7,6 +7,8 @@
 //! putting a &mut in front of it. This way rust can see that we are only borrowing a
 //! part of the struct and not the entire thing.
 
+/// Get the current view and document mutably as a tuple.
+/// Returns `(&mut View, &mut Document)`
 #[macro_export]
 macro_rules! current {
     ( $( $editor:ident ).+ ) => {{
@@ -16,6 +18,8 @@ macro_rules! current {
     }};
 }
 
+/// Get the current document mutably.
+/// Returns `&mut Document`
 #[macro_export]
 macro_rules! doc_mut {
     ( $( $editor:ident ).+ ) => {{
@@ -23,6 +27,8 @@ macro_rules! doc_mut {
     }};
 }
 
+/// Get the current view mutably.
+/// Returns `&mut View`
 #[macro_export]
 macro_rules! view_mut {
     ( $( $editor:ident ).+ ) => {{
@@ -30,6 +36,8 @@ macro_rules! view_mut {
     }};
 }
 
+/// Get the current view immutably
+/// Returns `&View`
 #[macro_export]
 macro_rules! view {
     ( $( $editor:ident ).+ ) => {{
