@@ -386,21 +386,24 @@ impl Document {
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if let Some(language_server) = self.language_server.clone() {
+        if let Some(language_server) = self.language_server() {
             let text = self.text.clone();
-            let id = self.identifier();
+            let offset_encoding = language_server.offset_encoding();
+            let request = language_server.text_document_formatting(
+                self.identifier(),
+                lsp::FormattingOptions::default(),
+                None,
+            )?;
+
             let fut = async move {
-                let edits = language_server
-                    .text_document_formatting(id, lsp::FormattingOptions::default(), None)
-                    .await
-                    .unwrap_or_else(|e| {
-                        log::warn!("LSP formatting failed: {}", e);
-                        Default::default()
-                    });
+                let edits = request.await.unwrap_or_else(|e| {
+                    log::warn!("LSP formatting failed: {}", e);
+                    Default::default()
+                });
                 LspFormatting {
                     doc: text,
                     edits,
-                    offset_encoding: language_server.offset_encoding(),
+                    offset_encoding,
                 }
             };
             Some(fut)

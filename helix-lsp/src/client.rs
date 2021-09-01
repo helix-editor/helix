@@ -583,19 +583,19 @@ impl Client {
 
     // formatting
 
-    pub async fn text_document_formatting(
+    pub fn text_document_formatting(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> anyhow::Result<Vec<lsp::TextEdit>> {
+    ) -> Option<impl Future<Output = Result<Vec<lsp::TextEdit>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // check if we're able to format
         match capabilities.document_formatting_provider {
             Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
-            _ => return Ok(Vec::new()),
+            _ => return None,
         };
         // TODO: return err::unavailable so we can fall back to tree sitter formatting
 
@@ -605,9 +605,13 @@ impl Client {
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
-        let response = self.request::<lsp::request::Formatting>(params).await?;
+        let request = self.call::<lsp::request::Formatting>(params);
 
-        Ok(response.unwrap_or_default())
+        Some(async move {
+            let json = request.await?;
+            let response: Vec<lsp::TextEdit> = serde_json::from_value(json)?;
+            Ok(response)
+        })
     }
 
     pub async fn text_document_range_formatting(
