@@ -311,20 +311,20 @@ impl ChangeSet {
         loop {
             use std::cmp::Ordering::*;
 
-            let ord = match (&head_a, &head_b, biased_left) {
-                (None, None, _) => {
+            let ord = match (&head_a, &head_b) {
+                (None, None) => {
                     break;
                 }
-                (Some(Insert(_)), _, _) => {
+                (Some(Insert(_)), _) => {
                     a_.add(head_a.take().unwrap());
                     Less
                 }
-                (_, &Some(V::Insert(n)), _) => {
+                (_, &Some(V::Insert(n))) => {
                     a_.retain(n);
                     Greater
                 }
-                (None, _, _) | (_, None, _) => unreachable!(),
-                (&Some(Retain(n)), &Some(V::Retain(m)), _) => {
+                (None, _) | (_, None) => unreachable!(),
+                (&Some(Retain(n)), &Some(V::Retain(m))) => {
                     let ord = n.cmp(&m);
                     match ord {
                         Less => {
@@ -339,7 +339,7 @@ impl ChangeSet {
                     };
                     ord
                 }
-                (Some(Delete(n)), Some(V::Delete(m)), _) => {
+                (Some(Delete(n)), Some(V::Delete(m))) => {
                     let ord = n.cmp(&m);
                     match ord {
                         Less => {
@@ -352,7 +352,7 @@ impl ChangeSet {
                     };
                     ord
                 }
-                (&Some(Retain(n)), Some(V::Delete(m)), _) => {
+                (&Some(Retain(n)), Some(V::Delete(m))) => {
                     let ord = n.cmp(&m);
                     match ord {
                         Less => {
@@ -365,7 +365,7 @@ impl ChangeSet {
                     };
                     ord
                 }
-                (&Some(Delete(n)), &Some(V::Retain(m)), _) => {
+                (&Some(Delete(n)), &Some(V::Retain(m))) => {
                     let ord = n.cmp(&m);
                     match ord {
                         Less => {
@@ -398,6 +398,121 @@ impl ChangeSet {
 
         a_.shrink_to_fit();
         a_
+    }
+
+    pub fn map_both(self, other: Self) -> (Self, Self) {
+        assert!(self.len == other.len);
+
+        let mut a = self.changes.into_iter();
+        let mut b = other.changes.into_iter();
+        let mut a_ = Self::with_capacity(a.len()); // probably not the best
+        let mut b_ = Self::with_capacity(b.len());
+        let mut head_a = a.next();
+        let mut head_b = b.next();
+
+        loop {
+            use std::cmp::Ordering::*;
+            use Operation::*;
+
+            let ord = match (&head_a, &head_b) {
+                (None, None) => {
+                    break;
+                }
+                (Some(Insert(s)), _) => {
+                    b_.retain(s.chars().count());
+                    a_.add(head_a.take().unwrap());
+                    Less
+                }
+                (_, Some(Insert(s))) => {
+                    a_.retain(s.chars().count());
+                    b_.add(head_b.take().unwrap());
+                    Greater
+                }
+                (None, _) | (_, None) => unreachable!(),
+                (&Some(Retain(n)), &Some(Retain(m))) => {
+                    let ord = n.cmp(&m);
+                    let mut retain = |n| {
+                        a_.retain(n);
+                        b_.retain(n);
+                    };
+                    match ord {
+                        Less => {
+                            retain(n);
+                            head_b = Some(Retain(m - n));
+                        }
+                        Equal => retain(n),
+                        Greater => {
+                            retain(m);
+                            head_a = Some(Retain(n - m));
+                        }
+                    };
+                    ord
+                }
+                (Some(Delete(n)), Some(Delete(m))) => {
+                    let ord = n.cmp(m);
+                    match ord {
+                        Less => {
+                            head_b = Some(Delete(m - n));
+                        }
+                        Equal => (),
+                        Greater => {
+                            head_a = Some(Delete(n - m));
+                        }
+                    };
+                    ord
+                }
+                (&Some(Retain(n)), &Some(Delete(m))) => {
+                    let ord = n.cmp(&m);
+                    match ord {
+                        Less => {
+                            b_.delete(n);
+                            head_b = Some(Delete(m - n));
+                        }
+                        Equal => {
+                            b_.delete(n);
+                        }
+                        Greater => {
+                            b_.delete(m);
+                            head_a = Some(Retain(n - m));
+                        }
+                    };
+                    ord
+                }
+                (&Some(Delete(n)), &Some(Retain(m))) => {
+                    let ord = n.cmp(&m);
+                    match ord {
+                        Less => {
+                            a_.delete(n);
+                            head_b = Some(Retain(m - n));
+                        }
+                        Equal => {
+                            a_.delete(n);
+                        }
+                        Greater => {
+                            a_.delete(m);
+                            head_a = Some(Delete(n - m));
+                        }
+                    };
+                    ord
+                }
+            };
+
+            match ord {
+                Less => head_a = a.next(),
+                Equal => {
+                    head_a = a.next();
+                    head_b = b.next();
+                }
+                Greater => {
+                    head_b = b.next();
+                }
+            }
+        }
+
+        a_.shrink_to_fit();
+        b_.shrink_to_fit();
+
+        (a_, b_)
     }
 
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
@@ -914,9 +1029,11 @@ mod test {
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
     }
 
+    // this is unsound because the bias gets swapped
     fn map_both(a: ChangeSet, b: ChangeSet) -> (ChangeSet, ChangeSet) {
-        let a_ = a.clone().map(&b);
-        let b_ = b.map(&a);
+        let a_ = a.clone().map(&b); // bias to a
+        let b_ = b.map(&a); // bias to b
+        // instead we need to bias both to a or b
         (a_, b_)
     }
 
@@ -986,13 +1103,10 @@ mod test {
     }
 
     fn check_transform_impl(text: Rope, a: ChangeSet, b: ChangeSet) {
-        dbg!(&a);
-        dbg!(&b);
-        let (a_, b_) = dbg!(map_both(a.clone(), b.clone()));
+        let (a_, b_) = map_both(a.clone(), b.clone());
+        let (a_, b_) = a.clone().map_both(b.clone());
         let ab_ = a.clone().compose(b_);
-        dbg!(&ab_);
         let ba_ = b.clone().compose(a_);
-        dbg!(&ba_);
         // assert_eq!(ab_, ba_);
         let after_ab_ = apply(&ab_, text.clone());
         let after_ba_ = apply(&ba_, text.clone());
@@ -1000,7 +1114,6 @@ mod test {
     }
 
     fn check_transform<R: Rng + ?Sized>(text: Rope, rng: &mut R) {
-        dbg!(&text);
         let a = gen_changeset(&text, rng);
         let b = gen_changeset(&text, rng);
         check_transform_impl(text.clone(), a, b);
