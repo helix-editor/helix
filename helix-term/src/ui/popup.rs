@@ -134,9 +134,9 @@ impl<T: Component> Component for Popup<T> {
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         cx.scroll = Some(self.scroll);
-        
+
         let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
-        
+
         // clip to viewport
         let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
 
