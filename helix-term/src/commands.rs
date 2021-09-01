@@ -4299,7 +4299,6 @@ enum ShellBehavior {
     Ignore,
     Insert,
     Append,
-    Filter,
 }
 
 fn shell_pipe(cx: &mut Context) {
@@ -4319,7 +4318,56 @@ fn shell_append_output(cx: &mut Context) {
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
-    shell(cx, "keep-pipe:".into(), ShellBehavior::Filter);
+    let prompt = Prompt::new(
+        "keep-pipe:".into(),
+        Some('|'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut ranges = SmallVec::with_capacity(selection.len());
+            let old_index = selection.primary_index();
+            let mut index: Option<usize> = None;
+            let text = doc.text().slice(..);
+
+            for (i, range) in selection.ranges().iter().enumerate() {
+                let fragment = range.fragment(text);
+                let (_output, success) = match shell_impl(shell, input, Some(fragment.as_bytes())) {
+                    Ok(result) => result,
+                    Err(err) => {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+                };
+
+                // if the process exits successfully, keep the selection
+                if success {
+                    ranges.push(*range);
+                    if i >= old_index && index.is_none() {
+                        index = Some(ranges.len() - 1);
+                    }
+                }
+            }
+
+            if ranges.is_empty() {
+                cx.editor.set_error("No selections remaining".to_string());
+                return;
+            }
+
+            let index = index.unwrap_or_else(|| ranges.len() - 1);
+            doc.set_selection(view.id, Selection::new(ranges, index));
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
 }
 
 fn shell_impl(
@@ -4329,6 +4377,10 @@ fn shell_impl(
 ) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
+    if shell.is_empty() {
+        bail!("No shell set");
+    }
+
     let mut process = match Command::new(&shell[0])
         .args(&shell[1..])
         .arg(cmd)
@@ -4349,11 +4401,8 @@ fn shell_impl(
     }
     let output = process.wait_with_output()?;
 
-    if !output.status.success() {
-        if !output.stderr.is_empty() {
-            log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
-        }
-        bail!("Command failed");
+    if !output.stderr.is_empty() {
+        log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
     }
 
     let tendril = Tendril::try_from_byte_slice(&output.stdout)
@@ -4362,12 +4411,8 @@ fn shell_impl(
 }
 
 fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
-    if cx.editor.config.shell.is_empty() {
-        cx.editor.set_error("No shell set".to_owned());
-        return;
-    }
     let pipe = match behavior {
-        ShellBehavior::Replace | ShellBehavior::Ignore | ShellBehavior::Filter => true,
+        ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
     let prompt = Prompt::new(
@@ -4377,6 +4422,9 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shell = &cx.editor.config.shell;
             if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
                 return;
             }
             let (view, doc) = current!(cx.editor);
@@ -4396,22 +4444,18 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                         }
                     };
 
-                if behavior != ShellBehavior::Filter {
-                    let (from, to) = match behavior {
-                        ShellBehavior::Replace => (range.from(), range.to()),
-                        ShellBehavior::Insert => (range.from(), range.from()),
-                        ShellBehavior::Append => (range.to(), range.to()),
-                        _ => (range.from(), range.from()),
-                    };
-                    changes.push((from, to, Some(output)));
-                } else {
-                    // if the process exits successfully, keep the selection, otherwise delete it.
-                    changes.push((
-                        range.from(),
-                        if success { range.from() } else { range.to() },
-                        None,
-                    ));
+                if !success {
+                    cx.editor.set_error("Command failed".to_string());
+                    return;
                 }
+
+                let (from, to) = match behavior {
+                    ShellBehavior::Replace => (range.from(), range.to()),
+                    ShellBehavior::Insert => (range.from(), range.from()),
+                    ShellBehavior::Append => (range.to(), range.to()),
+                    _ => (range.from(), range.from()),
+                };
+                changes.push((from, to, Some(output)));
             }
 
             if behavior != ShellBehavior::Ignore {

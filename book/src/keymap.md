@@ -124,13 +124,13 @@ in reverse, or searching via smartcase.
 
 ### Shell
 
-| Key    | Description                                                              | Command               |
-| ------ | -----------                                                              | -------               |
-| `\|`   | Pipe each selection through shell command, replacing with output         | `shell_pipe`          |
-| `A-\|` | Pipe each selection into shell command, ignoring output                  | `shell_pipe_to`       |
-| `!`    | Run shell command, inserting output before each selection                | `shell_insert_output` |
-| `A-!`  | Run shell command, appending output after each selection                 | `shell_append_output` |
-| `$`    | Pipe each selection into shell command, removing if the command exits >0 | `shell_keep_pipe`     |
+| Key    | Description                                                                      | Command               |
+| ------ | -----------                                                                      | -------               |
+| `\|`   | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
+| `A-\|` | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
+| `!`    | Run shell command, inserting output before each selection                        | `shell_insert_output` |
+| `A-!`  | Run shell command, appending output after each selection                         | `shell_append_output` |
+| `$`    | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 
 ## Select / extend mode
 
