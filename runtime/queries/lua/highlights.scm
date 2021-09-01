@@ -10,40 +10,40 @@
   "if"
   "then"
   "end"
-] @conditional)
+] @keyword.control.conditional)
 
 [
   "else"
   "elseif"
   "then"
-] @conditional
+] @keyword.control.conditional
 
 (for_statement
 [
   "for"
   "do"
   "end"
-] @repeat)
+] @keyword.control.loop)
 
 (for_in_statement
 [
   "for"
   "do"
   "end"
-] @repeat)
+] @keyword.control.loop)
 
 (while_statement
 [
   "while"
   "do"
   "end"
-] @repeat)
+] @keyword.control.loop)
 
 (repeat_statement
 [
   "repeat"
   "until"
-] @repeat)
+] @keyword.control.loop)
 
 (do_statement
 [
