@@ -30,8 +30,6 @@
 ; Variables
 ;----------
 
-[(value_name) (type_variable)] @variable
-
 (value_pattern) @parameter
 
 ; Application
@@ -155,3 +153,8 @@
 [(comment) (line_number_directive) (directive) (shebang)] @comment
 
 (ERROR) @error
+
+; Blanket highlights
+; ------------------
+
+[(value_name) (type_variable)] @variable

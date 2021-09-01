@@ -227,6 +227,7 @@ indent = { tab-width = 4, unit = "    " }
 [[language]]
 name = "ocaml"
 scope = "source.ocaml"
+injection-regex = "ocaml"
 file-types = ["ml"]
 roots = []
 comment-token = "(**)"
