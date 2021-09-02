@@ -227,6 +227,8 @@ impl Command {
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
         goto_definition, "Goto definition",
+        add_newline_above, "Add newline above",
+        add_newline_below, "Add newline below",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
@@ -1836,7 +1838,11 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let dir = args.first().context("target directory not provided")?;
+        let dir = helix_core::path::expand_tilde(
+            args.first()
+                .context("target directory not provided")?
+                .as_ref(),
+        );
 
         if let Err(e) = std::env::set_current_dir(dir) {
             bail!("Couldn't change the current working directory: {}", e);
@@ -4472,4 +4478,38 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+}
+
+fn add_newline_above(cx: &mut Context) {
+    add_newline_impl(cx, Open::Above);
+}
+
+fn add_newline_below(cx: &mut Context) {
+    add_newline_impl(cx, Open::Below)
+}
+
+fn add_newline_impl(cx: &mut Context, open: Open) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text();
+    let slice = text.slice(..);
+
+    let changes = selection.into_iter().map(|range| {
+        let (start, end) = range.line_range(slice);
+        let line = match open {
+            Open::Above => start,
+            Open::Below => end + 1,
+        };
+        let pos = text.line_to_char(line);
+        (
+            pos,
+            pos,
+            Some(doc.line_ending.as_str().repeat(count).into()),
+        )
+    });
+
+    let transaction = Transaction::change(text, changes);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }
