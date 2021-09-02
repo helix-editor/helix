@@ -17,9 +17,18 @@
 
 ; Identifiers
 
+((identifier) @constant (match? @constant "^[A-Z][A-Z\\d_]+$"))
+(const_spec
+  name: (identifier) @constant)
+
 (type_identifier) @type
 (field_identifier) @property
 (identifier) @variable
+(package_identifier) @variable
+
+(parameter_declaration (identifier) @variable.parameter)
+(variadic_parameter_declaration (identifier) @variable.parameter)
+
 
 ; Operators
 
@@ -79,10 +88,8 @@
   "go"
   "goto"
   "if"
-  "import"
   "interface"
   "map"
-  "package"
   "range"
   "return"
   "select"
@@ -91,6 +98,29 @@
   "type"
   "var"
 ] @keyword
+
+[
+  "import"
+  "package"
+] @keyword.control.import
+
+; Delimiters
+
+[
+  ":"
+  "."
+  ","
+  ";"
+] @punctuation.delimiter
+
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
 
 ; Literals
 
@@ -111,7 +141,8 @@
 [
   (true)
   (false)
-  (nil)
-] @constant.builtin
+] @constant.builtin.boolean
+
+(nil) @constant.builtin
 
 (comment) @comment
