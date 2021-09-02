@@ -312,7 +312,10 @@ impl Component for Completion {
 
             let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
             let (popup_width, _popup_height) = self.popup.get_size();
-            let mut width = area.width - popup_x - popup_width;
+            let mut width = area
+                .width
+                .saturating_sub(popup_x)
+                .saturating_sub(popup_width);
             let area = if width > 30 {
                 let mut height = area.height.saturating_sub(popup_y);
                 let x = popup_x + popup_width;
