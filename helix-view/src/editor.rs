@@ -319,20 +319,24 @@ impl Editor {
         view.ensure_cursor_in_view(doc, self.config.scrolloff)
     }
 
+    #[inline]
     pub fn document(&self, id: DocumentId) -> Option<&Document> {
         self.documents.get(id)
     }
 
+    #[inline]
     pub fn document_mut(&mut self, id: DocumentId) -> Option<&mut Document> {
         self.documents.get_mut(id)
     }
 
+    #[inline]
     pub fn documents(&self) -> impl Iterator<Item = &Document> {
-        self.documents.iter().map(|(_id, doc)| doc)
+        self.documents.values()
     }
 
+    #[inline]
     pub fn documents_mut(&mut self) -> impl Iterator<Item = &mut Document> {
-        self.documents.iter_mut().map(|(_id, doc)| doc)
+        self.documents.values_mut()
     }
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
