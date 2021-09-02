@@ -340,6 +340,11 @@ impl Editor {
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
+    pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
+        self.documents_mut()
+            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+    }
+
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let view = view!(self);
         let doc = &self.documents[view.doc];

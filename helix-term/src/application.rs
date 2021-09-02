@@ -276,15 +276,10 @@ impl Application {
 
                 match notification {
                     Notification::PublishDiagnostics(params) => {
-                        let path = Some(params.uri.to_file_path().unwrap());
+                        let path = params.uri.to_file_path().unwrap();
+                        let doc = self.editor.document_by_path_mut(&path);
 
-                        let doc = self
-                            .editor
-                            .documents
-                            .iter_mut()
-                            .find(|(_, doc)| doc.path() == path.as_ref());
-
-                        if let Some((_, doc)) = doc {
+                        if let Some(doc) = doc {
                             let text = doc.text();
 
                             let diagnostics = params
