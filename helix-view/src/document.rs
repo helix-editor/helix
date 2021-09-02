@@ -649,7 +649,7 @@ impl Document {
             // }
 
             // emit lsp notification
-            if let Some(language_server) = &self.language_server {
+            if let Some(language_server) = self.language_server() {
                 let notify = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
