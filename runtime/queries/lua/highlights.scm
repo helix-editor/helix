@@ -108,7 +108,7 @@
 [
 (false)
 (true)
-] @boolean
+] @constant.builtin.boolean
 (nil) @constant.builtin
 (spread) @constant ;; "..."
 ((identifier) @constant
@@ -116,7 +116,7 @@
 
 ;; Parameters
 (parameters
-  (identifier) @parameter)
+  (identifier) @variable.parameter)
 
 ; ;; Functions
 (function [(function_name) (identifier)] @function)
@@ -139,8 +139,8 @@
 
 (function_call
   [
-   ((identifier) @variable (method) @method)
-   ((_) (method) @method)
+   ((identifier) @variable (method) @function.method)
+   ((_) (method) @function.method)
    (identifier) @function
    (field_expression (property_identifier) @function)
   ]

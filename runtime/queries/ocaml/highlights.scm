@@ -25,12 +25,12 @@
 
 (external (value_name) @function)
 
-(method_name) @method
+(method_name) @function.method
 
 ; Variables
 ;----------
 
-(value_pattern) @parameter
+(value_pattern) @variable.parameter
 
 ; Application
 ;------------
