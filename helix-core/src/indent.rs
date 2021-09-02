@@ -316,8 +316,12 @@ pub fn suggested_indent_for_pos(
 pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&'static str> {
     let mut scopes = Vec::new();
     if let Some(syntax) = syntax {
-        let byte_start = text.char_to_byte(pos);
-        let node = match get_highest_syntax_node_at_bytepos(syntax, byte_start) {
+        let pos = text.char_to_byte(pos);
+        let mut node = match syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(pos, pos)
+        {
             Some(node) => node,
             None => return scopes,
         };
@@ -325,7 +329,8 @@ pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&
         scopes.push(node.kind());
 
         while let Some(parent) = node.parent() {
-            scopes.push(parent.kind())
+            scopes.push(parent.kind());
+            node = parent;
         }
     }
 
