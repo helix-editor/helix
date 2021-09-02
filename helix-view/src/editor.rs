@@ -255,20 +255,21 @@ impl Editor {
                 .and_then(|language| self.language_servers.get(language).ok());
 
             if let Some(language_server) = language_server {
-                doc.set_language_server(Some(language_server.clone()));
-
                 let language_id = doc
                     .language()
                     .and_then(|s| s.split('.').last()) // source.rust
                     .map(ToOwned::to_owned)
                     .unwrap_or_default();
 
+                // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
                     doc.url().unwrap(),
                     doc.version(),
                     doc.text(),
                     language_id,
                 ));
+
+                doc.set_language_server(Some(language_server));
             }
 
             let id = self.documents.insert(doc);

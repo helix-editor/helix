@@ -226,6 +226,8 @@ impl MethodCall {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Notification {
+    // we inject this notification to signal the LSP is ready
+    Initialized,
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
@@ -237,6 +239,7 @@ impl Notification {
         use lsp::notification::Notification as _;
 
         let notification = match method {
+            lsp::notification::Initialized::METHOD => Self::Initialized,
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params
                     .parse()
@@ -294,7 +297,7 @@ impl Registry {
         }
     }
 
-    pub fn get_by_id(&mut self, id: usize) -> Option<&Client> {
+    pub fn get_by_id(&self, id: usize) -> Option<&Client> {
         self.inner
             .values()
             .find(|(client_id, _)| client_id == &id)
@@ -302,55 +305,52 @@ impl Registry {
     }
 
     pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
-        if let Some(config) = &language_config.language_server {
-            // avoid borrow issues
-            let inner = &mut self.inner;
-            let s_incoming = &mut self.incoming;
+        let config = match &language_config.language_server {
+            Some(config) => config,
+            None => return Err(Error::LspNotDefined),
+        };
 
-            match inner.entry(language_config.scope.clone()) {
-                Entry::Occupied(entry) => Ok(entry.get().1.clone()),
-                Entry::Vacant(entry) => {
-                    // initialize a new client
-                    let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                    let (client, incoming, initialize_notify) = Client::start(
-                        &config.command,
-                        &config.args,
-                        serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
-                        id,
-                    )?;
-                    s_incoming.push(UnboundedReceiverStream::new(incoming));
-                    let client = Arc::new(client);
+        match self.inner.entry(language_config.scope.clone()) {
+            Entry::Occupied(entry) => Ok(entry.get().1.clone()),
+            Entry::Vacant(entry) => {
+                // initialize a new client
+                let id = self.counter.fetch_add(1, Ordering::Relaxed);
+                let (client, incoming, initialize_notify) = Client::start(
+                    &config.command,
+                    &config.args,
+                    serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
+                    id,
+                )?;
+                self.incoming.push(UnboundedReceiverStream::new(incoming));
+                let client = Arc::new(client);
 
-                    let _client = client.clone();
-                    // Initialize the client asynchronously
-                    tokio::spawn(async move {
-                        use futures_util::TryFutureExt;
-                        let value = _client
-                            .capabilities
-                            .get_or_try_init(|| {
-                                _client
-                                    .initialize()
-                                    .map_ok(|response| response.capabilities)
-                            })
-                            .await;
+                // Initialize the client asynchronously
+                let _client = client.clone();
+                tokio::spawn(async move {
+                    use futures_util::TryFutureExt;
+                    let value = _client
+                        .capabilities
+                        .get_or_try_init(|| {
+                            _client
+                                .initialize()
+                                .map_ok(|response| response.capabilities)
+                        })
+                        .await;
 
-                        value.expect("failed to initialize capabilities");
+                    value.expect("failed to initialize capabilities");
 
-                        // next up, notify<initialized>
-                        _client
-                            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-                            .await
-                            .unwrap();
+                    // next up, notify<initialized>
+                    _client
+                        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+                        .await
+                        .unwrap();
 
-                        initialize_notify.notify_one();
-                    });
+                    initialize_notify.notify_one();
+                });
 
-                    entry.insert((id, client.clone()));
-                    Ok(client)
-                }
+                entry.insert((id, client.clone()));
+                Ok(client)
             }
-        } else {
-            Err(Error::LspNotDefined)
         }
     }
 

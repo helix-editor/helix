@@ -275,6 +275,37 @@ impl Application {
                 };
 
                 match notification {
+                    Notification::Initialized => {
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
+                        let docs = self.editor.documents().filter(|doc| {
+                            doc.language_server().map(|server| server.id()) == Some(server_id)
+                        });
+
+                        // trigger textDocument/didOpen for docs that are already open
+                        for doc in docs {
+                            // TODO: extract and share with editor.open
+                            let language_id = doc
+                                .language()
+                                .and_then(|s| s.split('.').last()) // source.rust
+                                .map(ToOwned::to_owned)
+                                .unwrap_or_default();
+
+                            tokio::spawn(language_server.text_document_did_open(
+                                doc.url().unwrap(),
+                                doc.version(),
+                                doc.text(),
+                                language_id,
+                            ));
+                        }
+                    }
                     Notification::PublishDiagnostics(params) => {
                         let path = params.uri.to_file_path().unwrap();
                         let doc = self.editor.document_by_path_mut(&path);

@@ -64,11 +64,16 @@ impl Transport {
 
         let transport = Arc::new(transport);
 
-        tokio::spawn(Self::recv(transport.clone(), server_stdout, client_tx));
+        tokio::spawn(Self::recv(
+            transport.clone(),
+            server_stdout,
+            client_tx.clone(),
+        ));
         tokio::spawn(Self::err(transport.clone(), server_stderr));
         tokio::spawn(Self::send(
             transport,
             server_stdin,
+            client_tx,
             client_rx,
             notify.clone(),
         ));
@@ -269,6 +274,7 @@ impl Transport {
     async fn send(
         transport: Arc<Self>,
         mut server_stdin: BufWriter<ChildStdin>,
+        mut client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
         mut client_rx: UnboundedReceiver<Payload>,
         initialize_notify: Arc<Notify>,
     ) {
@@ -303,6 +309,22 @@ impl Transport {
                 _ = initialize_notify.notified() => { // TODO: notified is technically not cancellation safe
                     // server successfully initialized
                     is_pending = false;
+
+                    use lsp_types::notification::Notification;
+                    // Hack: inject an initialized notification so we trigger code that needs to happen after init
+                    let notification = ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
+                        jsonrpc: None,
+
+                        method: lsp_types::notification::Initialized::METHOD.to_string(),
+                        params: jsonrpc::Params::None,
+                    }));
+                    match transport.process_server_message(&mut client_tx, notification).await {
+                        Ok(_) => {}
+                        Err(err) => {
+                            error!("err: <- {:?}", err);
+                        }
+                    }
+
                     // drain the pending queue and send payloads to server
                     for msg in pending_messages.drain(..) {
                         log::info!("Draining pending message {:?}", msg);
@@ -317,6 +339,11 @@ impl Transport {
                 msg = client_rx.recv() => {
                     if let Some(msg) = msg {
                         if is_pending && !is_initialize(&msg) {
+                            // ignore notifications
+                            if let Payload::Notification(_) = msg {
+                                continue;
+                            }
+
                             log::info!("Language server not initialized, delaying request");
                             pending_messages.push(msg);
                         } else {
