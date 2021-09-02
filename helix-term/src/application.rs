@@ -4,7 +4,7 @@ use helix_view::{theme, Editor};
 
 use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
-use log::error;
+use log::{error, warn};
 
 use std::{
     io::{stdout, Write},
@@ -429,10 +429,27 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
+                let language_server = match self.editor.language_servers.get_by_id(server_id) {
+                    Some(language_server) => language_server,
+                    None => {
+                        warn!("can't find language server with id `{}`", server_id);
+                        return;
+                    }
+                };
+
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
                     None => {
                         error!("Method not found {}", method);
+                        // language_server.reply(
+                        //     call.id,
+                        //     // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
+                        //     Err(helix_lsp::jsonrpc::Error {
+                        //         code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
+                        //         message: "Method not found".to_string(),
+                        //         data: None,
+                        //     }),
+                        // );
                         return;
                     }
                 };
@@ -445,53 +462,9 @@ impl Application {
                         if spinner.is_stopped() {
                             spinner.start();
                         }
-
-                        let doc = self.editor.documents().find(|doc| {
-                            doc.language_server()
-                                .map(|server| server.id() == server_id)
-                                .unwrap_or_default()
-                        });
-                        match doc {
-                            Some(doc) => {
-                                // it's ok to unwrap, we check for the language server before
-                                let server = doc.language_server().unwrap();
-                                tokio::spawn(server.reply(id, Ok(serde_json::Value::Null)));
-                            }
-                            None => {
-                                if let Some(server) =
-                                    self.editor.language_servers.get_by_id(server_id)
-                                {
-                                    log::warn!(
-                                        "missing document with language server id `{}`",
-                                        server_id
-                                    );
-                                    tokio::spawn(server.reply(
-                                        id,
-                                        Err(helix_lsp::jsonrpc::Error {
-                                            code: helix_lsp::jsonrpc::ErrorCode::InternalError,
-                                            message: "document missing".to_string(),
-                                            data: None,
-                                        }),
-                                    ));
-                                } else {
-                                    log::warn!(
-                                        "can't find language server with id `{}`",
-                                        server_id
-                                    );
-                                }
-                            }
-                        }
+                        tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
                     }
                 }
-                // self.language_server.reply(
-                //     call.id,
-                //     // TODO: make a Into trait that can cast to Err(jsonrpc::Error)
-                //     Err(helix_lsp::jsonrpc::Error {
-                //         code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
-                //         message: "Method not found".to_string(),
-                //         data: None,
-                //     }),
-                // );
             }
             e => unreachable!("{:?}", e),
         }
