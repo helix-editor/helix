@@ -276,8 +276,21 @@ impl Application {
                     debugger.is_running = false;
 
                     // whichever thread stops is made "current" (if no previously selected thread).
-                    if let Some(thread_id) = thread_id {
-                        select_thread_id(&mut self.editor, thread_id, false).await;
+                    if thread_id.is_none() || all_threads_stopped.unwrap_or_default() {
+                        let main = debugger.threads().await.ok().and_then(|threads| {
+                            // Workaround for debugging Go tests. Main thread has * in beginning of its name
+                            let mut main =
+                                threads.iter().find(|t| t.name.starts_with('*')).cloned();
+                            if main.is_none() {
+                                main = threads.get(0).cloned();
+                            }
+                            main.map(|t| t.id)
+                        });
+                        if let Some(id) = main {
+                            select_thread_id(&mut self.editor, id, false).await;
+                        }
+                    } else {
+                        select_thread_id(&mut self.editor, thread_id.unwrap(), false).await;
                     }
 
                     let scope = match thread_id {
