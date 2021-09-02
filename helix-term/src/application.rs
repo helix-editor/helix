@@ -287,10 +287,10 @@ impl Application {
                             main.map(|t| t.id)
                         });
                         if let Some(id) = main {
-                            select_thread_id(&mut self.editor, id, false).await;
+                            select_thread_id(&mut self.editor, id, true).await;
                         }
                     } else {
-                        select_thread_id(&mut self.editor, thread_id.unwrap(), false).await;
+                        select_thread_id(&mut self.editor, thread_id.unwrap(), true).await;
                     }
 
                     let scope = match thread_id {
