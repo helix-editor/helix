@@ -437,32 +437,6 @@ impl LspProgressMap {
     }
 }
 
-// REGISTRY = HashMap<LanguageId, Lazy/OnceCell<Arc<RwLock<Client>>>
-// spawn one server per language type, need to spawn one per workspace if server doesn't support
-// workspaces
-//
-// could also be a client per root dir
-//
-// storing a copy of Option<Arc<RwLock<Client>>> on Document would make the LSP client easily
-// accessible during edit/save callbacks
-//
-// the event loop needs to process all incoming streams, maybe we can just have that be a separate
-// task that's continually running and store the state on the client, then use read lock to
-// retrieve data during render
-// -> PROBLEM: how do you trigger an update on the editor side when data updates?
-//
-// -> The data updates should pull all events until we run out so we don't frequently re-render
-//
-//
-// v2:
-//
-// there should be a registry of lsp clients, one per language type (or workspace).
-// the clients should lazy init on first access
-// the client.initialize() should be called async and we buffer any requests until that completes
-// there needs to be a way to process incoming lsp messages from all clients.
-//  -> notifications need to be dispatched to wherever
-//  -> requests need to generate a reply and travel back to the same lsp!
-
 #[cfg(test)]
 mod tests {
     use super::{lsp, util::*, OffsetEncoding};
