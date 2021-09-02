@@ -123,3 +123,24 @@ black = "#000000"
 
 Remember that the `[palette]` table includes all keys after its header,
 so you should define the palette after normal theme options.
+
+If there is no `[palette]` section, a default palette which uses the terminal's default 16 colors are used:
+
+| Color Name      |
+| ---             |
+| `black`         |
+| `red`           |
+| `green`         |
+| `yellow`        |
+| `blue`          |
+| `magenta`       |
+| `cyan`          |
+| `gray`          |
+| `light-red`     |
+| `light-green`   |
+| `light-yellow`  |
+| `light-blue`    |
+| `light-magenta` |
+| `light-cyan`    |
+| `light-gray`    |
+| `white`         |
