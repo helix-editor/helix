@@ -455,7 +455,10 @@ impl EditorView {
                 // if we have a frame, and the frame path matches document
                 if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
                 {
-                    let frame = debugger.stack_frames[&thread_id].get(frame); // TODO: drop the clone..
+                    let frame = debugger
+                        .stack_frames
+                        .get(&thread_id)
+                        .and_then(|bt| bt.get(frame)); // TODO: drop the clone..
                     if let Some(StackFrame {
                         source: Some(source),
                         ..
