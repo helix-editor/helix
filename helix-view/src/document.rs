@@ -798,9 +798,18 @@ impl Document {
         self.version
     }
 
-    #[inline]
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
-        self.language_server.as_deref()
+        let server = self.language_server.as_deref();
+        let initialized = server
+            .map(|server| server.is_initialized())
+            .unwrap_or(false);
+
+        // only resolve language_server if it's initialized
+        if initialized {
+            server
+        } else {
+            None
+        }
     }
 
     #[inline]

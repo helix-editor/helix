@@ -93,6 +93,10 @@ impl Client {
         }
     }
 
+    pub fn is_initialized(&self) -> bool {
+        self.capabilities.get().is_some()
+    }
+
     pub fn capabilities(&self) -> &lsp::ServerCapabilities {
         self.capabilities
             .get()
