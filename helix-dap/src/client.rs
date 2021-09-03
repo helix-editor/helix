@@ -27,8 +27,6 @@ pub struct Client {
     server_tx: UnboundedSender<Request>,
     request_counter: AtomicU64,
     pub caps: Option<DebuggerCapabilities>,
-    //
-    pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
     // thread_id -> frames
     pub stack_frames: HashMap<usize, Vec<StackFrame>>,
     pub thread_states: HashMap<usize, String>,
@@ -77,7 +75,6 @@ impl Client {
             request_counter: AtomicU64::new(0),
             caps: None,
             //
-            breakpoints: HashMap::new(),
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
             thread_id: None,

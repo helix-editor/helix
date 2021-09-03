@@ -1999,35 +1999,38 @@ mod cmd {
                 bail!("Can't edit breakpoint: document has no path")
             }
         };
-        if let Some(debugger) = &mut cx.editor.debugger {
-            if breakpoint.condition.is_some()
-                && !debugger
-                    .caps
-                    .as_ref()
-                    .unwrap()
-                    .supports_conditional_breakpoints
-                    .unwrap_or_default()
-            {
-                bail!("Can't edit breakpoint: debugger does not support conditional breakpoints")
-            }
-            if breakpoint.log_message.is_some()
-                && !debugger
-                    .caps
-                    .as_ref()
-                    .unwrap()
-                    .supports_log_points
-                    .unwrap_or_default()
-            {
-                bail!("Can't edit breakpoint: debugger does not support logpoints")
-            }
 
-            let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
-            if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
-                breakpoints.remove(pos);
-                breakpoints.push(breakpoint);
+        let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
+        if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
+            breakpoints.remove(pos);
+            breakpoints.push(breakpoint);
 
-                let breakpoints = breakpoints.clone();
+            let breakpoints = breakpoints.clone();
 
+            if let Some(debugger) = &mut cx.editor.debugger {
+                // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
+                // if breakpoint.condition.is_some()
+                //     && !debugger
+                //         .caps
+                //         .as_ref()
+                //         .unwrap()
+                //         .supports_conditional_breakpoints
+                //         .unwrap_or_default()
+                // {
+                //     bail!(
+                //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
+                //     )
+                // }
+                // if breakpoint.log_message.is_some()
+                //     && !debugger
+                //         .caps
+                //         .as_ref()
+                //         .unwrap()
+                //         .supports_log_points
+                //         .unwrap_or_default()
+                // {
+                //     bail!("Can't edit breakpoint: debugger does not support logpoints")
+                // }
                 let request = debugger.set_breakpoints(path, breakpoints);
                 if let Err(e) = block_on(request) {
                     bail!("Failed to set breakpoints: {:?}", e)

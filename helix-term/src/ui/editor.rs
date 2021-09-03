@@ -26,7 +26,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
@@ -76,6 +76,7 @@ impl EditorView {
         loader: &syntax::Loader,
         config: &helix_view::editor::Config,
         debugger: &Option<helix_dap::Client>,
+        breakpoints: &HashMap<PathBuf, Vec<helix_dap::SourceBreakpoint>>,
     ) {
         let inner = view.inner_area();
         let area = view.area;
@@ -93,7 +94,15 @@ impl EditorView {
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
         Self::render_gutter(
-            doc, view, view.area, surface, theme, is_focused, config, debugger,
+            doc,
+            view,
+            view.area,
+            surface,
+            theme,
+            is_focused,
+            config,
+            debugger,
+            breakpoints,
         );
 
         if is_focused {
@@ -113,7 +122,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme, debugger);
+        self.render_diagnostics(doc, view, inner, surface, theme, breakpoints);
 
         let statusline_area = view
             .area
@@ -417,6 +426,7 @@ impl EditorView {
         is_focused: bool,
         config: &helix_view::editor::Config,
         debugger: &Option<helix_dap::Client>,
+        all_breakpoints: &HashMap<PathBuf, Vec<helix_dap::SourceBreakpoint>>,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -448,10 +458,9 @@ impl EditorView {
 
         let mut breakpoints: Option<&Vec<SourceBreakpoint>> = None;
         let mut stack_frame: Option<&StackFrame> = None;
-        if let Some(debugger) = debugger {
-            if let Some(path) = doc.path() {
-                breakpoints = debugger.breakpoints.get(path);
-
+        if let Some(path) = doc.path() {
+            breakpoints = all_breakpoints.get(path);
+            if let Some(debugger) = debugger {
                 // if we have a frame, and the frame path matches document
                 if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
                 {
@@ -551,7 +560,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
-        debugger: &Option<helix_dap::Client>,
+        all_breakpoints: &HashMap<PathBuf, Vec<helix_dap::SourceBreakpoint>>,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -589,26 +598,23 @@ impl EditorView {
             lines.extend(text.lines);
         }
 
-        if let Some(debugger) = debugger {
-            if let Some(path) = doc.path() {
-                if let Some(breakpoints) = debugger.breakpoints.get(path) {
-                    let line = doc.text().char_to_line(cursor);
-                    if let Some(breakpoint) = breakpoints
-                        .iter()
-                        .find(|breakpoint| breakpoint.line - 1 == line)
-                    {
-                        if let Some(condition) = &breakpoint.condition {
-                            lines.extend(
-                                Text::styled(condition, info.add_modifier(Modifier::UNDERLINED))
-                                    .lines,
-                            );
-                        }
-                        if let Some(log_message) = &breakpoint.log_message {
-                            lines.extend(
-                                Text::styled(log_message, info.add_modifier(Modifier::UNDERLINED))
-                                    .lines,
-                            );
-                        }
+        if let Some(path) = doc.path() {
+            if let Some(breakpoints) = all_breakpoints.get(path) {
+                let line = doc.text().char_to_line(cursor);
+                if let Some(breakpoint) = breakpoints
+                    .iter()
+                    .find(|breakpoint| breakpoint.line - 1 == line)
+                {
+                    if let Some(condition) = &breakpoint.condition {
+                        lines.extend(
+                            Text::styled(condition, info.add_modifier(Modifier::UNDERLINED)).lines,
+                        );
+                    }
+                    if let Some(log_message) = &breakpoint.log_message {
+                        lines.extend(
+                            Text::styled(log_message, info.add_modifier(Modifier::UNDERLINED))
+                                .lines,
+                        );
                     }
                 }
             }
@@ -1224,6 +1230,7 @@ impl Component for EditorView {
                 loader,
                 &cx.editor.config,
                 &cx.editor.debugger,
+                &cx.editor.breakpoints,
             );
         }
 

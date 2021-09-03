@@ -11,6 +11,7 @@ use futures_util::stream::select_all::SelectAll;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -24,6 +25,7 @@ pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::syntax::{self, DebugConfigCompletion};
 use helix_core::Position;
+use helix_dap as dap;
 
 use serde::Deserialize;
 
@@ -81,8 +83,9 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
 
-    pub debugger: Option<helix_dap::Client>,
-    pub debugger_events: SelectAll<UnboundedReceiverStream<helix_dap::Payload>>,
+    pub debugger: Option<dap::Client>,
+    pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
+    pub breakpoints: HashMap<PathBuf, Vec<dap::SourceBreakpoint>>,
     pub debug_config_picker: Option<Vec<String>>,
     pub debug_config_completions: Option<Vec<Vec<DebugConfigCompletion>>>,
     pub variables: Option<Vec<String>>,
@@ -127,6 +130,7 @@ impl Editor {
             language_servers,
             debugger: None,
             debugger_events: SelectAll::new(),
+            breakpoints: HashMap::new(),
             debug_config_picker: None,
             debug_config_completions: None,
             variables: None,

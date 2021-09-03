@@ -279,12 +279,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     // TODO: need to map breakpoints over edits and update them?
     // we shouldn't really allow editing while debug is running though
 
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
-
-    let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
+    let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
     if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
         breakpoints.remove(pos);
     } else {
@@ -293,6 +288,10 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
 
     let breakpoints = breakpoints.clone();
 
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
     let request = debugger.set_breakpoints(path, breakpoints);
     if let Err(e) = block_on(request) {
         cx.editor

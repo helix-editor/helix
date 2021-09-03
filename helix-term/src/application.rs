@@ -320,10 +320,18 @@ impl Application {
                         None => "Debug:".to_owned(),
                     };
 
+                    log::info!("{}", output);
                     self.editor.set_status(format!("{} {}", prefix, output));
                 }
                 Event::Initialized => {
                     // send existing breakpoints
+                    for (path, breakpoints) in &self.editor.breakpoints {
+                        // TODO: call futures in parallel, await all
+                        debugger
+                            .set_breakpoints(path.clone(), breakpoints.clone())
+                            .await
+                            .unwrap();
+                    }
                     // TODO: fetch breakpoints (in case we're attaching)
 
                     if let Ok(_) = debugger.configuration_done().await {
