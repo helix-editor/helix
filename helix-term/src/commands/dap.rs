@@ -1,5 +1,5 @@
 use super::{align_view, Align, Context, Editor};
-use crate::ui::Picker;
+use crate::ui::{FilePicker, Picker};
 use helix_core::Selection;
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
@@ -460,4 +460,53 @@ pub fn dap_switch_thread(cx: &mut Context) {
     thread_picker(cx, |editor, thread| {
         block_on(select_thread_id(editor, thread.id, true));
     })
+}
+pub fn dap_switch_stack_frame(cx: &mut Context) {
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    let thread_id = match debugger.thread_id {
+        Some(thread_id) => thread_id,
+        None => {
+            cx.editor
+                .set_error(format!("No thread is currently active"));
+            return;
+        }
+    };
+
+    let frames = debugger.stack_frames[&thread_id].clone();
+
+    let picker = FilePicker::new(
+        frames,
+        |frame| frame.name.clone().into(), // TODO: include thread_states in the label
+        move |editor, frame, _action| {
+            let debugger = match &mut editor.debugger {
+                Some(debugger) => debugger,
+                None => return,
+            };
+            // TODO: this should be simpler to find
+            let pos = debugger.stack_frames[&thread_id]
+                .iter()
+                .position(|f| f.id == frame.id);
+            debugger.active_frame = pos;
+        },
+        move |_editor, frame| {
+            frame
+                .source
+                .as_ref()
+                .and_then(|source| source.path.clone())
+                .map(|path| {
+                    (
+                        path,
+                        Some((
+                            frame.line.saturating_sub(1),
+                            frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+                        )),
+                    )
+                })
+        },
+    );
+    cx.push_layer(Box::new(picker))
 }

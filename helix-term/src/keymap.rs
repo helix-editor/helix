@@ -499,7 +499,7 @@ impl Default for Keymaps {
                     "t" => dap_terminate,
                     "s" => { "Switch"
                         "t" => dap_switch_thread,
-                        // f = stack frame
+                        "f" => dap_switch_stack_frame,
                         // sl, sb
                     },
                 },

@@ -318,6 +318,7 @@ impl Command {
         dap_variables, "List variables",
         dap_terminate, "End debug session",
         dap_switch_thread, "Switch current thread",
+        dap_switch_stack_frame, "Switch stack frame",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command, ignoring command output",
         shell_insert_output, "Insert output of shell command before each selection",
