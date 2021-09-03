@@ -231,6 +231,8 @@ impl Command {
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
         goto_definition, "Goto definition",
+        add_newline_above, "Add newline above",
+        add_newline_below, "Add newline below",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
@@ -1850,7 +1852,11 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let dir = args.first().context("target directory not provided")?;
+        let dir = helix_core::path::expand_tilde(
+            args.first()
+                .context("target directory not provided")?
+                .as_ref(),
+        );
 
         if let Err(e) = std::env::set_current_dir(dir) {
             bail!("Couldn't change the current working directory: {}", e);
@@ -4494,7 +4500,6 @@ enum ShellBehavior {
     Ignore,
     Insert,
     Append,
-    Filter,
 }
 
 fn shell_pipe(cx: &mut Context) {
@@ -4514,18 +4519,101 @@ fn shell_append_output(cx: &mut Context) {
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
-    shell(cx, "keep-pipe:".into(), ShellBehavior::Filter);
+    let prompt = Prompt::new(
+        "keep-pipe:".into(),
+        Some('|'),
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut ranges = SmallVec::with_capacity(selection.len());
+            let old_index = selection.primary_index();
+            let mut index: Option<usize> = None;
+            let text = doc.text().slice(..);
+
+            for (i, range) in selection.ranges().iter().enumerate() {
+                let fragment = range.fragment(text);
+                let (_output, success) = match shell_impl(shell, input, Some(fragment.as_bytes())) {
+                    Ok(result) => result,
+                    Err(err) => {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+                };
+
+                // if the process exits successfully, keep the selection
+                if success {
+                    ranges.push(*range);
+                    if i >= old_index && index.is_none() {
+                        index = Some(ranges.len() - 1);
+                    }
+                }
+            }
+
+            if ranges.is_empty() {
+                cx.editor.set_error("No selections remaining".to_string());
+                return;
+            }
+
+            let index = index.unwrap_or_else(|| ranges.len() - 1);
+            doc.set_selection(view.id, Selection::new(ranges, index));
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
+}
+
+fn shell_impl(
+    shell: &[String],
+    cmd: &str,
+    input: Option<&[u8]>,
+) -> anyhow::Result<(Tendril, bool)> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    if shell.is_empty() {
+        bail!("No shell set");
+    }
+
+    let mut process = match Command::new(&shell[0])
+        .args(&shell[1..])
+        .arg(cmd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(process) => process,
+        Err(e) => {
+            log::error!("Failed to start shell: {}", e);
+            return Err(e.into());
+        }
+    };
+    if let Some(input) = input {
+        let mut stdin = process.stdin.take().unwrap();
+        stdin.write_all(input)?;
+    }
+    let output = process.wait_with_output()?;
+
+    if !output.stderr.is_empty() {
+        log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    let tendril = Tendril::try_from_byte_slice(&output.stdout)
+        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
+    Ok((tendril, output.status.success()))
 }
 
 fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
-    use std::io::Write;
-    use std::process::{Command, Stdio};
-    if cx.editor.config.shell.is_empty() {
-        cx.editor.set_error("No shell set".to_owned());
-        return;
-    }
     let pipe = match behavior {
-        ShellBehavior::Replace | ShellBehavior::Ignore | ShellBehavior::Filter => true,
+        ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
     let prompt = Prompt::new(
@@ -4533,70 +4621,42 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
         Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let shell = &cx.editor.config.shell;
             if event != PromptEvent::Validate {
                 return;
             }
-            let shell = &cx.editor.config.shell;
+            if input.is_empty() {
+                return;
+            }
             let (view, doc) = current!(cx.editor);
             let selection = doc.selection(view.id);
 
             let mut changes = Vec::with_capacity(selection.len());
+            let text = doc.text().slice(..);
 
             for range in selection.ranges() {
-                let mut process = match Command::new(&shell[0])
-                    .args(&shell[1..])
-                    .arg(input)
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                {
-                    Ok(process) => process,
-                    Err(e) => {
-                        log::error!("Failed to start shell: {}", e);
-                        cx.editor.set_error("Failed to start shell".to_owned());
-                        return;
-                    }
-                };
-                if pipe {
-                    let stdin = process.stdin.as_mut().unwrap();
-                    let fragment = range.fragment(doc.text().slice(..));
-                    stdin.write_all(fragment.as_bytes()).unwrap();
-                }
-                let output = process.wait_with_output().unwrap();
-
-                if behavior != ShellBehavior::Filter {
-                    if !output.status.success() {
-                        if !output.stderr.is_empty() {
-                            log::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
-                        }
-                        cx.editor.set_error("Command failed".to_owned());
-                        return;
-                    }
-                    let tendril = match Tendril::try_from_byte_slice(&output.stdout) {
-                        Ok(tendril) => tendril,
-                        Err(_) => {
-                            cx.editor
-                                .set_error("Process did not output valid UTF-8".to_owned());
+                let fragment = range.fragment(text);
+                let (output, success) =
+                    match shell_impl(shell, input, pipe.then(|| fragment.as_bytes())) {
+                        Ok(result) => result,
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
                             return;
                         }
                     };
-                    let (from, to) = match behavior {
-                        ShellBehavior::Replace => (range.from(), range.to()),
-                        ShellBehavior::Insert => (range.from(), range.from()),
-                        ShellBehavior::Append => (range.to(), range.to()),
-                        _ => (range.from(), range.from()),
-                    };
-                    changes.push((from, to, Some(tendril)));
-                } else {
-                    // if the process exits successfully, keep the selection, otherwise delete it.
-                    let keep = output.status.success();
-                    changes.push((
-                        range.from(),
-                        if keep { range.from() } else { range.to() },
-                        None,
-                    ));
+
+                if !success {
+                    cx.editor.set_error("Command failed".to_string());
+                    return;
                 }
+
+                let (from, to) = match behavior {
+                    ShellBehavior::Replace => (range.from(), range.to()),
+                    ShellBehavior::Insert => (range.from(), range.from()),
+                    ShellBehavior::Append => (range.to(), range.to()),
+                    _ => (range.from(), range.from()),
+                };
+                changes.push((from, to, Some(output)));
             }
 
             if behavior != ShellBehavior::Ignore {
@@ -4613,4 +4673,38 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+}
+
+fn add_newline_above(cx: &mut Context) {
+    add_newline_impl(cx, Open::Above);
+}
+
+fn add_newline_below(cx: &mut Context) {
+    add_newline_impl(cx, Open::Below)
+}
+
+fn add_newline_impl(cx: &mut Context, open: Open) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text();
+    let slice = text.slice(..);
+
+    let changes = selection.into_iter().map(|range| {
+        let (start, end) = range.line_range(slice);
+        let line = match open {
+            Open::Above => start,
+            Open::Below => end + 1,
+        };
+        let pos = text.line_to_char(line);
+        (
+            pos,
+            pos,
+            Some(doc.line_ending.as_str().repeat(count).into()),
+        )
+    });
+
+    let transaction = Transaction::change(text, changes);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }

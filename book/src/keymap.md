@@ -110,27 +110,28 @@ in reverse, or searching via smartcase.
 | `N`   | Add next search match to selection          | `extend_search_next` |
 | `*`   | Use current selection as the search pattern | `search_selection`   |
 
-### Diagnostics
+### Unimpaired
 
-> NOTE: `[` and `]` will likely contain more pair mappings in the style of
-> [vim-unimpaired](https://github.com/tpope/vim-unimpaired)
+Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired)
 
-| Key   | Description                        | Command           |
-| ----- | -----------                        | -------           |
-| `[d`  | Go to previous diagnostic          | `goto_prev_diag`  |
-| `]d`  | Go to next diagnostic              | `goto_next_diag`  |
-| `[D`  | Go to first diagnostic in document | `goto_first_diag` |
-| `]D`  | Go to last diagnostic in document  | `goto_last_diag`  |
+| Key       | Description                        | Command           |
+| -----     | -----------                        | -------           |
+| `[d`      | Go to previous diagnostic          | `goto_prev_diag`  |
+| `]d`      | Go to next diagnostic              | `goto_next_diag`  |
+| `[D`      | Go to first diagnostic in document | `goto_first_diag` |
+| `]D`      | Go to last diagnostic in document  | `goto_last_diag`  |
+| `[space`  | Add newline above                  | `add_newline_above` |
+| `]space`  | Add newline below                  | `add_newline_below` |
 
 ### Shell
 
-| Key    | Description                                                              | Command               |
-| ------ | -----------                                                              | -------               |
-| `\|`   | Pipe each selection through shell command, replacing with output         | `shell_pipe`          |
-| `A-\|` | Pipe each selection into shell command, ignoring output                  | `shell_pipe_to`       |
-| `!`    | Run shell command, inserting output before each selection                | `shell_insert_output` |
-| `A-!`  | Run shell command, appending output after each selection                 | `shell_append_output` |
-| `$`    | Pipe each selection into shell command, removing if the command exits >0 | `shell_keep_pipe`     |
+| Key    | Description                                                                      | Command               |
+| ------ | -----------                                                                      | -------               |
+| `\|`   | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
+| `A-\|` | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
+| `!`    | Run shell command, inserting output before each selection                        | `shell_insert_output` |
+| `A-!`  | Run shell command, appending output after each selection                         | `shell_append_output` |
+| `$`    | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 
 ## Select / extend mode
 

@@ -177,6 +177,7 @@ fn main() {
     let ignore = vec![
         "tree-sitter-typescript".to_string(),
         "tree-sitter-haskell".to_string(), // aarch64 failures: https://github.com/tree-sitter/tree-sitter-haskell/issues/34
+        "tree-sitter-ocaml".to_string(),
     ];
     let dirs = collect_tree_sitter_dirs(&ignore).unwrap();
 
@@ -202,4 +203,6 @@ fn main() {
 
     build_dir("tree-sitter-typescript/tsx", "tsx");
     build_dir("tree-sitter-typescript/typescript", "typescript");
+    build_dir("tree-sitter-ocaml/ocaml", "ocaml");
+    build_dir("tree-sitter-ocaml/interface", "ocaml-interface")
 }
