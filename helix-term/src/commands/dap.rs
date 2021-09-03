@@ -1,7 +1,7 @@
 use super::{align_view, Align, Context, Editor};
 use crate::ui::Picker;
 use helix_core::Selection;
-use helix_dap::Client;
+use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
 
 use serde_json::{to_value, Value};
@@ -20,7 +20,9 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
 
 pub fn resume_application(debugger: &mut Client) {
     if let Some(thread_id) = debugger.thread_id {
-        debugger.thread_states.insert(thread_id, "running".to_string());
+        debugger
+            .thread_states
+            .insert(thread_id, "running".to_string());
         debugger.stack_frames.remove(&thread_id);
     }
     debugger.active_frame = None;
@@ -80,7 +82,32 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
     align_view(doc, view, Align::Center);
 }
 
-// DAP
+fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Thread) + 'static) {
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    let threads = match block_on(debugger.threads()) {
+        Ok(threads) => threads,
+        Err(e) => {
+            cx.editor
+                .set_error(format!("Failed to retrieve threads: {:?}", e));
+            return;
+        }
+    };
+
+    let picker = Picker::new(
+        true,
+        threads,
+        |thread| thread.name.clone().into(),
+        move |editor, thread, _action| callback_fn(editor, thread),
+    );
+    cx.push_layer(Box::new(picker))
+}
+
+// -- DAP
+
 pub fn dap_start_impl(
     editor: &mut Editor,
     name: Option<&str>,
@@ -312,23 +339,17 @@ pub fn dap_continue(cx: &mut Context) {
 }
 
 pub fn dap_pause(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
+    thread_picker(cx, |editor, thread| {
+    let debugger = match &mut editor.debugger {
         Some(debugger) => debugger,
         None => return,
     };
-
-    // TODO: this should instead open a picker to pause a selected thread
-
-    if !debugger.is_running {
-        cx.editor.set_status("Debuggee is not running".to_owned());
-        return;
-    }
-
-    // FIXME: correct number here
-    let request = debugger.pause(0);
-    if let Err(e) = block_on(request) {
-        cx.editor.set_error(format!("Failed to pause: {:?}", e));
-    }
+        let request = debugger.pause(thread.id);
+        // NOTE: we don't need to set active thread id here because DAP will emit a "stopped" event
+        if let Err(e) = block_on(request) {
+            editor.set_error(format!("Failed to pause: {:?}", e));
+        }
+    })
 }
 
 pub fn dap_step_in(cx: &mut Context) {
@@ -456,28 +477,7 @@ pub fn dap_terminate(cx: &mut Context) {
 }
 
 pub fn dap_switch_thread(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
-
-    let request = debugger.threads();
-    let threads = match block_on(request) {
-        Ok(threads) => threads,
-        Err(e) => {
-            cx.editor
-                .set_error(format!("Failed to retrieve threads: {:?}", e));
-            return;
-        }
-    };
-
-    let picker = Picker::new(
-        true,
-        threads,
-        |thread| thread.name.clone().into(),
-        |editor, thread, _action| {
-            block_on(select_thread_id(editor, thread.id, true));
-        },
-    );
-    cx.push_layer(Box::new(picker))
+    thread_picker(cx, |editor, thread| {
+        block_on(select_thread_id(editor, thread.id, true));
+    })
 }

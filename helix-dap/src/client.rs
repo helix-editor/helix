@@ -80,6 +80,7 @@ impl Client {
             //
             breakpoints: HashMap::new(),
             stack_frames: HashMap::new(),
+            thread_states: HashMap::new(),
             thread_id: None,
             active_frame: None,
             is_running: false,

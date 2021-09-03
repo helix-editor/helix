@@ -258,7 +258,7 @@ impl Application {
     pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
         use crate::commands::dap::{resume_application, select_thread_id};
         use helix_dap::{events, Event};
-        let mut debugger = match self.editor.debugger.as_mut() {
+        let debugger = match self.editor.debugger.as_mut() {
             Some(debugger) => debugger,
             None => return,
         };
@@ -274,11 +274,11 @@ impl Application {
                     ..
                 }) => {
                     if let Some(thread_id) = thread_id {
-                        debugger.thread_states.insert(thread_id, reason); // TODO: dap uses "type" || "reason" here
+                        debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
+
                         // whichever thread stops is made "current" (if no previously selected thread).
                         select_thread_id(&mut self.editor, thread_id, false).await;
                     }
-
 
                     let scope = match thread_id {
                         Some(id) => format!("Thread {}", id),
@@ -305,7 +305,7 @@ impl Application {
                     }
                 }
                 Event::Thread(_) => {
-                    // TODO: update thread_states, make threads request 
+                    // TODO: update thread_states, make threads request
                 }
                 Event::Output(events::Output {
                     category, output, ..
