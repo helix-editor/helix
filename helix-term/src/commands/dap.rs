@@ -19,7 +19,10 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
 }
 
 pub fn resume_application(debugger: &mut Client) {
-    debugger.is_running = true; // TODO: set state running for debugger.thread_id
+    if let Some(thread_id) = debugger.thread_id {
+        debugger.thread_states.insert(thread_id, "running".to_string());
+        debugger.stack_frames.remove(&thread_id);
+    }
     debugger.active_frame = None;
     debugger.thread_id = None;
 }
@@ -302,7 +305,6 @@ pub fn dap_continue(cx: &mut Context) {
             return;
         }
         resume_application(debugger);
-        debugger.stack_frames.remove(&thread_id);
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -314,6 +316,8 @@ pub fn dap_pause(cx: &mut Context) {
         Some(debugger) => debugger,
         None => return,
     };
+
+    // TODO: this should instead open a picker to pause a selected thread
 
     if !debugger.is_running {
         cx.editor.set_status("Debuggee is not running".to_owned());
@@ -340,7 +344,6 @@ pub fn dap_step_in(cx: &mut Context) {
             return;
         }
         resume_application(debugger);
-        debugger.stack_frames.remove(&thread_id);
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -360,7 +363,6 @@ pub fn dap_step_out(cx: &mut Context) {
             return;
         }
         resume_application(debugger);
-        debugger.stack_frames.remove(&thread_id);
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -380,7 +382,6 @@ pub fn dap_next(cx: &mut Context) {
             return;
         }
         resume_application(debugger);
-        debugger.stack_frames.remove(&thread_id);
     } else {
         cx.editor
             .set_error("Currently active thread is not stopped. Switch the thread.".into());
@@ -393,7 +394,7 @@ pub fn dap_variables(cx: &mut Context) {
         None => return,
     };
 
-    if debugger.is_running {
+    if debugger.thread_id.is_none() {
         cx.editor
             .set_status("Cannot access variables while target is running".to_owned());
         return;

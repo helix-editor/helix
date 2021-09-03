@@ -31,6 +31,7 @@ pub struct Client {
     pub breakpoints: HashMap<PathBuf, Vec<SourceBreakpoint>>,
     // thread_id -> frames
     pub stack_frames: HashMap<usize, Vec<StackFrame>>,
+    pub thread_states: HashMap<usize, String>,
     pub thread_id: Option<usize>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,

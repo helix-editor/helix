@@ -273,10 +273,12 @@ impl Application {
                     all_threads_stopped,
                     ..
                 }) => {
-                    debugger.is_running = false;
+                    if let Some(thread_id) = thread_id {
+                        debugger.thread_states.insert(thread_id, reason); // TODO: dap uses "type" || "reason" here
+                        // whichever thread stops is made "current" (if no previously selected thread).
+                        select_thread_id(&mut self.editor, thread_id, false).await;
+                    }
 
-                    // whichever thread stops is made "current" (if no previously selected thread).
-                    select_thread_id(&mut self.editor, thread_id.unwrap(), false).await;
 
                     let scope = match thread_id {
                         Some(id) => format!("Thread {}", id),
@@ -296,6 +298,15 @@ impl Application {
 
                     self.editor.set_status(status);
                 }
+                Event::Continued(events::Continued { thread_id, .. }) => {
+                    debugger.thread_states.remove(&thread_id);
+                    if debugger.thread_id == Some(thread_id) {
+                        resume_application(debugger)
+                    }
+                }
+                Event::Thread(_) => {
+                    // TODO: update thread_states, make threads request 
+                }
                 Event::Output(events::Output {
                     category, output, ..
                 }) => {
@@ -314,12 +325,6 @@ impl Application {
                 Event::Initialized => {
                     self.editor
                         .set_status("Debugged application started".to_owned());
-                }
-                Event::Continued(events::Continued { thread_id, .. }) => {
-                    // TODO: remove thread from thread-states
-                    if debugger.thread_id == Some(thread_id) {
-                        resume_application(debugger)
-                    }
                 }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);
