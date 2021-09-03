@@ -4,7 +4,7 @@
 //! entire struct which `&mut self` says.  This makes it impossible to do other mutable
 //! stuff to the struct because it is already borrowed. Because macros are expanded,
 //! this circumvents the problem because it is just like indexing fields by hand and then
-//! putting a &mut in front of it. This way rust can see that we are only borrowing a
+//! putting a `&mut` in front of it. This way rust can see that we are only borrowing a
 //! part of the struct and not the entire thing.
 
 /// Get the current view and document mutably as a tuple.
