@@ -23,27 +23,27 @@
   "for"
   "do"
   "end"
-] @keyword.control.loop)
+] @keyword.control.repeat)
 
 (for_in_statement
 [
   "for"
   "do"
   "end"
-] @keyword.control.loop)
+] @keyword.control.repeat)
 
 (while_statement
 [
   "while"
   "do"
   "end"
-] @keyword.control.loop)
+] @keyword.control.repeat)
 
 (repeat_statement
 [
   "repeat"
   "until"
-] @keyword.control.loop)
+] @keyword.control.repeat)
 
 (do_statement
 [

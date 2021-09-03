@@ -87,7 +87,7 @@
   (template_string)
 ] @string
 
-(regex) @string.special
+(regex) @string.regexp
 (number) @number
 
 ; Tokens
