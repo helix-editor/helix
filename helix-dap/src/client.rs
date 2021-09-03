@@ -62,10 +62,11 @@ impl Client {
     pub fn streams(
         rx: Box<dyn AsyncBufRead + Unpin + Send>,
         tx: Box<dyn AsyncWrite + Unpin + Send>,
+        err: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
         id: usize,
         process: Option<Child>,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
-        let (server_rx, server_tx) = Transport::start(rx, tx, id);
+        let (server_rx, server_tx) = Transport::start(rx, tx, err, id);
         let (client_rx, client_tx) = unbounded_channel();
 
         let client = Self {
@@ -92,7 +93,7 @@ impl Client {
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         let stream = TcpStream::connect(addr).await?;
         let (rx, tx) = stream.into_split();
-        Self::streams(Box::new(BufReader::new(rx)), Box::new(tx), id, None)
+        Self::streams(Box::new(BufReader::new(rx)), Box::new(tx), None, id, None)
     }
 
     pub fn stdio(
@@ -113,10 +114,12 @@ impl Client {
         // TODO: do we need bufreader/writer here? or do we use async wrappers on unblock?
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
+        let errors = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
         Self::streams(
             Box::new(BufReader::new(reader)),
             Box::new(writer),
+            Some(Box::new(BufReader::new(errors))),
             id,
             Some(process),
         )
@@ -167,6 +170,7 @@ impl Client {
         Self::streams(
             Box::new(BufReader::new(rx)),
             Box::new(tx),
+            None,
             id,
             Some(process),
         )

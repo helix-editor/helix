@@ -53,6 +53,7 @@ impl Transport {
     pub fn start(
         server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
         server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
+        server_stderr: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
         id: usize,
     ) -> (UnboundedReceiver<Payload>, UnboundedSender<Request>) {
         let (client_tx, rx) = unbounded_channel();
@@ -67,6 +68,9 @@ impl Transport {
 
         tokio::spawn(Self::recv(transport.clone(), server_stdout, client_tx));
         tokio::spawn(Self::send(transport, server_stdin, client_rx));
+        if let Some(stderr) = server_stderr {
+            tokio::spawn(Self::err(stderr));
+        }
 
         (rx, tx)
     }
@@ -115,6 +119,17 @@ impl Transport {
         let output: serde_json::Result<Payload> = serde_json::from_str(msg);
 
         Ok(output?)
+    }
+
+    async fn recv_server_error(
+        err: &mut (impl AsyncBufRead + Unpin + Send),
+        buffer: &mut String,
+    ) -> Result<()> {
+        buffer.truncate(0);
+        err.read_line(buffer).await?;
+        error!("err <- {}", buffer);
+
+        Ok(())
     }
 
     async fn send_payload_to_server(
@@ -241,6 +256,19 @@ impl Transport {
                 .send_payload_to_server(&mut server_stdin, req)
                 .await
                 .unwrap()
+        }
+    }
+
+    async fn err(mut server_stderr: Box<dyn AsyncBufRead + Unpin + Send>) {
+        let mut recv_buffer = String::new();
+        loop {
+            match Self::recv_server_error(&mut server_stderr, &mut recv_buffer).await {
+                Ok(_) => {}
+                Err(err) => {
+                    error!("err: <- {:?}", err);
+                    break;
+                }
+            }
         }
     }
 }
