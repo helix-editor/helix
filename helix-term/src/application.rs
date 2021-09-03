@@ -323,8 +323,13 @@ impl Application {
                     self.editor.set_status(format!("{} {}", prefix, output));
                 }
                 Event::Initialized => {
-                    self.editor
-                        .set_status("Debugged application started".to_owned());
+                    // send existing breakpoints
+                    // TODO: fetch breakpoints (in case we're attaching)
+
+                    if let Ok(_) = debugger.configuration_done().await {
+                        self.editor
+                            .set_status("Debugged application started".to_owned());
+                    }; // TODO: do we need to handle error?
                 }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);

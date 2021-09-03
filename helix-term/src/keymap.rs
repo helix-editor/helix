@@ -490,7 +490,6 @@ impl Default for Keymaps {
                 "d" => { "Debug"
                     "l" => dap_launch,
                     "b" => dap_toggle_breakpoint,
-                    "r" => dap_run,
                     "c" => dap_continue,
                     "h" => dap_pause,
                     "i" => dap_step_in,

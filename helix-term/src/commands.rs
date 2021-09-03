@@ -310,7 +310,6 @@ impl Command {
         select_textobject_inner, "Select inside object",
         dap_launch, "Launch debug target",
         dap_toggle_breakpoint, "Toggle breakpoint",
-        dap_run, "Begin program execution",
         dap_continue, "Continue program execution",
         dap_pause, "Pause program execution",
         dap_step_in, "Step in",

@@ -100,7 +100,7 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
     let picker = Picker::new(
         true,
         threads,
-        |thread| thread.name.clone().into(),
+        |thread| thread.name.clone().into(), // TODO: include thread_states in the label
         move |editor, thread, _action| callback_fn(editor, thread),
     );
     cx.push_layer(Box::new(picker))
@@ -300,25 +300,6 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     }
 }
 
-pub fn dap_run(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
-
-    if debugger.is_running {
-        cx.editor
-            .set_status("Debuggee is already running".to_owned());
-        return;
-    }
-    let request = debugger.configuration_done();
-    if let Err(e) = block_on(request) {
-        cx.editor.set_error(format!("Failed to run: {:?}", e));
-        return;
-    }
-    debugger.is_running = true;
-}
-
 pub fn dap_continue(cx: &mut Context) {
     let debugger = match &mut cx.editor.debugger {
         Some(debugger) => debugger,
@@ -340,10 +321,10 @@ pub fn dap_continue(cx: &mut Context) {
 
 pub fn dap_pause(cx: &mut Context) {
     thread_picker(cx, |editor, thread| {
-    let debugger = match &mut editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+        let debugger = match &mut editor.debugger {
+            Some(debugger) => debugger,
+            None => return,
+        };
         let request = debugger.pause(thread.id);
         // NOTE: we don't need to set active thread id here because DAP will emit a "stopped" event
         if let Err(e) = block_on(request) {

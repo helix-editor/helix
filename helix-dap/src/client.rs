@@ -35,7 +35,6 @@ pub struct Client {
     pub thread_id: Option<usize>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
-    pub is_running: bool, // TODO: track is_running per thread
 }
 
 impl Client {
@@ -83,7 +82,6 @@ impl Client {
             thread_states: HashMap::new(),
             thread_id: None,
             active_frame: None,
-            is_running: false,
         };
 
         tokio::spawn(Self::recv(server_rx, client_rx));
