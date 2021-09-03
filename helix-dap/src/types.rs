@@ -157,7 +157,7 @@ pub struct StackFrame {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Thread {
-    pub id: usize,
+    pub id: isize,
     pub name: String,
 }
 
@@ -317,7 +317,7 @@ pub mod requests {
     #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ContinueArguments {
-        pub thread_id: usize,
+        pub thread_id: isize,
     }
 
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -338,7 +338,7 @@ pub mod requests {
     #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StackTraceArguments {
-        pub thread_id: usize,
+        pub thread_id: isize,
         pub start_frame: Option<usize>,
         pub levels: Option<usize>,
         pub format: Option<StackFrameFormat>,
@@ -424,7 +424,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepInArguments {
-        pub thread_id: usize,
+        pub thread_id: isize,
         pub target_id: Option<usize>,
         pub granularity: Option<String>,
     }
@@ -441,7 +441,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepOutArguments {
-        pub thread_id: usize,
+        pub thread_id: isize,
         pub granularity: Option<String>,
     }
 
@@ -457,7 +457,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct NextArguments {
-        pub thread_id: usize,
+        pub thread_id: isize,
         pub granularity: Option<String>,
     }
 
@@ -473,7 +473,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct PauseArguments {
-        pub thread_id: usize,
+        pub thread_id: isize,
     }
 
     #[derive(Debug)]
@@ -551,7 +551,7 @@ pub mod events {
     pub struct Stopped {
         pub reason: String,
         pub description: Option<String>,
-        pub thread_id: Option<usize>,
+        pub thread_id: Option<isize>,
         pub preserve_focus_hint: Option<bool>,
         pub text: Option<String>,
         pub all_threads_stopped: Option<bool>,
@@ -561,7 +561,7 @@ pub mod events {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Continued {
-        pub thread_id: usize,
+        pub thread_id: isize,
         pub all_threads_continued: Option<bool>,
     }
 
@@ -581,7 +581,7 @@ pub mod events {
     #[serde(rename_all = "camelCase")]
     pub struct Thread {
         pub reason: String,
-        pub thread_id: usize,
+        pub thread_id: isize,
     }
 
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]

@@ -29,7 +29,7 @@ pub fn resume_application(debugger: &mut Client) {
     debugger.thread_id = None;
 }
 
-pub async fn select_thread_id(editor: &mut Editor, thread_id: usize, force: bool) {
+pub async fn select_thread_id(editor: &mut Editor, thread_id: isize, force: bool) {
     let debugger = match &mut editor.debugger {
         Some(debugger) => debugger,
         None => return,

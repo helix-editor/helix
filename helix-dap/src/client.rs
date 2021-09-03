@@ -28,9 +28,9 @@ pub struct Client {
     request_counter: AtomicU64,
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
-    pub stack_frames: HashMap<usize, Vec<StackFrame>>,
-    pub thread_states: HashMap<usize, String>,
-    pub thread_id: Option<usize>,
+    pub stack_frames: HashMap<isize, Vec<StackFrame>>,
+    pub thread_states: HashMap<isize, String>,
+    pub thread_id: Option<isize>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
 }
@@ -298,7 +298,7 @@ impl Client {
         self.request::<requests::ConfigurationDone>(()).await
     }
 
-    pub async fn continue_thread(&mut self, thread_id: usize) -> Result<Option<bool>> {
+    pub async fn continue_thread(&mut self, thread_id: isize) -> Result<Option<bool>> {
         let args = requests::ContinueArguments { thread_id };
 
         let response = self.request::<requests::Continue>(args).await?;
@@ -307,7 +307,7 @@ impl Client {
 
     pub async fn stack_trace(
         &mut self,
-        thread_id: usize,
+        thread_id: isize,
     ) -> Result<(Vec<StackFrame>, Option<usize>)> {
         let args = requests::StackTraceArguments {
             thread_id,
@@ -345,7 +345,7 @@ impl Client {
         Ok(response.variables)
     }
 
-    pub async fn step_in(&mut self, thread_id: usize) -> Result<()> {
+    pub async fn step_in(&mut self, thread_id: isize) -> Result<()> {
         let args = requests::StepInArguments {
             thread_id,
             target_id: None,
@@ -355,7 +355,7 @@ impl Client {
         self.request::<requests::StepIn>(args).await
     }
 
-    pub async fn step_out(&mut self, thread_id: usize) -> Result<()> {
+    pub async fn step_out(&mut self, thread_id: isize) -> Result<()> {
         let args = requests::StepOutArguments {
             thread_id,
             granularity: None,
@@ -364,7 +364,7 @@ impl Client {
         self.request::<requests::StepOut>(args).await
     }
 
-    pub async fn next(&mut self, thread_id: usize) -> Result<()> {
+    pub async fn next(&mut self, thread_id: isize) -> Result<()> {
         let args = requests::NextArguments {
             thread_id,
             granularity: None,
@@ -373,7 +373,7 @@ impl Client {
         self.request::<requests::Next>(args).await
     }
 
-    pub async fn pause(&mut self, thread_id: usize) -> Result<()> {
+    pub async fn pause(&mut self, thread_id: isize) -> Result<()> {
         let args = requests::PauseArguments { thread_id };
 
         self.request::<requests::Pause>(args).await
