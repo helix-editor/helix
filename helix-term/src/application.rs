@@ -256,7 +256,7 @@ impl Application {
     }
 
     pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
-        use crate::commands::dap::select_thread_id;
+        use crate::commands::dap::{resume_application, select_thread_id};
         use helix_dap::{events, Event};
         let mut debugger = match self.editor.debugger.as_mut() {
             Some(debugger) => debugger,
@@ -276,22 +276,7 @@ impl Application {
                     debugger.is_running = false;
 
                     // whichever thread stops is made "current" (if no previously selected thread).
-                    if thread_id.is_none() || all_threads_stopped.unwrap_or_default() {
-                        let main = debugger.threads().await.ok().and_then(|threads| {
-                            // Workaround for debugging Go tests. Main thread has * in beginning of its name
-                            let mut main =
-                                threads.iter().find(|t| t.name.starts_with('*')).cloned();
-                            if main.is_none() {
-                                main = threads.get(0).cloned();
-                            }
-                            main.map(|t| t.id)
-                        });
-                        if let Some(id) = main {
-                            select_thread_id(&mut self.editor, id, true).await;
-                        }
-                    } else {
-                        select_thread_id(&mut self.editor, thread_id.unwrap(), true).await;
-                    }
+                    select_thread_id(&mut self.editor, thread_id.unwrap(), false).await;
 
                     let scope = match thread_id {
                         Some(id) => format!("Thread {}", id),
@@ -330,10 +315,11 @@ impl Application {
                     self.editor
                         .set_status("Debugged application started".to_owned());
                 }
-                Event::Continued(_) => {
-                    debugger.is_running = true;
-                    debugger.active_frame = None;
-                    debugger.thread_id = None;
+                Event::Continued(events::Continued { thread_id, .. }) => {
+                    // TODO: remove thread from thread-states
+                    if debugger.thread_id == Some(thread_id) {
+                        resume_application(debugger)
+                    }
                 }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);

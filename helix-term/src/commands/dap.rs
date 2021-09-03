@@ -18,6 +18,12 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
     Some(pos)
 }
 
+pub fn resume_application(debugger: &mut Client) {
+    debugger.is_running = true; // TODO: set state running for debugger.thread_id
+    debugger.active_frame = None;
+    debugger.thread_id = None;
+}
+
 pub async fn select_thread_id(editor: &mut Editor, thread_id: usize, force: bool) {
     let debugger = match &mut editor.debugger {
         Some(debugger) => debugger,
@@ -243,203 +249,234 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     // TODO: need to map breakpoints over edits and update them?
     // we shouldn't really allow editing while debug is running though
 
-    if let Some(debugger) = &mut cx.editor.debugger {
-        let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
-        if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
-            breakpoints.remove(pos);
-        } else {
-            breakpoints.push(breakpoint);
-        }
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
 
-        let breakpoints = breakpoints.clone();
+    let breakpoints = debugger.breakpoints.entry(path.clone()).or_default();
+    if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
+        breakpoints.remove(pos);
+    } else {
+        breakpoints.push(breakpoint);
+    }
 
-        let request = debugger.set_breakpoints(path, breakpoints);
-        if let Err(e) = block_on(request) {
-            cx.editor
-                .set_error(format!("Failed to set breakpoints: {:?}", e));
-        }
+    let breakpoints = breakpoints.clone();
+
+    let request = debugger.set_breakpoints(path, breakpoints);
+    if let Err(e) = block_on(request) {
+        cx.editor
+            .set_error(format!("Failed to set breakpoints: {:?}", e));
     }
 }
 
 pub fn dap_run(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        if debugger.is_running {
-            cx.editor
-                .set_status("Debuggee is already running".to_owned());
-            return;
-        }
-        let request = debugger.configuration_done();
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to run: {:?}", e));
-            return;
-        }
-        debugger.is_running = true;
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if debugger.is_running {
+        cx.editor
+            .set_status("Debuggee is already running".to_owned());
+        return;
     }
+    let request = debugger.configuration_done();
+    if let Err(e) = block_on(request) {
+        cx.editor.set_error(format!("Failed to run: {:?}", e));
+        return;
+    }
+    debugger.is_running = true;
 }
 
 pub fn dap_continue(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        if debugger.is_running {
-            cx.editor
-                .set_status("Debuggee is already running".to_owned());
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if let Some(thread_id) = debugger.thread_id {
+        let request = debugger.continue_thread(thread_id);
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to continue: {:?}", e));
             return;
         }
-
-        if let Some(thread_id) = debugger.thread_id {
-            let request = debugger.continue_thread(debugger.thread_id.unwrap());
-            if let Err(e) = block_on(request) {
-                cx.editor.set_error(format!("Failed to continue: {:?}", e));
-                return;
-            }
-            debugger.is_running = true;
-            debugger.stack_frames.remove(&thread_id);
-        } else {
-            cx.editor
-                .set_error("Currently active thread is not stopped. Switch the thread.".into());
-        }
+        resume_application(debugger);
+        debugger.stack_frames.remove(&thread_id);
+    } else {
+        cx.editor
+            .set_error("Currently active thread is not stopped. Switch the thread.".into());
     }
 }
 
 pub fn dap_pause(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        if !debugger.is_running {
-            cx.editor.set_status("Debuggee is not running".to_owned());
-            return;
-        }
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
 
-        // FIXME: correct number here
-        let request = debugger.pause(0);
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to pause: {:?}", e));
-        }
+    if !debugger.is_running {
+        cx.editor.set_status("Debuggee is not running".to_owned());
+        return;
+    }
+
+    // FIXME: correct number here
+    let request = debugger.pause(0);
+    if let Err(e) = block_on(request) {
+        cx.editor.set_error(format!("Failed to pause: {:?}", e));
     }
 }
 
 pub fn dap_step_in(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        if debugger.is_running {
-            cx.editor
-                .set_status("Debuggee is already running".to_owned());
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if let Some(thread_id) = debugger.thread_id {
+        let request = debugger.step_in(thread_id);
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to continue: {:?}", e));
             return;
         }
-
-        let request = debugger.step_in(debugger.thread_id.unwrap());
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to step: {:?}", e));
-        }
+        resume_application(debugger);
+        debugger.stack_frames.remove(&thread_id);
+    } else {
+        cx.editor
+            .set_error("Currently active thread is not stopped. Switch the thread.".into());
     }
 }
 
 pub fn dap_step_out(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        if debugger.is_running {
-            cx.editor
-                .set_status("Debuggee is already running".to_owned());
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if let Some(thread_id) = debugger.thread_id {
+        let request = debugger.step_out(thread_id);
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to continue: {:?}", e));
             return;
         }
-
-        let request = debugger.step_out(debugger.thread_id.unwrap());
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to step: {:?}", e));
-        }
+        resume_application(debugger);
+        debugger.stack_frames.remove(&thread_id);
+    } else {
+        cx.editor
+            .set_error("Currently active thread is not stopped. Switch the thread.".into());
     }
 }
 
 pub fn dap_next(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        if debugger.is_running {
-            cx.editor
-                .set_status("Debuggee is already running".to_owned());
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if let Some(thread_id) = debugger.thread_id {
+        let request = debugger.next(thread_id);
+        if let Err(e) = block_on(request) {
+            cx.editor.set_error(format!("Failed to continue: {:?}", e));
             return;
         }
-
-        let request = debugger.next(debugger.thread_id.unwrap());
-        if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to step: {:?}", e));
-        }
+        resume_application(debugger);
+        debugger.stack_frames.remove(&thread_id);
+    } else {
+        cx.editor
+            .set_error("Currently active thread is not stopped. Switch the thread.".into());
     }
 }
 
 pub fn dap_variables(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        if debugger.is_running {
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if debugger.is_running {
+        cx.editor
+            .set_status("Cannot access variables while target is running".to_owned());
+        return;
+    }
+    let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
+        (Some(frame), Some(thread_id)) => (frame, thread_id),
+        _ => {
             cx.editor
-                .set_status("Cannot access variables while target is running".to_owned());
+                .set_status("Cannot find current stack frame to access variables".to_owned());
             return;
         }
-        let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
-            (Some(frame), Some(thread_id)) => (frame, thread_id),
-            _ => {
-                cx.editor
-                    .set_status("Cannot find current stack frame to access variables".to_owned());
-                return;
-            }
-        };
+    };
 
-        let frame_id = debugger.stack_frames[&thread_id][frame].id;
-        let scopes = match block_on(debugger.scopes(frame_id)) {
-            Ok(s) => s,
-            Err(e) => {
-                cx.editor
-                    .set_error(format!("Failed to get scopes: {:?}", e));
-                return;
-            }
-        };
-        let mut variables = Vec::new();
+    let frame_id = debugger.stack_frames[&thread_id][frame].id;
+    let scopes = match block_on(debugger.scopes(frame_id)) {
+        Ok(s) => s,
+        Err(e) => {
+            cx.editor
+                .set_error(format!("Failed to get scopes: {:?}", e));
+            return;
+        }
+    };
+    let mut variables = Vec::new();
 
-        for scope in scopes.iter() {
-            let response = block_on(debugger.variables(scope.variables_reference));
+    for scope in scopes.iter() {
+        let response = block_on(debugger.variables(scope.variables_reference));
 
-            if let Ok(vars) = response {
-                for var in vars {
-                    let prefix = match var.data_type {
-                        Some(data_type) => format!("{} ", data_type),
-                        None => "".to_owned(),
-                    };
-                    variables.push(format!("{}{} = {}\n", prefix, var.name, var.value));
-                }
+        if let Ok(vars) = response {
+            variables.reserve(vars.len());
+            for var in vars {
+                let prefix = match var.data_type {
+                    Some(data_type) => format!("{} ", data_type),
+                    None => "".to_owned(),
+                };
+                variables.push(format!("{}{} = {}\n", prefix, var.name, var.value));
             }
         }
+    }
 
-        if !variables.is_empty() {
-            cx.editor.variables = Some(variables);
-            cx.editor.variables_page = 0;
-        }
+    if !variables.is_empty() {
+        cx.editor.variables = Some(variables);
+        cx.editor.variables_page = 0;
     }
 }
 
 pub fn dap_terminate(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        let request = debugger.disconnect();
-        if let Err(e) = block_on(request) {
-            cx.editor
-                .set_error(format!("Failed to disconnect: {:?}", e));
-            return;
-        }
-        cx.editor.debugger = None;
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    let request = debugger.disconnect();
+    if let Err(e) = block_on(request) {
+        cx.editor
+            .set_error(format!("Failed to disconnect: {:?}", e));
+        return;
     }
+    cx.editor.debugger = None;
 }
 
 pub fn dap_switch_thread(cx: &mut Context) {
-    if let Some(debugger) = &mut cx.editor.debugger {
-        let request = debugger.threads();
-        let threads = match block_on(request) {
-            Ok(threads) => threads,
-            Err(e) => {
-                cx.editor
-                    .set_error(format!("Failed to retrieve threads: {:?}", e));
-                return;
-            }
-        };
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
 
-        let picker = Picker::new(
-            true,
-            threads,
-            |thread| thread.name.clone().into(),
-            |editor, thread, _action| {
-                block_on(select_thread_id(editor, thread.id, true));
-            },
-        );
-        cx.push_layer(Box::new(picker))
-    }
+    let request = debugger.threads();
+    let threads = match block_on(request) {
+        Ok(threads) => threads,
+        Err(e) => {
+            cx.editor
+                .set_error(format!("Failed to retrieve threads: {:?}", e));
+            return;
+        }
+    };
+
+    let picker = Picker::new(
+        true,
+        threads,
+        |thread| thread.name.clone().into(),
+        |editor, thread, _action| {
+            block_on(select_thread_id(editor, thread.id, true));
+        },
+    );
+    cx.push_layer(Box::new(picker))
 }
