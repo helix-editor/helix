@@ -40,8 +40,12 @@ For a language to have syntax-highlighting and indentation among other things, y
 
 ## Common Issues
 
-If you get errors when building after switching branches, you may have to remove tree-sitter submodules.
+- If you get errors when building after switching branches, you may have to remove or update tree-sitter submodules. You can update submodules by running
+```sh
+$ git submodule update
+```
+- Make sure to not use the `--remote` flag. To remove submodules look inside the `.gitmodules` and remove directories that are not present inside of it.
 
-If a parser is segfaulting or you want to remove the parser, make sure to remove the submodule *and* the compiled parser in `runtime/grammar/<name>.so`
+- If a parser is segfaulting or you want to remove the parser, make sure to remove the submodule *and* the compiled parser in `runtime/grammar/<name>.so`
 
-The indents query is `indents.toml`, *not* `indents.scm`. See [this](https://github.com/helix-editor/helix/issues/114) issue for more information.
+- The indents query is `indents.toml`, *not* `indents.scm`. See [this](https://github.com/helix-editor/helix/issues/114) issue for more information.
