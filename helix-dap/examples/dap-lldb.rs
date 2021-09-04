@@ -84,6 +84,11 @@ pub async fn main() -> Result<()> {
 
     println!("configurationDone: {:?}", client.configuration_done().await);
 
+    let mut _in = String::new();
+    std::io::stdin()
+        .read_line(&mut _in)
+        .expect("Failed to read line");
+
     let threads = client.threads().await?;
     println!("threads: {:#?}", threads);
     let bt = client
