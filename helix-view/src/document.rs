@@ -630,6 +630,8 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
+                let span = info_span!("tree-sitter syntax update");
+                let _enter = span.enter();
                 syntax
                     .update(&old_doc, &self.text, transaction.changes())
                     .unwrap();
@@ -663,6 +665,7 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
+    #[instrument]
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.

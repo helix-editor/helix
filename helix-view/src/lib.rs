@@ -1,3 +1,6 @@
+#[macro_use(instrument, info_span)]
+extern crate tracing;
+
 #[macro_use]
 pub mod macros;
 

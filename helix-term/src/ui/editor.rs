@@ -272,6 +272,7 @@ impl EditorView {
         spans
     }
 
+    #[instrument(skip(doc, offset, viewport, surface, theme, highlights))]
     pub fn render_text_highlights<H: Iterator<Item = HighlightEvent>>(
         doc: &Document,
         offset: Position,
