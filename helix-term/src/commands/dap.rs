@@ -97,6 +97,11 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
         }
     };
 
+    if threads.len() == 1 {
+        callback_fn(cx.editor, &threads[0]);
+        return;
+    }
+
     let picker = Picker::new(
         true,
         threads,
