@@ -503,7 +503,10 @@ fn goto_window_bottom(cx: &mut Context) {
     goto_window(cx, Align::Bottom)
 }
 
-fn move_next_word_start(cx: &mut Context) {
+fn move_word_impl<F>(cx: &mut Context, move_fn: F)
+where
+    F: Fn(RopeSlice, Range, usize) -> Range,
+{
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -511,68 +514,32 @@ fn move_next_word_start(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| movement::move_next_word_start(text, range, count));
+        .transform(|range| move_fn(text, range, count));
     doc.set_selection(view.id, selection);
+}
+
+fn move_next_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_word_start)
 }
 
 fn move_prev_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_prev_word_start(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_prev_word_start)
 }
 
 fn move_next_word_end(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_next_word_end(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_next_word_end)
 }
 
 fn move_next_long_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_next_long_word_start(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_next_long_word_start)
 }
 
 fn move_prev_long_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_prev_long_word_start(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_prev_long_word_start)
 }
 
 fn move_next_long_word_end(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_next_long_word_end(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_next_long_word_end)
 }
 
 fn goto_file_start(cx: &mut Context) {
@@ -591,82 +558,44 @@ fn goto_file_end(cx: &mut Context) {
     doc.set_selection(view.id, Selection::point(doc.text().len_chars()));
 }
 
-fn extend_next_word_start(cx: &mut Context) {
+fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
+where
+    F: Fn(RopeSlice, Range, usize) -> Range,
+{
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_next_word_start(text, range, count);
+        let word = extend_fn(text, range, count);
         let pos = word.cursor(text);
         range.put_cursor(text, pos, true)
     });
     doc.set_selection(view.id, selection);
+}
+
+fn extend_next_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_word_start)
 }
 
 fn extend_prev_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_prev_word_start(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
+    extend_word_impl(cx, movement::move_prev_word_start)
 }
 
 fn extend_next_word_end(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_next_word_end(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
+    extend_word_impl(cx, movement::move_next_word_end)
 }
 
 fn extend_next_long_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_next_long_word_start(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
+    extend_word_impl(cx, movement::move_next_long_word_start)
 }
 
 fn extend_prev_long_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_prev_long_word_start(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
+    extend_word_impl(cx, movement::move_prev_long_word_start)
 }
 
 fn extend_next_long_word_end(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_next_long_word_end(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
+    extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
 #[inline]
