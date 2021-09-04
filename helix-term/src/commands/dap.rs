@@ -471,7 +471,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         Some(thread_id) => thread_id,
         None => {
             cx.editor
-                .set_error(format!("No thread is currently active"));
+                .set_error("No thread is currently active".to_owned());
             return;
         }
     };
