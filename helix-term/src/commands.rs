@@ -180,6 +180,9 @@ impl Command {
         move_next_long_word_end, "Move to end of next long word",
         extend_next_word_start, "Extend to beginning of next word",
         extend_prev_word_start, "Extend to beginning of previous word",
+        extend_next_long_word_start, "Extend to beginning of next long word",
+        extend_prev_long_word_start, "Extend to beginning of previous long word",
+        extend_next_long_word_end, "Extend to end of next long word",
         extend_next_word_end, "Extend to end of next word",
         find_till_char, "Move till next occurance of char",
         find_next_char, "Move to next occurance of char",
@@ -616,6 +619,45 @@ fn extend_next_word_end(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let word = movement::move_next_word_end(text, range, count);
+        let pos = word.cursor(text);
+        range.put_cursor(text, pos, true)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn extend_next_long_word_start(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let word = movement::move_next_long_word_start(text, range, count);
+        let pos = word.cursor(text);
+        range.put_cursor(text, pos, true)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn extend_prev_long_word_start(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let word = movement::move_prev_long_word_start(text, range, count);
+        let pos = word.cursor(text);
+        range.put_cursor(text, pos, true)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn extend_next_long_word_end(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let word = movement::move_next_long_word_end(text, range, count);
         let pos = word.cursor(text);
         range.put_cursor(text, pos, true)
     });
