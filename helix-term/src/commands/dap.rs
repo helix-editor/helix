@@ -506,6 +506,13 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
                 .iter()
                 .position(|f| f.id == frame.id);
             debugger.active_frame = pos;
+
+            let frame = debugger.stack_frames[&thread_id]
+                .get(pos.unwrap_or(0))
+                .cloned();
+            if let Some(frame) = &frame {
+                jump_to_stack_frame(editor, frame);
+            }
         },
         move |_editor, frame| {
             frame
