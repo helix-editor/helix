@@ -229,11 +229,11 @@ impl Component for Markdown {
             if content_width > max_text_width {
                 width = viewport.0;
                 height += content_width / max_text_width;
-            } else if {
+            } else {
                 content_width += padding;
-                content_width > width
-            } {
-                width = content_width
+                if content_width > width {
+                    width = content_width;
+                }
             }
             if height >= viewport.1 {
                 height = viewport.1;
