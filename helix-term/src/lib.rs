@@ -1,3 +1,6 @@
+#[macro_use(instrument)]
+extern crate tracing;
+
 #[macro_use]
 extern crate helix_view;
 

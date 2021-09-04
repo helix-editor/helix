@@ -144,6 +144,7 @@ impl Application {
         Ok(app)
     }
 
+    #[instrument(skip(self))]
     fn render(&mut self) {
         let editor = &mut self.editor;
         let compositor = &mut self.compositor;
@@ -228,6 +229,7 @@ impl Application {
         }
     }
 
+    #[instrument(skip(self))]
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
@@ -252,6 +254,7 @@ impl Application {
         }
     }
 
+    #[instrument(skip(self))]
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,

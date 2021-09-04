@@ -93,6 +93,7 @@ impl Compositor {
         self.terminal.size().expect("couldn't get terminal size")
     }
 
+    #[instrument(skip(self))]
     pub fn resize(&mut self, width: u16, height: u16) {
         self.terminal
             .resize(Rect::new(0, 0, width, height))

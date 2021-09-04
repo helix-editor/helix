@@ -1,3 +1,6 @@
+#[macro_use(instrument)]
+extern crate tracing;
+
 mod client;
 mod transport;
 

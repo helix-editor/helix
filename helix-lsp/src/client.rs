@@ -28,6 +28,7 @@ pub struct Client {
 }
 
 impl Client {
+    #[instrument]
     pub fn start(
         cmd: &str,
         args: &[String],
@@ -99,6 +100,7 @@ impl Client {
     }
 
     /// Execute a RPC request on the language server.
+    #[instrument(skip(params))]
     async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
     where
         R::Params: serde::Serialize,
@@ -111,6 +113,7 @@ impl Client {
     }
 
     /// Execute a RPC request on the language server.
+    #[instrument(skip(params))]
     fn call<R: lsp::request::Request>(
         &self,
         params: R::Params,
@@ -151,6 +154,7 @@ impl Client {
     }
 
     /// Send a RPC notification to the language server.
+    #[instrument(skip(params))]
     fn notify<R: lsp::notification::Notification>(
         &self,
         params: R::Params,
@@ -178,6 +182,7 @@ impl Client {
     }
 
     /// Reply to a language server RPC call.
+    #[instrument]
     pub fn reply(
         &self,
         id: jsonrpc::Id,
@@ -213,6 +218,7 @@ impl Client {
     // General messages
     // -------------------------------------------------------------------------------------------
 
+    #[instrument]
     pub(crate) async fn initialize(&mut self) -> Result<()> {
         // TODO: delay any requests that are triggered prior to initialize
         let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
@@ -291,22 +297,26 @@ impl Client {
         Ok(())
     }
 
+    #[instrument]
     pub async fn shutdown(&self) -> Result<()> {
         self.request::<lsp::request::Shutdown>(()).await
     }
 
+    #[instrument]
     pub fn exit(&self) -> impl Future<Output = Result<()>> {
         self.notify::<lsp::notification::Exit>(())
     }
 
     /// Tries to shut down the language server but returns
     /// early if server responds with an error.
+    #[instrument(level = "debug")]
     pub async fn shutdown_and_exit(&self) -> Result<()> {
         self.shutdown().await?;
         self.exit().await
     }
 
     /// Forcefully shuts down the language server ignoring any errors.
+    #[instrument(level = "debug")]
     pub async fn force_shutdown(&self) -> Result<()> {
         if let Err(e) = self.shutdown().await {
             tracing::warn!("language server failed to terminate gracefully - {}", e);
