@@ -43,3 +43,5 @@ For a language to have syntax-highlighting and indentation among other things, y
 If you get errors when building after switching branches, you may have to remove tree-sitter submodules.
 
 If a parser is segfaulting or you want to remove the parser, make sure to remove the submodule *and* the compiled parser in `runtime/grammar/<name>.so`
+
+The indents query is `indents.toml`, *not* `indents.scm`. See [this](https://github.com/helix-editor/helix/issues/114) issue for more information.
