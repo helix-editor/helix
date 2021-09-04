@@ -1355,6 +1355,7 @@ fn append_mode(cx: &mut Context) {
 mod cmd {
     use super::*;
 
+    use helix_dap::SourceBreakpoint;
     use helix_view::editor::Action;
     use ui::completers::{self, Completer};
 
@@ -1978,6 +1979,27 @@ mod cmd {
         Ok(())
     }
 
+    fn get_breakpoint_at_current_line(
+        cx: &mut compositor::Context,
+    ) -> Option<(usize, SourceBreakpoint)> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let pos = doc.selection(view.id).primary().cursor(text);
+        let line = text.char_to_line(pos) + 1; // 1-indexing in DAP, 0-indexing in Helix
+        let path = match doc.path() {
+            Some(path) => path.to_path_buf(),
+            None => return None,
+        };
+        let vec = vec![];
+        let breakpoints = cx.editor.breakpoints.get(&path.clone()).unwrap_or(&vec);
+        let i = breakpoints.iter().position(|b| b.line == line);
+        match i {
+            Some(i) => Some((i, breakpoints.get(i).unwrap().clone())),
+            None => None,
+        }
+    }
+
     fn edit_breakpoint_impl(
         cx: &mut compositor::Context,
         condition: Option<String>,
@@ -1985,15 +2007,7 @@ mod cmd {
     ) -> anyhow::Result<()> {
         use helix_lsp::block_on;
 
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-        let pos = doc.selection(view.id).primary().cursor(text);
-        let breakpoint = helix_dap::SourceBreakpoint {
-            line: text.char_to_line(pos) + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
-            condition,
-            log_message,
-            ..Default::default()
-        };
+        let (_, doc) = current!(cx.editor);
         let path = match doc.path() {
             Some(path) => path.to_path_buf(),
             None => {
@@ -2001,12 +2015,13 @@ mod cmd {
             }
         };
 
-        let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
-        if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
+        if let Some((pos, mut bp)) = get_breakpoint_at_current_line(cx) {
+            let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
             breakpoints.remove(pos);
-            breakpoints.push(breakpoint);
 
-            let breakpoints = breakpoints.clone();
+            bp.condition = condition;
+            bp.log_message = log_message;
+            breakpoints.push(bp);
 
             if let Some(debugger) = &mut cx.editor.debugger {
                 // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
@@ -2032,7 +2047,7 @@ mod cmd {
                 // {
                 //     bail!("Can't edit breakpoint: debugger does not support logpoints")
                 // }
-                let request = debugger.set_breakpoints(path, breakpoints);
+                let request = debugger.set_breakpoints(path, breakpoints.clone());
                 if let Err(e) = block_on(request) {
                     bail!("Failed to set breakpoints: {:?}", e)
                 }
