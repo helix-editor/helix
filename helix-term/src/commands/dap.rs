@@ -102,10 +102,20 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
         return;
     }
 
+    let thread_states = debugger.thread_states.clone();
     let picker = Picker::new(
         true,
         threads,
-        |thread| thread.name.clone().into(), // TODO: include thread_states in the label
+        move |thread| {
+            format!(
+                "{} ({})",
+                thread.name,
+                thread_states
+                    .get(&thread.id)
+                    .unwrap_or(&"unknown".to_owned())
+            )
+            .into()
+        },
         move |editor, thread, _action| callback_fn(editor, thread),
     );
     cx.push_layer(Box::new(picker))
