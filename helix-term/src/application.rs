@@ -299,7 +299,9 @@ impl Application {
                     self.editor.set_status(status);
                 }
                 Event::Continued(events::Continued { thread_id, .. }) => {
-                    debugger.thread_states.remove(&thread_id);
+                    debugger
+                        .thread_states
+                        .insert(thread_id, "running".to_owned());
                     if debugger.thread_id == Some(thread_id) {
                         resume_application(debugger)
                     }
