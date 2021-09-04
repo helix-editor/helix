@@ -37,7 +37,6 @@ signal-hook = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
 # Logging
-fern = "0.6"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 
@@ -54,6 +53,17 @@ toml = "0.5"
 
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+
+tracing = "0.1.26"
+tracing-appender = "0.1.2"
+tracing-tracy = { version = "0.7.0", optional = true }
+tracing-flame = { version = "0.1.0", optional = true }
+tracing-log = "0.1.2"
+
+[dependencies.tracing-subscriber]
+version = "0.2.20"
+default-features = false
+features = ["chrono", "smallvec", "env-filter", "fmt", "registry"]
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }

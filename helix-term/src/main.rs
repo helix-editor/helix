@@ -3,34 +3,56 @@ use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::Config;
 use helix_term::keymap::merge_keys;
-use std::path::PathBuf;
+use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
-fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
-    let mut base_config = fern::Dispatch::new();
+fn setup_logging(verbosity: u64) -> Result<impl Drop> {
+    use std::fs::OpenOptions;
+    use tracing::subscriber;
+    use tracing_appender::non_blocking;
+    use tracing_subscriber::{layer::SubscriberExt, registry::Registry};
 
-    base_config = match verbosity {
-        0 => base_config.level(log::LevelFilter::Warn),
-        1 => base_config.level(log::LevelFilter::Info),
-        2 => base_config.level(log::LevelFilter::Debug),
-        _3_or_more => base_config.level(log::LevelFilter::Trace),
+    let cache_dir = helix_core::cache_dir();
+
+    let open_options = {
+        let mut o = OpenOptions::new();
+        o.append(true).create(true).write(true);
+        o
     };
 
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::log_file(logpath)?);
+    let mut env_filter = EnvFilter::try_from_env("HELIX_LOG").unwrap_or_default();
 
-    base_config.chain(file_config).apply()?;
+    env_filter = match verbosity {
+        0 => env_filter.add_directive(LevelFilter::WARN.into()),
+        1 => env_filter.add_directive(LevelFilter::INFO.into()),
+        2 => env_filter.add_directive(LevelFilter::DEBUG.into()),
+        _ => env_filter.add_directive(LevelFilter::TRACE.into()),
+    };
 
-    Ok(())
+    let registry = Registry::default().with(env_filter);
+
+    let (registry, guard) = {
+        let log_file = open_options.open(cache_dir.join("helix.log"))?;
+        let (non_blocking, guard) = non_blocking(log_file);
+        let layer = tracing_subscriber::fmt::layer().with_writer(non_blocking);
+        (registry.with(layer), guard)
+    };
+
+    #[cfg(tracing_flame)]
+    let (registry, guard) = {
+        let flame_file = open_options.open(cache_dir.join("tracing.folded"));
+        let (non_blocking, guard_) = non_blocking(flame_file);
+        let layer = tracing_flame::FlameLayer::with_writer(non_blocking);
+        (registry.with(layer), (guard, guard_))
+    };
+
+    #[cfg(tracing_tracy)]
+    let (registry, guard) = (registry.with(tracing_tracy::TracyLayer::new()), guard);
+
+    subscriber::set_global_default(registry).unwrap();
+
+    tracing_log::LogTracer::builder().init();
+
+    Ok(guard)
 }
 
 #[tokio::main]
@@ -90,7 +112,8 @@ FLAGS:
         Err(err) => return Err(Error::new(err)),
     };
 
-    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
+    let _guard = setup_logging(args.verbosity).context("failed to initialize logging")?;
+    tracing::info!("Just a test");
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;
