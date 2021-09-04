@@ -43,7 +43,10 @@ pub async fn select_thread_id(editor: &mut Editor, thread_id: isize, force: bool
 
     // fetch stack trace
     // TODO: handle requesting more total frames
-    let (frames, _) = debugger.stack_trace(thread_id).await.unwrap();
+    let (frames, _) = match debugger.stack_trace(thread_id).await {
+        Ok(frames) => frames,
+        Err(_) => return,
+    };
     debugger.stack_frames.insert(thread_id, frames);
     debugger.active_frame = Some(0); // TODO: check how to determine this
 
