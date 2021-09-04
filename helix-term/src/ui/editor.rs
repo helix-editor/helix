@@ -795,6 +795,7 @@ impl EditorView {
                     );
                 }
             },
+            None,
         )
     }
 

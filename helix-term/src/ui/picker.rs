@@ -208,6 +208,7 @@ impl<T> Picker<T> {
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {
                 //
             },
+            None,
         );
 
         let mut picker = Self {

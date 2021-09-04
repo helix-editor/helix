@@ -317,6 +317,7 @@ impl Command {
         dap_next, "Step to next",
         dap_variables, "List variables",
         dap_terminate, "End debug session",
+        dap_edit_condition, "Edit condition of the breakpoint on the current line",
         dap_switch_thread, "Switch current thread",
         dap_switch_stack_frame, "Switch stack frame",
         shell_pipe, "Pipe selections through shell command",
@@ -1979,10 +1980,10 @@ mod cmd {
         Ok(())
     }
 
-    fn get_breakpoint_at_current_line(
-        cx: &mut compositor::Context,
+    pub fn get_breakpoint_at_current_line(
+        editor: &mut Editor,
     ) -> Option<(usize, SourceBreakpoint)> {
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
 
         let pos = doc.selection(view.id).primary().cursor(text);
@@ -1992,12 +1993,9 @@ mod cmd {
             None => return None,
         };
         let vec = vec![];
-        let breakpoints = cx.editor.breakpoints.get(&path.clone()).unwrap_or(&vec);
+        let breakpoints = editor.breakpoints.get(&path).unwrap_or(&vec);
         let i = breakpoints.iter().position(|b| b.line == line);
-        match i {
-            Some(i) => Some((i, breakpoints.get(i).unwrap().clone())),
-            None => None,
-        }
+        i.map(|i| (i, breakpoints.get(i).unwrap().clone()))
     }
 
     fn edit_breakpoint_impl(
@@ -2015,7 +2013,7 @@ mod cmd {
             }
         };
 
-        if let Some((pos, mut bp)) = get_breakpoint_at_current_line(cx) {
+        if let Some((pos, mut bp)) = get_breakpoint_at_current_line(cx.editor) {
             let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
             breakpoints.remove(pos);
 
@@ -2481,6 +2479,7 @@ fn command_mode(cx: &mut Context) {
                     .set_error(format!("no such command: '{}'", parts[0]));
             };
         },
+        None,
     );
     prompt.doc_fn = Box::new(|input: &str| {
         let part = input.split(' ').next().unwrap_or_default();
@@ -4584,6 +4583,7 @@ fn shell_keep_pipe(cx: &mut Context) {
             let index = index.unwrap_or_else(|| ranges.len() - 1);
             doc.set_selection(view.id, Selection::new(ranges, index));
         },
+        None,
     );
 
     cx.push_layer(Box::new(prompt));
@@ -4683,6 +4683,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                 doc.append_changes_to_history(view.id);
             }
         },
+        None,
     );
 
     cx.push_layer(Box::new(prompt));

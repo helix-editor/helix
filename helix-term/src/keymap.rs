@@ -497,6 +497,7 @@ impl Default for Keymaps {
                     "n" => dap_next,
                     "v" => dap_variables,
                     "t" => dap_terminate,
+                    "C-c" => dap_edit_condition,
                     "s" => { "Switch"
                         "t" => dap_switch_thread,
                         "f" => dap_switch_stack_frame,

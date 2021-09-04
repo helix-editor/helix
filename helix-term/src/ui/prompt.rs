@@ -59,10 +59,11 @@ impl Prompt {
         history_register: Option<char>,
         mut completion_fn: impl FnMut(&str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
+        line: Option<String>,
     ) -> Self {
         Self {
             prompt,
-            line: String::new(),
+            line: line.unwrap_or_default(),
             cursor: 0,
             completion: completion_fn(""),
             selection: None,
