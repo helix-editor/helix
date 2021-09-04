@@ -215,26 +215,29 @@ impl Component for Markdown {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let contents = parse(&self.contents, None, &self.config_loader);
         let padding = 2;
-        let area_width = viewport.0 - padding;
+        if padding >= viewport.1 || padding >= viewport.0 {
+            return None;
+        }
+        let contents = parse(&self.contents, None, &self.config_loader);
+        let max_text_width = viewport.0 - padding;
         let mut width = 0;
         let mut height = padding;
         for content in contents {
+            let mut content_width = content.width() as u16;
+            height += 1;
+            if content_width > max_text_width {
+                width = viewport.0;
+                height += content_width / max_text_width;
+            } else if {
+                content_width += padding;
+                content_width > width
+            } {
+                width = content_width
+            }
             if height >= viewport.1 {
                 height = viewport.1;
                 break;
-            }
-            let mut content_width = content.width() as u16;
-            height += 1;
-            if content_width > area_width {
-                width = viewport.0;
-                height += content_width / area_width;
-                continue;
-            }
-            content_width += padding;
-            if content_width > width {
-                width = content_width
             }
         }
 
