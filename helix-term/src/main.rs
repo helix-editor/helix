@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use anyhow::{Context, Error, Result};
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -5,19 +7,13 @@ use helix_term::config::Config;
 use helix_term::keymap::merge_keys;
 use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
-fn setup_logging(verbosity: u64) -> Result<impl Drop> {
+fn setup_logging(verbosity: u64) -> Result<impl Any> {
     use std::fs::OpenOptions;
     use tracing::subscriber;
     use tracing_appender::non_blocking;
     use tracing_subscriber::{layer::SubscriberExt, registry::Registry};
 
     let cache_dir = helix_core::cache_dir();
-
-    let open_options = {
-        let mut o = OpenOptions::new();
-        o.append(true).create(true).write(true);
-        o
-    };
 
     let mut env_filter = EnvFilter::try_from_env("HELIX_LOG").unwrap_or_default();
 
@@ -31,21 +27,25 @@ fn setup_logging(verbosity: u64) -> Result<impl Drop> {
     let registry = Registry::default().with(env_filter);
 
     let (registry, guard) = {
-        let log_file = open_options.open(cache_dir.join("helix.log"))?;
+        let log_file = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .write(true)
+            .open(cache_dir.join("helix.log"))?;
         let (non_blocking, guard) = non_blocking(log_file);
         let layer = tracing_subscriber::fmt::layer().with_writer(non_blocking);
         (registry.with(layer), guard)
     };
 
-    #[cfg(tracing_flame)]
+    #[cfg(feature = "tracing-flame")]
     let (registry, guard) = {
-        let flame_file = open_options.open(cache_dir.join("tracing.folded"));
+        let flame_file = std::fs::File::create(cache_dir.join("tracing.folded"))?;
         let (non_blocking, guard_) = non_blocking(flame_file);
-        let layer = tracing_flame::FlameLayer::with_writer(non_blocking);
+        let layer = tracing_flame::FlameLayer::new(non_blocking);
         (registry.with(layer), (guard, guard_))
     };
 
-    #[cfg(tracing_tracy)]
+    #[cfg(feature = "tracing-tracy")]
     let (registry, guard) = (registry.with(tracing_tracy::TracyLayer::new()), guard);
 
     subscriber::set_global_default(registry).unwrap();
@@ -113,6 +113,8 @@ FLAGS:
     };
 
     let _guard = setup_logging(args.verbosity).context("failed to initialize logging")?;
+
+    tracing::info!("hello world!");
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;
