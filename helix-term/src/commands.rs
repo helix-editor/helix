@@ -811,12 +811,25 @@ fn replace(cx: &mut Context) {
     })
 }
 
-fn switch_case(cx: &mut Context) {
+fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
+where
+    F: Fn(Cow<str>) -> Tendril,
+{
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = range
-            .fragment(doc.text().slice(..))
+        let text: Tendril = change_fn(range.fragment(doc.text().slice(..)));
+
+        (range.from(), range.to(), Some(text))
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_case(cx: &mut Context) {
+    switch_case_impl(cx, |string| {
+        string
             .chars()
             .flat_map(|ch| {
                 if ch.is_lowercase() {
@@ -827,39 +840,16 @@ fn switch_case(cx: &mut Context) {
                     vec![ch]
                 }
             })
-            .collect();
-
-        (range.from(), range.to(), Some(text))
+            .collect()
     });
-
-    doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn switch_to_uppercase(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = range.fragment(doc.text().slice(..)).to_uppercase().into();
-
-        (range.from(), range.to(), Some(text))
-    });
-
-    doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+    switch_case_impl(cx, |string| string.to_uppercase().into());
 }
 
 fn switch_to_lowercase(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = range.fragment(doc.text().slice(..)).to_lowercase().into();
-
-        (range.from(), range.to(), Some(text))
-    });
-
-    doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+    switch_case_impl(cx, |string| string.to_lowercase().into());
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
