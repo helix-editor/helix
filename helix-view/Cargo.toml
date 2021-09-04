@@ -34,7 +34,7 @@ chardetng = "0.1"
 
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
-log = "~0.4"
+tracing = "0.1.26"
 
 which = "4.2"
 

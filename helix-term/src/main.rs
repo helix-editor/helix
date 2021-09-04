@@ -50,7 +50,7 @@ fn setup_logging(verbosity: u64) -> Result<impl Drop> {
 
     subscriber::set_global_default(registry).unwrap();
 
-    tracing_log::LogTracer::builder().init();
+    tracing_log::LogTracer::builder().init()?;
 
     Ok(guard)
 }
@@ -113,7 +113,6 @@ FLAGS:
     };
 
     let _guard = setup_logging(args.verbosity).context("failed to initialize logging")?;
-    tracing::info!("Just a test");
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;

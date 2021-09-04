@@ -1,7 +1,7 @@
 use crate::Result;
 use anyhow::Context;
 use jsonrpc_core as jsonrpc;
-use log::{debug, error, info, warn};
+use tracing::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;

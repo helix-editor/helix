@@ -4,7 +4,7 @@ use helix_view::{theme, Editor};
 
 use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
-use log::error;
+use tracing::error;
 
 use std::{
     io::{stdout, Write},
@@ -74,7 +74,7 @@ impl Application {
             match theme_loader.load(theme) {
                 Ok(theme) => theme,
                 Err(e) => {
-                    log::warn!("failed to load theme `{}` - {}", theme, e);
+                    tracing::warn!("failed to load theme `{}` - {}", theme, e);
                     theme_loader.default()
                 }
             }
@@ -307,7 +307,7 @@ impl Application {
                                     ) {
                                         start
                                     } else {
-                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        tracing::warn!("lsp position out of bounds - {:?}", diagnostic);
                                         return None;
                                     };
 
@@ -318,7 +318,7 @@ impl Application {
                                     ) {
                                         end
                                     } else {
-                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        tracing::warn!("lsp position out of bounds - {:?}", diagnostic);
                                         return None;
                                     };
 
@@ -344,10 +344,10 @@ impl Application {
                         }
                     }
                     Notification::ShowMessage(params) => {
-                        log::warn!("unhandled window/showMessage: {:?}", params);
+                        tracing::warn!("unhandled window/showMessage: {:?}", params);
                     }
                     Notification::LogMessage(params) => {
-                        log::warn!("unhandled window/logMessage: {:?}", params);
+                        tracing::warn!("unhandled window/logMessage: {:?}", params);
                     }
                     Notification::ProgressMessage(params) => {
                         let lsp::ProgressParams { token, value } = params;
@@ -461,7 +461,7 @@ impl Application {
                                 if let Some(server) =
                                     self.editor.language_servers.get_by_id(server_id)
                                 {
-                                    log::warn!(
+                                    tracing::warn!(
                                         "missing document with language server id `{}`",
                                         server_id
                                     );
@@ -474,7 +474,7 @@ impl Application {
                                         }),
                                     ));
                                 } else {
-                                    log::warn!(
+                                    tracing::warn!(
                                         "can't find language server with id `{}`",
                                         server_id
                                     );
@@ -535,7 +535,7 @@ impl Application {
         self.event_loop().await;
 
         if self.editor.close_language_servers(None).await.is_err() {
-            log::error!("Timed out waiting for language servers to shutdown");
+            tracing::error!("Timed out waiting for language servers to shutdown");
         };
 
         self.restore_term()?;

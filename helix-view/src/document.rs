@@ -394,7 +394,7 @@ impl Document {
                     .text_document_formatting(id, lsp::FormattingOptions::default(), None)
                     .await
                     .unwrap_or_else(|e| {
-                        log::warn!("LSP formatting failed: {}", e);
+                        tracing::warn!("LSP formatting failed: {}", e);
                         Default::default()
                     });
                 LspFormatting {
@@ -461,7 +461,7 @@ impl Document {
                 if !success {
                     // This shouldn't happen, because the transaction changes were generated
                     // from the same text we're saving.
-                    log::error!("failed to apply format changes before saving");
+                    tracing::error!("failed to apply format changes before saving");
                 }
             }
 

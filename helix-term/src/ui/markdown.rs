@@ -178,7 +178,7 @@ fn parse<'a>(
             }
             // TaskListMarker(bool) true if checked
             _ => {
-                log::warn!("unhandled markdown event {:?}", event);
+                tracing::warn!("unhandled markdown event {:?}", event);
             }
         }
         // build up a vec of Paragraph tui widgets

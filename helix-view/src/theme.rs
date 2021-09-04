@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use log::warn;
+use tracing::warn;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
 use toml::Value;

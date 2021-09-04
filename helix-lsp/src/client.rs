@@ -218,7 +218,7 @@ impl Client {
         let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
 
         if self.config.is_some() {
-            log::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
+            tracing::info!("Using custom LSP config: {}", self.config.as_ref().unwrap());
         }
 
         #[allow(deprecated)]
@@ -309,7 +309,7 @@ impl Client {
     /// Forcefully shuts down the language server ignoring any errors.
     pub async fn force_shutdown(&self) -> Result<()> {
         if let Err(e) = self.shutdown().await {
-            log::warn!("language server failed to terminate gracefully - {}", e);
+            tracing::warn!("language server failed to terminate gracefully - {}", e);
         }
         self.exit().await
     }
