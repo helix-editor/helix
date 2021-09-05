@@ -6,7 +6,6 @@ mod menu;
 mod picker;
 mod popup;
 mod prompt;
-mod spinner;
 mod text;
 
 pub use completion::Completion;
@@ -16,7 +15,6 @@ pub use menu::Menu;
 pub use picker::{FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
-pub use spinner::{ProgressSpinners, Spinner};
 
 use helix_core::regex::Regex;
 use helix_core::register::Registers;

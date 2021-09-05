@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, EventResult},
     key,
     keymap::{KeymapResult, KeymapResultKind, Keymaps},
-    ui::{Completion, ProgressSpinners},
+    ui::Completion,
 };
 
 use helix_core::{
@@ -21,7 +21,7 @@ use helix_view::{
     graphics::{CursorKind, Modifier, Rect, Style},
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
-    ui::Info,
+    ui::{Info, ProgressSpinners},
     Document, Editor, Theme, View,
 };
 use std::borrow::Cow;
