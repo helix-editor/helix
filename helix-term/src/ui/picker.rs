@@ -124,6 +124,7 @@ impl<T: 'static> Component for FilePicker<T> {
         }) {
             // align to middle
             let first_line = line
+                .map(|(s, e)| (s.min(doc.text().len_lines()), e.min(doc.text().len_lines())))
                 .map(|(start, _)| start)
                 .unwrap_or(0)
                 .saturating_sub(inner.height as usize / 2);
