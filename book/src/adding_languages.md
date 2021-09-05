@@ -16,7 +16,7 @@ git config -f .gitmodules submodule.helix-syntax/languages/tree-sitter-<name>.sh
 ```
 You can also edit the `.gitmodules` file.
 
-## languages.toml
+## `languages.toml`
 
 Next, you need to add the language to `languages.toml` found in the root of the repository. The `languages.toml` file is included at compilation time.
 
