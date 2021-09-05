@@ -1077,6 +1077,7 @@ impl EditorView {
                 kind: MouseEventKind::Up(MouseButton::Right),
                 row,
                 column,
+                modifiers,
                 ..
             } => {
                 let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
@@ -1090,7 +1091,11 @@ impl EditorView {
                     let doc = &mut cxt.editor.documents[cxt.editor.tree.get(view_id).doc];
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
-                        commands::Command::dap_edit_condition.execute(cxt);
+                        if modifiers == crossterm::event::KeyModifiers::ALT {
+                            commands::Command::dap_edit_log.execute(cxt);
+                        } else {
+                            commands::Command::dap_edit_condition.execute(cxt);
+                        }
 
                         return EventResult::Consumed(None);
                     }

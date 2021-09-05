@@ -557,6 +557,84 @@ pub fn dap_edit_condition(cx: &mut Context) {
     }
 }
 
+pub fn dap_edit_log(cx: &mut Context) {
+    if let Some((pos, mut bp)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
+        let callback = Box::pin(async move {
+            let call: Callback =
+                Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let log_message = bp.log_message.clone();
+                    let prompt = Prompt::new(
+                        "log message: ".into(),
+                        None,
+                        |_input: &str| Vec::new(),
+                        move |cx: &mut crate::compositor::Context,
+                              input: &str,
+                              event: PromptEvent| {
+                            if event != PromptEvent::Validate {
+                                return;
+                            }
+
+                            let (_, doc) = current!(cx.editor);
+                            let path = match doc.path() {
+                                Some(path) => path.to_path_buf(),
+                                None => {
+                                    cx.editor.set_status(
+                                        "Can't edit breakpoint: document has no path".to_owned(),
+                                    );
+                                    return;
+                                }
+                            };
+
+                            let breakpoints =
+                                cx.editor.breakpoints.entry(path.clone()).or_default();
+                            breakpoints.remove(pos);
+                            bp.log_message = match input {
+                                "" => None,
+                                input => Some(input.to_owned()),
+                            };
+                            breakpoints.push(bp.clone());
+
+                            if let Some(debugger) = &mut cx.editor.debugger {
+                                // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
+                                // if breakpoint.condition.is_some()
+                                //     && !debugger
+                                //         .caps
+                                //         .as_ref()
+                                //         .unwrap()
+                                //         .supports_conditional_breakpoints
+                                //         .unwrap_or_default()
+                                // {
+                                //     bail!(
+                                //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
+                                //     )
+                                // }
+                                // if breakpoint.log_message.is_some()
+                                //     && !debugger
+                                //         .caps
+                                //         .as_ref()
+                                //         .unwrap()
+                                //         .supports_log_points
+                                //         .unwrap_or_default()
+                                // {
+                                //     bail!("Can't edit breakpoint: debugger does not support logpoints")
+                                // }
+                                let request = debugger.set_breakpoints(path, breakpoints.clone());
+                                if let Err(e) = block_on(request) {
+                                    cx.editor
+                                        .set_status(format!("Failed to set breakpoints: {:?}", e))
+                                }
+                            }
+                        },
+                        log_message,
+                    );
+                    compositor.push(Box::new(prompt));
+                });
+            Ok(call)
+        });
+        cx.jobs.callback(callback);
+    }
+}
+
 pub fn dap_switch_thread(cx: &mut Context) {
     thread_picker(cx, |editor, thread| {
         block_on(select_thread_id(editor, thread.id, true));
