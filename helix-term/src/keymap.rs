@@ -4,6 +4,7 @@ use helix_core::hashmap;
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
+    borrow::Cow,
     collections::HashMap,
     ops::{Deref, DerefMut},
 };
@@ -47,13 +48,13 @@ macro_rules! keymap {
     };
 
     (@trie
-        { $label:literal $($($key:literal)|+ => $value:tt,)+ }
+        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
     ) => {
-        keymap!({ $label $($($key)|+ => $value,)+ })
+        keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ })
     };
 
     (
-        { $label:literal $($($key:literal)|+ => $value:tt,)+ }
+        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
     ) => {
         // modified from the hashmap! macro
         {
@@ -70,7 +71,9 @@ macro_rules! keymap {
                     _order.push(_key);
                 )+
             )*
-            $crate::keymap::KeyTrie::Node($crate::keymap::KeyTrieNode::new($label, _map, _order))
+            let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
+            $( _node.is_sticky = $sticky; )?
+            $crate::keymap::KeyTrie::Node(_node)
         }
     };
 }
@@ -84,6 +87,8 @@ pub struct KeyTrieNode {
     map: HashMap<KeyEvent, KeyTrie>,
     #[serde(skip)]
     order: Vec<KeyEvent>,
+    #[serde(skip)]
+    pub is_sticky: bool,
 }
 
 impl KeyTrieNode {
@@ -92,6 +97,7 @@ impl KeyTrieNode {
             name: name.to_string(),
             map,
             order,
+            is_sticky: false,
         }
     }
 
@@ -119,12 +125,10 @@ impl KeyTrieNode {
             }
         }
     }
-}
 
-impl From<KeyTrieNode> for Info {
-    fn from(node: KeyTrieNode) -> Self {
-        let mut body: Vec<(&str, Vec<KeyEvent>)> = Vec::with_capacity(node.len());
-        for (&key, trie) in node.iter() {
+    pub fn infobox(&self) -> Info {
+        let mut body: Vec<(&str, Vec<KeyEvent>)> = Vec::with_capacity(self.len());
+        for (&key, trie) in self.iter() {
             let desc = match trie {
                 KeyTrie::Leaf(cmd) => cmd.doc(),
                 KeyTrie::Node(n) => n.name(),
@@ -136,16 +140,16 @@ impl From<KeyTrieNode> for Info {
             }
         }
         body.sort_unstable_by_key(|(_, keys)| {
-            node.order.iter().position(|&k| k == keys[0]).unwrap()
+            self.order.iter().position(|&k| k == keys[0]).unwrap()
         });
-        let prefix = format!("{} ", node.name());
+        let prefix = format!("{} ", self.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
             body = body
                 .into_iter()
                 .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
                 .collect();
         }
-        Info::new(node.name(), body)
+        Info::new(self.name(), body)
     }
 }
 
@@ -218,7 +222,7 @@ impl KeyTrie {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum KeymapResult {
+pub enum KeymapResultKind {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
     Matched(Command),
@@ -229,14 +233,31 @@ pub enum KeymapResult {
     Cancelled(Vec<KeyEvent>),
 }
 
+/// Returned after looking up a key in [`Keymap`]. The `sticky` field has a
+/// reference to the sticky node if one is currently active.
+pub struct KeymapResult<'a> {
+    pub kind: KeymapResultKind,
+    pub sticky: Option<&'a KeyTrieNode>,
+}
+
+impl<'a> KeymapResult<'a> {
+    pub fn new(kind: KeymapResultKind, sticky: Option<&'a KeyTrieNode>) -> Self {
+        Self { kind, sticky }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Keymap {
     /// Always a Node
     #[serde(flatten)]
     root: KeyTrie,
-    /// Stores pending keys waiting for the next key
+    /// Stores pending keys waiting for the next key. This is relative to a
+    /// sticky node if one is in use.
     #[serde(skip)]
     state: Vec<KeyEvent>,
+    /// Stores the sticky node if one is activated.
+    #[serde(skip)]
+    sticky: Option<KeyTrieNode>,
 }
 
 impl Keymap {
@@ -244,6 +265,7 @@ impl Keymap {
         Keymap {
             root,
             state: Vec::new(),
+            sticky: None,
         }
     }
 
@@ -251,27 +273,61 @@ impl Keymap {
         &self.root
     }
 
+    pub fn sticky(&self) -> Option<&KeyTrieNode> {
+        self.sticky.as_ref()
+    }
+
     /// Returns list of keys waiting to be disambiguated.
     pub fn pending(&self) -> &[KeyEvent] {
         &self.state
     }
 
-    /// Lookup `key` in the keymap to try and find a command to execute
+    /// Lookup `key` in the keymap to try and find a command to execute. Escape
+    /// key cancels pending keystrokes. If there are no pending keystrokes but a
+    /// sticky node is in use, it will be cleared.
     pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
-        let &first = self.state.get(0).unwrap_or(&key);
-        let trie = match self.root.search(&[first]) {
-            Some(&KeyTrie::Leaf(cmd)) => return KeymapResult::Matched(cmd),
-            None => return KeymapResult::NotFound,
+        if let key!(Esc) = key {
+            if !self.state.is_empty() {
+                return KeymapResult::new(
+                    // Note that Esc is not included here
+                    KeymapResultKind::Cancelled(self.state.drain(..).collect()),
+                    self.sticky(),
+                );
+            }
+            self.sticky = None;
+        }
+
+        let first = self.state.get(0).unwrap_or(&key);
+        let trie_node = match self.sticky {
+            Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
+            None => Cow::Borrowed(&self.root),
+        };
+
+        let trie = match trie_node.search(&[*first]) {
+            Some(&KeyTrie::Leaf(cmd)) => {
+                return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky())
+            }
+            None => return KeymapResult::new(KeymapResultKind::NotFound, self.sticky()),
             Some(t) => t,
         };
+
         self.state.push(key);
         match trie.search(&self.state[1..]) {
-            Some(&KeyTrie::Node(ref map)) => KeymapResult::Pending(map.clone()),
-            Some(&KeyTrie::Leaf(command)) => {
-                self.state.clear();
-                KeymapResult::Matched(command)
+            Some(&KeyTrie::Node(ref map)) => {
+                if map.is_sticky {
+                    self.state.clear();
+                    self.sticky = Some(map.clone());
+                }
+                KeymapResult::new(KeymapResultKind::Pending(map.clone()), self.sticky())
             }
-            None => KeymapResult::Cancelled(self.state.drain(..).collect()),
+            Some(&KeyTrie::Leaf(cmd)) => {
+                self.state.clear();
+                return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky());
+            }
+            None => KeymapResult::new(
+                KeymapResultKind::Cancelled(self.state.drain(..).collect()),
+                self.sticky(),
+            ),
         }
     }
 
@@ -527,6 +583,9 @@ impl Default for Keymaps {
             "w" => extend_next_word_start,
             "b" => extend_prev_word_start,
             "e" => extend_next_word_end,
+            "W" => extend_next_long_word_start,
+            "B" => extend_prev_long_word_start,
+            "E" => extend_next_long_word_end,
 
             "t" => extend_till_char,
             "f" => extend_next_char,
@@ -599,19 +658,19 @@ fn merge_partial_keys() {
 
     let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
     assert_eq!(
-        keymap.get(key!('i')),
-        KeymapResult::Matched(Command::normal_mode),
+        keymap.get(key!('i')).kind,
+        KeymapResultKind::Matched(Command::normal_mode),
         "Leaf should replace leaf"
     );
     assert_eq!(
-        keymap.get(key!('无')),
-        KeymapResult::Matched(Command::insert_mode),
+        keymap.get(key!('无')).kind,
+        KeymapResultKind::Matched(Command::insert_mode),
         "New leaf should be present in merged keymap"
     );
     // Assumes that z is a node in the default keymap
     assert_eq!(
-        keymap.get(key!('z')),
-        KeymapResult::Matched(Command::jump_backward),
+        keymap.get(key!('z')).kind,
+        KeymapResultKind::Matched(Command::jump_backward),
         "Leaf should replace node"
     );
     // Assumes that `g` is a node in default keymap

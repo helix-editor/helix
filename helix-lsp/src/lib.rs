@@ -1,4 +1,4 @@
-#[macro_use(instrument)]
+#[macro_use]
 extern crate tracing;
 
 mod client;

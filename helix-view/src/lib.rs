@@ -1,4 +1,4 @@
-#[macro_use(instrument, info_span)]
+#[macro_use]
 extern crate tracing;
 
 #[macro_use]
