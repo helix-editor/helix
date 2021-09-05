@@ -503,13 +503,16 @@ impl EditorView {
             if let Some(bps) = breakpoints.as_ref() {
                 if let Some(breakpoint) = bps.iter().find(|breakpoint| breakpoint.line - 1 == line)
                 {
-                    let style = if breakpoint.condition.is_some() {
-                        error
-                    } else if breakpoint.log_message.is_some() {
-                        info
-                    } else {
-                        warning
-                    };
+                    let style =
+                        if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+                            error.add_modifier(Modifier::CROSSED_OUT)
+                        } else if breakpoint.condition.is_some() {
+                            error
+                        } else if breakpoint.log_message.is_some() {
+                            info
+                        } else {
+                            warning
+                        };
                     surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, style);
                 }
             }
@@ -607,7 +610,8 @@ impl EditorView {
                 {
                     if let Some(condition) = &breakpoint.condition {
                         lines.extend(
-                            Text::styled(condition, info.add_modifier(Modifier::UNDERLINED)).lines,
+                            Text::styled(condition, warning.add_modifier(Modifier::UNDERLINED))
+                                .lines,
                         );
                     }
                     if let Some(log_message) = &breakpoint.log_message {
