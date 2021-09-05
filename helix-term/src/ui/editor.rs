@@ -19,9 +19,9 @@ use helix_view::{
     document::Mode,
     editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
-    info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
+    ui::Info,
     Document, Editor, Theme, View,
 };
 use std::borrow::Cow;

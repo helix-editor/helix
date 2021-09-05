@@ -1,7 +1,7 @@
 pub use crate::commands::Command;
 use crate::config::Config;
 use helix_core::hashmap;
-use helix_view::{document::Mode, info::Info, input::KeyEvent};
+use helix_view::{document::Mode, input::KeyEvent, ui::Info};
 use serde::Deserialize;
 use std::{
     borrow::Cow,
