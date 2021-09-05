@@ -5,7 +5,6 @@ use crate::{
     job::Callback,
     ui::{FilePicker, Prompt, PromptEvent},
 };
-use dap::StackFrame;
 use helix_core::Selection;
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
