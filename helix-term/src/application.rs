@@ -3,7 +3,9 @@ use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
 
-use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
+use crate::{
+    args::Args, commands::fetch_stack_trace, compositor::Compositor, config::Config, job::Jobs, ui,
+};
 
 use log::error;
 use std::{
@@ -273,7 +275,16 @@ impl Application {
                     all_threads_stopped,
                     ..
                 }) => {
-                    if let Some(thread_id) = thread_id {
+                    let all_threads_stopped = all_threads_stopped.unwrap_or_default();
+
+                    if all_threads_stopped {
+                        if let Ok(threads) = debugger.threads().await {
+                            for thread in threads {
+                                fetch_stack_trace(debugger, thread.id).await;
+                            }
+                            select_thread_id(&mut self.editor, thread_id.unwrap_or(0), false).await;
+                        }
+                    } else if let Some(thread_id) = thread_id {
                         debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
 
                         // whichever thread stops is made "current" (if no previously selected thread).
@@ -292,7 +303,7 @@ impl Application {
                     if let Some(text) = text {
                         status.push_str(&format!(" {}", text));
                     }
-                    if all_threads_stopped.unwrap_or_default() {
+                    if all_threads_stopped {
                         status.push_str(" (all threads stopped)");
                     }
 
