@@ -505,7 +505,7 @@ impl EditorView {
                 {
                     let style =
                         if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
-                            error.add_modifier(Modifier::CROSSED_OUT)
+                            error.add_modifier(Modifier::UNDERLINED)
                         } else if breakpoint.condition.is_some() {
                             error
                         } else if breakpoint.log_message.is_some() {
