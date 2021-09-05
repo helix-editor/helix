@@ -3,8 +3,9 @@ use crate::{
     commands,
     compositor::Compositor,
     job::Callback,
-    ui::{FilePicker, Picker, Prompt, PromptEvent},
+    ui::{FilePicker, Prompt, PromptEvent},
 };
+use dap::StackFrame;
 use helix_core::Selection;
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
@@ -111,8 +112,17 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
     }
 
     let thread_states = debugger.thread_states.clone();
-    let picker = Picker::new(
-        true,
+    let mut top_frames: HashMap<isize, StackFrame> = HashMap::new();
+    for thread in threads.clone() {
+        if let Some(frame) = block_on(debugger.stack_trace(thread.id))
+            .ok()
+            .and_then(|(bt, _)| bt.get(0).cloned())
+        {
+            top_frames.insert(thread.id, frame);
+        }
+    }
+
+    let picker = FilePicker::new(
         threads,
         move |thread| {
             format!(
@@ -125,6 +135,25 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
             .into()
         },
         move |editor, thread, _action| callback_fn(editor, thread),
+        move |_editor, thread| {
+            if let Some(frame) = top_frames.get(&thread.id) {
+                frame
+                    .source
+                    .as_ref()
+                    .and_then(|source| source.path.clone())
+                    .map(|path| {
+                        (
+                            path,
+                            Some((
+                                frame.line.saturating_sub(1),
+                                frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+                            )),
+                        )
+                    })
+            } else {
+                None
+            }
+        },
     );
     cx.push_layer(Box::new(picker))
 }
