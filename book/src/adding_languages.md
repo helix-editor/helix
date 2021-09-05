@@ -8,7 +8,7 @@ $ git submodule add -f <repository> helix-syntax/languages/tree-sitter-<name>
 ```
 For example, to add `tree-sitter-ocaml` you would run
 ```sh
-$ git submodule add -f https://github.com/tree-sitter/tree-sitter-ocaml helix-syntax/languages/tree-sitter-ocaml
+$ git submodule add --shallow https://github.com/tree-sitter/tree-sitter-ocaml helix-syntax/languages/tree-sitter-ocaml
 ```
 Make sure the submodule is shallow by doing
 ```sh
