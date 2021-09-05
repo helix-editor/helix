@@ -219,7 +219,7 @@ impl MethodCall {
                 Self::WorkDoneProgressCreate(params)
             }
             _ => {
-                tracing::warn!("unhandled lsp request: {}", method);
+                warn!("unhandled lsp request: {}", method);
                 return None;
             }
         };
@@ -265,7 +265,7 @@ impl Notification {
                 Self::ProgressMessage(params)
             }
             _ => {
-                tracing::error!("unhandled LSP notification: {}", method);
+                error!("unhandled LSP notification: {}", method);
                 return None;
             }
         };

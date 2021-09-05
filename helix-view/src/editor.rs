@@ -171,7 +171,7 @@ impl Editor {
         use helix_core::Selection;
 
         if !self.documents.contains_key(id) {
-            tracing::error!("cannot switch to document that does not exist (anymore)");
+            error!("cannot switch to document that does not exist (anymore)");
             return;
         }
 

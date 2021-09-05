@@ -74,7 +74,7 @@ impl Application {
             match theme_loader.load(theme) {
                 Ok(theme) => theme,
                 Err(e) => {
-                    tracing::warn!("failed to load theme `{}` - {}", theme, e);
+                    warn!("failed to load theme `{}` - {}", theme, e);
                     theme_loader.default()
                 }
             }
@@ -310,7 +310,7 @@ impl Application {
                                     ) {
                                         start
                                     } else {
-                                        tracing::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        warn!("lsp position out of bounds - {:?}", diagnostic);
                                         return None;
                                     };
 
@@ -321,7 +321,7 @@ impl Application {
                                     ) {
                                         end
                                     } else {
-                                        tracing::warn!("lsp position out of bounds - {:?}", diagnostic);
+                                        warn!("lsp position out of bounds - {:?}", diagnostic);
                                         return None;
                                     };
 
@@ -347,10 +347,10 @@ impl Application {
                         }
                     }
                     Notification::ShowMessage(params) => {
-                        tracing::warn!("unhandled window/showMessage: {:?}", params);
+                        warn!("unhandled window/showMessage: {:?}", params);
                     }
                     Notification::LogMessage(params) => {
-                        tracing::warn!("unhandled window/logMessage: {:?}", params);
+                        warn!("unhandled window/logMessage: {:?}", params);
                     }
                     Notification::ProgressMessage(params) => {
                         let lsp::ProgressParams { token, value } = params;
@@ -464,7 +464,7 @@ impl Application {
                                 if let Some(server) =
                                     self.editor.language_servers.get_by_id(server_id)
                                 {
-                                    tracing::warn!(
+                                    warn!(
                                         "missing document with language server id `{}`",
                                         server_id
                                     );
@@ -477,7 +477,7 @@ impl Application {
                                         }),
                                     ));
                                 } else {
-                                    tracing::warn!(
+                                    warn!(
                                         "can't find language server with id `{}`",
                                         server_id
                                     );
@@ -538,7 +538,7 @@ impl Application {
         self.event_loop().await;
 
         if self.editor.close_language_servers(None).await.is_err() {
-            tracing::error!("Timed out waiting for language servers to shutdown");
+            error!("Timed out waiting for language servers to shutdown");
         };
 
         self.restore_term()?;

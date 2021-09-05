@@ -2362,11 +2362,11 @@ pub fn code_action(cx: &mut Context) {
                     },
                     move |editor, code_action, _action| match code_action {
                         lsp::CodeActionOrCommand::Command(command) => {
-                            tracing::debug!("code action command: {:?}", command);
+                            debug!("code action command: {:?}", command);
                             editor.set_error(String::from("Handling code action command is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
                         }
                         lsp::CodeActionOrCommand::CodeAction(code_action) => {
-                            tracing::debug!("code action: {:?}", code_action);
+                            debug!("code action: {:?}", code_action);
                             if let Some(ref workspace_edit) = code_action.edit {
                                 apply_workspace_edit(editor, offset_encoding, workspace_edit)
                             }
@@ -2385,7 +2385,7 @@ fn apply_workspace_edit(
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
     if let Some(ref changes) = workspace_edit.changes {
-        tracing::debug!("workspace changes: {:?}", changes);
+        debug!("workspace changes: {:?}", changes);
         editor.set_error(String::from("Handling workspace changesis not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
         return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
@@ -2428,7 +2428,7 @@ fn apply_workspace_edit(
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
-                tracing::debug!("document changes - operations: {:?}", operations);
+                debug!("document changes - operations: {:?}", operations);
                 editor.set_error(String::from("Handling document operations is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
             }
         }
@@ -2496,7 +2496,7 @@ async fn make_format_callback(
                     doc.reset_modified();
                 }
             } else {
-                tracing::info!("discarded formatting changes because the document changed");
+                info!("discarded formatting changes because the document changed");
             }
         }
     });
@@ -3031,7 +3031,7 @@ fn signature_help(cx: &mut Context) {
               _compositor: &mut Compositor,
               response: Option<lsp::SignatureHelp>| {
             if let Some(signature_help) = response {
-                tracing::info!("{:?}", signature_help);
+                info!("{:?}", signature_help);
                 // signatures
                 // active_signature
                 // active_parameter
@@ -3882,11 +3882,11 @@ fn hover(cx: &mut Context) {
                     lsp::HoverContents::Scalar(contents) => {
                         // markedstring(string/languagestring to be highlighted)
                         // TODO
-                        tracing::error!("hover contents {:?}", contents);
+                        error!("hover contents {:?}", contents);
                         return;
                     }
                     lsp::HoverContents::Array(contents) => {
-                        tracing::error!("hover contents {:?}", contents);
+                        error!("hover contents {:?}", contents);
                         return;
                     }
                     // TODO: render markdown
@@ -4319,7 +4319,7 @@ fn shell_impl(
     {
         Ok(process) => process,
         Err(e) => {
-            tracing::error!("Failed to start shell: {}", e);
+            error!("Failed to start shell: {}", e);
             return Err(e.into());
         }
     };
@@ -4330,7 +4330,7 @@ fn shell_impl(
     let output = process.wait_with_output()?;
 
     if !output.stderr.is_empty() {
-        tracing::error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
+        error!("Shell error: {}", String::from_utf8_lossy(&output.stderr));
     }
 
     let tendril = Tendril::try_from_byte_slice(&output.stdout)
