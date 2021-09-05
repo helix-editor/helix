@@ -287,13 +287,14 @@ impl Keymap {
     /// sticky node is in use, it will be cleared.
     pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
         if let key!(Esc) = key {
-            if self.state.is_empty() {
-                self.sticky = None;
+            if !self.state.is_empty() {
+                return KeymapResult::new(
+                    // Note that Esc is not included here
+                    KeymapResultKind::Cancelled(self.state.drain(..).collect()),
+                    self.sticky(),
+                );
             }
-            return KeymapResult::new(
-                KeymapResultKind::Cancelled(self.state.drain(..).collect()),
-                self.sticky(),
-            );
+            self.sticky = None;
         }
 
         let first = self.state.get(0).unwrap_or(&key);
