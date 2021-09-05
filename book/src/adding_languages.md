@@ -4,7 +4,7 @@
 
 To add a new langauge, you should first add a tree-sitter submodule. To do this, you can run the command
 ```sh
-$ git submodule add -f <repository> helix-syntax/languages/tree-sitter-<name>
+$ git submodule add --depth 1 <repository> helix-syntax/languages/tree-sitter-<name>
 ```
 For example, to add `tree-sitter-ocaml` you would run
 ```sh
