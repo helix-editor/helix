@@ -1074,6 +1074,31 @@ impl EditorView {
             }
 
             MouseEvent {
+                kind: MouseEventKind::Up(MouseButton::Right),
+                row,
+                column,
+                ..
+            } => {
+                let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
+                    view.gutter_coords_at_screen_coords(row, column)
+                        .map(|coords| (coords.0, coords.1, view.id))
+                });
+
+                if let Some((line, _, view_id)) = result {
+                    cxt.editor.tree.focus = view_id;
+
+                    let doc = &mut cxt.editor.documents[cxt.editor.tree.get(view_id).doc];
+                    if let Ok(pos) = doc.text().try_line_to_char(line) {
+                        doc.set_selection(view_id, Selection::point(pos));
+                        commands::Command::dap_edit_condition.execute(cxt);
+
+                        return EventResult::Consumed(None);
+                    }
+                }
+                EventResult::Ignored
+            }
+
+            MouseEvent {
                 kind: MouseEventKind::Up(MouseButton::Middle),
                 row,
                 column,

@@ -1,6 +1,8 @@
 use super::{align_view, Align, Context, Editor};
 use crate::{
     commands,
+    compositor::Compositor,
+    job::Callback,
     ui::{FilePicker, Picker, Prompt, PromptEvent},
 };
 use helix_core::Selection;
@@ -479,69 +481,79 @@ pub fn dap_terminate(cx: &mut Context) {
 
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, mut bp)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
-        let condition = bp.condition.clone();
-        let prompt = Prompt::new(
-            "condition: ".into(),
-            None,
-            |_input: &str| Vec::new(),
-            move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
-                if event != PromptEvent::Validate {
-                    return;
-                }
+        let callback = Box::pin(async move {
+            let call: Callback =
+                Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let condition = bp.condition.clone();
+                    let prompt = Prompt::new(
+                        "condition: ".into(),
+                        None,
+                        |_input: &str| Vec::new(),
+                        move |cx: &mut crate::compositor::Context,
+                              input: &str,
+                              event: PromptEvent| {
+                            if event != PromptEvent::Validate {
+                                return;
+                            }
 
-                let (_, doc) = current!(cx.editor);
-                let path = match doc.path() {
-                    Some(path) => path.to_path_buf(),
-                    None => {
-                        cx.editor
-                            .set_status("Can't edit breakpoint: document has no path".to_owned());
-                        return;
-                    }
-                };
+                            let (_, doc) = current!(cx.editor);
+                            let path = match doc.path() {
+                                Some(path) => path.to_path_buf(),
+                                None => {
+                                    cx.editor.set_status(
+                                        "Can't edit breakpoint: document has no path".to_owned(),
+                                    );
+                                    return;
+                                }
+                            };
 
-                let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
-                breakpoints.remove(pos);
-                bp.condition = match input {
-                    "" => None,
-                    input => Some(input.to_owned()),
-                };
-                breakpoints.push(bp.clone());
+                            let breakpoints =
+                                cx.editor.breakpoints.entry(path.clone()).or_default();
+                            breakpoints.remove(pos);
+                            bp.condition = match input {
+                                "" => None,
+                                input => Some(input.to_owned()),
+                            };
+                            breakpoints.push(bp.clone());
 
-                if let Some(debugger) = &mut cx.editor.debugger {
-                    // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
-                    // if breakpoint.condition.is_some()
-                    //     && !debugger
-                    //         .caps
-                    //         .as_ref()
-                    //         .unwrap()
-                    //         .supports_conditional_breakpoints
-                    //         .unwrap_or_default()
-                    // {
-                    //     bail!(
-                    //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
-                    //     )
-                    // }
-                    // if breakpoint.log_message.is_some()
-                    //     && !debugger
-                    //         .caps
-                    //         .as_ref()
-                    //         .unwrap()
-                    //         .supports_log_points
-                    //         .unwrap_or_default()
-                    // {
-                    //     bail!("Can't edit breakpoint: debugger does not support logpoints")
-                    // }
-                    let request = debugger.set_breakpoints(path, breakpoints.clone());
-                    if let Err(e) = block_on(request) {
-                        cx.editor
-                            .set_status(format!("Failed to set breakpoints: {:?}", e))
-                    }
-                }
-            },
-            condition,
-        );
-
-        cx.push_layer(Box::new(prompt));
+                            if let Some(debugger) = &mut cx.editor.debugger {
+                                // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
+                                // if breakpoint.condition.is_some()
+                                //     && !debugger
+                                //         .caps
+                                //         .as_ref()
+                                //         .unwrap()
+                                //         .supports_conditional_breakpoints
+                                //         .unwrap_or_default()
+                                // {
+                                //     bail!(
+                                //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
+                                //     )
+                                // }
+                                // if breakpoint.log_message.is_some()
+                                //     && !debugger
+                                //         .caps
+                                //         .as_ref()
+                                //         .unwrap()
+                                //         .supports_log_points
+                                //         .unwrap_or_default()
+                                // {
+                                //     bail!("Can't edit breakpoint: debugger does not support logpoints")
+                                // }
+                                let request = debugger.set_breakpoints(path, breakpoints.clone());
+                                if let Err(e) = block_on(request) {
+                                    cx.editor
+                                        .set_status(format!("Failed to set breakpoints: {:?}", e))
+                                }
+                            }
+                        },
+                        condition,
+                    );
+                    compositor.push(Box::new(prompt));
+                });
+            Ok(call)
+        });
+        cx.jobs.callback(callback);
     }
 }
 
