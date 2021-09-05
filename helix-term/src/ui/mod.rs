@@ -17,7 +17,6 @@ pub use picker::{FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
-pub use text::Text;
 
 use helix_core::regex::Regex;
 use helix_core::register::Registers;

@@ -1,5 +1,4 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
-use crate::ui;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
@@ -9,7 +8,7 @@ use helix_core::{
 };
 use helix_view::{
     graphics::{CursorKind, Margin, Rect},
-    Editor,
+    ui, Editor,
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);

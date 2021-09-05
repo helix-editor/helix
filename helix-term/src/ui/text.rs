@@ -1,17 +1,8 @@
 use crate::compositor::{Component, Context};
 use tui::buffer::Buffer as Surface;
 
-use helix_view::graphics::Rect;
+use helix_view::{graphics::Rect, ui::Text};
 
-pub struct Text {
-    contents: String,
-}
-
-impl Text {
-    pub fn new(contents: String) -> Self {
-        Self { contents }
-    }
-}
 impl Component for Text {
     fn render(&mut self, area: Rect, surface: &mut Surface, _cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
