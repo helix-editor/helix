@@ -1998,62 +1998,6 @@ mod cmd {
         i.map(|i| (i, breakpoints.get(i).unwrap().clone()))
     }
 
-    fn edit_breakpoint_impl(
-        cx: &mut compositor::Context,
-        condition: Option<String>,
-        log_message: Option<String>,
-    ) -> anyhow::Result<()> {
-        use helix_lsp::block_on;
-
-        let (_, doc) = current!(cx.editor);
-        let path = match doc.path() {
-            Some(path) => path.to_path_buf(),
-            None => {
-                bail!("Can't edit breakpoint: document has no path")
-            }
-        };
-
-        if let Some((pos, mut bp)) = get_breakpoint_at_current_line(cx.editor) {
-            let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
-            breakpoints.remove(pos);
-
-            bp.condition = condition;
-            bp.log_message = log_message;
-            breakpoints.push(bp);
-
-            if let Some(debugger) = &mut cx.editor.debugger {
-                // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
-                // if breakpoint.condition.is_some()
-                //     && !debugger
-                //         .caps
-                //         .as_ref()
-                //         .unwrap()
-                //         .supports_conditional_breakpoints
-                //         .unwrap_or_default()
-                // {
-                //     bail!(
-                //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
-                //     )
-                // }
-                // if breakpoint.log_message.is_some()
-                //     && !debugger
-                //         .caps
-                //         .as_ref()
-                //         .unwrap()
-                //         .supports_log_points
-                //         .unwrap_or_default()
-                // {
-                //     bail!("Can't edit breakpoint: debugger does not support logpoints")
-                // }
-                let request = debugger.set_breakpoints(path, breakpoints.clone());
-                if let Err(e) = block_on(request) {
-                    bail!("Failed to set breakpoints: {:?}", e)
-                }
-            }
-        }
-        Ok(())
-    }
-
     fn debug_start(
         cx: &mut compositor::Context,
         args: &[&str],
@@ -2085,36 +2029,6 @@ mod cmd {
         dap_start_impl(&mut cx.editor, name, address, Some(args));
 
         Ok(())
-    }
-
-    fn debug_breakpoint_condition(
-        cx: &mut compositor::Context,
-        args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        let condition = args.join(" ");
-        let condition = if condition.is_empty() {
-            None
-        } else {
-            Some(condition)
-        };
-
-        edit_breakpoint_impl(cx, condition, None)
-    }
-
-    fn debug_set_logpoint(
-        cx: &mut compositor::Context,
-        args: &[&str],
-        _event: PromptEvent,
-    ) -> anyhow::Result<()> {
-        let log_message = args.join(" ");
-        let log_message = if log_message.is_empty() {
-            None
-        } else {
-            Some(log_message)
-        };
-
-        edit_breakpoint_impl(cx, None, log_message)
     }
 
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -2361,34 +2275,20 @@ mod cmd {
             alias: Some("dbg"),
             doc: "Start a debug session from a given template with given parameters.",
             fun: debug_start,
-            completer: Some(completers::filename),
+            completer: None,
         },
         TypableCommand {
             name: "debug-remote",
             alias: Some("dbg-tcp"),
             doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
             fun: debug_remote,
-            completer: Some(completers::filename),
+            completer: None,
         },
         TypableCommand {
             name: "debug-eval",
             alias: None,
             doc: "Evaluate expression in current debug context.",
             fun: debug_eval,
-            completer: None,
-        },
-        TypableCommand {
-            name: "debug-breakpoint-condition",
-            alias: None,
-            doc: "Set current breakpoint condition.",
-            fun: debug_breakpoint_condition,
-            completer: None,
-        },
-        TypableCommand {
-            name: "debug-set-logpoint",
-            alias: None,
-            doc: "Make current breakpoint a log point.",
-            fun: debug_set_logpoint,
             completer: None,
         },
         TypableCommand {
