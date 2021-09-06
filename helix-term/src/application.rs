@@ -7,7 +7,7 @@ use crate::{
     args::Args, commands::fetch_stack_trace, compositor::Compositor, config::Config, job::Jobs, ui,
 };
 
-use log::error;
+use log::{error, warn};
 use std::{
     io::{stdout, Write},
     sync::Arc,
@@ -320,6 +320,53 @@ impl Application {
                 Event::Thread(_) => {
                     // TODO: update thread_states, make threads request
                 }
+                Event::Breakpoint(events::Breakpoint { reason, breakpoint }) => match &reason[..] {
+                    "new" => {
+                        debugger.breakpoints.push(breakpoint);
+                    }
+                    "changed" => {
+                        match debugger
+                            .breakpoints
+                            .iter()
+                            .position(|b| b.id == breakpoint.id)
+                        {
+                            Some(i) => {
+                                let item = debugger.breakpoints.get_mut(i).unwrap();
+                                item.verified = breakpoint.verified;
+                                item.message = breakpoint.message.or_else(|| item.message.clone());
+                                item.source = breakpoint.source.or_else(|| item.source.clone());
+                                item.line = breakpoint.line.or(item.line);
+                                item.column = breakpoint.column.or(item.column);
+                                item.end_line = breakpoint.end_line.or(item.end_line);
+                                item.end_column = breakpoint.end_column.or(item.end_column);
+                                item.instruction_reference = breakpoint
+                                    .instruction_reference
+                                    .or_else(|| item.instruction_reference.clone());
+                                item.offset = breakpoint.offset.or(item.offset);
+                            }
+                            None => {
+                                warn!("Changed breakpoint with id {:?} not found", breakpoint.id);
+                            }
+                        }
+                    }
+                    "removed" => {
+                        match debugger
+                            .breakpoints
+                            .iter()
+                            .position(|b| b.id == breakpoint.id)
+                        {
+                            Some(i) => {
+                                debugger.breakpoints.remove(i);
+                            }
+                            None => {
+                                warn!("Removed breakpoint with id {:?} not found", breakpoint.id);
+                            }
+                        }
+                    }
+                    reason => {
+                        warn!("Unknown breakpoint event: {}", reason);
+                    }
+                },
                 Event::Output(events::Output {
                     category, output, ..
                 }) => {
@@ -340,9 +387,10 @@ impl Application {
                     // send existing breakpoints
                     for (path, breakpoints) in &self.editor.breakpoints {
                         // TODO: call futures in parallel, await all
-                        debugger
+                        debugger.breakpoints = debugger
                             .set_breakpoints(path.clone(), breakpoints.clone())
                             .await
+                            .unwrap()
                             .unwrap();
                     }
                     // TODO: fetch breakpoints (in case we're attaching)

@@ -16,11 +16,11 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection,
 };
-use helix_dap::{SourceBreakpoint, StackFrame};
+use helix_dap::{Breakpoint, SourceBreakpoint, StackFrame};
 use helix_view::{
     document::Mode,
     editor::LineNumber,
-    graphics::{CursorKind, Modifier, Rect, Style},
+    graphics::{Color, CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
@@ -76,7 +76,8 @@ impl EditorView {
         loader: &syntax::Loader,
         config: &helix_view::editor::Config,
         debugger: &Option<helix_dap::Client>,
-        breakpoints: &HashMap<PathBuf, Vec<helix_dap::SourceBreakpoint>>,
+        all_breakpoints: &HashMap<PathBuf, Vec<SourceBreakpoint>>,
+        dbg_breakpoints: &Option<Vec<Breakpoint>>,
     ) {
         let inner = view.inner_area();
         let area = view.area;
@@ -102,7 +103,8 @@ impl EditorView {
             is_focused,
             config,
             debugger,
-            breakpoints,
+            all_breakpoints,
+            dbg_breakpoints,
         );
 
         if is_focused {
@@ -122,7 +124,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme, breakpoints);
+        self.render_diagnostics(doc, view, inner, surface, theme, all_breakpoints);
 
         let statusline_area = view
             .area
@@ -426,7 +428,8 @@ impl EditorView {
         is_focused: bool,
         config: &helix_view::editor::Config,
         debugger: &Option<helix_dap::Client>,
-        all_breakpoints: &HashMap<PathBuf, Vec<helix_dap::SourceBreakpoint>>,
+        all_breakpoints: &HashMap<PathBuf, Vec<SourceBreakpoint>>,
+        dbg_breakpoints: &Option<Vec<Breakpoint>>,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -500,10 +503,35 @@ impl EditorView {
 
             let selected = cursors.contains(&line);
 
-            if let Some(bps) = breakpoints.as_ref() {
-                if let Some(breakpoint) = bps.iter().find(|breakpoint| breakpoint.line - 1 == line)
+            if let Some(user) = breakpoints.as_ref() {
+                let debugger_breakpoint = if let Some(debugger) = dbg_breakpoints.as_ref() {
+                    debugger.iter().find(|breakpoint| {
+                        if breakpoint.source.is_some()
+                            && doc.path().is_some()
+                            && breakpoint.source.as_ref().unwrap().path == doc.path().cloned()
+                        {
+                            match (breakpoint.line, breakpoint.end_line) {
+                                #[allow(clippy::int_plus_one)]
+                                (Some(l), Some(el)) => l - 1 <= line && line <= el - 1,
+                                (Some(l), None) => l - 1 == line,
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    None
+                };
+
+                if let Some(breakpoint) = user.iter().find(|breakpoint| breakpoint.line - 1 == line)
                 {
-                    let style =
+                    let unverified = match dbg_breakpoints {
+                        Some(_) => debugger_breakpoint.map(|b| !b.verified).unwrap_or(true),
+                        // We cannot mark breakpoint as unverified unless we have a debugger
+                        None => false,
+                    };
+                    let mut style =
                         if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
                             error.add_modifier(Modifier::UNDERLINED)
                         } else if breakpoint.condition.is_some() {
@@ -513,7 +541,26 @@ impl EditorView {
                         } else {
                             warning
                         };
+                    if unverified {
+                        // Faded colors
+                        style = if let Some(Color::Rgb(r, g, b)) = style.fg {
+                            style.fg(Color::Rgb(
+                                ((r as f32) * 0.4).floor() as u8,
+                                ((g as f32) * 0.4).floor() as u8,
+                                ((b as f32) * 0.4).floor() as u8,
+                            ))
+                        } else {
+                            style.fg(Color::Gray)
+                        }
+                    };
                     surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, style);
+                } else if let Some(breakpoint) = debugger_breakpoint {
+                    let style = if breakpoint.verified {
+                        info
+                    } else {
+                        info.fg(Color::Gray)
+                    };
+                    surface.set_stringn(viewport.x, viewport.y + i as u16, "⊚", 1, style);
                 }
             }
 
@@ -563,7 +610,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
-        all_breakpoints: &HashMap<PathBuf, Vec<helix_dap::SourceBreakpoint>>,
+        all_breakpoints: &HashMap<PathBuf, Vec<SourceBreakpoint>>,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -602,8 +649,8 @@ impl EditorView {
         }
 
         if let Some(path) = doc.path() {
+            let line = doc.text().char_to_line(cursor);
             if let Some(breakpoints) = all_breakpoints.get(path) {
-                let line = doc.text().char_to_line(cursor);
                 if let Some(breakpoint) = breakpoints
                     .iter()
                     .find(|breakpoint| breakpoint.line - 1 == line)
@@ -1272,6 +1319,7 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             let loader = &cx.editor.syn_loader;
+            let dbg_breakpoints = cx.editor.debugger.as_ref().map(|d| d.breakpoints.clone());
             self.render_view(
                 doc,
                 view,
@@ -1283,6 +1331,7 @@ impl Component for EditorView {
                 &cx.editor.config,
                 &cx.editor.debugger,
                 &cx.editor.breakpoints,
+                &dbg_breakpoints,
             );
         }
 

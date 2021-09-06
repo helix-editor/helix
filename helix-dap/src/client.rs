@@ -33,6 +33,7 @@ pub struct Client {
     pub thread_id: Option<isize>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
+    pub breakpoints: Vec<Breakpoint>,
 }
 
 impl Client {
@@ -80,6 +81,7 @@ impl Client {
             thread_states: HashMap::new(),
             thread_id: None,
             active_frame: None,
+            breakpoints: vec![],
         };
 
         tokio::spawn(Self::recv(server_rx, client_rx));

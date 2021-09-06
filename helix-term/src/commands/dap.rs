@@ -336,10 +336,24 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
         None => return,
     };
     let request = debugger.set_breakpoints(path, breakpoints);
-    if let Err(e) = block_on(request) {
-        cx.editor
-            .set_error(format!("Failed to set breakpoints: {:?}", e));
-    }
+    match block_on(request) {
+        Ok(Some(breakpoints)) => {
+            let old_breakpoints = debugger.breakpoints.clone();
+            debugger.breakpoints = breakpoints.clone();
+            for bp in breakpoints {
+                if !old_breakpoints.iter().any(|b| b.message == bp.message) {
+                    if let Some(msg) = &bp.message {
+                        cx.editor.set_status(format!("Breakpoint set: {}", msg));
+                        break;
+                    }
+                }
+            }
+        }
+        Err(e) => cx
+            .editor
+            .set_error(format!("Failed to set breakpoints: {:?}", e)),
+        _ => {}
+    };
 }
 
 pub fn dap_continue(cx: &mut Context) {
