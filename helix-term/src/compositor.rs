@@ -200,8 +200,9 @@ pub trait AnyComponent {
     /// # Examples
     ///
     /// ```rust
-    /// use helix_term::{ui::Text, compositor::Component};
-    /// let boxed: Box<Component> = Box::new(Text::new("text".to_string()));
+    /// use helix_term::compositor::Component;
+    /// use helix_view::ui::Text;
+    /// let boxed: Box<dyn Component> = Box::new(Text::new("text".to_string()));
     /// let text: Box<Text> = boxed.as_boxed_any().downcast().unwrap();
     /// ```
     fn as_boxed_any(self: Box<Self>) -> Box<dyn Any>;
