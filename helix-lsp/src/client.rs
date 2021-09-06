@@ -368,7 +368,7 @@ impl Client {
                 // LSP only considers \n, \r or \r\n as line endings
                 if ch == '\n' || ch == '\r' {
                     // consume a \r\n
-                    if chars.peek() == Some(&'\n') {
+                    if ch == '\r' && chars.peek() == Some(&'\n') {
                         chars.next();
                     }
                     line += 1;
