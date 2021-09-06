@@ -22,10 +22,8 @@ indent = { tab-width = 4, unit = "    " }
 
 [language.debugger]
 name = "lldb-vscode"
-transport = "tcp"
+transport = "stdio"
 command = "lldb-vscode"
-args = []
-port-arg = "-p {}"
 
 [[language.debugger.templates]]
 name = "binary"
@@ -91,10 +89,8 @@ indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
 name = "lldb-vscode"
-transport = "tcp"
+transport = "stdio"
 command = "lldb-vscode"
-args = []
-port-arg = "-p {}"
 
 [[language.debugger.templates]]
 name = "binary"
@@ -121,10 +117,8 @@ indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
 name = "lldb-vscode"
-transport = "tcp"
+transport = "stdio"
 command = "lldb-vscode"
-args = []
-port-arg = "-p {}"
 
 [[language.debugger.templates]]
 name = "binary"

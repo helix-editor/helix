@@ -116,12 +116,16 @@ impl Client {
         // TODO: do we need bufreader/writer here? or do we use async wrappers on unblock?
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
-        let errors = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
+        let errors = process.stderr.take().map(BufReader::new);
 
         Self::streams(
             Box::new(BufReader::new(reader)),
             Box::new(writer),
-            Some(Box::new(BufReader::new(errors))),
+            // errors.map(|errors| Box::new(BufReader::new(errors))),
+            match errors {
+                Some(errors) => Some(Box::new(BufReader::new(errors))),
+                None => None,
+            },
             id,
             Some(process),
         )

@@ -98,6 +98,7 @@ pub struct DebugAdapterConfig {
     pub name: String,
     pub transport: String,
     pub command: String,
+    #[serde(default)]
     pub args: Vec<String>,
     pub port_arg: Option<String>,
     pub templates: Vec<DebugTemplate>,
