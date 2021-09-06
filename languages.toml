@@ -117,6 +117,17 @@ language-server = { command = "typescript-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "tsx"
+scope = "source.tsx"
+injection-regex = "^(tsx)$" # |typescript
+file-types = ["tsx"]
+roots = []
+# TODO: highlights-jsx, highlights-params
+
+language-server = { command = "typescript-language-server", args = ["--stdio"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "css"
 scope = "source.css"
 injection-regex = "css"
