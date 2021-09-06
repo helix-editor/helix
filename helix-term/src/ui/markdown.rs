@@ -220,27 +220,25 @@ impl Component for Markdown {
             return None;
         }
         let contents = parse(&self.contents, None, &self.config_loader);
-        let max_text_width = viewport.0 - padding;
-        let mut width = 0;
+        let max_text_width = (viewport.0 - padding).min(120);
+        let mut text_width = 0;
         let mut height = padding;
         for content in contents {
-            let mut content_width = content.width() as u16;
             height += 1;
+            let content_width = content.width() as u16;
             if content_width > max_text_width {
-                width = viewport.0;
+                text_width = max_text_width;
                 height += content_width / max_text_width;
-            } else {
-                content_width += padding;
-                if content_width > width {
-                    width = content_width;
-                }
+            } else if content_width > text_width {
+                text_width = content_width;
             }
+
             if height >= viewport.1 {
                 height = viewport.1;
                 break;
             }
         }
 
-        Some((width, height))
+        Some((text_width + padding, height))
     }
 }
