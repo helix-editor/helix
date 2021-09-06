@@ -274,7 +274,7 @@ impl Transport {
     async fn send(
         transport: Arc<Self>,
         mut server_stdin: BufWriter<ChildStdin>,
-        mut client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
+        client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
         mut client_rx: UnboundedReceiver<Payload>,
         initialize_notify: Arc<Notify>,
     ) {
@@ -318,7 +318,7 @@ impl Transport {
                         method: lsp_types::notification::Initialized::METHOD.to_string(),
                         params: jsonrpc::Params::None,
                     }));
-                    match transport.process_server_message(&mut client_tx, notification).await {
+                    match transport.process_server_message(&client_tx, notification).await {
                         Ok(_) => {}
                         Err(err) => {
                             error!("err: <- {:?}", err);
