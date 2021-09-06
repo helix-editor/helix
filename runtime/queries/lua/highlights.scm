@@ -65,7 +65,7 @@
  "not"
  "and"
  "or"
-] @keyword.operator
+] @operator
 
 [
 "="

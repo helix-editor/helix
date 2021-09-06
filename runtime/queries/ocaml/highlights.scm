@@ -60,7 +60,7 @@
 
 [(number) (signed_number)] @number
 
-(character) @character
+(character) @constant.builtin.character
 
 (string) @string
 
@@ -92,7 +92,7 @@
 
 ["include" "open"] @include
 
-["for" "to" "downto" "while" "do" "done"] @keyword.control.loop
+["for" "to" "downto" "while" "do" "done"] @keyword.control.repeat
 
 ; Macros
 ;-------
