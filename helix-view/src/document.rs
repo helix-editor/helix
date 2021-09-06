@@ -892,6 +892,40 @@ mod test {
     use super::*;
 
     #[test]
+    fn changeset_to_changes_ignore_line_endings() {
+        use helix_lsp::{lsp, Client, OffsetEncoding};
+        let text = Rope::from("hello\r\nworld");
+        let mut doc = Document::from(text, None);
+        let view = ViewId::default();
+        doc.set_selection(view, Selection::single(0, 0));
+
+        let transaction =
+            Transaction::change(doc.text(), vec![(5, 7, Some("\n".into()))].into_iter());
+        let old_doc = doc.text().clone();
+        doc.apply(&transaction, view);
+        let changes = Client::changeset_to_changes(
+            &old_doc,
+            doc.text(),
+            transaction.changes(),
+            OffsetEncoding::Utf8,
+        );
+
+        assert_eq!(doc.text(), "hello\nworld");
+
+        assert_eq!(
+            changes,
+            &[lsp::TextDocumentContentChangeEvent {
+                range: Some(lsp::Range::new(
+                    lsp::Position::new(0, 5),
+                    lsp::Position::new(1, 0)
+                )),
+                text: "\n".into(),
+                range_length: None,
+            }]
+        );
+    }
+
+    #[test]
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");

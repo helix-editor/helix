@@ -3,7 +3,7 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{chars::char_is_line_ending, find_root, ChangeSet, Rope};
+use helix_core::{find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
 use serde_json::Value;
@@ -356,7 +356,6 @@ impl Client {
         //
         // Calculation is therefore a bunch trickier.
 
-        // TODO: stolen from syntax.rs, share
         use helix_core::RopeSlice;
         fn traverse(pos: lsp::Position, text: RopeSlice) -> lsp::Position {
             let lsp::Position {
@@ -366,7 +365,12 @@ impl Client {
 
             let mut chars = text.chars().peekable();
             while let Some(ch) = chars.next() {
-                if char_is_line_ending(ch) && !(ch == '\r' && chars.peek() == Some(&'\n')) {
+                // LSP only considers \n, \r or \r\n as line endings
+                if ch == '\n' || ch == '\r' {
+                    // consume a \r\n
+                    if chars.peek() == Some(&'\n') {
+                        chars.next();
+                    }
                     line += 1;
                     character = 0;
                 } else {
