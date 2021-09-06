@@ -180,6 +180,9 @@ impl Command {
         move_next_long_word_end, "Move to end of next long word",
         extend_next_word_start, "Extend to beginning of next word",
         extend_prev_word_start, "Extend to beginning of previous word",
+        extend_next_long_word_start, "Extend to beginning of next long word",
+        extend_prev_long_word_start, "Extend to beginning of previous long word",
+        extend_next_long_word_end, "Extend to end of next long word",
         extend_next_word_end, "Extend to end of next word",
         find_till_char, "Move till next occurance of char",
         find_next_char, "Move to next occurance of char",
@@ -355,48 +358,53 @@ impl PartialEq for Command {
     }
 }
 
-fn move_char_left(cx: &mut Context) {
+fn move_impl<F>(cx: &mut Context, move_fn: F, dir: Direction, behaviour: Movement)
+where
+    F: Fn(RopeSlice, Range, Direction, usize, Movement) -> Range,
+{
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Move)
-    });
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| move_fn(text, range, dir, count, behaviour));
     doc.set_selection(view.id, selection);
+}
+
+use helix_core::movement::{move_horizontally, move_vertically};
+
+fn move_char_left(cx: &mut Context) {
+    move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)
 }
 
 fn move_char_right(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Move)
-    });
-    doc.set_selection(view.id, selection);
+    move_impl(cx, move_horizontally, Direction::Forward, Movement::Move)
 }
 
 fn move_line_up(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_vertically(text, range, Direction::Backward, count, Movement::Move)
-    });
-    doc.set_selection(view.id, selection);
+    move_impl(cx, move_vertically, Direction::Backward, Movement::Move)
 }
 
 fn move_line_down(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
+    move_impl(cx, move_vertically, Direction::Forward, Movement::Move)
+}
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_vertically(text, range, Direction::Forward, count, Movement::Move)
-    });
-    doc.set_selection(view.id, selection);
+fn extend_char_left(cx: &mut Context) {
+    move_impl(cx, move_horizontally, Direction::Backward, Movement::Extend)
+}
+
+fn extend_char_right(cx: &mut Context) {
+    move_impl(cx, move_horizontally, Direction::Forward, Movement::Extend)
+}
+
+fn extend_line_up(cx: &mut Context) {
+    move_impl(cx, move_vertically, Direction::Backward, Movement::Extend)
+}
+
+fn extend_line_down(cx: &mut Context) {
+    move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
 }
 
 fn goto_line_end(cx: &mut Context) {
@@ -495,7 +503,10 @@ fn goto_window_bottom(cx: &mut Context) {
     goto_window(cx, Align::Bottom)
 }
 
-fn move_next_word_start(cx: &mut Context) {
+fn move_word_impl<F>(cx: &mut Context, move_fn: F)
+where
+    F: Fn(RopeSlice, Range, usize) -> Range,
+{
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -503,68 +514,32 @@ fn move_next_word_start(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| movement::move_next_word_start(text, range, count));
+        .transform(|range| move_fn(text, range, count));
     doc.set_selection(view.id, selection);
+}
+
+fn move_next_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_word_start)
 }
 
 fn move_prev_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_prev_word_start(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_prev_word_start)
 }
 
 fn move_next_word_end(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_next_word_end(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_next_word_end)
 }
 
 fn move_next_long_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_next_long_word_start(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_next_long_word_start)
 }
 
 fn move_prev_long_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_prev_long_word_start(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_prev_long_word_start)
 }
 
 fn move_next_long_word_end(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| movement::move_next_long_word_end(text, range, count));
-    doc.set_selection(view.id, selection);
+    move_word_impl(cx, movement::move_next_long_word_end)
 }
 
 fn goto_file_start(cx: &mut Context) {
@@ -583,43 +558,44 @@ fn goto_file_end(cx: &mut Context) {
     doc.set_selection(view.id, Selection::point(doc.text().len_chars()));
 }
 
-fn extend_next_word_start(cx: &mut Context) {
+fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
+where
+    F: Fn(RopeSlice, Range, usize) -> Range,
+{
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_next_word_start(text, range, count);
+        let word = extend_fn(text, range, count);
         let pos = word.cursor(text);
         range.put_cursor(text, pos, true)
     });
     doc.set_selection(view.id, selection);
+}
+
+fn extend_next_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_word_start)
 }
 
 fn extend_prev_word_start(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_prev_word_start(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
+    extend_word_impl(cx, movement::move_prev_word_start)
 }
 
 fn extend_next_word_end(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
+    extend_word_impl(cx, movement::move_next_word_end)
+}
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = movement::move_next_word_end(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
+fn extend_next_long_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_long_word_start)
+}
+
+fn extend_prev_long_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_long_word_start)
+}
+
+fn extend_next_long_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
 #[inline]
@@ -835,12 +811,25 @@ fn replace(cx: &mut Context) {
     })
 }
 
-fn switch_case(cx: &mut Context) {
+fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
+where
+    F: Fn(Cow<str>) -> Tendril,
+{
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = range
-            .fragment(doc.text().slice(..))
+        let text: Tendril = change_fn(range.fragment(doc.text().slice(..)));
+
+        (range.from(), range.to(), Some(text))
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn switch_case(cx: &mut Context) {
+    switch_case_impl(cx, |string| {
+        string
             .chars()
             .flat_map(|ch| {
                 if ch.is_lowercase() {
@@ -851,39 +840,16 @@ fn switch_case(cx: &mut Context) {
                     vec![ch]
                 }
             })
-            .collect();
-
-        (range.from(), range.to(), Some(text))
+            .collect()
     });
-
-    doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn switch_to_uppercase(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = range.fragment(doc.text().slice(..)).to_uppercase().into();
-
-        (range.from(), range.to(), Some(text))
-    });
-
-    doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+    switch_case_impl(cx, |string| string.to_uppercase().into());
 }
 
 fn switch_to_lowercase(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = range.fragment(doc.text().slice(..)).to_lowercase().into();
-
-        (range.from(), range.to(), Some(text))
-    });
-
-    doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+    switch_case_impl(cx, |string| string.to_lowercase().into());
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
@@ -959,28 +925,6 @@ fn half_page_down(cx: &mut Context) {
     scroll(cx, offset, Direction::Forward);
 }
 
-fn extend_char_left(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_horizontally(text, range, Direction::Backward, count, Movement::Extend)
-    });
-    doc.set_selection(view.id, selection);
-}
-
-fn extend_char_right(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_horizontally(text, range, Direction::Forward, count, Movement::Extend)
-    });
-    doc.set_selection(view.id, selection);
-}
-
 fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -1049,28 +993,6 @@ fn copy_selection_on_prev_line(cx: &mut Context) {
 
 fn copy_selection_on_next_line(cx: &mut Context) {
     copy_selection_on_line(cx, Direction::Forward)
-}
-
-fn extend_line_up(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_vertically(text, range, Direction::Backward, count, Movement::Extend)
-    });
-    doc.set_selection(view.id, selection);
-}
-
-fn extend_line_down(cx: &mut Context) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        movement::move_vertically(text, range, Direction::Forward, count, Movement::Extend)
-    });
-    doc.set_selection(view.id, selection);
 }
 
 fn select_all(cx: &mut Context) {
