@@ -8,7 +8,8 @@ use helix_core::{
 };
 use helix_view::{
     graphics::{CursorKind, Margin, Rect},
-    ui, Editor,
+    ui::{self, prompt::PromptEvent},
+    Editor,
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
@@ -24,16 +25,6 @@ pub struct Prompt {
     completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum PromptEvent {
-    /// The prompt input has been updated.
-    Update,
-    /// Validate and finalize the change.
-    Validate,
-    /// Abort the change, reverting to the initial state.
-    Abort,
 }
 
 pub enum CompletionDirection {

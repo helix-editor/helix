@@ -402,6 +402,7 @@ dependencies = [
  "crossterm",
  "encoding_rs",
  "futures-util",
+ "fuzzy-matcher",
  "helix-core",
  "helix-lsp",
  "helix-tui",

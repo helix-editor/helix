@@ -1,139 +1,17 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use helix_view::ui::{Menu, MenuItem};
+use tui::layout::Constraint;
 use tui::{buffer::Buffer as Surface, widgets::Table};
 
-pub use tui::widgets::{Cell, Row};
+use tui::widgets::{Cell as TuiCell, Row as TuiRow};
 
-use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-use fuzzy_matcher::FuzzyMatcher;
+use helix_core::unicode::width::UnicodeWidthStr;
+use helix_view::graphics::Rect;
 
-use helix_view::{graphics::Rect, Editor};
-use tui::layout::Constraint;
+use helix_view::ui::prompt::PromptEvent as MenuEvent;
 
-pub trait Item {
-    fn sort_text(&self) -> &str;
-    fn filter_text(&self) -> &str;
-
-    fn label(&self) -> &str;
-    fn row(&self) -> Row;
-}
-
-pub struct Menu<T: Item> {
-    options: Vec<T>,
-
-    cursor: Option<usize>,
-
-    matcher: Box<Matcher>,
-    /// (index, score)
-    matches: Vec<(usize, i64)>,
-
-    widths: Vec<Constraint>,
-
-    callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
-
-    scroll: usize,
-    size: (u16, u16),
-}
-
-impl<T: Item> Menu<T> {
-    // TODO: it's like a slimmed down picker, share code? (picker = menu + prompt with different
-    // rendering)
-    pub fn new(
-        options: Vec<T>,
-        callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
-    ) -> Self {
-        let mut menu = Self {
-            options,
-            matcher: Box::new(Matcher::default()),
-            matches: Vec::new(),
-            cursor: None,
-            widths: Vec::new(),
-            callback_fn: Box::new(callback_fn),
-            scroll: 0,
-            size: (0, 0),
-        };
-
-        // TODO: scoring on empty input should just use a fastpath
-        menu.score("");
-
-        menu
-    }
-
-    pub fn score(&mut self, pattern: &str) {
-        // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self {
-            ref mut matcher,
-            ref mut matches,
-            ref options,
-            ..
-        } = *self;
-
-        // reuse the matches allocation
-        matches.clear();
-        matches.extend(options.iter().enumerate().filter_map(|(index, option)| {
-            let text = option.filter_text();
-            // TODO: using fuzzy_indices could give us the char idx for match highlighting
-            matcher
-                .fuzzy_match(text, pattern)
-                .map(|score| (index, score))
-        }));
-        // matches.sort_unstable_by_key(|(_, score)| -score);
-        matches.sort_unstable_by_key(|(index, _score)| options[*index].sort_text());
-
-        // reset cursor position
-        self.cursor = None;
-        self.scroll = 0;
-    }
-
-    pub fn move_up(&mut self) {
-        let len = self.matches.len();
-        let pos = self.cursor.map_or(0, |i| (i + len.saturating_sub(1)) % len) % len;
-        self.cursor = Some(pos);
-        self.adjust_scroll();
-    }
-
-    pub fn move_down(&mut self) {
-        let len = self.matches.len();
-        let pos = self.cursor.map_or(0, |i| i + 1) % len;
-        self.cursor = Some(pos);
-        self.adjust_scroll();
-    }
-
-    fn adjust_scroll(&mut self) {
-        let win_height = self.size.1 as usize;
-        if let Some(cursor) = self.cursor {
-            let mut scroll = self.scroll;
-            if cursor > (win_height + scroll).saturating_sub(1) {
-                // scroll down
-                scroll += cursor - (win_height + scroll).saturating_sub(1)
-            } else if cursor < scroll {
-                // scroll up
-                scroll = cursor
-            }
-            self.scroll = scroll;
-        }
-    }
-
-    pub fn selection(&self) -> Option<&T> {
-        self.cursor.and_then(|cursor| {
-            self.matches
-                .get(cursor)
-                .map(|(index, _score)| &self.options[*index])
-        })
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.matches.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.matches.len()
-    }
-}
-
-use super::PromptEvent as MenuEvent;
-
-impl<T: Item + 'static> Component for Menu<T> {
+impl<T: MenuItem + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => event,
@@ -241,10 +119,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
         let width = len.min(viewport.0 as usize);
 
-        self.widths = max_lens
-            .into_iter()
-            .map(|len| Constraint::Length(len as u16))
-            .collect();
+        self.widths = max_lens.into_iter().map(|len| len as u16).collect();
 
         let height = self.options.len().min(10).min(viewport.1 as usize);
 
@@ -289,12 +164,25 @@ impl<T: Item + 'static> Component for Menu<T> {
         let scroll_line = (win_height - scroll_height) * scroll
             / std::cmp::max(1, len.saturating_sub(win_height));
 
-        let rows = options.iter().map(|option| option.row());
+        let rows = options.iter().map(|option| {
+            TuiRow::new(
+                option
+                    .row()
+                    .cells
+                    .into_iter()
+                    .map(|cell| TuiCell::from(cell.content)),
+            )
+        });
+        let widths = self
+            .widths
+            .iter()
+            .map(|&w| Constraint::Length(w))
+            .collect::<Vec<_>>();
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
             .column_spacing(1)
-            .widths(&self.widths);
+            .widths(&widths);
 
         use tui::widgets::TableState;
 

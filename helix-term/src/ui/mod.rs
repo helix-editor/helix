@@ -11,14 +11,13 @@ mod text;
 pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
-pub use menu::Menu;
 pub use picker::{FilePicker, Picker};
 pub use popup::Popup;
-pub use prompt::{Prompt, PromptEvent};
+pub use prompt::Prompt;
 
 use helix_core::regex::Regex;
 use helix_core::register::Registers;
-use helix_view::{Document, Editor, View};
+use helix_view::{ui::prompt::PromptEvent, Document, Editor, View};
 
 use std::path::PathBuf;
 

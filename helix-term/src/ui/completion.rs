@@ -3,17 +3,30 @@ use crossterm::event::{Event, KeyCode, KeyEvent};
 use tui::buffer::Buffer as Surface;
 
 use std::borrow::Cow;
+use std::ops::Deref;
 
 use helix_core::Transaction;
 use helix_view::{graphics::Rect, Document, Editor, View};
 
 use crate::commands;
-use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
+use crate::ui::{Markdown, Popup, PromptEvent};
+use helix_view::ui::menu;
 
 use helix_lsp::{lsp, util};
 use lsp::CompletionItem;
 
-impl menu::Item for CompletionItem {
+// This can be removed after the completion component is moved into helix-view
+struct CompletionItemWrapper(CompletionItem);
+
+impl Deref for CompletionItemWrapper {
+    type Target = CompletionItem;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl menu::Item for CompletionItemWrapper {
     fn sort_text(&self) -> &str {
         self.filter_text.as_ref().unwrap_or(&self.label).as_str()
     }
@@ -28,7 +41,7 @@ impl menu::Item for CompletionItem {
 
     fn row(&self) -> menu::Row {
         menu::Row::new(vec![
-            menu::Cell::from(self.label.as_str()),
+            menu::Cell::from(self.label.clone()),
             menu::Cell::from(match self.kind {
                 Some(lsp::CompletionItemKind::Text) => "text",
                 Some(lsp::CompletionItemKind::Method) => "method",
@@ -68,7 +81,7 @@ impl menu::Item for CompletionItem {
 
 /// Wraps a Menu.
 pub struct Completion {
-    popup: Popup<Menu<CompletionItem>>,
+    popup: Popup<menu::Menu<CompletionItemWrapper>>,
     trigger_offset: usize,
     // TODO: maintain a completioncontext with trigger kind & trigger char
 }
@@ -80,7 +93,11 @@ impl Completion {
         trigger_offset: usize,
     ) -> Self {
         // let items: Vec<CompletionItem> = Vec::new();
-        let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
+        let items = items
+            .into_iter()
+            .map(CompletionItemWrapper)
+            .collect::<Vec<_>>();
+        let menu = menu::Menu::new(items, move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
                 view: &View,

@@ -13,7 +13,7 @@ use helix_core::{
 
 use helix_view::{
     clipboard::ClipboardType, document::Mode, editor::Action, input::KeyEvent, keyboard::KeyCode,
-    view::View, Document, DocumentId, Editor, ViewId,
+    ui::prompt::PromptEvent, view::View, Document, DocumentId, Editor, ViewId,
 };
 
 use anyhow::{anyhow, bail, Context as _};
@@ -27,7 +27,7 @@ use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
-    ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, FilePicker, Picker, Popup, Prompt},
 };
 
 use crate::job::{self, Job, Jobs};

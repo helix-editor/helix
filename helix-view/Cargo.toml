@@ -38,6 +38,8 @@ log = "~0.4"
 
 which = "4.2"
 
+fuzzy-matcher = "0.3"
+
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.2", features = ["std"] }
 
