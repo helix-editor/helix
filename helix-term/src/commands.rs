@@ -252,6 +252,9 @@ impl Command {
         // TODO: different description ?
         goto_line_end_newline, "Goto line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        extend_to_line_start, "Extend to line start",
+        extend_to_line_end, "Extend to line end",
+        extend_to_line_end_newline, "Extend to line end",
         signature_help, "Show signature help",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
@@ -407,7 +410,7 @@ fn extend_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
 }
 
-fn goto_line_end(cx: &mut Context) {
+fn goto_line_end_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -418,12 +421,20 @@ fn goto_line_end(cx: &mut Context) {
         let pos = graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
             .max(line_start);
 
-        range.put_cursor(text, pos, doc.mode == Mode::Select)
+        range.put_cursor(text, pos, movement == Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
 
-fn goto_line_end_newline(cx: &mut Context) {
+fn goto_line_end(cx: &mut Context) {
+    goto_line_end_impl(cx, Movement::Move)
+}
+
+fn extend_to_line_end(cx: &mut Context) {
+    goto_line_end_impl(cx, Movement::Extend)
+}
+
+fn goto_line_end_newline_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -431,12 +442,20 @@ fn goto_line_end_newline(cx: &mut Context) {
         let line = range.cursor_line(text);
         let pos = line_end_char_index(&text, line);
 
-        range.put_cursor(text, pos, doc.mode == Mode::Select)
+        range.put_cursor(text, pos, movement == Movement::Extend)
     });
     doc.set_selection(view.id, selection);
 }
 
-fn goto_line_start(cx: &mut Context) {
+fn goto_line_end_newline(cx: &mut Context) {
+    goto_line_end_newline_impl(cx, Movement::Move)
+}
+
+fn extend_to_line_end_newline(cx: &mut Context) {
+    goto_line_end_newline_impl(cx, Movement::Extend)
+}
+
+fn goto_line_start_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -445,9 +464,17 @@ fn goto_line_start(cx: &mut Context) {
 
         // adjust to start of the line
         let pos = text.line_to_char(line);
-        range.put_cursor(text, pos, doc.mode == Mode::Select)
+        range.put_cursor(text, pos, movement == Movement::Extend)
     });
     doc.set_selection(view.id, selection);
+}
+
+fn goto_line_start(cx: &mut Context) {
+    goto_line_start_impl(cx, Movement::Move)
+}
+
+fn extend_to_line_start(cx: &mut Context) {
+    goto_line_start_impl(cx, Movement::Extend)
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
