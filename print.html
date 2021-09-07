@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="sidebar-visible no-js light">
+<html lang="en" class="sidebar-visible no-js colibri">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -40,7 +40,7 @@
         <!-- Provide site root to javascript -->
         <script type="text/javascript">
             var path_to_root = "";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "colibri" : "colibri";
         </script>
 
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
@@ -66,7 +66,7 @@
             if (theme === null || theme === undefined) { theme = default_theme; }
             var html = document.querySelector('html');
             html.classList.remove('no-js')
-            html.classList.remove('light')
+            html.classList.remove('colibri')
             html.classList.add(theme);
             html.classList.add('js');
         </script>
@@ -103,12 +103,12 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri (default)</button></li>
                         </ul>
                                                 <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
@@ -160,7 +160,8 @@ brew install helix
 the project root. The flake can also be used to spin up a reproducible development
 shell for working on Helix.</p>
 <h3 id="arch-linux"><a class="header" href="#arch-linux">Arch Linux</a></h3>
-<p>Binary packages are available on AUR:</p>
+<p>Releases are available in the <code>community</code> repository.</p>
+<p>Packages are also available on AUR:</p>
 <ul>
 <li><a href="https://aur.archlinux.org/packages/helix-bin/">helix-bin</a> contains the pre-built release</li>
 <li><a href="https://aur.archlinux.org/packages/helix-git/">helix-git</a> builds the master branch</li>
@@ -234,6 +235,7 @@ follows the <code>selection → action</code> model. This means that the whateve
 going to act on (a word, a paragraph, a line, etc) is selected first and the
 action itself (delete, change, yank, etc) comes second. A cursor is simply a
 single width selection.</p>
+<p>See also Kakoune's <a href="https://github.com/mawww/kakoune/wiki/Migrating-from-Vim">Migrating from Vim</a>.</p>
 <blockquote>
 <p>TODO: Mention texobjects, surround, registers</p>
 </blockquote>
@@ -243,6 +245,16 @@ single width selection.</p>
 <li>Linux and Mac: <code>~/.config/helix/config.toml</code></li>
 <li>Windows: <code>%AppData%\helix\config.toml</code></li>
 </ul>
+<h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
+<p><code>[editor]</code> section of the config.</p>
+<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>scrolloff</code></td><td>Number of lines of padding around the edge of the screen when scrolling.</td><td><code>3</code></td></tr>
+<tr><td><code>mouse</code></td><td>Enable mouse mode.</td><td><code>true</code></td></tr>
+<tr><td><code>middle-click-paste</code></td><td>Middle click paste support.</td><td><code>true</code></td></tr>
+<tr><td><code>scroll-lines</code></td><td>Number of lines to scroll per scroll wheel step.</td><td><code>3</code></td></tr>
+<tr><td><code>shell</code></td><td>Shell to use when running external commands.</td><td>Unix: <code>[&quot;sh&quot;, &quot;-c&quot;]</code><br/>Windows: <code>[&quot;cmd&quot;, &quot;/C&quot;]</code></td></tr>
+<tr><td><code>line-number</code></td><td>Line number display (<code>absolute</code>, <code>relative</code>)</td><td><code>absolute</code></td></tr>
+</tbody></table>
 <h2 id="lsp"><a class="header" href="#lsp">LSP</a></h2>
 <p>To display all language server messages in the status line add the following to your <code>config.toml</code>:</p>
 <pre><code class="language-toml">[lsp]
@@ -264,78 +276,8 @@ display-messages = true
 <p>if the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
 <pre><code class="language-toml">&quot;key.key&quot; = &quot;#ffffff&quot;
 </code></pre>
-<p>Possible modifiers:</p>
-<table><thead><tr><th>Modifier</th></tr></thead><tbody>
-<tr><td><code>bold</code></td></tr>
-<tr><td><code>dim</code></td></tr>
-<tr><td><code>italic</code></td></tr>
-<tr><td><code>underlined</code></td></tr>
-<tr><td><code>slow\_blink</code></td></tr>
-<tr><td><code>rapid\_blink</code></td></tr>
-<tr><td><code>reversed</code></td></tr>
-<tr><td><code>hidden</code></td></tr>
-<tr><td><code>crossed\_out</code></td></tr>
-</tbody></table>
-<p>Possible keys:</p>
-<table><thead><tr><th>Key</th><th>Notes</th></tr></thead><tbody>
-<tr><td><code>attribute</code></td><td></td></tr>
-<tr><td><code>keyword</code></td><td></td></tr>
-<tr><td><code>keyword.directive</code></td><td>Preprocessor directives (#if in C)</td></tr>
-<tr><td><code>keyword.control</code></td><td>Control flow</td></tr>
-<tr><td><code>namespace</code></td><td></td></tr>
-<tr><td><code>punctuation</code></td><td></td></tr>
-<tr><td><code>punctuation.delimiter</code></td><td></td></tr>
-<tr><td><code>operator</code></td><td></td></tr>
-<tr><td><code>special</code></td><td></td></tr>
-<tr><td><code>property</code></td><td></td></tr>
-<tr><td><code>variable</code></td><td></td></tr>
-<tr><td><code>variable.parameter</code></td><td></td></tr>
-<tr><td><code>type</code></td><td></td></tr>
-<tr><td><code>type.builtin</code></td><td></td></tr>
-<tr><td><code>type.enum.variant</code></td><td>Enum variants</td></tr>
-<tr><td><code>constructor</code></td><td></td></tr>
-<tr><td><code>function</code></td><td></td></tr>
-<tr><td><code>function.macro</code></td><td></td></tr>
-<tr><td><code>function.builtin</code></td><td></td></tr>
-<tr><td><code>comment</code></td><td></td></tr>
-<tr><td><code>variable.builtin</code></td><td></td></tr>
-<tr><td><code>constant</code></td><td></td></tr>
-<tr><td><code>constant.builtin</code></td><td></td></tr>
-<tr><td><code>string</code></td><td></td></tr>
-<tr><td><code>number</code></td><td></td></tr>
-<tr><td><code>escape</code></td><td>Escaped characters</td></tr>
-<tr><td><code>label</code></td><td>For lifetimes</td></tr>
-<tr><td><code>module</code></td><td></td></tr>
-<tr><td><code>ui.background</code></td><td></td></tr>
-<tr><td><code>ui.cursor</code></td><td></td></tr>
-<tr><td><code>ui.cursor.insert</code></td><td></td></tr>
-<tr><td><code>ui.cursor.select</code></td><td></td></tr>
-<tr><td><code>ui.cursor.match</code></td><td>Matching bracket etc.</td></tr>
-<tr><td><code>ui.cursor.primary</code></td><td>Cursor with primary selection</td></tr>
-<tr><td><code>ui.linenr</code></td><td></td></tr>
-<tr><td><code>ui.linenr.selected</code></td><td></td></tr>
-<tr><td><code>ui.statusline</code></td><td></td></tr>
-<tr><td><code>ui.statusline.inactive</code></td><td></td></tr>
-<tr><td><code>ui.popup</code></td><td></td></tr>
-<tr><td><code>ui.window</code></td><td></td></tr>
-<tr><td><code>ui.help</code></td><td></td></tr>
-<tr><td><code>ui.text</code></td><td></td></tr>
-<tr><td><code>ui.text.focus</code></td><td></td></tr>
-<tr><td><code>ui.info</code></td><td></td></tr>
-<tr><td><code>ui.info.text</code></td><td></td></tr>
-<tr><td><code>ui.menu</code></td><td></td></tr>
-<tr><td><code>ui.menu.selected</code></td><td></td></tr>
-<tr><td><code>ui.selection</code></td><td>For selections in the editing area</td></tr>
-<tr><td><code>ui.selection.primary</code></td><td></td></tr>
-<tr><td><code>warning</code></td><td>LSP warning</td></tr>
-<tr><td><code>error</code></td><td>LSP error</td></tr>
-<tr><td><code>info</code></td><td>LSP info</td></tr>
-<tr><td><code>hint</code></td><td>LSP hint</td></tr>
-</tbody></table>
-<p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme">tree-sitter scopes</a>. We half-follow the common scopes from <a href="https://macromates.com/manual/en/language_grammars">macromates language grammars</a> with some differences.</p>
-<p>For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight <code>function.macro</code> and <code>function.builtin</code> as well, but you can use more specific scopes to highlight specific cases differently.</p>
-<h2 id="color-palettes"><a class="header" href="#color-palettes">Color palettes</a></h2>
-<p>You can define a palette of named colors, and refer to them from the
+<h3 id="color-palettes"><a class="header" href="#color-palettes">Color palettes</a></h3>
+<p>It's recommended define a palette of named colors, and refer to them from the
 configuration values in your theme. To do this, add a table called
 <code>palette</code> to your theme file:</p>
 <pre><code class="language-toml">ui.background = &quot;white&quot;
@@ -368,11 +310,162 @@ over it and is merged into the default palette.</p>
 <tr><td><code>light-gray</code></td></tr>
 <tr><td><code>white</code></td></tr>
 </tbody></table>
+<h3 id="modifiers"><a class="header" href="#modifiers">Modifiers</a></h3>
+<p>The following values may be used as modifiers. </p>
+<p>Less common modifiers might not be supported by your terminal emulator.</p>
+<table><thead><tr><th>Modifier</th></tr></thead><tbody>
+<tr><td><code>bold</code></td></tr>
+<tr><td><code>dim</code></td></tr>
+<tr><td><code>italic</code></td></tr>
+<tr><td><code>underlined</code></td></tr>
+<tr><td><code>slow_blink</code></td></tr>
+<tr><td><code>rapid_blink</code></td></tr>
+<tr><td><code>reversed</code></td></tr>
+<tr><td><code>hidden</code></td></tr>
+<tr><td><code>crossed_out</code></td></tr>
+</tbody></table>
+<h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
+<p>The following is a list of scopes available to use for styling.</p>
+<h4 id="syntax-highlighting"><a class="header" href="#syntax-highlighting">Syntax highlighting</a></h4>
+<p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme">tree-sitter scopes</a>.</p>
+<p>For a given highlight produced, styling will be determined based on the longest matching theme key. For example, the highlight <code>function.builtin.static</code> would match the key <code>function.builtin</code> rather than <code>function</code>.</p>
+<p>We use a similar set of scopes as
+<a href="https://www.sublimetext.com/docs/scope_naming.html">SublimeText</a>. See also
+<a href="https://macromates.com/manual/en/language_grammars">TextMate</a> scopes.</p>
+<ul>
+<li>
+<p><code>escape</code> (TODO: rename to (constant).character.escape)</p>
+</li>
+<li>
+<p><code>type</code> - Types</p>
+<ul>
+<li><code>builtin</code> - Primitive types provided by the language (<code>int</code>, <code>usize</code>)</li>
+</ul>
+</li>
+<li>
+<p><code>constant</code> (TODO: constant.other.placeholder for %v)</p>
+<ul>
+<li><code>builtin</code> Special constants provided by the language (<code>true</code>, <code>false</code>, <code>nil</code> etc)
+<ul>
+<li><code>boolean</code></li>
+</ul>
+</li>
+<li><code>character</code></li>
+</ul>
+</li>
+<li>
+<p><code>number</code> (TODO: rename to constant.number/.numeric.{integer, float, complex})</p>
+</li>
+<li>
+<p><code>string</code> (TODO: string.quoted.{single, double}, string.raw/.unquoted)?</p>
+<ul>
+<li><code>regexp</code> - Regular expressions</li>
+<li><code>special</code>
+<ul>
+<li><code>path</code></li>
+<li><code>url</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>comment</code> - Code comments</p>
+<ul>
+<li><code>line</code> - Single line comments (<code>//</code>)</li>
+<li><code>block</code> - Block comments (e.g. (<code>/*     */</code>)
+<ul>
+<li><code>documentation</code> - Documentation comments (e.g. <code>///</code> in Rust)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>variable</code> - Variables</p>
+<ul>
+<li><code>builtin</code> - Reserved language variables (<code>self</code>, <code>this</code>, <code>super</code>, etc)</li>
+<li><code>parameter</code> - Function parameters</li>
+<li><code>property</code></li>
+<li><code>function</code> (TODO: ?)</li>
+</ul>
+</li>
+<li>
+<p><code>label</code></p>
+</li>
+<li>
+<p><code>punctuation</code></p>
+<ul>
+<li><code>delimiter</code> - Commas, colons</li>
+<li><code>bracket</code> - Parentheses, angle brackets, etc.</li>
+</ul>
+</li>
+<li>
+<p><code>keyword</code></p>
+<ul>
+<li><code>control</code>
+<ul>
+<li><code>conditional</code> - <code>if</code>, <code>else</code></li>
+<li><code>repeat</code> - <code>for</code>, <code>while</code>, <code>loop</code></li>
+<li><code>import</code> - <code>import</code>, <code>export</code></li>
+<li>(TODO: return?)</li>
+</ul>
+</li>
+<li><code>directive</code> - Preprocessor directives (<code>#if</code> in C) </li>
+<li><code>function</code> - <code>fn</code>, <code>func</code></li>
+</ul>
+</li>
+<li>
+<p><code>operator</code> - <code>||</code>, <code>+=</code>, <code>&gt;</code>, <code>or</code></p>
+</li>
+<li>
+<p><code>function</code></p>
+<ul>
+<li><code>builtin</code></li>
+<li><code>method</code></li>
+<li><code>macro</code></li>
+<li><code>special</code> (preprocesor in C)</li>
+</ul>
+</li>
+<li>
+<p><code>tag</code> - Tags (e.g. <code>&lt;body&gt;</code> in HTML)</p>
+</li>
+<li>
+<p><code>namespace</code></p>
+</li>
+</ul>
+<h4 id="interface"><a class="header" href="#interface">Interface</a></h4>
+<p>These scopes are used for theming the editor interface.</p>
+<table><thead><tr><th>Key</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>ui.background</code></td><td></td></tr>
+<tr><td><code>ui.cursor</code></td><td></td></tr>
+<tr><td><code>ui.cursor.insert</code></td><td></td></tr>
+<tr><td><code>ui.cursor.select</code></td><td></td></tr>
+<tr><td><code>ui.cursor.match</code></td><td>Matching bracket etc.</td></tr>
+<tr><td><code>ui.cursor.primary</code></td><td>Cursor with primary selection</td></tr>
+<tr><td><code>ui.linenr</code></td><td></td></tr>
+<tr><td><code>ui.linenr.selected</code></td><td></td></tr>
+<tr><td><code>ui.statusline</code></td><td>Statusline</td></tr>
+<tr><td><code>ui.statusline.inactive</code></td><td>Statusline (unfocused document)</td></tr>
+<tr><td><code>ui.popup</code></td><td></td></tr>
+<tr><td><code>ui.window</code></td><td></td></tr>
+<tr><td><code>ui.help</code></td><td></td></tr>
+<tr><td><code>ui.text</code></td><td></td></tr>
+<tr><td><code>ui.text.focus</code></td><td></td></tr>
+<tr><td><code>ui.info</code></td><td></td></tr>
+<tr><td><code>ui.info.text</code></td><td></td></tr>
+<tr><td><code>ui.menu</code></td><td></td></tr>
+<tr><td><code>ui.menu.selected</code></td><td></td></tr>
+<tr><td><code>ui.selection</code></td><td>For selections in the editing area</td></tr>
+<tr><td><code>ui.selection.primary</code></td><td></td></tr>
+<tr><td><code>warning</code></td><td>Diagnostics warning</td></tr>
+<tr><td><code>error</code></td><td>Diagnostics error</td></tr>
+<tr><td><code>info</code></td><td>Diagnostics info</td></tr>
+<tr><td><code>hint</code></td><td>Diagnostics hint</td></tr>
+</tbody></table>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="keymap"><a class="header" href="#keymap">Keymap</a></h1>
 <h2 id="normal-mode"><a class="header" href="#normal-mode">Normal mode</a></h2>
 <h3 id="movement"><a class="header" href="#movement">Movement</a></h3>
 <blockquote>
-<p>NOTE: <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
+<p>NOTE: Unlike vim, <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
 </blockquote>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>h</code>, <code>Left</code></td><td>Move left</td><td><code>move_char_left</code></td></tr>
@@ -395,14 +488,14 @@ over it and is merged into the default palette.</p>
 <tr><td><code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
 <tr><td><code>Ctrl-u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 <tr><td><code>Ctrl-d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
-<tr><td><code>Ctrl-i</code></td><td>Jump forward on the jumplist TODO: conflicts tab</td><td><code>jump_forward</code></td></tr>
+<tr><td><code>Ctrl-i</code></td><td>Jump forward on the jumplist</td><td><code>jump_forward</code></td></tr>
 <tr><td><code>Ctrl-o</code></td><td>Jump backward on the jumplist</td><td><code>jump_backward</code></td></tr>
 <tr><td><code>v</code></td><td>Enter <a href="keymap.html#select--extend-mode">select (extend) mode</a></td><td><code>select_mode</code></td></tr>
 <tr><td><code>g</code></td><td>Enter <a href="keymap.html#goto-mode">goto mode</a></td><td>N/A</td></tr>
 <tr><td><code>m</code></td><td>Enter <a href="keymap.html#match-mode">match mode</a></td><td>N/A</td></tr>
 <tr><td><code>:</code></td><td>Enter command mode</td><td><code>command_mode</code></td></tr>
 <tr><td><code>z</code></td><td>Enter <a href="keymap.html#view-mode">view mode</a></td><td>N/A</td></tr>
-<tr><td><code>Ctrl-w</code></td><td>Enter <a href="keymap.html#window-mode">window mode</a> (maybe will be remove for spc w w later)</td><td>N/A</td></tr>
+<tr><td><code>Ctrl-w</code></td><td>Enter <a href="keymap.html#window-mode">window mode</a></td><td>N/A</td></tr>
 <tr><td><code>Space</code></td><td>Enter <a href="keymap.html#space-mode">space mode</a></td><td>N/A</td></tr>
 <tr><td><code>K</code></td><td>Show documentation for the item under the cursor</td><td><code>hover</code></td></tr>
 </tbody></table>
@@ -431,6 +524,13 @@ over it and is merged into the default palette.</p>
 <tr><td><code>d</code></td><td>Delete selection</td><td><code>delete_selection</code></td></tr>
 <tr><td><code>c</code></td><td>Change selection (delete and enter insert mode)</td><td><code>change_selection</code></td></tr>
 </tbody></table>
+<h4 id="shell"><a class="header" href="#shell">Shell</a></h4>
+<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>|</code></td><td>Pipe each selection through shell command, replacing with output</td><td><code>shell_pipe</code></td></tr>
+<tr><td><code>A-|</code></td><td>Pipe each selection into shell command, ignoring output</td><td><code>shell_pipe_to</code></td></tr>
+<tr><td><code>!</code></td><td>Run shell command, inserting output before each selection</td><td><code>shell_insert_output</code></td></tr>
+<tr><td><code>A-!</code></td><td>Run shell command, appending output after each selection</td><td><code>shell_append_output</code></td></tr>
+</tbody></table>
 <h3 id="selection-manipulation"><a class="header" href="#selection-manipulation">Selection manipulation</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>s</code></td><td>Select all regex matches inside selections</td><td><code>select_regex</code></td></tr>
@@ -450,14 +550,9 @@ over it and is merged into the default palette.</p>
 <tr><td></td><td>Expand selection to parent syntax node TODO: pick a key</td><td><code>expand_selection</code></td></tr>
 <tr><td><code>J</code></td><td>Join lines inside selection</td><td><code>join_selections</code></td></tr>
 <tr><td><code>K</code></td><td>Keep selections matching the regex TODO: overlapped by hover help</td><td><code>keep_selections</code></td></tr>
+<tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
 <tr><td><code>Space</code></td><td>Keep only the primary selection TODO: overlapped by space mode</td><td><code>keep_primary_selection</code></td></tr>
 <tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td><td><code>toggle_comments</code></td></tr>
-</tbody></table>
-<h3 id="insert-mode"><a class="header" href="#insert-mode">Insert Mode</a></h3>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>Escape</code></td><td>Switch to normal mode</td><td><code>normal_mode</code></td></tr>
-<tr><td><code>Ctrl-x</code></td><td>Autocomplete</td><td><code>completion</code></td></tr>
-<tr><td><code>Ctrl-w</code></td><td>Delete previous word</td><td><code>delete_word_backward</code></td></tr>
 </tbody></table>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
 <blockquote>
@@ -470,32 +565,9 @@ in reverse, or searching via smartcase.</p>
 <tr><td><code>N</code></td><td>Add next search match to selection</td><td><code>extend_search_next</code></td></tr>
 <tr><td><code>*</code></td><td>Use current selection as the search pattern</td><td><code>search_selection</code></td></tr>
 </tbody></table>
-<h3 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h3>
-<p>Mappings in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a></p>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>[d</code></td><td>Go to previous diagnostic</td><td><code>goto_prev_diag</code></td></tr>
-<tr><td><code>]d</code></td><td>Go to next diagnostic</td><td><code>goto_next_diag</code></td></tr>
-<tr><td><code>[D</code></td><td>Go to first diagnostic in document</td><td><code>goto_first_diag</code></td></tr>
-<tr><td><code>]D</code></td><td>Go to last diagnostic in document</td><td><code>goto_last_diag</code></td></tr>
-<tr><td><code>[space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
-<tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
-</tbody></table>
-<h3 id="shell"><a class="header" href="#shell">Shell</a></h3>
-<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>\|</code></td><td>Pipe each selection through shell command, replacing with output</td><td><code>shell_pipe</code></td></tr>
-<tr><td><code>A-\|</code></td><td>Pipe each selection into shell command, ignoring output</td><td><code>shell_pipe_to</code></td></tr>
-<tr><td><code>!</code></td><td>Run shell command, inserting output before each selection</td><td><code>shell_insert_output</code></td></tr>
-<tr><td><code>A-!</code></td><td>Run shell command, appending output after each selection</td><td><code>shell_append_output</code></td></tr>
-<tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
-</tbody></table>
-<h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
-<p>I'm still pondering whether to keep this mode or not. It changes movement
-commands to extend the existing selection instead of replacing it.</p>
-<blockquote>
-<p>NOTE: It's a bit confusing at the moment because extend hasn't been
-implemented for all movement commands yet.</p>
-</blockquote>
-<h2 id="view-mode"><a class="header" href="#view-mode">View mode</a></h2>
+<h3 id="minor-modes"><a class="header" href="#minor-modes">Minor modes</a></h3>
+<p>These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.</p>
+<h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
 <p>View mode is intended for scrolling and manipulating the view without changing
 the selection.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -506,7 +578,7 @@ the selection.</p>
 <tr><td><code>j</code></td><td>Scroll the view downwards</td><td><code>scroll_down</code></td></tr>
 <tr><td><code>k</code></td><td>Scroll the view upwards</td><td><code>scroll_up</code></td></tr>
 </tbody></table>
-<h2 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h2>
+<h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
 <p>Jumps to various locations.</p>
 <blockquote>
 <p>NOTE: Some of these features are only available with the LSP present.</p>
@@ -526,7 +598,7 @@ the selection.</p>
 <tr><td><code>i</code></td><td>Go to implementation</td><td><code>goto_implementation</code></td></tr>
 <tr><td><code>a</code></td><td>Go to the last accessed/alternate file</td><td><code>goto_last_accessed_file</code></td></tr>
 </tbody></table>
-<h2 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h2>
+<h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
 <p>Enter this mode using <code>m</code> from normal mode. See the relavant section
 in <a href="./usage.html">Usage</a> for an explanation about <a href="./usage.html#surround">surround</a>
 and <a href="./usage.html#textobject">textobject</a> usage.</p>
@@ -538,9 +610,8 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>a</code> <code>&lt;object&gt;</code></td><td>Select around textobject</td><td><code>select_textobject_around</code></td></tr>
 <tr><td><code>i</code> <code>&lt;object&gt;</code></td><td>Select inside textobject</td><td><code>select_textobject_inner</code></td></tr>
 </tbody></table>
-<h2 id="object-mode"><a class="header" href="#object-mode">Object mode</a></h2>
 <p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>
-<h2 id="window-mode"><a class="header" href="#window-mode">Window mode</a></h2>
+<h4 id="window-mode"><a class="header" href="#window-mode">Window mode</a></h4>
 <p>This layer is similar to vim keybindings as kakoune does not support window.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
@@ -548,8 +619,8 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>h</code>, <code>Ctrl-h</code></td><td>Horizontal bottom split</td><td><code>hsplit</code></td></tr>
 <tr><td><code>q</code>, <code>Ctrl-q</code></td><td>Close current window</td><td><code>wclose</code></td></tr>
 </tbody></table>
-<h2 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h2>
-<p>This layer is a kludge of mappings I had under leader key in neovim.</p>
+<h4 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h4>
+<p>This layer is a kludge of mappings, mostly pickers.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>f</code></td><td>Open file picker</td><td><code>file_picker</code></td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
@@ -564,6 +635,29 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>Y</code></td><td>Yank main selection to clipboard</td><td><code>yank_main_selection_to_clipboard</code></td></tr>
 <tr><td><code>R</code></td><td>Replace selections by clipboard contents</td><td><code>replace_selections_with_clipboard</code></td></tr>
 </tbody></table>
+<h4 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h4>
+<p>Mappings in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
+<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>[d</code></td><td>Go to previous diagnostic</td><td><code>goto_prev_diag</code></td></tr>
+<tr><td><code>]d</code></td><td>Go to next diagnostic</td><td><code>goto_next_diag</code></td></tr>
+<tr><td><code>[D</code></td><td>Go to first diagnostic in document</td><td><code>goto_first_diag</code></td></tr>
+<tr><td><code>]D</code></td><td>Go to last diagnostic in document</td><td><code>goto_last_diag</code></td></tr>
+<tr><td><code>[space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
+<tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
+</tbody></table>
+<h2 id="insert-mode"><a class="header" href="#insert-mode">Insert Mode</a></h2>
+<table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>Escape</code></td><td>Switch to normal mode</td><td><code>normal_mode</code></td></tr>
+<tr><td><code>Ctrl-x</code></td><td>Autocomplete</td><td><code>completion</code></td></tr>
+<tr><td><code>Ctrl-w</code></td><td>Delete previous word</td><td><code>delete_word_backward</code></td></tr>
+</tbody></table>
+<h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
+<p>I'm still pondering whether to keep this mode or not. It changes movement
+commands (including goto) to extend the existing selection instead of replacing it.</p>
+<blockquote>
+<p>NOTE: It's a bit confusing at the moment because extend hasn't been
+implemented for all movement commands yet.</p>
+</blockquote>
 <h1 id="picker"><a class="header" href="#picker">Picker</a></h1>
 <p>Keys to use within picker. Remapping currently not supported.</p>
 <table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
