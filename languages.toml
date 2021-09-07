@@ -48,6 +48,7 @@ file-types = ["ex", "exs"]
 roots = []
 comment-token = "#"
 
+language-server = { command = "elixir-ls" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -165,6 +166,7 @@ file-types = ["nix"]
 roots = []
 comment-token = "#"
 
+language-server = { command = "rnix-lsp" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
