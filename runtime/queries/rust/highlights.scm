@@ -17,7 +17,7 @@
 
 (escape_sequence) @escape
 (primitive_type) @type.builtin
-(boolean_literal) @constant.builtin
+(boolean_literal) @constant.builtin.boolean
 [
   (integer_literal)
   (float_literal)
@@ -149,7 +149,7 @@
 
 (mutable_specifier) @keyword.mut
 
-
+; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
 ; -------
 ; Guess Other Types

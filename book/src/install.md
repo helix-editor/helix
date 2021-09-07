@@ -23,7 +23,9 @@ shell for working on Helix.
 
 ### Arch Linux
 
-Binary packages are available on AUR:
+Releases are available in the `community` repository.
+
+Packages are also available on AUR:
 - [helix-bin](https://aur.archlinux.org/packages/helix-bin/) contains the pre-built release
 - [helix-git](https://aur.archlinux.org/packages/helix-git/) builds the master branch
 

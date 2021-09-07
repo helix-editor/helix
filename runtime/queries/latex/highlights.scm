@@ -259,7 +259,7 @@
 
 (comment) @comment
 
-(bracket_group) @parameter
+(bracket_group) @variable.parameter
 
 [(math_operator) "="] @operator
 
@@ -312,7 +312,7 @@
  key: (word) @text.reference)
 
 (key_val_pair
-  key: (_) @parameter
+  key: (_) @variable.parameter
   value: (_))
 
 ["[" "]" "{" "}"] @punctuation.bracket ;"(" ")" is has no special meaning in LaTeX

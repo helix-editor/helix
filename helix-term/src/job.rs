@@ -61,7 +61,7 @@ impl Jobs {
     }
 
     pub fn handle_callback(
-        &mut self,
+        &self,
         editor: &mut Editor,
         compositor: &mut Compositor,
         call: anyhow::Result<Option<Callback>>,
@@ -84,7 +84,7 @@ impl Jobs {
         }
     }
 
-    pub fn add(&mut self, j: Job) {
+    pub fn add(&self, j: Job) {
         if j.wait {
             self.wait_futures.push(j.future);
         } else {

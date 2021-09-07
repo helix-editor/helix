@@ -114,6 +114,19 @@ h6:target::before {
     margin-bottom: .875em;
 }
 
+.content ul li {
+margin-bottom: .25rem;
+}
+.content ul {
+    list-style-type: square;
+}
+.content ul ul, .content ol ul {
+    margin-bottom: .5rem;
+}
+.content li p {
+    margin-bottom: .5em;
+}
+
 .content p { line-height: 1.45em; }
 .content ol { line-height: 1.45em; }
 .content ul { line-height: 1.45em; }
