@@ -224,7 +224,6 @@ language-server = { command = "julia", args = [
                 using LanguageServer;
                 using Pkg;
                 import StaticLint;
-                import SymbolServer;
                 env_path = dirname(Pkg.Types.Context().env.project_file);
 
                 server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, "");
