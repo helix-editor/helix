@@ -149,7 +149,7 @@
 
 (mutable_specifier) @keyword.mut
 
-
+; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
 ; -------
 ; Guess Other Types

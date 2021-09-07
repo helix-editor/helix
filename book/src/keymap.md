@@ -4,7 +4,7 @@
 
 ### Movement
 
-> NOTE: `f`, `F`, `t` and `T` are not confined to the current line.
+> NOTE: Unlike vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
 | Key          | Description                                                                | Command                     |
 | -----        | -----------                                                                | -------                     |
@@ -28,14 +28,14 @@
 | `PageDown`   | Move page down                                                             | `page_down`                 |
 | `Ctrl-u`     | Move half page up                                                          | `half_page_up`              |
 | `Ctrl-d`     | Move half page down                                                        | `half_page_down`            |
-| `Ctrl-i`     | Jump forward on the jumplist TODO: conflicts tab                           | `jump_forward`              |
+| `Ctrl-i`     | Jump forward on the jumplist                                               | `jump_forward`              |
 | `Ctrl-o`     | Jump backward on the jumplist                                              | `jump_backward`             |
 | `v`          | Enter [select (extend) mode](#select--extend-mode)                         | `select_mode`               |
 | `g`          | Enter [goto mode](#goto-mode)                                              | N/A                         |
 | `m`          | Enter [match mode](#match-mode)                                            | N/A                         |
 | `:`          | Enter command mode                                                         | `command_mode`              |
 | `z`          | Enter [view mode](#view-mode)                                              | N/A                         |
-| `Ctrl-w`     | Enter [window mode](#window-mode) (maybe will be remove for spc w w later) | N/A                         |
+| `Ctrl-w`     | Enter [window mode](#window-mode)                                          | N/A                         |
 | `Space`      | Enter [space mode](#space-mode)                                            | N/A                         |
 | `K`          | Show documentation for the item under the cursor                           | `hover`                     |
 
@@ -66,6 +66,16 @@
 | `d`         | Delete selection                                | `delete_selection`    |
 | `c`         | Change selection (delete and enter insert mode) | `change_selection`    |
 
+#### Shell
+
+| Key                   | Description                                                                      | Command               |
+| ------                | -----------                                                                      | -------               |
+| <code>&#124;</code>   | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
+| <code>A-&#124;</code> | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
+| `!`                   | Run shell command, inserting output before each selection                        | `shell_insert_output` |
+| `A-!`                 | Run shell command, appending output after each selection                         | `shell_append_output` |
+
+
 ### Selection manipulation
 
 | Key      | Description                                                       | Command                              |
@@ -87,16 +97,9 @@
 |          | Expand selection to parent syntax node TODO: pick a key           | `expand_selection`                   |
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
 | `K`      | Keep selections matching the regex TODO: overlapped by hover help | `keep_selections`                    |
+| `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 | `Space`  | Keep only the primary selection TODO: overlapped by space mode    | `keep_primary_selection`             |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
-
-### Insert Mode
-
-| Key      | Description           | Command                |
-| -----    | -----------           | -------                |
-| `Escape` | Switch to normal mode | `normal_mode`          |
-| `Ctrl-x` | Autocomplete          | `completion`           |
-| `Ctrl-w` | Delete previous word  | `delete_word_backward` |
 
 ### Search
 
@@ -110,38 +113,11 @@ in reverse, or searching via smartcase.
 | `N`   | Add next search match to selection          | `extend_search_next` |
 | `*`   | Use current selection as the search pattern | `search_selection`   |
 
-### Unimpaired
+### Minor modes
 
-Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired)
+These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.
 
-| Key       | Description                        | Command           |
-| -----     | -----------                        | -------           |
-| `[d`      | Go to previous diagnostic          | `goto_prev_diag`  |
-| `]d`      | Go to next diagnostic              | `goto_next_diag`  |
-| `[D`      | Go to first diagnostic in document | `goto_first_diag` |
-| `]D`      | Go to last diagnostic in document  | `goto_last_diag`  |
-| `[space`  | Add newline above                  | `add_newline_above` |
-| `]space`  | Add newline below                  | `add_newline_below` |
-
-### Shell
-
-| Key    | Description                                                                      | Command               |
-| ------ | -----------                                                                      | -------               |
-| `\|`   | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
-| `A-\|` | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
-| `!`    | Run shell command, inserting output before each selection                        | `shell_insert_output` |
-| `A-!`  | Run shell command, appending output after each selection                         | `shell_append_output` |
-| `$`    | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
-
-## Select / extend mode
-
-I'm still pondering whether to keep this mode or not. It changes movement
-commands to extend the existing selection instead of replacing it.
-
-> NOTE: It's a bit confusing at the moment because extend hasn't been
-> implemented for all movement commands yet.
-
-## View mode
+#### View mode
 
 View mode is intended for scrolling and manipulating the view without changing
 the selection.
@@ -155,7 +131,7 @@ the selection.
 | `j`       | Scroll the view downwards                                 | `scroll_down`       |
 | `k`       | Scroll the view upwards                                   | `scroll_up`         |
 
-## Goto mode
+#### Goto mode
 
 Jumps to various locations.
 
@@ -177,7 +153,7 @@ Jumps to various locations.
 | `i`   | Go to implementation                             | `goto_implementation`      |
 | `a`   | Go to the last accessed/alternate file           | `goto_last_accessed_file`  |
 
-## Match mode
+#### Match mode
 
 Enter this mode using `m` from normal mode. See the relavant section
 in [Usage](./usage.md) for an explanation about [surround](./usage.md#surround)
@@ -192,11 +168,9 @@ and [textobject](./usage.md#textobject) usage.
 | `a` `<object>`   | Select around textobject                        | `select_textobject_around` |
 | `i` `<object>`   | Select inside textobject                        | `select_textobject_inner`  |
 
-## Object mode
-
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
-## Window mode
+#### Window mode
 
 This layer is similar to vim keybindings as kakoune does not support window.
 
@@ -207,9 +181,9 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `h`, `Ctrl-h` | Horizontal bottom split | `hsplit`      |
 | `q`, `Ctrl-q` | Close current window    | `wclose`      |
 
-## Space mode
+#### Space mode
 
-This layer is a kludge of mappings I had under leader key in neovim.
+This layer is a kludge of mappings, mostly pickers.
 
 | Key     | Description                                                           | Command                             |
 | -----   | -----------                                                           | -------                             |
@@ -225,6 +199,36 @@ This layer is a kludge of mappings I had under leader key in neovim.
 | `y`     | Join and yank selections to clipboard                                 | `yank_joined_to_clipboard`          |
 | `Y`     | Yank main selection to clipboard                                      | `yank_main_selection_to_clipboard`  |
 | `R`     | Replace selections by clipboard contents                              | `replace_selections_with_clipboard` |
+
+
+#### Unimpaired
+
+Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
+
+| Key       | Description                        | Command           |
+| -----     | -----------                        | -------           |
+| `[d`      | Go to previous diagnostic          | `goto_prev_diag`  |
+| `]d`      | Go to next diagnostic              | `goto_next_diag`  |
+| `[D`      | Go to first diagnostic in document | `goto_first_diag` |
+| `]D`      | Go to last diagnostic in document  | `goto_last_diag`  |
+| `[space`  | Add newline above                  | `add_newline_above` |
+| `]space`  | Add newline below                  | `add_newline_below` |
+
+## Insert Mode
+
+| Key      | Description           | Command                |
+| -----    | -----------           | -------                |
+| `Escape` | Switch to normal mode | `normal_mode`          |
+| `Ctrl-x` | Autocomplete          | `completion`           |
+| `Ctrl-w` | Delete previous word  | `delete_word_backward` |
+
+## Select / extend mode
+
+I'm still pondering whether to keep this mode or not. It changes movement
+commands (including goto) to extend the existing selection instead of replacing it.
+
+> NOTE: It's a bit confusing at the moment because extend hasn't been
+> implemented for all movement commands yet.
 
 # Picker
 

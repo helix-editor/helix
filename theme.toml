@@ -28,9 +28,7 @@ escape = "honey"
 label = "honey"
 
 # TODO: diferentiate doc comment
-# concat (ERROR) @syntax-error and "MISSING ;" selectors for errors
-
-module = "#ff0000"
+# concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
 "ui.background" = { bg = "midnight" }
 "ui.linenr" = { fg = "comet" }

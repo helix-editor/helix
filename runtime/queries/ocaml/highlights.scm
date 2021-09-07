@@ -60,7 +60,7 @@
 
 [(number) (signed_number)] @number
 
-(character) @constant.builtin.character
+(character) @constant.character
 
 (string) @string
 
