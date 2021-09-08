@@ -4167,7 +4167,27 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     ch if !ch.is_ascii_alphanumeric() => {
                         textobject::textobject_surround(text, range, objtype, ch, count)
                     }
-                    _ => range,
+                    ch => {
+                        // tree-sitter objects
+                        let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+                            Some(t) => t,
+                            None => return range,
+                        };
+                        let obj_name = match ch {
+                            'f' => "function",
+                            'c' => "class",
+                            _ => return range,
+                        };
+                        textobject::textobject_treesitter(
+                            text,
+                            range,
+                            objtype,
+                            obj_name,
+                            syntax.tree().root_node(),
+                            lang_config,
+                            count,
+                        )
+                    }
                 }
             });
             doc.set_selection(view.id, selection);
