@@ -61,7 +61,7 @@
 
 (null) @constant
 (number_literal) @number
-(char_literal) @number
+(char_literal) @string
 
 (call_expression
   function: (identifier) @function)

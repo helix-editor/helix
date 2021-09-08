@@ -226,6 +226,8 @@ impl MethodCall {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Notification {
+    // we inject this notification to signal the LSP is ready
+    Initialized,
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
@@ -237,6 +239,7 @@ impl Notification {
         use lsp::notification::Notification as _;
 
         let notification = match method {
+            lsp::notification::Initialized::METHOD => Self::Initialized,
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params
                     .parse()
@@ -294,7 +297,7 @@ impl Registry {
         }
     }
 
-    pub fn get_by_id(&mut self, id: usize) -> Option<&Client> {
+    pub fn get_by_id(&self, id: usize) -> Option<&Client> {
         self.inner
             .values()
             .find(|(client_id, _)| client_id == &id)
@@ -302,33 +305,52 @@ impl Registry {
     }
 
     pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
-        if let Some(config) = &language_config.language_server {
-            // avoid borrow issues
-            let inner = &mut self.inner;
-            let s_incoming = &mut self.incoming;
+        let config = match &language_config.language_server {
+            Some(config) => config,
+            None => return Err(Error::LspNotDefined),
+        };
 
-            match inner.entry(language_config.scope.clone()) {
-                Entry::Occupied(entry) => Ok(entry.get().1.clone()),
-                Entry::Vacant(entry) => {
-                    // initialize a new client
-                    let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                    let (mut client, incoming) = Client::start(
-                        &config.command,
-                        &config.args,
-                        serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
-                        id,
-                    )?;
-                    // TODO: run this async without blocking
-                    futures_executor::block_on(client.initialize())?;
-                    s_incoming.push(UnboundedReceiverStream::new(incoming));
-                    let client = Arc::new(client);
+        match self.inner.entry(language_config.scope.clone()) {
+            Entry::Occupied(entry) => Ok(entry.get().1.clone()),
+            Entry::Vacant(entry) => {
+                // initialize a new client
+                let id = self.counter.fetch_add(1, Ordering::Relaxed);
+                let (client, incoming, initialize_notify) = Client::start(
+                    &config.command,
+                    &config.args,
+                    serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
+                    id,
+                )?;
+                self.incoming.push(UnboundedReceiverStream::new(incoming));
+                let client = Arc::new(client);
 
-                    entry.insert((id, client.clone()));
-                    Ok(client)
-                }
+                // Initialize the client asynchronously
+                let _client = client.clone();
+                tokio::spawn(async move {
+                    use futures_util::TryFutureExt;
+                    let value = _client
+                        .capabilities
+                        .get_or_try_init(|| {
+                            _client
+                                .initialize()
+                                .map_ok(|response| response.capabilities)
+                        })
+                        .await;
+
+                    value.expect("failed to initialize capabilities");
+
+                    // next up, notify<initialized>
+                    _client
+                        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+                        .await
+                        .unwrap();
+
+                    initialize_notify.notify_one();
+                });
+
+                entry.insert((id, client.clone()));
+                Ok(client)
             }
-        } else {
-            Err(Error::LspNotDefined)
         }
     }
 
@@ -414,32 +436,6 @@ impl LspProgressMap {
             .insert(token, ProgressStatus::Started(status))
     }
 }
-
-// REGISTRY = HashMap<LanguageId, Lazy/OnceCell<Arc<RwLock<Client>>>
-// spawn one server per language type, need to spawn one per workspace if server doesn't support
-// workspaces
-//
-// could also be a client per root dir
-//
-// storing a copy of Option<Arc<RwLock<Client>>> on Document would make the LSP client easily
-// accessible during edit/save callbacks
-//
-// the event loop needs to process all incoming streams, maybe we can just have that be a separate
-// task that's continually running and store the state on the client, then use read lock to
-// retrieve data during render
-// -> PROBLEM: how do you trigger an update on the editor side when data updates?
-//
-// -> The data updates should pull all events until we run out so we don't frequently re-render
-//
-//
-// v2:
-//
-// there should be a registry of lsp clients, one per language type (or workspace).
-// the clients should lazy init on first access
-// the client.initialize() should be called async and we buffer any requests until that completes
-// there needs to be a way to process incoming lsp messages from all clients.
-//  -> notifications need to be dispatched to wherever
-//  -> requests need to generate a reply and travel back to the same lsp!
 
 #[cfg(test)]
 mod tests {

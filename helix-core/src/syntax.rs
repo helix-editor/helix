@@ -144,8 +144,12 @@ impl LanguageConfiguration {
                 &highlights_query,
                 &injections_query,
                 &locals_query,
-            )
-            .unwrap(); // TODO: no unwrap
+            );
+
+            let config = match config {
+                Ok(config) => config,
+                Err(err) => panic!("{}", err),
+            }; // TODO: avoid panic
             config.configure(scopes);
             Some(Arc::new(config))
         }

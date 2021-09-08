@@ -69,7 +69,7 @@
 
     --links: #2b79a2;
 
-    --inline-code-color: #c5c8c6;;
+    --inline-code-color: #c5c8c6;
 
     --theme-popup-bg: #141617;
     --theme-popup-border: #43484d;
@@ -110,7 +110,7 @@
 
     --links: #20609f;
 
-    --inline-code-color: #301900;
+    --inline-code-color: #a39e9b;
 
     --theme-popup-bg: #fafafa;
     --theme-popup-border: #cccccc;
@@ -151,7 +151,7 @@
 
     --links: #2b79a2;
 
-    --inline-code-color: #c5c8c6;;
+    --inline-code-color: #c5c8c6;
 
     --theme-popup-bg: #161923;
     --theme-popup-border: #737480;
@@ -192,7 +192,7 @@
 
     --links: #2b79a2;
 
-    --inline-code-color: #6e6b5e;
+    --inline-code-color: #c5c8c6;
 
     --theme-popup-bg: #e1e1db;
     --theme-popup-border: #b38f6b;
@@ -234,7 +234,7 @@
 
         --links: #2b79a2;
 
-        --inline-code-color: #c5c8c6;;
+        --inline-code-color: #6e6b5e;
 
         --theme-popup-bg: #141617;
         --theme-popup-border: #43484d;
@@ -261,6 +261,7 @@
 .colibri {
     --bg: #3b224c;
     --fg: #bcbdd0;
+    --heading-fg: #fff;
 
     --sidebar-bg: #281733;
     --sidebar-fg: #c8c9db;
@@ -276,18 +277,19 @@
     /* --links: #a4a0e8; */
     --links: #ECCDBA;
 
-    --inline-code-color: #c5c8c6;;
+    --inline-code-color: hsl(48.7, 7.8%, 70%);
 
     --theme-popup-bg: #161923;
     --theme-popup-border: #737480;
     --theme-hover: rgba(0,0,0, .2);
 
-    --quote-bg: hsl(226, 15%, 17%);
+    --quote-bg: #281733;
     --quote-border: hsl(226, 15%, 22%);
 
-    --table-border-color: hsl(226, 23%, 16%);
-    --table-header-bg: hsl(226, 23%, 31%);
+    --table-border-color: hsl(226, 23%, 76%);
+    --table-header-bg: hsla(226, 23%, 31%, 0);
     --table-alternate-bg: hsl(226, 23%, 14%);
+    --table-border-line: hsla(201deg, 20%, 92%, 0.2);
 
     --searchbar-border-color: #aaa;
     --searchbar-bg: #aeaec6;
@@ -300,6 +302,7 @@
 }
 
 .colibri {
+/*
     --bg: #ffffff;
     --fg: #452859;
     --fg: #5a5977;
@@ -318,7 +321,7 @@
 
     --links: #6F44F0;
 
-    --inline-code-color: #697C81;
+    --inline-code-color: #a39e9b;
 
     --theme-popup-bg: #161923;
     --theme-popup-border: #737480;
@@ -341,4 +344,5 @@
     --searchresults-border-color: #5c5c68;
     --searchresults-li-bg: #242430;
     --search-mark-bg: #a2cff5;
+*/
 }

@@ -158,10 +158,9 @@ fn build_dir(dir: &str, language: &str) {
         .is_none()
     {
         eprintln!(
-            "The directory {} is empty, did you use 'git clone --recursive'?",
+            "The directory {} is empty, you probably need to use 'git submodule update --init --recursive'?",
             dir
         );
-        eprintln!("You can fix in using 'git submodule init && git submodule update --recursive'.");
         std::process::exit(1);
     }
 

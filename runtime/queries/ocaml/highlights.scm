@@ -25,12 +25,12 @@
 
 (external (value_name) @function)
 
-(method_name) @method
+(method_name) @function.method
 
 ; Variables
 ;----------
 
-(value_pattern) @parameter
+(value_pattern) @variable.parameter
 
 ; Application
 ;------------
@@ -60,7 +60,7 @@
 
 [(number) (signed_number)] @number
 
-(character) @character
+(character) @constant.character
 
 (string) @string
 
@@ -92,7 +92,7 @@
 
 ["include" "open"] @include
 
-["for" "to" "downto" "while" "do" "done"] @keyword.control.loop
+["for" "to" "downto" "while" "do" "done"] @keyword.control.repeat
 
 ; Macros
 ;-------
