@@ -495,7 +495,6 @@ impl Default for Keymaps {
             "<" => unindent,
             "=" => format_selections,
             "J" => join_selections,
-            // TODO: conflicts hover/doc
             "K" => keep_selections,
             // TODO: and another method for inverse
 
@@ -527,7 +526,6 @@ impl Default for Keymaps {
 
             // move under <space>c
             "C-c" => toggle_comments,
-            "K" => hover,
 
             // z family for save/restore/combine from/to sels from register
 
@@ -553,6 +551,7 @@ impl Default for Keymaps {
                 "P" => paste_clipboard_before,
                 "R" => replace_selections_with_clipboard,
                 "/" => global_search,
+                "k" => hover,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,

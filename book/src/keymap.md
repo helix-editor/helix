@@ -38,7 +38,6 @@
 | `Z`          | Enter sticky [view mode](#view-mode)               | N/A                         |
 | `Ctrl-w`     | Enter [window mode](#window-mode)                  | N/A                         |
 | `Space`      | Enter [space mode](#space-mode)                    | N/A                         |
-| `K`          | Show documentation for the item under the cursor   | `hover`                     |
 
 ### Changes
 
@@ -98,7 +97,7 @@
 | `X`      | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
 |          | Expand selection to parent syntax node TODO: pick a key           | `expand_selection`                   |
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
-| `K`      | Keep selections matching the regex TODO: overlapped by hover help | `keep_selections`                    |
+| `K`      | Keep selections matching the regex                                | `keep_selections`                    |
 | `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
 
@@ -194,6 +193,7 @@ This layer is a kludge of mappings, mostly pickers.
 
 | Key     | Description                                                           | Command                             |
 | -----   | -----------                                                           | -------                             |
+| `k`     | Show documentation for the item under the cursor                      | `hover`                             |
 | `f`     | Open file picker                                                      | `file_picker`                       |
 | `b`     | Open buffer picker                                                    | `buffer_picker`                     |
 | `s`     | Open symbol picker (current document)                                 | `symbol_picker`                     |
