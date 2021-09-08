@@ -710,7 +710,7 @@ impl EditorView {
                 // debug_assert!(cxt.count != 0);
 
                 // set the register
-                cxt.selected_register = cxt.editor.selected_register.take();
+                cxt.register = cxt.editor.selected_register.take();
 
                 self.handle_keymap_event(mode, cxt, event);
                 if self.keymaps.pending().is_empty() {
@@ -887,9 +887,9 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let mut cxt = commands::Context {
-            selected_register: helix_view::RegisterSelection::default(),
             editor: &mut cx.editor,
             count: None,
+            register: None,
             callback: None,
             on_next_key_callback: None,
             jobs: cx.jobs,

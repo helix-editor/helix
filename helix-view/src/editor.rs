@@ -3,7 +3,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
-    Document, DocumentId, RegisterSelection, View, ViewId,
+    Document, DocumentId, View, ViewId,
 };
 
 use futures_util::future;
@@ -73,7 +73,7 @@ pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
-    pub selected_register: RegisterSelection,
+    pub selected_register: Option<char>,
     pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
@@ -111,7 +111,7 @@ impl Editor {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
             count: None,
-            selected_register: RegisterSelection::default(),
+            selected_register: None,
             theme: themes.default(),
             language_servers,
             syn_loader: config_loader,

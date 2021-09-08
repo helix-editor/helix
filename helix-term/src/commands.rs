@@ -44,7 +44,7 @@ use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
 
 pub struct Context<'a> {
-    pub selected_register: helix_view::RegisterSelection,
+    pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
 
@@ -1030,7 +1030,8 @@ fn select_all(cx: &mut Context) {
 }
 
 fn select_regex(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "select:".into(), move |view, doc, _, regex| {
+    let reg = cx.register.unwrap_or('/');
+    let prompt = ui::regex_prompt(cx, "select:".into(), Some(reg), move |view, doc, regex| {
         let text = doc.text().slice(..);
         if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
         {
@@ -1042,7 +1043,8 @@ fn select_regex(cx: &mut Context) {
 }
 
 fn split_selection(cx: &mut Context) {
-    let prompt = ui::regex_prompt(cx, "split:".into(), move |view, doc, _, regex| {
+    let reg = cx.register.unwrap_or('/');
+    let prompt = ui::regex_prompt(cx, "split:".into(), Some(reg), move |view, doc, regex| {
         let text = doc.text().slice(..);
         let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
         doc.set_selection(view.id, selection);
@@ -1100,6 +1102,7 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
 
 // TODO: use one function for search vs extend
 fn search(cx: &mut Context) {
+    let reg = cx.register.unwrap_or('/');
     let (_, doc) = current!(cx.editor);
 
     // TODO: could probably share with select_on_matches?
@@ -1108,10 +1111,8 @@ fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let prompt = ui::regex_prompt(cx, "search:".into(), move |view, doc, registers, regex| {
+    let prompt = ui::regex_prompt(cx, "search:".into(), Some(reg), move |view, doc, regex| {
         search_impl(doc, view, &contents, &regex, false);
-        // TODO: only store on enter (accept), not update
-        registers.write('/', vec![regex.as_str().to_string()]);
     });
 
     cx.push_layer(Box::new(prompt));
@@ -1119,9 +1120,9 @@ fn search(cx: &mut Context) {
 
 fn search_next_impl(cx: &mut Context, extend: bool) {
     let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
+    let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
-        let query = query.first().unwrap();
+        let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
         let regex = Regex::new(query).unwrap();
         search_impl(doc, view, &contents, &regex, extend);
@@ -1141,7 +1142,7 @@ fn search_selection(cx: &mut Context) {
     let contents = doc.text().slice(..);
     let query = doc.selection(view.id).primary().fragment(contents);
     let regex = regex::escape(&query);
-    cx.editor.registers.write('/', vec![regex]);
+    cx.editor.registers.get_mut('/').push(regex);
     search_next(cx);
 }
 
@@ -1200,7 +1201,7 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
 }
 
 fn delete_selection(cx: &mut Context) {
-    let reg_name = cx.selected_register.name();
+    let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
     let reg = registers.get_mut(reg_name);
@@ -1213,7 +1214,7 @@ fn delete_selection(cx: &mut Context) {
 }
 
 fn change_selection(cx: &mut Context) {
-    let reg_name = cx.selected_register.name();
+    let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
     let reg = registers.get_mut(reg_name);
@@ -3346,12 +3347,12 @@ fn yank(cx: &mut Context) {
     let msg = format!(
         "yanked {} selection(s) to register {}",
         values.len(),
-        cx.selected_register.name()
+        cx.register.unwrap_or('"')
     );
 
     cx.editor
         .registers
-        .write(cx.selected_register.name(), values);
+        .write(cx.register.unwrap_or('"'), values);
 
     cx.editor.set_status(msg);
     exit_select_mode(cx);
@@ -3524,7 +3525,7 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 }
 
 fn replace_with_yanked(cx: &mut Context) {
-    let reg_name = cx.selected_register.name();
+    let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
@@ -3575,7 +3576,7 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 }
 
 fn paste_after(cx: &mut Context) {
-    let reg_name = cx.selected_register.name();
+    let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
@@ -3589,7 +3590,7 @@ fn paste_after(cx: &mut Context) {
 }
 
 fn paste_before(cx: &mut Context) {
-    let reg_name = cx.selected_register.name();
+    let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
@@ -3770,7 +3771,8 @@ fn join_selections(cx: &mut Context) {
 
 fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
-    let prompt = ui::regex_prompt(cx, "keep:".into(), move |view, doc, _, regex| {
+    let reg = cx.register.unwrap_or('/');
+    let prompt = ui::regex_prompt(cx, "keep:".into(), Some(reg), move |view, doc, regex| {
         let text = doc.text().slice(..);
 
         if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
@@ -4103,7 +4105,7 @@ fn wclose(cx: &mut Context) {
 fn select_register(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
-            cx.editor.selected_register.select(ch);
+            cx.editor.selected_register = Some(ch);
         }
     })
 }
