@@ -2825,6 +2825,10 @@ fn open_above(cx: &mut Context) {
 fn normal_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
+    if doc.mode == Mode::Normal {
+        return;
+    }
+
     doc.mode = Mode::Normal;
 
     doc.append_changes_to_history(view.id);

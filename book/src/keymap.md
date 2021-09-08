@@ -86,6 +86,7 @@
 | `Alt-s`  | Split selection on newlines                                       | `split_selection_on_newline`         |
 | `;`      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
 | `Alt-;`  | Flip selection cursor and anchor                                  | `flip_selections`                    |
+| `,`      | Keep only the primary selection                                   | `keep_primary_selection`             |
 | `C`      | Copy selection onto the next line                                 | `copy_selection_on_next_line`        |
 | `Alt-C`  | Copy selection onto the previous line                             | `copy_selection_on_prev_line`        |
 | `(`      | Rotate main selection forward                                     | `rotate_selections_backward`         |
@@ -99,7 +100,6 @@
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
 | `K`      | Keep selections matching the regex TODO: overlapped by hover help | `keep_selections`                    |
 | `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
-| `Space`  | Keep only the primary selection TODO: overlapped by space mode    | `keep_primary_selection`             |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
 
 ### Search
@@ -200,7 +200,6 @@ This layer is a kludge of mappings, mostly pickers.
 | `a`     | Apply code action                                                     | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                | `last_picker`                       |
 | `w`     | Enter [window mode](#window-mode)                                     | N/A                                 |
-| `space` | Keep primary selection TODO: it's here because space mode replaced it | `keep_primary_selection`            |
 | `p`     | Paste system clipboard after selections                               | `paste_clipboard_after`             |
 | `P`     | Paste system clipboard before selections                              | `paste_clipboard_before`            |
 | `y`     | Join and yank selections to clipboard                                 | `yank_joined_to_clipboard`          |

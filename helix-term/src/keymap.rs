@@ -436,7 +436,6 @@ impl Default for Keymaps {
             "A" => append_to_line,
             "o" => open_below,
             "O" => open_above,
-            // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
             "d" => delete_selection,
             // TODO: also delete without yanking
@@ -500,8 +499,7 @@ impl Default for Keymaps {
             "K" => keep_selections,
             // TODO: and another method for inverse
 
-            // TODO: clashes with space mode
-            "space" => keep_primary_selection,
+            "," => keep_primary_selection,
 
             // "q" => record_macro,
             // "Q" => replay_macro,
@@ -554,7 +552,6 @@ impl Default for Keymaps {
                 "p" => paste_clipboard_after,
                 "P" => paste_clipboard_before,
                 "R" => replace_selections_with_clipboard,
-                "space" => keep_primary_selection,
                 "/" => global_search,
             },
             "z" => { "View"
