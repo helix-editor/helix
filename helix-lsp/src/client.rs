@@ -614,8 +614,8 @@ impl Client {
 
         Some(async move {
             let json = request.await?;
-            let response: Vec<lsp::TextEdit> = serde_json::from_value(json)?;
-            Ok(response)
+            let response: Option<Vec<lsp::TextEdit>> = serde_json::from_value(json)?;
+            Ok(response.unwrap_or_default())
         })
     }
 
