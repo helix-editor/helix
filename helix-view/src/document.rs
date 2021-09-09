@@ -472,7 +472,7 @@ impl Document {
             to_writer(&mut file, encoding, &text).await?;
 
             if let Some(language_server) = language_server {
-                if language_server.is_initialized() {
+                if !language_server.is_initialized() {
                     return Ok(());
                 }
                 if let Some(notification) =
