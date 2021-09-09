@@ -5,11 +5,17 @@ use helix_view::graphics::Rect;
 
 pub struct Text {
     contents: String,
+    size: (u16, u16),
+    viewport: (u16, u16),
 }
 
 impl Text {
     pub fn new(contents: String) -> Self {
-        Self { contents }
+        Self {
+            contents,
+            size: (0, 0),
+            viewport: (0, 0),
+        }
     }
 }
 impl Component for Text {
@@ -24,9 +30,13 @@ impl Component for Text {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let contents = tui::text::Text::from(self.contents.clone());
-        let width = std::cmp::min(contents.width() as u16, viewport.0);
-        let height = std::cmp::min(contents.height() as u16, viewport.1);
-        Some((width, height))
+        if viewport != self.viewport {
+            let contents = tui::text::Text::from(self.contents.clone());
+            let width = std::cmp::min(contents.width() as u16, viewport.0);
+            let height = std::cmp::min(contents.height() as u16, viewport.1);
+            self.size = (width, height);
+            self.viewport = viewport;
+        }
+        Some(self.size)
     }
 }
