@@ -372,10 +372,8 @@ impl Syntax {
         let config_ref =
             unsafe { mem::transmute::<_, &'static HighlightConfiguration>(self.config.as_ref()) };
 
-        // TODO: if reusing cursors this might need resetting
-        if let Some(range) = &range {
-            cursor_ref.set_byte_range(range.clone());
-        }
+        // if reusing cursors & no range this resets to whole range
+        cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
 
         let captures = cursor_ref
             .captures(query_ref, tree_ref.root_node(), RopeProvider(source))
