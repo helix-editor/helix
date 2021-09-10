@@ -36,9 +36,9 @@
                 pkgs = common.pkgs;
                 helix = pkgs.fetchgit {
                   url = "https://github.com/helix-editor/helix.git";
-                  rev = "d4bd5b37669708361a0a6cd2917464b010e6b7f5";
+                  rev = "987d8e6dd66d65c2503cc81a3b9ea8787435839a";
                   fetchSubmodules = true;
-                  sha256 = "sha256-KayR7K7UC0mT6EjHsZsCYY9IVDJzft63fGpPKGSY8nQ=";
+                  sha256 = "sha256-GRJ0zMJva9upUatc89AeKYuLq73nxcxDPKDSgEcPASE=";
                 };
               in
               pkgs.runCommand prev.src.name { } ''
