@@ -229,5 +229,74 @@ _________________________________________________________________
 
 
 =================================================================
+=                      COUNTS WITH MOTIONS                      =
+=================================================================
+
+ Type a number before a motion to repeat it that many times.
+
+ 1. Move the cursor to the line below marked -->.
+
+ 2. Type 2w to move 2 words forward.
+
+ 3. Type 3e to move to the end of the third word forward.
+
+ 4. Type 2b to move 2 words backwards
+
+ 5. Try the above with different numbers.
+
+ --> This is just a line with words you can move around in.
+
+
+
+
+
+
+=================================================================
+=                        SELECTING LINES                        =
+=================================================================
+
+ Press x to select a whole line. Press again to select the next.
+
+ 1. Move the cursor to the second line below marked -->.
+ 2. Press x to select the line, and d to delete it.
+ 3. Move to the fourth line.
+ 4. Press x twice or type 2x to select 2 lines, and d to delete.
+
+ --> 1) Roses are red,
+ --> 2) Mud is fun,
+ --> 3) Violets are blue,
+ --> 4) I have a car,
+ --> 5) Clocks tell time,
+ --> 6) Sugar is sweet,
+ --> 7) And so are you.
+
+
+
+
+
+=================================================================
+=                            UNDOING                            =
+=================================================================
+
+ Type u to undo. Type U to redo.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Move to the first error, and press d to delete it.
+ 3. Type u to undo your deletion.
+ 4. Fix all the errors on the line.
+ 5. Type u several times to undo your fixes.
+ 6. Type U (<SHIFT> + u) several times to redo your fixes.
+
+ --> Fiix the errors on thhis line and reeplace them witth undo.
+
+
+
+
+
+
+
+
+
+=================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
