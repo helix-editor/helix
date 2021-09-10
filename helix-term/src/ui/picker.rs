@@ -124,9 +124,13 @@ impl<T: 'static> Component for FilePicker<T> {
         }) {
             // align to middle
             let first_line = line
-                .map(|(start, _)| start)
-                .unwrap_or(0)
-                .saturating_sub(inner.height as usize / 2);
+                .map(|(start, end)| {
+                    let height = end.saturating_sub(start) + 1;
+                    let middle = start + (height.saturating_sub(1) / 2);
+                    middle.saturating_sub(inner.height as usize / 2).min(start)
+                })
+                .unwrap_or(0);
+
             let offset = Position::new(first_line, 0);
 
             let highlights = EditorView::doc_syntax_highlights(
@@ -202,7 +206,7 @@ impl<T> Picker<T> {
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
-            "".to_string(),
+            "".into(),
             None,
             |_pattern: &str| Vec::new(),
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {

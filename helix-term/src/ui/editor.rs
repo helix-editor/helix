@@ -2,7 +2,7 @@ use crate::{
     commands,
     compositor::{Component, Context, EventResult},
     key,
-    keymap::{KeymapResult, Keymaps},
+    keymap::{KeymapResult, KeymapResultKind, Keymaps},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -148,21 +148,21 @@ impl EditorView {
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |language| {
                         loader
-                                .language_config_for_scope(&format!("source.{}", language))
-                                .and_then(|language_config| {
-                                    let config = language_config.highlight_config(scopes)?;
-                                    let config_ref = config.as_ref();
-                                    // SAFETY: the referenced `HighlightConfiguration` behind
-                                    // the `Arc` is guaranteed to remain valid throughout the
-                                    // duration of the highlight.
-                                    let config_ref = unsafe {
-                                        std::mem::transmute::<
-                                            _,
-                                            &'static syntax::HighlightConfiguration,
-                                        >(config_ref)
-                                    };
-                                    Some(config_ref)
-                                })
+                            .language_config_for_scope(&format!("source.{}", language))
+                            .and_then(|language_config| {
+                                let config = language_config.highlight_config(scopes)?;
+                                let config_ref = config.as_ref();
+                                // SAFETY: the referenced `HighlightConfiguration` behind
+                                // the `Arc` is guaranteed to remain valid throughout the
+                                // duration of the highlight.
+                                let config_ref = unsafe {
+                                    std::mem::transmute::<
+                                        _,
+                                        &'static syntax::HighlightConfiguration,
+                                    >(config_ref)
+                                };
+                                Some(config_ref)
+                            })
                     })
                     .map(|event| event.unwrap())
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
@@ -427,7 +427,7 @@ impl EditorView {
 
         let current_line = doc
             .text()
-            .char_to_line(doc.selection(view.id).primary().anchor);
+            .char_to_line(doc.selection(view.id).primary().cursor(text));
 
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
@@ -638,7 +638,7 @@ impl EditorView {
 
     /// Handle events by looking them up in `self.keymaps`. Returns None
     /// if event was handled (a command was executed or a subkeymap was
-    /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
+    /// activated). Only KeymapResultKind::{NotFound, Cancelled} is returned
     /// otherwise.
     fn handle_keymap_event(
         &mut self,
@@ -647,34 +647,37 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         self.autoinfo = None;
-        match self.keymaps.get_mut(&mode).unwrap().get(event) {
-            KeymapResult::Matched(command) => command.execute(cxt),
-            KeymapResult::MatchedSequence(commands) => {
+        let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
+        self.autoinfo = key_result.sticky.map(|node| node.infobox());
+
+        match &key_result.kind {
+            KeymapResultKind::Matched(command) => command.execute(cxt),
+            KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
+            KeymapResultKind::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
                 }
             }
-            KeymapResult::Pending(node) => self.autoinfo = Some(node.into()),
-            k @ KeymapResult::NotFound | k @ KeymapResult::Cancelled(_) => return Some(k),
+            KeymapResultKind::NotFound | KeymapResultKind::Cancelled(_) => return Some(key_result),
         }
         None
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
-            match keyresult {
-                KeymapResult::NotFound => {
+            match keyresult.kind {
+                KeymapResultKind::NotFound => {
                     if let Some(ch) = event.char() {
                         commands::insert::insert_char(cx, ch)
                     }
                 }
-                KeymapResult::Cancelled(pending) => {
+                KeymapResultKind::Cancelled(pending) => {
                     for ev in pending {
                         match ev.char() {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
-                                if let KeymapResult::Matched(command) =
-                                    self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev)
+                                if let KeymapResultKind::Matched(command) =
+                                    self.keymaps.get_mut(&Mode::Insert).unwrap().get(ev).kind
                                 {
                                     command.execute(cx);
                                 }
@@ -712,7 +715,7 @@ impl EditorView {
                 // debug_assert!(cxt.count != 0);
 
                 // set the register
-                cxt.selected_register = cxt.editor.selected_register.take();
+                cxt.register = cxt.editor.selected_register.take();
 
                 self.handle_keymap_event(mode, cxt, event);
                 if self.keymaps.pending().is_empty() {
@@ -889,9 +892,9 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let mut cxt = commands::Context {
-            selected_register: helix_view::RegisterSelection::default(),
             editor: &mut cx.editor,
             count: None,
+            register: None,
             callback: None,
             on_next_key_callback: None,
             jobs: cx.jobs,
@@ -981,11 +984,12 @@ impl Component for EditorView {
                         // how we entered insert mode is important, and we should track that so
                         // we can repeat the side effect.
 
-                        self.last_insert.0 = match self.keymaps.get_mut(&mode).unwrap().get(key) {
-                            KeymapResult::Matched(command) => command,
-                            // FIXME: insert mode can only be entered through single KeyCodes
-                            _ => unimplemented!(),
-                        };
+                        self.last_insert.0 =
+                            match self.keymaps.get_mut(&mode).unwrap().get(key).kind {
+                                KeymapResultKind::Matched(command) => command,
+                                // FIXME: insert mode can only be entered through single KeyCodes
+                                _ => unimplemented!(),
+                            };
                         self.last_insert.1.clear();
                     }
                     (Mode::Insert, Mode::Normal) => {

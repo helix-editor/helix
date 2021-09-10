@@ -20,15 +20,15 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_core::regex::Regex;
-use helix_core::register::Registers;
 use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
 
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
-    prompt: String,
-    fun: impl Fn(&mut View, &mut Document, &mut Registers, Regex) + 'static,
+    prompt: std::borrow::Cow<'static, str>,
+    history_register: Option<char>,
+    fun: impl Fn(&mut View, &mut Document, Regex) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
@@ -36,7 +36,7 @@ pub fn regex_prompt(
 
     Prompt::new(
         prompt,
-        None,
+        history_register,
         |_input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
@@ -56,12 +56,11 @@ pub fn regex_prompt(
                     match Regex::new(input) {
                         Ok(regex) => {
                             let (view, doc) = current!(cx.editor);
-                            let registers = &mut cx.editor.registers;
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());
 
-                            fun(view, doc, registers, regex);
+                            fun(view, doc, regex);
 
                             view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
                         }

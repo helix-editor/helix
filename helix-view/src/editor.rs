@@ -3,7 +3,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::Tree,
-    Document, DocumentId, RegisterSelection, View, ViewId,
+    Document, DocumentId, View, ViewId,
 };
 
 use futures_util::future;
@@ -33,6 +33,8 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
+    pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true
@@ -55,6 +57,11 @@ impl Default for Config {
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
+            shell: if cfg!(windows) {
+                vec!["cmd".to_owned(), "/C".to_owned()]
+            } else {
+                vec!["sh".to_owned(), "-c".to_owned()]
+            },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
         }
@@ -66,7 +73,7 @@ pub struct Editor {
     pub tree: Tree,
     pub documents: SlotMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
-    pub selected_register: RegisterSelection,
+    pub selected_register: Option<char>,
     pub registers: Registers,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
@@ -104,7 +111,7 @@ impl Editor {
             tree: Tree::new(area),
             documents: SlotMap::with_key(),
             count: None,
-            selected_register: RegisterSelection::default(),
+            selected_register: None,
             theme: themes.default(),
             language_servers,
             syn_loader: config_loader,
@@ -248,20 +255,21 @@ impl Editor {
                 .and_then(|language| self.language_servers.get(language).ok());
 
             if let Some(language_server) = language_server {
-                doc.set_language_server(Some(language_server.clone()));
-
                 let language_id = doc
                     .language()
                     .and_then(|s| s.split('.').last()) // source.rust
                     .map(ToOwned::to_owned)
                     .unwrap_or_default();
 
+                // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
                     doc.url().unwrap(),
                     doc.version(),
                     doc.text(),
                     language_id,
                 ));
+
+                doc.set_language_server(Some(language_server));
             }
 
             let id = self.documents.insert(doc);
@@ -280,14 +288,9 @@ impl Editor {
 
         if close_buffer {
             // get around borrowck issues
-            let language_servers = &mut self.language_servers;
             let doc = &self.documents[view.doc];
 
-            let language_server = doc
-                .language
-                .as_ref()
-                .and_then(|language| language_servers.get(language).ok());
-            if let Some(language_server) = language_server {
+            if let Some(language_server) = doc.language_server() {
                 tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }
             self.documents.remove(view.doc);
@@ -317,20 +320,24 @@ impl Editor {
         view.ensure_cursor_in_view(doc, self.config.scrolloff)
     }
 
+    #[inline]
     pub fn document(&self, id: DocumentId) -> Option<&Document> {
         self.documents.get(id)
     }
 
+    #[inline]
     pub fn document_mut(&mut self, id: DocumentId) -> Option<&mut Document> {
         self.documents.get_mut(id)
     }
 
+    #[inline]
     pub fn documents(&self) -> impl Iterator<Item = &Document> {
-        self.documents.iter().map(|(_id, doc)| doc)
+        self.documents.values()
     }
 
+    #[inline]
     pub fn documents_mut(&mut self) -> impl Iterator<Item = &mut Document> {
-        self.documents.iter_mut().map(|(_id, doc)| doc)
+        self.documents.values_mut()
     }
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
@@ -338,10 +345,10 @@ impl Editor {
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
-    // pub fn current_document(&self) -> Document {
-    //     let id = self.view().doc;
-    //     let doc = &mut editor.documents[id];
-    // }
+    pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
+        self.documents_mut()
+            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+    }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let view = view!(self);

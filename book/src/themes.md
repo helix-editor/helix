@@ -30,85 +30,9 @@ if the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
 "key.key" = "#ffffff"
 ```
 
-Possible modifiers:
+### Color palettes
 
-| Modifier       |
-| ---            |
-| `bold`         |
-| `dim`          |
-| `italic`       |
-| `underlined`   |
-| `slow\_blink`  |
-| `rapid\_blink` |
-| `reversed`     |
-| `hidden`       |
-| `crossed\_out` |
-
-Possible keys:
-
-| Key                      | Notes                               |
-| ---                      | ---                                 |
-| `attribute`              |                                     |
-| `keyword`                |                                     |
-| `keyword.directive`      | Preprocessor directives (\#if in C) |
-| `keyword.control`        | Control flow                        |
-| `namespace`              |                                     |
-| `punctuation`            |                                     |
-| `punctuation.delimiter`  |                                     |
-| `operator`               |                                     |
-| `special`                |                                     |
-| `property`               |                                     |
-| `variable`               |                                     |
-| `variable.parameter`     |                                     |
-| `type`                   |                                     |
-| `type.builtin`           |                                     |
-| `type.enum.variant`      | Enum variants                       |
-| `constructor`            |                                     |
-| `function`               |                                     |
-| `function.macro`         |                                     |
-| `function.builtin`       |                                     |
-| `comment`                |                                     |
-| `variable.builtin`       |                                     |
-| `constant`               |                                     |
-| `constant.builtin`       |                                     |
-| `string`                 |                                     |
-| `number`                 |                                     |
-| `escape`                 | Escaped characters                  |
-| `label`                  | For lifetimes                       |
-| `module`                 |                                     |
-| `ui.background`          |                                     |
-| `ui.cursor`              |                                     |
-| `ui.cursor.insert`       |                                     |
-| `ui.cursor.select`       |                                     |
-| `ui.cursor.match`        | Matching bracket etc.               |
-| `ui.cursor.primary`      | Cursor with primary selection       |
-| `ui.linenr`              |                                     |
-| `ui.linenr.selected`     |                                     |
-| `ui.statusline`          |                                     |
-| `ui.statusline.inactive` |                                     |
-| `ui.popup`               |                                     |
-| `ui.window`              |                                     |
-| `ui.help`                |                                     |
-| `ui.text`                |                                     |
-| `ui.text.focus`          |                                     |
-| `ui.info`                |                                     |
-| `ui.info.text`           |                                     |
-| `ui.menu`                |                                     |
-| `ui.menu.selected`       |                                     |
-| `ui.selection`           | For selections in the editing area  |
-| `ui.selection.primary`   |                                     |
-| `warning`                | LSP warning                         |
-| `error`                  | LSP error                           |
-| `info`                   | LSP info                            |
-| `hint`                   | LSP hint                            |
-
-These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme). We half-follow the common scopes from [macromates language grammars](https://macromates.com/manual/en/language_grammars) with some differences.
-
-For a given highlight produced, styling will be determined based on the longest matching theme key. So it's enough to provide function to highlight `function.macro` and `function.builtin` as well, but you can use more specific scopes to highlight specific cases differently.
-
-## Color palettes
-
-You can define a palette of named colors, and refer to them from the
+It's recommended define a palette of named colors, and refer to them from the
 configuration values in your theme. To do this, add a table called
 `palette` to your theme file:
 
@@ -123,3 +47,148 @@ black = "#000000"
 
 Remember that the `[palette]` table includes all keys after its header,
 so you should define the palette after normal theme options.
+
+The default palette uses the terminal's default 16 colors, and the colors names
+are listed below. The `[palette]` section in the config file takes precedence
+over it and is merged into the default palette.
+
+| Color Name      |
+| ---             |
+| `black`         |
+| `red`           |
+| `green`         |
+| `yellow`        |
+| `blue`          |
+| `magenta`       |
+| `cyan`          |
+| `gray`          |
+| `light-red`     |
+| `light-green`   |
+| `light-yellow`  |
+| `light-blue`    |
+| `light-magenta` |
+| `light-cyan`    |
+| `light-gray`    |
+| `white`         |
+
+### Modifiers
+
+The following values may be used as modifiers. 
+
+Less common modifiers might not be supported by your terminal emulator.
+
+| Modifier       |
+| ---            |
+| `bold`         |
+| `dim`          |
+| `italic`       |
+| `underlined`   |
+| `slow_blink`   |
+| `rapid_blink`  |
+| `reversed`     |
+| `hidden`       |
+| `crossed_out`  |
+
+### Scopes
+
+The following is a list of scopes available to use for styling.
+
+#### Syntax highlighting
+
+These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme).
+
+For a given highlight produced, styling will be determined based on the longest matching theme key. For example, the highlight `function.builtin.static` would match the key `function.builtin` rather than `function`.
+
+We use a similar set of scopes as
+[SublimeText](https://www.sublimetext.com/docs/scope_naming.html). See also
+[TextMate](https://macromates.com/manual/en/language_grammars) scopes.
+
+- `escape` (TODO: rename to (constant).character.escape)
+
+- `type` - Types
+  - `builtin` - Primitive types provided by the language (`int`, `usize`)
+
+- `constant` (TODO: constant.other.placeholder for %v)
+  - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
+    - `boolean`
+  - `character`
+
+- `number` (TODO: rename to constant.number/.numeric.{integer, float, complex})
+- `string` (TODO: string.quoted.{single, double}, string.raw/.unquoted)?
+  - `regexp` - Regular expressions
+  - `special`
+    - `path`
+    - `url`
+
+- `comment` - Code comments
+  - `line` - Single line comments (`//`)
+  - `block` - Block comments (e.g. (`/*     */`)
+    - `documentation` - Documentation comments (e.g. `///` in Rust)
+
+- `variable` - Variables
+  - `builtin` - Reserved language variables (`self`, `this`, `super`, etc)
+  - `parameter` - Function parameters
+  - `property`
+  - `function` (TODO: ?)
+
+- `label`
+
+- `punctuation`
+  - `delimiter` - Commas, colons
+  - `bracket` - Parentheses, angle brackets, etc.
+
+- `keyword`
+  - `control`
+    - `conditional` - `if`, `else`
+    - `repeat` - `for`, `while`, `loop`
+    - `import` - `import`, `export`
+    - (TODO: return?)
+  - `directive` - Preprocessor directives (`#if` in C) 
+  - `function` - `fn`, `func`
+
+- `operator` - `||`, `+=`, `>`, `or`
+
+- `function`
+  - `builtin`
+  - `method`
+  - `macro`
+  - `special` (preprocesor in C)
+
+- `tag` - Tags (e.g. `<body>` in HTML)
+
+- `namespace`
+
+#### Interface
+
+These scopes are used for theming the editor interface.
+
+
+| Key                      | Notes                               |
+| ---                      | ---                                 |
+| `ui.background`          |                                     |
+| `ui.cursor`              |                                     |
+| `ui.cursor.insert`       |                                     |
+| `ui.cursor.select`       |                                     |
+| `ui.cursor.match`        | Matching bracket etc.               |
+| `ui.cursor.primary`      | Cursor with primary selection       |
+| `ui.linenr`              |                                     |
+| `ui.linenr.selected`     |                                     |
+| `ui.statusline`          | Statusline                          |
+| `ui.statusline.inactive` | Statusline (unfocused document)     |
+| `ui.popup`               |                                     |
+| `ui.window`              |                                     |
+| `ui.help`                |                                     |
+| `ui.text`                |                                     |
+| `ui.text.focus`          |                                     |
+| `ui.info`                |                                     |
+| `ui.info.text`           |                                     |
+| `ui.menu`                |                                     |
+| `ui.menu.selected`       |                                     |
+| `ui.selection`           | For selections in the editing area  |
+| `ui.selection.primary`   |                                     |
+| `warning`                | Diagnostics warning                 |
+| `error`                  | Diagnostics error                   |
+| `info`                   | Diagnostics info                    |
+| `hint`                   | Diagnostics hint                    |
+
+

@@ -8,7 +8,6 @@ pub mod graphics;
 pub mod info;
 pub mod input;
 pub mod keyboard;
-pub mod register_selection;
 pub mod theme;
 pub mod tree;
 pub mod view;
@@ -20,6 +19,5 @@ slotmap::new_key_type! {
 
 pub use document::Document;
 pub use editor::Editor;
-pub use register_selection::RegisterSelection;
 pub use theme::Theme;
 pub use view::View;

@@ -9,7 +9,7 @@ special = "honey"
 property = "white"
 variable = "lavender"
 # variable = "almond" # TODO: metavariables only
-"variable.parameter" = "lavender"
+"variable.parameter" = { fg = "lavender", modifiers = ["underlined"] }
 "variable.builtin" = "mint"
 type = "white"
 "type.builtin" = "white" # TODO: distinguish?
@@ -28,9 +28,7 @@ escape = "honey"
 label = "honey"
 
 # TODO: diferentiate doc comment
-# concat (ERROR) @syntax-error and "MISSING ;" selectors for errors
-
-module = "#ff0000"
+# concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
 "ui.background" = { bg = "midnight" }
 "ui.linenr" = { fg = "comet" }
