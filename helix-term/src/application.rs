@@ -373,7 +373,7 @@ impl Application {
                         log::warn!("unhandled window/showMessage: {:?}", params);
                     }
                     Notification::LogMessage(params) => {
-                        log::warn!("unhandled window/logMessage: {:?}", params);
+                        log::info!("window/logMessage: {:?}", params);
                     }
                     Notification::ProgressMessage(params) => {
                         let lsp::ProgressParams { token, value } = params;
