@@ -495,6 +495,7 @@ over it and is merged into the default palette.</p>
 <tr><td><code>m</code></td><td>Enter <a href="keymap.html#match-mode">match mode</a></td><td>N/A</td></tr>
 <tr><td><code>:</code></td><td>Enter command mode</td><td><code>command_mode</code></td></tr>
 <tr><td><code>z</code></td><td>Enter <a href="keymap.html#view-mode">view mode</a></td><td>N/A</td></tr>
+<tr><td><code>Z</code></td><td>Enter sticky <a href="keymap.html#view-mode">view mode</a></td><td>N/A</td></tr>
 <tr><td><code>Ctrl-w</code></td><td>Enter <a href="keymap.html#window-mode">window mode</a></td><td>N/A</td></tr>
 <tr><td><code>Space</code></td><td>Enter <a href="keymap.html#space-mode">space mode</a></td><td>N/A</td></tr>
 <tr><td><code>K</code></td><td>Show documentation for the item under the cursor</td><td><code>hover</code></td></tr>
@@ -569,7 +570,9 @@ in reverse, or searching via smartcase.</p>
 <p>These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.</p>
 <h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
 <p>View mode is intended for scrolling and manipulating the view without changing
-the selection.</p>
+the selection. The &quot;sticky&quot; variant of this mode is persistent; use the Escape
+key to return to normal mode after usage (useful when you're simply looking
+over text and not actively editing it).</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>z</code> , <code>c</code></td><td>Vertically center the line</td><td><code>align_view_center</code></td></tr>
 <tr><td><code>t</code></td><td>Align the line to the top of the screen</td><td><code>align_view_top</code></td></tr>
@@ -577,6 +580,10 @@ the selection.</p>
 <tr><td><code>m</code></td><td>Align the line to the middle of the screen (horizontally)</td><td><code>align_view_middle</code></td></tr>
 <tr><td><code>j</code></td><td>Scroll the view downwards</td><td><code>scroll_down</code></td></tr>
 <tr><td><code>k</code></td><td>Scroll the view upwards</td><td><code>scroll_up</code></td></tr>
+<tr><td><code>f</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>b</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
+<tr><td><code>u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 </tbody></table>
 <h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
 <p>Jumps to various locations.</p>
