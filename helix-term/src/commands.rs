@@ -162,6 +162,7 @@ impl Command {
 
     #[rustfmt::skip]
     commands!(
+        no_op, "Do nothing",
         move_char_left, "Move left",
         move_char_right, "Move right",
         move_line_up, "Move up",
@@ -360,6 +361,8 @@ impl PartialEq for Command {
         self.name() == other.name()
     }
 }
+
+fn no_op(_cx: &mut Context) {}
 
 fn move_impl<F>(cx: &mut Context, move_fn: F, dir: Direction, behaviour: Movement)
 where
