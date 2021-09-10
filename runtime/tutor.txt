@@ -342,7 +342,7 @@ _________________________________________________________________
  4. Type <SPACE><SPACE> to remove the second cursor.
 
  --> Fix th two nes at same ime.
- --> Fix th two new at same ime.
+ --> Fix th two nes at same ime.
 
      Fix these two lines at the same time.
 
