@@ -219,6 +219,28 @@ _________________________________________________________________
 
 
 =================================================================
+=                      THE CHANGE COMMAND                       =
+=================================================================
+
+ Press c to change the current selection.
+
+ The change command deletes the current selection and enters
+ Insert mode, so it is a very common shorthand for di.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Move to the start of an incorrect word and press w to
+    select it.
+ 3. Press c to delete the word and enter Insert mode.
+ 4. Type the correct word.
+ 5. Repeat until the line matches the line below it.
+
+ --> This paper has heavy words behind it.
+     This sentence has incorrect words in it.
+
+
+
+
+=================================================================
 =                      COUNTS WITH MOTIONS                      =
 =================================================================
 
@@ -278,6 +300,57 @@ _________________________________________________________________
  --> Fiix the errors on thhis line and reeplace them witth undo.
 
 
+
+
+
+
+
+
+=================================================================
+=                             RECAP                             =
+=================================================================
+
+ * Type w to select forward until the next word.
+   * Type e to select to the end of the current word.
+   * Type b to select backward to the start of the current word.
+   * Use uppercase counterparts, W,E,B, to traverse WORDS.
+
+ * Typing d deletes the entire selection, so you can delete a
+   word forward by typing wd.
+
+ * Type c to delete the selection and enter Insert mode.
+
+ * Type a number before a motion to repeat it that many times.
+
+ * Type x to select the entire current line. Type x again to
+   select the next line.
+
+ * Type u to undo. Type U to redo.
+
+
+
+
+
+
+
+
+=================================================================
+=                       MULTIPLE CURSORS                        =
+=================================================================
+
+ Type C to duplicate the cursor to the next line.
+
+ 1. Move the cursor to the first line below marked -->.
+ 2. Type C to duplicate the cursor to the next line. Keys you
+    press will now affect both cursors.
+ 3. Use Insert mode to correct the lines. The two cursors will
+    fix both lines simultaneously.
+ 4. Type <SPACE><SPACE> to remove the second cursor.
+
+ --> Fix th two nes at same ime.
+ --> Fix th two new at same ime.
+
+     Fix these two lines at the same time.
 
 
 
