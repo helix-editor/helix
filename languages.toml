@@ -278,6 +278,15 @@ comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "svelte"
+scope = "source.svelte"
+injection-regex = "svelte"
+file-types = ["svelte"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "svelteserver", args = ["--stdio"] }
+
+[[language]]
 name = "yaml"
 scope = "source.yaml"
 file-types = ["yml", "yaml"]
