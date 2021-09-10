@@ -3462,7 +3462,14 @@ fn paste_impl(
         .iter()
         .any(|value| get_line_ending_of_str(value).is_some());
 
-    let mut values = values.iter().cloned().map(Tendril::from).chain(repeat);
+    // Only compiled once.
+    #[allow(clippy::trivial_regex)]
+    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
+    let mut values = values
+        .iter()
+        .map(|value| REGEX.replace_all(value, doc.line_ending.as_str()))
+        .map(|value| Tendril::from(value.as_ref()))
+        .chain(repeat);
 
     let text = doc.text();
     let selection = doc.selection(view.id);
