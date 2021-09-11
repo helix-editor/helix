@@ -318,7 +318,15 @@ impl Registry {
                 let (client, incoming, initialize_notify) = Client::start(
                     &config.command,
                     &config.args,
-                    serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
+                    serde_json::from_str(language_config.config.as_deref().unwrap_or(""))
+                        .map_err(|e| {
+                            log::error!(
+                                "LSP Config, {}, in `languages.toml` for `{}`",
+                                e,
+                                language_config.scope()
+                            )
+                        })
+                        .ok(),
                     id,
                 )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
