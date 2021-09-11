@@ -410,8 +410,7 @@ fn extend_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
 }
 
-fn goto_line_end_impl(cx: &mut Context, movement: Movement) {
-    let (view, doc) = current!(cx.editor);
+fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -427,15 +426,24 @@ fn goto_line_end_impl(cx: &mut Context, movement: Movement) {
 }
 
 fn goto_line_end(cx: &mut Context) {
-    goto_line_end_impl(cx, Movement::Move)
+    let (view, doc) = current!(cx.editor);
+    goto_line_end_impl(
+        view,
+        doc,
+        if doc.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        },
+    )
 }
 
 fn extend_to_line_end(cx: &mut Context) {
-    goto_line_end_impl(cx, Movement::Extend)
+    let (view, doc) = current!(cx.editor);
+    goto_line_end_impl(view, doc, Movement::Extend)
 }
 
-fn goto_line_end_newline_impl(cx: &mut Context, movement: Movement) {
-    let (view, doc) = current!(cx.editor);
+fn goto_line_end_newline_impl(view: &mut View, doc: &mut Document, movement: Movement) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -448,15 +456,24 @@ fn goto_line_end_newline_impl(cx: &mut Context, movement: Movement) {
 }
 
 fn goto_line_end_newline(cx: &mut Context) {
-    goto_line_end_newline_impl(cx, Movement::Move)
+    let (view, doc) = current!(cx.editor);
+    goto_line_end_newline_impl(
+        view,
+        doc,
+        if doc.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        },
+    )
 }
 
 fn extend_to_line_end_newline(cx: &mut Context) {
-    goto_line_end_newline_impl(cx, Movement::Extend)
+    let (view, doc) = current!(cx.editor);
+    goto_line_end_newline_impl(view, doc, Movement::Extend)
 }
 
-fn goto_line_start_impl(cx: &mut Context, movement: Movement) {
-    let (view, doc) = current!(cx.editor);
+fn goto_line_start_impl(view: &mut View, doc: &mut Document, movement: Movement) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -470,11 +487,21 @@ fn goto_line_start_impl(cx: &mut Context, movement: Movement) {
 }
 
 fn goto_line_start(cx: &mut Context) {
-    goto_line_start_impl(cx, Movement::Move)
+    let (view, doc) = current!(cx.editor);
+    goto_line_start_impl(
+        view,
+        doc,
+        if doc.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        },
+    )
 }
 
 fn extend_to_line_start(cx: &mut Context) {
-    goto_line_start_impl(cx, Movement::Extend)
+    let (view, doc) = current!(cx.editor);
+    goto_line_start_impl(view, doc, Movement::Extend)
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
