@@ -186,9 +186,9 @@ These scopes are used for theming the editor interface.
 | `ui.menu.selected`       |                                     |
 | `ui.selection`           | For selections in the editing area  |
 | `ui.selection.primary`   |                                     |
-| `warning`                | Diagnostics warning                 |
-| `error`                  | Diagnostics error                   |
-| `info`                   | Diagnostics info                    |
-| `hint`                   | Diagnostics hint                    |
-
+| `warning`                | Diagnostics warning (gutter)        |
+| `error`                  | Diagnostics error (gutter)          |
+| `info`                   | Diagnostics info (gutter)           |
+| `hint`                   | Diagnostics hint (gutter)           |
+| `diagnostic`             | For text in editing area            |
 
