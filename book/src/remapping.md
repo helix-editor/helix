@@ -49,4 +49,6 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 | Null         | `"null"`       |
 | Escape       | `"esc"`        |
 
+Keys can be disabled by binding them to the `no_op` command.
+
 Commands can be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
