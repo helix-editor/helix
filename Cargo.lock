@@ -875,9 +875,9 @@ dependencies = [
 
 [[package]]
 name = "similar"
-version = "1.3.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ad1d488a557b235fc46dae55512ffbfc429d2482b08b4d9435ab07384ca8aec"
+checksum = "6bf11003835e462f07851028082d2a1c89d956180ce4b4b50e07fb085ec4131a"
 
 [[package]]
 name = "slab"
