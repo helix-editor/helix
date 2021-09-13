@@ -49,7 +49,7 @@ Multiple characters are currently not supported, but planned.
 
 ## Textobjects
 
-Currently supported: `word`, `surround`, `function`, `class`.
+Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 
 ![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
 ![textobject-treesitter-demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
@@ -63,6 +63,7 @@ Currently supported: `word`, `surround`, `function`, `class`.
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `f`                    | Function                 |
 | `c`                    | Class                    |
+| `p`                    | Parameter                |
 
 Note: `f`, `c`, etc need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only

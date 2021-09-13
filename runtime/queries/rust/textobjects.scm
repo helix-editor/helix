@@ -16,5 +16,11 @@
 (impl_item
   body: (_) @class.inside) @class.around
 
-(mod_item
-  body: (_) @class.inside) @class.around
+(parameters
+  (_) @parameter.inside)
+
+(closure_parameters
+  (_) @parameter.inside)
+
+(arguments
+  (_) @parameter.inside)

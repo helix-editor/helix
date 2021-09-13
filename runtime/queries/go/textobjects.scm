@@ -14,3 +14,8 @@
 (type_declaration
   (type_spec (type_identifier) (interface_type (method_spec_list (_)?) @class.inside))) @class.around
 
+(parameter_list
+  (_) @parameter.inside)
+
+(argument_list
+  (_) @parameter.inside)
