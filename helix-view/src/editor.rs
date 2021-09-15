@@ -249,10 +249,14 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
-            let language_server = doc
-                .language
-                .as_ref()
-                .and_then(|language| self.language_servers.get(language).ok());
+            let language_server = doc.language.as_ref().and_then(|language| {
+                self.language_servers
+                    .get(language)
+                    .map_err(|e| {
+                        log::error!("Failed to get LSP, {}, for `{}`", e, language.scope())
+                    })
+                    .ok()
+            });
 
             if let Some(language_server) = language_server {
                 let language_id = doc
