@@ -104,8 +104,7 @@
 
 ### Search
 
-> TODO: The search implementation isn't ideal yet -- we don't support searching
-in reverse, or searching via smartcase.
+> TODO: The search implementation isn't ideal yet -- we don't support searching in reverse.
 
 | Key   | Description                                 | Command              |
 | ----- | -----------                                 | -------              |

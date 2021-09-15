@@ -20,6 +20,7 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_core::regex::Regex;
+use helix_core::regex::RegexBuilder;
 use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
@@ -53,7 +54,16 @@ pub fn regex_prompt(
                         return;
                     }
 
-                    match Regex::new(input) {
+                    let case_insensitive = if cx.editor.config.smart_case {
+                        !input.chars().any(char::is_uppercase)
+                    } else {
+                        false
+                    };
+
+                    match RegexBuilder::new(input)
+                        .case_insensitive(case_insensitive)
+                        .build()
+                    {
                         Ok(regex) => {
                             let (view, doc) = current!(cx.editor);
 
