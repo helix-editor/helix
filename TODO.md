@@ -1,12 +1,8 @@
 
 - tree sitter:
-  - lua
   - markdown
-  - zig
   - regex
-  - vue
   - kotlin
-  - julia
   - clojure
   - erlang
 
