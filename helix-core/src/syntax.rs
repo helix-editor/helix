@@ -52,7 +52,7 @@ pub struct LanguageConfiguration {
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
-    injection_regex: Option<Regex>,
+    pub injection_regex: Option<Regex>,
     // first_line_regex
     //
     #[serde(skip)]
