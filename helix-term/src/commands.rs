@@ -1154,8 +1154,15 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
     if let Some(query) = registers.read('/') {
         let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
-        let regex = Regex::new(query).unwrap();
-        search_impl(doc, view, &contents, &regex, extend);
+        if let Ok(regex) = Regex::new(query) {
+            search_impl(doc, view, &contents, &regex, extend);
+        } else {
+            // get around warning `mutable_borrow_reservation_conflict`
+            // which will be a hard error in the future
+            // see: https://github.com/rust-lang/rust/issues/59159
+            let query = query.clone();
+            cx.editor.set_error(format!("Invalid regex: {}", query));
+        }
     }
 }
 
