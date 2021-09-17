@@ -30,22 +30,7 @@
           };
           # link languages and theme toml files since helix-view expects them
           helix-view = _: { preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml} .."; };
-          helix-syntax = prev: {
-            src =
-              let
-                pkgs = common.pkgs;
-                helix = pkgs.fetchgit {
-                  url = "https://github.com/helix-editor/helix.git";
-                  rev = "987d8e6dd66d65c2503cc81a3b9ea8787435839a";
-                  fetchSubmodules = true;
-                  sha256 = "sha256-GRJ0zMJva9upUatc89AeKYuLq73nxcxDPKDSgEcPASE=";
-                };
-              in
-              pkgs.runCommand prev.src.name { } ''
-                mkdir -p $out
-                ln -s ${prev.src}/* $out
-                ln -sf ${helix}/helix-syntax/languages $out
-              '';
+          helix-syntax = _prev: {
             preConfigure = "mkdir -p ../runtime/grammars";
             postInstall = "cp -r ../runtime $out/runtime";
           };
