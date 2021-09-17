@@ -1568,7 +1568,7 @@ mod cmd {
 
     /// Results an error if there are modified buffers remaining and sets editor error,
     /// otherwise returns `Ok(())`
-    fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
+    pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
         let modified: Vec<_> = editor
             .documents()
             .filter(|doc| doc.is_modified())
@@ -4157,6 +4157,12 @@ fn vsplit(cx: &mut Context) {
 }
 
 fn wclose(cx: &mut Context) {
+    if cx.editor.tree.views().count() == 1 {
+        if let Err(err) = cmd::buffers_remaining_impl(cx.editor) {
+            cx.editor.set_error(err.to_string());
+            return;
+        }
+    }
     let view_id = view!(cx.editor).id;
     // close current split
     cx.editor.close(view_id, /* close_buffer */ false);
