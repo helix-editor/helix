@@ -9,7 +9,8 @@ special = "honey"
 property = "white"
 variable = "lavender"
 # variable = "almond" # TODO: metavariables only
-"variable.parameter" = { fg = "lavender", modifiers = ["underlined"] }
+# "variable.parameter" = { fg = "lavender", modifiers = ["underlined"] }
+"variable.parameter" = { fg = "lavender" }
 "variable.builtin" = "mint"
 type = "white"
 "type.builtin" = "white" # TODO: distinguish?
