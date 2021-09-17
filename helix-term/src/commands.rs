@@ -2445,7 +2445,7 @@ fn apply_workspace_edit(
 ) {
     if let Some(ref changes) = workspace_edit.changes {
         log::debug!("workspace changes: {:?}", changes);
-        editor.set_error(String::from("Handling workspace changesis not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+        editor.set_error(String::from("Handling workspace_edit.changes is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
         return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
         // TODO: find some example that uses workspace changes, and test it
@@ -2463,8 +2463,30 @@ fn apply_workspace_edit(
         match document_changes {
             lsp::DocumentChanges::Edits(document_edits) => {
                 for document_edit in document_edits {
-                    let (view, doc) = current!(editor);
-                    assert_eq!(doc.url().unwrap(), document_edit.text_document.uri);
+                    let path = document_edit
+                        .text_document
+                        .uri
+                        .to_file_path()
+                        .expect("unable to convert URI to filepath");
+                    let current_view_id = view!(editor).id;
+                    let doc = editor
+                        .document_by_path_mut(path)
+                        .expect("Document for document_changes not found");
+
+                    // Need to determine a view for apply/append_changes_to_history
+                    let selections = doc.selections();
+                    let view_id = if selections.contains_key(&current_view_id) {
+                        // use current if possible
+                        current_view_id
+                    } else {
+                        // Hack: we take the first available view_id
+                        selections
+                            .keys()
+                            .next()
+                            .copied()
+                            .expect("No view_id available")
+                    };
+
                     let edits = document_edit
                         .edits
                         .iter()
@@ -2482,8 +2504,8 @@ fn apply_workspace_edit(
                         edits,
                         offset_encoding,
                     );
-                    doc.apply(&transaction, view.id);
-                    doc.append_changes_to_history(view.id);
+                    doc.apply(&transaction, view_id);
+                    doc.append_changes_to_history(view_id);
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
