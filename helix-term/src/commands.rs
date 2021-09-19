@@ -1067,24 +1067,41 @@ fn select_all(cx: &mut Context) {
 
 fn select_regex(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(cx, "select:".into(), Some(reg), move |view, doc, regex| {
-        let text = doc.text().slice(..);
-        if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
-        {
-            doc.set_selection(view.id, selection);
-        }
-    });
+    let prompt = ui::regex_prompt(
+        cx,
+        "select:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            let text = doc.text().slice(..);
+            if let Some(selection) =
+                selection::select_on_matches(text, doc.selection(view.id), &regex)
+            {
+                doc.set_selection(view.id, selection);
+            }
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
 
 fn split_selection(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(cx, "split:".into(), Some(reg), move |view, doc, regex| {
-        let text = doc.text().slice(..);
-        let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
-        doc.set_selection(view.id, selection);
-    });
+    let prompt = ui::regex_prompt(
+        cx,
+        "split:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            let text = doc.text().slice(..);
+            let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
+            doc.set_selection(view.id, selection);
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
@@ -1147,9 +1164,17 @@ fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let prompt = ui::regex_prompt(cx, "search:".into(), Some(reg), move |view, doc, regex| {
-        search_impl(doc, view, &contents, &regex, false);
-    });
+    let prompt = ui::regex_prompt(
+        cx,
+        "search:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            search_impl(doc, view, &contents, &regex, false);
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
@@ -1197,16 +1222,17 @@ fn global_search(cx: &mut Context) {
         cx,
         "global search:".into(),
         None,
-        move |_view, _doc, regex| {
-            // registers.write('/', vec![regex.as_str().to_string()]);
-
+        move |_view, _doc, regex, event| {
+            if event != PromptEvent::Validate {
+                return;
+            }
             if let Ok(matcher) = RegexMatcher::new_line_matcher(regex.as_str()) {
                 let searcher = SearcherBuilder::new()
                     .binary_detection(BinaryDetection::quit(b'\x00'))
                     .build();
 
-                let search_root =
-                    std::env::current_dir().expect("Global Search: Failed to get current dir");
+                let search_root = std::env::current_dir()
+                    .expect("Global search error: Failed to get current dir");
                 WalkBuilder::new(search_root).build_parallel().run(|| {
                     let mut searcher_cl = searcher.clone();
                     let matcher_cl = matcher.clone();
@@ -1237,7 +1263,7 @@ fn global_search(cx: &mut Context) {
                         let result = searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
 
                         if let Err(err) = result {
-                            log::error!("Global Search Error: {}, {}", dent.path().display(), err);
+                            log::error!("Global search error: {}, {}", dent.path().display(), err);
                         }
                         WalkState::Continue
                     })
@@ -1255,17 +1281,26 @@ fn global_search(cx: &mut Context) {
         let all_matches: Vec<(usize, PathBuf)> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
         let call: job::Callback =
-            Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
                 if all_matches.is_empty() {
+                    editor.set_status("No matches found".to_string());
                     return;
                 }
                 let picker = FilePicker::new(
                     all_matches,
                     move |(_line_num, path)| path.to_str().unwrap().into(),
                     move |editor: &mut Editor, (line_num, path), action| {
-                        editor
-                            .open(path.into(), action)
-                            .expect("editor.open failed");
+                        match editor.open(path.into(), action) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                editor.set_error(format!(
+                                    "Failed to open file '{}': {}",
+                                    path.display(),
+                                    e
+                                ));
+                                return;
+                            }
+                        }
 
                         let line_num = *line_num;
                         let (view, doc) = current!(editor);
@@ -3940,13 +3975,21 @@ fn join_selections(cx: &mut Context) {
 fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(cx, "keep:".into(), Some(reg), move |view, doc, regex| {
-        let text = doc.text().slice(..);
+    let prompt = ui::regex_prompt(
+        cx,
+        "keep:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            let text = doc.text().slice(..);
 
-        if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
-            doc.set_selection(view.id, selection);
-        }
-    });
+            if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
+                doc.set_selection(view.id, selection);
+            }
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
