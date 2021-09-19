@@ -286,6 +286,15 @@ roots = []
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "svelteserver", args = ["--stdio"] }
 
+
+[[language]]
+name = "vue"
+scope = "source.vue"
+injection-regex = "vue"
+file-types = ["vue"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
 [[language]]
 name = "yaml"
 scope = "source.yaml"
