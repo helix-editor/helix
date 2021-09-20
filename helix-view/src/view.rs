@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{graphics::Rect, Document, DocumentId, ViewId};
+use crate::{editor::LineNumber, graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
     coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
@@ -66,10 +66,11 @@ pub struct View {
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
+    pub config: crate::editor::Config,
 }
 
 impl View {
-    pub fn new(doc: DocumentId) -> Self {
+    pub fn new(doc: DocumentId, config: crate::editor::Config) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -77,13 +78,20 @@ impl View {
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
+            config,
         }
     }
 
     pub fn inner_area(&self) -> Rect {
-        // TODO: not ideal
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        self.area.clip_left(OFFSET).clip_bottom(1) // -1 for statusline
+        const OFFSET: usize = 1 + 1; // 1 diagnostic + 1 gutter
+        let last_line = self.offset.row + self.area.height as usize - 1; // -1 for statusline
+        let offset = match self.config.line_number {
+            LineNumber::Absolute | LineNumber::Relative => {
+                last_line.to_string().chars().count() + OFFSET
+            }
+            LineNumber::None => OFFSET,
+        };
+        self.area.clip_left(offset as u16).clip_bottom(1) // -1 for statusline
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
@@ -242,13 +250,15 @@ impl View {
 
 #[cfg(test)]
 mod tests {
+    use crate::editor::Config;
+
     use super::*;
     use helix_core::Rope;
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(DocumentId::default(), Config::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let text = rope.slice(..);
@@ -281,7 +291,7 @@ mod tests {
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 41, 40 + OFFSET + 4, 4),
-            Some(5)
+            Some(8)
         );
 
         assert_eq!(
@@ -294,67 +304,67 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(DocumentId::default(), Config::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let text = rope.slice(..);
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
-            Some(0)
+            Some(3)
         );
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 5, 4),
-            Some(5)
+            Some(6)
         );
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 6, 4),
-            Some(5)
+            Some(7)
         );
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 7, 4),
-            Some(6)
+            Some(7)
         );
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 8, 4),
-            Some(6)
+            Some(8)
         );
     }
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default());
+        let mut view = View::new(DocumentId::default(), Config::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let text = rope.slice(..);
 
         assert_eq!(
             view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
-            Some(0)
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 1, 4),
-            Some(1)
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 2, 4),
-            Some(3)
-        );
-
-        assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 3, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 1, 4),
             Some(7)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 2, 4),
+            Some(9)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 3, 4),
+            Some(10)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 4, 4),
+            Some(11)
         );
     }
 }

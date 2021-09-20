@@ -411,6 +411,12 @@ impl EditorView {
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
+        let last_line_width = match config.line_number {
+            LineNumber::Absolute | LineNumber::Relative => {
+                (last_line + 1).to_string().chars().count()
+            }
+            LineNumber::None => 0,
+        };
 
         let linenr = theme.get("ui.linenr");
         let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
@@ -457,25 +463,26 @@ impl EditorView {
             let selected = cursors.contains(&line);
 
             let text = if line == last_line && !draw_last {
-                "    ~".into()
+                format!("{:>1$}", "~", last_line_width)
             } else {
-                let line = match config.line_number {
-                    LineNumber::Absolute => line + 1,
+                match config.line_number {
+                    LineNumber::Absolute => format!("{:>1$}", line + 1, last_line_width),
                     LineNumber::Relative => {
                         if current_line == line {
-                            line + 1
+                            format!("{:>1$}", line + 1, last_line_width)
                         } else {
-                            abs_diff(current_line, line)
+                            format!("{:>1$}", abs_diff(current_line, line), last_line_width)
                         }
                     }
-                };
-                format!("{:>5}", line)
+                    // if the line numbers are disabled we can entirely ignore the line width and return nothing
+                    LineNumber::None => String::new(),
+                }
             };
             surface.set_stringn(
                 viewport.x + 1,
                 viewport.y + i as u16,
                 text,
-                5,
+                last_line_width,
                 if selected && is_focused {
                     linenr_select
                 } else {

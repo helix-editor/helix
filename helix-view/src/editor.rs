@@ -53,6 +53,9 @@ pub enum LineNumber {
 
     /// Show relative line number to the primary cursor
     Relative,
+
+    /// Do not show the line number
+    None,
 }
 
 impl Default for Config {
@@ -215,14 +218,14 @@ impl Editor {
                 return;
             }
             Action::HorizontalSplit => {
-                let view = View::new(id);
+                let view = View::new(id, self.config.clone());
                 let view_id = self.tree.split(view, Layout::Horizontal);
                 // initialize selection for view
                 let doc = &mut self.documents[id];
                 doc.selections.insert(view_id, Selection::point(0));
             }
             Action::VerticalSplit => {
-                let view = View::new(id);
+                let view = View::new(id, self.config.clone());
                 let view_id = self.tree.split(view, Layout::Vertical);
                 // initialize selection for view
                 let doc = &mut self.documents[id];
