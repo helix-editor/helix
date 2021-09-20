@@ -5,7 +5,7 @@ use helix_core::{
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
-    regex::{self, Regex},
+    regex::{self, Regex, RegexBuilder},
     register::Register,
     search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeSlice, Selection, SmallVec, Tendril, Transaction,
@@ -1154,7 +1154,15 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
     if let Some(query) = registers.read('/') {
         let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
-        if let Ok(regex) = Regex::new(query) {
+        let case_insensitive = if cx.editor.config.smart_case {
+            !query.chars().any(char::is_uppercase)
+        } else {
+            false
+        };
+        if let Ok(regex) = RegexBuilder::new(query)
+            .case_insensitive(case_insensitive)
+            .build()
+        {
             search_impl(doc, view, &contents, &regex, extend);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
