@@ -500,6 +500,7 @@ impl Default for Keymaps {
             "K" => keep_selections,
             // TODO: and another method for inverse
 
+            "A-space" => discard_primary_selection,
             // TODO: clashes with space mode
             "space" => keep_primary_selection,
 

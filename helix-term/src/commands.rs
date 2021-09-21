@@ -289,6 +289,7 @@ impl Command {
         format_selections, "Format selection",
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
+        discard_primary_selection, "Discard primary selection",
         keep_primary_selection, "Keep primary selection",
         completion, "Invoke completion popup",
         hover, "Show docs for item under cursor",
@@ -4007,6 +4008,24 @@ fn keep_primary_selection(cx: &mut Context) {
 
     let range = doc.selection(view.id).primary();
     doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+}
+
+fn discard_primary_selection(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let len = selection.len();
+
+    let selection = if len > 1 {
+        selection.remove_primary()
+    } else {
+        let text = doc.text().slice(..);
+        doc.selection(view.id).clone().transform(|range| {
+            let pos = range.cursor(text);
+            Range::new(pos, pos)
+        })
+    };
+
+    doc.set_selection(view.id, selection);
 }
 
 fn completion(cx: &mut Context) {

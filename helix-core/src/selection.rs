@@ -337,6 +337,21 @@ impl Selection {
 
     #[inline]
     #[must_use]
+    pub fn remove_primary(&self) -> Self {
+        assert!(self.len() > 1);
+
+        let primary = self.ranges[self.primary_index];
+        let ranges = self.iter().filter(|r| **r != primary).cloned().collect();
+        let primary_index = if self.primary_index == self.len() - 1 {
+            0
+        } else {
+            self.primary_index
+        };
+        Self::new(ranges, primary_index)
+    }
+
+    #[inline]
+    #[must_use]
     pub fn primary_mut(&mut self) -> &mut Range {
         &mut self.ranges[self.primary_index]
     }
@@ -931,5 +946,29 @@ mod test {
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
             &["", "abcd", "efg", "rs", "xyz"]
         );
+    }
+
+    #[test]
+    fn test_remove_primary() {
+        let sel = Selection::new(
+            smallvec![Range::new(0, 5), Range::new(6, 7), Range::new(13, 14),],
+            0,
+        );
+
+        let mut sel = sel.remove_primary();
+        assert_eq!(sel.primary_index(), 0);
+        assert_eq!(sel.ranges(), &[Range::new(6, 7), Range::new(13, 14),]);
+
+        sel.set_primary_index(1);
+        let sel = sel.remove_primary();
+        assert_eq!(sel.primary_index(), 0);
+        assert_eq!(sel.ranges(), &[Range::new(6, 7)]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_empty_remove_primary() {
+        let sel = Selection::new(smallvec![Range::new(0, 5)], 0);
+        let _ = sel.remove_primary();
     }
 }
