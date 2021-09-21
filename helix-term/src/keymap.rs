@@ -555,6 +555,7 @@ impl Default for Keymaps {
                 "P" => paste_clipboard_before,
                 "R" => replace_selections_with_clipboard,
                 "space" => keep_primary_selection,
+                "/" => global_search,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
