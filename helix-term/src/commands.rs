@@ -290,6 +290,7 @@ impl Command {
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
         keep_primary_selection, "Keep primary selection",
+        remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
@@ -4016,9 +4017,25 @@ fn keep_selections(cx: &mut Context) {
 
 fn keep_primary_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    // TODO: handle count
 
     let range = doc.selection(view.id).primary();
     doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+}
+
+fn remove_primary_selection(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    // TODO: handle count
+
+    let selection = doc.selection(view.id);
+    if selection.len() == 1 {
+        cx.editor.set_error("no selections remaining".to_owned());
+        return;
+    }
+    let index = selection.primary_index();
+    let selection = selection.clone().remove(index);
+
+    doc.set_selection(view.id, selection);
 }
 
 fn completion(cx: &mut Context) {

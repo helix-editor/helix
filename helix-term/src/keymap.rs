@@ -499,6 +499,7 @@ impl Default for Keymaps {
             // TODO: and another method for inverse
 
             "," => keep_primary_selection,
+            "A-," => remove_primary_selection,
 
             // "q" => record_macro,
             // "Q" => replay_macro,
