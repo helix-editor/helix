@@ -340,13 +340,9 @@ impl Selection {
     pub fn remove_primary(&self) -> Self {
         assert!(self.len() > 1);
 
-        let primary = self.ranges[self.primary_index];
-        let ranges = self.iter().filter(|r| **r != primary).cloned().collect();
-        let primary_index = if self.primary_index == self.len() - 1 {
-            0
-        } else {
-            self.primary_index
-        };
+        let mut ranges = self.ranges.clone();
+        ranges.remove(self.primary_index);
+        let primary_index = self.primary_index.saturating_sub(1);
         Self::new(ranges, primary_index)
     }
 
