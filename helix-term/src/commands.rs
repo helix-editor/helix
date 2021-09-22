@@ -3374,7 +3374,7 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
 
         let hooks = match cx.editor.config.auto_pair {
-            true  => HOOKS_PAIR,
+            true => HOOKS_PAIR,
             false => HOOKS_NOPAIR
         };
 
