@@ -3366,17 +3366,23 @@ pub mod insert {
     }
 
     use helix_core::auto_pairs;
-    const HOOKS: &[Hook] = &[auto_pairs::hook, insert];
+    const HOOKS_PAIR: &[Hook] = &[auto_pairs::hook, insert];
+    const HOOKS_NOPAIR: &[Hook] = &[insert];
     const POST_HOOKS: &[PostHook] = &[completion, signature_help];
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current!(cx.editor);
 
+        let hooks = match cx.editor.config.auto_pair {
+            true  => HOOKS_PAIR,
+            false => HOOKS_NOPAIR
+        };
+
         let text = doc.text();
         let selection = doc.selection(view.id).clone().cursors(text.slice(..));
 
         // run through insert hooks, stopping on the first one that returns Some(t)
-        for hook in HOOKS {
+        for hook in hooks {
             if let Some(transaction) = hook(text, &selection, c) {
                 doc.apply(&transaction, view.id);
                 break;
