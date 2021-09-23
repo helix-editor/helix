@@ -164,6 +164,7 @@ scope = "source.nix"
 injection-regex = "nix"
 file-types = ["nix"]
 roots = []
+auto-format = true
 comment-token = "#"
 
 language-server = { command = "rnix-lsp" }
