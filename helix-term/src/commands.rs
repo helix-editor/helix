@@ -43,7 +43,7 @@ use std::{
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
 
-use grep_regex::RegexMatcher;
+use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -1226,6 +1226,7 @@ fn search_selection(cx: &mut Context) {
 fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
+    let smart_case = cx.editor.config.smart_case;
     let prompt = ui::regex_prompt(
         cx,
         "global search:".into(),
@@ -1234,7 +1235,11 @@ fn global_search(cx: &mut Context) {
             if event != PromptEvent::Validate {
                 return;
             }
-            if let Ok(matcher) = RegexMatcher::new_line_matcher(regex.as_str()) {
+
+            if let Ok(matcher) = RegexMatcherBuilder::new()
+                .case_smart(smart_case)
+                .build(regex.as_str())
+            {
                 let searcher = SearcherBuilder::new()
                     .binary_detection(BinaryDetection::quit(b'\x00'))
                     .build();
