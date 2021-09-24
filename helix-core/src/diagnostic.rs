@@ -1,4 +1,4 @@
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Severity {
     Error,
     Warning,
@@ -6,13 +6,13 @@ pub enum Severity {
     Hint,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Range {
     pub start: usize,
     pub end: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub range: Range,
     pub line: usize,
