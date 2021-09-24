@@ -1,26 +1,32 @@
 use std::fmt::Display;
 
-use ropey::RopeSlice;
+use ropey::{iter::Chars, RopeSlice};
 use tree_sitter::{Node, QueryCursor};
 
-use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
-use crate::graphemes::next_grapheme_boundary;
+use crate::chars::{categorize_char, char_is_line_ending, char_is_whitespace, CharCategory};
+use crate::graphemes::{
+    next_grapheme_boundary, nth_prev_grapheme_boundary, prev_grapheme_boundary,
+};
 use crate::movement::Direction;
 use crate::surround;
 use crate::syntax::LanguageConfiguration;
 use crate::Range;
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
-    use CharCategory::{Eol, Whitespace};
-
-    let iter = match direction {
+fn chars_from_direction<'a>(slice: &'a RopeSlice, pos: usize, direction: Direction) -> Chars<'a> {
+    match direction {
         Direction::Forward => slice.chars_at(pos),
         Direction::Backward => {
             let mut iter = slice.chars_at(pos);
             iter.reverse();
             iter
         }
-    };
+    }
+}
+
+fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
+    use CharCategory::{Eol, Whitespace};
+
+    let iter = chars_from_direction(&slice, pos, direction);
 
     let mut prev_category = match direction {
         Direction::Forward if pos == 0 => Whitespace,
@@ -47,6 +53,53 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
     }
 
     pos
+}
+
+pub fn find_paragraph_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) -> usize {
+    // if pos is at non-empty line ending or when going forward move one character left
+    if (!char_is_line_ending(slice.char(prev_grapheme_boundary(slice, pos)))
+        || direction == Direction::Forward)
+        && char_is_line_ending(slice.char(pos.min(slice.len_chars().saturating_sub(1))))
+    {
+        pos = pos.saturating_sub(1);
+    }
+
+    let prev_line_ending = match direction {
+        Direction::Forward => {
+            char_is_line_ending(slice.char(nth_prev_grapheme_boundary(slice, pos, 2)))
+                && char_is_line_ending(slice.char(prev_grapheme_boundary(slice, pos)))
+        }
+        Direction::Backward if pos == slice.len_chars() => true,
+        Direction::Backward => {
+            char_is_line_ending(slice.char(prev_grapheme_boundary(slice, pos)))
+                && char_is_line_ending(slice.char(pos))
+        }
+    };
+
+    // keep finding for two consecutive different line ending
+    // have to subtract later since we take past one or more cycle
+    // TODO swap this to use grapheme so \r\n works
+    let mut found = true;
+    let iter = chars_from_direction(&slice, pos, direction).take_while(|&c| {
+        let now = prev_line_ending == char_is_line_ending(c);
+        let ret = found || now; // stops when both is different
+        found = now;
+        ret
+    });
+    let count = iter.count();
+    // count will be subtracted by extra whitespace due to interator
+    match direction {
+        Direction::Forward if pos + count == slice.len_chars() => slice.len_chars(),
+        // subtract by 1 due to extra \n when going forward
+        Direction::Forward if prev_line_ending => pos + count.saturating_sub(1),
+        Direction::Forward => pos + count,
+        // iterator exhausted so it should be 0
+        Direction::Backward if pos.saturating_sub(count) == 0 => 0,
+        // subtract by 2 because it starts with \n and have 2 extra \n when going backwards
+        Direction::Backward if prev_line_ending => pos.saturating_sub(count.saturating_sub(2)),
+        // subtract by 1 due to extra \n when going backward
+        Direction::Backward => pos.saturating_sub(count.saturating_sub(1)),
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -104,6 +157,44 @@ pub fn textobject_word(
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
+    }
+}
+
+pub fn textobject_paragraph(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    _count: usize,
+) -> Range {
+    let pos = range.cursor(slice);
+
+    let paragraph_start = find_paragraph_boundary(slice, pos, Direction::Backward);
+    let paragraph_end = match slice.get_char(pos) {
+        Some(_) => find_paragraph_boundary(slice, pos + 1, Direction::Forward),
+        None => pos,
+    };
+
+    match textobject {
+        TextObject::Inside => Range::new(paragraph_start, paragraph_end),
+        TextObject::Around => Range::new(
+            // if it is at the end of the document and only matches newlines,
+            // it search backward one step
+            if slice.get_char(paragraph_start.saturating_sub(1)).is_some()
+                && slice.get_char(paragraph_end).is_none()
+            {
+                find_paragraph_boundary(
+                    slice,
+                    paragraph_start.saturating_sub(1),
+                    Direction::Backward,
+                )
+            } else {
+                paragraph_start
+            },
+            match slice.get_char(paragraph_end) {
+                Some(_) => find_paragraph_boundary(slice, paragraph_end + 1, Direction::Forward),
+                None => paragraph_end,
+            },
+        ),
     }
 }
 
@@ -276,6 +367,63 @@ mod test {
                     "\nCase failed: {:?} - {:?}",
                     sample,
                     case
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_textobject_paragraph() {
+        // (text, [(cursor position, textobject, final range), ...])
+        let tests = &[
+            ("\n", vec![(0, Inside, (0, 1)), (0, Around, (0, 1))]),
+            (
+                "p1\np1\n\np2\np2\n\n",
+                vec![
+                    (0, Inside, (0, 6)),
+                    (0, Around, (0, 7)),
+                    (1, Inside, (0, 6)),
+                    (1, Around, (0, 7)),
+                    (2, Inside, (0, 6)),
+                    (2, Around, (0, 7)),
+                    (3, Inside, (0, 6)),
+                    (3, Around, (0, 7)),
+                    (4, Inside, (0, 6)),
+                    (4, Around, (0, 7)),
+                    (5, Inside, (0, 6)),
+                    (5, Around, (0, 7)),
+                    (6, Inside, (6, 7)),
+                    (6, Around, (6, 13)),
+                    (7, Inside, (7, 13)),
+                    (7, Around, (7, 14)),
+                    (8, Inside, (7, 13)),
+                    (8, Around, (7, 14)),
+                    (9, Inside, (7, 13)),
+                    (9, Around, (7, 14)),
+                    (10, Inside, (7, 13)),
+                    (10, Around, (7, 14)),
+                    (11, Inside, (7, 13)),
+                    (11, Around, (7, 14)),
+                    (12, Inside, (7, 13)),
+                    (12, Around, (7, 14)),
+                    (13, Inside, (13, 14)),
+                    (13, Around, (7, 14)),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            let doc = Rope::from(*sample);
+            let slice = doc.slice(..);
+            for &case in scenario {
+                let (pos, objtype, expected_range) = case;
+                let result = textobject_paragraph(slice, Range::point(pos), objtype, 1);
+                assert_eq!(
+                    result,
+                    expected_range.into(),
+                    "\nCase failed: {:?} - {:?}",
+                    sample,
+                    case,
                 );
             }
         }

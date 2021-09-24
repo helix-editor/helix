@@ -1,4 +1,5 @@
 use helix_core::{
+    chars::char_is_line_ending,
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     indent,
@@ -9,8 +10,10 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     register::Register,
-    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    search, selection, surround,
+    textobject::{self, TextObject},
+    LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
+    Transaction,
 };
 
 use helix_view::{
@@ -267,6 +270,8 @@ impl Command {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_prev_para, "Goto previous paragraph",
+        goto_next_para, "Goto next paragraph",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
@@ -340,8 +345,18 @@ impl Command {
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
-        select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object",
+        select_textobject_around_word, "Word",
+        select_textobject_inner_word, "Word",
+        select_textobject_around_big_word, "WORD",
+        select_textobject_inner_big_word, "WORD",
+        select_textobject_around_paragraph, "Paragraph",
+        select_textobject_inner_paragraph, "Paragraph",
+        select_textobject_around_class, "Class",
+        select_textobject_inner_class, "Class",
+        select_textobject_around_function, "Function",
+        select_textobject_inner_function, "Function",
+        select_textobject_around_parameter, "Parameter",
+        select_textobject_inner_parameter, "Parameter",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command, ignoring command output",
         shell_insert_output, "Insert output of shell command before each selection",
@@ -3683,6 +3698,74 @@ fn goto_prev_diag(cx: &mut Context) {
     goto_pos(editor, pos);
 }
 
+fn goto_prev_para(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let mut anchor = if range.is_empty() {
+            range.anchor
+        } else {
+            range.head
+        };
+
+        // skip whitespace paragraph
+        let mut head = range.head.saturating_sub(1);
+        head = textobject::find_paragraph_boundary(text, head, Direction::Backward);
+        // if find_paragraph_boundary returns the same head as anchor
+        // on the first search means the cursor is already on the paragraph
+        // boundary so we want to move find the previous boundary again
+        // but do this only for a non-whitespace paragraph boundary
+        if head == range.anchor && !char_is_line_ending(text.char(head)) {
+            head = head.saturating_sub(1);
+            head = textobject::find_paragraph_boundary(text, head, Direction::Backward);
+            // ignore the anchor that failed first paragraph search
+            anchor = anchor.saturating_sub(1);
+        }
+        // skip non-whitespace paragraph to make sure our head will be
+        // on non-whitespace paragraph on first boundary search
+        if char_is_line_ending(text.char(head)) {
+            head = head.saturating_sub(1);
+            head = textobject::find_paragraph_boundary(text, head, Direction::Backward);
+        }
+
+        for _ in 1..count {
+            // skip whitespace paragraph
+            head = head.saturating_sub(1);
+            head = textobject::find_paragraph_boundary(text, head, Direction::Backward);
+
+            // skip non-whitespace paragraph
+            head = head.saturating_sub(1);
+            head = textobject::find_paragraph_boundary(text, head, Direction::Backward);
+        }
+        Range::new(anchor, head)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn goto_next_para(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let anchor = if range.is_empty() {
+            range.anchor
+        } else {
+            range.head.saturating_sub(1)
+        };
+
+        // todo!("reimmplement this using find_paragraph_boundary");
+        let pos = textobject::textobject_paragraph(text, range, TextObject::Around, count).head;
+        let head = if char_is_line_ending(text.char(pos.saturating_sub(2))) {
+            pos
+        } else {
+            (pos + 1).min(text.len_chars().saturating_sub(1))
+        };
+        Range::new(anchor, head)
+    });
+    doc.set_selection(view.id, selection);
+}
+
 fn signature_help(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -4973,67 +5056,118 @@ fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward);
 }
 
-fn select_textobject_around(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Around);
-}
-
-fn select_textobject_inner(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Inside);
-}
-
-fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+fn select_textobject_around_word(cx: &mut Context) {
     let count = cx.count();
-    cx.on_next_key(move |cx, event| {
-        if let Some(ch) = event.char() {
-            let textobject = move |editor: &mut Editor| {
-                let (view, doc) = current!(editor);
-                let text = doc.text().slice(..);
-
-                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-                        Some(t) => t,
-                        None => return range,
-                    };
-                    textobject::textobject_treesitter(
-                        text,
-                        range,
-                        objtype,
-                        obj_name,
-                        syntax.tree().root_node(),
-                        lang_config,
-                        count,
-                    )
-                };
-
-                let selection = doc.selection(view.id).clone().transform(|range| {
-                    match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count, false),
-                        'W' => textobject::textobject_word(text, range, objtype, count, true),
-                        'c' => textobject_treesitter("class", range),
-                        'f' => textobject_treesitter("function", range),
-                        'p' => textobject_treesitter("parameter", range),
-                        'm' => {
-                            let ch = text.char(range.cursor(text));
-                            if !ch.is_ascii_alphanumeric() {
-                                textobject::textobject_surround(text, range, objtype, ch, count)
-                            } else {
-                                range
-                            }
-                        }
-                        // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => {
-                            textobject::textobject_surround(text, range, objtype, ch, count)
-                        }
-                        _ => range,
-                    }
-                });
-                doc.set_selection(view.id, selection);
-            };
-            textobject(&mut cx.editor);
-            cx.editor.last_motion = Some(Motion(Box::new(textobject)));
-        }
-    })
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        textobject::textobject_word(text, range, TextObject::Around, count, false)
+    });
+    doc.set_selection(view.id, selection);
 }
+
+fn select_textobject_inner_word(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        textobject::textobject_word(text, range, TextObject::Inside, count, false)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn select_textobject_around_big_word(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        textobject::textobject_word(text, range, TextObject::Around, count, true)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn select_textobject_inner_big_word(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        textobject::textobject_word(text, range, TextObject::Inside, count, true)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn select_textobject_around_paragraph(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        textobject::textobject_paragraph(text, range, TextObject::Around, count)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn select_textobject_inner_paragraph(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        textobject::textobject_paragraph(text, range, TextObject::Inside, count)
+    });
+    doc.set_selection(view.id, selection);
+}
+
+// textobject selection helper
+fn select_textobject_treesitter(cx: &mut Context, objtype: TextObject, obj_name: &str) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+        Some(t) => t,
+        None => return,
+    };
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        textobject::textobject_treesitter(
+            text,
+            range,
+            objtype,
+            obj_name,
+            syntax.tree().root_node(),
+            lang_config,
+            count,
+        )
+    });
+    doc.set_selection(view.id, selection);
+}
+
+fn select_textobject_around_class(cx: &mut Context) {
+    select_textobject_treesitter(cx, TextObject::Around, "class");
+}
+
+fn select_textobject_inner_class(cx: &mut Context) {
+    select_textobject_treesitter(cx, TextObject::Inside, "class");
+}
+
+fn select_textobject_around_function(cx: &mut Context) {
+    select_textobject_treesitter(cx, TextObject::Around, "function");
+}
+
+fn select_textobject_inner_function(cx: &mut Context) {
+    select_textobject_treesitter(cx, TextObject::Inside, "function");
+}
+
+fn select_textobject_around_parameter(cx: &mut Context) {
+    select_textobject_treesitter(cx, TextObject::Around, "parameter");
+}
+
+fn select_textobject_inner_parameter(cx: &mut Context) {
+    select_textobject_treesitter(cx, TextObject::Inside, "parameter");
+}
+
+// TODO: add textobject for other types like parenthesis
+// TODO: cancel new ranges if inconsistent surround matches across lines
+// ch if !ch.is_ascii_alphanumeric() => {
+//     textobject::textobject_surround(text, range, objtype, ch, count)
+// }
 
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
