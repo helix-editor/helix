@@ -1524,8 +1524,11 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
+        use helix_core::path::expand_tilde;
         let path = args.get(0).context("wrong argument count")?;
-        let _ = cx.editor.open(path.into(), Action::Replace)?;
+        let _ = cx
+            .editor
+            .open(expand_tilde(Path::new(path)), Action::Replace)?;
         Ok(())
     }
 
