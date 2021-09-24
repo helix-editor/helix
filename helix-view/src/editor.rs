@@ -41,6 +41,8 @@ pub struct Config {
     pub middle_click_paste: bool,
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
     pub smart_case: bool,
+    /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
+    pub auto_pairs: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -67,6 +69,7 @@ impl Default for Config {
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
             smart_case: true,
+            auto_pairs: true,
         }
     }
 }

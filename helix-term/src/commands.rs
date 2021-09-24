@@ -3371,17 +3371,20 @@ pub mod insert {
     }
 
     use helix_core::auto_pairs;
-    const HOOKS: &[Hook] = &[auto_pairs::hook, insert];
-    const POST_HOOKS: &[PostHook] = &[completion, signature_help];
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current!(cx.editor);
+
+        let hooks: &[Hook] = match cx.editor.config.auto_pairs {
+            true => &[auto_pairs::hook, insert],
+            false => &[insert],
+        };
 
         let text = doc.text();
         let selection = doc.selection(view.id).clone().cursors(text.slice(..));
 
         // run through insert hooks, stopping on the first one that returns Some(t)
-        for hook in HOOKS {
+        for hook in hooks {
             if let Some(transaction) = hook(text, &selection, c) {
                 doc.apply(&transaction, view.id);
                 break;
@@ -3391,7 +3394,7 @@ pub mod insert {
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
-        for hook in POST_HOOKS {
+        for hook in &[completion, signature_help] {
             hook(cx, c);
         }
     }
