@@ -20,6 +20,7 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_core::regex::Regex;
+use helix_core::regex::RegexBuilder;
 use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
@@ -28,7 +29,7 @@ pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    fun: impl Fn(&mut View, &mut Document, Regex) + 'static,
+    fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
@@ -46,6 +47,14 @@ pub fn regex_prompt(
                 }
                 PromptEvent::Validate => {
                     // TODO: push_jump to store selection just before jump
+
+                    match Regex::new(input) {
+                        Ok(regex) => {
+                            let (view, doc) = current!(cx.editor);
+                            fun(view, doc, regex, event);
+                        }
+                        Err(_err) => (), // TODO: mark command line as error
+                    }
                 }
                 PromptEvent::Update => {
                     // skip empty input, TODO: trigger default
@@ -53,14 +62,23 @@ pub fn regex_prompt(
                         return;
                     }
 
-                    match Regex::new(input) {
+                    let case_insensitive = if cx.editor.config.smart_case {
+                        !input.chars().any(char::is_uppercase)
+                    } else {
+                        false
+                    };
+
+                    match RegexBuilder::new(input)
+                        .case_insensitive(case_insensitive)
+                        .build()
+                    {
                         Ok(regex) => {
                             let (view, doc) = current!(cx.editor);
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());
 
-                            fun(view, doc, regex);
+                            fun(view, doc, regex, event);
 
                             view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
                         }

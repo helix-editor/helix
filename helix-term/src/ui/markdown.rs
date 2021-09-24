@@ -88,7 +88,7 @@ fn parse<'a>(
                     if let Some(theme) = theme {
                         let rope = Rope::from(text.as_ref());
                         let syntax = loader
-                            .language_config_for_scope(&format!("source.{}", language))
+                            .language_configuration_for_injection_string(language)
                             .and_then(|config| config.highlight_config(theme.scopes()))
                             .map(|config| Syntax::new(&rope, config));
 

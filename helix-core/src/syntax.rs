@@ -21,6 +21,15 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
+fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer)?
+        .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
+        .transpose()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -42,7 +51,8 @@ pub struct LanguageConfiguration {
     pub auto_format: bool,
 
     // content_regex
-    // injection_regex
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
+    pub injection_regex: Option<Regex>,
     // first_line_regex
     //
     #[serde(skip)]
@@ -243,6 +253,30 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_configuration_for_injection_string(
+        &self,
+        string: &str,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        let mut best_match_length = 0;
+        let mut best_match_position = None;
+        for (i, configuration) in self.language_configs.iter().enumerate() {
+            if let Some(injection_regex) = &configuration.injection_regex {
+                if let Some(mat) = injection_regex.find(string) {
+                    let length = mat.end() - mat.start();
+                    if length > best_match_length {
+                        best_match_position = Some(i);
+                        best_match_length = length;
+                    }
+                }
+            }
+        }
+
+        if let Some(i) = best_match_position {
+            let configuration = &self.language_configs[i];
+            return Some(configuration.clone());
+        }
+        None
+    }
     pub fn language_configs_iter(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
         self.language_configs.iter()
     }
@@ -372,10 +406,8 @@ impl Syntax {
         let config_ref =
             unsafe { mem::transmute::<_, &'static HighlightConfiguration>(self.config.as_ref()) };
 
-        // TODO: if reusing cursors this might need resetting
-        if let Some(range) = &range {
-            cursor_ref.set_byte_range(range.clone());
-        }
+        // if reusing cursors & no range this resets to whole range
+        cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
 
         let captures = cursor_ref
             .captures(query_ref, tree_ref.root_node(), RopeProvider(source))

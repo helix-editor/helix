@@ -1,0 +1,18 @@
+indent = [
+  "element"
+  "if_statement"
+  "each_statement"
+  "await_statement"
+]
+
+outdent = [
+  "end_tag"
+  "else_statement"
+  "if_end_expr"
+  "each_end_expr"
+  "await_end_expr"
+  ">"
+  "/>"
+]
+
+ignore = "comment" 

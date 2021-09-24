@@ -436,7 +436,6 @@ impl Default for Keymaps {
             "A" => append_to_line,
             "o" => open_below,
             "O" => open_above,
-            // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
             "d" => delete_selection,
             // TODO: also delete without yanking
@@ -496,12 +495,11 @@ impl Default for Keymaps {
             "<" => unindent,
             "=" => format_selections,
             "J" => join_selections,
-            // TODO: conflicts hover/doc
             "K" => keep_selections,
             // TODO: and another method for inverse
 
-            // TODO: clashes with space mode
-            "space" => keep_primary_selection,
+            "," => keep_primary_selection,
+            "A-," => remove_primary_selection,
 
             // "q" => record_macro,
             // "Q" => replay_macro,
@@ -529,7 +527,6 @@ impl Default for Keymaps {
 
             // move under <space>c
             "C-c" => toggle_comments,
-            "K" => hover,
 
             // z family for save/restore/combine from/to sels from register
 
@@ -554,7 +551,8 @@ impl Default for Keymaps {
                 "p" => paste_clipboard_after,
                 "P" => paste_clipboard_before,
                 "R" => replace_selections_with_clipboard,
-                "space" => keep_primary_selection,
+                "/" => global_search,
+                "k" => hover,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
@@ -563,6 +561,22 @@ impl Default for Keymaps {
                 "m" => align_view_middle,
                 "k" => scroll_up,
                 "j" => scroll_down,
+                "b" => page_up,
+                "f" => page_down,
+                "u" => half_page_up,
+                "d" => half_page_down,
+            },
+            "Z" => { "View" sticky=true
+                "z" | "c" => align_view_center,
+                "t" => align_view_top,
+                "b" => align_view_bottom,
+                "m" => align_view_middle,
+                "k" => scroll_up,
+                "j" => scroll_down,
+                "b" => page_up,
+                "f" => page_down,
+                "u" => half_page_up,
+                "d" => half_page_down,
             },
 
             "\"" => select_register,

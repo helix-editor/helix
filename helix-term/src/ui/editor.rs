@@ -147,8 +147,7 @@ impl EditorView {
                 let scopes = theme.scopes();
                 syntax
                     .highlight_iter(text.slice(..), Some(range), None, |language| {
-                        loader
-                            .language_config_for_scope(&format!("source.{}", language))
+                        loader.language_configuration_for_injection_string(language)
                             .and_then(|language_config| {
                                 let config = language_config.highlight_config(scopes)?;
                                 let config_ref = config.as_ref();

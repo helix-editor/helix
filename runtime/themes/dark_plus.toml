@@ -62,7 +62,7 @@
 "ui.text.focus" = { fg = "#ffffff" }
 
 "warning" = { fg = "#cca700" }
-"error" = { fg = "#f48771" }
+"error" = { fg = "#ff1212" }
 "info" = { fg = "#75beff" }
 "hint" = { fg = "#eeeeeeb3" }
 

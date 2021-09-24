@@ -39,6 +39,10 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true
     pub middle_click_paste: bool,
+    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
+    pub smart_case: bool,
+    /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
+    pub auto_pairs: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -64,6 +68,8 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
+            smart_case: true,
+            auto_pairs: true,
         }
     }
 }
@@ -249,10 +255,14 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
-            let language_server = doc
-                .language
-                .as_ref()
-                .and_then(|language| self.language_servers.get(language).ok());
+            let language_server = doc.language.as_ref().and_then(|language| {
+                self.language_servers
+                    .get(language)
+                    .map_err(|e| {
+                        log::error!("Failed to get LSP, {}, for `{}`", e, language.scope())
+                    })
+                    .ok()
+            });
 
             if let Some(language_server) = language_server {
                 let language_id = doc

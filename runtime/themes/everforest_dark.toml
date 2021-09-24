@@ -1,0 +1,87 @@
+# Everforest (Dark Hard)
+# Author: CptPotato
+
+# Original Author:
+# URL: https://github.com/sainnhe/everforest
+# Filename: autoload/everforest.vim
+# Author: sainnhe
+# Email: sainnhe@gmail.com
+# License: MIT License
+
+"escape" = "orange"
+"type" = "yellow"
+"constant" = "purple"
+"number" = "purple"
+"string" = "grey2"
+"comment" = "grey0"
+"variable" = "fg"
+"variable.builtin" = "blue"
+"variable.parameter" = "fg"
+"variable.property" = "fg"
+"label" = "aqua"
+"punctuation" = "grey2"
+"punctuation.delimiter" = "grey2"
+"punctuation.bracket" = "fg"
+"keyword" = "red"
+"operator" = "orange"
+"function" = "green"
+"function.builtin" = "blue"
+"function.macro" = "aqua"
+"tag" = "yellow"
+"namespace" = "aqua"
+"attribute" = "aqua"
+"constructor" = "yellow"
+"module" = "blue"
+"property" = "fg"
+"special" = "orange"
+
+"ui.background" = { bg = "bg0" }
+"ui.cursor" = { fg = "bg0", bg = "fg" }
+"ui.cursor.match" = { fg = "orange", bg = "bg_yellow" }
+"ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
+"ui.cursor.select" = { fg = "bg0", bg = "blue" }
+"ui.linenr" = "grey0"
+"ui.linenr.selected" = "fg"
+"ui.statusline" = { fg = "grey2", bg = "bg2" }
+"ui.statusline.inactive" = { fg = "grey0", bg = "bg1" }
+"ui.popup" = { fg = "grey2", bg = "bg1" }
+"ui.window" = { fg = "grey2", bg = "bg1" }
+"ui.help" = { fg = "fg", bg = "bg1" }
+"ui.text" = "fg"
+"ui.text.focus" = "fg"
+"ui.menu" = { fg = "fg", bg = "bg2" }
+"ui.menu.selected" = { fg = "bg0", bg = "green" }
+"ui.selection" = { bg = "bg3" }
+
+"hint" = "blue"
+"info" = "aqua"
+"warning" = "yellow"
+"error" = "red"
+"diagnostic" = { modifiers = ["underlined"] }
+
+
+[palette]
+
+bg0 = "#2b3339"
+bg1 = "#323c41"
+bg2 = "#3a454a"
+bg3 = "#445055"
+bg4 = "#4c555b"
+bg5 = "#53605c"
+bg_visual = "#503946"
+bg_red = "#4e3e43"
+bg_green = "#404d44"
+bg_blue = "#394f5a"
+bg_yellow = "#4a4940"
+
+fg = "#d3c6aa"
+red = "#e67e80"
+orange = "#e69875"
+yellow = "#dbbc7f"
+green = "#a7c080"
+aqua = "#83c092"
+blue = "#7fbbb3"
+purple = "#d699b6"
+grey0 = "#7a8478"
+grey1 = "#859289"
+grey2 = "#9da9a0"

@@ -270,17 +270,15 @@ impl<T> Picker<T> {
     }
 
     pub fn move_up(&mut self) {
-        self.cursor = self.cursor.saturating_sub(1);
+        let len = self.matches.len();
+        let pos = ((self.cursor + len.saturating_sub(1)) % len) % len;
+        self.cursor = pos;
     }
 
     pub fn move_down(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
-
-        if self.cursor < self.matches.len() - 1 {
-            self.cursor += 1;
-        }
+        let len = self.matches.len();
+        let pos = (self.cursor + 1) % len;
+        self.cursor = pos;
     }
 
     pub fn selection(&self) -> Option<&T> {
