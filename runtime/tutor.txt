@@ -339,14 +339,14 @@ _________________________________________________________________
     press will now affect both cursors.
  3. Use Insert mode to correct the lines. The two cursors will
     fix both lines simultaneously.
- 4. Type <SPACE><SPACE> to remove the second cursor. When you
-    press <SPACE> once, you'll see a window appear. You'll
-    learn more about this later.
+ 4. Type , to remove the second cursor.
 
  --> Fix th two nes at same ime.
  --> Fix th two nes at same ime.
 
      Fix these two lines at the same time.
+
+
 
 
 
