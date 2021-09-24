@@ -17,7 +17,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::LineNumber,
+    editor::{Config, LineNumber},
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -412,22 +412,6 @@ impl EditorView {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
-        let linenr = theme.get("ui.linenr");
-        let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
-
-        let warning = theme.get("warning");
-        let error = theme.get("error");
-        let info = theme.get("info");
-        let hint = theme.get("hint");
-
-        // Whether to draw the line number for the last line of the
-        // document or not.  We only draw it if it's not an empty line.
-        let draw_last = text.line_to_byte(last_line) < text.len_bytes();
-
-        let current_line = doc
-            .text()
-            .char_to_line(doc.selection(view.id).primary().cursor(text));
-
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
         #[allow(clippy::needless_collect)]
@@ -437,51 +421,99 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
-            use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
-                surface.set_stringn(
-                    viewport.x,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    },
-                );
-            }
+        fn diagnostic(
+            doc: &Document,
+            _view: &View,
+            theme: &Theme,
+            _config: &Config,
+            _is_focused: bool,
+            _width: usize,
+        ) -> GutterFn {
+            let warning = theme.get("warning");
+            let error = theme.get("error");
+            let info = theme.get("info");
+            let hint = theme.get("hint");
+            let diagnostics = doc.diagnostics().to_vec(); // TODO
 
-            let selected = cursors.contains(&line);
+            Box::new(move |line: usize, _selected: bool| {
+                use helix_core::diagnostic::Severity;
+                if let Some(diagnostic) = diagnostics.iter().find(|d| d.line == line) {
+                    return Some((
+                        "●".to_string(),
+                        match diagnostic.severity {
+                            Some(Severity::Error) => error,
+                            Some(Severity::Warning) | None => warning,
+                            Some(Severity::Info) => info,
+                            Some(Severity::Hint) => hint,
+                        },
+                    ));
+                }
+                None
+            })
+        }
 
-            let text = if line == last_line && !draw_last {
-                "    ~".into()
-            } else {
-                let line = match config.line_number {
-                    LineNumber::Absolute => line + 1,
-                    LineNumber::Relative => {
-                        if current_line == line {
-                            line + 1
-                        } else {
-                            abs_diff(current_line, line)
-                        }
-                    }
-                };
-                format!("{:>5}", line)
-            };
-            surface.set_stringn(
-                viewport.x + 1,
-                viewport.y + i as u16,
-                text,
-                5,
-                if selected && is_focused {
-                    linenr_select
+        fn line_number(
+            doc: &Document,
+            view: &View,
+            theme: &Theme,
+            config: &Config,
+            is_focused: bool,
+            width: usize,
+        ) -> GutterFn {
+            let text = doc.text().slice(..);
+            let last_line = view.last_line(doc);
+            // Whether to draw the line number for the last line of the
+            // document or not.  We only draw it if it's not an empty line.
+            let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+
+            let linenr = theme.get("ui.linenr");
+            let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
+
+            let current_line = doc
+                .text()
+                .char_to_line(doc.selection(view.id).primary().cursor(text));
+
+            let config = config.line_number;
+
+            Box::new(move |line: usize, selected: bool| {
+                if line == last_line && !draw_last {
+                    Some((format!("{:>1$}", '~', width), linenr))
                 } else {
-                    linenr
-                },
-            );
+                    let line = match config {
+                        LineNumber::Absolute => line + 1,
+                        LineNumber::Relative => {
+                            if current_line == line {
+                                line + 1
+                            } else {
+                                abs_diff(current_line, line)
+                            }
+                        }
+                    };
+                    let style = if selected && is_focused {
+                        linenr_select
+                    } else {
+                        linenr
+                    };
+                    Some((format!("{:>1$}", line, width), style))
+                }
+            })
+        }
+
+        type GutterFn = Box<dyn Fn(usize, bool) -> Option<(String, Style)>>;
+        type Gutter = fn(&Document, &View, &Theme, &Config, bool, usize) -> GutterFn;
+        let gutters: &[(Gutter, usize)] = &[(diagnostic, 1), (line_number, 5)];
+
+        let mut offset = 0;
+        for (constructor, width) in gutters {
+            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
+                let selected = cursors.contains(&line);
+
+                if let Some((text, style)) = gutter(line, selected) {
+                    surface.set_stringn(viewport.x + offset, viewport.y + i as u16, text, 5, style);
+                }
+            }
+            offset += *width as u16;
         }
     }
 
