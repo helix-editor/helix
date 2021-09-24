@@ -182,7 +182,6 @@
 <tr><td><code>Z</code></td><td>Enter sticky <a href="#view-mode">view mode</a></td><td>N/A</td></tr>
 <tr><td><code>Ctrl-w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
 <tr><td><code>Space</code></td><td>Enter <a href="#space-mode">space mode</a></td><td>N/A</td></tr>
-<tr><td><code>K</code></td><td>Show documentation for the item under the cursor</td><td><code>hover</code></td></tr>
 </tbody></table>
 <h3 id="changes"><a class="header" href="#changes">Changes</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -223,6 +222,7 @@
 <tr><td><code>Alt-s</code></td><td>Split selection on newlines</td><td><code>split_selection_on_newline</code></td></tr>
 <tr><td><code>;</code></td><td>Collapse selection onto a single cursor</td><td><code>collapse_selection</code></td></tr>
 <tr><td><code>Alt-;</code></td><td>Flip selection cursor and anchor</td><td><code>flip_selections</code></td></tr>
+<tr><td><code>,</code></td><td>Keep only the primary selection</td><td><code>keep_primary_selection</code></td></tr>
 <tr><td><code>C</code></td><td>Copy selection onto the next line</td><td><code>copy_selection_on_next_line</code></td></tr>
 <tr><td><code>Alt-C</code></td><td>Copy selection onto the previous line</td><td><code>copy_selection_on_prev_line</code></td></tr>
 <tr><td><code>(</code></td><td>Rotate main selection forward</td><td><code>rotate_selections_backward</code></td></tr>
@@ -234,9 +234,8 @@
 <tr><td><code>X</code></td><td>Extend selection to line bounds (line-wise selection)</td><td><code>extend_to_line_bounds</code></td></tr>
 <tr><td></td><td>Expand selection to parent syntax node TODO: pick a key</td><td><code>expand_selection</code></td></tr>
 <tr><td><code>J</code></td><td>Join lines inside selection</td><td><code>join_selections</code></td></tr>
-<tr><td><code>K</code></td><td>Keep selections matching the regex TODO: overlapped by hover help</td><td><code>keep_selections</code></td></tr>
+<tr><td><code>K</code></td><td>Keep selections matching the regex</td><td><code>keep_selections</code></td></tr>
 <tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
-<tr><td><code>Space</code></td><td>Keep only the primary selection TODO: overlapped by space mode</td><td><code>keep_primary_selection</code></td></tr>
 <tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td><td><code>toggle_comments</code></td></tr>
 </tbody></table>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
@@ -312,13 +311,13 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <h4 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h4>
 <p>This layer is a kludge of mappings, mostly pickers.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>k</code></td><td>Show documentation for the item under the cursor</td><td><code>hover</code></td></tr>
 <tr><td><code>f</code></td><td>Open file picker</td><td><code>file_picker</code></td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
 <tr><td><code>s</code></td><td>Open symbol picker (current document)</td><td><code>symbol_picker</code></td></tr>
 <tr><td><code>a</code></td><td>Apply code action</td><td><code>code_action</code></td></tr>
 <tr><td><code>'</code></td><td>Open last fuzzy picker</td><td><code>last_picker</code></td></tr>
 <tr><td><code>w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
-<tr><td><code>space</code></td><td>Keep primary selection TODO: it's here because space mode replaced it</td><td><code>keep_primary_selection</code></td></tr>
 <tr><td><code>p</code></td><td>Paste system clipboard after selections</td><td><code>paste_clipboard_after</code></td></tr>
 <tr><td><code>P</code></td><td>Paste system clipboard before selections</td><td><code>paste_clipboard_before</code></td></tr>
 <tr><td><code>y</code></td><td>Join and yank selections to clipboard</td><td><code>yank_joined_to_clipboard</code></td></tr>
