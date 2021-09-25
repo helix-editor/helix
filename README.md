@@ -1,8 +1,8 @@
-<h1 align="center" style="font-size: 45px"> Helix </h1>
-<p align="center" style="font-size: 25px">A kakoune / neovim inspired editor, written in Rust. </p>
-</br>
+<h1 align="center" style="font-size: 50px"> Helix </h1>
+<p align="center" style="font-size: 30px">A kakoune / neovim inspired editor, written in Rust. </p>
 
 ![Screenshot](./screenshot.png)
+
 <!-- TODO Retake screenshots and make them the same size :/ -->
 <!-- maybe a different theme to show off? -->
 <!-- nice font too -->
@@ -30,29 +30,35 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 It's a terminal-based editor first, but I'd like to explore a custom renderer
 (similar to emacs) in wgpu or skulpin. See [#39](https://github.com/helix-editor/helix/issues/39) for more info.
 
-## 📦 Installation 
+## 📦 Installation
+
 > Note: Some platforms require extra configuration for syntax highlighting. See [runtime](#runtime).
 
 > The binary name has been shortened to `hx`
 
-#### Binary(Windows, Linux, MacOS)
+#### Binary(All Platforms)
+
 Pre-build binaries are available in the [releases page](https://github.com/helix-editor/helix/releases).
 
 #### Linux
+
 Download via a package:
+
 > Setting up runtime is not required for linux. Packages wrap the `hx` binary with a
 > wrapper that sets HELIX_RUNTIME to the install directory.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
 #### MacOS
+
 Helix can be installed on MacOS through homebrew:
+
 ```
 brew tap helix-editor/helix
 brew install helix
 ```
 
-#### From Source 
+#### From Source
 
 ```
 git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
@@ -63,17 +69,20 @@ cargo install --path helix-term
 This will install the `hx` binary to `$HOME/.cargo/bin`.
 
 <!-- TODO make sure the anchor links work here--->
+
 #### Runtime
+
 Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder included with binary or source, to the directory bellow.
 
-| OS | Path |
-| ---| --- |
-| Linux & MacOS | ~/.config/helix/ |
-| Windows | Appdata/Roaming/Helix |
+| OS            | Path                  |
+| ------------- | --------------------- |
+| Linux & MacOS | ~/.config/helix/      |
+| Windows       | Appdata/Roaming/Helix |
 
 For example: `~/.config/helix/runtime`
 
 #### Notes
+
 The runtime directory can be overriden via the `HELIX_RUNTIME` environment variable.
 
 Only certain languages have indentation definitions at the moment. Check
@@ -83,13 +92,16 @@ Running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it
 detect the `runtime` directory in the project root.
 
 ## 📚 Documentation
-* [Helix Website](https://helix-editor.com/)
-  * [Documentation](https://docs.helix-editor.com/)
-  * [Basic Usage](https://docs.helix-editor.com/usage.html)
-  * [Keymappings](https://docs.helix-editor.com/keymap.html)
-  * [Configuration](https://docs.helix-editor.com/configuration.html)
-  * [Themes](https://docs.helix-editor.com/themes.html)
-  * [Migrating from Vim](https://docs.helix-editor.com/from-vim.html)
+
+- [FAQ](https://github.com/helix-editor/helix/wiki/FAQ)
+- [Screenshots](https://github.com/helix-editor/helix/wiki/Themes)
+- [Helix Website](https://helix-editor.com/)
+  - [Documentation](https://docs.helix-editor.com/)
+  - [Basic Usage](https://docs.helix-editor.com/usage.html)
+  - [Keymappings](https://docs.helix-editor.com/keymap.html)
+  - [Configuration](https://docs.helix-editor.com/configuration.html)
+  - [Themes](https://docs.helix-editor.com/themes.html)
+  - [Migrating from Vim](https://docs.helix-editor.com/from-vim.html)
 
 ## 🛠️ Troubleshooting
 
@@ -107,7 +119,6 @@ Try starting helix with the `-v` flag and checking the log file (`~/.cache/helix
 
 Both a C and a C++ compiler need to be installed.
 
- 
 ## ❤️ Contributing ️
 
 Contributors are very welcome! **No contribution is too small and all contributions are valued!**
@@ -117,11 +128,11 @@ Some suggestions to get started:
 - You can look at the [good first issue](https://github.com/helix-editor/helix/labels/E-easy) label on the issue tracker.
 - Help with packaging on various distributions needed!
 - To use print debugging to the `~/.cache/helix/helix.log` file, you must:
-  * Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
-  * Use the parameter (`hx -v <file>`) to increase log verbosity. Increase the `v's` for more info, `hx -vvv` being most verbose.
+  - Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
+  - Use the parameter (`hx -v <file>`) to increase log verbosity. Increase the `v's` for more info, `hx -vvv` being most verbose.
 - If your preferred language is missing, integrating a tree-sitter grammar for
-    it and defining syntax highlight queries for it is straight forward and
-    doesn't require much knowledge of the internals.
+  it and defining syntax highlight queries for it is straight forward and
+  doesn't require much knowledge of the internals.
 
 We provide an [architecture.md](./docs/architecture.md) that should give you
 a good overview of the internals.
