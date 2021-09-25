@@ -1,10 +1,11 @@
-<h1 align="center" style="font-size: 40px"> Helix </h1>
-<p align="center" style="font-size: 20px">A kakoune / neovim inspired editor, written in Rust. </p>
+<h1 align="center" style="font-size: 45px"> Helix </h1>
+<p align="center" style="font-size: 25px">A kakoune / neovim inspired editor, written in Rust. </p>
 </br>
 
 ![Screenshot](./screenshot.png)
 <!-- TODO Retake screenshots and make them the same size :/ -->
 <!-- maybe a different theme to show off? -->
+<!-- nice font too -->
 
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 [![Matrix](https://img.shields.io/matrix/helix-community:matrix.org)](https://img.shields.io/matrix/helix-community:matrix.org)
@@ -32,12 +33,26 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 ## 📦 Installation 
 > Note: Some platforms require extra configuration for syntax highlighting. See [runtime](#runtime).
 
-> The binaries name has been shortened to `hx`
+> The binary name has been shortened to `hx`
 
-#### Binary
-Pre-build binaries are available on the [releases page](https://github.com/helix-editor/helix/releases).
+#### Binary(Windows, Linux, MacOS)
+Pre-build binaries are available in the [releases page](https://github.com/helix-editor/helix/releases).
 
-#### From Source / Windows
+#### Linux
+Download via a package:
+> Setting up runtime is not required for linux. Packages wrap the `hx` binary with a
+> wrapper that sets HELIX_RUNTIME to the install directory.
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+
+#### MacOS
+Helix can be installed on MacOS through homebrew:
+```
+brew tap helix-editor/helix
+brew install helix
+```
+
+#### From Source 
 
 ```
 git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
@@ -47,25 +62,9 @@ cargo install --path helix-term
 
 This will install the `hx` binary to `$HOME/.cargo/bin`.
 
-#### Linux
-Download via a package:
-> Note: Setting up runtime is not required. Packages wrap the `hx` binary with a
->  wrapper that sets the HELIX_RUNTIME variable to the install directory.
-
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
-
-#### MacOS
-Helix can be installed on MacOS through homebrew via:
-
-```
-brew tap helix-editor/helix
-brew install helix
-```
-
-#### [Runtime](#runtime)
-Helix requires runtime files for syntax highlighting and themes. Make sure to copy/symlink the `runtime/` directory into your config directory.
-
-> The runtime directory is included with binaries or will be downloaded with the source code.
+<!-- TODO make sure the anchor links work here--->
+#### Runtime
+Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder included with binary or source, to the directory bellow.
 
 | OS | Path |
 | ---| --- |
@@ -75,13 +74,13 @@ Helix requires runtime files for syntax highlighting and themes. Make sure to co
 For example: `~/.config/helix/runtime`
 
 #### Notes
-> Only certain languages have indentation definitions at the moment. Check
+The runtime directory can be overriden via the `HELIX_RUNTIME` environment variable.
+
+Only certain languages have indentation definitions at the moment. Check
 `runtime/queries/<lang>/` for `indents.toml`.
 
-> The runtime directory can be overriden via the `HELIX_RUNTIME` environment variable.
-
-> Running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
-> detect the `runtime` directory in the project root.
+Running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
+detect the `runtime` directory in the project root.
 
 ## 📚 Documentation
 * [Helix Website](https://helix-editor.com/)
