@@ -124,10 +124,13 @@ impl<T: 'static> Component for FilePicker<T> {
         }) {
             // align to middle
             let first_line = line
-                .map(|(s, e)| (s.min(doc.text().len_lines()), e.min(doc.text().len_lines())))
-                .map(|(start, _)| start)
-                .unwrap_or(0)
-                .saturating_sub(inner.height as usize / 2);
+                .map(|(start, end)| {
+                    let height = end.saturating_sub(start) + 1;
+                    let middle = start + (height.saturating_sub(1) / 2);
+                    middle.saturating_sub(inner.height as usize / 2).min(start)
+                })
+                .unwrap_or(0);
+
             let offset = Position::new(first_line, 0);
 
             let highlights = EditorView::doc_syntax_highlights(
@@ -268,17 +271,15 @@ impl<T> Picker<T> {
     }
 
     pub fn move_up(&mut self) {
-        self.cursor = self.cursor.saturating_sub(1);
+        let len = self.matches.len();
+        let pos = ((self.cursor + len.saturating_sub(1)) % len) % len;
+        self.cursor = pos;
     }
 
     pub fn move_down(&mut self) {
-        if self.matches.is_empty() {
-            return;
-        }
-
-        if self.cursor < self.matches.len() - 1 {
-            self.cursor += 1;
-        }
+        let len = self.matches.len();
+        let pos = (self.cursor + 1) % len;
+        self.cursor = pos;
     }
 
     pub fn selection(&self) -> Option<&T> {

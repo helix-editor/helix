@@ -11,7 +11,7 @@ homepage = "https://helix-editor.com"
 include = ["src/**/*", "languages/**/*", "build.rs", "!**/docs/**/*", "!**/test/**/*", "!**/examples/**/*", "!**/build/**/*"]
 
 [dependencies]
-tree-sitter = "0.19"
+tree-sitter = "0.20"
 libloading = "0.7"
 anyhow = "1"
 

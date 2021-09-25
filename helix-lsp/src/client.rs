@@ -3,17 +3,23 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{chars::char_is_line_ending, find_root, ChangeSet, Rope};
+use helix_core::{find_root, ChangeSet, Rope};
 use jsonrpc_core as jsonrpc;
 use lsp_types as lsp;
 use serde_json::Value;
 use std::future::Future;
 use std::process::Stdio;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
-    sync::mpsc::{channel, UnboundedReceiver, UnboundedSender},
+    sync::{
+        mpsc::{channel, UnboundedReceiver, UnboundedSender},
+        Notify, OnceCell,
+    },
 };
 
 #[derive(Debug)]
@@ -22,18 +28,19 @@ pub struct Client {
     _process: Child,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
-    capabilities: Option<lsp::ServerCapabilities>,
+    pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
     offset_encoding: OffsetEncoding,
     config: Option<Value>,
 }
 
 impl Client {
+    #[allow(clippy::type_complexity)]
     pub fn start(
         cmd: &str,
         args: &[String],
         config: Option<Value>,
         id: usize,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>)> {
+    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         let process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -50,22 +57,20 @@ impl Client {
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (server_rx, server_tx) = Transport::start(reader, writer, stderr, id);
+        let (server_rx, server_tx, initialize_notify) =
+            Transport::start(reader, writer, stderr, id);
 
         let client = Self {
             id,
             _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
-            capabilities: None,
+            capabilities: OnceCell::new(),
             offset_encoding: OffsetEncoding::Utf8,
             config,
         };
 
-        // TODO: async client.initialize()
-        // maybe use an arc<atomic> flag
-
-        Ok((client, server_rx))
+        Ok((client, server_rx, initialize_notify))
     }
 
     pub fn id(&self) -> usize {
@@ -88,9 +93,13 @@ impl Client {
         }
     }
 
+    pub fn is_initialized(&self) -> bool {
+        self.capabilities.get().is_some()
+    }
+
     pub fn capabilities(&self) -> &lsp::ServerCapabilities {
         self.capabilities
-            .as_ref()
+            .get()
             .expect("language server not yet initialized!")
     }
 
@@ -143,7 +152,8 @@ impl Client {
                 })
                 .map_err(|e| Error::Other(e.into()))?;
 
-            timeout(Duration::from_secs(2), rx.recv())
+            // TODO: specifiable timeout, delay other calls until initialize success
+            timeout(Duration::from_secs(20), rx.recv())
                 .await
                 .map_err(|_| Error::Timeout)? // return Timeout
                 .ok_or(Error::StreamClosed)?
@@ -151,7 +161,7 @@ impl Client {
     }
 
     /// Send a RPC notification to the language server.
-    fn notify<R: lsp::notification::Notification>(
+    pub fn notify<R: lsp::notification::Notification>(
         &self,
         params: R::Params,
     ) -> impl Future<Output = Result<()>>
@@ -213,7 +223,7 @@ impl Client {
     // General messages
     // -------------------------------------------------------------------------------------------
 
-    pub(crate) async fn initialize(&mut self) -> Result<()> {
+    pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
         // TODO: delay any requests that are triggered prior to initialize
         let root = find_root(None).and_then(|root| lsp::Url::from_file_path(root).ok());
 
@@ -281,14 +291,7 @@ impl Client {
             locale: None, // TODO
         };
 
-        let response = self.request::<lsp::request::Initialize>(params).await?;
-        self.capabilities = Some(response.capabilities);
-
-        // next up, notify<initialized>
-        self.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await?;
-
-        Ok(())
+        self.request::<lsp::request::Initialize>(params).await
     }
 
     pub async fn shutdown(&self) -> Result<()> {
@@ -356,7 +359,6 @@ impl Client {
         //
         // Calculation is therefore a bunch trickier.
 
-        // TODO: stolen from syntax.rs, share
         use helix_core::RopeSlice;
         fn traverse(pos: lsp::Position, text: RopeSlice) -> lsp::Position {
             let lsp::Position {
@@ -366,7 +368,12 @@ impl Client {
 
             let mut chars = text.chars().peekable();
             while let Some(ch) = chars.next() {
-                if char_is_line_ending(ch) && !(ch == '\r' && chars.peek() == Some(&'\n')) {
+                // LSP only considers \n, \r or \r\n as line endings
+                if ch == '\n' || ch == '\r' {
+                    // consume a \r\n
+                    if ch == '\r' && chars.peek() == Some(&'\n') {
+                        chars.next();
+                    }
                     line += 1;
                     character = 0;
                 } else {
@@ -441,7 +448,7 @@ impl Client {
     ) -> Option<impl Future<Output = Result<()>>> {
         // figure out what kind of sync the server supports
 
-        let capabilities = self.capabilities.as_ref().unwrap();
+        let capabilities = self.capabilities.get().unwrap();
 
         let sync_capabilities = match capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Kind(kind))
@@ -459,7 +466,7 @@ impl Client {
                     // range = None -> whole document
                     range: None,        //Some(Range)
                     range_length: None, // u64 apparently deprecated
-                    text: "".to_string(),
+                    text: new_text.to_string(),
                 }]
             }
             lsp::TextDocumentSyncKind::Incremental => {
@@ -487,12 +494,12 @@ impl Client {
 
     // will_save / will_save_wait_until
 
-    pub async fn text_document_did_save(
+    pub fn text_document_did_save(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         text: &Rope,
-    ) -> Result<()> {
-        let capabilities = self.capabilities.as_ref().unwrap();
+    ) -> Option<impl Future<Output = Result<()>>> {
+        let capabilities = self.capabilities.get().unwrap();
 
         let include_text = match &capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
@@ -504,17 +511,18 @@ impl Client {
                     include_text,
                 }) => include_text.unwrap_or(false),
                 // Supported(false)
-                _ => return Ok(()),
+                _ => return None,
             },
             // unsupported
-            _ => return Ok(()),
+            _ => return None,
         };
 
-        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
-            text_document,
-            text: include_text.then(|| text.into()),
-        })
-        .await
+        Some(self.notify::<lsp::notification::DidSaveTextDocument>(
+            lsp::DidSaveTextDocumentParams {
+                text_document,
+                text: include_text.then(|| text.into()),
+            },
+        ))
     }
 
     pub fn completion(
@@ -580,19 +588,19 @@ impl Client {
 
     // formatting
 
-    pub async fn text_document_formatting(
+    pub fn text_document_formatting(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> anyhow::Result<Vec<lsp::TextEdit>> {
-        let capabilities = self.capabilities.as_ref().unwrap();
+    ) -> Option<impl Future<Output = Result<Vec<lsp::TextEdit>>>> {
+        let capabilities = self.capabilities.get().unwrap();
 
         // check if we're able to format
         match capabilities.document_formatting_provider {
             Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
             // None | Some(false)
-            _ => return Ok(Vec::new()),
+            _ => return None,
         };
         // TODO: return err::unavailable so we can fall back to tree sitter formatting
 
@@ -602,9 +610,13 @@ impl Client {
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
-        let response = self.request::<lsp::request::Formatting>(params).await?;
+        let request = self.call::<lsp::request::Formatting>(params);
 
-        Ok(response.unwrap_or_default())
+        Some(async move {
+            let json = request.await?;
+            let response: Option<Vec<lsp::TextEdit>> = serde_json::from_value(json)?;
+            Ok(response.unwrap_or_default())
+        })
     }
 
     pub async fn text_document_range_formatting(
@@ -614,7 +626,7 @@ impl Client {
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> anyhow::Result<Vec<lsp::TextEdit>> {
-        let capabilities = self.capabilities.as_ref().unwrap();
+        let capabilities = self.capabilities.get().unwrap();
 
         // check if we're able to format
         match capabilities.document_range_formatting_provider {

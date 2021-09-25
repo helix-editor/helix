@@ -21,6 +21,15 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
+fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer)?
+        .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
+        .transpose()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -42,7 +51,8 @@ pub struct LanguageConfiguration {
     pub auto_format: bool,
 
     // content_regex
-    // injection_regex
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
+    pub injection_regex: Option<Regex>,
     // first_line_regex
     //
     #[serde(skip)]
@@ -182,8 +192,12 @@ impl LanguageConfiguration {
                 &highlights_query,
                 &injections_query,
                 &locals_query,
-            )
-            .unwrap(); // TODO: no unwrap
+            );
+
+            let config = match config {
+                Ok(config) => config,
+                Err(err) => panic!("{}", err),
+            }; // TODO: avoid panic
             config.configure(scopes);
             Some(Arc::new(config))
         }
@@ -277,6 +291,30 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_configuration_for_injection_string(
+        &self,
+        string: &str,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        let mut best_match_length = 0;
+        let mut best_match_position = None;
+        for (i, configuration) in self.language_configs.iter().enumerate() {
+            if let Some(injection_regex) = &configuration.injection_regex {
+                if let Some(mat) = injection_regex.find(string) {
+                    let length = mat.end() - mat.start();
+                    if length > best_match_length {
+                        best_match_position = Some(i);
+                        best_match_length = length;
+                    }
+                }
+            }
+        }
+
+        if let Some(i) = best_match_position {
+            let configuration = &self.language_configs[i];
+            return Some(configuration.clone());
+        }
+        None
+    }
     pub fn language_configs_iter(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
         self.language_configs.iter()
     }
@@ -312,16 +350,6 @@ fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<st
     let start_char = source.byte_to_char(range.start);
     let end_char = source.byte_to_char(range.end);
     Cow::from(source.slice(start_char..end_char))
-}
-
-fn node_to_bytes<'a>(node: Node, source: RopeSlice<'a>) -> Cow<'a, [u8]> {
-    let start_char = source.byte_to_char(node.start_byte());
-    let end_char = source.byte_to_char(node.end_byte());
-    let fragment = source.slice(start_char..end_char);
-    match fragment.as_str() {
-        Some(fragment) => Cow::Borrowed(fragment.as_bytes()),
-        None => Cow::Owned(String::from(fragment).into_bytes()),
-    }
 }
 
 impl Syntax {
@@ -416,16 +444,11 @@ impl Syntax {
         let config_ref =
             unsafe { mem::transmute::<_, &'static HighlightConfiguration>(self.config.as_ref()) };
 
-        // TODO: if reusing cursors this might need resetting
-        if let Some(range) = &range {
-            cursor_ref.set_byte_range(range.start, range.end);
-        }
+        // if reusing cursors & no range this resets to whole range
+        cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
 
         let captures = cursor_ref
-            .captures(query_ref, tree_ref.root_node(), move |n: Node| {
-                // &source[n.byte_range()]
-                node_to_bytes(n, source)
-            })
+            .captures(query_ref, tree_ref.root_node(), RopeProvider(source))
             .peekable();
 
         // manually craft the root layer based on the existing tree
@@ -539,10 +562,7 @@ impl LanguageLayer {
             //     let mut injections_by_pattern_index =
             //         vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
             //     let matches =
-            //         cursor.matches(combined_injections_query, tree.root_node(), |n: Node| {
-            //             // &source[n.byte_range()]
-            //             node_to_bytes(n, source)
-            //         });
+            //         cursor.matches(combined_injections_query, tree.root_node(), RopeProvider(source));
             //     for mat in matches {
             //         let entry = &mut injections_by_pattern_index[mat.pattern_index];
             //         let (language_name, content_node, include_children) =
@@ -754,7 +774,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
-    QueryMatch, Range, Tree,
+    QueryMatch, Range, TextProvider, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -814,7 +834,7 @@ struct LocalScope<'a> {
 }
 
 #[derive(Debug)]
-struct HighlightIter<'a, 'tree: 'a, F>
+struct HighlightIter<'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
 {
@@ -822,16 +842,41 @@ where
     byte_offset: usize,
     injection_callback: F,
     cancellation_flag: Option<&'a AtomicUsize>,
-    layers: Vec<HighlightIterLayer<'a, 'tree>>,
+    layers: Vec<HighlightIterLayer<'a>>,
     iter_count: usize,
     next_event: Option<HighlightEvent>,
     last_highlight_range: Option<(usize, usize, usize)>,
 }
 
-struct HighlightIterLayer<'a, 'tree: 'a> {
+// Adapter to convert rope chunks to bytes
+struct ChunksBytes<'a> {
+    chunks: ropey::iter::Chunks<'a>,
+}
+impl<'a> Iterator for ChunksBytes<'a> {
+    type Item = &'a [u8];
+    fn next(&mut self) -> Option<Self::Item> {
+        self.chunks.next().map(str::as_bytes)
+    }
+}
+
+struct RopeProvider<'a>(RopeSlice<'a>);
+impl<'a> TextProvider<'a> for RopeProvider<'a> {
+    type I = ChunksBytes<'a>;
+
+    fn text(&mut self, node: Node) -> Self::I {
+        let start_char = self.0.byte_to_char(node.start_byte());
+        let end_char = self.0.byte_to_char(node.end_byte());
+        let fragment = self.0.slice(start_char..end_char);
+        ChunksBytes {
+            chunks: fragment.chunks(),
+        }
+    }
+}
+
+struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: iter::Peekable<QueryCaptures<'a, 'tree, Cow<'a, [u8]>>>,
+    captures: iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
@@ -839,7 +884,7 @@ struct HighlightIterLayer<'a, 'tree: 'a> {
     depth: usize,
 }
 
-impl<'a, 'tree: 'a> fmt::Debug for HighlightIterLayer<'a, 'tree> {
+impl<'a> fmt::Debug for HighlightIterLayer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HighlightIterLayer").finish()
     }
@@ -1010,7 +1055,7 @@ impl HighlightConfiguration {
     }
 }
 
-impl<'a, 'tree: 'a> HighlightIterLayer<'a, 'tree> {
+impl<'a> HighlightIterLayer<'a> {
     /// Create a new 'layer' of highlighting for this document.
     ///
     /// In the even that the new layer contains "combined injections" (injections where multiple
@@ -1067,10 +1112,7 @@ impl<'a, 'tree: 'a> HighlightIterLayer<'a, 'tree> {
                         let matches = cursor.matches(
                             combined_injections_query,
                             tree.root_node(),
-                            |n: Node| {
-                                // &source[n.byte_range()]
-                                node_to_bytes(n, source)
-                            },
+                            RopeProvider(source),
                         );
                         for mat in matches {
                             let entry = &mut injections_by_pattern_index[mat.pattern_index];
@@ -1117,10 +1159,7 @@ impl<'a, 'tree: 'a> HighlightIterLayer<'a, 'tree> {
                     let cursor_ref =
                         unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
                     let captures = cursor_ref
-                        .captures(&config.query, tree_ref.root_node(), move |n: Node| {
-                            // &source[n.byte_range()]
-                            node_to_bytes(n, source)
-                        })
+                        .captures(&config.query, tree_ref.root_node(), RopeProvider(source))
                         .peekable();
 
                     result.push(HighlightIterLayer {
@@ -1274,7 +1313,7 @@ impl<'a, 'tree: 'a> HighlightIterLayer<'a, 'tree> {
     }
 }
 
-impl<'a, 'tree: 'a, F> HighlightIter<'a, 'tree, F>
+impl<'a, F> HighlightIter<'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
 {
@@ -1325,7 +1364,7 @@ where
         }
     }
 
-    fn insert_layer(&mut self, mut layer: HighlightIterLayer<'a, 'tree>) {
+    fn insert_layer(&mut self, mut layer: HighlightIterLayer<'a>) {
         if let Some(sort_key) = layer.sort_key() {
             let mut i = 1;
             while i < self.layers.len() {
@@ -1344,7 +1383,7 @@ where
     }
 }
 
-impl<'a, 'tree: 'a, F> Iterator for HighlightIter<'a, 'tree, F>
+impl<'a, F> Iterator for HighlightIter<'a, F>
 where
     F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
 {
@@ -1608,7 +1647,7 @@ where
 fn injection_for_match<'a>(
     config: &HighlightConfiguration,
     query: &'a Query,
-    query_match: &QueryMatch<'a>,
+    query_match: &QueryMatch<'a, 'a>,
     source: RopeSlice<'a>,
 ) -> (Option<Cow<'a, str>>, Option<Node<'a>>, bool) {
     let content_capture_index = config.injection_content_capture_index;

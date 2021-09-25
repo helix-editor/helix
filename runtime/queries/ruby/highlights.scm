@@ -100,7 +100,7 @@
   (bare_symbol)
 ] @string.special.symbol
 
-(regex) @string.special.regex
+(regex) @string.regexp
 (escape_sequence) @escape
 
 [

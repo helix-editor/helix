@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
+use helix_core::hashmap;
 use log::warn;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
@@ -142,13 +143,37 @@ struct ThemePalette {
 
 impl Default for ThemePalette {
     fn default() -> Self {
-        Self::new(HashMap::new())
+        Self {
+            palette: hashmap! {
+                "black".to_string() => Color::Black,
+                "red".to_string() => Color::Red,
+                "green".to_string() => Color::Green,
+                "yellow".to_string() => Color::Yellow,
+                "blue".to_string() => Color::Blue,
+                "magenta".to_string() => Color::Magenta,
+                "cyan".to_string() => Color::Cyan,
+                "gray".to_string() => Color::Gray,
+                "light-red".to_string() => Color::LightRed,
+                "light-green".to_string() => Color::LightGreen,
+                "light-yellow".to_string() => Color::LightYellow,
+                "light-blue".to_string() => Color::LightBlue,
+                "light-magenta".to_string() => Color::LightMagenta,
+                "light-cyan".to_string() => Color::LightCyan,
+                "light-gray".to_string() => Color::LightGray,
+                "white".to_string() => Color::White,
+            },
+        }
     }
 }
 
 impl ThemePalette {
     pub fn new(palette: HashMap<String, Color>) -> Self {
-        Self { palette }
+        let ThemePalette {
+            palette: mut default,
+        } = ThemePalette::default();
+
+        default.extend(palette);
+        Self { palette: default }
     }
 
     pub fn hex_string_to_rgb(s: &str) -> Result<Color, String> {

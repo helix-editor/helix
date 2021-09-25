@@ -2,19 +2,19 @@
 (operator) @operator
 (exp_name (constructor) @constructor)
 (constructor_operator) @operator
-(module) @module_name
+(module) @namespace
 (type) @type
 (type) @class
 (constructor) @constructor
 (pragma) @pragma
 (comment) @comment
 (signature name: (variable) @fun_type_name)
-(function name: (variable) @fun_name)
+(function name: (variable) @function)
 (constraint class: (class_name (type)) @class)
 (class (class_head class: (class_name (type)) @class))
 (instance (instance_head class: (class_name (type)) @class))
-(integer) @literal
-(exp_literal (float)) @literal
+(integer) @number
+(exp_literal (float)) @number
 (char) @literal
 (con_unit) @literal
 (con_list) @literal
@@ -39,5 +39,7 @@
 "do" @keyword
 "mdo" @keyword
 "rec" @keyword
-"(" @paren
-")" @paren
+[
+  "("
+  ")"
+] @punctuation.bracket

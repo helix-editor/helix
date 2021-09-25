@@ -1,12 +1,8 @@
 
 - tree sitter:
-  - lua
   - markdown
-  - zig
   - regex
-  - vue
   - kotlin
-  - julia
   - clojure
   - erlang
 
@@ -25,8 +21,6 @@ as you type completion!
 - [ ] repeat selection
 
 - [ ] lsp: signature help
-
-- [ ] search: smart case by default: insensitive unless upper detected
 
 2
 - [ ] macro recording

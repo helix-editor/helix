@@ -386,21 +386,24 @@ impl Document {
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     pub fn format(&self) -> Option<impl Future<Output = LspFormatting> + 'static> {
-        if let Some(language_server) = self.language_server.clone() {
+        if let Some(language_server) = self.language_server() {
             let text = self.text.clone();
-            let id = self.identifier();
+            let offset_encoding = language_server.offset_encoding();
+            let request = language_server.text_document_formatting(
+                self.identifier(),
+                lsp::FormattingOptions::default(),
+                None,
+            )?;
+
             let fut = async move {
-                let edits = language_server
-                    .text_document_formatting(id, lsp::FormattingOptions::default(), None)
-                    .await
-                    .unwrap_or_else(|e| {
-                        log::warn!("LSP formatting failed: {}", e);
-                        Default::default()
-                    });
+                let edits = request.await.unwrap_or_else(|e| {
+                    log::warn!("LSP formatting failed: {}", e);
+                    Default::default()
+                });
                 LspFormatting {
                     doc: text,
                     edits,
-                    offset_encoding: language_server.offset_encoding(),
+                    offset_encoding,
                 }
             };
             Some(fut)
@@ -469,9 +472,14 @@ impl Document {
             to_writer(&mut file, encoding, &text).await?;
 
             if let Some(language_server) = language_server {
-                language_server
-                    .text_document_did_save(identifier, &text)
-                    .await?;
+                if !language_server.is_initialized() {
+                    return Ok(());
+                }
+                if let Some(notification) =
+                    language_server.text_document_did_save(identifier, &text)
+                {
+                    notification.await?;
+                }
             }
 
             Ok(())
@@ -646,7 +654,7 @@ impl Document {
             // }
 
             // emit lsp notification
-            if let Some(language_server) = &self.language_server {
+            if let Some(language_server) = self.language_server() {
                 let notify = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
@@ -795,9 +803,18 @@ impl Document {
         self.version
     }
 
-    #[inline]
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
-        self.language_server.as_deref()
+        let server = self.language_server.as_deref();
+        let initialized = server
+            .map(|server| server.is_initialized())
+            .unwrap_or(false);
+
+        // only resolve language_server if it's initialized
+        if initialized {
+            server
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -890,6 +907,40 @@ impl Default for Document {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn changeset_to_changes_ignore_line_endings() {
+        use helix_lsp::{lsp, Client, OffsetEncoding};
+        let text = Rope::from("hello\r\nworld");
+        let mut doc = Document::from(text, None);
+        let view = ViewId::default();
+        doc.set_selection(view, Selection::single(0, 0));
+
+        let transaction =
+            Transaction::change(doc.text(), vec![(5, 7, Some("\n".into()))].into_iter());
+        let old_doc = doc.text().clone();
+        doc.apply(&transaction, view);
+        let changes = Client::changeset_to_changes(
+            &old_doc,
+            doc.text(),
+            transaction.changes(),
+            OffsetEncoding::Utf8,
+        );
+
+        assert_eq!(doc.text(), "hello\nworld");
+
+        assert_eq!(
+            changes,
+            &[lsp::TextDocumentContentChangeEvent {
+                range: Some(lsp::Range::new(
+                    lsp::Position::new(0, 5),
+                    lsp::Position::new(1, 0)
+                )),
+                text: "\n".into(),
+                range_length: None,
+            }]
+        );
+    }
 
     #[test]
     fn changeset_to_changes() {

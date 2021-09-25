@@ -33,6 +33,8 @@ pub struct Menu<T: Item> {
 
     scroll: usize,
     size: (u16, u16),
+    viewport: (u16, u16),
+    recalculate: bool,
 }
 
 impl<T: Item> Menu<T> {
@@ -51,6 +53,8 @@ impl<T: Item> Menu<T> {
             callback_fn: Box::new(callback_fn),
             scroll: 0,
             size: (0, 0),
+            viewport: (0, 0),
+            recalculate: true,
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -83,6 +87,7 @@ impl<T: Item> Menu<T> {
         // reset cursor position
         self.cursor = None;
         self.scroll = 0;
+        self.recalculate = true;
     }
 
     pub fn move_up(&mut self) {
@@ -97,6 +102,41 @@ impl<T: Item> Menu<T> {
         let pos = self.cursor.map_or(0, |i| i + 1) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
+    }
+
+    fn recalculate_size(&mut self, viewport: (u16, u16)) {
+        let n = self
+            .options
+            .first()
+            .map(|option| option.row().cells.len())
+            .unwrap_or_default();
+        let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
+            let row = option.row();
+            // maintain max for each column
+            for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
+                let width = cell.content.width();
+                if width > *acc {
+                    *acc = width;
+                }
+            }
+
+            acc
+        });
+        let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
+        let width = len.min(viewport.0 as usize);
+
+        self.widths = max_lens
+            .into_iter()
+            .map(|len| Constraint::Length(len as u16))
+            .collect();
+
+        let height = self.matches.len().min(10).min(viewport.1 as usize);
+
+        self.size = (width as u16, height as u16);
+
+        // adjust scroll offsets if size changed
+        self.adjust_scroll();
+        self.recalculate = false;
     }
 
     fn adjust_scroll(&mut self) {
@@ -221,42 +261,12 @@ impl<T: Item + 'static> Component for Menu<T> {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let n = self
-            .options
-            .first()
-            .map(|option| option.row().cells.len())
-            .unwrap_or_default();
-        let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.row();
-            // maintain max for each column
-            for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
-                let width = cell.content.width();
-                if width > *acc {
-                    *acc = width;
-                }
-            }
-
-            acc
-        });
-        let len = max_lens.iter().sum::<usize>() + n + 1; // +1: reserve some space for scrollbar
-        let width = len.min(viewport.0 as usize);
-
-        self.widths = max_lens
-            .into_iter()
-            .map(|len| Constraint::Length(len as u16))
-            .collect();
-
-        let height = self.options.len().min(10).min(viewport.1 as usize);
-
-        self.size = (width as u16, height as u16);
-
-        // adjust scroll offsets if size changed
-        self.adjust_scroll();
+        if viewport != self.viewport || self.recalculate {
+            self.recalculate_size(viewport);
+        }
 
         Some(self.size)
     }
-
-    // TODO: required size should re-trigger when we filter items so we can draw a smaller menu
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;

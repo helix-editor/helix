@@ -88,7 +88,7 @@ fn parse<'a>(
                     if let Some(theme) = theme {
                         let rope = Rope::from(text.as_ref());
                         let syntax = loader
-                            .language_config_for_scope(&format!("source.{}", language))
+                            .language_configuration_for_injection_string(language)
                             .and_then(|config| config.highlight_config(theme.scopes()))
                             .map(|config| Syntax::new(&rope, config));
 
@@ -215,10 +215,30 @@ impl Component for Markdown {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let contents = parse(&self.contents, None, &self.config_loader);
         let padding = 2;
-        let width = std::cmp::min(contents.width() as u16 + padding, viewport.0);
-        let height = std::cmp::min(contents.height() as u16 + padding, viewport.1);
-        Some((width, height))
+        if padding >= viewport.1 || padding >= viewport.0 {
+            return None;
+        }
+        let contents = parse(&self.contents, None, &self.config_loader);
+        let max_text_width = (viewport.0 - padding).min(120);
+        let mut text_width = 0;
+        let mut height = padding;
+        for content in contents {
+            height += 1;
+            let content_width = content.width() as u16;
+            if content_width > max_text_width {
+                text_width = max_text_width;
+                height += content_width / max_text_width;
+            } else if content_width > text_width {
+                text_width = content_width;
+            }
+
+            if height >= viewport.1 {
+                height = viewport.1;
+                break;
+            }
+        }
+
+        Some((text_width + padding, height))
     }
 }
