@@ -1,5 +1,5 @@
-<h1 align="center" style="font-size: 50px"> Helix </h1>
-<p align="center" style="font-size: 30px">A kakoune / neovim inspired editor, written in Rust. </p>
+<h1 align="center" style="font-size: 55px">Helix</h1>
+<p align="center" style="font-size: 30px; font-style: italic">A kakoune / neovim inspired editor, written in Rust.</p>
 
 ![Screenshot](./screenshot.png)
 
