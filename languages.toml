@@ -188,6 +188,18 @@ comment-token = "//"
 
 indent = { tab-width = 2, unit = "  " }
 
+[language.debugger]
+name = "node-debug2"
+transport = "stdio"
+# args consisting of cmd (node) and path to adapter should be added to user's configuration
+quirks = { absolute-paths = true }
+
+[[language.debugger.templates]]
+name = "source"
+request = "launch"
+completion = [ { name = "main", completion = "filename", default = "index.js" } ]
+args = { program = "{0}" }
+
 [[language]]
 name = "typescript"
 scope = "source.ts"

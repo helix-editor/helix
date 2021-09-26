@@ -5,6 +5,7 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
+use helix_dap::DebuggerQuirks;
 pub use helix_syntax::get_language;
 
 use arc_swap::ArcSwap;
@@ -107,11 +108,14 @@ pub struct DebugTemplate {
 pub struct DebugAdapterConfig {
     pub name: String,
     pub transport: String,
+    #[serde(default)]
     pub command: String,
     #[serde(default)]
     pub args: Vec<String>,
     pub port_arg: Option<String>,
     pub templates: Vec<DebugTemplate>,
+    #[serde(default)]
+    pub quirks: DebuggerQuirks,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

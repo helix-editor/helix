@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::anyhow;
 pub use log::{error, info};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -20,6 +21,13 @@ use tokio::{
     time,
 };
 
+// Different workarounds for adapters' differences
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+pub struct DebuggerQuirks {
+    #[serde(default)]
+    pub absolute_paths: bool,
+}
+
 #[derive(Debug)]
 pub struct Client {
     id: usize,
@@ -34,6 +42,7 @@ pub struct Client {
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
     pub breakpoints: Vec<Breakpoint>,
+    pub quirks: DebuggerQuirks,
 }
 
 impl Client {
@@ -45,6 +54,9 @@ impl Client {
         port_arg: Option<String>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+        if command == "" {
+            return Result::Err(Error::Other(anyhow!("Command not provided")));
+        }
         if transport == "tcp" && port_arg.is_some() {
             Self::tcp_process(
                 &command,
@@ -82,6 +94,7 @@ impl Client {
             thread_id: None,
             active_frame: None,
             breakpoints: vec![],
+            quirks: DebuggerQuirks::default(),
         };
 
         tokio::spawn(Self::recv(server_rx, client_rx));

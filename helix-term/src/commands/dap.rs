@@ -5,7 +5,7 @@ use crate::{
     job::Callback,
     ui::{FilePicker, Prompt, PromptEvent},
 };
-use helix_core::Selection;
+use helix_core::{syntax::DebugConfigCompletion, Selection};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
 
@@ -206,6 +206,8 @@ pub fn dap_start_impl(
         return;
     }
 
+    debugger.quirks = config.quirks;
+
     let start_config = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
         None => config.templates.get(0),
@@ -225,8 +227,18 @@ pub fn dap_start_impl(
         for (k, t) in template {
             let mut value = t;
             for (i, x) in params.iter().enumerate() {
+                let mut param = x.to_string();
+                if let Some(DebugConfigCompletion::Advanced(cfg)) = start_config.completion.get(i) {
+                    if cfg.completion == Some("filename".to_owned())
+                        || cfg.completion == Some("directory".to_owned())
+                    {
+                        param = std::fs::canonicalize(x).ok()
+                            .and_then(|pb| pb.into_os_string().into_string().ok())
+                            .unwrap_or(x.to_string());
+                    }
+                }
                 // For param #0 replace {0} in args
-                value = value.replace(format!("{{{}}}", i).as_str(), x);
+                value = value.replace(format!("{{{}}}", i).as_str(), &param);
             }
 
             if let Ok(integer) = value.parse::<usize>() {
