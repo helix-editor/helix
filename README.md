@@ -1,18 +1,15 @@
 <h1 align="center" style="font-size: 55px">Helix</h1>
 <p align="center" style="font-size: 30px; font-style: italic">A kakoune / neovim inspired editor, written in Rust.</p>
 
-![Screenshot](./screenshot.png)
-
-<!-- TODO Retake screenshots and make them the same size :/ -->
-<!-- maybe a different theme to show off? -->
-<!-- nice font too -->
+<div align="center" style="display:inline">
+      <img src="screenshot1.png" width="49%">
+      <img src="screenshot2.png" width="49%">
+</div>
 
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 [![Matrix](https://img.shields.io/matrix/helix-community:matrix.org)](https://img.shields.io/matrix/helix-community:matrix.org)
 [![Stars](https://img.shields.io/github/stars/helix-editor/helix?color=bright%20green)](https://github.com/helix-editor/helix/stargazers)
 [![License](https://img.shields.io/github/license/helix-editor/helix)](./LICENSE)
-
-<!-- Link Website and documentation here?-->
 
 The editing model is very heavily based on kakoune; during development I found
 myself agreeing with most of kakoune's design decisions. For more information, see the [website](https://helix-editor.com) or
@@ -67,8 +64,6 @@ This will install the `hx` binary to `$HOME/.cargo/bin`.
 
 > Note: Installing runtime is not required for linux packages or binaries.
 
-<!-- does mac require installing runtime? -->
-
 Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder included with binary or source, to the directory bellow.
 
 | OS            | Path                  |
@@ -110,8 +105,6 @@ Follow the steps in the [install guide](#runtime) to setup your runtime.
 
 Only certain languages have indentation definitions at the moment. Check
 [runtime/queries/\<lang>/](./runtime/queries/) for `indents.toml`
-
-<!-- TODO check if this works ^--->
 
 #### LSP not working?
 
