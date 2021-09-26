@@ -232,9 +232,10 @@ pub fn dap_start_impl(
                     if cfg.completion == Some("filename".to_owned())
                         || cfg.completion == Some("directory".to_owned())
                     {
-                        param = std::fs::canonicalize(x).ok()
+                        param = std::fs::canonicalize(x)
+                            .ok()
                             .and_then(|pb| pb.into_os_string().into_string().ok())
-                            .unwrap_or(x.to_string());
+                            .unwrap_or_else(|| x.to_string());
                     }
                 }
                 // For param #0 replace {0} in args

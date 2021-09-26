@@ -54,7 +54,7 @@ impl Client {
         port_arg: Option<String>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
-        if command == "" {
+        if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
         if transport == "tcp" && port_arg.is_some() {
