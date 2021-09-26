@@ -515,6 +515,29 @@ pub mod requests {
         type Result = EvaluateResponse;
         const COMMAND: &'static str = "evaluate";
     }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SetExceptionBreakpointsArguments {
+        pub filters: Vec<String>,
+        // pub filterOptions: Option<Vec<ExceptionFilterOptions>>, // needs capability
+        // pub exceptionOptions: Option<Vec<ExceptionOptions>>, // needs capability
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SetExceptionBreakpointsResponse {
+        pub breakpoints: Option<Vec<Breakpoint>>,
+    }
+
+    #[derive(Debug)]
+    pub enum SetExceptionBreakpoints {}
+
+    impl Request for SetExceptionBreakpoints {
+        type Arguments = SetExceptionBreakpointsArguments;
+        type Result = SetExceptionBreakpointsResponse;
+        const COMMAND: &'static str = "setExceptionBreakpoints";
+    }
 }
 
 // Events

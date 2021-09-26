@@ -557,6 +557,8 @@ impl Default for Keymaps {
                         "f" => dap_switch_stack_frame,
                         // sl, sb
                     },
+                    "e" => dap_enable_exceptions,
+                    "E" => dap_disable_exceptions,
                 },
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,

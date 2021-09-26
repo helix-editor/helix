@@ -399,4 +399,17 @@ impl Client {
 
         self.request::<requests::Evaluate>(args).await
     }
+
+    pub async fn set_exception_breakpoints(
+        &mut self,
+        filters: Vec<String>,
+    ) -> Result<Option<Vec<Breakpoint>>> {
+        let args = requests::SetExceptionBreakpointsArguments { filters };
+
+        let response = self
+            .request::<requests::SetExceptionBreakpoints>(args)
+            .await;
+
+        Ok(response.ok().map(|r| r.breakpoints).unwrap_or_default())
+    }
 }

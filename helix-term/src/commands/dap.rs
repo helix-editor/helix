@@ -513,6 +513,39 @@ pub fn dap_terminate(cx: &mut Context) {
     cx.editor.debugger = None;
 }
 
+pub fn dap_enable_exceptions(cx: &mut Context) {
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    let filters = match &debugger.capabilities().exception_breakpoint_filters {
+        Some(filters) => filters.clone(),
+        None => return,
+    };
+
+    if let Err(e) = block_on(
+        debugger.set_exception_breakpoints(filters.iter().map(|f| f.filter.clone()).collect()),
+    ) {
+        cx.editor
+            .set_error(format!("Failed to set up exception breakpoints: {:?}", e));
+        return;
+    }
+}
+
+pub fn dap_disable_exceptions(cx: &mut Context) {
+    let debugger = match &mut cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => return,
+    };
+
+    if let Err(e) = block_on(debugger.set_exception_breakpoints(vec![])) {
+        cx.editor
+            .set_error(format!("Failed to set up exception breakpoints: {:?}", e));
+        return;
+    }
+}
+
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, mut bp)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
         let callback = Box::pin(async move {

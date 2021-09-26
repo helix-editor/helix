@@ -335,6 +335,8 @@ impl Command {
         dap_edit_log, "Edit log message of the breakpoint on the current line",
         dap_switch_thread, "Switch current thread",
         dap_switch_stack_frame, "Switch stack frame",
+        dap_enable_exceptions, "Enable exception breakpoints",
+        dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command, ignoring command output",
         shell_insert_output, "Insert output of shell command before each selection",
