@@ -32,9 +32,7 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 
 ## 📦 Installation
 
-> Note: Some platforms require extra configuration for syntax highlighting. See [runtime](#runtime).
-
-> The binary name has been shortened to `hx`
+> Note: Installing from source requires extra configuration for syntax highlighting and themes to work. See [runtime](#runtime).
 
 #### Binary(All Platforms)
 
@@ -43,9 +41,6 @@ Pre-build binaries are available in the [releases page](https://github.com/helix
 #### Linux
 
 Download via a package:
-
-> Setting up runtime is not required for linux. Packages wrap the `hx` binary with a
-> wrapper that sets HELIX_RUNTIME to the install directory.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
@@ -68,9 +63,11 @@ cargo install --path helix-term
 
 This will install the `hx` binary to `$HOME/.cargo/bin`.
 
-<!-- TODO make sure the anchor links work here--->
-
 #### Runtime
+
+> Note: Installing runtime is not required for linux packages or binaries.
+
+<!-- does mac require installing runtime? -->
 
 Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder included with binary or source, to the directory bellow.
 
@@ -85,11 +82,11 @@ For example: `~/.config/helix/runtime`
 
 The runtime directory can be overriden via the `HELIX_RUNTIME` environment variable.
 
-Only certain languages have indentation definitions at the moment. Check
-`runtime/queries/<lang>/` for `indents.toml`.
-
 Running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
 detect the `runtime` directory in the project root.
+
+Setting up runtime is not required for linux. Packages wrap the `hx` binary
+with a wrapper that sets HELIX_RUNTIME to the install directory.
 
 ## 📚 Documentation
 
@@ -109,7 +106,14 @@ detect the `runtime` directory in the project root.
 
 Follow the steps in the [install guide](#runtime) to setup your runtime.
 
-#### LSP isn't working?
+#### Indentation not working?
+
+Only certain languages have indentation definitions at the moment. Check
+[runtime/queries/\<lang>/](./runtime/queries/) for `indents.toml`
+
+<!-- TODO check if this works ^--->
+
+#### LSP not working?
 
 Is the LSP server (E.g. `rust-analyzer`) in your `$PATH`?
 
