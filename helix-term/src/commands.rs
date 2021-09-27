@@ -5,7 +5,7 @@ use helix_core::{
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
-    regex::{self, Regex},
+    regex::{self, Regex, RegexBuilder},
     register::Register,
     search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeSlice, Selection, SmallVec, Tendril, Transaction,
@@ -31,7 +31,7 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::FutureExt;
+use futures_util::{FutureExt, StreamExt};
 use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
@@ -42,6 +42,11 @@ use std::{
 
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
+
+use grep_regex::RegexMatcherBuilder;
+use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+use ignore::{DirEntry, WalkBuilder, WalkState};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct Context<'a> {
     pub register: Option<char>,
@@ -209,6 +214,7 @@ impl Command {
         search_next, "Select next search match",
         extend_search_next, "Add next search match to selection",
         search_selection, "Use current selection as search pattern",
+        global_search, "Global Search in workspace folder",
         extend_line, "Select current line, if already selected, extend to next line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
@@ -284,6 +290,7 @@ impl Command {
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
         keep_primary_selection, "Keep primary selection",
+        remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
@@ -1061,24 +1068,41 @@ fn select_all(cx: &mut Context) {
 
 fn select_regex(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(cx, "select:".into(), Some(reg), move |view, doc, regex| {
-        let text = doc.text().slice(..);
-        if let Some(selection) = selection::select_on_matches(text, doc.selection(view.id), &regex)
-        {
-            doc.set_selection(view.id, selection);
-        }
-    });
+    let prompt = ui::regex_prompt(
+        cx,
+        "select:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            let text = doc.text().slice(..);
+            if let Some(selection) =
+                selection::select_on_matches(text, doc.selection(view.id), &regex)
+            {
+                doc.set_selection(view.id, selection);
+            }
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
 
 fn split_selection(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(cx, "split:".into(), Some(reg), move |view, doc, regex| {
-        let text = doc.text().slice(..);
-        let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
-        doc.set_selection(view.id, selection);
-    });
+    let prompt = ui::regex_prompt(
+        cx,
+        "split:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            let text = doc.text().slice(..);
+            let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
+            doc.set_selection(view.id, selection);
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
@@ -1141,9 +1165,17 @@ fn search(cx: &mut Context) {
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
 
-    let prompt = ui::regex_prompt(cx, "search:".into(), Some(reg), move |view, doc, regex| {
-        search_impl(doc, view, &contents, &regex, false);
-    });
+    let prompt = ui::regex_prompt(
+        cx,
+        "search:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            search_impl(doc, view, &contents, &regex, false);
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
@@ -1154,7 +1186,15 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
     if let Some(query) = registers.read('/') {
         let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
-        if let Ok(regex) = Regex::new(query) {
+        let case_insensitive = if cx.editor.config.smart_case {
+            !query.chars().any(char::is_uppercase)
+        } else {
+            false
+        };
+        if let Ok(regex) = RegexBuilder::new(query)
+            .case_insensitive(case_insensitive)
+            .build()
+        {
             search_impl(doc, view, &contents, &regex, extend);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
@@ -1182,6 +1222,116 @@ fn search_selection(cx: &mut Context) {
     cx.editor.registers.get_mut('/').push(regex);
     let msg = format!("register '{}' set to '{}'", '\\', query);
     cx.editor.set_status(msg);
+}
+
+fn global_search(cx: &mut Context) {
+    let (all_matches_sx, all_matches_rx) =
+        tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
+    let smart_case = cx.editor.config.smart_case;
+    let prompt = ui::regex_prompt(
+        cx,
+        "global search:".into(),
+        None,
+        move |_view, _doc, regex, event| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+
+            if let Ok(matcher) = RegexMatcherBuilder::new()
+                .case_smart(smart_case)
+                .build(regex.as_str())
+            {
+                let searcher = SearcherBuilder::new()
+                    .binary_detection(BinaryDetection::quit(b'\x00'))
+                    .build();
+
+                let search_root = std::env::current_dir()
+                    .expect("Global search error: Failed to get current dir");
+                WalkBuilder::new(search_root).build_parallel().run(|| {
+                    let mut searcher_cl = searcher.clone();
+                    let matcher_cl = matcher.clone();
+                    let all_matches_sx_cl = all_matches_sx.clone();
+                    Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
+                        let dent = match dent {
+                            Ok(dent) => dent,
+                            Err(_) => return WalkState::Continue,
+                        };
+
+                        match dent.file_type() {
+                            Some(fi) => {
+                                if !fi.is_file() {
+                                    return WalkState::Continue;
+                                }
+                            }
+                            None => return WalkState::Continue,
+                        }
+
+                        let result_sink = sinks::UTF8(|line_num, _| {
+                            match all_matches_sx_cl
+                                .send((line_num as usize - 1, dent.path().to_path_buf()))
+                            {
+                                Ok(_) => Ok(true),
+                                Err(_) => Ok(false),
+                            }
+                        });
+                        let result = searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
+
+                        if let Err(err) = result {
+                            log::error!("Global search error: {}, {}", dent.path().display(), err);
+                        }
+                        WalkState::Continue
+                    })
+                });
+            } else {
+                // Otherwise do nothing
+                // log::warn!("Global Search Invalid Pattern")
+            }
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
+
+    let show_picker = async move {
+        let all_matches: Vec<(usize, PathBuf)> =
+            UnboundedReceiverStream::new(all_matches_rx).collect().await;
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                if all_matches.is_empty() {
+                    editor.set_status("No matches found".to_string());
+                    return;
+                }
+                let picker = FilePicker::new(
+                    all_matches,
+                    move |(_line_num, path)| path.to_str().unwrap().into(),
+                    move |editor: &mut Editor, (line_num, path), action| {
+                        match editor.open(path.into(), action) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                editor.set_error(format!(
+                                    "Failed to open file '{}': {}",
+                                    path.display(),
+                                    e
+                                ));
+                                return;
+                            }
+                        }
+
+                        let line_num = *line_num;
+                        let (view, doc) = current!(editor);
+                        let text = doc.text();
+                        let start = text.line_to_char(line_num);
+                        let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+                        doc.set_selection(view.id, Selection::single(start, end));
+                        align_view(doc, view, Align::Center);
+                    },
+                    |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
+                );
+                compositor.push(Box::new(picker));
+            });
+        Ok(call)
+    };
+    cx.jobs.callback(show_picker);
 }
 
 fn extend_line(cx: &mut Context) {
@@ -1374,8 +1524,11 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
+        use helix_core::path::expand_tilde;
         let path = args.get(0).context("wrong argument count")?;
-        let _ = cx.editor.open(path.into(), Action::Replace)?;
+        let _ = cx
+            .editor
+            .open(expand_tilde(Path::new(path)), Action::Replace)?;
         Ok(())
     }
 
@@ -2676,6 +2829,10 @@ fn open_above(cx: &mut Context) {
 fn normal_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
+    if doc.mode == Mode::Normal {
+        return;
+    }
+
     doc.mode = Mode::Normal;
 
     doc.append_changes_to_history(view.id);
@@ -3222,17 +3379,20 @@ pub mod insert {
     }
 
     use helix_core::auto_pairs;
-    const HOOKS: &[Hook] = &[auto_pairs::hook, insert];
-    const POST_HOOKS: &[PostHook] = &[completion, signature_help];
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current!(cx.editor);
+
+        let hooks: &[Hook] = match cx.editor.config.auto_pairs {
+            true => &[auto_pairs::hook, insert],
+            false => &[insert],
+        };
 
         let text = doc.text();
         let selection = doc.selection(view.id).clone().cursors(text.slice(..));
 
         // run through insert hooks, stopping on the first one that returns Some(t)
-        for hook in HOOKS {
+        for hook in hooks {
             if let Some(transaction) = hook(text, &selection, c) {
                 doc.apply(&transaction, view.id);
                 break;
@@ -3242,7 +3402,7 @@ pub mod insert {
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
-        for hook in POST_HOOKS {
+        for hook in &[completion, signature_help] {
             hook(cx, c);
         }
     }
@@ -3839,22 +3999,46 @@ fn join_selections(cx: &mut Context) {
 fn keep_selections(cx: &mut Context) {
     // keep selections matching regex
     let reg = cx.register.unwrap_or('/');
-    let prompt = ui::regex_prompt(cx, "keep:".into(), Some(reg), move |view, doc, regex| {
-        let text = doc.text().slice(..);
+    let prompt = ui::regex_prompt(
+        cx,
+        "keep:".into(),
+        Some(reg),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            let text = doc.text().slice(..);
 
-        if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
-            doc.set_selection(view.id, selection);
-        }
-    });
+            if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
+                doc.set_selection(view.id, selection);
+            }
+        },
+    );
 
     cx.push_layer(Box::new(prompt));
 }
 
 fn keep_primary_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    // TODO: handle count
 
     let range = doc.selection(view.id).primary();
     doc.set_selection(view.id, Selection::single(range.anchor, range.head));
+}
+
+fn remove_primary_selection(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    // TODO: handle count
+
+    let selection = doc.selection(view.id);
+    if selection.len() == 1 {
+        cx.editor.set_error("no selections remaining".to_owned());
+        return;
+    }
+    let index = selection.primary_index();
+    let selection = selection.clone().remove(index);
+
+    doc.set_selection(view.id, selection);
 }
 
 fn completion(cx: &mut Context) {

@@ -22,8 +22,6 @@ as you type completion!
 
 - [ ] lsp: signature help
 
-- [ ] search: smart case by default: insensitive unless upper detected
-
 2
 - [ ] macro recording
 - [ ] extend selection (treesitter select parent node) (replaces viw, vi(, va( etc )
