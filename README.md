@@ -1,5 +1,5 @@
 <h1 align="center" style="font-size: 55px">Helix</h1>
-<p align="center" style="font-size: 30px; font-style: italic">A kakoune / neovim inspired editor, written in Rust.</p>
+<p align="center" style="font-size: 30px">A kakoune / neovim inspired editor, written in Rust.</p>
 
 <div align="center" style="display:inline">
       <img src="screenshot1.png" width="49%">
@@ -16,9 +16,9 @@ The editing model is very heavily based on kakoune; during development I found
 myself agreeing with most of kakoune's design decisions. For more information, see the [website](https://helix-editor.com) or
 [documentation](https://docs.helix-editor.com/).
 
-All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html).
+All shortcuts/keymaps can be found [on the website](https://docs.helix-editor.com/keymap.html).
 
-## 🎁 Features
+## ✨ Features
 
 - Vim-like modal editing
 - Multiple selections
@@ -32,7 +32,7 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 
 > Note: Installing from source requires extra configuration for syntax highlighting and themes to work. See [runtime](#runtime).
 
-#### Binary(All Platforms)
+#### Binary (All Platforms)
 
 Pre-build binaries are available in the [releases page](https://github.com/helix-editor/helix/releases).
 
@@ -42,7 +42,7 @@ Download via a package:
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
-#### MacOS
+#### macOS
 
 Helix can be installed on MacOS through homebrew:
 
