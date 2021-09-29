@@ -427,7 +427,6 @@ impl EditorView {
             theme: &Theme,
             _config: &Config,
             _is_focused: bool,
-            _width: usize,
         ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>> {
             let warning = theme.get("warning");
             let error = theme.get("error");
@@ -458,7 +457,6 @@ impl EditorView {
             theme: &Theme,
             config: &Config,
             is_focused: bool,
-            width: usize,
         ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>> {
             let text = doc.text().slice(..);
             let last_line = view.last_line(doc);
@@ -477,7 +475,7 @@ impl EditorView {
 
             Box::new(move |line: usize, selected: bool| {
                 if line == last_line && !draw_last {
-                    Some(("    ~".into(), linenr))
+                    Some(("~".into(), linenr))
                 } else {
                     let line = match config {
                         LineNumber::Absolute => line + 1,
@@ -494,34 +492,32 @@ impl EditorView {
                     } else {
                         linenr
                     };
-                    Some((format!("{:>1$}", line, width), style))
+                    Some((line.to_string(), style))
                 }
             })
         }
 
-        let gutters: &[(
-            fn(
-                &Document,
-                &View,
-                &Theme,
-                &Config,
-                bool,
-                usize,
-            ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>>,
-            usize,
-        )] = &[(diagnostic, 1), (line_number, 5)];
+        let gutters: &[fn(
+            &Document,
+            &View,
+            &Theme,
+            &Config,
+            bool,
+        ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>>] = &[diagnostic, line_number];
 
         let mut offset = 0;
-        for (constructor, width) in gutters {
-            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+        for constructor in gutters {
+            let gutter = constructor(doc, view, theme, config, is_focused);
+            let mut current_offset = 0;
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
 
                 if let Some((text, style)) = gutter(line, selected) {
-                    surface.set_stringn(viewport.x + offset, viewport.y + i as u16, text, 5, style);
+                    current_offset = current_offset.max(text.len());
+                    surface.set_string(viewport.x + offset, viewport.y + i as u16, text, style);
                 }
             }
-            offset += *width as u16;
+            offset += current_offset as u16;
         }
     }
 
