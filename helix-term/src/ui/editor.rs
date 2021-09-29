@@ -423,6 +423,42 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
+        fn fixed_width_gutter(
+            gutter_fn: fn(
+                &Document,
+                &View,
+                &Theme,
+                &Config,
+                bool,
+            ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>>,
+            width: u16,
+        ) -> impl Fn(
+            &Document,
+            &View,
+            &Theme,
+            &Config,
+            bool,
+        ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>> {
+            move |doc: &Document, view: &View, theme: &Theme, config: &Config, is_focused: bool| {
+                let gutter_function = gutter_fn(doc, view, theme, config, is_focused);
+                Box::new(move |line, selected| {
+                    gutter_function(line, selected)
+                        .map(|(gutter, style)| (format!("{:>1$}", gutter, width as usize), style))
+                })
+            }
+        }
+
+        fn span(
+            _doc: &Document,
+            _view: &View,
+            theme: &Theme,
+            _config: &Config,
+            _is_focused: bool,
+        ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>> {
+            let linenr = theme.get("ui.linenr");
+            Box::new(move |_line, _selected| Some((String::from(" "), linenr)))
+        }
+
         fn diagnostic(
             doc: &Document,
             _view: &View,
@@ -499,13 +535,17 @@ impl EditorView {
             })
         }
 
-        let gutters: &[fn(
+        let gutters: &[&dyn Fn(
             &Document,
             &View,
             &Theme,
             &Config,
             bool,
-        ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>>] = &[diagnostic, line_number];
+        ) -> Box<dyn Fn(usize, bool) -> Option<(String, Style)>>] = &[
+            &fixed_width_gutter(diagnostic, 1),
+            &fixed_width_gutter(line_number, 5),
+            &span,
+        ];
 
         let mut offset = 0;
         for constructor in gutters {
