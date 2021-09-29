@@ -87,7 +87,9 @@ impl EditorView {
         };
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
-        Self::render_gutter(doc, view, view.area, surface, theme, is_focused, config);
+        let gutter_width =
+            Self::render_gutter(doc, view, view.area, surface, theme, is_focused, config);
+        view.gutter_width(gutter_width);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -408,7 +410,7 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         config: &helix_view::editor::Config,
-    ) {
+    ) -> u16 {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
@@ -519,6 +521,7 @@ impl EditorView {
             }
             offset += current_offset as u16;
         }
+        offset
     }
 
     pub fn render_diagnostics(

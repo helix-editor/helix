@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, cell::Cell, sync::Mutex};
 
 use crate::{graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
@@ -66,6 +66,7 @@ pub struct View {
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
+    pub gutter_width: Cell<Option<u16>>,
 }
 
 impl View {
@@ -77,13 +78,18 @@ impl View {
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
+            gutter_width: Cell::new(None),
         }
     }
 
+    pub fn gutter_width(&self, gutter_width: u16) {
+        self.gutter_width.set(Some(gutter_width));
+    }
+
     pub fn inner_area(&self) -> Rect {
-        // TODO: not ideal
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        self.area.clip_left(OFFSET).clip_bottom(1) // -1 for statusline
+        self.area
+            .clip_left(self.gutter_width.get().unwrap_or_default())
+            .clip_bottom(1) // -1 for statusline
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
