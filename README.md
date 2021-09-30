@@ -9,8 +9,6 @@
 
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 [![Matrix](https://img.shields.io/matrix/helix-community:matrix.org)](https://img.shields.io/matrix/helix-community:matrix.org)
-[![Stars](https://img.shields.io/github/stars/helix-editor/helix?color=bright%20green)](https://github.com/helix-editor/helix/stargazers)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-bright%20green)](#)
 [![License](https://img.shields.io/github/license/helix-editor/helix)](./LICENSE)
 
 The editing model is very heavily based on kakoune; during development I found
