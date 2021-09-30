@@ -44,7 +44,7 @@ Download via a package:
 
 #### macOS
 
-Helix can be installed on MacOS through homebrew:
+Helix can be installed on macOS through homebrew:
 
 ```
 brew tap helix-editor/helix
@@ -87,13 +87,13 @@ with a wrapper that sets HELIX_RUNTIME to the install directory.
 ## 📚 Documentation
 
 - [FAQ](https://github.com/helix-editor/helix/wiki/FAQ)
-- [Screenshots](https://github.com/helix-editor/helix/wiki/Themes)
+- [Themes](https://github.com/helix-editor/helix/wiki/Themes)
 - [Helix Website](https://helix-editor.com/)
   - [Documentation](https://docs.helix-editor.com/)
   - [Basic Usage](https://docs.helix-editor.com/usage.html)
   - [Keymappings](https://docs.helix-editor.com/keymap.html)
   - [Configuration](https://docs.helix-editor.com/configuration.html)
-  - [Themes](https://docs.helix-editor.com/themes.html)
+  - [Custom Themes](https://docs.helix-editor.com/themes.html)
   - [Migrating from Vim](https://docs.helix-editor.com/from-vim.html)
 
 ## 🛠️ Troubleshooting
