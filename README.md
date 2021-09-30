@@ -6,6 +6,7 @@
       <img src="screenshot2.png" width="49%">
 </div>
 
+
 [![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
 [![Matrix](https://img.shields.io/matrix/helix-community:matrix.org)](https://img.shields.io/matrix/helix-community:matrix.org)
 [![Stars](https://img.shields.io/github/stars/helix-editor/helix?color=bright%20green)](https://github.com/helix-editor/helix/stargazers)
@@ -65,10 +66,10 @@ This will install the `hx` binary to `$HOME/.cargo/bin`.
 
 > Note: Installing runtime is not required for linux packages or binaries.
 
-Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder included with binary or source, to the directory bellow.
+Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder to the directory bellow.
 
 | OS            | Path                  |
-| ------------- | --------------------- |
+|---------------|-----------------------|
 | Linux & MacOS | ~/.config/helix/      |
 | Windows       | Appdata/Roaming/Helix |
 
