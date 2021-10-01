@@ -146,6 +146,7 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
+    use helix_view::editor::Config;
     use helix_view::theme;
     use std::borrow::Cow;
     use std::cmp::Reverse;
@@ -177,6 +178,30 @@ pub mod completers {
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
+    }
+
+    pub fn setting(input: &str) -> Vec<Completion> {
+        use toml::value::Map;
+        use toml::Value;
+
+        let default_config: Map<String, Value> =
+            toml::de::from_slice(&toml::ser::to_vec(&Config::default()).unwrap()).unwrap();
+        let keys: Vec<_> = default_config
+            .keys()
+            .map(|key| ((0..), Cow::from(key.to_string())))
+            .collect();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = keys
+            .into_iter()
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        matches.into_iter().map(|(name, _)| ((0..), name)).collect()
     }
 
     pub fn filename(input: &str) -> Vec<Completion> {

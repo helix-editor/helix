@@ -22,9 +22,9 @@ pub use helix_core::register::Registers;
 use helix_core::syntax;
 use helix_core::Position;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -45,7 +45,7 @@ pub struct Config {
     pub auto_pairs: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
