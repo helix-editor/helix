@@ -33,13 +33,11 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 
 > Having trouble? Check out the [troubleshooting section.](https://github.com/helix-editor/helix/wiki/Troubleshooting)
 
-#### Binary (All Platforms)
+#### Binary
 
-Pre-build binaries are available in the [releases page](https://github.com/helix-editor/helix/releases).
+Pre-build binaries are available in the [releases page](https://github.com/helix-editor/helix/releases). 
 
-#### Linux
-
-Download via a package:
+Packages are also available:
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
@@ -77,7 +75,7 @@ For example: `~/.config/helix/runtime`
 
 #### Notes
 
-The runtime directory can be overriden via the `HELIX_RUNTIME` environment variable.
+The runtime directory can be overridden via the `HELIX_RUNTIME` environment variable.
 
 Running via cargo also doesn't require setting explicit `HELIX_RUNTIME` path, it will automatically
 detect the `runtime` directory in the project root.
