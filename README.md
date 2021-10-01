@@ -50,7 +50,7 @@ brew tap helix-editor/helix
 brew install helix
 ```
 
-#### From Source
+#### From source
 
 ```
 git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
