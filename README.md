@@ -64,7 +64,7 @@ This will install the `hx` binary to `$HOME/.cargo/bin`.
 
 > Note: Installing runtime is not required for linux packages or binaries.
 
-Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder to the directory bellow.
+Helix requires extra files for syntax highlighting and themes. To install, copy the `runtime/` folder to the directory below.
 
 | OS            | Path                  |
 |---------------|-----------------------|
