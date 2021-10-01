@@ -31,6 +31,8 @@ It's a terminal-based editor first, but I'd like to explore a custom renderer
 
 > Note: Installing from source requires extra configuration for syntax highlighting and themes to work. See [runtime](#runtime).
 
+> Having trouble? Check out the [troubleshooting section.](https://github.com/helix-editor/helix/wiki/Troubleshooting)
+
 #### Binary (All Platforms)
 
 Pre-build binaries are available in the [releases page](https://github.com/helix-editor/helix/releases).
@@ -94,27 +96,6 @@ with a wrapper that sets HELIX_RUNTIME to the install directory.
   - [Configuration](https://docs.helix-editor.com/configuration.html)
   - [Custom Themes](https://docs.helix-editor.com/themes.html)
   - [Migrating from Vim](https://docs.helix-editor.com/from-vim.html)
-
-## 🛠️ Troubleshooting
-
-#### Missing syntax highlighting and themes?
-
-Follow the steps in the [install guide](#runtime) to setup your runtime.
-
-#### Indentation not working?
-
-Only certain languages have indentation definitions at the moment. Check
-[runtime/queries/\<lang>/](./runtime/queries/) for `indents.toml`
-
-#### LSP not working?
-
-Is the LSP server (E.g. `rust-analyzer`) in your `$PATH`?
-
-Try starting helix with the `-v` flag and checking the log file (`~/.cache/helix/helix.log`) for LSP related messages.
-
-#### Failed to execute C compiler (building from source)
-
-Both a C and a C++ compiler need to be installed.
 
 ## ❤️ Contributing ️
 
