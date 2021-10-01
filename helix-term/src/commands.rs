@@ -2637,6 +2637,34 @@ pub mod cmd {
         let (view, doc) = current!(cx.editor);
 
         view.ensure_cursor_in_view(doc, line);
+        Ok(())
+    }
+
+    fn setting(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let runtime_config = &mut cx.editor.config;
+
+        if args.len() != 3 || args.get(1).map(|s| s.as_ref()) != Some("=") {
+            anyhow::bail!("Bad arguments. Usage: `:set key = field`");
+        }
+
+        match args[0].to_lowercase().as_ref() {
+            "scrolloff" => runtime_config.scrolloff = args[2].parse()?,
+            "scroll-lines" => runtime_config.scroll_lines = args[2].parse()?,
+            "mouse" => runtime_config.mouse = args[2].parse()?,
+            "line-number" => runtime_config.line_number = args[2].parse()?,
+            "middle-click_paste" => runtime_config.middle_click_paste = args[2].parse()?,
+            "smart-case" => runtime_config.smart_case = args[2].parse()?,
+            "auto-pairs" => runtime_config.auto_pairs = args[2].parse()?,
+            "auto-completion" => runtime_config.auto_completion = args[2].parse()?,
+            "completion-trigger-len" => runtime_config.completion_trigger_len = args[2].parse()?,
+            "auto-info" => runtime_config.auto_info = args[2].parse()?,
+            "true-color" => runtime_config.true_color = args[2].parse()?,
+            _ => anyhow::bail!("Unknown key `{}`.", args[0]),
+        }
 
         Ok(())
     }
@@ -2928,6 +2956,13 @@ pub mod cmd {
             doc: "Go to line number.",
             fun: goto_line_number,
             completer: None,
+        },
+        TypableCommand {
+            name: "set-option",
+            aliases: &["set"],
+            doc: "Set a config option at runtime",
+            fun: setting,
+            completer: Some(completers::setting),
         }
     ];
 

@@ -174,7 +174,9 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
+    use helix_view::editor::Config;
     use helix_view::theme;
+    use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
 
@@ -206,6 +208,34 @@ pub mod completers {
         names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
 
         names
+    }
+
+    pub fn setting(input: &str) -> Vec<Completion> {
+        static KEYS: Lazy<Vec<Completion>> = Lazy::new(|| {
+            use serde_json::{Map, Value};
+            serde_json::de::from_slice::<Map<String, Value>>(
+                &serde_json::ser::to_vec(&Config::default()).unwrap(),
+            )
+            .unwrap()
+            .keys()
+            .map(|key| ((0..), Cow::from(key.to_string())))
+            .collect()
+        });
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = KEYS
+            .iter()
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        matches
+            .into_iter()
+            .map(|(name, _)| ((0..), name.clone()))
+            .collect()
     }
 
     pub fn filename(input: &str) -> Vec<Completion> {
