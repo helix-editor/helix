@@ -1291,6 +1291,7 @@ fn global_search(cx: &mut Context) {
 
     cx.push_layer(Box::new(prompt));
 
+    let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
     let show_picker = async move {
         let all_matches: Vec<(usize, PathBuf)> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
@@ -1302,7 +1303,13 @@ fn global_search(cx: &mut Context) {
                 }
                 let picker = FilePicker::new(
                     all_matches,
-                    move |(_line_num, path)| path.to_str().unwrap().into(),
+                    move |(_line_num, path)| {
+                        path.strip_prefix(&root)
+                            .unwrap_or(path)
+                            .to_str()
+                            .unwrap()
+                            .into()
+                    },
                     move |editor: &mut Editor, (line_num, path), action| {
                         match editor.open(path.into(), action) {
                             Ok(_) => {}
