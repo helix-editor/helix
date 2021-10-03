@@ -458,6 +458,7 @@ where
                 roots: vec![],
                 comment_token: None,
                 auto_format: false,
+                completion_punctuation: vec![".".into()],
                 language_server: None,
                 indent: Some(IndentationConfiguration {
                     tab_width: 4,
