@@ -1291,6 +1291,7 @@ fn global_search(cx: &mut Context) {
 
     cx.push_layer(Box::new(prompt));
 
+    let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
     let show_picker = async move {
         let all_matches: Vec<(usize, PathBuf)> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
@@ -1302,7 +1303,13 @@ fn global_search(cx: &mut Context) {
                 }
                 let picker = FilePicker::new(
                     all_matches,
-                    move |(_line_num, path)| path.to_str().unwrap().into(),
+                    move |(_line_num, path)| {
+                        path.strip_prefix(&root)
+                            .unwrap_or(path)
+                            .to_str()
+                            .unwrap()
+                            .into()
+                    },
                     move |editor: &mut Editor, (line_num, path), action| {
                         match editor.open(path.into(), action) {
                             Ok(_) => {}
@@ -1485,7 +1492,7 @@ mod cmd {
     #[derive(Clone)]
     pub struct TypableCommand {
         pub name: &'static str,
-        pub alias: Option<&'static str>,
+        pub aliases: &'static [&'static str],
         pub doc: &'static str,
         // params, flags, helper, completer
         pub fun: fn(&mut compositor::Context, &[&str], PromptEvent) -> anyhow::Result<()>,
@@ -2085,252 +2092,252 @@ mod cmd {
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
-            alias: Some("q"),
+            aliases: &["q"],
             doc: "Close the current view.",
             fun: quit,
             completer: None,
         },
         TypableCommand {
             name: "quit!",
-            alias: Some("q!"),
+            aliases: &["q!"],
             doc: "Close the current view.",
             fun: force_quit,
             completer: None,
         },
         TypableCommand {
             name: "open",
-            alias: Some("o"),
+            aliases: &["o"],
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "write",
-            alias: Some("w"),
+            aliases: &["w"],
             doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "new",
-            alias: Some("n"),
+            aliases: &["n"],
             doc: "Create a new scratch buffer.",
             fun: new_file,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "format",
-            alias: Some("fmt"),
+            aliases: &["fmt"],
             doc: "Format the file using a formatter.",
             fun: format,
             completer: None,
         },
         TypableCommand {
             name: "indent-style",
-            alias: None,
+            aliases: &[],
             doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
             fun: set_indent_style,
             completer: None,
         },
         TypableCommand {
             name: "line-ending",
-            alias: None,
+            aliases: &[],
             doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
             fun: set_line_ending,
             completer: None,
         },
         TypableCommand {
             name: "earlier",
-            alias: Some("ear"),
+            aliases: &["ear"],
             doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
             fun: earlier,
             completer: None,
         },
         TypableCommand {
             name: "later",
-            alias: Some("lat"),
+            aliases: &["lat"],
             doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
             fun: later,
             completer: None,
         },
         TypableCommand {
             name: "write-quit",
-            alias: Some("wq"),
+            aliases: &["wq", "x"],
             doc: "Writes changes to disk and closes the current view. Accepts an optional path (:wq some/path.txt)",
             fun: write_quit,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "write-quit!",
-            alias: Some("wq!"),
+            aliases: &["wq!", "x!"],
             doc: "Writes changes to disk and closes the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
             fun: force_write_quit,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "write-all",
-            alias: Some("wa"),
+            aliases: &["wa"],
             doc: "Writes changes from all views to disk.",
             fun: write_all,
             completer: None,
         },
         TypableCommand {
             name: "write-quit-all",
-            alias: Some("wqa"),
+            aliases: &["wqa", "xa"],
             doc: "Writes changes from all views to disk and close all views.",
             fun: write_all_quit,
             completer: None,
         },
         TypableCommand {
             name: "write-quit-all!",
-            alias: Some("wqa!"),
+            aliases: &["wqa!", "xa!"],
             doc: "Writes changes from all views to disk and close all views forcefully (ignoring unsaved changes).",
             fun: force_write_all_quit,
             completer: None,
         },
         TypableCommand {
             name: "quit-all",
-            alias: Some("qa"),
+            aliases: &["qa"],
             doc: "Close all views.",
             fun: quit_all,
             completer: None,
         },
         TypableCommand {
             name: "quit-all!",
-            alias: Some("qa!"),
+            aliases: &["qa!"],
             doc: "Close all views forcefully (ignoring unsaved changes).",
             fun: force_quit_all,
             completer: None,
         },
         TypableCommand {
             name: "theme",
-            alias: None,
+            aliases: &[],
             doc: "Change the theme of current view. Requires theme name as argument (:theme <name>)",
             fun: theme,
             completer: Some(completers::theme),
         },
         TypableCommand {
             name: "clipboard-yank",
-            alias: None,
+            aliases: &[],
             doc: "Yank main selection into system clipboard.",
             fun: yank_main_selection_to_clipboard,
             completer: None,
         },
         TypableCommand {
             name: "clipboard-yank-join",
-            alias: None,
+            aliases: &[],
             doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
             fun: yank_joined_to_clipboard,
             completer: None,
         },
         TypableCommand {
             name: "primary-clipboard-yank",
-            alias: None,
+            aliases: &[],
             doc: "Yank main selection into system primary clipboard.",
             fun: yank_main_selection_to_primary_clipboard,
             completer: None,
         },
         TypableCommand {
             name: "primary-clipboard-yank-join",
-            alias: None,
+            aliases: &[],
             doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
             fun: yank_joined_to_primary_clipboard,
             completer: None,
         },
         TypableCommand {
             name: "clipboard-paste-after",
-            alias: None,
+            aliases: &[],
             doc: "Paste system clipboard after selections.",
             fun: paste_clipboard_after,
             completer: None,
         },
         TypableCommand {
             name: "clipboard-paste-before",
-            alias: None,
+            aliases: &[],
             doc: "Paste system clipboard before selections.",
             fun: paste_clipboard_before,
             completer: None,
         },
         TypableCommand {
             name: "clipboard-paste-replace",
-            alias: None,
+            aliases: &[],
             doc: "Replace selections with content of system clipboard.",
             fun: replace_selections_with_clipboard,
             completer: None,
         },
         TypableCommand {
             name: "primary-clipboard-paste-after",
-            alias: None,
+            aliases: &[],
             doc: "Paste primary clipboard after selections.",
             fun: paste_primary_clipboard_after,
             completer: None,
         },
         TypableCommand {
             name: "primary-clipboard-paste-before",
-            alias: None,
+            aliases: &[],
             doc: "Paste primary clipboard before selections.",
             fun: paste_primary_clipboard_before,
             completer: None,
         },
         TypableCommand {
             name: "primary-clipboard-paste-replace",
-            alias: None,
+            aliases: &[],
             doc: "Replace selections with content of system primary clipboard.",
             fun: replace_selections_with_primary_clipboard,
             completer: None,
         },
         TypableCommand {
             name: "show-clipboard-provider",
-            alias: None,
+            aliases: &[],
             doc: "Show clipboard provider name in status bar.",
             fun: show_clipboard_provider,
             completer: None,
         },
         TypableCommand {
             name: "change-current-directory",
-            alias: Some("cd"),
+            aliases: &["cd"],
             doc: "Change the current working directory (:cd <dir>).",
             fun: change_current_directory,
             completer: Some(completers::directory),
         },
         TypableCommand {
             name: "show-directory",
-            alias: Some("pwd"),
+            aliases: &["pwd"],
             doc: "Show the current working directory.",
             fun: show_current_directory,
             completer: None,
         },
         TypableCommand {
             name: "encoding",
-            alias: None,
+            aliases: &[],
             doc: "Set encoding based on `https://encoding.spec.whatwg.org`",
             fun: set_encoding,
             completer: None,
         },
         TypableCommand {
             name: "reload",
-            alias: None,
+            aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
             completer: None,
         },
         TypableCommand {
             name: "tree-sitter-scopes",
-            alias: None,
+            aliases: &[],
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
             completer: None,
         },
         TypableCommand {
             name: "vsplit",
-            alias: Some("vs"),
+            aliases: &["vs"],
             doc: "Open the file in a vertical split.",
             fun: vsplit,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "hsplit",
-            alias: Some("sp"),
+            aliases: &["hs", "sp"],
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
@@ -2338,16 +2345,13 @@ mod cmd {
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
-        let mut map = HashMap::new();
-
-        for cmd in TYPABLE_COMMAND_LIST {
-            map.insert(cmd.name, cmd);
-            if let Some(alias) = cmd.alias {
-                map.insert(alias, cmd);
-            }
-        }
-
-        map
+        TYPABLE_COMMAND_LIST
+            .iter()
+            .flat_map(|cmd| {
+                std::iter::once((cmd.name, cmd))
+                    .chain(cmd.aliases.iter().map(move |&alias| (alias, cmd)))
+            })
+            .collect()
     });
 }
 
