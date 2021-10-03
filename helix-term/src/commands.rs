@@ -2340,11 +2340,10 @@ mod cmd {
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
         TYPABLE_COMMAND_LIST
             .into_iter()
-            .map(|cmd| {
+            .flat_map(|cmd| {
                 std::iter::once((cmd.name, cmd))
                     .chain(cmd.aliases.into_iter().map(move |&alias| (alias, cmd)))
             })
-            .flatten()
             .collect()
     });
 }
