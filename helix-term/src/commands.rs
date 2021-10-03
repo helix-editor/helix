@@ -4145,7 +4145,7 @@ fn completion(cx: &mut Context) {
                 None => Vec::new(),
             };
 
-            if filter_word.len() > 0 {
+            if !filter_word.is_empty() {
                 items = items
                     .into_iter()
                     .filter(|item| match item.filter_text.as_ref() {
