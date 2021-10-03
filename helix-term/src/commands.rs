@@ -12,8 +12,8 @@ use helix_core::{
 };
 
 use helix_view::{
-    clipboard::ClipboardType, document::Mode, editor::Action, input::KeyEvent, keyboard::KeyCode,
-    view::View, Document, DocumentId, Editor, ViewId,
+    clipboard::ClipboardType, document::Mode, editor::Action, editor::CompleteCtx, input::KeyEvent,
+    keyboard::KeyCode, view::View, Document, DocumentId, Editor, ViewId,
 };
 
 use anyhow::{anyhow, bail, Context as _};
@@ -3299,31 +3299,49 @@ pub mod insert {
     pub type PostHook = fn(&mut Context, char);
 
     fn completion(cx: &mut Context, ch: char) {
+        use helix_core::chars::char_is_word;
         // if ch matches completion char, trigger completion
-        let doc = doc_mut!(cx.editor);
-        let language_server = match doc.language_server() {
-            Some(language_server) => language_server,
+        //let doc = doc_mut!(cx.editor);
+        let (view, doc) = current!(cx.editor);
+
+        let text = match doc.text().get_slice(..) {
+            Some(text) => text,
             None => return,
         };
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        if char_is_word(ch) {
+            if cx.editor.complete_state.is_some() {
+                return;
+            }
+            let len = cx.editor.config.completion_trigger_len;
+            if len == 0 || cursor < len {
+                return;
+            }
+            let text = text.slice(cursor - len..cursor).chars();
+            for ch in text {
+                if !char_is_word(ch) {
+                    return;
+                }
+            }
+        } else {
+            let pre_char = match cursor {
+                0 => return,
+                1 => ch.to_string(),
+                2 => text.slice(cursor - 2..cursor).to_string(),
+                _ => text.slice(cursor - 3..cursor).to_string(),
+            };
+            let is_trigger = doc
+                .language_config()
+                .map(|config| &config.completion_punctuation)
+                .map(|puns| puns.iter().any(|pun| pre_char.ends_with(pun)))
+                .unwrap_or(false);
 
-        let capabilities = language_server.capabilities();
-
-        if let lsp::ServerCapabilities {
-            completion_provider:
-                Some(lsp::CompletionOptions {
-                    trigger_characters: Some(triggers),
-                    ..
-                }),
-            ..
-        } = capabilities
-        {
-            // TODO: what if trigger is multiple chars long
-            let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
-
-            if is_trigger {
-                super::completion(cx);
+            if !is_trigger {
+                return;
             }
         }
+
+        super::completion(cx);
     }
 
     fn signature_help(cx: &mut Context, ch: char) {
@@ -4095,7 +4113,10 @@ fn completion(cx: &mut Context) {
 
     let future = language_server.completion(doc.identifier(), pos, None);
 
-    let trigger_offset = cursor;
+    // let trigger_offset = cursor;
+    let comp_state = CompleteCtx::new(doc.id(), doc.version(), cursor);
+    cx.editor.complete_state = Some(comp_state.clone());
+    let filter_word = find_last_word_before_pos(doc.text(), cursor);
 
     cx.callback(
         future,
@@ -4108,7 +4129,13 @@ fn completion(cx: &mut Context) {
                 return;
             }
 
-            let items = match response {
+            if let Some(cur_state) = &editor.complete_state {
+                if *cur_state != comp_state {
+                    return;
+                }
+            }
+
+            let mut items = match response {
                 Some(lsp::CompletionResponse::Array(items)) => items,
                 // TODO: do something with is_incomplete
                 Some(lsp::CompletionResponse::List(lsp::CompletionList {
@@ -4118,19 +4145,45 @@ fn completion(cx: &mut Context) {
                 None => Vec::new(),
             };
 
+            if filter_word.len() > 0 {
+                items = items
+                    .into_iter()
+                    .filter(|item| match item.filter_text.as_ref() {
+                        Some(filter) => filter.starts_with(&filter_word),
+                        None => item.label.starts_with(&filter_word),
+                    })
+                    .collect();
+            }
+
             if items.is_empty() {
                 editor.set_error("No completion available".to_string());
                 return;
             }
+
             let size = compositor.size();
             let ui = compositor
                 .find(std::any::type_name::<ui::EditorView>())
                 .unwrap();
             if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                ui.set_completion(items, offset_encoding, trigger_offset, size);
+                ui.set_completion(items, offset_encoding, comp_state.pos, size);
             };
         },
     );
+
+    pub fn find_last_word_before_pos(text: &Rope, pos: usize) -> String {
+        let line = match text.slice(..pos).lines().last() {
+            None => return "".into(),
+            Some(line) => line,
+        };
+
+        line.chars()
+            .enumerate()
+            .filter(|(_, ch)| !helix_core::chars::char_is_word(*ch))
+            .map(|(index, _)| index)
+            .last()
+            .map(|index| line.slice((index + 1)..).to_string())
+            .unwrap_or_else(|| line.to_string())
+    }
 }
 
 fn hover(cx: &mut Context) {

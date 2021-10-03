@@ -43,6 +43,8 @@ pub struct Config {
     pub smart_case: bool,
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
     pub auto_pairs: bool,
+    /// completion config
+    pub completion_trigger_len: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -70,6 +72,24 @@ impl Default for Config {
             middle_click_paste: true,
             smart_case: true,
             auto_pairs: true,
+            completion_trigger_len: 2,
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Clone)]
+pub struct CompleteCtx {
+    pub doc_id: DocumentId,
+    pub version: i32,
+    pub pos: usize,
+}
+
+impl CompleteCtx {
+    pub fn new(doc_id: DocumentId, version: i32, pos: usize) -> Self {
+        CompleteCtx {
+            doc_id,
+            version,
+            pos,
         }
     }
 }
@@ -84,6 +104,7 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
+    pub complete_state: Option<CompleteCtx>,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -124,6 +145,7 @@ impl Editor {
             theme_loader: themes,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
+            complete_state: None,
             status_msg: None,
             config,
         }

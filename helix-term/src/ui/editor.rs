@@ -935,6 +935,7 @@ impl Component for EditorView {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.completion = None;
+                                        cx.editor.complete_state = None;
                                     }
                                 }
                             }
@@ -948,6 +949,7 @@ impl Component for EditorView {
                                     completion.update(&mut cxt);
                                     if completion.is_empty() {
                                         self.completion = None;
+                                        cxt.editor.complete_state = None;
                                     }
                                 }
                             }
@@ -985,10 +987,12 @@ impl Component for EditorView {
                                 _ => unimplemented!(),
                             };
                         self.last_insert.1.clear();
+                        cx.editor.complete_state = None;
                     }
                     (Mode::Insert, Mode::Normal) => {
                         // if exiting insert mode, remove completion
                         self.completion = None;
+                        cx.editor.complete_state = None;
                     }
                     _ => (),
                 }
@@ -1069,7 +1073,7 @@ impl Component for EditorView {
             );
         }
 
-        if let Some(completion) = self.completion.as_mut() {
+        if let Some(completion) = &mut self.completion {
             completion.render(area, surface, cx);
         }
     }

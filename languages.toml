@@ -19,6 +19,7 @@ config = """
 
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
+completion-punctuation = [".", "::"]
 
 [[language]]
 name = "toml"
@@ -70,6 +71,7 @@ comment-token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
+completion-punctuation = [".", "->"]
 
 [[language]]
 name = "cpp"
@@ -81,6 +83,7 @@ comment-token = "//"
 
 language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
+completion-punctuation = [".", "::", "->"]
 
 [[language]]
 name = "go"
@@ -179,6 +182,7 @@ comment-token = "#"
 
 language-server = { command = "solargraph", args = ["stdio"] }
 indent = { tab-width = 2, unit = "  " }
+completion-punctuation = [".", "::"]
 
 [[language]]
 name = "bash"
@@ -199,6 +203,7 @@ file-types = ["php"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
+completion-punctuation = [".", "->"]
 
 [[language]]
 name = "latex"
@@ -276,6 +281,7 @@ file-types = ["lua"]
 roots = []
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
+completion-punctuation = [".", ":"]
 
 [[language]]
 name = "svelte"
