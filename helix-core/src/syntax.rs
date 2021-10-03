@@ -30,6 +30,26 @@ where
         .transpose()
 }
 
+fn deserialize_lsp_config<'de, D>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum TomlOrEmbeddedJson {
+        EmbeddedJson(String),
+        Toml(toml::Value),
+    }
+    Option::<TomlOrEmbeddedJson>::deserialize(deserializer)?
+        .map(|toml_or_embedded_json| match toml_or_embedded_json {
+            TomlOrEmbeddedJson::EmbeddedJson(embedded_json) => {
+                serde_json::from_slice(embedded_json.as_bytes()).map_err(serde::de::Error::custom)
+            }
+            TomlOrEmbeddedJson::Toml(toml) => toml.try_into().map_err(serde::de::Error::custom),
+        })
+        .transpose()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -45,7 +65,9 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
-    pub config: Option<String>,
+
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub config: Option<serde_json::Value>,
 
     #[serde(default)]
     pub auto_format: bool,
