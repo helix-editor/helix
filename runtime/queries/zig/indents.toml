@@ -1,8 +1,9 @@
 indent = [
- "block",
- "match_block",
- "arguments",
- "parameters"
+ "Block",
+ "BlockExpr",
+ "ContainerDecl",
+ "SwitchExpr",
+ "InitList"
 ]
 
 outdent = [
