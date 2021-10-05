@@ -256,7 +256,7 @@ impl Application {
         // TODO: if completion window was closed with enter (and no selection) we shouldn't retrigger
 
         let mut cx = Context {
-            selected_register: helix_view::RegisterSelection::default(),
+            register: None,
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             count: None,
