@@ -30,7 +30,7 @@ regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 
-similar = "2.0"
+similar = "2.1"
 
 etcetera = "0.3"
 
