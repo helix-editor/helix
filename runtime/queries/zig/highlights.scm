@@ -4,82 +4,89 @@
   (line_comment)
 ] @comment
 
-; field in top level decl, and in struct, union...
-(ContainerField
-  (IDENTIFIER) @property
-  (SuffixExpr (IDENTIFIER) @type)?
-)
+[
+  variable: (IDENTIFIER)
+  variable_type_function: (IDENTIFIER)
+] @variable
 
-; error.OutOfMemory;
-(SuffixExpr
-  "error"
-  "."
-  (IDENTIFIER) @constant
-)
+parameter: (IDENTIFIER) @variable.parameter
 
-; var x: IDENTIFIER
-type: (SuffixExpr (IDENTIFIER) @type)
+[
+  field_member: (IDENTIFIER)
+  field_access: (IDENTIFIER)
+] @variable.property
 
-; IDENTIFIER{}
-constructor: (SuffixExpr (IDENTIFIER) @constructor)
-
-; fields
-(FieldInit (IDENTIFIER) @property)
-
-; foo.bar.baz.function() calls
+;; assume TitleCase is a type
 (
-  (SuffixOp
-    (IDENTIFIER) @function
-  )
-  .
-  (FnCallArguments)
-)
-
-; function() calls
-(
-  (
-    (IDENTIFIER) @function
-  )
-  .
-  (FnCallArguments)
-)
-
-; functionn decl
-(FnProto
-  (IDENTIFIER) @function
-  (SuffixExpr (IDENTIFIER) @type)?
-  ("!")? @function.macro
-)
-
-; function parameters and types
-(ParamDecl
-  (IDENTIFIER) @variable.parameter
-  ":"
   [
-    (ParamType (SuffixExpr (IDENTIFIER) @type))
-    (ParamType)
-  ]
+    variable_type_function: (IDENTIFIER)
+    field_access: (IDENTIFIER)
+    parameter: (IDENTIFIER)
+  ] @type
+  (#match? @type "^[A-Z]([a-z]+[A-Za-z0-9]*)*$")
+)
+;; assume camelCase is a function
+(
+  [
+    variable_type_function: (IDENTIFIER)
+    field_access: (IDENTIFIER)
+    parameter: (IDENTIFIER)
+  ] @function
+  (#match? @function "^[a-z]+([A-Z][a-z0-9]*)+$")
 )
 
-; switch
-(SwitchItem
-  (SuffixExpr
-    "."
-    .
-    (IDENTIFIER) @constant
-  )
+;; assume all CAPS_1 is a constant
+(
+  [
+    variable_type_function: (IDENTIFIER)
+    field_access: (IDENTIFIER)
+  ] @constant
+  (#match? @constant "^[A-Z][A-Z_0-9]+$")
 )
+
+[
+  function_call: (IDENTIFIER)
+  function: (IDENTIFIER)
+] @function
+
+exception: "!" @function.macro
+
+(
+  (IDENTIFIER) @variable.builtin
+  (#eq? @variable.builtin "_")
+)
+
+(PtrTypeStart "c" @variable.builtin)
+
+(
+  (ContainerDeclType
+    [
+      (ErrorUnionExpr)
+      "enum"
+    ]
+  )
+  (ContainerField (IDENTIFIER) @constant)
+)
+
+field_constant: (IDENTIFIER) @constant
+
+(BUILTINIDENTIFIER) @function.builtin
+
+((BUILTINIDENTIFIER) @keyword.control.import
+  (#any-of? @keyword.control.import "@import" "@cImport"))
 
 (INTEGER) @number
 
 (FLOAT) @number
 
 [
-  (STRINGLITERAL)
+  (LINESTRING)
   (STRINGLITERALSINGLE)
 ] @string
 
-(CHAR_LITERAL) @string
+(CHAR_LITERAL) @constant.character
+(EscapeSequence) @escape
+(FormatSequence) @string.special
 
 [
   "allowzero"
@@ -95,6 +102,9 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
 [
   "true"
   "false"
+] @constant.builtin.boolean
+
+[
   "undefined"
   "unreachable"
   "null"
@@ -104,21 +114,18 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   "else"
   "if"
   "switch"
+] @keyword.control.conditional
+
+[
   "for"
   "while"
-  "return"
-  "break"
-  "continue"
-  "defer"
-  "errdefer"
-  "async"
-  "nosuspend"
-  "await"
-  "suspend"
-  "resume"
-  "try"
-  "catch"
-] @keyword.control
+] @keyword.control.repeat
+
+[
+  "or"
+  "and"
+  "orelse"
+] @operator
 
 [
   "struct"
@@ -127,20 +134,47 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   "error"
   "packed"
   "opaque"
-  "test"
-  "usingnamespace"
-  "export"
-  "extern"
-  "const"
-  "var"
-  "comptime"
-  "threadlocal"
 ] @keyword
 
 [
-  "pub"
+  "try"
+  "error"
+  "catch"
+] @function.macro
+
+; VarDecl
+[
+  "comptime"
+  "threadlocal"
   "fn"
 ] @keyword.function
+
+[
+  "const"
+  "var"
+  "test"
+  "pub"
+  "usingnamespace"
+] @keyword
+
+[
+  "return"
+  "break"
+  "continue"
+] @keyword.control
+
+; Macro
+[
+  "defer"
+  "errdefer"
+  "async"
+  "nosuspend"
+  "await"
+  "suspend"
+  "resume"
+  "export"
+  "extern"
+] @function.macro
 
 ; PrecProc
 [
@@ -149,10 +183,9 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   "asm"
   "callconv"
   "noalias"
-] @attribute
+] @keyword.directive
 
 [
-  (BUILTINIDENTIFIER)
   "linksection"
   "align"
 ] @function.builtin
@@ -164,9 +197,6 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   (AdditionOp)
   (MultiplyOp)
   (PrefixOp)
-  "or"
-  "and"
-  "orelse"
   "*"
   "**"
   "->"
@@ -174,6 +204,7 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   ".?"
   ".*"
   "="
+  "?"
 ] @operator
 
 [
@@ -186,6 +217,9 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
 [
   ".."
   "..."
+] @punctuation.special
+
+[
   "["
   "]"
   "("
@@ -195,4 +229,7 @@ constructor: (SuffixExpr (IDENTIFIER) @constructor)
   (Payload "|")
   (PtrPayload "|")
   (PtrIndexPayload "|")
-] @punctuation
+] @punctuation.bracket
+
+; Error
+(ERROR) @keyword
