@@ -30,10 +30,6 @@ where
         .transpose()
 }
 
-fn default_completion_punctuation() -> Vec<String> {
-    vec![".".into()]
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -53,9 +49,7 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
-
-    #[serde(default = "default_completion_punctuation")]
-    pub completion_punctuation: Vec<String>,
+    pub completion_punctuation: Option<Vec<String>>,
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]

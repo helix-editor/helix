@@ -3328,6 +3328,30 @@ pub mod insert {
                 }
             }
         } else {
+            // let language_server = match doc.language_server() {
+            //     Some(language_server) => language_server,
+            //     None => return,
+            // };
+
+            // let capabilities = language_server.capabilities();
+
+            // if let lsp::ServerCapabilities {
+            //     completion_provider:
+            //         Some(lsp::CompletionOptions {
+            //             trigger_characters: Some(triggers),
+            //             ..
+            //         }),
+            //     ..
+            // } = capabilities
+            // {
+            //     // TODO: what if trigger is multiple chars long
+            //     let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
+
+            //     if is_trigger {
+            //         super::completion(cx);
+            //     }
+            // }
+
             let pre_char = match cursor {
                 0 => return,
                 1 => ch.to_string(),
@@ -3337,7 +3361,19 @@ pub mod insert {
             let is_trigger = doc
                 .language_config()
                 .map(|config| &config.completion_punctuation)
-                .map(|puns| puns.iter().any(|pun| pre_char.ends_with(pun)))
+                .map(|puns| match puns {
+                    Some(puns) => puns.iter().any(|pun| pre_char.ends_with(pun)),
+                    None => false,
+                })
+                .or_else(|| {
+                    doc.language_server().and_then(|cap| {
+                        cap.capabilities()
+                            .completion_provider
+                            .as_ref()
+                            .and_then(|cp| cp.trigger_characters.as_ref())
+                            .map(|puns| puns.iter().any(|pun| pre_char.ends_with(pun)))
+                    })
+                })
                 .unwrap_or(false);
 
             if !is_trigger {
