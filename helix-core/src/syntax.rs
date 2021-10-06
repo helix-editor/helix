@@ -211,14 +211,12 @@ impl LanguageConfiguration {
 
     pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
         self.textobject_query
-            .get_or_init(|| {
-                let language = self.language_id.to_ascii_lowercase();
-                let query = read_query(&language, "textobjects.scm");
-                self.highlight_config
-                    .get()
-                    .and_then(|config| config.as_ref().map(|c| c.language))
-                    .and_then(move |lang| Query::new(lang, &query).ok())
-                    .map(|query| TextObjectQuery { query })
+            .get_or_init(|| -> Option<TextObjectQuery> {
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "textobjects.scm");
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                let query = Query::new(lang, &query_text).ok()?;
+                Some(TextObjectQuery { query })
             })
             .as_ref()
     }
