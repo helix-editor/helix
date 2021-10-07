@@ -730,6 +730,12 @@ impl EditorView {
     ) {
         let mut completion =
             Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
+
+        if completion.is_empty() {
+            // skip if we got no completion results
+            return;
+        }
+
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
@@ -939,6 +945,7 @@ impl Component for EditorView {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.completion = None;
+                                        cxt.editor.clear_idle_timer(); // don't retrigger
                                     }
                                 }
                             }
@@ -952,6 +959,7 @@ impl Component for EditorView {
                                     completion.update(&mut cxt);
                                     if completion.is_empty() {
                                         self.completion = None;
+                                        cxt.editor.clear_idle_timer(); // don't retrigger
                                     }
                                 }
                             }
