@@ -315,3 +315,15 @@ comment-token = "//"
 
 language-server = { command = "zls" }
 indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "prolog"
+scope = "source.prolog"
+roots = []
+file-types = ["pl", "prolog"]
+comment-token = "%"
+
+language-server = { command = "swipl", args = [
+    "-g", "use_module(library(lsp_server))",
+    "-g", "lsp_server:main",
+    "-t", "halt", "--", "stdio"] }
