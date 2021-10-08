@@ -2098,20 +2098,9 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        use toml::value::Map;
-        use toml::Value;
-
-        let mut current_conf: Map<String, Value> =
-            toml::de::from_slice(&toml::ser::to_vec(&cx.editor.config)?)?;
-        let conf = toml::from_str::<Map<String, Value>>(&args.join(" "))?;
-        for (key, value) in conf {
-            if let Some(current_value) = current_conf.get_mut(&key) {
-                *current_value = value;
-            } else {
-                bail!("Key `{}` does not exists", key)
-            }
-        }
-        cx.editor.config = toml::de::from_slice(&toml::ser::to_vec(&current_conf)?)?;
+        let current_conf = std::mem::take(&mut cx.editor.config);
+        let conf = toml::from_str(&args.join(" "))?;
+        cx.editor.config = current_conf.apply_incomplete_config(conf);
         Ok(())
     }
 

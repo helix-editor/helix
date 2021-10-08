@@ -146,7 +146,7 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
-    use helix_view::editor::{Config, Incomplete};
+    use helix_view::editor::{Complete, Config, Incomplete};
     use helix_view::theme;
     use std::borrow::Cow;
     use std::cmp::Reverse;
@@ -185,13 +185,15 @@ pub mod completers {
         use toml::value::Map;
         use toml::Value;
 
-        let default_config: Map<String, Value> =
-            toml::de::from_slice(&toml::ser::to_vec(&Config::<Incomplete>::default()).unwrap())
-                .unwrap();
+        /*
+        let default_config = toml::ser::to_string(&Config::<Complete>::default()).unwrap();
+        let default_config: Map<String, Value> = toml::de::from_str(&default_config).unwrap();
         let keys: Vec<_> = default_config
             .keys()
             .map(|key| ((0..), Cow::from(key.to_string())))
             .collect();
+        */
+        let keys = vec![((0..), Cow::from(String::from("Hello")))];
 
         let matcher = Matcher::default();
 
