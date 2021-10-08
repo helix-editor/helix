@@ -147,9 +147,12 @@ pub mod completers {
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
 
+    use helix_view::editor::{Complete, Config};
     use helix_view::theme;
     use std::borrow::Cow;
     use std::cmp::Reverse;
+    use toml::value::Map;
+    use toml::Value;
 
     pub type Completer = fn(&str) -> Vec<Completion>;
 
@@ -181,17 +184,13 @@ pub mod completers {
     }
 
     pub fn setting(input: &str) -> Vec<Completion> {
-        // TODO: TAMO
-
-        /*
-        let default_config = toml::ser::to_string(&Config::<Complete>::default()).unwrap();
+        let default_config = toml::ser::to_string(&Config::<Complete>::default());
+        let default_config = default_config.unwrap();
         let default_config: Map<String, Value> = toml::de::from_str(&default_config).unwrap();
         let keys: Vec<_> = default_config
             .keys()
             .map(|key| ((0..), Cow::from(key.to_string())))
             .collect();
-        */
-        let keys = vec![((0..), Cow::from(String::from("Hello")))];
 
         let matcher = Matcher::default();
 

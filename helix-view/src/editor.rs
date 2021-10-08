@@ -50,6 +50,7 @@ pub struct Config<State> {
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
     auto_pairs: Option<bool>,
 
+    #[serde(skip)]
     state: PhantomData<State>,
 }
 
