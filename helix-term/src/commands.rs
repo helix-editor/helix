@@ -539,7 +539,11 @@ fn goto_window(cx: &mut Context, align: Align) {
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
-    let scrolloff = cx.editor.config.scrolloff.min(height.saturating_sub(1) / 2);
+    let scrolloff = *cx
+        .editor
+        .config
+        .scrolloff()
+        .min(&(height.saturating_sub(1) / 2));
 
     let last_line = view.last_line(doc);
 
@@ -936,7 +940,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 
     let height = view.inner_area().height;
 
-    let scrolloff = cx.editor.config.scrolloff.min(height as usize / 2);
+    let scrolloff = *cx.editor.config.scrolloff().min(&(height as usize / 2));
 
     view.offset.row = match direction {
         Forward => view.offset.row + offset,
@@ -1186,7 +1190,7 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
     if let Some(query) = registers.read('/') {
         let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
-        let case_insensitive = if cx.editor.config.smart_case {
+        let case_insensitive = if *cx.editor.config.smart_case() {
             !query.chars().any(char::is_uppercase)
         } else {
             false
@@ -1227,7 +1231,7 @@ fn search_selection(cx: &mut Context) {
 fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
-    let smart_case = cx.editor.config.smart_case;
+    let smart_case = *cx.editor.config.smart_case();
     let prompt = ui::regex_prompt(
         cx,
         "global search:".into(),
@@ -3416,7 +3420,7 @@ pub mod insert {
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current!(cx.editor);
 
-        let hooks: &[Hook] = match cx.editor.config.auto_pairs {
+        let hooks: &[Hook] = match cx.editor.config.auto_pairs() {
             true => &[auto_pairs::hook, insert],
             false => &[insert],
         };
@@ -4570,7 +4574,7 @@ fn shell_keep_pipe(cx: &mut Context) {
         Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let shell = &cx.editor.config.shell;
+            let shell = &cx.editor.config.shell();
             if event != PromptEvent::Validate {
                 return;
             }
@@ -4667,7 +4671,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
         Some('|'),
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let shell = &cx.editor.config.shell;
+            let shell = &cx.editor.config.shell();
             if event != PromptEvent::Validate {
                 return;
             }

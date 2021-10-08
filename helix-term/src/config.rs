@@ -1,3 +1,4 @@
+use helix_view::editor::Incomplete;
 use serde::Deserialize;
 
 use crate::keymap::Keymaps;
@@ -10,7 +11,7 @@ pub struct Config {
     #[serde(default)]
     pub keys: Keymaps,
     #[serde(default)]
-    pub editor: helix_view::editor::Config,
+    pub editor: helix_view::editor::Config<Incomplete>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]

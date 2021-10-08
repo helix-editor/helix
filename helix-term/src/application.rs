@@ -1,6 +1,6 @@
 use helix_core::{merge_toml_values, syntax};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{theme, Editor};
+use helix_view::{editor::Complete, theme, Editor};
 
 use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
@@ -87,11 +87,13 @@ impl Application {
             .expect("Could not parse merged (built-in + user) languages.toml");
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
+        let base_config = helix_view::editor::Config::default();
+
         let mut editor = Editor::new(
             size,
             theme_loader.clone(),
             syn_loader.clone(),
-            config.editor.clone(),
+            base_config.apply_incomplete_config(config.editor.clone()),
         );
 
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
@@ -500,7 +502,7 @@ impl Application {
         terminal::enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, terminal::EnterAlternateScreen)?;
-        if self.config.editor.mouse {
+        if *self.config.editor.mouse().unwrap_or(&false) {
             execute!(stdout, EnableMouseCapture)?;
         }
         Ok(())

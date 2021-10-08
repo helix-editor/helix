@@ -17,7 +17,7 @@ use helix_core::{
 };
 use helix_view::{
     document::Mode,
-    editor::LineNumber,
+    editor::{Complete, LineNumber},
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -70,7 +70,7 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
         loader: &syntax::Loader,
-        config: &helix_view::editor::Config,
+        config: &helix_view::editor::Config<Complete>,
     ) {
         let inner = view.inner_area();
         let area = view.area;
@@ -407,7 +407,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        config: &helix_view::editor::Config,
+        config: &helix_view::editor::Config<Complete>,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -459,7 +459,7 @@ impl EditorView {
             let text = if line == last_line && !draw_last {
                 "    ~".into()
             } else {
-                let line = match config.line_number {
+                let line = match config.line_number() {
                     LineNumber::Absolute => line + 1,
                     LineNumber::Relative => {
                         if current_line == line {
@@ -816,7 +816,7 @@ impl EditorView {
                     None => return EventResult::Ignored,
                 }
 
-                let offset = cxt.editor.config.scroll_lines.abs() as usize;
+                let offset = cxt.editor.config.scroll_lines().abs() as usize;
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
@@ -828,7 +828,7 @@ impl EditorView {
                 kind: MouseEventKind::Up(MouseButton::Left),
                 ..
             } => {
-                if !cxt.editor.config.middle_click_paste {
+                if !cxt.editor.config.middle_click_paste() {
                     return EventResult::Ignored;
                 }
 
@@ -852,7 +852,7 @@ impl EditorView {
                 ..
             } => {
                 let editor = &mut cxt.editor;
-                if !editor.config.middle_click_paste {
+                if !editor.config.middle_click_paste() {
                     return EventResult::Ignored;
                 }
 
@@ -967,7 +967,7 @@ impl Component for EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
-                view.ensure_cursor_in_view(doc, cxt.editor.config.scrolloff);
+                view.ensure_cursor_in_view(doc, *cxt.editor.config.scrolloff());
 
                 // mode transitions
                 match (mode, doc.mode()) {

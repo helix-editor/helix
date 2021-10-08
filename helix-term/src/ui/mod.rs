@@ -62,7 +62,7 @@ pub fn regex_prompt(
                         return;
                     }
 
-                    let case_insensitive = if cx.editor.config.smart_case {
+                    let case_insensitive = if *cx.editor.config.smart_case() {
                         !input.chars().any(char::is_uppercase)
                     } else {
                         false
@@ -80,7 +80,7 @@ pub fn regex_prompt(
 
                             fun(view, doc, regex, event);
 
-                            view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
+                            view.ensure_cursor_in_view(doc, *cx.editor.config.scrolloff());
                         }
                         Err(_err) => (), // TODO: mark command line as error
                     }
@@ -146,7 +146,7 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
-    use helix_view::editor::Config;
+    use helix_view::editor::{Config, Incomplete};
     use helix_view::theme;
     use std::borrow::Cow;
     use std::cmp::Reverse;
@@ -181,11 +181,13 @@ pub mod completers {
     }
 
     pub fn setting(input: &str) -> Vec<Completion> {
+        // TODO: TAMO
         use toml::value::Map;
         use toml::Value;
 
         let default_config: Map<String, Value> =
-            toml::de::from_slice(&toml::ser::to_vec(&Config::default()).unwrap()).unwrap();
+            toml::de::from_slice(&toml::ser::to_vec(&Config::<Incomplete>::default()).unwrap())
+                .unwrap();
         let keys: Vec<_> = default_config
             .keys()
             .map(|key| ((0..), Cow::from(key.to_string())))

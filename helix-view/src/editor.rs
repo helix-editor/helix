@@ -8,6 +8,7 @@ use crate::{
 
 use futures_util::future;
 use std::{
+    marker::PhantomData,
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -24,25 +25,41 @@ use helix_core::Position;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub struct Complete;
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub struct Incomplete;
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default)]
-pub struct Config {
+pub struct Config<State> {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
-    pub scrolloff: usize,
+    scrolloff: Option<usize>,
     /// Number of lines to scroll at once. Defaults to 3
-    pub scroll_lines: isize,
+    scroll_lines: Option<isize>,
     /// Mouse support. Defaults to true.
-    pub mouse: bool,
+    mouse: Option<bool>,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
-    pub shell: Vec<String>,
+    shell: Option<Vec<String>>,
     /// Line number mode.
-    pub line_number: LineNumber,
+    line_number: Option<LineNumber>,
     /// Middle click paste support. Defaults to true
-    pub middle_click_paste: bool,
-    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
-    pub smart_case: bool,
+    middle_click_paste: Option<bool>,
+    /// Smart case: Option<Case insensitive searching unless pattern contains upper case characters. Defaults to true.
+    smart_case: Option<bool>,
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
-    pub auto_pairs: bool,
+    auto_pairs: Option<bool>,
+
+    state: PhantomData<State>,
+}
+
+impl<T> std::fmt::Debug for Config<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("scrolloff", &self.scrolloff)
+            .field("scroll_lines", &self.scroll_lines)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -55,22 +72,161 @@ pub enum LineNumber {
     Relative,
 }
 
-impl Default for Config {
+impl<T> Default for Config<T> {
     fn default() -> Self {
         Self {
-            scrolloff: 5,
-            scroll_lines: 3,
-            mouse: true,
+            scrolloff: Some(5),
+            scroll_lines: Some(3),
+            mouse: Some(true),
             shell: if cfg!(windows) {
-                vec!["cmd".to_owned(), "/C".to_owned()]
+                Some(vec!["cmd".to_owned(), "/C".to_owned()])
             } else {
-                vec!["sh".to_owned(), "-c".to_owned()]
+                Some(vec!["sh".to_owned(), "-c".to_owned()])
             },
-            line_number: LineNumber::Absolute,
-            middle_click_paste: true,
-            smart_case: true,
-            auto_pairs: true,
+            line_number: Some(LineNumber::Absolute),
+            middle_click_paste: Some(true),
+            smart_case: Some(true),
+            auto_pairs: Some(true),
+
+            state: Default::default(),
         }
+    }
+}
+
+/// A complete config means all of it's fields must contain something.
+/// This allow us to unwrap all of its fields safely.
+impl Config<Complete> {
+    pub fn scrolloff(&self) -> &usize {
+        self.scrolloff.as_ref().unwrap()
+    }
+    pub fn scrolloff_mut(&mut self) -> &mut usize {
+        self.scrolloff.as_mut().unwrap()
+    }
+
+    pub fn scroll_lines(&self) -> &isize {
+        self.scroll_lines.as_ref().unwrap()
+    }
+    pub fn scroll_lines_mut(&mut self) -> &mut isize {
+        self.scroll_lines.as_mut().unwrap()
+    }
+
+    pub fn mouse(&self) -> &bool {
+        self.mouse.as_ref().unwrap()
+    }
+    pub fn mouse_mut(&mut self) -> &mut bool {
+        self.mouse.as_mut().unwrap()
+    }
+
+    pub fn shell(&self) -> &Vec<String> {
+        self.shell.as_ref().unwrap()
+    }
+    pub fn shell_mut(&mut self) -> &mut Vec<String> {
+        self.shell.as_mut().unwrap()
+    }
+
+    pub fn line_number(&self) -> &LineNumber {
+        self.line_number.as_ref().unwrap()
+    }
+    pub fn line_number_mut(&mut self) -> &mut LineNumber {
+        self.line_number.as_mut().unwrap()
+    }
+
+    pub fn middle_click_paste(&self) -> &bool {
+        self.middle_click_paste.as_ref().unwrap()
+    }
+    pub fn middle_click_paste_mut(&mut self) -> &mut bool {
+        self.middle_click_paste.as_mut().unwrap()
+    }
+
+    pub fn smart_case(&self) -> &bool {
+        self.smart_case.as_ref().unwrap()
+    }
+    pub fn smart_case_mut(&mut self) -> &mut bool {
+        self.smart_case.as_mut().unwrap()
+    }
+
+    pub fn auto_pairs(&self) -> bool {
+        self.auto_pairs.unwrap()
+    }
+    pub fn auto_pairs_mut(&mut self) -> &mut bool {
+        self.auto_pairs.as_mut().unwrap()
+    }
+
+    pub fn apply_incomplete_config(self, config: Config<Incomplete>) -> Config<Complete> {
+        Self {
+            scrolloff: Some(*config.scrolloff().unwrap_or(self.scrolloff())),
+            scroll_lines: Some(*config.scroll_lines().unwrap_or(self.scroll_lines())),
+            mouse: Some(*config.mouse().unwrap_or(self.mouse())),
+            shell: Some(config.shell().unwrap_or(self.shell()).clone()),
+            line_number: Some(config.line_number().unwrap_or(self.line_number()).clone()),
+            middle_click_paste: Some(
+                *config
+                    .middle_click_paste()
+                    .unwrap_or(self.middle_click_paste()),
+            ),
+            smart_case: Some(*config.smart_case().unwrap_or(self.smart_case())),
+            auto_pairs: Some(*config.auto_pairs().unwrap_or(&self.auto_pairs())),
+            state: Default::default(),
+        }
+    }
+}
+
+/// No assumption are made on a `Incomplete` config, we may be missing some fields so all getter returns `Option`.
+impl Config<Incomplete> {
+    pub fn scrolloff(&self) -> Option<&usize> {
+        self.scrolloff.as_ref()
+    }
+    pub fn scrolloff_mut(&mut self) -> Option<&mut usize> {
+        self.scrolloff.as_mut()
+    }
+
+    pub fn scroll_lines(&self) -> Option<&isize> {
+        self.scroll_lines.as_ref()
+    }
+    pub fn scroll_lines_mut(&mut self) -> Option<&mut isize> {
+        self.scroll_lines.as_mut()
+    }
+
+    pub fn mouse(&self) -> Option<&bool> {
+        self.mouse.as_ref()
+    }
+    pub fn mouse_mut(&mut self) -> Option<&mut bool> {
+        self.mouse.as_mut()
+    }
+
+    pub fn shell(&self) -> Option<&Vec<String>> {
+        self.shell.as_ref()
+    }
+    pub fn shell_mut(&mut self) -> Option<&mut Vec<String>> {
+        self.shell.as_mut()
+    }
+
+    pub fn line_number(&self) -> Option<&LineNumber> {
+        self.line_number.as_ref()
+    }
+    pub fn line_number_mut(&mut self) -> Option<&mut LineNumber> {
+        self.line_number.as_mut()
+    }
+
+    pub fn middle_click_paste(&self) -> Option<&bool> {
+        self.middle_click_paste.as_ref()
+    }
+    pub fn middle_click_paste_mut(&mut self) -> Option<&mut bool> {
+        self.middle_click_paste.as_mut()
+    }
+
+    pub fn smart_case(&self) -> Option<&bool> {
+        self.smart_case.as_ref()
+    }
+    pub fn smart_case_mut(&mut self) -> Option<&mut bool> {
+        self.smart_case.as_mut()
+    }
+
+    pub fn auto_pairs(&self) -> Option<&bool> {
+        self.auto_pairs.as_ref()
+    }
+    pub fn auto_pairs_mut(&mut self) -> Option<&mut bool> {
+        self.auto_pairs.as_mut()
     }
 }
 
@@ -90,7 +246,7 @@ pub struct Editor {
 
     pub status_msg: Option<(String, Severity)>,
 
-    pub config: Config,
+    pub config: Config<Complete>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -106,7 +262,7 @@ impl Editor {
         mut area: Rect,
         themes: Arc<theme::Loader>,
         config_loader: Arc<syntax::Loader>,
-        config: Config,
+        config: Config<Complete>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
 
@@ -168,7 +324,7 @@ impl Editor {
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[view.doc];
-            view.ensure_cursor_in_view(doc, self.config.scrolloff)
+            view.ensure_cursor_in_view(doc, *self.config.scrolloff())
         }
     }
 
@@ -327,7 +483,7 @@ impl Editor {
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
         let doc = &self.documents[view.doc];
-        view.ensure_cursor_in_view(doc, self.config.scrolloff)
+        view.ensure_cursor_in_view(doc, *self.config.scrolloff())
     }
 
     #[inline]
