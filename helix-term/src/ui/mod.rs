@@ -146,7 +146,7 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
-    use helix_view::editor::{Complete, Config, Incomplete};
+
     use helix_view::theme;
     use std::borrow::Cow;
     use std::cmp::Reverse;
@@ -182,8 +182,6 @@ pub mod completers {
 
     pub fn setting(input: &str) -> Vec<Completion> {
         // TODO: TAMO
-        use toml::value::Map;
-        use toml::Value;
 
         /*
         let default_config = toml::ser::to_string(&Config::<Complete>::default()).unwrap();

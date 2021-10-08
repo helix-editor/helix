@@ -1,6 +1,6 @@
 use helix_core::{merge_toml_values, syntax};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{editor::Complete, theme, Editor};
+use helix_view::{theme, Editor};
 
 use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 
