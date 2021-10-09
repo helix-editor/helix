@@ -1,0 +1,84 @@
+# Author : RayGervais<raygervais@hotmail.ca>
+
+# "ui.linenr.selected" = { fg = "#d8dee9" }
+# "ui.text.focus" = { fg = "#e5ded6", modifiers= ["bold"] }
+# "ui.menu.selected" = { fg = "#e5ded6", bg = "#313f4e" }
+
+# "info" = "#b48ead"
+# "hint" = "#a3be8c"
+
+# Polar Night
+# nord0 - background color
+"ui.background" = { bg = "#2e3440" }
+"ui.statusline.inactive" = { fg = "#d8dEE9", bg = "#2e3440" }
+
+
+# nord1 - status bars, panels, modals, autocompletion
+"ui.statusline" = { fg = "#88c0d0", bg = "#3b4252" }
+"ui.popup" = { bg = "#232d38" }
+"ui.window" = { bg = "#232d38" }
+"ui.help" = { bg = "#232d38", fg = "#e5ded6" }
+
+# nord2 - active line, highlighting
+"ui.selection" = { bg = "#434c5e" }
+"ui.cursor.match" = { bg = "434c5e" }
+
+# nord3 - comments
+"comment" = "#4c566a"
+"ui.linenr" = { fg = "#4c566a" }
+
+# Snow Storm
+# nord4 - cursor, variables, constants, attributes, fields
+"ui.cursor.primary" = { fg = "#d8dee9", modifiers = ["reversed"] }
+"attribute" = "#d8dee9"
+"variable"  = "#d8dee9"
+"constant"  = "#d8dee9"
+"variable.builtin" = "#d8dee9"
+"constant.builtin" = "#d8dee9"
+"namespace" = "#d8dee9"
+
+# nord5 - suble UI text
+
+# nord6 - base text, punctuation
+"ui.text" = { fg = "#eceff4" }
+"punctuation" = "#eceff4"
+
+# Frost
+# nord7 - classes, types, primiatives
+"type" = "#8fbcbb"
+"type.builtin" = { fg = "#8fbcbb"}
+"label" = "#8fbcbb"
+
+# nord8 - declaration, methods, routines
+"constructor" = "#88c0d0"
+"function" = "#88c0d0"
+"function.macro" = { fg = "#88c0d0" }
+"function.builtin" = { fg = "#88c0d0" }
+
+# nord9 - operator, tags, units, punctuations
+"punctuation.delimiter" = "#81a1c1"
+"operator" = { fg = "#81a1c1" }
+"property" = "#81a1c1"
+
+# nord10 - keywords, special
+"keyword" = { fg = "#5e81ac" }
+"keyword.directive" = "#5e81ac"
+"variable.parameter" = "#5e81ac"
+
+# Aurora
+# nord11 - error
+"error" = "#bf616a"
+
+# nord12 - annotations, decorators
+"special" = "#d08770"
+"module" = "#d08770"
+
+# nord13 - warnings, escape characters, regex
+"warning" = "#ebcb8b"
+"escape" = { fg = "#ebcb8b" }
+
+# nord14 - strings
+"string" = "#a3be8c"
+
+# nord15 - integer, floating point
+"number" = "#b48ead"

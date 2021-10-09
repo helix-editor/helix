@@ -17,7 +17,7 @@ helix-syntax = { version = "0.4", path = "../helix-syntax" }
 helix-dap = { version = "0.4", path = "../helix-dap" }
 
 ropey = "1.3"
-smallvec = "1.4"
+smallvec = "1.7"
 tendril = "0.4.2"
 unicode-segmentation = "1.8"
 unicode-width = "0.1"
@@ -31,7 +31,7 @@ regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 
-similar = "2.0"
+similar = "2.1"
 
 etcetera = "0.3"
 

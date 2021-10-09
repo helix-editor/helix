@@ -88,10 +88,10 @@
 | `,`      | Keep only the primary selection                                   | `keep_primary_selection`             |
 | `C`      | Copy selection onto the next line                                 | `copy_selection_on_next_line`        |
 | `Alt-C`  | Copy selection onto the previous line                             | `copy_selection_on_prev_line`        |
-| `(`      | Rotate main selection forward                                     | `rotate_selections_backward`         |
-| `)`      | Rotate main selection backward                                    | `rotate_selections_forward`          |
-| `Alt-(`  | Rotate selection contents forward                                 | `rotate_selection_contents_backward` |
-| `Alt-)`  | Rotate selection contents backward                                | `rotate_selection_contents_forward`  |
+| `(`      | Rotate main selection backward                                    | `rotate_selections_backward`         |
+| `)`      | Rotate main selection forward                                     | `rotate_selections_forward`          |
+| `Alt-(`  | Rotate selection contents backward                                | `rotate_selection_contents_backward` |
+| `Alt-)`  | Rotate selection contents forward                                 | `rotate_selection_contents_forward`  |
 | `%`      | Select entire file                                                | `select_all`                         |
 | `x`      | Select current line, if already selected, extend to next line     | `extend_line`                        |
 | `X`      | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
