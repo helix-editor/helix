@@ -162,7 +162,6 @@ table thead td {
 table thead th {
     padding: .75rem;
     text-align: left;
-    color: var(--table-border-color);
     font-weight: 500;
     line-height: 1.5;
     width: auto;
@@ -227,4 +226,8 @@ blockquote *:last-child {
     color: var(--sidebar-fg);
     margin: 5px 0px;
     font-weight: bold;
+}
+
+.result-no-output {
+    font-style: italic;
 }
