@@ -70,6 +70,7 @@ impl menu::Item for CompletionItem {
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>,
     start_offset: usize,
+    #[allow(dead_code)]
     trigger_offset: usize,
     // TODO: maintain a completioncontext with trigger kind & trigger char
 }
