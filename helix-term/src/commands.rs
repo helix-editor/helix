@@ -4130,7 +4130,7 @@ pub fn completion(cx: &mut Context) {
             };
 
             if items.is_empty() {
-                editor.set_error("No completion available".to_string());
+                // editor.set_error("No completion available".to_string());
                 return;
             }
             let size = compositor.size();
@@ -4138,7 +4138,14 @@ pub fn completion(cx: &mut Context) {
                 .find(std::any::type_name::<ui::EditorView>())
                 .unwrap();
             if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                ui.set_completion(editor, items, offset_encoding, start_offset, trigger_offset, size);
+                ui.set_completion(
+                    editor,
+                    items,
+                    offset_encoding,
+                    start_offset,
+                    trigger_offset,
+                    size,
+                );
             };
         },
     );

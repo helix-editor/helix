@@ -26,6 +26,14 @@ use helix_core::Position;
 
 use serde::Deserialize;
 
+fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let millis = u64::deserialize(deserializer)?;
+    Ok(Duration::from_millis(millis))
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case", default)]
 pub struct Config {
@@ -45,6 +53,9 @@ pub struct Config {
     pub smart_case: bool,
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
     pub auto_pairs: bool,
+    /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
+    pub idle_timeout: Duration,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -72,6 +83,7 @@ impl Default for Config {
             middle_click_paste: true,
             smart_case: true,
             auto_pairs: true,
+            idle_timeout: Duration::from_millis(400),
         }
     }
 }
