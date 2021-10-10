@@ -125,3 +125,4 @@
 [submodule "helix-syntax/languages/tree-sitter-vue"]
 	path = helix-syntax/languages/tree-sitter-vue
 	url = https://github.com/ikatyang/tree-sitter-vue
+	shallow = true
