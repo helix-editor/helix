@@ -141,7 +141,7 @@ impl Editor {
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
-            idle_timer: Box::pin(sleep(Duration::from_millis(500))),
+            idle_timer: Box::pin(sleep(config.idle_timeout)),
             config,
         }
     }
@@ -156,7 +156,7 @@ impl Editor {
     pub fn reset_idle_timer(&mut self) {
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + Duration::from_millis(500));
+            .reset(Instant::now() + self.config.idle_timeout);
     }
 
     pub fn clear_status(&mut self) {
