@@ -253,8 +253,6 @@ impl Application {
             return;
         }
 
-        // TODO: if completion window was closed with enter (and no selection) we shouldn't retrigger
-
         let mut cx = Context {
             register: None,
             editor: &mut self.editor,
@@ -264,7 +262,6 @@ impl Application {
             on_next_key_callback: None,
         };
         completion(&mut cx);
-        // TODO: scan backwards for trigger and filter the box
         self.render();
     }
 
