@@ -122,3 +122,7 @@
 	path = helix-syntax/languages/tree-sitter-svelte
 	url = https://github.com/Himujjal/tree-sitter-svelte
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-vue"]
+	path = helix-syntax/languages/tree-sitter-vue
+	url = https://github.com/ikatyang/tree-sitter-vue
+	shallow = true
