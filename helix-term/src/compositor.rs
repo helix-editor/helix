@@ -171,6 +171,12 @@ impl Compositor {
         (None, CursorKind::Hidden)
     }
 
+    pub fn has_component(&self, type_name: &str) -> bool {
+        self.layers
+            .iter()
+            .any(|component| component.type_name() == type_name)
+    }
+
     pub fn find(&mut self, type_name: &str) -> Option<&mut dyn Component> {
         self.layers
             .iter_mut()
