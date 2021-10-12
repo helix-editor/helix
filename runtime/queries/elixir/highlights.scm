@@ -193,3 +193,5 @@
   "<<"
   ">>"
 ] @punctuation.bracket
+
+(ERROR) @warning
