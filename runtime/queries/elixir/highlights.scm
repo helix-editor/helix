@@ -1,125 +1,186 @@
-["when" "and" "or" "not in" "not" "in" "fn" "do" "end" "catch" "rescue" "after" "else"] @keyword
+; Reserved keywords
 
-[(true) (false) (nil)] @constant.builtin
+["when" "and" "or" "not" "in" "fn" "do" "end" "catch" "rescue" "after" "else"] @keyword
 
-(keyword
- [(keyword_literal)
-  ":"] @tag)
+; Operators
 
-(keyword
- (keyword_string
-  [(string_start)
-   (string_content)
-   (string_end)] @tag))
+; * doc string
+(unary_operator
+  operator: "@" @comment.doc
+  operand: (call
+    target: (identifier) @comment.doc.__attribute__
+    (arguments
+      [
+        (string) @comment.doc
+        (charlist) @comment.doc
+        (sigil
+          quoted_start: _ @comment.doc
+          quoted_end: _ @comment.doc) @comment.doc
+        (boolean) @comment.doc
+      ]))
+  (#match? @comment.doc.__attribute__ "^(moduledoc|typedoc|doc)$"))
 
-[(atom_literal)
- (atom_start)
- (atom_content)
- (atom_end)] @tag
+; * module attribute
+(unary_operator
+  operator: "@" @attribute
+  operand: [
+    (identifier) @attribute
+    (call
+      target: (identifier) @attribute)
+    (boolean) @attribute
+    (nil) @attribute
+  ])
 
-[(comment)
- (unused_identifier)] @comment
+; * capture operand
+(unary_operator
+  operator: "&"
+  operand: (integer) @operator)
 
-(escape_sequence) @escape
+(operator_identifier) @operator
 
-(call function: (function_identifier) @keyword
-      (#match? @keyword "^(defmodule|defexception|defp|def|with|case|cond|raise|import|require|use|defmacrop|defmacro|defguardp|defguard|defdelegate|defstruct|alias|defimpl|defprotocol|defoverridable|receive|if|for|try|throw|unless|reraise|super|quote|unquote|unquote_splicing)$"))
+(unary_operator
+  operator: _ @operator)
 
-(call function: (function_identifier) @keyword
-      [(call
-        function: (function_identifier) @function
-        (arguments
-         [(identifier) @variable.parameter
-          (_ (identifier) @variable.parameter)
-          (_ (_ (identifier) @variable.parameter))
-          (_ (_ (_ (identifier) @variable.parameter)))
-          (_ (_ (_ (_ (identifier) @variable.parameter))))
-          (_ (_ (_ (_ (_ (identifier) @variable.parameter)))))]))
-       (binary_op
-        left:
-        (call
-         function: (function_identifier) @function
-         (arguments
-          [(identifier) @variable.parameter
-           (_ (identifier) @variable.parameter)
-           (_ (_ (identifier) @variable.parameter))
-           (_ (_ (_ (identifier) @variable.parameter)))
-           (_ (_ (_ (_ (identifier) @variable.parameter))))
-           (_ (_ (_ (_ (_ (identifier) @variable.parameter)))))]))
+(binary_operator
+  operator: _ @operator)
+
+(dot
+  operator: _ @operator)
+
+(stab_clause
+  operator: _ @operator)
+
+; Literals
+
+[
+  (boolean)
+  (nil)
+] @constant
+
+[
+  (integer)
+  (float)
+] @number
+
+(alias) @type
+
+(char) @constant
+
+; Quoted content
+
+(interpolation "#{" @punctuation.special "}" @punctuation.special) @embedded
+
+(escape_sequence) @string.escape
+
+[
+  (atom)
+  (quoted_atom)
+  (keyword)
+  (quoted_keyword)
+] @string.special.symbol
+
+[
+  (string)
+  (charlist)
+] @string
+
+; Note that we explicitly target sigil quoted start/end, so they are not overridden by delimiters
+
+(sigil
+  (sigil_name) @__name__
+  quoted_start: _ @string
+  quoted_end: _ @string
+  (#match? @__name__ "^[sS]$")) @string
+
+(sigil
+  (sigil_name) @__name__
+  quoted_start: _ @string.regex
+  quoted_end: _ @string.regex
+  (#match? @__name__ "^[rR]$")) @string.regex
+
+(sigil
+  (sigil_name) @__name__
+  quoted_start: _ @string.special
+  quoted_end: _ @string.special) @string.special
+
+; Calls
+
+; * definition keyword
+(call
+  target: (identifier) @keyword
+  (#match? @keyword "^(def|defdelegate|defexception|defguard|defguardp|defimpl|defmacro|defmacrop|defmodule|defn|defnp|defoverridable|defp|defprotocol|defstruct)$"))
+
+; * kernel or special forms keyword
+(call
+  target: (identifier) @keyword
+  (#match? @keyword "^(alias|case|cond|else|for|if|import|quote|raise|receive|require|reraise|super|throw|try|unless|unquote|unquote_splicing|use|with)$"))
+
+; * function call
+(call
+  target: [
+    ; local
+    (identifier) @function
+    ; remote
+    (dot
+      right: (identifier) @function)
+  ])
+
+; * just identifier in function definition
+(call
+  target: (identifier) @keyword
+  (arguments
+    [
+      (identifier) @function
+      (binary_operator
+        left: (identifier) @function
         operator: "when")
-       (binary_op
-        left: (identifier) @variable.parameter
-        operator: _ @function
-        right: (identifier) @variable.parameter)]
-      (#match? @keyword "^(defp|def|defmacrop|defmacro|defguardp|defguard|defdelegate)$"))
+    ])
+  (#match? @keyword "^(def|defdelegate|defguard|defguardp|defmacro|defmacrop|defn|defnp|defp)$"))
 
-(call (function_identifier) @keyword
-      [(call
-        function: (function_identifier) @function)
-       (identifier) @function
-       (binary_op
-        left:
-        [(call
-          function: (function_identifier) @function)
-         (identifier) @function]
-        operator: "when")]
-      (#match? @keyword "^(defp|def|defmacrop|defmacro|defguardp|defguard|defdelegate)$"))
+; * pipe into identifier (definition)
+(call
+  target: (identifier) @keyword
+  (arguments
+    (binary_operator
+      operator: "|>"
+      right: (identifier) @variable))
+  (#match? @keyword "^(def|defdelegate|defguard|defguardp|defmacro|defmacrop|defn|defnp|defp)$"))
 
-(anonymous_function
- (stab_expression
-  left: (bare_arguments
-         [(identifier) @variable.parameter
-          (_ (identifier) @variable.parameter)
-          (_ (_ (identifier) @variable.parameter))
-          (_ (_ (_ (identifier) @variable.parameter)))
-          (_ (_ (_ (_ (identifier) @variable.parameter))))
-          (_ (_ (_ (_ (_ (identifier) @variable.parameter)))))])))
+; * pipe into identifier (function call)
+(binary_operator
+  operator: "|>"
+  right: (identifier) @function)
 
-(unary_op
- operator: "@"
- (call (identifier) @attribute
-       (heredoc
-        [(heredoc_start)
-         (heredoc_content)
-         (heredoc_end)] @doc))
- (#match? @attribute "^(doc|moduledoc)$"))
+; Identifiers
 
-(module) @type
+; * special
+(
+  (identifier) @constant.builtin
+  (#match? @constant.builtin "^(__MODULE__|__DIR__|__ENV__|__CALLER__|__STACKTRACE__)$")
+)
 
-(unary_op
- operator: "@" @attribute
- [(call
-   function: (function_identifier) @attribute)
-  (identifier) @attribute])
+; * unused
+(
+  (identifier) @comment.unused
+  (#match? @comment.unused "^_")
+)
 
-(unary_op
- operator: _ @operator)
+; * regular
+(identifier) @variable
 
-(binary_op
- operator: _ @operator)
+; Comment
 
-(heredoc
- [(heredoc_start)
-  (heredoc_content)
-  (heredoc_end)] @string)
+(comment) @comment
 
-(string
- [(string_start)
-  (string_content)
-  (string_end)] @string)
+; Punctuation
 
-(sigil_start) @string.special
-(sigil_content) @string
-(sigil_end) @string.special
-
-(interpolation
- "#{" @punctuation.special
- "}" @punctuation.special)
+[
+ "%"
+] @punctuation
 
 [
  ","
- "->"
- "."
+ ";"
 ] @punctuation.delimiter
 
 [
@@ -132,7 +193,3 @@
   "<<"
   ">>"
 ] @punctuation.bracket
-
-(special_identifier) @function.special
-
-(ERROR) @warning
