@@ -1087,6 +1087,7 @@ fn select_regex(cx: &mut Context) {
         cx,
         "select:".into(),
         Some(reg),
+        |_input: &str| Vec::new(),
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -1109,6 +1110,7 @@ fn split_selection(cx: &mut Context) {
         cx,
         "split:".into(),
         Some(reg),
+        |_input: &str| Vec::new(),
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -1169,6 +1171,26 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
     };
 }
 
+fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
+    let mut exist_elems = std::collections::BTreeSet::new();
+    reg.and_then(|reg| cx.editor.registers.get(reg))
+        .map_or(Vec::new(), |reg| {
+            reg.read()
+                .iter()
+                .filter(|&item| {
+                    if exist_elems.contains(item) {
+                        false
+                    } else {
+                        exist_elems.insert(item);
+                        true
+                    }
+                })
+                .take(10)
+                .cloned()
+                .collect()
+        })
+}
+
 // TODO: use one function for search vs extend
 fn search(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
@@ -1179,11 +1201,19 @@ fn search(cx: &mut Context) {
     // HAXX: sadly we can't avoid allocating a single string for the whole buffer since we can't
     // feed chunks into the regex yet
     let contents = doc.text().slice(..).to_string();
+    let completions = search_completions(cx, Some(reg));
 
     let prompt = ui::regex_prompt(
         cx,
         "search:".into(),
         Some(reg),
+        move |input: &str| {
+            completions
+                .iter()
+                .filter(|comp| comp.starts_with(input))
+                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                .collect()
+        },
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -1243,10 +1273,19 @@ fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let smart_case = cx.editor.config.smart_case;
+
+    let completions = search_completions(cx, None);
     let prompt = ui::regex_prompt(
         cx,
         "global search:".into(),
         None,
+        move |input: &str| {
+            completions
+                .iter()
+                .filter(|comp| comp.starts_with(input))
+                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                .collect()
+        },
         move |_view, _doc, regex, event| {
             if event != PromptEvent::Validate {
                 return;
@@ -4083,6 +4122,7 @@ fn keep_selections(cx: &mut Context) {
         cx,
         "keep:".into(),
         Some(reg),
+        |_input: &str| Vec::new(),
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
