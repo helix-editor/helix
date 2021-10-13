@@ -12,10 +12,13 @@
 [![License](https://img.shields.io/github/license/helix-editor/helix)](./LICENSE)
 
 The editing model is very heavily based on kakoune; during development I found
-myself agreeing with most of kakoune's design decisions. For more information, see the [website](https://helix-editor.com) or
+myself agreeing with most of kakoune's design decisions. If you want to learn more about the design of helix; see our [vision](./docs/vision.md).
+
+For more information, see the [website](https://helix-editor.com) or
 [documentation](https://docs.helix-editor.com/).
 
 All shortcuts/keymaps can be found [on the website](https://docs.helix-editor.com/keymap.html).
+
 
 ## ✨ Features
 
