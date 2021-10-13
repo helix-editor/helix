@@ -146,7 +146,7 @@ file-types = ["py"]
 roots = []
 comment-token = "#"
 
-language-server = { command = "pyls" }
+language-server = { command = "pylsp" }
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
