@@ -1291,7 +1291,8 @@ fn global_search(cx: &mut Context) {
 
     cx.push_layer(Box::new(prompt));
 
-    let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
+    let current_path = doc_mut!(cx.editor).path().cloned();
+
     let show_picker = async move {
         let all_matches: Vec<(usize, PathBuf)> =
             UnboundedReceiverStream::new(all_matches_rx).collect().await;
@@ -1301,14 +1302,19 @@ fn global_search(cx: &mut Context) {
                     editor.set_status("No matches found".to_string());
                     return;
                 }
+
                 let picker = FilePicker::new(
                     all_matches,
                     move |(_line_num, path)| {
-                        path.strip_prefix(&root)
-                            .unwrap_or(path)
+                        let relative_path = helix_core::path::get_relative_path(path)
                             .to_str()
                             .unwrap()
-                            .into()
+                            .to_owned();
+                        if current_path.as_ref().map(|p| p == path).unwrap_or(false) {
+                            format!("{} (*)", relative_path).into()
+                        } else {
+                            relative_path.into()
+                        }
                     },
                     move |editor: &mut Editor, (line_num, path), action| {
                         match editor.open(path.into(), action) {
@@ -4045,7 +4051,7 @@ fn remove_primary_selection(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn completion(cx: &mut Context) {
+pub fn completion(cx: &mut Context) {
     // trigger on trigger char, or if user calls it
     // (or on word char typing??)
     // after it's triggered, if response marked is_incomplete, update on every subsequent keypress
@@ -4090,16 +4096,23 @@ fn completion(cx: &mut Context) {
     };
 
     let offset_encoding = language_server.offset_encoding();
-    let cursor = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
 
     let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
 
     let future = language_server.completion(doc.identifier(), pos, None);
 
     let trigger_offset = cursor;
+
+    // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
+    // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
+
+    use helix_core::chars;
+    let mut iter = text.chars_at(cursor);
+    iter.reverse();
+    let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
+    let start_offset = cursor.saturating_sub(offset);
 
     cx.callback(
         future,
@@ -4123,7 +4136,7 @@ fn completion(cx: &mut Context) {
             };
 
             if items.is_empty() {
-                editor.set_error("No completion available".to_string());
+                // editor.set_error("No completion available".to_string());
                 return;
             }
             let size = compositor.size();
@@ -4131,7 +4144,14 @@ fn completion(cx: &mut Context) {
                 .find(std::any::type_name::<ui::EditorView>())
                 .unwrap();
             if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                ui.set_completion(items, offset_encoding, trigger_offset, size);
+                ui.set_completion(
+                    editor,
+                    items,
+                    offset_encoding,
+                    start_offset,
+                    trigger_offset,
+                    size,
+                );
             };
         },
     );

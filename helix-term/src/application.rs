@@ -199,6 +199,11 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
+                _ = &mut self.editor.idle_timer => {
+                    // idle timeout
+                    self.editor.clear_idle_timer();
+                    self.handle_idle_timeout();
+                }
             }
         }
     }
@@ -226,6 +231,38 @@ impl Application {
             }
             _ => unreachable!(),
         }
+    }
+
+    pub fn handle_idle_timeout(&mut self) {
+        use crate::commands::{completion, Context};
+        use helix_view::document::Mode;
+
+        if doc_mut!(self.editor).mode != Mode::Insert {
+            return;
+        }
+        let editor_view = self
+            .compositor
+            .find(std::any::type_name::<ui::EditorView>())
+            .expect("expected at least one EditorView");
+        let editor_view = editor_view
+            .as_any_mut()
+            .downcast_mut::<ui::EditorView>()
+            .unwrap();
+
+        if editor_view.completion.is_some() {
+            return;
+        }
+
+        let mut cx = Context {
+            register: None,
+            editor: &mut self.editor,
+            jobs: &mut self.jobs,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+        };
+        completion(&mut cx);
+        self.render();
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {

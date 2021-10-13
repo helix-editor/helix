@@ -13,7 +13,6 @@
 .ayu {
     --bg: hsl(210, 25%, 8%);
     --fg: #c5c5c5;
-    --heading-fg: #c5c5c5;
 
     --sidebar-bg: #14191f;
     --sidebar-fg: #c8c9db;
@@ -54,7 +53,6 @@
 .coal {
     --bg: hsl(200, 7%, 8%);
     --fg: #98a3ad;
-    --heading-fg: #98a3ad;
 
     --sidebar-bg: #292c2f;
     --sidebar-fg: #a1adb8;
@@ -95,7 +93,6 @@
 .light {
     --bg: hsl(0, 0%, 100%);
     --fg: hsl(0, 0%, 0%);
-    --heading-fg: hsl(0, 0%, 0%);
 
     --sidebar-bg: #fafafa;
     --sidebar-fg: hsl(0, 0%, 0%);
@@ -110,7 +107,7 @@
 
     --links: #20609f;
 
-    --inline-code-color: #a39e9b;
+    --inline-code-color: #301900;
 
     --theme-popup-bg: #fafafa;
     --theme-popup-border: #cccccc;
@@ -136,7 +133,6 @@
 .navy {
     --bg: hsl(226, 23%, 11%);
     --fg: #bcbdd0;
-    --heading-fg: #bcbdd0;
 
     --sidebar-bg: #282d3f;
     --sidebar-fg: #c8c9db;
@@ -177,7 +173,6 @@
 .rust {
     --bg: hsl(60, 9%, 87%);
     --fg: #262625;
-    --heading-fg: #262625;
 
     --sidebar-bg: #3b2e2a;
     --sidebar-fg: #c8c9db;
@@ -192,7 +187,7 @@
 
     --links: #2b79a2;
 
-    --inline-code-color: #c5c8c6;
+    --inline-code-color: #6e6b5e;
 
     --theme-popup-bg: #e1e1db;
     --theme-popup-border: #b38f6b;
@@ -218,8 +213,7 @@
 @media (prefers-color-scheme: dark) {
     .light.no-js {
         --bg: hsl(200, 7%, 8%);
-        --fg: #ebeafa;
-        --heading-fg: #ebeafa;
+        --fg: #98a3ad;
 
         --sidebar-bg: #292c2f;
         --sidebar-fg: #a1adb8;
@@ -234,7 +228,7 @@
 
         --links: #2b79a2;
 
-        --inline-code-color: #6e6b5e;
+        --inline-code-color: #c5c8c6;
 
         --theme-popup-bg: #141617;
         --theme-popup-border: #43484d;
