@@ -97,7 +97,7 @@
   (quoted_atom)
   (keyword)
   (quoted_keyword)
-] @symbol
+] @string.special.symbol
 
 [
   (string)

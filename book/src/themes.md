@@ -119,8 +119,7 @@ We use a similar set of scopes as
   - `special`
     - `path`
     - `url`
-
-- `symbol` - Elixir atoms, Ruby symbols, Clojure keywords
+    - `symbol` - Erlang/Elixir atoms, Ruby symbols, Clojure keywords
 
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
