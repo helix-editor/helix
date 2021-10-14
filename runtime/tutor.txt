@@ -351,5 +351,71 @@ _________________________________________________________________
 
 
 =================================================================
+=                      THE SELECT COMMAND                       =
+=================================================================
+
+ Type s to select matches in the selection.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Press x to select the line.
+ 3. Press s. A prompt will appear.
+ 4. Type 'apples' and press <ENTER>. Both occurrences of
+    "apples" in the line will be selected.
+ 5. You can now press c and change "apples" to something else,
+    like 'oranges'.
+ 6. Type , to remove the second cursor.
+
+ --> I like to eat apples since my favorite fruit is apples.
+
+
+
+
+
+
+=================================================================
+=                      SELECTING VIA REGEX                      =
+=================================================================
+
+ The select command selects regular expressions, not just exact
+ matches, allowing you to target more complex patterns.
+
+ 1. Move the cursor to the line below marked -->.
+ 2. Select the line with x and then press s.
+ 3. Enter '  +' to select any amount of consecutive spaces >1.
+ 4. Press c and change the matches to single spaces.
+
+ --> This  sentence has   some      extra spaces.
+
+ Note: If you want to perform find-and-replace, the select
+       command is the way to do it. Select the text you want
+       to replace in — type % to select the whole file — and
+       then perform the steps explained above.
+
+
+
+
+=================================================================
+=                     COLLAPSING SELECTIONS                     =
+=================================================================
+
+ Type ; to collapse selections to single cursors.
+
+ Sometimes, you want to deselect without having to move the
+ cursor(s). This can be done using the ; key.
+
+ 1. Move the cursor to the line below marked -->.
+
+ 2. Use the motions you have learned to move around the line,
+    and try using ; to deselect the text after it is selected
+    by the motions.
+
+ --> This is an error-free line with words to move around in.
+
+
+
+
+
+
+=================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
