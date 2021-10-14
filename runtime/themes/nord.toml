@@ -24,8 +24,8 @@
 "ui.cursor.match" = { bg = "434c5e" }
 
 # nord3 - comments
-"comment" = "#4c566a"
-"ui.linenr" = { fg = "#4c566a" }
+"comment" = "#616E88"
+"ui.linenr" = { fg = "#616E88" }
 
 # Snow Storm
 # nord4 - cursor, variables, constants, attributes, fields
