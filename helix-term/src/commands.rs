@@ -4127,6 +4127,7 @@ pub fn completion(cx: &mut Context) {
     let mut iter = text.chars_at(cursor);
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
+    let filter_word = text.slice(cursor - offset..cursor).to_string();
     let start_offset = cursor.saturating_sub(offset);
 
     cx.callback(
@@ -4140,7 +4141,7 @@ pub fn completion(cx: &mut Context) {
                 return;
             }
 
-            let items = match response {
+            let mut items = match response {
                 Some(lsp::CompletionResponse::Array(items)) => items,
                 // TODO: do something with is_incomplete
                 Some(lsp::CompletionResponse::List(lsp::CompletionList {
@@ -4149,6 +4150,16 @@ pub fn completion(cx: &mut Context) {
                 })) => items,
                 None => Vec::new(),
             };
+
+            if !filter_word.is_empty() {
+                items = items
+                    .into_iter()
+                    .filter(|item| match item.filter_text.as_ref() {
+                        Some(filter) => filter.starts_with(&filter_word),
+                        None => item.label.starts_with(&filter_word),
+                    })
+                    .collect();
+            }
 
             if items.is_empty() {
                 // editor.set_error("No completion available".to_string());
