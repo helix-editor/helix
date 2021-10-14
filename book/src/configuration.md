@@ -20,6 +20,7 @@ To override global configuration parameters, create a `config.toml` file located
 | `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
 | `auto-pairs` | Enable automatic insertion of pairs to parenthese, brackets, etc. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
+| `completion-trigger-len` | The min char count of cursor for idle timeout autocompletion | `2` |
 
 ## LSP
 
