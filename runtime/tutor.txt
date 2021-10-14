@@ -118,7 +118,7 @@ _________________________________________________________________
 
  Common examples of insertion commands include:
    i - Insert before the selection.
-   a - Insert after the selection. (a means "append")
+   a - Insert after the selection. (a means 'append')
    I - Insert at the start of the line.
    A - Insert at the end of the line.
 
@@ -360,8 +360,8 @@ _________________________________________________________________
  2. Press x to select the line.
  3. Press s. A prompt will appear.
  4. Type 'apples' and press <ENTER>. Both occurrences of
-    "apples" in the line will be selected.
- 5. You can now press c and change "apples" to something else,
+    'apples' in the line will be selected.
+ 5. You can now press c and change 'apples' to something else,
     like 'oranges'.
  6. Type , to remove the second cursor.
 
