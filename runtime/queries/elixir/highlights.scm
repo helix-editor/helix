@@ -23,29 +23,29 @@
 
 ; * doc string
 (unary_operator
-  operator: "@" @comment.doc
+  operator: "@" @comment.block.documentation
   operand: (call
-    target: (identifier) @comment.doc.__attribute__
+    target: (identifier) @comment.block.documentation.__attribute__
     (arguments
       [
-        (string) @comment.doc
-        (charlist) @comment.doc
+        (string) @comment.block.documentation
+        (charlist) @comment.block.documentation
         (sigil
-          quoted_start: _ @comment.doc
-          quoted_end: _ @comment.doc) @comment.doc
-        (boolean) @comment.doc
+          quoted_start: _ @comment.block.documentation
+          quoted_end: _ @comment.block.documentation) @comment.block.documentation
+        (boolean) @comment.block.documentation
       ]))
-  (#match? @comment.doc.__attribute__ "^(moduledoc|typedoc|doc)$"))
+  (#match? @comment.block.documentation.__attribute__ "^(moduledoc|typedoc|doc)$"))
 
 ; * module attribute
 (unary_operator
-  operator: "@" @attribute
+  operator: "@" @variable.property
   operand: [
-    (identifier) @attribute
+    (identifier) @variable.property
     (call
-      target: (identifier) @attribute)
-    (boolean) @attribute
-    (nil) @attribute
+      target: (identifier) @variable.property)
+    (boolean) @variable.property
+    (nil) @variable.property
   ])
 
 ; * capture operand
@@ -69,10 +69,9 @@
 
 ; Literals
 
-[
-  (boolean)
-  (nil)
-] @constant
+(nil) @constant.builtin
+
+(boolean) @constant.builtin.boolean
 
 [
   (integer)
@@ -85,20 +84,20 @@
   target: (dot
     left: (atom) @type))
 
-(char) @constant
+(char) @constant.character
 
 ; Quoted content
 
-(interpolation "#{" @punctuation.special "}" @punctuation.special) @embedded
+(interpolation "#{" @escape "}" @escape) @embedded
 
-(escape_sequence) @string.escape
+(escape_sequence) @escape
 
 [
   (atom)
   (quoted_atom)
   (keyword)
   (quoted_keyword)
-] @tag
+] @symbol
 
 [
   (string)
@@ -182,8 +181,8 @@
 
 ; * unused
 (
-  (identifier) @comment.unused
-  (#match? @comment.unused "^_")
+  (identifier) @comment
+  (#match? @comment "^_")
 )
 
 ; * regular

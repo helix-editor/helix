@@ -120,6 +120,8 @@ We use a similar set of scopes as
     - `path`
     - `url`
 
+- `symbol` - Elixir atoms, Ruby symbols, Clojure keywords
+
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
   - `block` - Block comments (e.g. (`/*     */`)
