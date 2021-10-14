@@ -234,7 +234,7 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::commands::{completion, Context};
+        use crate::commands::{insert::idle_completion, Context};
         use helix_view::document::Mode;
 
         if doc_mut!(self.editor).mode != Mode::Insert {
@@ -261,7 +261,7 @@ impl Application {
             callback: None,
             on_next_key_callback: None,
         };
-        completion(&mut cx);
+        idle_completion(&mut cx);
         self.render();
     }
 

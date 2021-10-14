@@ -56,6 +56,7 @@ pub struct Config {
     /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
     pub idle_timeout: Duration,
+    pub completion_trigger_len: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -84,6 +85,7 @@ impl Default for Config {
             smart_case: true,
             auto_pairs: true,
             idle_timeout: Duration::from_millis(400),
+            completion_trigger_len: 2,
         }
     }
 }
