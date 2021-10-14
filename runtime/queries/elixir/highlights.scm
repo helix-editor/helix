@@ -17,7 +17,7 @@
 
 ; Reserved keywords
 
-["when" "and" "or" "not" "in" "fn" "do" "end" "catch" "rescue" "after" "else"] @keyword
+["when" "and" "or" "not" "in" "not in" "fn" "do" "end" "catch" "rescue" "after" "else"] @keyword
 
 ; Operators
 
