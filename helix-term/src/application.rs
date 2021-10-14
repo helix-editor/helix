@@ -404,14 +404,11 @@ impl Application {
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
                     }
-                    Notification::ProgressMessage(params) => {
-                        if self
+                    Notification::ProgressMessage(params)
+                        if !self
                             .compositor
-                            .has_component(std::any::type_name::<ui::Prompt>())
-                        {
-                            return;
-                        }
-
+                            .has_component(std::any::type_name::<ui::Prompt>()) =>
+                    {
                         let editor_view = self
                             .compositor
                             .find(std::any::type_name::<ui::EditorView>())
@@ -493,6 +490,9 @@ impl Application {
                         if self.config.lsp.display_messages {
                             self.editor.set_status(status);
                         }
+                    }
+                    Notification::ProgressMessage(_params) => {
+                        // do nothing
                     }
                 }
             }
