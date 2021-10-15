@@ -125,7 +125,8 @@
 (sigil
   (sigil_name) @__name__
   quoted_start: _ @string.special
-  quoted_end: _ @string.special) @string.special
+  quoted_end: _ @string.special
+  (#not-eq? @__name__ "H")) @string.special
 
 ; Calls
 
