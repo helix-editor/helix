@@ -1,7 +1,7 @@
 # Author : RayGervais<raygervais@hotmail.ca>
 
 # "ui.linenr.selected" = { fg = "#d8dee9" }
-# "ui.text.focus" = { fg = "#e5ded6", modifiers= ["bold"] }
+"ui.text.focus" = { fg = "#88c0d0", modifiers= ["bold"] }
 # "ui.menu.selected" = { fg = "#e5ded6", bg = "#313f4e" }
 
 # "info" = "#b48ead"
