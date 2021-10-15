@@ -83,4 +83,6 @@ a good overview of the internals.
 
 # Getting help
 
+Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
+
 Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
