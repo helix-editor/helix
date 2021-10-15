@@ -48,10 +48,17 @@
     (nil) @variable.property
   ])
 
-; * capture operand
+; * capture operator
 (unary_operator
   operator: "&"
-  operand: (integer) @operator)
+  operand: [
+    (integer) @operator
+    (binary_operator
+      left: [
+        (call target: (dot left: (_) right: (identifier) @function))
+        (identifier) @function
+      ] operator: "/" right: (integer) @operator)
+  ])
 
 (operator_identifier) @operator
 
