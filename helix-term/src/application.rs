@@ -100,6 +100,7 @@ impl Application {
         if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
             if first.is_dir() {
+                std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
                 compositor.push(Box::new(ui::file_picker(first.clone())));
             } else {
