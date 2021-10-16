@@ -653,63 +653,67 @@ pub fn merge_keys(mut config: Config) -> Config {
     config
 }
 
-#[test]
-fn merge_partial_keys() {
-    let config = Config {
-        keys: Keymaps(hashmap! {
-            Mode::Normal => Keymap::new(
-                keymap!({ "Normal mode"
-                    "i" => normal_mode,
-                    "无" => insert_mode,
-                    "z" => jump_backward,
-                    "g" => { "Merge into goto mode"
-                        "$" => goto_line_end,
-                        "g" => delete_char_forward,
-                    },
-                })
-            )
-        }),
-        ..Default::default()
-    };
-    let mut merged_config = merge_keys(config.clone());
-    assert_ne!(config, merged_config);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn merge_partial_keys() {
+        let config = Config {
+            keys: Keymaps(hashmap! {
+                Mode::Normal => Keymap::new(
+                    keymap!({ "Normal mode"
+                        "i" => normal_mode,
+                        "无" => insert_mode,
+                        "z" => jump_backward,
+                        "g" => { "Merge into goto mode"
+                            "$" => goto_line_end,
+                            "g" => delete_char_forward,
+                        },
+                    })
+                )
+            }),
+            ..Default::default()
+        };
+        let mut merged_config = merge_keys(config.clone());
+        assert_ne!(config, merged_config);
 
-    let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
-    assert_eq!(
-        keymap.get(key!('i')).kind,
-        KeymapResultKind::Matched(Command::normal_mode),
-        "Leaf should replace leaf"
-    );
-    assert_eq!(
-        keymap.get(key!('无')).kind,
-        KeymapResultKind::Matched(Command::insert_mode),
-        "New leaf should be present in merged keymap"
-    );
-    // Assumes that z is a node in the default keymap
-    assert_eq!(
-        keymap.get(key!('z')).kind,
-        KeymapResultKind::Matched(Command::jump_backward),
-        "Leaf should replace node"
-    );
-    // Assumes that `g` is a node in default keymap
-    assert_eq!(
-        keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
-        &KeyTrie::Leaf(Command::goto_line_end),
-        "Leaf should be present in merged subnode"
-    );
-    // Assumes that `gg` is in default keymap
-    assert_eq!(
-        keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
-        &KeyTrie::Leaf(Command::delete_char_forward),
-        "Leaf should replace old leaf in merged subnode"
-    );
-    // Assumes that `ge` is in default keymap
-    assert_eq!(
-        keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
-        &KeyTrie::Leaf(Command::goto_last_line),
-        "Old leaves in subnode should be present in merged node"
-    );
+        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        assert_eq!(
+            keymap.get(key!('i')).kind,
+            KeymapResultKind::Matched(Command::normal_mode),
+            "Leaf should replace leaf"
+        );
+        assert_eq!(
+            keymap.get(key!('无')).kind,
+            KeymapResultKind::Matched(Command::insert_mode),
+            "New leaf should be present in merged keymap"
+        );
+        // Assumes that z is a node in the default keymap
+        assert_eq!(
+            keymap.get(key!('z')).kind,
+            KeymapResultKind::Matched(Command::jump_backward),
+            "Leaf should replace node"
+        );
+        // Assumes that `g` is a node in default keymap
+        assert_eq!(
+            keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
+            &KeyTrie::Leaf(Command::goto_line_end),
+            "Leaf should be present in merged subnode"
+        );
+        // Assumes that `gg` is in default keymap
+        assert_eq!(
+            keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
+            &KeyTrie::Leaf(Command::delete_char_forward),
+            "Leaf should replace old leaf in merged subnode"
+        );
+        // Assumes that `ge` is in default keymap
+        assert_eq!(
+            keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
+            &KeyTrie::Leaf(Command::goto_last_line),
+            "Old leaves in subnode should be present in merged node"
+        );
 
-    assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
-    assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
+        assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
+        assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
+    }
 }
