@@ -140,7 +140,7 @@ impl KeyTrieNode {
             }
         }
         body.sort_unstable_by_key(|(_, keys)| {
-            self.order.iter().position(|&k| k == keys[0]).unwrap()
+            self.order.iter().position(|&k| k == keys[0]).unwrap_or(0)
         });
         let prefix = format!("{} ", self.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
