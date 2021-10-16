@@ -215,6 +215,10 @@ impl Completion {
             let text = Cow::from(fragment);
             // TODO: logic is same as ui/picker
             menu.score(&text);
+        } else {
+            // we backspaced before the start offset, clear the menu
+            // this will cause the editor to remove the completion popup
+            menu.clear();
         }
     }
 

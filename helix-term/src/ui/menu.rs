@@ -90,6 +90,14 @@ impl<T: Item> Menu<T> {
         self.recalculate = true;
     }
 
+    pub fn clear(&mut self) {
+        self.matches.clear();
+
+        // reset cursor position
+        self.cursor = None;
+        self.scroll = 0;
+    }
+
     pub fn move_up(&mut self) {
         let len = self.matches.len();
         let pos = self.cursor.map_or(0, |i| (i + len.saturating_sub(1)) % len) % len;
