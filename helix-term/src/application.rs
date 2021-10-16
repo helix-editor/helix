@@ -238,7 +238,7 @@ impl Application {
         use crate::commands::{completion, Context};
         use helix_view::document::Mode;
 
-        if doc_mut!(self.editor).mode != Mode::Insert {
+        if doc_mut!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
             return;
         }
         let editor_view = self
