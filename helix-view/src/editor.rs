@@ -47,12 +47,14 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
-    /// Middle click paste support. Defaults to true
+    /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
     pub smart_case: bool,
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
     pub auto_pairs: bool,
+    /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
+    pub auto_completion: bool,
     /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
     pub idle_timeout: Duration,
@@ -83,6 +85,7 @@ impl Default for Config {
             middle_click_paste: true,
             smart_case: true,
             auto_pairs: true,
+            auto_completion: true,
             idle_timeout: Duration::from_millis(400),
         }
     }
