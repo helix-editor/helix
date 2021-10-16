@@ -47,11 +47,19 @@ impl Node {
 
 // TODO: screen coord to container + container coordinate helpers
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
     Horizontal,
     Vertical,
     // could explore stacked/tabbed
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
 }
 
 #[derive(Debug)]
@@ -150,7 +158,6 @@ impl Tree {
             } => container,
             _ => unreachable!(),
         };
-
         if container.layout == layout {
             // insert node after the current item if there is children already
             let pos = if container.children.is_empty() {
@@ -393,6 +400,112 @@ impl Tree {
         Traverse::new(self)
     }
 
+    // Finds the split in the given direction if it exists
+    pub fn find_split_in_direction(&self, id: ViewId, direction: Direction) -> Option<ViewId> {
+        let parent = self.nodes[id].parent;
+        // Base case, we found the root of the tree
+        if parent == id {
+            return None;
+        }
+        // Parent must always be a container
+        let parent_container = match &self.nodes[parent].content {
+            Content::Container(container) => container,
+            Content::View(_) => unreachable!(), // unreachable?
+        };
+
+        match (direction, parent_container.layout) {
+            (Direction::Up, Layout::Vertical)
+            | (Direction::Left, Layout::Horizontal)
+            | (Direction::Right, Layout::Horizontal)
+            | (Direction::Down, Layout::Vertical) => {
+                // The desired direction of movement is not possible within
+                // the parent container so the search must continue closer to
+                // the root of the split tree.
+                self.find_split_in_direction(parent, direction)
+            } // same as 1
+            (Direction::Up, Layout::Horizontal)
+            | (Direction::Down, Layout::Horizontal)
+            | (Direction::Left, Layout::Vertical)
+            | (Direction::Right, Layout::Vertical) => {
+                // It's possible to move in the desired direction within
+                // the parent container so an attempt is made to find the
+                // correct child.
+                match self.find_child(id, &parent_container.children, direction) {
+                    // Child is found, search is ended
+                    Some(id) => Some(id),
+                    // A child is not found. This could be because of either two scenarios
+                    // 1. Its not possible to move in the desired direction, and search should end
+                    // 2. A layout like the following with focus at X and desired direction Right
+                    // | _ | x |   |
+                    // | _ _ _ |   |
+                    // | _ _ _ |   |
+                    // The container containing X ends at X so no rightward movement is possible
+                    // however there still exists another view/container to the right that hasn't
+                    // been explored. Thus another search is done here in the parent container
+                    // before concluding it's not possible to move in the desired direction.
+                    None => self.find_split_in_direction(parent, direction),
+                }
+            }
+        }
+    }
+
+    fn find_child(&self, id: ViewId, children: &[ViewId], direction: Direction) -> Option<ViewId> {
+        let mut child_id = match direction {
+            // index wise in the child list the Up and Left represents a -1
+            // thus reversed iterator.
+            Direction::Up | Direction::Left => children
+                .iter()
+                .rev()
+                .skip_while(|i| **i != id)
+                .copied()
+                .nth(1)?,
+            // Down && Right => +1 index wise in the child list
+            Direction::Down | Direction::Right => {
+                children.iter().skip_while(|i| **i != id).copied().nth(1)?
+            }
+        };
+        let (current_x, current_y) = match &self.nodes[self.focus].content {
+            Content::View(current_view) => (current_view.area.left(), current_view.area.top()),
+            Content::Container(_) => unreachable!(),
+        };
+
+        // If the child is a container the search finds the closest container child
+        // visually based on screen location.
+        while let Content::Container(container) = &self.nodes[child_id].content {
+            match (direction, container.layout) {
+                (_, Layout::Vertical) => {
+                    // find closest split based on x because y is irrelevant
+                    // in a vertical container (and already correct based on previous search)
+                    child_id = *container.children.iter().min_by_key(|id| {
+                        let x = match &self.nodes[**id].content {
+                            Content::View(view) => view.inner_area().left(),
+                            Content::Container(container) => container.area.left(),
+                        };
+                        (current_x as i16 - x as i16).abs()
+                    })?;
+                }
+                (_, Layout::Horizontal) => {
+                    // find closest split based on y because x is irrelevant
+                    // in a horizontal container (and already correct based on previous search)
+                    child_id = *container.children.iter().min_by_key(|id| {
+                        let y = match &self.nodes[**id].content {
+                            Content::View(view) => view.inner_area().top(),
+                            Content::Container(container) => container.area.top(),
+                        };
+                        (current_y as i16 - y as i16).abs()
+                    })?;
+                }
+            }
+        }
+        Some(child_id)
+    }
+
+    pub fn focus_direction(&mut self, direction: Direction) {
+        if let Some(id) = self.find_split_in_direction(self.focus, direction) {
+            self.focus = id;
+        }
+    }
+
     pub fn focus_next(&mut self) {
         // This function is very dumb, but that's because we don't store any parent links.
         // (we'd be able to go parent.next_sibling() recursively until we find something)
@@ -420,13 +533,12 @@ impl Tree {
         //   if found = container -> found = first child
         // }
 
-        let iter = self.traverse();
-
-        let mut iter = iter.skip_while(|&(key, _view)| key != self.focus);
-        iter.next(); // take the focused value
-
-        if let Some((key, _)) = iter.next() {
-            self.focus = key;
+        let mut views = self
+            .traverse()
+            .skip_while(|&(id, _view)| id != self.focus)
+            .skip(1); // Skip focused value
+        if let Some((id, _)) = views.next() {
+            self.focus = id;
         } else {
             // extremely crude, take the first item again
             let (key, _) = self.traverse().next().unwrap();

@@ -2,7 +2,7 @@ use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
-    tree::Tree,
+    tree::{self, Tree},
     Document, DocumentId, View, ViewId,
 };
 
@@ -353,6 +353,22 @@ impl Editor {
 
     pub fn focus_next(&mut self) {
         self.tree.focus_next();
+    }
+
+    pub fn focus_right(&mut self) {
+        self.tree.focus_direction(tree::Direction::Right);
+    }
+
+    pub fn focus_left(&mut self) {
+        self.tree.focus_direction(tree::Direction::Left);
+    }
+
+    pub fn focus_up(&mut self) {
+        self.tree.focus_direction(tree::Direction::Up);
+    }
+
+    pub fn focus_down(&mut self) {
+        self.tree.focus_direction(tree::Direction::Down);
     }
 
     pub fn should_close(&self) -> bool {
