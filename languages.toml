@@ -328,3 +328,11 @@ language-server = { command = "swipl", args = [
     "-g", "use_module(library(lsp_server))",
     "-g", "lsp_server:main",
     "-t", "halt", "--", "stdio"] }
+
+[[language]]
+name = "tsq"
+scope = "source.tsq"
+file-types = ["scm"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
