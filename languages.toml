@@ -75,6 +75,16 @@ language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "c-sharp"
+scope = "source.csharp"
+injection-regex = "c-?sharp"
+file-types = ["cs"]
+roots = []
+comment-token = "//"
+
+indent = { tab-width = 4, unit = "\t" }
+
+[[language]]
 name = "go"
 scope = "source.go"
 injection-regex = "go"
