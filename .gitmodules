@@ -129,4 +129,4 @@
 [submodule "helix-syntax/languages/tree-sitter-tsq"]
 	path = helix-syntax/languages/tree-sitter-tsq
 	url = https://github.com/tree-sitter/tree-sitter-tsq
-    shallow = true
+	shallow = true
