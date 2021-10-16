@@ -377,6 +377,16 @@ scope = "source.tsq"
 file-types = ["scm"]
 roots = []
 comment-token = ";"
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "heex"
+scope = "source.heex"
+injection-regex = "heex"
+file-types = ["heex"]
+roots = []
+
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
