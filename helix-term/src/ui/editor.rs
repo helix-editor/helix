@@ -37,7 +37,7 @@ pub struct EditorView {
     keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::Command, Vec<KeyEvent>),
-    completion: Option<Completion>,
+    pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
     autoinfo: Option<Info>,
 }
@@ -984,12 +984,21 @@ impl EditorView {
 
     pub fn set_completion(
         &mut self,
+        editor: &Editor,
         items: Vec<helix_lsp::lsp::CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
+        start_offset: usize,
         trigger_offset: usize,
         size: Rect,
     ) {
-        let mut completion = Completion::new(items, offset_encoding, trigger_offset);
+        let mut completion =
+            Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
+
+        if completion.is_empty() {
+            // skip if we got no completion results
+            return;
+        }
+
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
@@ -1211,6 +1220,7 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(key) => {
+                cxt.editor.reset_idle_timer();
                 let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
                 // clear status
@@ -1245,6 +1255,7 @@ impl Component for EditorView {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.completion = None;
+                                        cxt.editor.clear_idle_timer(); // don't retrigger
                                     }
                                 }
                             }
@@ -1258,6 +1269,7 @@ impl Component for EditorView {
                                     completion.update(&mut cxt);
                                     if completion.is_empty() {
                                         self.completion = None;
+                                        cxt.editor.clear_idle_timer(); // don't retrigger
                                     }
                                 }
                             }

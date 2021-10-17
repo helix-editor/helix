@@ -271,12 +271,18 @@ impl<T> Picker<T> {
     }
 
     pub fn move_up(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
         let len = self.matches.len();
         let pos = ((self.cursor + len.saturating_sub(1)) % len) % len;
         self.cursor = pos;
     }
 
     pub fn move_down(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
         let len = self.matches.len();
         let pos = (self.cursor + 1) % len;
         self.cursor = pos;

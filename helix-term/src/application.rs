@@ -102,6 +102,7 @@ impl Application {
         if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
             if first.is_dir() {
+                std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
                 compositor.push(Box::new(ui::file_picker(first.clone())));
             } else {
@@ -204,6 +205,11 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render();
                 }
+                _ = &mut self.editor.idle_timer => {
+                    // idle timeout
+                    self.editor.clear_idle_timer();
+                    self.handle_idle_timeout();
+                }
             }
         }
     }
@@ -231,6 +237,38 @@ impl Application {
             }
             _ => unreachable!(),
         }
+    }
+
+    pub fn handle_idle_timeout(&mut self) {
+        use crate::commands::{completion, Context};
+        use helix_view::document::Mode;
+
+        if doc_mut!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
+            return;
+        }
+        let editor_view = self
+            .compositor
+            .find(std::any::type_name::<ui::EditorView>())
+            .expect("expected at least one EditorView");
+        let editor_view = editor_view
+            .as_any_mut()
+            .downcast_mut::<ui::EditorView>()
+            .unwrap();
+
+        if editor_view.completion.is_some() {
+            return;
+        }
+
+        let mut cx = Context {
+            register: None,
+            editor: &mut self.editor,
+            jobs: &mut self.jobs,
+            count: None,
+            callback: None,
+            on_next_key_callback: None,
+        };
+        completion(&mut cx);
+        self.render();
     }
 
     pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
@@ -417,14 +455,6 @@ impl Application {
         server_id: usize,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
-        let editor_view = self
-            .compositor
-            .find(std::any::type_name::<ui::EditorView>())
-            .expect("expected at least one EditorView");
-        let editor_view = editor_view
-            .as_any_mut()
-            .downcast_mut::<ui::EditorView>()
-            .unwrap();
 
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
@@ -534,7 +564,19 @@ impl Application {
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
                     }
-                    Notification::ProgressMessage(params) => {
+                    Notification::ProgressMessage(params)
+                        if !self
+                            .compositor
+                            .has_component(std::any::type_name::<ui::Prompt>()) =>
+                    {
+                        let editor_view = self
+                            .compositor
+                            .find(std::any::type_name::<ui::EditorView>())
+                            .expect("expected at least one EditorView");
+                        let editor_view = editor_view
+                            .as_any_mut()
+                            .downcast_mut::<ui::EditorView>()
+                            .unwrap();
                         let lsp::ProgressParams { token, value } = params;
 
                         let lsp::ProgressParamsValue::WorkDone(work) = value;
@@ -609,6 +651,9 @@ impl Application {
                             self.editor.set_status(status);
                         }
                     }
+                    Notification::ProgressMessage(_params) => {
+                        // do nothing
+                    }
                 }
             }
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
@@ -643,6 +688,14 @@ impl Application {
                     MethodCall::WorkDoneProgressCreate(params) => {
                         self.lsp_progress.create(server_id, params.token);
 
+                        let editor_view = self
+                            .compositor
+                            .find(std::any::type_name::<ui::EditorView>())
+                            .expect("expected at least one EditorView");
+                        let editor_view = editor_view
+                            .as_any_mut()
+                            .downcast_mut::<ui::EditorView>()
+                            .unwrap();
                         let spinner = editor_view.spinners_mut().get_or_create(server_id);
                         if spinner.is_stopped() {
                             spinner.start();

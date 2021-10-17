@@ -29,10 +29,10 @@ use std::borrow::Cow;
 /// "(anchor, head)", followed by example text with "[" and "]"
 /// inserted to represent the anchor and head positions:
 ///
-/// - (0, 3): [Som]e text.
-/// - (3, 0): ]Som[e text.
-/// - (2, 7): So[me te]xt.
-/// - (1, 1): S[]ome text.
+/// - (0, 3): `[Som]e text`.
+/// - (3, 0): `]Som[e text`.
+/// - (2, 7): `So[me te]xt`.
+/// - (1, 1): `S[]ome text`.
 ///
 /// Ranges are considered to be inclusive on the left and
 /// exclusive on the right, regardless of anchor-head ordering.

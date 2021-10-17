@@ -6,19 +6,11 @@ file-types = ["rs"]
 roots = []
 auto-format = true
 comment-token = "//"
-config = """
-{
-  "cargo": {
-    "loadOutDirsFromCheck": true
-  },
-  "procMacro": {
-    "enable": false
-  }
-}
-"""
-
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
+[language.config]
+cargo = { loadOutDirsFromCheck = true }
+procMacro = { enable = false }
 
 [language.debugger]
 name = "lldb-vscode"
@@ -132,6 +124,16 @@ name = "attach"
 request = "attach"
 completion = [ "pid" ]
 args = { console = "internalConsole", pid = "{0}" }
+
+[[language]]
+name = "c-sharp"
+scope = "source.csharp"
+injection-regex = "c-?sharp"
+file-types = ["cs"]
+roots = []
+comment-token = "//"
+
+indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
 name = "go"
@@ -248,7 +250,7 @@ file-types = ["py"]
 roots = []
 comment-token = "#"
 
-language-server = { command = "pyls" }
+language-server = { command = "pylsp" }
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
@@ -380,6 +382,15 @@ roots = []
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "svelteserver", args = ["--stdio"] }
 
+
+[[language]]
+name = "vue"
+scope = "source.vue"
+injection-regex = "vue"
+file-types = ["vue"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
 [[language]]
 name = "yaml"
 scope = "source.yaml"
@@ -409,3 +420,23 @@ comment-token = "//"
 
 language-server = { command = "zls" }
 indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "prolog"
+scope = "source.prolog"
+roots = []
+file-types = ["pl", "prolog"]
+comment-token = "%"
+
+language-server = { command = "swipl", args = [
+    "-g", "use_module(library(lsp_server))",
+    "-g", "lsp_server:main",
+    "-t", "halt", "--", "stdio"] }
+
+[[language]]
+name = "tsq"
+scope = "source.tsq"
+file-types = ["scm"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
