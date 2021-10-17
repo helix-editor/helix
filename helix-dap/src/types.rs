@@ -2,6 +2,17 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 
+#[derive(
+    Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize,
+)]
+pub struct ThreadId(isize);
+
+impl std::fmt::Display for ThreadId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 pub trait Request {
     type Arguments: serde::de::DeserializeOwned + serde::Serialize;
     type Result: serde::de::DeserializeOwned + serde::Serialize;
@@ -157,7 +168,7 @@ pub struct StackFrame {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Thread {
-    pub id: isize,
+    pub id: ThreadId,
     pub name: String,
 }
 
@@ -317,7 +328,7 @@ pub mod requests {
     #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ContinueArguments {
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
     }
 
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -338,7 +349,7 @@ pub mod requests {
     #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StackTraceArguments {
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
         pub start_frame: Option<usize>,
         pub levels: Option<usize>,
         pub format: Option<StackFrameFormat>,
@@ -424,7 +435,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepInArguments {
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
         pub target_id: Option<usize>,
         pub granularity: Option<String>,
     }
@@ -441,7 +452,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepOutArguments {
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
         pub granularity: Option<String>,
     }
 
@@ -457,7 +468,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct NextArguments {
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
         pub granularity: Option<String>,
     }
 
@@ -473,7 +484,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct PauseArguments {
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
     }
 
     #[derive(Debug)]
@@ -574,7 +585,7 @@ pub mod events {
     pub struct Stopped {
         pub reason: String,
         pub description: Option<String>,
-        pub thread_id: Option<isize>,
+        pub thread_id: Option<ThreadId>,
         pub preserve_focus_hint: Option<bool>,
         pub text: Option<String>,
         pub all_threads_stopped: Option<bool>,
@@ -584,7 +595,7 @@ pub mod events {
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Continued {
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
         pub all_threads_continued: Option<bool>,
     }
 
@@ -604,7 +615,7 @@ pub mod events {
     #[serde(rename_all = "camelCase")]
     pub struct Thread {
         pub reason: String,
-        pub thread_id: isize,
+        pub thread_id: ThreadId,
     }
 
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -661,7 +672,7 @@ pub mod events {
     // #[serde(rename_all = "camelCase")]
     // pub struct Invalidated {
     // pub areas: Vec<InvalidatedArea>,
-    // pub thread_id: Option<usize>,
+    // pub thread_id: Option<ThreadId>,
     // pub stack_frame_id: Option<usize>,
     // }
 

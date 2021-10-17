@@ -320,7 +320,12 @@ impl Application {
                             for thread in threads {
                                 fetch_stack_trace(debugger, thread.id).await;
                             }
-                            select_thread_id(&mut self.editor, thread_id.unwrap_or(0), false).await;
+                            select_thread_id(
+                                &mut self.editor,
+                                thread_id.unwrap_or_default(),
+                                false,
+                            )
+                            .await;
                         }
                     } else if let Some(thread_id) = thread_id {
                         debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here

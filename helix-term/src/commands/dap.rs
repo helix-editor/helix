@@ -6,7 +6,7 @@ use crate::{
     ui::{FilePicker, Prompt, PromptEvent},
 };
 use helix_core::{syntax::DebugConfigCompletion, Selection};
-use helix_dap::{self as dap, Client};
+use helix_dap::{self as dap, Client, ThreadId};
 use helix_lsp::block_on;
 
 use serde_json::{to_value, Value};
@@ -34,7 +34,7 @@ pub fn resume_application(debugger: &mut Client) {
     debugger.thread_id = None;
 }
 
-pub async fn select_thread_id(editor: &mut Editor, thread_id: isize, force: bool) {
+pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
     let debugger = match &mut editor.debugger {
         Some(debugger) => debugger,
         None => return,
@@ -53,7 +53,7 @@ pub async fn select_thread_id(editor: &mut Editor, thread_id: isize, force: bool
     }
 }
 
-pub async fn fetch_stack_trace(debugger: &mut Client, thread_id: isize) {
+pub async fn fetch_stack_trace(debugger: &mut Client, thread_id: ThreadId) {
     let (frames, _) = match debugger.stack_trace(thread_id).await {
         Ok(frames) => frames,
         Err(_) => return,
