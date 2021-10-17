@@ -3,9 +3,10 @@ use crate::{
     types::*,
     Error, Result,
 };
+use helix_core::syntax::DebuggerQuirks;
+
 use anyhow::anyhow;
 pub use log::{error, info};
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -20,13 +21,6 @@ use tokio::{
     sync::mpsc::{channel, unbounded_channel, UnboundedReceiver, UnboundedSender},
     time,
 };
-
-// Different workarounds for adapters' differences
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
-pub struct DebuggerQuirks {
-    #[serde(default)]
-    pub absolute_paths: bool,
-}
 
 #[derive(Debug)]
 pub struct Client {

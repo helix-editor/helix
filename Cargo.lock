@@ -362,7 +362,6 @@ version = "0.4.1"
 dependencies = [
  "arc-swap",
  "etcetera",
- "helix-dap",
  "helix-syntax",
  "once_cell",
  "quickcheck",
@@ -386,6 +385,7 @@ version = "0.4.1"
 dependencies = [
  "anyhow",
  "fern",
+ "helix-core",
  "log",
  "serde",
  "serde_json",
