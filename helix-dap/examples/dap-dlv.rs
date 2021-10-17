@@ -1,4 +1,4 @@
-use helix_dap::{events, Client, Event, Payload, Result, SourceBreakpoint};
+use helix_dap::{events, Client, Event, Payload, Result, SourceBreakpoint, ThreadId};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -109,7 +109,10 @@ pub async fn main() -> Result<()> {
         .read_line(&mut _in)
         .expect("Failed to read line");
 
-    println!("continued: {:?}", client.continue_thread(0).await);
+    println!(
+        "continued: {:?}",
+        client.continue_thread(ThreadId::default()).await
+    );
 
     let mut _in = String::new();
     std::io::stdin()
