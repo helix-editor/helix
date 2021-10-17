@@ -28,6 +28,7 @@ pub enum Mode {
     Normal,
     Select,
     Insert,
+    Picker,
 }
 
 impl Display for Mode {
@@ -36,6 +37,7 @@ impl Display for Mode {
             Mode::Normal => f.write_str("normal"),
             Mode::Select => f.write_str("select"),
             Mode::Insert => f.write_str("insert"),
+            Mode::Picker => f.write_str("picker"),
         }
     }
 }
@@ -48,6 +50,7 @@ impl FromStr for Mode {
             "normal" => Ok(Mode::Normal),
             "select" => Ok(Mode::Select),
             "insert" => Ok(Mode::Insert),
+            "picker" => Ok(Mode::Picker),
             _ => Err(anyhow!("Invalid mode '{}'", s)),
         }
     }

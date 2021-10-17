@@ -632,10 +632,21 @@ impl Default for Keymaps {
 
             "C-x" => completion,
         });
+        let picker = keymap!({ "Picker mode"
+             "esc" | "C-c" => normal_mode,
+
+             "C-p" | "up" | "backtab" => move_line_up,
+             "C-n" | "down" | "tab"  => move_line_down,
+
+             // "ret" => open,
+             "C-h" => hsplit,
+             "C-v" => vsplit,
+        });
         Keymaps(hashmap!(
             Mode::Normal => Keymap::new(normal),
             Mode::Select => Keymap::new(select),
             Mode::Insert => Keymap::new(insert),
+            Mode::Picker => Keymap::new(picker),
         ))
     }
 }
