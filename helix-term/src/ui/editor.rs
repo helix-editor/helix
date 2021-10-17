@@ -902,29 +902,11 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        if let Some(picker) = cxt.editor.debug_config_picker.clone() {
-            match event {
-                KeyEvent {
-                    code: KeyCode::Esc, ..
-                } => {}
-                KeyEvent {
-                    code: KeyCode::Char(char),
-                    ..
-                } => {
-                    let (i, name) = match picker.iter().position(|t| t.starts_with(char)) {
-                        Some(pos) => (pos, picker.get(pos).unwrap().clone()),
-                        None => return None,
-                    };
-                    let completions = cxt.editor.debug_config_completions.clone().unwrap();
-                    let completion = completions.get(i).unwrap().clone();
-                    if !completion.is_empty() {
-                        let prompt = Self::debug_parameter_prompt(completion, name, Vec::new());
-                        cxt.push_layer(Box::new(prompt));
-                    }
-                }
-                _ => return None,
-            }
-            cxt.editor.debug_config_picker = None;
+        if !cxt.editor.debug_config_completions.is_empty() {
+            let completions = std::mem::take(&mut cxt.editor.debug_config_completions);
+            // TODO name
+            let prompt = Self::debug_parameter_prompt(completions, "test".to_string(), Vec::new());
+            cxt.push_layer(Box::new(prompt));
             return None;
         }
 
@@ -1425,26 +1407,6 @@ impl Component for EditorView {
                 width: 70.min(max_len),
                 title: format!("{} variables", num_vars),
                 text: text + "\nExit Esc",
-            };
-            info.render(area, surface, cx);
-        }
-
-        if let Some(ref configs) = cx.editor.debug_config_picker {
-            let mut text = String::new();
-            let mut height = 0;
-            let mut max_len = 20;
-
-            for line in configs {
-                max_len = max_len.max(line.len() as u16 + 2);
-                height += 1;
-                text.push_str(&format!("{} {}\n", line.chars().next().unwrap(), line));
-            }
-
-            let mut info = Info {
-                height: 20.min(height + 1),
-                width: 70.min(max_len),
-                title: "Debug targets".to_owned(),
-                text: text + "Exit Esc",
             };
             info.render(area, surface, cx);
         }

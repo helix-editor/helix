@@ -3,7 +3,7 @@ use crate::{
     commands,
     compositor::Compositor,
     job::Callback,
-    ui::{FilePicker, Prompt, PromptEvent},
+    ui::{FilePicker, Picker, Prompt, PromptEvent},
 };
 use helix_core::{
     syntax::{DebugArgumentValue, DebugConfigCompletion},
@@ -319,14 +319,16 @@ pub fn dap_launch(cx: &mut Context) {
         }
     };
 
-    cx.editor.debug_config_picker = Some(config.templates.iter().map(|t| t.name.clone()).collect());
-    cx.editor.debug_config_completions = Some(
-        config
-            .templates
-            .iter()
-            .map(|t| t.completion.clone())
-            .collect(),
-    );
+    cx.push_layer(Box::new(Picker::new(
+        true,
+        config.templates.clone(),
+        |template| template.name.as_str().into(),
+        |editor, template, _action| {
+            let completions = template.completion.clone();
+            editor.debug_config_completions = completions;
+            // TODO: need some way to manipulate the compositor to push a new prompt here
+        },
+    ))); // TODO: wrap in popup with fixed size
 }
 
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
