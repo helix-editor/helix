@@ -82,26 +82,29 @@ impl Transport {
         let mut content_length = None;
         loop {
             buffer.truncate(0);
-            reader.read_line(buffer).await?;
-            let header = buffer.trim();
+            if reader.read_line(buffer).await? == 0 {
+                return Err(Error::StreamClosed);
+            };
 
-            if header.is_empty() {
+            if buffer == "\r\n" {
+                // look for an empty CRLF line
                 break;
             }
 
-            let mut parts = header.split(": ");
+            let header = buffer.trim();
+            let parts = header.split_once(": ");
 
-            match (parts.next(), parts.next(), parts.next()) {
-                (Some("Content-Length"), Some(value), None) => {
+            match parts {
+                Some(("Content-Length", value)) => {
                     content_length = Some(value.parse().context("invalid content length")?);
                 }
-                (Some(_), Some(_), None) => {}
-                _ => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "Failed to parse header",
-                    )
-                    .into());
+                Some((_, _)) => {}
+                None => {
+                    // Workaround: Some non-conformant language servers will output logging and other garbage
+                    // into the same stream as JSON-RPC messages. This can also happen from shell scripts that spawn
+                    // the server. Skip such lines and log a warning.
+
+                    // warn!("Failed to parse header: {:?}", header);
                 }
             }
         }
@@ -126,7 +129,9 @@ impl Transport {
         buffer: &mut String,
     ) -> Result<()> {
         buffer.truncate(0);
-        err.read_line(buffer).await?;
+        if err.read_line(buffer).await? == 0 {
+            return Err(Error::StreamClosed);
+        };
         error!("err <- {}", buffer);
 
         Ok(())
