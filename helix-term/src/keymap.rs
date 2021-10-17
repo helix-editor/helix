@@ -118,10 +118,21 @@ impl KeyTrieNode {
             }
             self.map.insert(key, trie);
         }
+        self.set_order();
+    }
 
-        for &key in self.map.keys() {
+    /// Sets the order of the mapping recursivly since the
+    /// the trie can contain child nodes without order.
+    /// The order is missing from child nodes since it's not
+    /// parsed from the config.toml
+    fn set_order(&mut self) {
+        for (&key, trie) in self.map.iter_mut() {
             if !self.order.contains(&key) {
                 self.order.push(key);
+            }
+            // Order must be recursivly set
+            if let KeyTrie::Node(node) = trie {
+                node.set_order();
             }
         }
     }
@@ -140,7 +151,7 @@ impl KeyTrieNode {
             }
         }
         body.sort_unstable_by_key(|(_, keys)| {
-            self.order.iter().position(|&k| k == keys[0]).unwrap_or(0)
+            self.order.iter().position(|&k| k == keys[0]).unwrap()
         });
         let prefix = format!("{} ", self.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
@@ -150,6 +161,11 @@ impl KeyTrieNode {
                 .collect();
         }
         Info::new(self.name(), body)
+    }
+
+    /// Get a reference to the key trie node's order.
+    pub fn order(&self) -> &[KeyEvent] {
+        self.order.as_slice()
     }
 }
 
@@ -235,6 +251,7 @@ pub enum KeymapResultKind {
 
 /// Returned after looking up a key in [`Keymap`]. The `sticky` field has a
 /// reference to the sticky node if one is currently active.
+#[derive(Debug)]
 pub struct KeymapResult<'a> {
     pub kind: KeymapResultKind,
     pub sticky: Option<&'a KeyTrieNode>,
@@ -715,5 +732,39 @@ mod tests {
 
         assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
         assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
+    }
+
+    #[test]
+    fn order_should_be_set() {
+        let config = Config {
+            keys: Keymaps(hashmap! {
+                Mode::Normal => Keymap::new(
+                    keymap!({ "Normal mode"
+                        "space" => { ""
+                            "s" => { ""
+                                "v" => vsplit,
+                                "c" => hsplit,
+                            },
+                        },
+                    })
+                )
+            }),
+            ..Default::default()
+        };
+        let mut merged_config = merge_keys(config.clone());
+        assert_ne!(config, merged_config);
+        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        // Make sure mapping works
+        assert_eq!(
+            keymap
+                .root()
+                .search(&[key!(' '), key!('s'), key!('v')])
+                .unwrap(),
+            &KeyTrie::Leaf(Command::vsplit),
+            "Leaf should be present in merged subnode"
+        );
+        // Make sure an order was set during merge
+        let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
+        assert!(!node.node().unwrap().order().is_empty())
     }
 }
