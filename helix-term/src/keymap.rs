@@ -12,13 +12,13 @@ use std::{
 #[macro_export]
 macro_rules! key {
     ($key:ident) => {
-        KeyEvent {
+        ::helix_view::input::KeyEvent {
             code: ::helix_view::keyboard::KeyCode::$key,
             modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
     };
     ($($ch:tt)*) => {
-        KeyEvent {
+        ::helix_view::input::KeyEvent {
             code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
             modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
