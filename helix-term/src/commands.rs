@@ -3309,7 +3309,7 @@ pub mod insert {
     pub type PostHook = fn(&mut Context, char);
 
     // It trigger completion when idle timer reaches deadline
-    // Only trigger completion by pre nth char of cursor is word char
+    // Only trigger completion if the word under cursor is longer than n characters
     pub fn idle_completion(cx: &mut Context) {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
@@ -3318,14 +3318,16 @@ pub mod insert {
         use helix_core::chars::char_is_word;
         let mut iter = text.chars_at(cursor);
         iter.reverse();
-        let min = cx.editor.config.completion_trigger_len as usize;
-        if iter.take(min).filter(|c| char_is_word(*c)).count() < min {
-            return;
+        for _ in 0..cx.editor.config.completion_trigger_len {
+            match iter.next() {
+                Some(c) if char_is_word(c) => {}
+                _ => return,
+            }
         }
         super::completion(cx);
     }
 
-    fn semantics_completion(cx: &mut Context, ch: char) {
+    fn language_server_completion(cx: &mut Context, ch: char) {
         // if ch matches completion char, trigger completion
         let doc = doc_mut!(cx.editor);
         let language_server = match doc.language_server() {
@@ -3424,7 +3426,7 @@ pub mod insert {
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
-        for hook in &[semantics_completion, signature_help] {
+        for hook in &[language_server_completion, signature_help] {
             // for hook in &[signature_help] {
             hook(cx, c);
         }
