@@ -121,7 +121,7 @@ impl KeyTrieNode {
         self.set_order();
     }
 
-    /// Sets the order of the mapping recursivly since the
+    /// Sets the order of the mapping recursively since the
     /// the trie can contain child nodes without order.
     /// The order is missing from child nodes since it's not
     /// parsed from the config.toml
@@ -130,7 +130,7 @@ impl KeyTrieNode {
             if !self.order.contains(&key) {
                 self.order.push(key);
             }
-            // Order must be recursivly set
+            // Order must be recursively set
             if let KeyTrie::Node(node) = trie {
                 node.set_order();
             }
