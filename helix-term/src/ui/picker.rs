@@ -337,6 +337,10 @@ impl<T: 'static> Component for Picker<T> {
                 ..
             }
             | KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Char('p'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
@@ -348,6 +352,10 @@ impl<T: 'static> Component for Picker<T> {
             }
             | KeyEvent {
                 code: KeyCode::Tab, ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('j'),
+                modifiers: KeyModifiers::CONTROL,
             }
             | KeyEvent {
                 code: KeyCode::Char('n'),
