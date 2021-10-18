@@ -1,3 +1,5 @@
+; adapted from https://github.com/nvim-treesitter/nvim-treesitter/blob/58dd95f4a4db38a011c8f28564786c9d98b010c8/queries/heex/highlights.scm
+
 (text) @text
 (comment) @comment
 (doctype) @constant
