@@ -3308,7 +3308,26 @@ pub mod insert {
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
     pub type PostHook = fn(&mut Context, char);
 
-    fn completion(cx: &mut Context, ch: char) {
+    // It trigger completion when idle timer reaches deadline
+    // Only trigger completion if the word under cursor is longer than n characters
+    pub fn idle_completion(cx: &mut Context) {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+
+        use helix_core::chars::char_is_word;
+        let mut iter = text.chars_at(cursor);
+        iter.reverse();
+        for _ in 0..cx.editor.config.completion_trigger_len {
+            match iter.next() {
+                Some(c) if char_is_word(c) => {}
+                _ => return,
+            }
+        }
+        super::completion(cx);
+    }
+
+    fn language_server_completion(cx: &mut Context, ch: char) {
         // if ch matches completion char, trigger completion
         let doc = doc_mut!(cx.editor);
         let language_server = match doc.language_server() {
@@ -3318,19 +3337,14 @@ pub mod insert {
 
         let capabilities = language_server.capabilities();
 
-        if let lsp::ServerCapabilities {
-            completion_provider:
-                Some(lsp::CompletionOptions {
-                    trigger_characters: Some(triggers),
-                    ..
-                }),
+        if let Some(lsp::CompletionOptions {
+            trigger_characters: Some(triggers),
             ..
-        } = capabilities
+        }) = &capabilities.completion_provider
         {
             // TODO: what if trigger is multiple chars long
-            let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
-
-            if is_trigger {
+            if triggers.iter().any(|trigger| trigger.contains(ch)) {
+                cx.editor.clear_idle_timer();
                 super::completion(cx);
             }
         }
@@ -3412,7 +3426,8 @@ pub mod insert {
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
-        for hook in &[completion, signature_help] {
+        for hook in &[language_server_completion, signature_help] {
+            // for hook in &[signature_help] {
             hook(cx, c);
         }
     }
