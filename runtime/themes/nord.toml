@@ -1,84 +1,120 @@
 # Author : RayGervais<raygervais@hotmail.ca>
 
-# "ui.linenr.selected" = { fg = "#d8dee9" }
-"ui.text.focus" = { fg = "#88c0d0", modifiers= ["bold"] }
-"ui.menu.selected" = { fg = "#88c0d0", bg = "#313f4e" }
+"ui.linenr.selected" = { fg = "nord4" }
+"ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
+"ui.menu.selected" = { fg = "nord8", bg = "nord2" }
 
-# "info" = "#b48ead"
-# "hint" = "#a3be8c"
+"info" = "nord8"
+"hint" = "nord8"
 
 # Polar Night
 # nord0 - background color
-"ui.background" = { bg = "#2e3440" }
-"ui.statusline.inactive" = { fg = "#d8dEE9", bg = "#2e3440" }
+"ui.background" = { bg = "nord0" }
+"ui.statusline.inactive" = { fg = "nord4", bg = "nord0" }
 
 
 # nord1 - status bars, panels, modals, autocompletion
-"ui.statusline" = { fg = "#88c0d0", bg = "#3b4252" }
+"ui.statusline" = { fg = "nord8", bg = "nord1" }
 "ui.popup" = { bg = "#232d38" }
 "ui.window" = { bg = "#232d38" }
-"ui.help" = { bg = "#232d38", fg = "#e5ded6" }
+"ui.help" = { bg = "#232d38", fg = "nord4" }
 
 # nord2 - active line, highlighting
-"ui.selection" = { bg = "#434c5e" }
-"ui.cursor.match" = { bg = "434c5e" }
+"ui.selection" = { bg = "nord2" }
+"ui.cursor.match" = { bg = "nord2" }
 
-# nord3 - comments
-"comment" = "#616E88"
-"ui.linenr" = { fg = "#616E88" }
+# nord3 - comments, nord3 based lighter color
+# relative: https://github.com/arcticicestudio/nord/issues/94
+"comment" = "gray"
+"ui.linenr" = { fg = "gray" }
 
 # Snow Storm
 # nord4 - cursor, variables, constants, attributes, fields
-"ui.cursor.primary" = { fg = "#d8dee9", modifiers = ["reversed"] }
-"attribute" = "#d8dee9"
-"variable"  = "#d8dee9"
-"constant"  = "#d8dee9"
-"variable.builtin" = "#d8dee9"
-"constant.builtin" = "#d8dee9"
-"namespace" = "#d8dee9"
+"ui.cursor.primary" = { fg = "nord4", modifiers = ["reversed"] }
+"attribute" = "nord4"
+"variable"  = "nord4"
+"constant"  = "nord4"
+"variable.builtin" = "nord4"
+"constant.builtin" = "nord4"
+"namespace" = "nord4"
 
 # nord5 - suble UI text
 
 # nord6 - base text, punctuation
-"ui.text" = { fg = "#eceff4" }
-"punctuation" = "#eceff4"
+"ui.text" = { fg = "nord6" }
+"punctuation" = "nord6"
 
 # Frost
 # nord7 - classes, types, primiatives
-"type" = "#8fbcbb"
-"type.builtin" = { fg = "#8fbcbb"}
-"label" = "#8fbcbb"
+"type" = "nord7"
+"type.builtin" = { fg = "nord7"}
+"label" = "nord7"
 
 # nord8 - declaration, methods, routines
-"constructor" = "#88c0d0"
-"function" = "#88c0d0"
-"function.macro" = { fg = "#88c0d0" }
-"function.builtin" = { fg = "#88c0d0" }
+"constructor" = "nord8"
+"function" = "nord8"
+"function.macro" = { fg = "nord8" }
+"function.builtin" = { fg = "nord8" }
 
 # nord9 - operator, tags, units, punctuations
-"punctuation.delimiter" = "#81a1c1"
-"operator" = { fg = "#81a1c1" }
-"property" = "#81a1c1"
+"punctuation.delimiter" = "nord9"
+"operator" = { fg = "nord9" }
+"property" = "nord9"
 
 # nord10 - keywords, special
-"keyword" = { fg = "#5e81ac" }
-"keyword.directive" = "#5e81ac"
-"variable.parameter" = "#5e81ac"
+"keyword" = { fg = "nord10" }
+"keyword.directive" = "nord10"
+"variable.parameter" = "nord10"
 
 # Aurora
 # nord11 - error
-"error" = "#bf616a"
+"error" = "nord11"
 
 # nord12 - annotations, decorators
-"special" = "#d08770"
-"module" = "#d08770"
+"special" = "nord12"
+"module" = "nord12"
 
 # nord13 - warnings, escape characters, regex
-"warning" = "#ebcb8b"
-"escape" = { fg = "#ebcb8b" }
+"warning" = "nord13"
+"escape" = { fg = "nord13" }
 
 # nord14 - strings
-"string" = "#a3be8c"
+"string" = "nord14"
 
 # nord15 - integer, floating point
-"number" = "#b48ead"
+"number" = "nord15"
+
+[palette]
+nord0 = "#2e3440"
+nord1 = "#3b4252"
+nord2 = "#434c5e"
+nord4 = "#d8dee9"
+nord6 = "#eceff4"
+nord7 = "#8fbcbb"
+nord8 = "#88c0d0"
+nord9 = "#81a1c1"
+nord10 = "#5e81ac"
+nord11 = "#bf616a"
+nord12 = "#d08770"
+nord13 = "#ebcb8b"
+nord14 = "#a3be8c"
+nord15 = "#b48ead"
+
+
+black = "#3b4252"
+red = "#bf616a"
+light-red = "#bf616a"
+green = "#a3be8c"
+light-green = "#a3be8c"
+yellow = "#eacb8b"
+light-yellow = "#eacb8b"
+blue = "#81a1c1"
+light-blue = "#81a1c1"
+magenta = "#b48ead"
+light-magenta = "#b48ead"
+cyan = "#88c0d0"
+light-cyan = "#8fbcbb"
+white = "#e5e9f0"
+light-white = "#eceff4"
+gray = "#616e88"
+light-gray = "#616e88"
