@@ -242,12 +242,12 @@ commands (including goto) to extend the existing selection instead of replacing 
 
 Keys to use within picker. Remapping currently not supported.
 
-| Key                | Description       |
-| -----              | -------------     |
-| `Up`, `Ctrl-p`     | Previous entry    |
-| `Down`, `Ctrl-n`   | Next entry        |
-| `Ctrl-space`       | Filter options    |
-| `Enter`            | Open selected     |
-| `Ctrl-h`           | Open horizontally |
-| `Ctrl-v`           | Open vertically   |
-| `Escape`, `Ctrl-c` | Close picker      |
+| Key                          | Description       |
+| -----                        | -------------     |
+| `Up`, `Ctrl-k`, `Ctrl-p`     | Previous entry    |
+| `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
+| `Ctrl-space`                 | Filter options    |
+| `Enter`                      | Open selected     |
+| `Ctrl-h`                     | Open horizontally |
+| `Ctrl-v`                     | Open vertically   |
+| `Escape`, `Ctrl-c`           | Close picker      |
