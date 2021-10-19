@@ -527,39 +527,7 @@ impl LanguageLayer {
                     self.tree.as_ref(),
                 )
                 .ok_or(Error::Cancelled)?;
-            // unsafe { syntax.parser.set_cancellation_flag(None) };
-            // let mut cursor = syntax.cursors.pop().unwrap_or_else(QueryCursor::new);
 
-            // Process combined injections. (ERB, EJS, etc https://github.com/tree-sitter/tree-sitter/pull/526)
-            // if let Some(combined_injections_query) = &config.combined_injections_query {
-            //     let mut injections_by_pattern_index =
-            //         vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
-            //     let matches =
-            //         cursor.matches(combined_injections_query, tree.root_node(), RopeProvider(source));
-            //     for mat in matches {
-            //         let entry = &mut injections_by_pattern_index[mat.pattern_index];
-            //         let (language_name, content_node, include_children) =
-            //             injection_for_match(config, combined_injections_query, &mat, source);
-            //         if language_name.is_some() {
-            //             entry.0 = language_name;
-            //         }
-            //         if let Some(content_node) = content_node {
-            //             entry.1.push(content_node);
-            //         }
-            //         entry.2 = include_children;
-            //     }
-            //     for (lang_name, content_nodes, includes_children) in injections_by_pattern_index {
-            //         if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
-            //             if let Some(next_config) = (injection_callback)(lang_name) {
-            //                 let ranges =
-            //                     Self::intersect_ranges(&ranges, &content_nodes, includes_children);
-            //                 if !ranges.is_empty() {
-            //                     queue.push((next_config, depth + 1, ranges));
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
             self.tree = Some(tree)
         }
         Ok(())
