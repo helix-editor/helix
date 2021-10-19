@@ -563,7 +563,9 @@ impl Application {
         let mut stdout = stdout();
         // reset cursor shape
         write!(stdout, "\x1B[2 q")?;
-        execute!(stdout, DisableMouseCapture)?;
+        // Ignore errors on disabling, this might trigger on windows if we call
+        // disable without calling enable previously
+        let _ = execute!(stdout, DisableMouseCapture);
         execute!(stdout, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()?;
         Ok(())
