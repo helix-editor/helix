@@ -4127,7 +4127,10 @@ pub fn completion(cx: &mut Context) {
     let mut iter = text.chars_at(cursor);
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
-    let filter_word = text.slice(cursor - offset..cursor).to_string();
+    let filter_word = match cx.editor.config.completion_filter_start {
+        false => "".into(),
+        true => text.slice(cursor - offset..cursor).to_string(),
+    };
     let start_offset = cursor.saturating_sub(offset);
 
     cx.callback(
