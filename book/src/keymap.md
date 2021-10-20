@@ -181,12 +181,16 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 This layer is similar to vim keybindings as kakoune does not support window.
 
-| Key           | Description             | Command       |
-| -----         | -------------           | -------       |
-| `w`, `Ctrl-w` | Switch to next window   | `rotate_view` |
-| `v`, `Ctrl-v` | Vertical right split    | `vsplit`      |
-| `h`, `Ctrl-h` | Horizontal bottom split | `hsplit`      |
-| `q`, `Ctrl-q` | Close current window    | `wclose`      |
+| Key           | Description             | Command           |
+| -----         | -------------           | -------           |
+| `w`, `Ctrl-w` | Switch to next window   | `rotate_view`     |
+| `v`, `Ctrl-v` | Vertical right split    | `vsplit`          |
+| `s`, `Ctrl-s` | Horizontal bottom split | `hsplit`          |
+| `h`, `Ctrl-h` | Move to left split      | `jump_view_left`  |
+| `j`, `Ctrl-j` | Move to split below     | `jump_view_down`  |
+| `k`, `Ctrl-k` | Move to split above     | `jump_view_up`    |
+| `l`, `Ctrl-l` | Move to right split     | `jump_view_right` |
+| `q`, `Ctrl-q` | Close current window    | `wclose`          |
 
 #### Space mode
 
