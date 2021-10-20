@@ -22,6 +22,7 @@ To override global configuration parameters, create a `config.toml` file located
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
+| `completion-filter-start` | Filter completion items from language server by `starts_with` under word | `false` |
 
 ## LSP
 
