@@ -3782,11 +3782,21 @@ fn replace_with_yanked(cx: &mut Context) {
     let registers = &mut cx.editor.registers;
 
     if let Some(values) = registers.read(reg_name) {
-        if let Some(yank) = values.first() {
+        if !values.is_empty() {
+            let repeat = std::iter::repeat(
+                values
+                    .last()
+                    .map(|value| Tendril::from_slice(value))
+                    .unwrap(),
+            );
+            let mut values = values
+                .iter()
+                .map(|value| Tendril::from_slice(value))
+                .chain(repeat);
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    (range.from(), range.to(), Some(yank.as_str().into()))
+                    (range.from(), range.to(), Some(values.next().unwrap()))
                 } else {
                     (range.from(), range.to(), None)
                 }
