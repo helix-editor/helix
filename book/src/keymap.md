@@ -8,10 +8,10 @@
 
 | Key         | Description                                        | Command                     |
 | -----       | -----------                                        | -------                     |
-| `h` `Left`  | Move left                                          | `move_char_left`            |
-| `j` `Down`  | Move down                                          | `move_char_right`           |
-| `k` `Up`    | Move up                                            | `move_line_up`              |
-| `l` `Right` | Move right                                         | `move_line_down`            |
+| `h`/`Left`  | Move left                                          | `move_char_left`            |
+| `j`/`Down`  | Move down                                          | `move_char_right`           |
+| `k`/`Up`    | Move up                                            | `move_line_up`              |
+| `l`/`Right` | Move right                                         | `move_line_down`            |
 | `w`         | Move next word start                               | `move_next_word_start`      |
 | `b`         | Move previous word start                           | `move_prev_word_start`      |
 | `e`         | Move next word end                                 | `move_next_word_end`        |
