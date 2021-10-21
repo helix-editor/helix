@@ -1,7 +1,7 @@
 # Author: RayGervais<raygervais@hotmail.ca>
 
 "ui.background" = { bg = "base00" }
-"ui.menu"  = "base01"
+"ui.menu" = "base01"
 "ui.menu.selected" = { fg = "base04", bg = "base01" }
 "ui.linenr" = {fg = "base01" }
 "ui.popup" = { bg = "base01" }
@@ -12,24 +12,33 @@
 "ui.statusline" = {fg = "base04", bg = "base01" }
 "ui.help" = { fg = "base04", bg = "base01" }
 "ui.cursor" = { fg = "base05", modifiers = ["reversed"] }
-"ui.text"   = { fg = "base05" }
-"operator"  = "base05"
+"ui.text" = { fg = "base05" }
+"operator" = "base05"
 "ui.text.focus" = { fg = "base05" }
 "variable" = "base08"
-"number"     = "base09"
-"constant"   = "base09"
+"number" = "base09"
+"constant" = "base09"
 "attributes" = "base09" 
 "type" = "base0A"
 "ui.cursor.match" = { fg = "base0A", modifiers = ["underlined"] }
 "strings"  = "base0B"
 "property" = "base0B"
 "escape" = "base0C"
-"function"    = "base0D"
+"function" = "base0D"
 "constructor" = "base0D"
-"special"     = "base0D"
+"special" = "base0D"
 "keyword" = "base0E"
-"label"   = "base0E"
+"label" = "base0E"
 "namespace" = "base0E"
+"ui.popup" = { bg = "base01" }
+"ui.window" = { bg = "base00" }
+"ui.help" = { bg = "base01", fg = "base06" }
+
+"info" = "base03"
+"hint" = "base03"
+"debug" = "base03"
+"diagnostic" = "base03"
+"error" = "base0E"
 
 [palette]
 base00 = "#181818" # Default Background
