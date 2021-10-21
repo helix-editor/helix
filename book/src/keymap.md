@@ -86,7 +86,7 @@
 | `;`      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
 | `Alt-;`  | Flip selection cursor and anchor                                  | `flip_selections`                    |
 | `,`      | Keep only the primary selection                                   | `keep_primary_selection`             |
-| `A-,`    | Remove the primary selection                                      | `remove_primary_selection`           |
+| `Alt-,`  | Remove the primary selection                                      | `remove_primary_selection`           |
 | `C`      | Copy selection onto the next line                                 | `copy_selection_on_next_line`        |
 | `Alt-C`  | Copy selection onto the previous line                             | `copy_selection_on_prev_line`        |
 | `(`      | Rotate main selection backward                                    | `rotate_selections_backward`         |
