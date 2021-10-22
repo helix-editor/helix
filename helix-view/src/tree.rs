@@ -410,7 +410,7 @@ impl Tree {
         // Parent must always be a container
         let parent_container = match &self.nodes[parent].content {
             Content::Container(container) => container,
-            Content::View(_) => unreachable!(), // unreachable?
+            Content::View(_) => unreachable!(),
         };
 
         match (direction, parent_container.layout) {
@@ -422,7 +422,7 @@ impl Tree {
                 // the parent container so the search must continue closer to
                 // the root of the split tree.
                 self.find_split_in_direction(parent, direction)
-            } // same as 1
+            }
             (Direction::Up, Layout::Horizontal)
             | (Direction::Down, Layout::Horizontal)
             | (Direction::Left, Layout::Vertical)
@@ -459,7 +459,7 @@ impl Tree {
                 .skip_while(|i| **i != id)
                 .copied()
                 .nth(1)?,
-            // Down && Right => +1 index wise in the child list
+            // Down and Right => +1 index wise in the child list
             Direction::Down | Direction::Right => {
                 children.iter().skip_while(|i| **i != id).copied().nth(1)?
             }
@@ -582,5 +582,66 @@ impl<'a> Iterator for Traverse<'a> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::DocumentId;
+
+    #[test]
+    fn find_split_in_direction() {
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+        });
+        let mut view = View::new(DocumentId::default());
+        view.area = Rect::new(0, 0, 180, 80);
+        tree.insert(view);
+
+        let l0 = tree.focus;
+        let view = View::new(DocumentId::default());
+        tree.split(view, Layout::Vertical);
+        let r0 = tree.focus;
+
+        tree.focus = l0;
+        let view = View::new(DocumentId::default());
+        tree.split(view, Layout::Horizontal);
+        let l1 = tree.focus;
+
+        tree.focus = l0;
+        let view = View::new(DocumentId::default());
+        tree.split(view, Layout::Vertical);
+        let l2 = tree.focus;
+
+        // Tree in test
+        // | L0  | L2 |    |
+        // |    L1    | R0 |
+        tree.focus = l2;
+        assert_eq!(Some(l0), tree.find_split_in_direction(l2, Direction::Left));
+        assert_eq!(Some(l1), tree.find_split_in_direction(l2, Direction::Down));
+        assert_eq!(Some(r0), tree.find_split_in_direction(l2, Direction::Right));
+        assert_eq!(None, tree.find_split_in_direction(l2, Direction::Up));
+
+        tree.focus = l1;
+        assert_eq!(None, tree.find_split_in_direction(l1, Direction::Left));
+        assert_eq!(None, tree.find_split_in_direction(l1, Direction::Down));
+        assert_eq!(Some(r0), tree.find_split_in_direction(l1, Direction::Right));
+        assert_eq!(Some(l0), tree.find_split_in_direction(l1, Direction::Up));
+
+        tree.focus = l0;
+        assert_eq!(None, tree.find_split_in_direction(l0, Direction::Left));
+        assert_eq!(Some(l1), tree.find_split_in_direction(l0, Direction::Down));
+        assert_eq!(Some(l2), tree.find_split_in_direction(l0, Direction::Right));
+        assert_eq!(None, tree.find_split_in_direction(l0, Direction::Up));
+
+        tree.focus = r0;
+        assert_eq!(Some(l2), tree.find_split_in_direction(r0, Direction::Left));
+        assert_eq!(None, tree.find_split_in_direction(r0, Direction::Down));
+        assert_eq!(None, tree.find_split_in_direction(r0, Direction::Right));
+        assert_eq!(None, tree.find_split_in_direction(r0, Direction::Up));
     }
 }
