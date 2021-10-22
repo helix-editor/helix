@@ -346,3 +346,11 @@ file-types = ["scm"]
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "cmake"
+scope = "source.cmake"
+file-types = ["cmake", "CMakeLists.txt"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
