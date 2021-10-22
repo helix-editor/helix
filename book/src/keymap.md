@@ -253,6 +253,6 @@ Keys to use within picker. Remapping currently not supported.
 | `Down`, `Ctrl-j`, `Ctrl-n`   | Next entry        |
 | `Ctrl-space`                 | Filter options    |
 | `Enter`                      | Open selected     |
-| `Ctrl-h`                     | Open horizontally |
+| `Ctrl-s`                     | Open horizontally |
 | `Ctrl-v`                     | Open vertically   |
 | `Escape`, `Ctrl-c`           | Close picker      |
