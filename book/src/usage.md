@@ -2,6 +2,8 @@
 
 (Currently not fully documented, see the [keymappings](./keymap.md) list for more.)
 
+See [tutor.txt](https://github.com/helix-editor/helix/blob/master/runtime/tutor.txt) for a vimtutor-like introduction.
+
 ## Registers
 
 Vim-like registers can be used to yank and store text to be pasted later. Usage is similar, with `"` being used to select a register:
