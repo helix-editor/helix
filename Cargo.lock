@@ -363,6 +363,7 @@ dependencies = [
  "arc-swap",
  "etcetera",
  "helix-syntax",
+ "log",
  "once_cell",
  "quickcheck",
  "regex",
