@@ -294,7 +294,11 @@ impl Editor {
                 self.language_servers
                     .get(language)
                     .map_err(|e| {
-                        log::error!("Failed to get LSP, {}, for `{}`", e, language.scope())
+                        log::error!(
+                            "Failed to initialize the LSP for `{}` {{ {} }}",
+                            language.scope(),
+                            e
+                        )
                     })
                     .ok()
             });

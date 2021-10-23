@@ -116,7 +116,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         }
     } else {
         #[cfg(target_os = "windows")]
-        return Box::new(provider::WindowsProvider::new());
+        return Box::new(provider::WindowsProvider::default());
 
         #[cfg(not(target_os = "windows"))]
         return Box::new(provider::NopProvider::new());
@@ -145,15 +145,15 @@ mod provider {
     use anyhow::{bail, Context as _, Result};
     use std::borrow::Cow;
 
+    #[cfg(not(target_os = "windows"))]
     #[derive(Debug)]
     pub struct NopProvider {
         buf: String,
         primary_buf: String,
     }
 
+    #[cfg(not(target_os = "windows"))]
     impl NopProvider {
-        #[allow(dead_code)]
-        // Only dead_code on Windows.
         pub fn new() -> Self {
             Self {
                 buf: String::new(),
@@ -162,6 +162,7 @@ mod provider {
         }
     }
 
+    #[cfg(not(target_os = "windows"))]
     impl ClipboardProvider for NopProvider {
         fn name(&self) -> Cow<str> {
             Cow::Borrowed("none")
@@ -186,19 +187,8 @@ mod provider {
     }
 
     #[cfg(target_os = "windows")]
-    #[derive(Debug)]
-    pub struct WindowsProvider {
-        selection_buf: String,
-    }
-
-    #[cfg(target_os = "windows")]
-    impl WindowsProvider {
-        pub fn new() -> Self {
-            Self {
-                selection_buf: String::new(),
-            }
-        }
-    }
+    #[derive(Default, Debug)]
+    pub struct WindowsProvider;
 
     #[cfg(target_os = "windows")]
     impl ClipboardProvider for WindowsProvider {

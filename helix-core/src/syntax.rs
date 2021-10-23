@@ -159,7 +159,9 @@ impl LanguageConfiguration {
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(&crate::RUNTIME_DIR, &self.language_id).ok()?;
+            let language = get_language(&crate::RUNTIME_DIR, &self.language_id)
+                .map_err(|e| log::info!("{}", e))
+                .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
