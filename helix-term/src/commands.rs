@@ -301,6 +301,10 @@ impl Command {
         expand_selection, "Expand selection to parent syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
+        jump_view_right, "Jump to the split to the right",
+        jump_view_left, "Jump to the split to the left",
+        jump_view_up, "Jump to the split above",
+        jump_view_down, "Jump to the split below",
         rotate_view, "Goto next window",
         hsplit, "Horizontal bottom split",
         vsplit, "Vertical right split",
@@ -4371,6 +4375,22 @@ fn jump_backward(cx: &mut Context) {
 
 fn rotate_view(cx: &mut Context) {
     cx.editor.focus_next()
+}
+
+fn jump_view_right(cx: &mut Context) {
+    cx.editor.focus_right()
+}
+
+fn jump_view_left(cx: &mut Context) {
+    cx.editor.focus_left()
+}
+
+fn jump_view_up(cx: &mut Context) {
+    cx.editor.focus_up()
+}
+
+fn jump_view_down(cx: &mut Context) {
+    cx.editor.focus_down()
 }
 
 // split helper, clear it later

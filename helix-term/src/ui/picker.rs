@@ -373,7 +373,7 @@ impl<T: 'static> Component for Picker<T> {
                 return close_fn;
             }
             KeyEvent {
-                code: KeyCode::Char('h'),
+                code: KeyCode::Char('s'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 if let Some(option) = self.selection() {
