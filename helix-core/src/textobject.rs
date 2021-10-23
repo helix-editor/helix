@@ -1,9 +1,13 @@
+use std::fmt::Display;
+
 use ropey::RopeSlice;
+use tree_sitter::{Node, QueryCursor};
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::next_grapheme_boundary;
 use crate::movement::Direction;
 use crate::surround;
+use crate::syntax::LanguageConfiguration;
 use crate::Range;
 
 fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) -> usize {
@@ -49,6 +53,15 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) ->
 pub enum TextObject {
     Around,
     Inside,
+}
+
+impl Display for TextObject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Around => "around",
+            Self::Inside => "inside",
+        })
+    }
 }
 
 // count doesn't do anything yet
@@ -106,6 +119,44 @@ pub fn textobject_surround(
             TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
         })
         .unwrap_or(range)
+}
+
+/// Transform the given range to select text objects based on tree-sitter.
+/// `object_name` is a query capture base name like "function", "class", etc.
+/// `slice_tree` is the tree-sitter node corresponding to given text slice.
+pub fn textobject_treesitter(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    object_name: &str,
+    slice_tree: Node,
+    lang_config: &LanguageConfiguration,
+    _count: usize,
+) -> Range {
+    let get_range = move || -> Option<Range> {
+        let byte_pos = slice.char_to_byte(range.cursor(slice));
+
+        let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
+        let mut cursor = QueryCursor::new();
+        let node = lang_config
+            .textobject_query()?
+            .capture_nodes(&capture_name, slice_tree, slice, &mut cursor)?
+            .filter(|node| node.byte_range().contains(&byte_pos))
+            .min_by_key(|node| node.byte_range().len())?;
+
+        let len = slice.len_bytes();
+        let start_byte = node.start_byte();
+        let end_byte = node.end_byte();
+        if start_byte >= len || end_byte >= len {
+            return None;
+        }
+
+        let start_char = slice.byte_to_char(start_byte);
+        let end_char = slice.byte_to_char(end_byte);
+
+        Some(Range::new(start_char, end_char))
+    };
+    get_range().unwrap_or(range)
 }
 
 #[cfg(test)]

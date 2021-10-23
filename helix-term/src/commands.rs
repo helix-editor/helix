@@ -4465,9 +4465,28 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
 
+            let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
+                let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+                    Some(t) => t,
+                    None => return range,
+                };
+                textobject::textobject_treesitter(
+                    text,
+                    range,
+                    objtype,
+                    obj_name,
+                    syntax.tree().root_node(),
+                    lang_config,
+                    count,
+                )
+            };
+
             let selection = doc.selection(view.id).clone().transform(|range| {
                 match ch {
                     'w' => textobject::textobject_word(text, range, objtype, count),
+                    'c' => textobject_treesitter("class", range),
+                    'f' => textobject_treesitter("function", range),
+                    'p' => textobject_treesitter("parameter", range),
                     // TODO: cancel new ranges if inconsistent surround matches across lines
                     ch if !ch.is_ascii_alphanumeric() => {
                         textobject::textobject_surround(text, range, objtype, ch, count)

@@ -49,7 +49,7 @@ pub struct Configuration {
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub(crate) language_id: String,
+    pub language_id: String,
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
@@ -76,6 +76,8 @@ pub struct LanguageConfiguration {
 
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    #[serde(skip)]
+    pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -103,6 +105,32 @@ pub struct IndentQuery {
     #[serde(default)]
     #[serde(skip_serializing_if = "HashSet::is_empty")]
     pub outdent: HashSet<String>,
+}
+
+#[derive(Debug)]
+pub struct TextObjectQuery {
+    pub query: Query,
+}
+
+impl TextObjectQuery {
+    /// Run the query on the given node and return sub nodes which match given
+    /// capture ("function.inside", "class.around", etc).
+    pub fn capture_nodes<'a>(
+        &'a self,
+        capture_name: &str,
+        node: Node<'a>,
+        slice: RopeSlice<'a>,
+        cursor: &'a mut QueryCursor,
+    ) -> Option<impl Iterator<Item = Node<'a>>> {
+        let capture_idx = self.query.capture_index_for_name(capture_name)?;
+        let captures = cursor.captures(&self.query, node, RopeProvider(slice));
+
+        captures
+            .filter_map(move |(mat, idx)| {
+                (mat.captures[idx].index == capture_idx).then(|| mat.captures[idx].node)
+            })
+            .into()
+    }
 }
 
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
@@ -153,7 +181,6 @@ impl LanguageConfiguration {
         // highlights_query += "\n(ERROR) @error";
 
         let injections_query = read_query(&language, "injections.scm");
-
         let locals_query = read_query(&language, "locals.scm");
 
         if highlights_query.is_empty() {
@@ -199,6 +226,18 @@ impl LanguageConfiguration {
 
                 let toml = load_runtime_file(&language, "indents.toml").ok()?;
                 toml::from_slice(toml.as_bytes()).ok()
+            })
+            .as_ref()
+    }
+
+    pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
+        self.textobject_query
+            .get_or_init(|| -> Option<TextObjectQuery> {
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "textobjects.scm");
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                let query = Query::new(lang, &query_text).ok()?;
+                Some(TextObjectQuery { query })
             })
             .as_ref()
     }

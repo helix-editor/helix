@@ -464,6 +464,7 @@ where
                     unit: String::from("    "),
                 }),
                 indent_query: OnceCell::new(),
+                textobject_query: OnceCell::new(),
             }],
         });
 
