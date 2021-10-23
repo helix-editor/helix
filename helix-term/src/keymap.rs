@@ -78,17 +78,28 @@ macro_rules! keymap {
     };
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
-    #[serde(skip)]
     name: String,
-    #[serde(flatten)]
     map: HashMap<KeyEvent, KeyTrie>,
-    #[serde(skip)]
     order: Vec<KeyEvent>,
-    #[serde(skip)]
     pub is_sticky: bool,
+}
+
+impl<'de> Deserialize<'de> for KeyTrieNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let map = HashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?;
+        let order = map.keys().copied().collect::<Vec<_>>(); // NOTE: map.keys() has arbitrary order
+        Ok(Self {
+            map,
+            order,
+            ..Default::default()
+        })
+    }
 }
 
 impl KeyTrieNode {
@@ -118,21 +129,9 @@ impl KeyTrieNode {
             }
             self.map.insert(key, trie);
         }
-        self.set_order();
-    }
-
-    /// Sets the order of the mapping recursively since the
-    /// the trie can contain child nodes without order.
-    /// The order is missing from child nodes since it's not
-    /// parsed from the config.toml
-    fn set_order(&mut self) {
-        for (&key, trie) in self.map.iter_mut() {
+        for &key in self.map.keys() {
             if !self.order.contains(&key) {
                 self.order.push(key);
-            }
-            // Order must be recursively set
-            if let KeyTrie::Node(node) = trie {
-                node.set_order();
             }
         }
     }
