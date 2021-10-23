@@ -9,7 +9,7 @@
     (quantity)
 ] @number
 
-((account) @field)
+((account) @variable.other.member)
 ((commodity) @text.literal)
 
 "include" @include

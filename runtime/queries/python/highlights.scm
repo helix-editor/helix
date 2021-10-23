@@ -29,7 +29,7 @@
   name: (identifier) @function)
 
 (identifier) @variable
-(attribute attribute: (identifier) @property)
+(attribute attribute: (identifier) @variable.other.member)
 (type (identifier) @type)
 
 ; Literals

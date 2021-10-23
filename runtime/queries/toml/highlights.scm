@@ -1,7 +1,7 @@
 ; Properties
 ;-----------
 
-(bare_key) @property
+(bare_key) @variable.other.member
 (quoted_key) @string
 
 ; Literals

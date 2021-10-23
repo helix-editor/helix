@@ -7,7 +7,7 @@
 "type.builtin" = { fg = "type" }
 "type.enum.variant" = { fg = "constant" } 
 "constructor" = { fg = "constant" }
-"property" = { fg = "variable" }
+"variable.other.member" = { fg = "variable" }
 
 "keyword" = { fg = "keyword" }
 "keyword.directive" = { fg = "keyword" }

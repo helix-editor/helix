@@ -7,7 +7,7 @@
 
 (command_name) @function
 
-(variable_name) @property
+(variable_name) @variable.other.member
 
 [
   "case"

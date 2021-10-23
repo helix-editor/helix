@@ -15,7 +15,7 @@
 "namespace" = { fg = "#61AFEF" }
 "number" = { fg = "#D19A66" }
 "operator" = { fg = "#C678DD" }
-"property" = { fg = "#E06C75" }
+"variable.other.member" = { fg = "#E06C75" }
 "special" = { fg = "#61AFEF" }
 "string" = { fg = "#98C379" }
 "type" = { fg = "#E5C07B" }

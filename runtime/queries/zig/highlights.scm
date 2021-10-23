@@ -14,7 +14,7 @@ parameter: (IDENTIFIER) @variable.parameter
 [
   field_member: (IDENTIFIER)
   field_access: (IDENTIFIER)
-] @variable.property
+] @variable.other.member
 
 ;; assume TitleCase is a type
 (

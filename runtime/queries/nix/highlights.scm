@@ -66,8 +66,8 @@
 (binary
   operator: _ @operator)
 
-(attr_identifier) @property
-(inherit attrs: (attrs_inherited (identifier) @property) )
+(attr_identifier) @variable.other.member
+(inherit attrs: (attrs_inherited (identifier) @variable.other.member) )
 
 [
   ";"

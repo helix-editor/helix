@@ -15,7 +15,7 @@
 
 (field_expression
   (identifier)
-  (identifier) @field .)
+  (identifier) @variable.other.member .)
 
 (function_definition
   name: (identifier) @function)

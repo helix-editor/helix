@@ -17,7 +17,7 @@
 "variable" = "fg"
 "variable.builtin" = "blue"
 "variable.parameter" = "fg"
-"variable.property" = "fg"
+"variable.other.member" = "fg"
 "label" = "aqua"
 "punctuation" = "grey2"
 "punctuation.delimiter" = "grey2"
@@ -32,7 +32,6 @@
 "attribute" = "aqua"
 "constructor" = "yellow"
 "module" = "blue"
-"property" = "fg"
 "special" = "orange"
 
 "ui.background" = { bg = "bg0" }

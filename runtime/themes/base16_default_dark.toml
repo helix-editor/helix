@@ -22,7 +22,7 @@
 "type" = "base0A"
 "ui.cursor.match" = { fg = "base0A", modifiers = ["underlined"] }
 "strings"  = "base0B"
-"property" = "base0B"
+"variable.other.member" = "base0B"
 "escape" = "base0C"
 "function" = "base0D"
 "constructor" = "base0D"

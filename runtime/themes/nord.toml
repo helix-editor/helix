@@ -59,7 +59,7 @@
 # nord9 - operator, tags, units, punctuations
 "punctuation.delimiter" = "nord9"
 "operator" = { fg = "nord9" }
-"property" = "nord9"
+"variable.other.member" = "nord9"
 
 # nord10 - keywords, special
 "keyword" = { fg = "nord10" }

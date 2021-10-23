@@ -34,7 +34,7 @@
 [
   (fieldName)
   (optionName)
-] @property
+] @variable.other.member
 (enumVariantName) @type.enum.variant
 
 (fullIdent) @namespace

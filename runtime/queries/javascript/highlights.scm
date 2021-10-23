@@ -65,7 +65,7 @@
 ; Properties
 ;-----------
 
-(property_identifier) @property
+(property_identifier) @variable.other.member
 
 ; Literals
 ;---------

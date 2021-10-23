@@ -35,7 +35,7 @@
 
 (comment) @comment
 
-(field_name) @property
+(field_name) @variable.other.member
 
 (capture) @label
 

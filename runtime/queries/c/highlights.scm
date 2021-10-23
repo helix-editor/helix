@@ -73,7 +73,7 @@
 (preproc_function_def
   name: (identifier) @function.special)
 
-(field_identifier) @property
+(field_identifier) @variable.other.member
 (statement_identifier) @label
 (type_identifier) @type
 (primitive_type) @type

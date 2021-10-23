@@ -51,7 +51,7 @@
 ; Properties
 ;-----------
 
-[(label_name) (field_name) (instance_variable_name)] @property
+[(label_name) (field_name) (instance_variable_name)] @variable.other.member
 
 ; Constants
 ;----------
@@ -145,7 +145,7 @@
 ; Attributes
 ;-----------
 
-(attribute_id) @property
+(attribute_id) @variable.other.member
 
 ; Comments
 ;---------

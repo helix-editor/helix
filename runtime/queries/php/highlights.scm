@@ -30,12 +30,12 @@
 ; Member
 
 (property_element
-  (variable_name) @property)
+  (variable_name) @variable.other.member)
 
 (member_access_expression
-  name: (variable_name (name)) @property)
+  name: (variable_name (name)) @variable.other.member)
 (member_access_expression
-  name: (name) @property)
+  name: (name) @variable.other.member)
 
 ; Variables
 

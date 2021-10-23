@@ -20,7 +20,7 @@
 ] @type.builtin
 
 ;; Enum
-(enum_member_declaration (identifier) @variable.property)
+(enum_member_declaration (identifier) @variable.other.member)
 
 ;; Literals
 [

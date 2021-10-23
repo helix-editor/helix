@@ -25,7 +25,7 @@
 (variadic_parameter_declaration (identifier) @variable.parameter)
 
 (type_identifier) @type
-(field_identifier) @property
+(field_identifier) @variable.other.member
 (identifier) @variable
 (package_identifier) @variable
 

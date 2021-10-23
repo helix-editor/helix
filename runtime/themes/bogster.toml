@@ -8,7 +8,7 @@
 "punctuation.delimiter" = "#dc7759"
 "operator" = { fg = "#dc7759", modifiers = ["bold"] }
 "special" = "#7fdc59"
-"property" = "#c6b8ad"
+"variable.other.member" = "#c6b8ad"
 "variable" = "#c6b8ad"
 "variable.parameter" = "#c6b8ad"
 "type" = "#dc597f"

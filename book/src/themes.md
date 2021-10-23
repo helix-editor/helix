@@ -129,7 +129,8 @@ We use a similar set of scopes as
 - `variable` - Variables
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc)
   - `parameter` - Function parameters
-  - `property`
+  - `other`
+    - `member` - Fields of composite data types (e.g. structs, unions)
   - `function` (TODO: ?)
 
 - `label`

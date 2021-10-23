@@ -40,10 +40,10 @@
 (enum_variant (identifier) @type.enum.variant)
 
 (field_initializer
-  (field_identifier) @property)
+  (field_identifier) @variable.other.member)
 (shorthand_field_initializer
-  (identifier) @variable.property)
-(shorthand_field_identifier) @variable.property
+  (identifier) @variable.other.member)
+(shorthand_field_identifier) @variable.other.member
 
 (lifetime
   "'" @label
@@ -81,9 +81,24 @@
   ] @punctuation.bracket)
 
 ; ---
-; Parameters
+; Variables
 ; ---
 
+(let_declaration
+  pattern: [
+    ((identifier) @variable)
+    ((tuple_pattern
+      (identifier) @variable))
+  ])
+  
+; It needs to be anonymous to not conflict with `call_expression` further below. 
+(_
+ value: (field_expression
+  value: (identifier)? @variable
+  field: (field_identifier) @variable.other.member))
+
+(arguments
+  (identifier) @variable.parameter)
 (parameter
 	pattern: (identifier) @variable.parameter)
 (closure_parameters
@@ -336,4 +351,4 @@
 
 (type_identifier) @type
 (identifier) @variable
-(field_identifier) @property
+(field_identifier) @variable.other.member

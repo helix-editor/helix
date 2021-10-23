@@ -26,11 +26,11 @@
 (pseudo_element_selector (tag_name) @attribute)
 (pseudo_class_selector (class_name) @attribute)
 
-(class_name) @property
-(id_name) @property
-(namespace_name) @property
-(property_name) @property
-(feature_name) @property
+(class_name) @variable.other.member
+(id_name) @variable.other.member
+(namespace_name) @variable.other.member
+(property_name) @variable.other.member
+(feature_name) @variable.other.member
 
 (attribute_name) @attribute
 

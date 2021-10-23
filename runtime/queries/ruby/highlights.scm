@@ -55,7 +55,7 @@
 [
   (class_variable)
   (instance_variable)
-] @property
+] @variable.other.member
 
 ((identifier) @constant.builtin
  (#match? @constant.builtin "^__(FILE|LINE|ENCODING)__$"))
