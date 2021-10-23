@@ -63,7 +63,7 @@
             '';
           };
         shell = common: prev: {
-          packages = prev.packages ++ (with common.pkgs; [ lld_10 lldb cargo-tarpaulin ]);
+          packages = prev.packages ++ (with common.pkgs; [ lld_12 lldb cargo-tarpaulin ]);
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }
