@@ -1106,7 +1106,7 @@ fn canonicalize_key(key: &mut KeyEvent) {
 }
 
 #[inline]
-fn abs_diff(a: usize, b: usize) -> usize {
+const fn abs_diff(a: usize, b: usize) -> usize {
     if a > b {
         a - b
     } else {
