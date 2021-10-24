@@ -349,6 +349,22 @@ impl Editor {
         self._refresh();
     }
 
+    pub fn open_tutor(&mut self, action: Action) -> Result<DocumentId, Error> {
+        use anyhow::Context;
+
+        let mut path = helix_core::runtime_dir();
+        path.push("tutor.txt");
+
+        let mut file = std::fs::File::open(&path).context("Failed to load tutor.txt")?;
+        let (rope, encoding) = crate::document::from_reader(&mut file, None)?;
+
+        let doc = Document::from(rope, Some(encoding));
+        let id = self.documents.insert(doc);
+        self.documents[id].id = id;
+        self.switch(id, action);
+        Ok(id)
+    }
+
     pub fn resize(&mut self, area: Rect) {
         if self.tree.resize(area) {
             self._refresh();

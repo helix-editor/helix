@@ -97,7 +97,9 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
-        if !args.files.is_empty() {
+        if args.load_tutor {
+            editor.open_tutor(Action::VerticalSplit)?;
+        } else if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;

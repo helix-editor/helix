@@ -2099,6 +2099,15 @@ mod cmd {
         Ok(())
     }
 
+    fn tutor(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        cx.editor.open_tutor(Action::Replace)?;
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2351,7 +2360,14 @@ mod cmd {
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
-        }
+        },
+        TypableCommand {
+            name: "tutor",
+            aliases: &[],
+            doc: "Open the tutorial.",
+            fun: tutor,
+            completer: None,
+        },
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
