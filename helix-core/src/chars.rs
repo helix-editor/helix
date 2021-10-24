@@ -1,3 +1,5 @@
+//! Utility functions to categorize a `char`.
+
 use crate::LineEnding;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -9,7 +11,6 @@ pub enum CharCategory {
     Unknown,
 }
 
-#[inline]
 pub fn categorize_char(ch: char) -> CharCategory {
     if char_is_line_ending(ch) {
         CharCategory::Eol
@@ -25,14 +26,12 @@ pub fn categorize_char(ch: char) -> CharCategory {
 }
 
 /// Determine whether a character is a line ending.
-#[inline]
 pub fn char_is_line_ending(ch: char) -> bool {
     LineEnding::from_char(ch).is_some()
 }
 
 /// Determine whether a character qualifies as (non-line-break)
 /// whitespace.
-#[inline]
 pub fn char_is_whitespace(ch: char) -> bool {
     // TODO: this is a naive binary categorization of whitespace
     // characters.  For display, word wrapping, etc. we'll need a better
@@ -59,7 +58,6 @@ pub fn char_is_whitespace(ch: char) -> bool {
     }
 }
 
-#[inline]
 pub fn char_is_punctuation(ch: char) -> bool {
     use unicode_general_category::{get_general_category, GeneralCategory};
 
