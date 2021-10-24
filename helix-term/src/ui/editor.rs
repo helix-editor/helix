@@ -575,6 +575,19 @@ impl EditorView {
         surface.set_style(viewport.with_height(1), style);
         if is_focused {
             surface.set_string(viewport.x + 1, viewport.y, mode, style);
+
+            // TODO: put this in a better place and possibly cache
+            let _ = crossterm::execute!(
+                std::io::stdout(),
+                crossterm::terminal::SetTitle(format!(
+                    "{} - Helix",
+                    doc.relative_path()
+                        .as_deref()
+                        .unwrap_or(std::path::Path::new("[scratch]"))
+                        .to_str()
+                        .unwrap()
+                ))
+            );
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, style);
 
