@@ -4141,11 +4141,8 @@ pub fn completion(cx: &mut Context) {
     let mut iter = text.chars_at(cursor);
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
-    let filter_word = match cx.editor.config.completion_filter_start {
-        false => "".into(),
-        true => text.slice(cursor - offset..cursor).to_string(),
-    };
     let start_offset = cursor.saturating_sub(offset);
+    let prefix = text.slice(start_offset..cursor).to_string();
 
     cx.callback(
         future,
@@ -4168,12 +4165,14 @@ pub fn completion(cx: &mut Context) {
                 None => Vec::new(),
             };
 
-            if !filter_word.is_empty() {
+            if !prefix.is_empty() {
                 items = items
                     .into_iter()
-                    .filter(|item| match item.filter_text.as_ref() {
-                        Some(filter) => filter.starts_with(&filter_word),
-                        None => item.label.starts_with(&filter_word),
+                    .filter(|item| {
+                        item.filter_text
+                            .as_ref()
+                            .unwrap_or(&item.label)
+                            .starts_with(&prefix)
                     })
                     .collect();
             }
