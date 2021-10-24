@@ -23,6 +23,8 @@ use crate::{DocumentId, Theme, ViewId};
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
+const DEFAULT_INDENT: IndentStyle = IndentStyle::Spaces(4);
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
@@ -325,7 +327,7 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
-            indent_style: IndentStyle::Spaces(4),
+            indent_style: DEFAULT_INDENT,
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -495,17 +497,15 @@ impl Document {
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback  back to 2 space indentation if it isn't
+    /// configured in `languages.toml`, with a fallback to 4 space indentation if it isn't
     /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
     /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            IndentStyle::from_str(
-                self.language
-                    .as_ref()
-                    .and_then(|config| config.indent.as_ref())
-                    .map_or("  ", |config| config.unit.as_str()), // Fallback to 2 spaces.
-            )
+            self.language
+                .as_ref()
+                .and_then(|config| config.indent.as_ref())
+                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
         self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
     }
