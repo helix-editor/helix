@@ -395,6 +395,7 @@ impl Default for Keymaps {
             "F" => find_prev_char,
             "r" => replace,
             "R" => replace_with_yanked,
+            "A-." =>  repeat_last_motion,
 
             "~" => switch_case,
             "`" => switch_to_lowercase,
