@@ -29,6 +29,12 @@ request = "attach"
 completion = [ "pid" ]
 args = { console = "internalConsole", pid = "{0}" }
 
+[[language.debugger.templates]]
+name = "gdbserver attach"
+request = "attach"
+completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
+args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+
 [[language]]
 name = "toml"
 scope = "source.toml"
@@ -97,6 +103,12 @@ request = "attach"
 completion = [ "pid" ]
 args = { console = "internalConsole", pid = "{0}" }
 
+[[language.debugger.templates]]
+name = "gdbserver attach"
+request = "attach"
+completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
+args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+
 [[language]]
 name = "cpp"
 scope = "source.cpp"
@@ -124,6 +136,12 @@ name = "attach"
 request = "attach"
 completion = [ "pid" ]
 args = { console = "internalConsole", pid = "{0}" }
+
+[[language.debugger.templates]]
+name = "gdbserver attach"
+request = "attach"
+completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
+args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
 
 [[language]]
 name = "c-sharp"
