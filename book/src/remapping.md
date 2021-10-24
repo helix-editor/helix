@@ -2,7 +2,7 @@
 
 One-way key remapping is temporarily supported via a simple TOML configuration
 file. (More powerful solutions such as rebinding via commands will be
-available in the feature).
+available in the future).
 
 To remap keys, write a `config.toml` file in your `helix` configuration
 directory (default `~/.config/helix` in Linux systems) with a structure like

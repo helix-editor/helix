@@ -520,9 +520,13 @@ impl Default for Keymaps {
 
             "C-w" => { "Window"
                 "C-w" | "w" => rotate_view,
-                "C-h" | "h" => hsplit,
+                "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-q" | "q" => wclose,
+                "C-h" | "h" => jump_view_left,
+                "C-j" | "j" => jump_view_down,
+                "C-k" | "k" => jump_view_up,
+                "C-l" | "l" => jump_view_right,
             },
 
             // move under <space>c

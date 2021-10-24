@@ -233,37 +233,28 @@ impl<T> Picker<T> {
     }
 
     pub fn score(&mut self) {
-        // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self {
-            ref mut matcher,
-            ref mut matches,
-            ref filters,
-            ref format_fn,
-            ..
-        } = *self;
-
         let pattern = &self.prompt.line;
 
         // reuse the matches allocation
-        matches.clear();
-        matches.extend(
+        self.matches.clear();
+        self.matches.extend(
             self.options
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
                     // filter options first before matching
-                    if !filters.is_empty() {
-                        filters.binary_search(&index).ok()?;
+                    if !self.filters.is_empty() {
+                        self.filters.binary_search(&index).ok()?;
                     }
                     // TODO: maybe using format_fn isn't the best idea here
-                    let text = (format_fn)(option);
+                    let text = (self.format_fn)(option);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    matcher
+                    self.matcher
                         .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
                 }),
         );
-        matches.sort_unstable_by_key(|(_, score)| -score);
+        self.matches.sort_unstable_by_key(|(_, score)| -score);
 
         // reset cursor position
         self.cursor = 0;
@@ -382,7 +373,7 @@ impl<T: 'static> Component for Picker<T> {
                 return close_fn;
             }
             KeyEvent {
-                code: KeyCode::Char('h'),
+                code: KeyCode::Char('s'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 if let Some(option) = self.selection() {

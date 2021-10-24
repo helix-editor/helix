@@ -64,25 +64,23 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn score(&mut self, pattern: &str) {
-        // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self {
-            ref mut matcher,
-            ref mut matches,
-            ref options,
-            ..
-        } = *self;
-
         // reuse the matches allocation
-        matches.clear();
-        matches.extend(options.iter().enumerate().filter_map(|(index, option)| {
-            let text = option.filter_text();
-            // TODO: using fuzzy_indices could give us the char idx for match highlighting
-            matcher
-                .fuzzy_match(text, pattern)
-                .map(|score| (index, score))
-        }));
+        self.matches.clear();
+        self.matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    let text = option.filter_text();
+                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    self.matcher
+                        .fuzzy_match(text, pattern)
+                        .map(|score| (index, score))
+                }),
+        );
         // matches.sort_unstable_by_key(|(_, score)| -score);
-        matches.sort_unstable_by_key(|(index, _score)| options[*index].sort_text());
+        self.matches
+            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text());
 
         // reset cursor position
         self.cursor = None;

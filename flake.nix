@@ -3,9 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
     nixCargoIntegration = {
       url = "github:yusdacra/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rustOverlay.follows = "rust-overlay";
     };
     flakeCompat = {
       url = "github:edolstra/flake-compat";

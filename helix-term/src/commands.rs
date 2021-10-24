@@ -301,6 +301,10 @@ impl Command {
         expand_selection, "Expand selection to parent syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
+        jump_view_right, "Jump to the split to the right",
+        jump_view_left, "Jump to the split to the left",
+        jump_view_up, "Jump to the split above",
+        jump_view_down, "Jump to the split below",
         rotate_view, "Goto next window",
         hsplit, "Horizontal bottom split",
         vsplit, "Vertical right split",
@@ -3782,11 +3786,21 @@ fn replace_with_yanked(cx: &mut Context) {
     let registers = &mut cx.editor.registers;
 
     if let Some(values) = registers.read(reg_name) {
-        if let Some(yank) = values.first() {
+        if !values.is_empty() {
+            let repeat = std::iter::repeat(
+                values
+                    .last()
+                    .map(|value| Tendril::from_slice(value))
+                    .unwrap(),
+            );
+            let mut values = values
+                .iter()
+                .map(|value| Tendril::from_slice(value))
+                .chain(repeat);
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    (range.from(), range.to(), Some(yank.as_str().into()))
+                    (range.from(), range.to(), Some(values.next().unwrap()))
                 } else {
                     (range.from(), range.to(), None)
                 }
@@ -4377,6 +4391,22 @@ fn rotate_view(cx: &mut Context) {
     cx.editor.focus_next()
 }
 
+fn jump_view_right(cx: &mut Context) {
+    cx.editor.focus_right()
+}
+
+fn jump_view_left(cx: &mut Context) {
+    cx.editor.focus_left()
+}
+
+fn jump_view_up(cx: &mut Context) {
+    cx.editor.focus_up()
+}
+
+fn jump_view_down(cx: &mut Context) {
+    cx.editor.focus_down()
+}
+
 // split helper, clear it later
 fn split(cx: &mut Context, action: Action) {
     let (view, doc) = current!(cx.editor);
@@ -4469,9 +4499,28 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
             let (view, doc) = current!(cx.editor);
             let text = doc.text().slice(..);
 
+            let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
+                let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+                    Some(t) => t,
+                    None => return range,
+                };
+                textobject::textobject_treesitter(
+                    text,
+                    range,
+                    objtype,
+                    obj_name,
+                    syntax.tree().root_node(),
+                    lang_config,
+                    count,
+                )
+            };
+
             let selection = doc.selection(view.id).clone().transform(|range| {
                 match ch {
                     'w' => textobject::textobject_word(text, range, objtype, count),
+                    'c' => textobject_treesitter("class", range),
+                    'f' => textobject_treesitter("function", range),
+                    'p' => textobject_treesitter("parameter", range),
                     // TODO: cancel new ranges if inconsistent surround matches across lines
                     ch if !ch.is_ascii_alphanumeric() => {
                         textobject::textobject_surround(text, range, objtype, ch, count)

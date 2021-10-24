@@ -5,7 +5,7 @@ authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 description = """
 A library to build rich terminal user interfaces or dashboards
 """
-edition = "2018"
+edition = "2021"
 license = "MPL-2.0"
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
