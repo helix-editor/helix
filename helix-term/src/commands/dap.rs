@@ -5,7 +5,10 @@ use crate::{
     job::Callback,
     ui::{FilePicker, Prompt, PromptEvent},
 };
-use helix_core::{syntax::DebugConfigCompletion, Selection};
+use helix_core::{
+    syntax::{DebugArgumentValue, DebugConfigCompletion},
+    Selection,
+};
 use helix_dap::{self as dap, Client, ThreadId};
 use helix_lsp::block_on;
 
@@ -239,13 +242,26 @@ pub fn dap_start_impl(
                     }
                 }
                 // For param #0 replace {0} in args
-                value = value.replace(format!("{{{}}}", i).as_str(), &param);
+                value = match value {
+                    DebugArgumentValue::String(v) => {
+                        DebugArgumentValue::String(v.replace(format!("{{{}}}", i).as_str(), &param))
+                    }
+                    DebugArgumentValue::Array(arr) => DebugArgumentValue::Array(
+                        arr.iter()
+                            .map(|v| v.replace(format!("{{{}}}", i).as_str(), &param))
+                            .collect(),
+                    ),
+                };
             }
 
-            if let Ok(integer) = value.parse::<usize>() {
-                args.insert(k, Value::Number(serde_json::Number::from(integer)));
-            } else {
-                args.insert(k, Value::String(value));
+            if let DebugArgumentValue::String(string) = value {
+                if let Ok(integer) = string.parse::<usize>() {
+                    args.insert(k, to_value(integer).unwrap());
+                } else {
+                    args.insert(k, to_value(string).unwrap());
+                }
+            } else if let DebugArgumentValue::Array(arr) = value {
+                args.insert(k, to_value(arr).unwrap());
             }
         }
     }

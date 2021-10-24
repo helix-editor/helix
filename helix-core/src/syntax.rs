@@ -105,12 +105,19 @@ pub enum DebugConfigCompletion {
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum DebugArgumentValue {
+    String(String),
+    Array(Vec<String>),
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugTemplate {
     pub name: String,
     pub request: String,
     pub completion: Vec<DebugConfigCompletion>,
-    pub args: HashMap<String, String>,
+    pub args: HashMap<String, DebugArgumentValue>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
