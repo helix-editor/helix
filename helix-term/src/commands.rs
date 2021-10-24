@@ -287,6 +287,7 @@ impl Command {
         indent, "Indent selection",
         unindent, "Unindent selection",
         format_selections, "Format selection",
+        format_file, "Format current file",
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
         keep_primary_selection, "Keep primary selection",
@@ -328,6 +329,7 @@ impl Command {
         shell_append_output, "Append output of shell command after each selection",
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
+        write_file, "Saves file (may format)",
     );
 }
 
@@ -1549,13 +1551,12 @@ mod cmd {
         Ok(())
     }
 
-    fn write_impl<P: AsRef<Path>>(
-        cx: &mut compositor::Context,
+    pub(super) fn write_impl<P: AsRef<Path>>(
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         path: Option<P>,
     ) -> anyhow::Result<()> {
-        let jobs = &mut cx.jobs;
-        let (_, doc) = current!(cx.editor);
-
+        let (_, doc) = current!(editor);
         if let Some(path) = path {
             doc.set_path(path.as_ref()).context("invalid filepath")?;
         }
@@ -1574,7 +1575,7 @@ mod cmd {
             shared
         });
         let future = doc.format_and_save(fmt);
-        cx.jobs.add(Job::new(future).wait_before_exiting());
+        jobs.add(Job::new(future).wait_before_exiting());
         Ok(())
     }
 
@@ -1583,7 +1584,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_impl(cx, args.first())
+        write_impl(cx.editor, cx.jobs, args.first())
     }
 
     fn new_file(
@@ -1596,19 +1597,21 @@ mod cmd {
         Ok(())
     }
 
+    pub(super) fn format_impl(editor: &mut Editor, jobs: &mut Jobs) {
+        let (_, doc) = current!(editor);
+        if let Some(format) = doc.format() {
+            let callback =
+                make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
+            jobs.callback(callback);
+        }
+    }
+
     fn format(
         cx: &mut compositor::Context,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-
-        if let Some(format) = doc.format() {
-            let callback =
-                make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
-            cx.jobs.callback(callback);
-        }
-
+        format_impl(cx.editor, cx.jobs);
         Ok(())
     }
     fn set_indent_style(
@@ -1730,7 +1733,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_impl(cx, args.first())?;
+        write_impl(cx.editor, cx.jobs, args.first())?;
         quit(cx, &[], event)
     }
 
@@ -1739,7 +1742,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_impl(cx, args.first())?;
+        write_impl(cx.editor, cx.jobs, args.first())?;
         force_quit(cx, &[], event)
     }
 
@@ -3944,6 +3947,10 @@ fn unindent(cx: &mut Context) {
     doc.append_changes_to_history(view.id);
 }
 
+fn format_file(cx: &mut Context) {
+    cmd::format_impl(cx.editor, cx.jobs);
+}
+
 fn format_selections(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -4236,6 +4243,12 @@ fn hover(cx: &mut Context) {
     );
 }
 
+fn write_file(cx: &mut Context) {
+    if let Err(err) = cmd::write_impl::<PathBuf>(cx.editor, cx.jobs, None) {
+        log::error!("Failed to write file: {}", err);
+    }
+}
+
 // comments
 fn toggle_comments(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
@@ -4262,9 +4275,11 @@ fn rotate_selections(cx: &mut Context, direction: Direction) {
     });
     doc.set_selection(view.id, selection);
 }
+
 fn rotate_selections_forward(cx: &mut Context) {
     rotate_selections(cx, Direction::Forward)
 }
+
 fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
 }
@@ -4305,15 +4320,16 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
 }
+
 fn rotate_selection_contents_forward(cx: &mut Context) {
     rotate_selection_contents(cx, Direction::Forward)
 }
+
 fn rotate_selection_contents_backward(cx: &mut Context) {
     rotate_selection_contents(cx, Direction::Backward)
 }
 
 // tree sitter node selection
-
 fn expand_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
