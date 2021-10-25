@@ -622,14 +622,25 @@ fn goto_file_start(cx: &mut Context) {
     } else {
         push_jump(cx.editor);
         let (view, doc) = current!(cx.editor);
-        doc.set_selection(view.id, Selection::point(0));
+        let text = doc.text().slice(..);
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| range.put_cursor(text, 0, doc.mode == Mode::Select));
+        doc.set_selection(view.id, selection);
     }
 }
 
 fn goto_file_end(cx: &mut Context) {
     push_jump(cx.editor);
     let (view, doc) = current!(cx.editor);
-    doc.set_selection(view.id, Selection::point(doc.text().len_chars()));
+    let text = doc.text().slice(..);
+    let pos = doc.text().len_chars();
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+    doc.set_selection(view.id, selection);
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
@@ -2885,8 +2896,13 @@ fn goto_line(cx: &mut Context) {
             doc.text().len_lines() - 1
         };
         let line_idx = std::cmp::min(count.get() - 1, max_line);
+        let text = doc.text().slice(..);
         let pos = doc.text().line_to_char(line_idx);
-        doc.set_selection(view.id, Selection::point(pos));
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+        doc.set_selection(view.id, selection);
     }
 }
 
@@ -2900,8 +2916,13 @@ fn goto_last_line(cx: &mut Context) {
     } else {
         doc.text().len_lines() - 1
     };
+    let text = doc.text().slice(..);
     let pos = doc.text().line_to_char(line_idx);
-    doc.set_selection(view.id, Selection::point(pos));
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
