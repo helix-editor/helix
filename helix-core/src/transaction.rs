@@ -132,6 +132,9 @@ impl ChangeSet {
         if self.changes.is_empty() {
             return other;
         }
+        if other.changes.is_empty() {
+            return self;
+        }
 
         let len = self.changes.len();
 
