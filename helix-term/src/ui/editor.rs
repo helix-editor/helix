@@ -13,7 +13,7 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range, Selection,
+    LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::Mode,
@@ -721,7 +721,7 @@ impl EditorView {
 
     pub fn set_completion(
         &mut self,
-        editor: &Editor,
+        editor: &mut Editor,
         items: Vec<helix_lsp::lsp::CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
         start_offset: usize,
@@ -735,6 +735,9 @@ impl EditorView {
             // skip if we got no completion results
             return;
         }
+
+        // Immediately initialize a savepoint
+        doc_mut!(editor).savepoint();
 
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
@@ -945,6 +948,9 @@ impl Component for EditorView {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.completion = None;
+                                        // Clear any savepoints
+                                        let (_, doc) = current!(cxt.editor);
+                                        doc.savepoint = None;
                                         cxt.editor.clear_idle_timer(); // don't retrigger
                                     }
                                 }
@@ -959,6 +965,9 @@ impl Component for EditorView {
                                     completion.update(&mut cxt);
                                     if completion.is_empty() {
                                         self.completion = None;
+                                        // Clear any savepoints
+                                        let (_, doc) = current!(cxt.editor);
+                                        doc.savepoint = None;
                                         cxt.editor.clear_idle_timer(); // don't retrigger
                                     }
                                 }

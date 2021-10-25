@@ -468,6 +468,13 @@ impl Transaction {
         }
     }
 
+    pub fn compose(mut self, other: Self) -> Self {
+        self.changes = self.changes.compose(other.changes);
+        // Other selection takes precedence
+        self.selection = other.selection;
+        self
+    }
+
     pub fn with_selection(mut self, selection: Selection) -> Self {
         self.selection = Some(selection);
         self

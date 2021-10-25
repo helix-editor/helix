@@ -5,7 +5,7 @@ use tui::buffer::Buffer as Surface;
 use std::borrow::Cow;
 
 use helix_core::Transaction;
-use helix_view::{graphics::Rect, Document, Editor, View};
+use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -83,13 +83,13 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
-        // let items: Vec<CompletionItem> = Vec::new();
         let menu = Menu::new(items, move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
-                view: &View,
                 item: &CompletionItem,
                 offset_encoding: helix_lsp::OffsetEncoding,
+                start_offset: usize,
+                trigger_offset: usize,
             ) -> Transaction {
                 if let Some(edit) = &item.text_edit {
                     let edit = match edit {
@@ -105,63 +105,52 @@ impl Completion {
                     )
                 } else {
                     let text = item.insert_text.as_ref().unwrap_or(&item.label);
-                    let cursor = doc
-                        .selection(view.id)
-                        .primary()
-                        .cursor(doc.text().slice(..));
+                    // Some LSPs just give you an insertText with no offset ¯\_(ツ)_/¯
+                    // in these cases we need to check for a common prefix and remove it
+                    let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
+                    let text = text.trim_start_matches::<&str>(&prefix);
                     Transaction::change(
                         doc.text(),
-                        vec![(cursor, cursor, Some(text.as_str().into()))].into_iter(),
+                        vec![(trigger_offset, trigger_offset, Some(text.into()))].into_iter(),
                     )
                 }
             }
 
+            let (view, doc) = current!(editor);
+
+            // if more text was entered, remove it
+            doc.restore(view.id);
+
             match event {
                 PromptEvent::Abort => {}
                 PromptEvent::Update => {
-                    let (view, doc) = current!(editor);
-
                     // always present here
                     let item = item.unwrap();
 
-                    // if more text was entered, remove it
-                    // TODO: ideally to undo we should keep the last completion tx revert, and map it over new changes
-                    let cursor = doc
-                        .selection(view.id)
-                        .primary()
-                        .cursor(doc.text().slice(..));
-                    if trigger_offset < cursor {
-                        let remove = Transaction::change(
-                            doc.text(),
-                            vec![(trigger_offset, cursor, None)].into_iter(),
-                        );
-                        doc.apply(&remove, view.id);
-                    }
+                    let transaction = item_to_transaction(
+                        doc,
+                        item,
+                        offset_encoding,
+                        start_offset,
+                        trigger_offset,
+                    );
 
-                    let transaction = item_to_transaction(doc, view, item, offset_encoding);
+                    // initialize a savepoint
+                    doc.savepoint();
+
                     doc.apply(&transaction, view.id);
                 }
                 PromptEvent::Validate => {
-                    let (view, doc) = current!(editor);
-
                     // always present here
                     let item = item.unwrap();
 
-                    // if more text was entered, remove it
-                    // TODO: ideally to undo we should keep the last completion tx revert, and map it over new changes
-                    let cursor = doc
-                        .selection(view.id)
-                        .primary()
-                        .cursor(doc.text().slice(..));
-                    if trigger_offset < cursor {
-                        let remove = Transaction::change(
-                            doc.text(),
-                            vec![(trigger_offset, cursor, None)].into_iter(),
-                        );
-                        doc.apply(&remove, view.id);
-                    }
-
-                    let transaction = item_to_transaction(doc, view, item, offset_encoding);
+                    let transaction = item_to_transaction(
+                        doc,
+                        item,
+                        offset_encoding,
+                        start_offset,
+                        trigger_offset,
+                    );
                     doc.apply(&transaction, view.id);
 
                     if let Some(additional_edits) = &item.additional_text_edits {

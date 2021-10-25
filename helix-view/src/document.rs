@@ -97,6 +97,9 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     history: Cell<History>,
+
+    pub savepoint: Option<Transaction>,
+
     last_saved_revision: usize,
     version: i32, // should be usize?
 
@@ -328,6 +331,7 @@ impl Document {
             text,
             selections: HashMap::default(),
             indent_style: DEFAULT_INDENT,
+            line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -337,9 +341,9 @@ impl Document {
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
+            savepoint: None,
             last_saved_revision: 0,
             language_server: None,
-            line_ending: DEFAULT_LINE_ENDING,
         }
     }
 
@@ -635,6 +639,14 @@ impl Document {
         if !transaction.changes().is_empty() {
             self.version += 1;
 
+            // generate revert to savepoint
+            if self.savepoint.is_some() {
+                take_with(&mut self.savepoint, |prev_revert| {
+                    let revert = transaction.invert(&old_doc);
+                    Some(revert.compose(prev_revert.unwrap()))
+                });
+            }
+
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
@@ -721,6 +733,16 @@ impl Document {
         if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
+        }
+    }
+
+    pub fn savepoint(&mut self) {
+        self.savepoint = Some(Transaction::new(self.text()));
+    }
+
+    pub fn restore(&mut self, view_id: ViewId) {
+        if let Some(revert) = self.savepoint.take() {
+            self.apply(&revert, view_id);
         }
     }
 
