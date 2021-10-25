@@ -13,7 +13,7 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
-    LineEnding, Position, Range, Selection, Transaction,
+    LineEnding, Position, Range, Selection,
 };
 use helix_view::{
     document::Mode,
