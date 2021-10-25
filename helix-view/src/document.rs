@@ -311,8 +311,7 @@ where
     T: Default,
     F: FnOnce(T) -> T,
 {
-    let t = mem::take(mut_ref);
-    let _ = mem::replace(mut_ref, f(t));
+    *mut_ref = f(mem::take(mut_ref));
 }
 
 use helix_lsp::lsp;
