@@ -1,3 +1,6 @@
+//! When typing the opening character of one of the possible pairs defined below,
+//! this module provides the functionality to insert the paired closing character.
+
 use crate::{Range, Rope, Selection, Tendril, Transaction};
 use smallvec::SmallVec;
 

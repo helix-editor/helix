@@ -1,3 +1,6 @@
+//! This module contains the functionality toggle comments on lines over the selection
+//! using the comment character defined in the user's `languages.toml`
+
 use crate::{
     find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
