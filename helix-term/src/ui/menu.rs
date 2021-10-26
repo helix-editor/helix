@@ -214,6 +214,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             | KeyEvent {
                 code: KeyCode::Char('p'),
                 modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
@@ -230,6 +234,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             }
             | KeyEvent {
                 code: KeyCode::Char('n'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('j'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_down();
