@@ -95,7 +95,7 @@
 
 ; Quoted content
 
-(interpolation "#{" @escape "}" @escape) @embedded
+(interpolation "#{" @punctuation.special "}" @punctuation.special) @embedded
 
 (escape_sequence) @escape
 
