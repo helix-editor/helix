@@ -199,7 +199,7 @@ impl Completion {
             .selection(view.id)
             .primary()
             .cursor(doc.text().slice(..));
-        if self.start_offset <= cursor {
+        if self.trigger_offset <= cursor {
             let fragment = doc.text().slice(self.start_offset..cursor);
             let text = Cow::from(fragment);
             // TODO: logic is same as ui/picker
