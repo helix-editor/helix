@@ -121,9 +121,9 @@
 
 (sigil
   (sigil_name) @__name__
-  quoted_start: _ @string.regex
-  quoted_end: _ @string.regex
-  (#match? @__name__ "^[rR]$")) @string.regex
+  quoted_start: _ @string.regexp
+  quoted_end: _ @string.regexp
+  (#match? @__name__ "^[rR]$")) @string.regexp
 
 (sigil
   (sigil_name) @__name__
