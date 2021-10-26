@@ -548,6 +548,8 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
     ) {
+        use tui::text::{Span, Spans};
+
         //-------------------------------
         // Left side of the status line.
         //-------------------------------
@@ -566,17 +568,17 @@ impl EditorView {
             })
             .unwrap_or("");
 
-        let style = if is_focused {
+        let base_style = if is_focused {
             theme.get("ui.statusline")
         } else {
             theme.get("ui.statusline.inactive")
         };
         // statusline
-        surface.set_style(viewport.with_height(1), style);
+        surface.set_style(viewport.with_height(1), base_style);
         if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, style);
+            surface.set_string(viewport.x + 1, viewport.y, mode, base_style);
         }
-        surface.set_string(viewport.x + 5, viewport.y, progress, style);
+        surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
         if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
@@ -587,7 +589,7 @@ impl EditorView {
                 viewport.y,
                 title,
                 viewport.width.saturating_sub(6) as usize,
-                style,
+                base_style,
             );
         }
 
@@ -595,8 +597,65 @@ impl EditorView {
         // Right side of the status line.
         //-------------------------------
 
-        // Compute the individual info strings.
-        let diag_count = format!("{}", doc.diagnostics().len());
+        let mut right_side_text = Spans::default();
+
+        // Compute the individual info strings and add them to `right_side_text`.
+
+        // Diagnostics
+        let diags = doc
+            .diagnostics()
+            .iter()
+            .fold((0, 0, 0, 0), |mut counts, diag| {
+                use helix_core::diagnostic::Severity;
+                match diag.severity {
+                    Some(Severity::Warning) => counts.0 += 1,
+                    Some(Severity::Error) | None => counts.1 += 1,
+                    Some(Severity::Info) => counts.2 += 1,
+                    Some(Severity::Hint) => counts.3 += 1,
+                }
+                counts
+            });
+        let (warnings, errors, infos, hints) = diags;
+        let warning_style = theme.get("warning");
+        let error_style = theme.get("error");
+        let info_style = theme.get("info");
+        let hint_style = theme.get("hint");
+        for i in 0..4 {
+            let (count, style) = match i {
+                0 => (warnings, warning_style),
+                1 => (errors, error_style),
+                2 => (infos, info_style),
+                3 => (hints, hint_style),
+                _ => unreachable!(),
+            };
+            if count == 0 {
+                continue;
+            }
+            let style = Style {
+                bg: base_style.bg,
+                ..style
+            };
+            right_side_text.0.push(Span {
+                content: Cow::Borrowed("●"),
+                style,
+            });
+            right_side_text.0.push(Span {
+                content: Cow::Owned(format!(" {}  ", count)),
+                style: base_style,
+            });
+        }
+
+        // Selections
+        let sels_count = doc.selection(view.id).len();
+        right_side_text.0.push(Span {
+            content: Cow::Owned(format!(
+                "  {} sel{}  ",
+                sels_count,
+                if sels_count == 1 { "" } else { "s" }
+            )),
+            style: base_style,
+        });
+
         // let indent_info = match doc.indent_style {
         //     IndentStyle::Tabs => "tabs",
         //     IndentStyle::Spaces(1) => "spaces:1",
@@ -609,29 +668,28 @@ impl EditorView {
         //     IndentStyle::Spaces(8) => "spaces:8",
         //     _ => "indent:ERROR",
         // };
-        let position_info = {
-            let pos = coords_at_pos(
-                doc.text().slice(..),
-                doc.selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..)),
-            );
-            format!("{}:{}", pos.row + 1, pos.col + 1) // convert to 1-indexing
-        };
 
-        // Render them to the status line together.
-        let right_side_text = format!(
-            "{}    {} ",
-            &diag_count[..diag_count.len().min(4)],
-            // indent_info,
-            position_info
+        // Position
+        let pos = coords_at_pos(
+            doc.text().slice(..),
+            doc.selection(view.id)
+                .primary()
+                .cursor(doc.text().slice(..)),
         );
-        let text_len = right_side_text.len() as u16;
-        surface.set_string(
-            viewport.x + viewport.width.saturating_sub(text_len),
+        right_side_text.0.push(Span {
+            content: Cow::Owned(format!("  {}:{} ", pos.row + 1, pos.col + 1)), // Convert to 1-indexing.
+            style: base_style,
+        });
+
+        // Render to the statusline.
+        surface.set_spans(
+            viewport.x
+                + viewport
+                    .width
+                    .saturating_sub(right_side_text.width() as u16),
             viewport.y,
-            right_side_text,
-            style,
+            &right_side_text,
+            right_side_text.width() as u16,
         );
     }
 
