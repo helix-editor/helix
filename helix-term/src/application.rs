@@ -41,7 +41,7 @@ type Signals = futures_util::stream::Empty<()>;
 
 pub struct Application {
     compositor: Compositor,
-    editor: Editor,
+    pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
 
@@ -193,7 +193,7 @@ impl Application {
             scroll: None,
         };
 
-        self.compositor.render(&mut cx);
+        // self.compositor.render(&mut cx);
     }
 
     pub async fn event_loop(&mut self) {
