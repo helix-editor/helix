@@ -213,7 +213,7 @@ impl Application {
             tokio::select! {
                 biased;
 
-                event = reader.next() => {
+                Some(event) = reader.next() => {
                     self.handle_terminal_events(event)
                 }
                 Some(signal) = self.signals.next() => {
@@ -351,7 +351,7 @@ impl Application {
         }
     }
 
-    pub fn handle_terminal_events(&mut self, event: Option<Result<Event, crossterm::ErrorKind>>) {
+    pub fn handle_terminal_events(&mut self, event: Result<Event, crossterm::ErrorKind>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -359,15 +359,14 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event {
-            Some(Ok(Event::Resize(width, height))) => {
+            Ok(Event::Resize(width, height)) => {
                 self.compositor.resize(width, height);
 
                 self.compositor
                     .handle_event(Event::Resize(width, height), &mut cx)
             }
-            Some(Ok(event)) => self.compositor.handle_event(event, &mut cx),
-            Some(Err(x)) => panic!("{}", x),
-            None => panic!(),
+            Ok(event) => self.compositor.handle_event(event, &mut cx),
+            Err(x) => panic!("{}", x),
         };
 
         if should_redraw && !self.editor.should_close() {
