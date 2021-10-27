@@ -4361,14 +4361,15 @@ fn match_brackets(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     if let Some(syntax) = doc.syntax() {
-        let pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        if let Some(pos) = match_brackets::find(syntax, doc.text(), pos) {
-            let selection = Selection::point(pos);
-            doc.set_selection(view.id, selection);
-        };
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            if let Some(pos) = match_brackets::find(syntax, doc.text(), range.anchor) {
+                range.put_cursor(text, pos, doc.mode == Mode::Select)
+            } else {
+                range
+            }
+        });
+        doc.set_selection(view.id, selection);
     }
 }
 
