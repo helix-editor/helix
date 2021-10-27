@@ -669,7 +669,7 @@ impl EditorView {
                 .cursor(doc.text().slice(..)),
         );
         right_side_text.0.push(Span {
-            content: Cow::Owned(format!("  {}:{} ", pos.row + 1, pos.col + 1)), // Convert to 1-indexing.
+            content: Cow::Owned(format!(" {}:{} ", pos.row + 1, pos.col + 1)), // Convert to 1-indexing.
             style: base_style,
         });
 
