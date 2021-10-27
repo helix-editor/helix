@@ -630,10 +630,9 @@ impl EditorView {
             right_side_text
                 .0
                 .push(Span::styled(Cow::Borrowed("●"), style));
-            right_side_text.0.push(Span::styled(
-                Cow::Owned(format!(" {}  ", count)),
-                base_style,
-            ));
+            right_side_text
+                .0
+                .push(Span::styled(Cow::Owned(format!(" {} ", count)), base_style));
         }
 
         // Selections
