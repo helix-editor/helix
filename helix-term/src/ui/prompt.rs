@@ -501,6 +501,7 @@ impl Component for Prompt {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Backward);
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             KeyEvent {
@@ -514,6 +515,7 @@ impl Component for Prompt {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Forward);
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             KeyEvent {
