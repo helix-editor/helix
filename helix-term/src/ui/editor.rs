@@ -641,7 +641,7 @@ impl EditorView {
         let sels_count = doc.selection(view.id).len();
         right_side_text.0.push(Span {
             content: Cow::Owned(format!(
-                "  {} sel{}  ",
+                " {} sel{} ",
                 sels_count,
                 if sels_count == 1 { "" } else { "s" }
             )),
