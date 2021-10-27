@@ -627,26 +627,25 @@ impl EditorView {
                 bg: base_style.bg,
                 ..style
             };
-            right_side_text.0.push(Span {
-                content: Cow::Borrowed("●"),
-                style,
-            });
-            right_side_text.0.push(Span {
-                content: Cow::Owned(format!(" {}  ", count)),
-                style: base_style,
-            });
+            right_side_text
+                .0
+                .push(Span::styled(Cow::Borrowed("●"), style));
+            right_side_text.0.push(Span::styled(
+                Cow::Owned(format!(" {}  ", count)),
+                base_style,
+            ));
         }
 
         // Selections
         let sels_count = doc.selection(view.id).len();
-        right_side_text.0.push(Span {
-            content: Cow::Owned(format!(
+        right_side_text.0.push(Span::styled(
+            Cow::Owned(format!(
                 " {} sel{} ",
                 sels_count,
                 if sels_count == 1 { "" } else { "s" }
             )),
-            style: base_style,
-        });
+            base_style,
+        ));
 
         // let indent_info = match doc.indent_style {
         //     IndentStyle::Tabs => "tabs",
@@ -668,10 +667,10 @@ impl EditorView {
                 .primary()
                 .cursor(doc.text().slice(..)),
         );
-        right_side_text.0.push(Span {
-            content: Cow::Owned(format!(" {}:{} ", pos.row + 1, pos.col + 1)), // Convert to 1-indexing.
-            style: base_style,
-        });
+        right_side_text.0.push(Span::styled(
+            Cow::Owned(format!(" {}:{} ", pos.row + 1, pos.col + 1)), // Convert to 1-indexing.
+            base_style,
+        ));
 
         // Render to the statusline.
         surface.set_spans(
