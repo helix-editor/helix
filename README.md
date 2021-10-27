@@ -27,10 +27,10 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 It's a terminal-based editor first, but I'd like to explore a custom renderer
 (similar to emacs) in wgpu or skulpin.
 
-# Installation
-
 Note: Only certain languages have indentation definitions at the moment. Check
 `runtime/queries/<lang>/` for `indents.toml`.
+
+# Installation
 
 We provide packaging for various distributions, but here's a quick method to
 build from source.
