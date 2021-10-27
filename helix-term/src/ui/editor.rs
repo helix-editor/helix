@@ -602,30 +602,22 @@ impl EditorView {
         // Compute the individual info strings and add them to `right_side_text`.
 
         // Diagnostics
-        let diags = doc
-            .diagnostics()
-            .iter()
-            .fold((0, 0, 0, 0), |mut counts, diag| {
-                use helix_core::diagnostic::Severity;
-                match diag.severity {
-                    Some(Severity::Warning) => counts.0 += 1,
-                    Some(Severity::Error) | None => counts.1 += 1,
-                    Some(Severity::Info) => counts.2 += 1,
-                    Some(Severity::Hint) => counts.3 += 1,
-                }
-                counts
-            });
-        let (warnings, errors, infos, hints) = diags;
+        let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
+            use helix_core::diagnostic::Severity;
+            match diag.severity {
+                Some(Severity::Warning) => counts.0 += 1,
+                Some(Severity::Error) | None => counts.1 += 1,
+                _ => {}
+            }
+            counts
+        });
+        let (warnings, errors) = diags;
         let warning_style = theme.get("warning");
         let error_style = theme.get("error");
-        let info_style = theme.get("info");
-        let hint_style = theme.get("hint");
-        for i in 0..4 {
+        for i in 0..2 {
             let (count, style) = match i {
                 0 => (warnings, warning_style),
                 1 => (errors, error_style),
-                2 => (infos, info_style),
-                3 => (hints, hint_style),
                 _ => unreachable!(),
             };
             if count == 0 {
