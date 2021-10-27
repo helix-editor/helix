@@ -6,10 +6,6 @@
   - clojure
   - erlang
 
-as you type completion!
-- [ ] use signature_help_provider and completion_provider trigger characters in
-    a hook to trigger signature help text / autocompletion
-- [ ] document.on_type provider triggers
 - [ ] completion isIncomplete support
 
 1
@@ -18,8 +14,6 @@ as you type completion!
 
 - [ ] = for auto indent line/selection
 - [ ]  :x for closing buffers
-- [ ] repeat selection
-
 - [ ] lsp: signature help
 
 2
