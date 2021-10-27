@@ -98,7 +98,10 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            editor.open_tutor(Action::VerticalSplit)?;
+            let mut path = helix_core::runtime_dir();
+            path.push("tutor.txt");
+            editor.open(path, Action::VerticalSplit)?;
+            doc_mut!(editor).set_path(None)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
             if first.is_dir() {

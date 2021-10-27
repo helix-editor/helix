@@ -1557,7 +1557,8 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
 
         if let Some(path) = path {
-            doc.set_path(path.as_ref()).context("invalid filepath")?;
+            doc.set_path(Some(path.as_ref()))
+                .context("invalid filepath")?;
         }
         if doc.path().is_none() {
             bail!("cannot write a buffer without a filename");
@@ -2104,7 +2105,10 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        cx.editor.open_tutor(Action::Replace)?;
+        let mut path = helix_core::runtime_dir();
+        path.push("tutor.txt");
+        cx.editor.open(path, Action::Replace)?;
+        doc_mut!(cx.editor).set_path(None)?;
         Ok(())
     }
 
