@@ -623,10 +623,7 @@ impl EditorView {
             if count == 0 {
                 continue;
             }
-            let style = Style {
-                bg: base_style.bg,
-                ..style
-            };
+            let style = base_style.patch(style);
             right_side_text
                 .0
                 .push(Span::styled(Cow::Borrowed("●"), style));
