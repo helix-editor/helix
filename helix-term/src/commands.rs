@@ -4521,6 +4521,18 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'c' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'p' => textobject_treesitter("parameter", range),
+                        'o' => {
+                            let syntax = match doc.syntax() {
+                                Some(t) => t,
+                                None => return range,
+                            };
+                            textobject::textobject_treesitter_range_parent(
+                                text,
+                                range,
+                                syntax.tree().root_node(),
+                                count,
+                            )
+                        }
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
                             textobject::textobject_surround(text, range, objtype, ch, count)

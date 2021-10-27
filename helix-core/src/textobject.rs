@@ -159,6 +159,44 @@ pub fn textobject_treesitter(
     get_range().unwrap_or(range)
 }
 
+/// Transform the given range to select text objects based on tree-sitter.
+/// Get the range of smallest named node contains the given range.
+pub fn textobject_treesitter_range_parent(
+    slice: RopeSlice,
+    range: Range,
+    slice_tree: Node,
+    count: usize,
+) -> Range {
+    let get_range = move |range: &Range| -> Option<Range> {
+        let byte_start = slice.char_to_byte(range.from());
+        let byte_end = slice.char_to_byte(range.to());
+
+        slice_tree
+            .named_descendant_for_byte_range(byte_start, byte_end)
+            .map(|node| {
+                if byte_start == node.start_byte() && byte_end == node.end_byte() {
+                    node.parent().unwrap_or(node)
+                } else {
+                    node
+                }
+            })
+            .map(|node| {
+                Range::new(
+                    slice.byte_to_char(node.start_byte()),
+                    slice.byte_to_char(node.end_byte()),
+                )
+            })
+    };
+    use std::ops::ControlFlow;
+    match (0..count).try_fold(range, |range, _| match get_range(&range) {
+        None => ControlFlow::Break(range),
+        Some(next) => ControlFlow::Continue(next),
+    }) {
+        ControlFlow::Break(range) => range,
+        ControlFlow::Continue(range) => range,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::TextObject::*;
