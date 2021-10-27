@@ -4348,13 +4348,17 @@ fn rotate_selection_contents_backward(cx: &mut Context) {
 // tree sitter node selection
 
 fn expand_selection(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
 
-    if let Some(syntax) = doc.syntax() {
-        let text = doc.text().slice(..);
-        let selection = object::expand_selection(syntax, text, doc.selection(view.id));
-        doc.set_selection(view.id, selection);
-    }
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let selection = object::expand_selection(syntax, text, doc.selection(view.id));
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(&mut cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
 fn match_brackets(cx: &mut Context) {
