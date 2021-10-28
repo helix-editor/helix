@@ -63,6 +63,7 @@ FLAGS:
     -v               Increases logging verbosity each use for up to 3 times
                      (default file: {})
     -V, --version    Prints version information
+        --tutor      Loads the tutorial
 ",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
