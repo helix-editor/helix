@@ -2105,8 +2105,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let mut path = helix_core::runtime_dir();
-        path.push("tutor.txt");
+        let path = helix_core::runtime_dir().join("tutor.txt");
         cx.editor.open(path, Action::Replace)?;
         doc_mut!(cx.editor).set_path(None)?;
         Ok(())
