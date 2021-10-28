@@ -88,7 +88,7 @@
 ] @string
 
 (regex) @string.regexp
-(number) @number
+(number) @constant.numeric.integer
 
 ; Tokens
 ;-------

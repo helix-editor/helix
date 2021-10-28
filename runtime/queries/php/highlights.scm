@@ -58,8 +58,8 @@
 (heredoc) @string
 (boolean) @constant.builtin
 (null) @constant.builtin
-(integer) @number
-(float) @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (comment) @comment
 
 "$" @operator

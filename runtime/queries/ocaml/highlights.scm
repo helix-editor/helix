@@ -58,7 +58,7 @@
 
 [(boolean) (unit)] @constant
 
-[(number) (signed_number)] @number
+[(number) (signed_number)] @constant.numeric.integer
 
 (character) @constant.character
 

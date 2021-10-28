@@ -60,7 +60,7 @@
 (system_lib_string) @string
 
 (null) @constant
-(number_literal) @number
+(number_literal) @constant.numeric.integer
 (char_literal) @string
 
 (call_expression

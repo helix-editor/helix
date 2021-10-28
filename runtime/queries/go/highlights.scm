@@ -130,13 +130,13 @@
   (rune_literal)
 ] @string
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 [
   (int_literal)
   (float_literal)
   (imaginary_literal)
-] @number
+] @constant.numeric.integer
 
 [
   (true)

@@ -7,11 +7,11 @@
 ; Literals
 ;---------
 
-(boolean) @constant.builtin
+(boolean) @constant.builtin.boolean
 (comment) @comment
 (string) @string
-(integer) @number
-(float) @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (offset_date_time) @string.special
 (local_date_time) @string.special
 (local_date) @string.special

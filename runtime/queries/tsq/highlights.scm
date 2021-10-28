@@ -41,6 +41,6 @@
 
 (predicate_name) @function
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 (node_name) @variable

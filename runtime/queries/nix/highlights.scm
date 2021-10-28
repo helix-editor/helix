@@ -33,16 +33,14 @@
 
 (uri) @string.special.uri
 
-[
-  (integer)
-  (float)
-] @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 
 (interpolation
   "${" @punctuation.special
   "}" @punctuation.special) @embedded
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 (function
   universal: (identifier) @variable.parameter

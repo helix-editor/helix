@@ -39,10 +39,8 @@
 
 (fullIdent) @namespace
 
-[
-  (intLit)
-  (floatLit)
-] @number
+(intLit) @constant.numeric.integer
+(floatLit) @constant.numeric.float
 (boolLit) @constant.builtin
 (strLit) @string
 

@@ -59,9 +59,12 @@
   (hex_integer_literal)
   (decimal_integer_literal)
   (octal_integer_literal)
+] @constant.numeric.integer
+
+[
   (decimal_floating_point_literal)
   (hex_floating_point_literal)
-] @number
+] @constant.numeric.float
 
 [
   (character_literal)

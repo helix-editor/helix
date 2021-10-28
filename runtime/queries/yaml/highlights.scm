@@ -5,8 +5,8 @@
 (double_quote_scalar) @string
 (single_quote_scalar) @string
 (escape_sequence) @string.escape
-(integer_scalar) @number
-(float_scalar) @number
+(integer_scalar) @constant.numeric.integer
+(float_scalar) @constant.numeric.float
 (comment) @comment
 (anchor_name) @type
 (alias_name) @type

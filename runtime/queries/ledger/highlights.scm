@@ -7,7 +7,7 @@
     (date)
     (interval)
     (quantity)
-] @number
+] @constant.numeric.integer
 
 ((account) @variable.other.member)
 ((commodity) @text.literal)

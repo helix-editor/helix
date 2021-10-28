@@ -101,12 +101,12 @@
 ] @string.special.symbol
 
 (regex) @string.regexp
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 [
   (integer)
   (float)
-] @number
+] @constant.numeric.integer
 
 [
   (nil)

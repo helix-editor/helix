@@ -35,6 +35,7 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
     line.chars().position(|ch| !ch.is_whitespace())
 }
 
+/// Find `.git` root.
 pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
 

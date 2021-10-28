@@ -79,11 +79,8 @@
 (nil) @constant.builtin
 
 (boolean) @constant.builtin.boolean
-
-[
-  (integer)
-  (float)
-] @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 
 (alias) @type
 
@@ -97,7 +94,7 @@
 
 (interpolation "#{" @punctuation.special "}" @punctuation.special) @embedded
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 [
   (atom)

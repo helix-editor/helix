@@ -26,7 +26,7 @@
 [
   (real_literal)
   (integer_literal)
-] @number
+] @constant.numeric.integer
 
 [
   (character_literal)

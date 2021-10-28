@@ -4,6 +4,6 @@
 (string) @string
 
 (object
-  "{" @escape
+  "{" @constant.character.escape
   (_)
-  "}" @escape)
+  "}" @constant.character.escape)
