@@ -554,11 +554,9 @@ impl Document {
     }
 
     pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
-        let path = if let Some(p) = path {
-            Some(helix_core::path::get_canonicalized_path(p)?)
-        } else {
-            path.map(|p| p.into())
-        };
+        let path = path
+            .map(|path| helix_core::path::get_canonicalized_path(path))
+            .transpose()?;
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
