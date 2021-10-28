@@ -368,7 +368,7 @@ impl Document {
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
-        doc.set_path(path)?;
+        doc.set_path(Some(path))?;
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
         }
@@ -553,12 +553,16 @@ impl Document {
         self.encoding
     }
 
-    pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        let path = helix_core::path::get_canonicalized_path(path)?;
+    pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
+        let path = if let Some(p) = path {
+            Some(helix_core::path::get_canonicalized_path(p)?)
+        } else {
+            path.map(|p| p.into())
+        };
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
-        self.path = Some(path);
+        self.path = path;
 
         Ok(())
     }

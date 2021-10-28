@@ -1557,7 +1557,8 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
 
         if let Some(path) = path {
-            doc.set_path(path.as_ref()).context("invalid filepath")?;
+            doc.set_path(Some(path.as_ref()))
+                .context("invalid filepath")?;
         }
         if doc.path().is_none() {
             bail!("cannot write a buffer without a filename");
@@ -2099,6 +2100,18 @@ mod cmd {
         Ok(())
     }
 
+    fn tutor(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let path = helix_core::runtime_dir().join("tutor.txt");
+        cx.editor.open(path, Action::Replace)?;
+        // Unset path to prevent accidentally saving to the original tutor file.
+        doc_mut!(cx.editor).set_path(None)?;
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2351,7 +2364,14 @@ mod cmd {
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
-        }
+        },
+        TypableCommand {
+            name: "tutor",
+            aliases: &[],
+            doc: "Open the tutorial.",
+            fun: tutor,
+            completer: None,
+        },
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
