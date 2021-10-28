@@ -437,7 +437,7 @@ impl Syntax {
 
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
-        &self,
+        &'a self,
         source: RopeSlice<'a>,
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
@@ -452,11 +452,10 @@ impl Syntax {
             let highlighter = &mut ts_parser.borrow_mut();
             highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
         });
-        let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(self.tree()) };
+        let tree_ref = self.tree();
         let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-        let query_ref = unsafe { mem::transmute::<_, &'static Query>(&self.config.query) };
-        let config_ref =
-            unsafe { mem::transmute::<_, &'static HighlightConfiguration>(self.config.as_ref()) };
+        let query_ref = &self.config.query;
+        let config_ref = self.config.as_ref();
 
         // if reusing cursors & no range this resets to whole range
         cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
