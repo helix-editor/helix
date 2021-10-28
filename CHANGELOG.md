@@ -1,5 +1,5 @@
 
-# 0.5.0 (2021-11-28)
+# 0.5.0 (2021-10-28)
 
 A big shout out to all the contributors! We had 46 contributors in this release.
 
