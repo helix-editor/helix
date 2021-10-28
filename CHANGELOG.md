@@ -52,6 +52,7 @@ New grammars:
 - Svelte ([#733](https://github.com/helix-editor/helix/pull/733))
 - Vue ([#787](https://github.com/helix-editor/helix/pull/787))
 - Tree-sitter queries ([#845](https://github.com/helix-editor/helix/pull/845))
+- CMake ([#888](https://github.com/helix-editor/helix/pull/888))
 - Elixir (we switched over to the official grammar) (6c0786e)
 - Language server definitions for Nix and Elixir ([#725](https://github.com/helix-editor/helix/pull/725))
 - Python now uses `pylsp` instead of `pyls`
