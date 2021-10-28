@@ -12,8 +12,13 @@ use helix_core::{
 };
 
 use helix_view::{
-    clipboard::ClipboardType, document::Mode, editor::Action, input::KeyEvent, keyboard::KeyCode,
-    view::View, Document, DocumentId, Editor, ViewId,
+    clipboard::ClipboardType,
+    document::Mode,
+    editor::{Action, Motion},
+    input::KeyEvent,
+    keyboard::KeyCode,
+    view::View,
+    Document, DocumentId, Editor, ViewId,
 };
 
 use anyhow::{anyhow, bail, Context as _};
@@ -198,6 +203,7 @@ impl Command {
         find_prev_char, "Move to previous occurance of char",
         extend_till_prev_char, "Extend till previous occurance of char",
         extend_prev_char, "Extend to previous occurance of char",
+        repeat_last_motion, "repeat last motion(extend_next_char, extend_till_char, find_next_char, find_till_char...)",
         replace, "Replace with new char",
         switch_case, "Switch (toggle) case",
         switch_to_uppercase, "Switch to uppercase",
@@ -666,8 +672,7 @@ fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
-#[inline]
-fn find_char_impl<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
+fn will_find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
 where
     F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
 {
@@ -705,29 +710,48 @@ where
             _ => return,
         };
 
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-
-        let selection = doc.selection(view.id).clone().transform(|range| {
-            // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-            // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-            // here, but just in terms of chars instead.
-            let search_start_pos = if range.anchor < range.head {
-                range.head - 1
-            } else {
-                range.head
-            };
-
-            search_fn(text, ch, search_start_pos, count, inclusive).map_or(range, |pos| {
-                if extend {
-                    range.put_cursor(text, pos, true)
-                } else {
-                    Range::point(range.cursor(text)).put_cursor(text, pos, true)
-                }
-            })
-        });
-        doc.set_selection(view.id, selection);
+        find_char_impl(cx.editor, &search_fn, inclusive, extend, ch, count);
+        cx.editor.last_motion = Some(Motion(Box::new(move |editor: &mut Editor| {
+            find_char_impl(editor, &search_fn, inclusive, true, ch, 1);
+        })));
     })
+}
+
+//
+
+#[inline]
+fn find_char_impl<F>(
+    editor: &mut Editor,
+    search_fn: &F,
+    inclusive: bool,
+    extend: bool,
+    ch: char,
+    count: usize,
+) where
+    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
+{
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
+        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
+        // here, but just in terms of chars instead.
+        let search_start_pos = if range.anchor < range.head {
+            range.head - 1
+        } else {
+            range.head
+        };
+
+        search_fn(text, ch, search_start_pos, count, inclusive).map_or(range, |pos| {
+            if extend {
+                range.put_cursor(text, pos, true)
+            } else {
+                Range::point(range.cursor(text)).put_cursor(text, pos, true)
+            }
+        })
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn find_next_char_impl(
@@ -741,6 +765,10 @@ fn find_next_char_impl(
     if inclusive {
         search::find_nth_next(text, ch, pos, n)
     } else {
+        let n = match text.get_char(pos) {
+            Some(next_ch) if next_ch == ch => n + 1,
+            _ => n,
+        };
         search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
     }
 }
@@ -755,80 +783,52 @@ fn find_prev_char_impl(
     if inclusive {
         search::find_nth_prev(text, ch, pos, n)
     } else {
+        let n = match text.get_char(pos.saturating_sub(1)) {
+            Some(next_ch) if next_ch == ch => n + 1,
+            _ => n,
+        };
         search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
     }
 }
 
 fn find_till_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_next_char_impl,
-        false, /* inclusive */
-        false, /* extend */
-    )
+    will_find_char(cx, find_next_char_impl, false, false)
 }
 
 fn find_next_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_next_char_impl,
-        true,  /* inclusive */
-        false, /* extend */
-    )
+    will_find_char(cx, find_next_char_impl, true, false)
 }
 
 fn extend_till_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_next_char_impl,
-        false, /* inclusive */
-        true,  /* extend */
-    )
+    will_find_char(cx, find_next_char_impl, false, true)
 }
 
 fn extend_next_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_next_char_impl,
-        true, /* inclusive */
-        true, /* extend */
-    )
+    will_find_char(cx, find_next_char_impl, true, true)
 }
 
 fn till_prev_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_prev_char_impl,
-        false, /* inclusive */
-        false, /* extend */
-    )
+    will_find_char(cx, find_prev_char_impl, false, false)
 }
 
 fn find_prev_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_prev_char_impl,
-        true,  /* inclusive */
-        false, /* extend */
-    )
+    will_find_char(cx, find_prev_char_impl, true, false)
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_prev_char_impl,
-        false, /* inclusive */
-        true,  /* extend */
-    )
+    will_find_char(cx, find_prev_char_impl, false, true)
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    find_char_impl(
-        cx,
-        find_prev_char_impl,
-        true, /* inclusive */
-        true, /* extend */
-    )
+    will_find_char(cx, find_prev_char_impl, true, true)
+}
+
+fn repeat_last_motion(cx: &mut Context) {
+    let last_motion = cx.editor.last_motion.take();
+    if let Some(m) = &last_motion {
+        m.run(cx.editor);
+        cx.editor.last_motion = last_motion;
+    }
 }
 
 fn replace(cx: &mut Context) {
@@ -1557,7 +1557,8 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
 
         if let Some(path) = path {
-            doc.set_path(path.as_ref()).context("invalid filepath")?;
+            doc.set_path(Some(path.as_ref()))
+                .context("invalid filepath")?;
         }
         if doc.path().is_none() {
             bail!("cannot write a buffer without a filename");
@@ -2099,6 +2100,18 @@ mod cmd {
         Ok(())
     }
 
+    fn tutor(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let path = helix_core::runtime_dir().join("tutor.txt");
+        cx.editor.open(path, Action::Replace)?;
+        // Unset path to prevent accidentally saving to the original tutor file.
+        doc_mut!(cx.editor).set_path(None)?;
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2110,7 +2123,7 @@ mod cmd {
         TypableCommand {
             name: "quit!",
             aliases: &["q!"],
-            doc: "Close the current view.",
+            doc: "Close the current view forcefully (ignoring unsaved changes).",
             fun: force_quit,
             completer: None,
         },
@@ -2173,35 +2186,35 @@ mod cmd {
         TypableCommand {
             name: "write-quit",
             aliases: &["wq", "x"],
-            doc: "Writes changes to disk and closes the current view. Accepts an optional path (:wq some/path.txt)",
+            doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
             fun: write_quit,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "write-quit!",
             aliases: &["wq!", "x!"],
-            doc: "Writes changes to disk and closes the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
+            doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
             fun: force_write_quit,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "write-all",
             aliases: &["wa"],
-            doc: "Writes changes from all views to disk.",
+            doc: "Write changes from all views to disk.",
             fun: write_all,
             completer: None,
         },
         TypableCommand {
             name: "write-quit-all",
             aliases: &["wqa", "xa"],
-            doc: "Writes changes from all views to disk and close all views.",
+            doc: "Write changes from all views to disk and close all views.",
             fun: write_all_quit,
             completer: None,
         },
         TypableCommand {
             name: "write-quit-all!",
             aliases: &["wqa!", "xa!"],
-            doc: "Writes changes from all views to disk and close all views forcefully (ignoring unsaved changes).",
+            doc: "Write changes from all views to disk and close all views forcefully (ignoring unsaved changes).",
             fun: force_write_all_quit,
             completer: None,
         },
@@ -2351,7 +2364,14 @@ mod cmd {
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
             completer: Some(completers::filename),
-        }
+        },
+        TypableCommand {
+            name: "tutor",
+            aliases: &[],
+            doc: "Open the tutorial.",
+            fun: tutor,
+            completer: None,
+        },
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
@@ -4142,6 +4162,7 @@ pub fn completion(cx: &mut Context) {
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
     let start_offset = cursor.saturating_sub(offset);
+    let prefix = text.slice(start_offset..cursor).to_string();
 
     cx.callback(
         future,
@@ -4154,7 +4175,7 @@ pub fn completion(cx: &mut Context) {
                 return;
             }
 
-            let items = match response {
+            let mut items = match response {
                 Some(lsp::CompletionResponse::Array(items)) => items,
                 // TODO: do something with is_incomplete
                 Some(lsp::CompletionResponse::List(lsp::CompletionList {
@@ -4163,6 +4184,18 @@ pub fn completion(cx: &mut Context) {
                 })) => items,
                 None => Vec::new(),
             };
+
+            if !prefix.is_empty() {
+                items = items
+                    .into_iter()
+                    .filter(|item| {
+                        item.filter_text
+                            .as_ref()
+                            .unwrap_or(&item.label)
+                            .starts_with(&prefix)
+                    })
+                    .collect();
+            }
 
             if items.is_empty() {
                 // editor.set_error("No completion available".to_string());
@@ -4482,39 +4515,43 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
-            let (view, doc) = current!(cx.editor);
-            let text = doc.text().slice(..);
+            let textobject = move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
 
-            let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-                    Some(t) => t,
-                    None => return range,
+                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
+                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+                        Some(t) => t,
+                        None => return range,
+                    };
+                    textobject::textobject_treesitter(
+                        text,
+                        range,
+                        objtype,
+                        obj_name,
+                        syntax.tree().root_node(),
+                        lang_config,
+                        count,
+                    )
                 };
-                textobject::textobject_treesitter(
-                    text,
-                    range,
-                    objtype,
-                    obj_name,
-                    syntax.tree().root_node(),
-                    lang_config,
-                    count,
-                )
-            };
 
-            let selection = doc.selection(view.id).clone().transform(|range| {
-                match ch {
-                    'w' => textobject::textobject_word(text, range, objtype, count),
-                    'c' => textobject_treesitter("class", range),
-                    'f' => textobject_treesitter("function", range),
-                    'p' => textobject_treesitter("parameter", range),
-                    // TODO: cancel new ranges if inconsistent surround matches across lines
-                    ch if !ch.is_ascii_alphanumeric() => {
-                        textobject::textobject_surround(text, range, objtype, ch, count)
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    match ch {
+                        'w' => textobject::textobject_word(text, range, objtype, count),
+                        'c' => textobject_treesitter("class", range),
+                        'f' => textobject_treesitter("function", range),
+                        'p' => textobject_treesitter("parameter", range),
+                        // TODO: cancel new ranges if inconsistent surround matches across lines
+                        ch if !ch.is_ascii_alphanumeric() => {
+                            textobject::textobject_surround(text, range, objtype, ch, count)
+                        }
+                        _ => range,
                     }
-                    _ => range,
-                }
-            });
-            doc.set_selection(view.id, selection);
+                });
+                doc.set_selection(view.id, selection);
+            };
+            textobject(&mut cx.editor);
+            cx.editor.last_motion = Some(Motion(Box::new(textobject)));
         }
     })
 }

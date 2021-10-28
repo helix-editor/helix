@@ -22,6 +22,7 @@
 | `f`         | Find next char                                     | `find_next_char`            |
 | `T`         | Find 'till previous char                           | `till_prev_char`            |
 | `F`         | Find previous char                                 | `find_prev_char`            |
+| `Alt-.`     | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
 | `Home`      | Move to the start of the line                      | `goto_line_start`           |
 | `End`       | Move to the end of the line                        | `goto_line_end`             |
 | `PageUp`    | Move page up                                       | `page_up`                   |
@@ -54,6 +55,7 @@
 | `A`         | Insert at the end of the line                   | `append_to_line`      |
 | `o`         | Open new line below selection                   | `open_below`          |
 | `O`         | Open new line above selection                   | `open_above`          |
+| `.`         | Repeat last change                              | N/A                   |
 | `u`         | Undo change                                     | `undo`                |
 | `U`         | Redo change                                     | `redo`                |
 | `y`         | Yank selection                                  | `yank`                |

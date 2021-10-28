@@ -23,6 +23,8 @@ use crate::{DocumentId, Theme, ViewId};
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
+const DEFAULT_INDENT: IndentStyle = IndentStyle::Spaces(4);
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
@@ -95,6 +97,9 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     history: Cell<History>,
+
+    pub savepoint: Option<Transaction>,
+
     last_saved_revision: usize,
     version: i32, // should be usize?
 
@@ -306,8 +311,7 @@ where
     T: Default,
     F: FnOnce(T) -> T,
 {
-    let t = mem::take(mut_ref);
-    let _ = mem::replace(mut_ref, f(t));
+    *mut_ref = f(mem::take(mut_ref));
 }
 
 use helix_lsp::lsp;
@@ -325,7 +329,8 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
-            indent_style: IndentStyle::Spaces(4),
+            indent_style: DEFAULT_INDENT,
+            line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -335,9 +340,9 @@ impl Document {
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
+            savepoint: None,
             last_saved_revision: 0,
             language_server: None,
-            line_ending: DEFAULT_LINE_ENDING,
         }
     }
 
@@ -363,7 +368,7 @@ impl Document {
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
-        doc.set_path(path)?;
+        doc.set_path(Some(path))?;
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
         }
@@ -495,17 +500,15 @@ impl Document {
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback  back to 2 space indentation if it isn't
+    /// configured in `languages.toml`, with a fallback to 4 space indentation if it isn't
     /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
     /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            IndentStyle::from_str(
-                self.language
-                    .as_ref()
-                    .and_then(|config| config.indent.as_ref())
-                    .map_or("  ", |config| config.unit.as_str()), // Fallback to 2 spaces.
-            )
+            self.language
+                .as_ref()
+                .and_then(|config| config.indent.as_ref())
+                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
         self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
     }
@@ -550,12 +553,14 @@ impl Document {
         self.encoding
     }
 
-    pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        let path = helix_core::path::get_canonicalized_path(path)?;
+    pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
+        let path = path
+            .map(helix_core::path::get_canonicalized_path)
+            .transpose()?;
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
-        self.path = Some(path);
+        self.path = path;
 
         Ok(())
     }
@@ -634,6 +639,14 @@ impl Document {
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+
+            // generate revert to savepoint
+            if self.savepoint.is_some() {
+                take_with(&mut self.savepoint, |prev_revert| {
+                    let revert = transaction.invert(&old_doc);
+                    Some(revert.compose(prev_revert.unwrap()))
+                });
+            }
 
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
@@ -721,6 +734,16 @@ impl Document {
         if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
+        }
+    }
+
+    pub fn savepoint(&mut self) {
+        self.savepoint = Some(Transaction::new(self.text()));
+    }
+
+    pub fn restore(&mut self, view_id: ViewId) {
+        if let Some(revert) = self.savepoint.take() {
+            self.apply(&revert, view_id);
         }
     }
 

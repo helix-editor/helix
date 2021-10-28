@@ -97,12 +97,17 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
-        if !args.files.is_empty() {
+        if args.load_tutor {
+            let path = helix_core::runtime_dir().join("tutor.txt");
+            editor.open(path, Action::VerticalSplit)?;
+            // Unset path to prevent accidentally saving to the original tutor file.
+            doc_mut!(editor).set_path(None)?;
+        } else if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                compositor.push(Box::new(ui::file_picker(first.clone())));
+                compositor.push(Box::new(ui::file_picker(".".into())));
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;

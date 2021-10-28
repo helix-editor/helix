@@ -98,7 +98,8 @@ impl<T: Item> Menu<T> {
 
     pub fn move_up(&mut self) {
         let len = self.matches.len();
-        let pos = self.cursor.map_or(0, |i| (i + len.saturating_sub(1)) % len) % len;
+        let max_index = len.saturating_sub(1);
+        let pos = self.cursor.map_or(max_index, |i| (i + max_index) % len) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
@@ -214,6 +215,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             | KeyEvent {
                 code: KeyCode::Char('p'),
                 modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
@@ -230,6 +235,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             }
             | KeyEvent {
                 code: KeyCode::Char('n'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('j'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_down();

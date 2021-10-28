@@ -20,7 +20,7 @@ pub enum LineEnding {
 
 impl LineEnding {
     #[inline]
-    pub fn len_chars(&self) -> usize {
+    pub const fn len_chars(&self) -> usize {
         match self {
             Self::Crlf => 2,
             _ => 1,
@@ -28,7 +28,7 @@ impl LineEnding {
     }
 
     #[inline]
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Crlf => "\u{000D}\u{000A}",
             Self::LF => "\u{000A}",
@@ -42,7 +42,7 @@ impl LineEnding {
     }
 
     #[inline]
-    pub fn from_char(ch: char) -> Option<LineEnding> {
+    pub const fn from_char(ch: char) -> Option<LineEnding> {
         match ch {
             '\u{000A}' => Some(LineEnding::LF),
             '\u{000B}' => Some(LineEnding::VT),

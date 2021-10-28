@@ -93,6 +93,18 @@ impl Default for Config {
     }
 }
 
+pub struct Motion(pub Box<dyn Fn(&mut Editor)>);
+impl Motion {
+    pub fn run(&self, e: &mut Editor) {
+        (self.0)(e)
+    }
+}
+impl std::fmt::Debug for Motion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("motion")
+    }
+}
+
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
@@ -112,6 +124,7 @@ pub struct Editor {
     pub config: Config,
 
     pub idle_timer: Pin<Box<Sleep>>,
+    pub last_motion: Option<Motion>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -147,6 +160,7 @@ impl Editor {
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
+            last_motion: None,
             config,
         }
     }
