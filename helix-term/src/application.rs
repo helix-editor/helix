@@ -100,6 +100,7 @@ impl Application {
         if args.load_tutor {
             let path = helix_core::runtime_dir().join("tutor.txt");
             editor.open(path, Action::VerticalSplit)?;
+            // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
         } else if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty

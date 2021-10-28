@@ -2107,6 +2107,7 @@ mod cmd {
     ) -> anyhow::Result<()> {
         let path = helix_core::runtime_dir().join("tutor.txt");
         cx.editor.open(path, Action::Replace)?;
+        // Unset path to prevent accidentally saving to the original tutor file.
         doc_mut!(cx.editor).set_path(None)?;
         Ok(())
     }
