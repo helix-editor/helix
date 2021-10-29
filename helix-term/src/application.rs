@@ -389,10 +389,11 @@ impl Application {
                                         message: diagnostic.message,
                                         severity: diagnostic.severity.map(
                                             |severity| match severity {
-                                                DiagnosticSeverity::Error => Error,
-                                                DiagnosticSeverity::Warning => Warning,
-                                                DiagnosticSeverity::Information => Info,
-                                                DiagnosticSeverity::Hint => Hint,
+                                                DiagnosticSeverity::ERROR => Error,
+                                                DiagnosticSeverity::WARNING => Warning,
+                                                DiagnosticSeverity::INFORMATION => Info,
+                                                DiagnosticSeverity::HINT => Hint,
+                                                severity => unimplemented!("{:?}", severity),
                                             },
                                         ),
                                         // code
