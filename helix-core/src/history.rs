@@ -40,7 +40,7 @@ use std::time::{Duration, Instant};
 ///  * Because delete transactions currently don't store the text that they
 ///    delete, we also store an inversion of the transaction.
 ///
-/// Using time to navigate the history: https://github.com/helix-editor/helix/pull/194
+/// Using time to navigate the history: <https://github.com/helix-editor/helix/pull/194>
 #[derive(Debug)]
 pub struct History {
     revisions: Vec<Revision>,
