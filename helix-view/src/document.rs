@@ -657,14 +657,13 @@ impl Document {
             }
 
             // map state.diagnostics over changes::map_pos too
-            // NOTE: seems to do nothing since the language server resends diagnostics on each edit
-            // for diagnostic in &mut self.diagnostics {
-            //     use helix_core::Assoc;
-            //     let changes = transaction.changes();
-            //     diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
-            //     diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
-            //     diagnostic.line = self.text.char_to_line(diagnostic.range.start);
-            // }
+            for diagnostic in &mut self.diagnostics {
+                use helix_core::Assoc;
+                let changes = transaction.changes();
+                diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
+                diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
+                diagnostic.line = self.text.char_to_line(diagnostic.range.start);
+            }
 
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
