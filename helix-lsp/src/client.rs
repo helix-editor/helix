@@ -461,7 +461,7 @@ impl Client {
         };
 
         let changes = match sync_capabilities {
-            lsp::TextDocumentSyncKind::Full => {
+            lsp::TextDocumentSyncKind::FULL => {
                 vec![lsp::TextDocumentContentChangeEvent {
                     // range = None -> whole document
                     range: None,        //Some(Range)
@@ -469,10 +469,11 @@ impl Client {
                     text: new_text.to_string(),
                 }]
             }
-            lsp::TextDocumentSyncKind::Incremental => {
+            lsp::TextDocumentSyncKind::INCREMENTAL => {
                 Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding)
             }
-            lsp::TextDocumentSyncKind::None => return None,
+            lsp::TextDocumentSyncKind::NONE => return None,
+            kind => unimplemented!("{:?}", kind),
         };
 
         Some(self.notify::<lsp::notification::DidChangeTextDocument>(
