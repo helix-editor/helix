@@ -76,13 +76,13 @@
 
 # nord13 - warnings, escape characters, regex
 "warning" = "nord13"
-"escape" = { fg = "nord13" }
+"constant.character.escape" = { fg = "nord13" }
 
 # nord14 - strings
 "string" = "nord14"
 
 # nord15 - integer, floating point
-"number" = "nord15"
+"constant.numeric" = "nord15"
 
 [palette]
 nord0 = "#2e3440"

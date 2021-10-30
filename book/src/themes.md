@@ -103,8 +103,6 @@ We use a similar set of scopes as
 [SublimeText](https://www.sublimetext.com/docs/scope_naming.html). See also
 [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
 
-- `escape` (TODO: rename to (constant).character.escape)
-
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
 
@@ -112,8 +110,11 @@ We use a similar set of scopes as
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
     - `boolean`
   - `character`
+    - `escape`
+  - `numeric` (numbers)
+    - `integer`
+    - `float`
 
-- `number` (TODO: rename to constant.number/.numeric.{integer, float, complex})
 - `string` (TODO: string.quoted.{single, double}, string.raw/.unquoted)?
   - `regexp` - Regular expressions
   - `special`

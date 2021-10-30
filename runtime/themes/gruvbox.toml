@@ -23,8 +23,8 @@
 "constant" = { fg = "purple1" }
 "constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
 "string" = "green1"
-"number" = "purple1"
-"escape" = { fg = "fg2", modifiers = ["bold"] }
+"constant.numeric" = "purple1"
+"constant.character.escape" = { fg = "fg2", modifiers = ["bold"] }
 "label" = "aqua1"
 "module" = "aqua1"
 

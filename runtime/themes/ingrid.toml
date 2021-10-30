@@ -22,8 +22,8 @@
 "constant" = "#D4A520"
 "constant.builtin" = "#D4A520"
 "string" = "#D74E50"
-"number" = "#D74E50"
-"escape" = { fg = "#D74E50", modifiers = ["bold"] }
+"constant.numeric" = "#D74E50"
+"constant.character.escape" = { fg = "#D74E50", modifiers = ["bold"] }
 "label" = "#D68482"
 
 "module" = "#839A53"

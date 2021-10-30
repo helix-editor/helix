@@ -16,14 +16,14 @@
 "operator" = "base05"
 "ui.text.focus" = { fg = "base05" }
 "variable" = "base08"
-"number" = "base09"
+"constant.numeric" = "base09"
 "constant" = "base09"
 "attributes" = "base09" 
 "type" = "base0A"
 "ui.cursor.match" = { fg = "base0A", modifiers = ["underlined"] }
 "strings"  = "base0B"
 "variable.other.member" = "base0B"
-"escape" = "base0C"
+"constant.character.escape" = "base0C"
 "function" = "base0D"
 "constructor" = "base0D"
 "special" = "base0D"

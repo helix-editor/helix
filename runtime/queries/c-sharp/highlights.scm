@@ -28,8 +28,8 @@
   (integer_literal)
 ] @constant.numeric.integer
 
+(character_literal) @constant.character
 [
-  (character_literal)
   (string_literal)
   (verbatim_string_literal)
   (interpolated_string_text)

@@ -61,7 +61,7 @@
 
 (null) @constant
 (number_literal) @constant.numeric.integer
-(char_literal) @string
+(char_literal) @constant.character
 
 (call_expression
   function: (identifier) @function)

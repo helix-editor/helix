@@ -5,7 +5,7 @@
 "constant" = { fg = "#56B6C2" }
 "constant.builtin" = { fg = "#61AFEF" }
 "constructor" = { fg = "#61AFEF" }
-"escape" = { fg = "#D19A66" }
+"constant.character.escape" = { fg = "#D19A66" }
 "function" = { fg = "#61AFEF" }
 "function.builtin" = { fg = "#61AFEF" }
 "function.macro" = { fg = "#C678DD" }
@@ -13,7 +13,7 @@
 "keyword.directive" = { fg = "#C678DD" }
 "label" = { fg = "#C678DD" }
 "namespace" = { fg = "#61AFEF" }
-"number" = { fg = "#D19A66" }
+"constant.numeric" = { fg = "#D19A66" }
 "operator" = { fg = "#C678DD" }
 "variable.other.member" = { fg = "#E06C75" }
 "special" = { fg = "#61AFEF" }

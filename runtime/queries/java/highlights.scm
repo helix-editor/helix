@@ -66,10 +66,8 @@
   (hex_floating_point_literal)
 ] @constant.numeric.float
 
-[
-  (character_literal)
-  (string_literal)
-] @string
+(character_literal) @constant.character
+(string_literal) @string
 
 [
   (true)

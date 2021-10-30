@@ -15,7 +15,7 @@
 (instance (instance_head class: (class_name (type)) @class))
 (integer) @constant.numeric.integer
 (exp_literal (float)) @constant.numeric.float
-(char) @literal
+(char) @constant.character
 (con_unit) @literal
 (con_list) @literal
 (tycon_arrow) @operator
