@@ -251,13 +251,13 @@ impl Editor {
                         .traverse()
                         .any(|(_, view)| view.doc == doc.id && view.id != view!(self).id);
                 let view = view_mut!(self);
-                view.jumps.push(jump);
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(id);
                 } else {
+                    view.jumps.push(jump);
                     view.last_accessed_doc = Some(view.doc);
                 }
                 view.doc = id;
