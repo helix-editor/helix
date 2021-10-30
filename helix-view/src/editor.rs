@@ -232,16 +232,10 @@ impl Editor {
 
         match action {
             Action::Replace => {
-                let view = view!(self);
-                let jump = (
-                    view.doc,
-                    self.documents[view.doc].selection(view.id).clone(),
-                );
-
-                let doc = doc!(self);
+                let (view, doc) = current_ref!(self);
                 // If the current view is an empty scratch buffer and is not displayed in any other views, delete it.
-                // Boolean value is determined before the creation of the `view` variable because the operation
-                // requires a borrow of `self.tree`, which is mutably borrowed when `view` is created.
+                // Boolean value is determined before the call to `view_mut` because the operation requires a borrow
+                // of `self.tree`, which is mutably borrowed when `view_mut` is called.
                 let remove_empty_scratch = !doc.is_modified()
                     // If the buffer has no path and is not modified, it is an empty scratch buffer.
                     && doc.path().is_none()
@@ -249,7 +243,7 @@ impl Editor {
                     && !self
                         .tree
                         .traverse()
-                        .any(|(_, view)| view.doc == doc.id && view.id != view!(self).id);
+                        .any(|(_, v)| v.doc == doc.id && v.id != view.id);
                 let view = view_mut!(self);
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
@@ -257,6 +251,7 @@ impl Editor {
                     let id = doc.id;
                     self.documents.remove(id);
                 } else {
+                    let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
                     view.last_accessed_doc = Some(view.doc);
                 }
