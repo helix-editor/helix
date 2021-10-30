@@ -540,10 +540,10 @@ impl Default for Keymaps {
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-q" | "q" => wclose,
-                "C-h" | "h" => jump_view_left,
-                "C-j" | "j" => jump_view_down,
-                "C-k" | "k" => jump_view_up,
-                "C-l" | "l" => jump_view_right,
+                "C-h" | "h" | "left" => jump_view_left,
+                "C-j" | "j" | "down" => jump_view_down,
+                "C-k" | "k" | "up" => jump_view_up,
+                "C-l" | "l" | "right" => jump_view_right,
             },
 
             // move under <space>c
