@@ -122,8 +122,13 @@ impl<T: 'static> Component for FilePicker<T> {
                 .or_else(|| self.preview_cache.get(&path))
                 .zip(Some(range))
         }) {
+            let bounded_line = line.map(|(start, end)| match start >= doc.text().len_lines() {
+                true => (0, 0),
+                false => (start, end),
+            });
+
             // align to middle
-            let first_line = line
+            let first_line = bounded_line
                 .map(|(start, end)| {
                     let height = end.saturating_sub(start) + 1;
                     let middle = start + (height.saturating_sub(1) / 2);
