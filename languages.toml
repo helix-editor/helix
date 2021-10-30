@@ -354,3 +354,4 @@ file-types = ["cmake", "CMakeLists.txt"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-server = { command = "cmake-language-server" }
