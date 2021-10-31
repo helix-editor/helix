@@ -62,7 +62,7 @@ impl<T> FilePicker<T> {
 
     fn calculate_preview(&mut self, editor: &Editor) {
         /// Biggest file size to preview in bytes
-        const MAX_BYTE_PREVIEW: u64 = 10 * 1024 * 1024;
+        const MAX_PREVIEW_SIZE: u64 = 10 * 1024 * 1024;
 
         if let Some((path, _line)) = self.current_file(editor) {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
@@ -70,7 +70,7 @@ impl<T> FilePicker<T> {
                 let content_type = {
                     let mut buffer = Vec::new();
                     let file = std::fs::File::open(&path).unwrap();
-                    file.take(MAX_BYTE_PREVIEW)
+                    file.take(MAX_PREVIEW_SIZE)
                         .read_to_end(&mut buffer)
                         .unwrap();
                     content_inspector::inspect(&buffer)
@@ -78,11 +78,11 @@ impl<T> FilePicker<T> {
 
                 // TODO: enable syntax highlighting; blocked by async rendering
                 let doc = match (metadata.len(), content_type) {
-                    (size, _) if size > MAX_BYTE_PREVIEW => Document::from(
+                    (size, _) if size > MAX_PREVIEW_SIZE => Document::from(
                         helix_core::Rope::from_str(&format!(
                             "<<TOO LARGE TO PREVIEW>>.\n\n File : {} MB\n Limit: {} MB",
                             size / 1024 / 1024,
-                            MAX_BYTE_PREVIEW / 1024 / 1024
+                            MAX_PREVIEW_SIZE / 1024 / 1024
                         )),
                         None,
                     ),
