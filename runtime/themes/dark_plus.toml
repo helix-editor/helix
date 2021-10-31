@@ -34,10 +34,9 @@
 "comment" = { fg = "#6A9955" }
 
 "string" = { fg = "#ce9178" }
-"constant.character" = { fg = "#ce9178" }
 "string.regexp" = { fg = "regex" }
 "constant.numeric" = { fg = "#b5cea8" }
-"constant.character.escape" = { fg = "#d7ba7d" }
+"constant.character" = { fg = "#d7ba7d" }
 
 "ui.background" = { fg = "#d4d4d4", bg = "#1e1e1e" }
 
