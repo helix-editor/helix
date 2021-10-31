@@ -33,6 +33,7 @@ num_cpus = "1"
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.22", features = ["event-stream"] }
 signal-hook = "0.3"
+content_inspector = "0.2.4"
 
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 

@@ -8,6 +8,7 @@ mod popup;
 mod prompt;
 mod spinner;
 mod text;
+use content_inspector;
 
 pub use completion::Completion;
 pub use editor::EditorView;
@@ -23,6 +24,8 @@ use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
 use helix_view::{Document, Editor, View};
 
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 
 pub fn regex_prompt(
@@ -114,6 +117,16 @@ pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
         // Path::is_dir() traverses symlinks, so we use it over DirEntry::is_dir
         if entry.path().is_dir() {
             // Will give a false positive if metadata cannot be read (eg. permission error)
+            return None;
+        }
+
+        // Inspect the first 1024 bytes of each file to ensure we've
+        // filtered out binary content.
+        let file = File::open(entry.path()).ok()?;
+        let mut buffer: Vec<u8> = vec![];
+        file.take(1024).read_to_end(&mut buffer).unwrap();
+
+        if content_inspector::inspect(&buffer).is_binary() {
             return None;
         }
 
