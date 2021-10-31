@@ -12,7 +12,7 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
-use std::{borrow::Cow, collections::HashMap, path::PathBuf};
+use std::{borrow::Cow, collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
