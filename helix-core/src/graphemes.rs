@@ -1,6 +1,6 @@
 //! Utility functions to traverse the unicode graphemes of a `Rope`'s text contents.
 //!
-//! Based on https://github.com/cessen/led/blob/c4fa72405f510b7fd16052f90a598c429b3104a6/src/graphemes.rs
+//! Based on <https://github.com/cessen/led/blob/c4fa72405f510b7fd16052f90a598c429b3104a6/src/graphemes.rs>
 use ropey::{iter::Chunks, str_utils::byte_to_char_idx, RopeSlice};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 use unicode_width::UnicodeWidthStr;

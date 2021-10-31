@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "helix-core"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "arc-swap",
  "etcetera",
@@ -382,7 +382,7 @@ dependencies = [
 
 [[package]]
 name = "helix-lsp"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -400,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "helix-syntax"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "cc",
@@ -411,7 +411,7 @@ dependencies = [
 
 [[package]]
 name = "helix-term"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -441,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "helix-tui"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "bitflags",
  "cassowary",
@@ -454,7 +454,7 @@ dependencies = [
 
 [[package]]
 name = "helix-view"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -584,9 +584,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.90.1"
+version = "0.91.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f3734ab1d7d157fc0c45110e06b587c31cd82bea2ccfd6b563cbff0aaeeb1d3"
+checksum = "be7801b458592d0998af808d97f6a85a6057af3aaf2a2a5c3c677702bbeb4ed7"
 dependencies = [
  "bitflags",
  "serde",

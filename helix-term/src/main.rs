@@ -60,6 +60,7 @@ ARGS:
 
 FLAGS:
     -h, --help       Prints help information
+    --tutor          Loads the tutorial
     -v               Increases logging verbosity each use for up to 3 times
                      (default file: {})
     -V, --version    Prints version information

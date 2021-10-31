@@ -786,6 +786,14 @@ impl EditorView {
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
     }
+
+    pub fn clear_completion(&mut self, editor: &mut Editor) {
+        self.completion = None;
+        // Clear any savepoints
+        let (_, doc) = current!(editor);
+        doc.savepoint = None;
+        editor.clear_idle_timer(); // don't retrigger
+    }
 }
 
 impl EditorView {
@@ -990,11 +998,7 @@ impl Component for EditorView {
 
                                     if callback.is_some() {
                                         // assume close_fn
-                                        self.completion = None;
-                                        // Clear any savepoints
-                                        let (_, doc) = current!(cxt.editor);
-                                        doc.savepoint = None;
-                                        cxt.editor.clear_idle_timer(); // don't retrigger
+                                        self.clear_completion(cxt.editor);
                                     }
                                 }
                             }
@@ -1007,11 +1011,7 @@ impl Component for EditorView {
                                 if let Some(completion) = &mut self.completion {
                                     completion.update(&mut cxt);
                                     if completion.is_empty() {
-                                        self.completion = None;
-                                        // Clear any savepoints
-                                        let (_, doc) = current!(cxt.editor);
-                                        doc.savepoint = None;
-                                        cxt.editor.clear_idle_timer(); // don't retrigger
+                                        self.clear_completion(cxt.editor);
                                     }
                                 }
                             }

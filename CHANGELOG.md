@@ -1,4 +1,85 @@
 
+# 0.5.0 (2021-10-28)
+
+A big shout out to all the contributors! We had 46 contributors in this release.
+
+Helix has popped up in [Scoop, FreeBSD Ports and Gentu GURU](https://repology.org/project/helix/versions)!
+
+The following is a quick rundown of the larger changes, there were many more
+(check the git history for more details).
+
+Breaking changes:
+
+- A couple of keymaps moved to resolve a few conflicting keybinds.
+  - Documentation popups were moved from `K` to `space+k`
+  - `K` is now `keep_selections` which filters selections to only keeps ones matching the regex
+  - `keep_primary_selection` moved from `space+space` to `,`
+  - `Alt-,` is now `remove_primary_selection` which keeps all selections except the primary one
+  - Opening files in a split moved from `C-h` to `C-s`
+- Some configuration options moved from a `[terminal]` section to `[editor]`. [Consult the documentation for more information.](https://docs.helix-editor.com/configuration.html)
+
+Features:
+
+- LSP compatibility greatly improved for some implementations (Julia, Python, Typescript)
+- Autocompletion! Completion now triggers automatically after a set idle timeout
+- Completion documentation is now displayed next to the popup ([#691](https://github.com/helix-editor/helix/pull/691))
+- Treesitter textobjects (select a function via `mf`, class via `mc`) ([#728](https://github.com/helix-editor/helix/pull/728)) 
+- Global search across entire workspace `space+/` ([#651](https://github.com/helix-editor/helix/pull/651)) 
+- Relative line number support ([#485](https://github.com/helix-editor/helix/pull/485))
+- Prompts now store a history (72cf86e)
+- `:vsplit` and `:hsplit` commands ([#639](https://github.com/helix-editor/helix/pull/639))
+- `C-w h/j/k/l` can now be used to navigate between splits ([#860](https://github.com/helix-editor/helix/pull/860))
+- `C-j` and `C-k` are now alternative keybindings to `C-n` and `C-p` in the UI ([#876](https://github.com/helix-editor/helix/pull/876))
+- Shell commands (shell-pipe, pipe-to, shell-insert-output, shell-append-output, keep-pipe) ([#547](https://github.com/helix-editor/helix/pull/547))
+- Searching now defaults to smart case search (case insensitive unless uppercase is used) ([#761](https://github.com/helix-editor/helix/pull/761))
+- The preview pane was improved to highlight and center line ranges
+- The user `languages.toml` is now merged into defaults, no longer need to copy the entire file (dc57f8dc)
+- Show hidden files in completions ([#648](https://github.com/helix-editor/helix/pull/648))
+- Grammar injections are now properly handled (dd0b15e)
+- `v` in select mode now switches back to normal mode ([#660](https://github.com/helix-editor/helix/pull/660))
+- View mode can now be triggered as a "sticky" mode ([#719](https://github.com/helix-editor/helix/pull/719))
+- `f`/`t` and object selection motions can now be repeated via `Alt-.` ([#891](https://github.com/helix-editor/helix/pull/891))
+- Statusline now displays total selection count and diagnostics counts for both errors and warnings ([#916](https://github.com/helix-editor/helix/pull/916))
+
+New grammars:
+
+- Ledger ([#572](https://github.com/helix-editor/helix/pull/572))
+- Protobuf ([#614](https://github.com/helix-editor/helix/pull/614))
+- Zig ([#631](https://github.com/helix-editor/helix/pull/631))
+- YAML ([#667](https://github.com/helix-editor/helix/pull/667))
+- Lua ([#665](https://github.com/helix-editor/helix/pull/665))
+- OCaml ([#666](https://github.com/helix-editor/helix/pull/666))
+- Svelte ([#733](https://github.com/helix-editor/helix/pull/733))
+- Vue ([#787](https://github.com/helix-editor/helix/pull/787))
+- Tree-sitter queries ([#845](https://github.com/helix-editor/helix/pull/845))
+- CMake ([#888](https://github.com/helix-editor/helix/pull/888))
+- Elixir (we switched over to the official grammar) (6c0786e)
+- Language server definitions for Nix and Elixir ([#725](https://github.com/helix-editor/helix/pull/725))
+- Python now uses `pylsp` instead of `pyls`
+- Python now supports indentation
+
+New themes:
+
+- Monokai ([#628](https://github.com/helix-editor/helix/pull/628))
+- Everforest Dark ([#760](https://github.com/helix-editor/helix/pull/760))
+- Nord ([#799](https://github.com/helix-editor/helix/pull/799))
+- Base16 Default Dark ([#833](https://github.com/helix-editor/helix/pull/833))
+- Rose Pine ([#897](https://github.com/helix-editor/helix/pull/897))
+
+Fixes:
+
+- Fix crash on empty rust file ([#592](https://github.com/helix-editor/helix/pull/592))
+- Exit select mode after toggle comment ([#598](https://github.com/helix-editor/helix/pull/598))
+- Pin popups with no positioning to the initial position (12ea3888)
+- xsel copy should not freeze the editor (6dd7dc4)
+- `*` now only sets the search register and doesn't jump to the next occurrence (3426285)
+- Goto line start/end commands extend when in select mode ([#739](https://github.com/helix-editor/helix/pull/739)) 
+- Fix documentation popups sometimes not getting fully highlighted (066367c)
+- Refactor apply_workspace_edit to remove assert (b02d872)
+- Wrap around the top of the picker menu when scrolling (c7d6e44)
+- Don't allow closing the last split if there's unsaved changes (3ff5b00)
+- Indentation used different default on hx vs hx new_file.txt (c913bad)
+
 # 0.4.1 (2021-08-14)
 
 A minor release that includes:
@@ -6,6 +87,8 @@ A minor release that includes:
 - CI fix for grammars not being cross-compiled for aarch64 
 
 # 0.4.0 (2021-08-13)
+
+A big shout out to all the contributors! We had 28 contributors in this release.
 
 Two months have passed, so this is another big release. A big thank you to all
 the contributors and package maintainers!
@@ -43,6 +126,8 @@ selections in the future as well as resolves many bugs and edge cases.
 - Prompts have an (in-memory) history ([63e54e30](https://github.com/helix-editor/helix/commit/63e54e30a74bb0d1d782877ddbbcf95f2817d061))
 
 # 0.3.0 (2021-06-27)
+
+A big shout out to all the contributors! We had 24 contributors in this release.
 
 Another big release. 
 
@@ -89,6 +174,8 @@ Fixes:
 Includes a fix where wq/wqa could exit before file saving completed.
 
 # 0.2.0
+
+A big shout out to all the contributors! We had 18 contributors in this release.
 
 Enough has changed to bump the version. We're skipping 0.1.x because
 previously the CLI would always report version as 0.1.0, and we'd like

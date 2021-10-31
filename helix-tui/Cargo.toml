@@ -1,6 +1,6 @@
 [package]
 name = "helix-tui"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 description = """
 A library to build rich terminal user interfaces or dashboards
@@ -21,5 +21,5 @@ cassowary = "0.3"
 unicode-segmentation = "1.8"
 crossterm = { version = "0.22", optional = true }
 serde = { version = "1", "optional" = true, features = ["derive"]}
-helix-view = { version = "0.4", path = "../helix-view", features = ["term"] }
-helix-core = { version = "0.4", path = "../helix-core" }
+helix-view = { version = "0.5", path = "../helix-view", features = ["term"] }
+helix-core = { version = "0.5", path = "../helix-core" }
