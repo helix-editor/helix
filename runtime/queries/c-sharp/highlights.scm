@@ -40,8 +40,8 @@
   "$@\""
  ] @string
 
+(boolean_literal) @constant.builtin.boolean
 [
-  (boolean_literal)
   (null_literal)
   (void_keyword)
 ] @constant.builtin
@@ -98,7 +98,7 @@
 ;; Keywords
 (modifier) @keyword
 (this_expression) @keyword
-(escape_sequence) @keyword
+(escape_sequence) @constant.character.escape
 
 [
   "as"

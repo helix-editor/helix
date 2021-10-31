@@ -41,7 +41,7 @@
 
 (intLit) @constant.numeric.integer
 (floatLit) @constant.numeric.float
-(boolLit) @constant.builtin
+(boolLit) @constant.builtin.boolean
 (strLit) @string
 
 (constant) @constant

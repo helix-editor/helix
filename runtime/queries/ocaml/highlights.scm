@@ -66,7 +66,7 @@
 
 (quoted_string "{" @string "}" @string) @string
 
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 [
   (conversion_specification)

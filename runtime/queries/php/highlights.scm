@@ -56,7 +56,7 @@
 
 (string) @string
 (heredoc) @string
-(boolean) @constant.builtin
+(boolean) @constant.builtin.boolean
 (null) @constant.builtin
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
