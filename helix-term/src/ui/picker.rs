@@ -30,9 +30,17 @@ type FileLocation = (PathBuf, Option<(usize, usize)>);
 pub struct FilePicker<T> {
     picker: Picker<T>,
     /// Caches paths to documents
-    preview_cache: HashMap<PathBuf, Document>,
+    preview_cache: HashMap<PathBuf, Preview>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+}
+
+/// Caluculated file preview
+pub enum Preview {
+    Document(Document),
+    Binary,
+    LargeFile,
+    NotFound,
 }
 
 impl<T> FilePicker<T> {
@@ -66,32 +74,31 @@ impl<T> FilePicker<T> {
 
         if let Some((path, _line)) = self.current_file(editor) {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
-                let metadata = std::fs::File::open(&path).unwrap().metadata().unwrap();
-                let content_type = {
-                    let mut buffer = Vec::new();
-                    let file = std::fs::File::open(&path).unwrap();
-                    // read first 1024 bytes is enough size to guess the content type by
-                    // [content_inspector]
-                    file.take(1024).read_to_end(&mut buffer).unwrap();
-                    content_inspector::inspect(&buffer)
-                };
+                let data = std::fs::File::open(&path).map(|file| {
+                    let metadata = file.metadata().unwrap();
+                    let content_type = {
+                        let mut buffer = Vec::with_capacity(1024);
+                        // read first 1024 bytes is enough size to guess the content type by
+                        // [content_inspector]
+                        file.take(1024).read_to_end(&mut buffer).unwrap();
+                        content_inspector::inspect(&buffer)
+                    };
+                    (metadata, content_type)
+                });
 
-                // TODO: enable syntax highlighting; blocked by async rendering
-                let doc = match (metadata.len(), content_type) {
-                    (size, _) if size > MAX_PREVIEW_SIZE => Document::from(
-                        helix_core::Rope::from_str(&format!(
-                            "<<TOO LARGE TO PREVIEW>>.\n\n File : {} MB\n Limit: {} MB",
-                            size / 1024 / 1024,
-                            MAX_PREVIEW_SIZE / 1024 / 1024
-                        )),
-                        None,
-                    ),
-                    (_, content_inspector::ContentType::BINARY) => {
-                        Document::from(helix_core::Rope::from_str("<<BINARY>>"), None)
-                    }
-                    _ => Document::open(&path, None, Some(&editor.theme), None).unwrap(),
-                };
-                self.preview_cache.insert(path, doc);
+                let preview = data
+                    .map(
+                        |(metadata, content_type)| match (metadata.len(), content_type) {
+                            (_, content_inspector::ContentType::BINARY) => Preview::Binary,
+                            (size, _) if size > MAX_PREVIEW_SIZE => Preview::LargeFile,
+                            _ => Preview::Document(
+                                // TODO: enable syntax highlighting; blocked by async rendering
+                                Document::open(&path, None, Some(&editor.theme), None).unwrap(),
+                            ),
+                        },
+                    )
+                    .unwrap_or(Preview::NotFound);
+                self.preview_cache.insert(path, preview);
             }
         }
     }
@@ -142,10 +149,21 @@ impl<T: 'static> Component for FilePicker<T> {
 
         block.render(preview_area, surface);
 
+        // TODO: Get rid of this, maybe static? But [Document] is not Sync.
+        let binary_document = Document::from(helix_core::Rope::from_str("<<BINARY>>"), None);
+        let large_document = Document::from(helix_core::Rope::from_str("<<LARGE FILE>>"), None);
+
         if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, range)| {
             cx.editor
                 .document_by_path(&path)
-                .or_else(|| self.preview_cache.get(&path))
+                .or_else(|| {
+                    self.preview_cache.get(&path).map(|preview| match preview {
+                        Preview::Document(doc) => doc,
+                        Preview::Binary => &binary_document,
+                        Preview::LargeFile => &large_document,
+                        Preview::NotFound => todo!("what should I show?"),
+                    })
+                })
                 .zip(Some(range))
         }) {
             // align to middle
