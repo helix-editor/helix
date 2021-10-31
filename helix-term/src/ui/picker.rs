@@ -77,7 +77,7 @@ impl<T> FilePicker<T> {
                 };
 
                 // TODO: enable syntax highlighting; blocked by async rendering
-                let doc = match (metadata.size(), content_type) {
+                let doc = match (metadata.len(), content_type) {
                     (size, _) if size > MAX_BYTE_PREVIEW => Document::from(
                         helix_core::Rope::from_str(&format!(
                             "<<TOO LARGE TO PREVIEW>>.\n\n File : {} MB\n Limit: {} MB",
