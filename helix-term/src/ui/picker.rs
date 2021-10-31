@@ -61,10 +61,36 @@ impl<T> FilePicker<T> {
     }
 
     fn calculate_preview(&mut self, editor: &Editor) {
+        /// Biggest file size to preview in bytes
+        const MAX_BYTE_PREVIEW: u64 = 10 * 1024 * 1024;
+
         if let Some((path, _line)) = self.current_file(editor) {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
+                let metadata = std::fs::File::open(&path).unwrap().metadata().unwrap();
+                let content_type = {
+                    let mut buffer = Vec::new();
+                    let file = std::fs::File::open(&path).unwrap();
+                    file.take(MAX_BYTE_PREVIEW)
+                        .read_to_end(&mut buffer)
+                        .unwrap();
+                    content_inspector::inspect(&buffer)
+                };
+
                 // TODO: enable syntax highlighting; blocked by async rendering
-                let doc = Document::open(&path, None, Some(&editor.theme), None).unwrap();
+                let doc = match (metadata.size(), content_type) {
+                    (size, _) if size > MAX_BYTE_PREVIEW => Document::from(
+                        helix_core::Rope::from_str(&format!(
+                            "<<TOO LARGE TO PREVIEW>>.\n\n File : {} MB\n Limit: {} MB",
+                            size / 1024 / 1024,
+                            MAX_BYTE_PREVIEW / 1024 / 1024
+                        )),
+                        None,
+                    ),
+                    (_, content_inspector::ContentType::BINARY) => {
+                        Document::from(helix_core::Rope::from_str("<<BINARY>>"), None)
+                    }
+                    _ => Document::open(&path, None, Some(&editor.theme), None).unwrap(),
+                };
                 self.preview_cache.insert(path, doc);
             }
         }
