@@ -70,9 +70,9 @@ impl<T> FilePicker<T> {
                 let content_type = {
                     let mut buffer = Vec::new();
                     let file = std::fs::File::open(&path).unwrap();
-                    file.take(MAX_PREVIEW_SIZE)
-                        .read_to_end(&mut buffer)
-                        .unwrap();
+                    // read first 1024 bytes is enough size to guess the content type by
+                    // [content_inspector]
+                    file.take(1024).read_to_end(&mut buffer).unwrap();
                     content_inspector::inspect(&buffer)
                 };
 
