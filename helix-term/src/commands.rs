@@ -262,6 +262,8 @@ impl Command {
         goto_prev_diag, "Goto previous diagnostic",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
+        goto_next_buffer, "Goto next buffer",
+        goto_previous_buffer, "Goto previous buffer",
         // TODO: different description ?
         goto_line_end_newline, "Goto line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
@@ -517,6 +519,33 @@ fn goto_line_start(cx: &mut Context) {
             Movement::Move
         },
     )
+}
+
+fn goto_next_buffer(cx: &mut Context) {
+    goto_buffer(cx, Direction::Forward);
+}
+
+fn goto_previous_buffer(cx: &mut Context) {
+    goto_buffer(cx, Direction::Backward);
+}
+
+fn goto_buffer(cx: &mut Context, direction: Direction) {
+    let buf_cur = current!(cx.editor).1.id();
+
+    if let Some(pos) = cx.editor.documents.iter().position(|(id, _)| id == buf_cur) {
+        let goto_id = if direction == Direction::Forward {
+            if pos < cx.editor.documents.iter().count() - 1 {
+                cx.editor.documents.iter().nth(pos + 1).unwrap().0
+            } else {
+                cx.editor.documents.iter().next().unwrap().0
+            }
+        } else if pos > 0 {
+            cx.editor.documents.iter().nth(pos - 1).unwrap().0
+        } else {
+            cx.editor.documents.iter().last().unwrap().0
+        };
+        cx.editor.switch(goto_id, Action::Replace);
+    }
 }
 
 fn extend_to_line_start(cx: &mut Context) {

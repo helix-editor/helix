@@ -453,6 +453,8 @@ impl Default for Keymaps {
                 "m" => goto_window_middle,
                 "b" => goto_window_bottom,
                 "a" => goto_last_accessed_file,
+                "n" => goto_next_buffer,
+                "p" => goto_previous_buffer,
             },
             ":" => command_mode,
 
