@@ -200,7 +200,7 @@ injection-regex = "php"
 file-types = ["php"]
 roots = []
 
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "latex"
