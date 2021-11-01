@@ -161,6 +161,8 @@ Jumps to various locations.
 | `r`   | Go to references                                 | `goto_reference`           |
 | `i`   | Go to implementation                             | `goto_implementation`      |
 | `a`   | Go to the last accessed/alternate file           | `goto_last_accessed_file`  |
+| `n`   | Go to next buffer                                | `goto_next_buffer`         |
+| `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
 
 #### Match mode
 
