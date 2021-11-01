@@ -117,6 +117,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
+        let text = cx.editor.theme.get("ui.text");
         surface.clear_with(area, background);
 
         let picker_width = if render_preview {
@@ -145,28 +146,35 @@ impl<T: 'static> Component for FilePicker<T> {
             horizontal: 1,
         };
         let inner = inner.inner(&margin);
-
         block.render(preview_area, surface);
 
-        // TODO: Get rid of this, maybe static? But [Document] is not Sync.
-        let binary_document = Document::from(helix_core::Rope::from_str("<<BINARY>>"), None);
-        let large_document = Document::from(helix_core::Rope::from_str("<<LARGE FILE>>"), None);
+        if let Some((path, range)) = self.current_file(cx.editor) {
+            let cache = self.preview_cache.get(&path);
+            let doc = match cache {
+                Some(Preview::Binary | Preview::LargeFile | Preview::NotFound) => {
+                    surface.set_stringn(
+                        inner.x,
+                        inner.y,
+                        match cache {
+                            Some(Preview::Binary) => "<Binary file>",
+                            Some(Preview::LargeFile) => "<File too large to preview>",
+                            Some(Preview::NotFound) => "<File not found>>",
+                            _ => unreachable!(),
+                        },
+                        inner.width as usize,
+                        text,
+                    );
+                    return;
+                }
+                Some(Preview::Document(doc)) => doc,
+                None => match cx.editor.document_by_path(&path) {
+                    Some(doc) => doc,
+                    None => return,
+                },
+            };
 
-        if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, range)| {
-            cx.editor
-                .document_by_path(&path)
-                .or_else(|| {
-                    self.preview_cache.get(&path).map(|preview| match preview {
-                        Preview::Document(doc) => doc,
-                        Preview::Binary => &binary_document,
-                        Preview::LargeFile => &large_document,
-                        Preview::NotFound => todo!("what should I show?"),
-                    })
-                })
-                .zip(Some(range))
-        }) {
             // align to middle
-            let first_line = line
+            let first_line = range
                 .map(|(start, end)| {
                     let height = end.saturating_sub(start) + 1;
                     let middle = start + (height.saturating_sub(1) / 2);
@@ -193,7 +201,7 @@ impl<T: 'static> Component for FilePicker<T> {
             );
 
             // highlight the line
-            if let Some((start, end)) = line {
+            if let Some((start, end)) = range {
                 let offset = start.saturating_sub(first_line) as u16;
                 surface.set_style(
                     Rect::new(
