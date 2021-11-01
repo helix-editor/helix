@@ -31,6 +31,7 @@ pub struct FilePicker<T> {
     picker: Picker<T>,
     /// Caches paths to documents
     preview_cache: HashMap<PathBuf, Preview>,
+    read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
 }
@@ -53,6 +54,7 @@ impl<T> FilePicker<T> {
         Self {
             picker: Picker::new(false, options, format_fn, callback_fn),
             preview_cache: HashMap::new(),
+            read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
         }
     }
@@ -74,16 +76,13 @@ impl<T> FilePicker<T> {
 
         if let Some((path, _line)) = self.current_file(editor) {
             if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
-                let data = std::fs::File::open(&path).map(|file| {
-                    let metadata = file.metadata().unwrap();
-                    let content_type = {
-                        let mut buffer = Vec::with_capacity(1024);
-                        // read first 1024 bytes is enough size to guess the content type by
-                        // [content_inspector]
-                        file.take(1024).read_to_end(&mut buffer).unwrap();
-                        content_inspector::inspect(&buffer)
-                    };
-                    (metadata, content_type)
+                let data = std::fs::File::open(&path).and_then(|file| {
+                    let metadata = file.metadata()?;
+                    // Read up to 1kb to detect the content type
+                    let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+                    let content_type = content_inspector::inspect(&self.read_buffer[..n]);
+                    self.read_buffer.clear();
+                    Ok((metadata, content_type))
                 });
 
                 let preview = data
