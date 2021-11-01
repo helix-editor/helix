@@ -1174,6 +1174,7 @@ fn search_impl(
     regex: &Regex,
     movement: Movement,
     direction: Direction,
+    scrolloff: usize,
 ) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
@@ -1232,7 +1233,11 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        align_view(doc, view, Align::Center);
+        if view.is_cursor_in_view(doc, 0) {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        } else {
+            align_view(doc, view, Align::Center)
+        }
     };
 }
 
@@ -1256,6 +1261,8 @@ fn rsearch(cx: &mut Context) {
 // TODO: use one function for search vs extend
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
+    let scrolloff = cx.editor.config.scrolloff;
+
     let (_, doc) = current!(cx.editor);
 
     // TODO: could probably share with select_on_matches?
@@ -1280,7 +1287,15 @@ fn searcher(cx: &mut Context, direction: Direction) {
             if event != PromptEvent::Update {
                 return;
             }
-            search_impl(doc, view, &contents, &regex, Movement::Move, direction);
+            search_impl(
+                doc,
+                view,
+                &contents,
+                &regex,
+                Movement::Move,
+                direction,
+                scrolloff,
+            );
         },
     );
 
@@ -1288,6 +1303,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
+    let scrolloff = cx.editor.config.scrolloff;
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
@@ -1302,7 +1318,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, movement, direction);
+            search_impl(doc, view, &contents, &regex, movement, direction, scrolloff);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
