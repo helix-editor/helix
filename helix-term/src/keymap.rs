@@ -5,7 +5,7 @@ use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     ops::{Deref, DerefMut},
 };
 
@@ -137,20 +137,28 @@ impl KeyTrieNode {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(&str, Vec<KeyEvent>)> = Vec::with_capacity(self.len());
+        let mut body: Vec<(&str, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
         for (&key, trie) in self.iter() {
             let desc = match trie {
                 KeyTrie::Leaf(cmd) => cmd.doc(),
                 KeyTrie::Node(n) => n.name(),
             };
             match body.iter().position(|(d, _)| d == &desc) {
-                // FIXME: multiple keys are ordered randomly (use BTreeSet)
-                Some(pos) => body[pos].1.push(key),
-                None => body.push((desc, vec![key])),
+                Some(pos) => {
+                    body[pos].1.insert(key);
+                }
+                None => {
+                    let mut keys = BTreeSet::new();
+                    keys.insert(key);
+                    body.push((desc, keys));
+                }
             }
         }
         body.sort_unstable_by_key(|(_, keys)| {
-            self.order.iter().position(|&k| k == keys[0]).unwrap()
+            self.order
+                .iter()
+                .position(|&k| k == *keys.iter().next().unwrap())
+                .unwrap()
         });
         let prefix = format!("{} ", self.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {

@@ -54,7 +54,7 @@ impl From<crossterm::event::KeyModifiers> for KeyModifiers {
 }
 
 /// Represents a key.
-#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum KeyCode {
     /// Backspace key.
