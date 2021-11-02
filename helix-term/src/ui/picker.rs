@@ -108,7 +108,7 @@ impl<T> FilePicker<T> {
             )
             .unwrap_or(Preview::NotFound);
         self.preview_cache.insert(path.to_owned(), preview);
-        self.preview_cache[path]
+        &self.preview_cache[path]
     }
 }
 
