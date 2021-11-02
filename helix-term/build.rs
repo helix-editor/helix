@@ -6,6 +6,6 @@ fn main() {
         .map(|x| String::from_utf8(x.stdout).ok())
         .ok()
         .flatten()
-        .unwrap_or(String::from(env!("CARGO_PKG_VERSION")));
-    println!("cargo:rustc-env=GIT_HASH={}", git_hash);
+        .unwrap_or_else(|| String::from(env!("CARGO_PKG_VERSION")));
+    println!("cargo:rustc-env=VERSION_AND_GIT_HASH={}", git_hash);
 }
