@@ -70,36 +70,45 @@ impl<T> FilePicker<T> {
             })
     }
 
-    fn calculate_preview(&mut self, editor: &Editor) {
+    /// Get preview from preivew cache.
+    /// If not cached, calculate and cache preview, then return reference of it.
+    fn get_preview<'a, 'b>(
+        &'a mut self,
+        path: impl AsRef<std::path::Path>,
+        editor: &'b Editor,
+    ) -> &'a Preview {
+        let path = path.as_ref();
+
+        if self.preview_cache.contains_key(path) && editor.document_by_path(path).is_some() {
+            return self.preview_cache.get(path).unwrap();
+        }
+
         /// Biggest file size to preview in bytes
         const MAX_PREVIEW_SIZE: u64 = 10 * 1024 * 1024;
-
-        if let Some((path, _line)) = self.current_file(editor) {
-            if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
-                let data = std::fs::File::open(&path).and_then(|file| {
-                    let metadata = file.metadata()?;
-                    // Read up to 1kb to detect the content type
-                    let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
-                    let content_type = content_inspector::inspect(&self.read_buffer[..n]);
-                    self.read_buffer.clear();
-                    Ok((metadata, content_type))
-                });
-
-                let preview = data
-                    .map(
-                        |(metadata, content_type)| match (metadata.len(), content_type) {
-                            (_, content_inspector::ContentType::BINARY) => Preview::Binary,
-                            (size, _) if size > MAX_PREVIEW_SIZE => Preview::LargeFile,
-                            _ => Preview::Document(
-                                // TODO: enable syntax highlighting; blocked by async rendering
-                                Document::open(&path, None, Some(&editor.theme), None).unwrap(),
-                            ),
-                        },
-                    )
-                    .unwrap_or(Preview::NotFound);
-                self.preview_cache.insert(path, preview);
-            }
-        }
+        let data = std::fs::File::open(path).and_then(|file| {
+            let metadata = file.metadata()?;
+            // Read up to 1kb to detect the content type
+            let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+            let content_type = content_inspector::inspect(&self.read_buffer[..n]);
+            self.read_buffer.clear();
+            Ok((metadata, content_type))
+        });
+        let preview = data
+            .map(
+                |(metadata, content_type)| match (metadata.len(), content_type) {
+                    (_, content_inspector::ContentType::BINARY) => Preview::Binary,
+                    (size, _) if size > MAX_PREVIEW_SIZE => Preview::LargeFile,
+                    _ => {
+                        // TODO: enable syntax highlighting; blocked by async rendering
+                        Document::open(path, None, Some(&editor.theme), None)
+                            .map(Preview::Document)
+                            .unwrap_or(Preview::NotFound)
+                    }
+                },
+            )
+            .unwrap_or(Preview::NotFound);
+        self.preview_cache.insert(path.to_owned(), preview);
+        self.preview_cache.get(path).unwrap()
     }
 }
 
@@ -111,7 +120,6 @@ impl<T: 'static> Component for FilePicker<T> {
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
-        self.calculate_preview(cx.editor);
         let render_preview = area.width > MIN_SCREEN_WIDTH_FOR_PREVIEW;
         let area = inner_rect(area);
         // -- Render the frame:
@@ -149,28 +157,38 @@ impl<T: 'static> Component for FilePicker<T> {
         block.render(preview_area, surface);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
-            let cache = self.preview_cache.get(&path);
-            let doc = match cache {
-                Some(Preview::Binary | Preview::LargeFile | Preview::NotFound) => {
+            let doc = match self.get_preview(path, cx.editor) {
+                &Preview::Binary => {
                     surface.set_stringn(
                         inner.x,
                         inner.y,
-                        match cache {
-                            Some(Preview::Binary) => "<Binary file>",
-                            Some(Preview::LargeFile) => "<File too large to preview>",
-                            Some(Preview::NotFound) => "<File not found>>",
-                            _ => unreachable!(),
-                        },
+                        "<Binary file>",
                         inner.width as usize,
                         text,
                     );
                     return;
                 }
-                Some(Preview::Document(doc)) => doc,
-                None => match cx.editor.document_by_path(&path) {
-                    Some(doc) => doc,
-                    None => return,
-                },
+                &Preview::LargeFile => {
+                    surface.set_stringn(
+                        inner.x,
+                        inner.y,
+                        "<File too large to preview>",
+                        inner.width as usize,
+                        text,
+                    );
+                    return;
+                }
+                &Preview::NotFound => {
+                    surface.set_stringn(
+                        inner.x,
+                        inner.y,
+                        "<File not found>",
+                        inner.width as usize,
+                        text,
+                    );
+                    return;
+                }
+                Preview::Document(doc) => doc,
             };
 
             // align to middle
