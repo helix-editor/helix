@@ -66,7 +66,7 @@ FLAGS:
     -V, --version    Prints version information
 ",
         env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION"),
+        env!("GIT_HASH"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
         logpath.display(),
@@ -81,7 +81,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("helix {}", env!("CARGO_PKG_VERSION"));
+        println!("helix {}", env!("GIT_HASH"));
         std::process::exit(0);
     }
 
