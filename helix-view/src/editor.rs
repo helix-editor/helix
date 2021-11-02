@@ -61,6 +61,7 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    pub show_hidden_files: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -92,6 +93,7 @@ impl Default for Config {
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
+            show_hidden_files: false,
         }
     }
 }
