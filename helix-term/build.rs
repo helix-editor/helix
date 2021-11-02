@@ -1,4 +1,5 @@
 use std::process::Command;
+
 fn main() {
     let git_hash = Command::new("git")
         .args(&["describe", "--dirty"])
