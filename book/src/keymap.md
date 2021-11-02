@@ -106,13 +106,13 @@
 
 ### Search
 
-> TODO: The search implementation isn't ideal yet -- we don't support searching in reverse.
 
 | Key   | Description                                 | Command              |
 | ----- | -----------                                 | -------              |
 | `/`   | Search for regex pattern                    | `search`             |
+| `?`   | Search for previous pattern                 | `rsearch`            |
 | `n`   | Select next search match                    | `search_next`        |
-| `N`   | Add next search match to selection          | `extend_search_next` |
+| `N`   | Select previous search match                | `search_prev`        |
 | `*`   | Use current selection as the search pattern | `search_selection`   |
 
 ### Minor modes
@@ -185,16 +185,16 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 This layer is similar to vim keybindings as kakoune does not support window.
 
-| Key           | Description             | Command           |
-| -----         | -------------           | -------           |
-| `w`, `Ctrl-w` | Switch to next window   | `rotate_view`     |
-| `v`, `Ctrl-v` | Vertical right split    | `vsplit`          |
-| `s`, `Ctrl-s` | Horizontal bottom split | `hsplit`          |
-| `h`, `Ctrl-h`, `left` | Move to left split      | `jump_view_left`  |
-| `j`, `Ctrl-j`, `down` | Move to split below     | `jump_view_down`  |
-| `k`, `Ctrl-k`, `up` | Move to split above     | `jump_view_up`    |
-| `l`, `Ctrl-l`, `right` | Move to right split     | `jump_view_right` |
-| `q`, `Ctrl-q` | Close current window    | `wclose`          |
+| Key                    | Description                    | Command           |
+| -----                  | -------------                  | -------           |
+| `w`, `Ctrl-w`          | Switch to next window          | `rotate_view`     |
+| `v`, `Ctrl-v`          | Vertical right split           | `vsplit`          |
+| `s`, `Ctrl-s`          | Horizontal bottom split        | `hsplit`          |
+| `h`, `Ctrl-h`, `left`  | Move to left split             | `jump_view_left`  |
+| `j`, `Ctrl-j`, `down`  | Move to split below            | `jump_view_down`  |
+| `k`, `Ctrl-k`, `up`    | Move to split above            | `jump_view_up`    |
+| `l`, `Ctrl-l`, `right` | Move to right split            | `jump_view_right` |
+| `q`, `Ctrl-q`          | Close current window           | `wclose`          |
 
 #### Space mode
 
@@ -222,12 +222,12 @@ This layer is a kludge of mappings, mostly pickers.
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
-| Key       | Description                        | Command           |
-| -----     | -----------                        | -------           |
-| `[d`      | Go to previous diagnostic          | `goto_prev_diag`  |
-| `]d`      | Go to next diagnostic              | `goto_next_diag`  |
-| `[D`      | Go to first diagnostic in document | `goto_first_diag` |
-| `]D`      | Go to last diagnostic in document  | `goto_last_diag`  |
+| Key       | Description                        | Command             |
+| -----     | -----------                        | -------             |
+| `[d`      | Go to previous diagnostic          | `goto_prev_diag`    |
+| `]d`      | Go to next diagnostic              | `goto_next_diag`    |
+| `[D`      | Go to first diagnostic in document | `goto_first_diag`   |
+| `]D`      | Go to last diagnostic in document  | `goto_last_diag`    |
 | `[space`  | Add newline above                  | `add_newline_above` |
 | `]space`  | Add newline below                  | `add_newline_below` |
 
