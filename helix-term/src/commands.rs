@@ -1213,7 +1213,10 @@ fn search_impl(
         }
         let selection = match movement {
             Movement::Extend => selection.clone().push(Range::new(start, end)),
-            Movement::Move => Selection::single(start, end),
+            Movement::Move => selection
+                .clone()
+                .remove(selection.primary_index())
+                .push(Range::new(start, end)),
         };
 
         doc.set_selection(view.id, selection);
