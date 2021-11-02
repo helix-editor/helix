@@ -30,15 +30,19 @@ type FileLocation = (PathBuf, Option<(usize, usize)>);
 pub struct FilePicker<T> {
     picker: Picker<T>,
     /// Caches paths to documents
-    preview_cache: HashMap<PathBuf, Preview>,
+    preview_cache: HashMap<PathBuf, CaluculatedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
 }
 
+pub enum Preview<'c, 'e> {
+    OwenedPreview(&'c CaluculatedPreview),
+    EditorDocument(&'e Document),
+}
 /// Caluculated file preview
-pub enum Preview {
-    Document(Document),
+pub enum CaluculatedPreview {
+    OwenedDocument(Document),
     Binary,
     LargeFile,
     NotFound,
@@ -72,15 +76,19 @@ impl<T> FilePicker<T> {
 
     /// Get preview from preivew cache.
     /// If not cached, calculate and cache preview, then return reference of it.
-    fn get_preview<'a, 'b>(
-        &'a mut self,
+    fn get_preview<'c, 'e>(
+        &'c mut self,
         path: impl AsRef<std::path::Path>,
-        editor: &'b Editor,
-    ) -> &'a Preview {
+        editor: &'e Editor,
+    ) -> Preview<'c, 'e> {
         let path = path.as_ref();
 
-        if self.preview_cache.contains_key(path) && editor.document_by_path(path).is_some() {
-            return self.preview_cache.get(path).unwrap();
+        if self.preview_cache.contains_key(path) {
+            return Preview::OwenedPreview(&self.preview_cache[path]);
+        }
+
+        if let Some(doc) = editor.document_by_path(path) {
+            return Preview::EditorDocument(doc);
         }
 
         /// Biggest file size to preview in bytes
@@ -96,19 +104,19 @@ impl<T> FilePicker<T> {
         let preview = data
             .map(
                 |(metadata, content_type)| match (metadata.len(), content_type) {
-                    (_, content_inspector::ContentType::BINARY) => Preview::Binary,
-                    (size, _) if size > MAX_PREVIEW_SIZE => Preview::LargeFile,
+                    (_, content_inspector::ContentType::BINARY) => CaluculatedPreview::Binary,
+                    (size, _) if size > MAX_PREVIEW_SIZE => CaluculatedPreview::LargeFile,
                     _ => {
                         // TODO: enable syntax highlighting; blocked by async rendering
                         Document::open(path, None, Some(&editor.theme), None)
-                            .map(Preview::Document)
-                            .unwrap_or(Preview::NotFound)
+                            .map(CaluculatedPreview::OwenedDocument)
+                            .unwrap_or(CaluculatedPreview::NotFound)
                     }
                 },
             )
-            .unwrap_or(Preview::NotFound);
+            .unwrap_or(CaluculatedPreview::NotFound);
         self.preview_cache.insert(path.to_owned(), preview);
-        &self.preview_cache[path]
+        Preview::OwenedPreview(&self.preview_cache[path])
     }
 }
 
@@ -158,7 +166,7 @@ impl<T: 'static> Component for FilePicker<T> {
 
         if let Some((path, range)) = self.current_file(cx.editor) {
             let doc = match self.get_preview(path, cx.editor) {
-                &Preview::Binary => {
+                Preview::OwenedPreview(CaluculatedPreview::Binary) => {
                     surface.set_stringn(
                         inner.x,
                         inner.y,
@@ -168,7 +176,7 @@ impl<T: 'static> Component for FilePicker<T> {
                     );
                     return;
                 }
-                &Preview::LargeFile => {
+                Preview::OwenedPreview(CaluculatedPreview::LargeFile) => {
                     surface.set_stringn(
                         inner.x,
                         inner.y,
@@ -178,7 +186,7 @@ impl<T: 'static> Component for FilePicker<T> {
                     );
                     return;
                 }
-                &Preview::NotFound => {
+                Preview::OwenedPreview(CaluculatedPreview::NotFound) => {
                     surface.set_stringn(
                         inner.x,
                         inner.y,
@@ -188,7 +196,8 @@ impl<T: 'static> Component for FilePicker<T> {
                     );
                     return;
                 }
-                Preview::Document(doc) => doc,
+                Preview::OwenedPreview(CaluculatedPreview::OwenedDocument(doc)) => doc,
+                Preview::EditorDocument(doc) => doc,
             };
 
             // align to middle
