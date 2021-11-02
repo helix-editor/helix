@@ -261,22 +261,22 @@ Keys to use within picker. Remapping currently not supported.
 
 # Prompt
 Keys to use within prompt, Remapping currently not supported.
-| Key                     | Description                     |
-| -----                   | -------------                   |
-| `Escape`, `Ctrl-c`      | Close prompt                    |
-| `Alt-b`, `Alt-Left`     | Backward a word                 |
-| `Ctrl-b`, `Left`        | Backward a char                 |
-| `Alt-f`, `Alt-Right`    | Forward a word                  |
-| `Ctrl-f`, `Right`       | Forward a char                  |
-| `Ctrl-e`, `End`         | move prompt end                 |
-| `Ctrl-a`, `Home`        | move prompt start               |
-| `Ctrl-w`                | delete previous word            |
-| `Ctrl-k`                | delete to end of line           |
-| `backspace`             | delete previous char            |
-| `Ctrl-s`                | insert a word under doc cursor  |
-| `Ctrl-p`, `Up`          | select previous history         |
-| `Ctrl-n`, `Down`        | select next history             |
-| `Tab`                   | slect next completion item      |
-| `BackTab`               | slect previous completion item  |
-| `Enter`                 | Open selected                   |
+| Key                     | Description                                                     |
+| -----                   | -------------                                                   |
+| `Escape`, `Ctrl-c`      | Close prompt                                                    |
+| `Alt-b`, `Alt-Left`     | Backward a word                                                 |
+| `Ctrl-b`, `Left`        | Backward a char                                                 |
+| `Alt-f`, `Alt-Right`    | Forward a word                                                  |
+| `Ctrl-f`, `Right`       | Forward a char                                                  |
+| `Ctrl-e`, `End`         | move prompt end                                                 |
+| `Ctrl-a`, `Home`        | move prompt start                                               |
+| `Ctrl-w`                | delete previous word                                            |
+| `Ctrl-k`                | delete to end of line                                           |
+| `backspace`             | delete previous char                                            |
+| `Ctrl-s`                | insert a word under doc cursor, maybe changed to Ctrl-r Ctrl-w  |
+| `Ctrl-p`, `Up`          | select previous history                                         |
+| `Ctrl-n`, `Down`        | select next history                                             |
+| `Tab`                   | slect next completion item                                      |
+| `BackTab`               | slect previous completion item                                  |
+| `Enter`                 | Open selected                                                   |
 

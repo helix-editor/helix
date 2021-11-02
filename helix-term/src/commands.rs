@@ -1177,6 +1177,7 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
         .map_or(Vec::new(), |reg| {
             reg.read()
                 .iter()
+                .rev()
                 .filter(|&item| {
                     if exist_elems.contains(item) {
                         false
@@ -1185,7 +1186,7 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
                         true
                     }
                 })
-                .take(10)
+                .take(20)
                 .cloned()
                 .collect()
         })
