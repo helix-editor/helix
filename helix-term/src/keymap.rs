@@ -147,11 +147,7 @@ impl KeyTrieNode {
                 Some(pos) => {
                     body[pos].1.insert(key);
                 }
-                None => {
-                    let mut keys = BTreeSet::new();
-                    keys.insert(key);
-                    body.push((desc, keys));
-                }
+                None => body.push((desc, BTreeSet::from([key]))),
             }
         }
         body.sort_unstable_by_key(|(_, keys)| {
