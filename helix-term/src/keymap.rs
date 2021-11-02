@@ -504,10 +504,9 @@ impl Default for Keymaps {
             },
 
             "/" => search,
-            // ? for search_reverse
+            "?" => rsearch,
             "n" => search_next,
-            "N" => extend_search_next,
-            // N for search_prev
+            "N" => search_prev,
             "*" => search_selection,
 
             "u" => undo,
@@ -632,6 +631,9 @@ impl Default for Keymaps {
             "W" => extend_next_long_word_start,
             "B" => extend_prev_long_word_start,
             "E" => extend_next_long_word_end,
+
+            "n" => extend_search_next,
+            "N" => extend_search_prev,
 
             "t" => extend_till_char,
             "f" => extend_next_char,
