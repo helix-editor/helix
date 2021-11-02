@@ -65,7 +65,7 @@ FLAGS:
                      (default file: {})
     -V, --version    Prints version information
 ",
-        env!("CARGO_PKG_NAME"),
+        env!("CARGO_BIN_NAME"),
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
