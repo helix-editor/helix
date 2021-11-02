@@ -1161,7 +1161,10 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
         let selection = if extend {
             selection.clone().push(Range::new(start, end))
         } else {
-            Selection::single(start, end)
+            selection
+                .clone()
+                .remove(selection.primary_index())
+                .push(Range::new(start, end))
         };
 
         doc.set_selection(view.id, selection);
