@@ -1178,8 +1178,8 @@ fn search_impl(
     view: &mut View,
     contents: &str,
     regex: &Regex,
-    extend: bool,
-    reverse: bool,
+    movement: Movement,
+    direction: Direction,
 ) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
@@ -1192,16 +1192,15 @@ fn search_impl(
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mat = if !reverse {
-        regex
+    let mat = match direction {
+        Direction::Forward => regex
             .find_at(contents, start)
-            .or_else(|| regex.find(contents))
-    } else {
-        regex
+            .or_else(|| regex.find(contents)),
+        Direction::Backward => regex
             .find_iter(&contents[..start])
             .fold((None, None), |(_x, y), new| (y, Some(new)))
             .0
-            .or_else(|| regex.find_iter(contents).last())
+            .or_else(|| regex.find_iter(contents).last()),
     };
     // TODO: message on wraparound
     if let Some(mat) = mat {
@@ -1212,14 +1211,9 @@ fn search_impl(
             // skip empty matches that don't make sense
             return;
         }
-
-        let selection = if extend {
-            selection.clone().push(Range::new(start, end))
-        } else {
-            selection
-                .clone()
-                .remove(selection.primary_index())
-                .push(Range::new(start, end))
+        let selection = match movement {
+            Movement::Extend => selection.clone().push(Range::new(start, end)),
+            Movement::Move => Selection::single(start, end),
         };
 
         doc.set_selection(view.id, selection);
@@ -1238,14 +1232,14 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
 
 // TODO: use one function for search vs extend
 fn search(cx: &mut Context) {
-    searcher(cx, false)
+    searcher(cx, Direction::Forward)
 }
 
 fn rsearch(cx: &mut Context) {
-    searcher(cx, true)
+    searcher(cx, Direction::Backward)
 }
 // TODO: use one function for search vs extend
-fn searcher(cx: &mut Context, reverse: bool) {
+fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let (_, doc) = current!(cx.editor);
 
@@ -1271,14 +1265,14 @@ fn searcher(cx: &mut Context, reverse: bool) {
             if event != PromptEvent::Update {
                 return;
             }
-            search_impl(doc, view, &contents, &regex, false, reverse);
+            search_impl(doc, view, &contents, &regex, Movement::Move, direction);
         },
     );
 
     cx.push_layer(Box::new(prompt));
 }
 
-fn search_next_or_prev_impl(cx: &mut Context, extend: bool, reverse: bool) {
+fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
@@ -1293,7 +1287,7 @@ fn search_next_or_prev_impl(cx: &mut Context, extend: bool, reverse: bool) {
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, extend, reverse);
+            search_impl(doc, view, &contents, &regex, movement, direction);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
@@ -1305,18 +1299,18 @@ fn search_next_or_prev_impl(cx: &mut Context, extend: bool, reverse: bool) {
 }
 
 fn search_next(cx: &mut Context) {
-    search_next_or_prev_impl(cx, false, false);
+    search_next_or_prev_impl(cx, Movement::Move, Direction::Forward);
 }
 
 fn search_prev(cx: &mut Context) {
-    search_next_or_prev_impl(cx, false, true);
+    search_next_or_prev_impl(cx, Movement::Move, Direction::Backward);
 }
 fn extend_search_next(cx: &mut Context) {
-    search_next_or_prev_impl(cx, true, false);
+    search_next_or_prev_impl(cx, Movement::Extend, Direction::Forward);
 }
 
 fn extend_search_prev(cx: &mut Context) {
-    search_next_or_prev_impl(cx, true, true);
+    search_next_or_prev_impl(cx, Movement::Extend, Direction::Backward);
 }
 
 fn search_selection(cx: &mut Context) {
