@@ -264,12 +264,10 @@ impl Component for Completion {
                 .language()
                 .and_then(|scope| scope.strip_prefix("source."))
                 .unwrap_or("");
-            let cursor_pos = doc
-                .selection(view.id)
-                .primary()
-                .cursor(doc.text().slice(..));
-            let cursor_pos = (helix_core::coords_at_pos(doc.text().slice(..), cursor_pos).row
-                - view.offset.row) as u16;
+            let text = doc.text().slice(..);
+            let cursor_pos = doc.selection(view.id).primary().cursor(text);
+            let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
+            let cursor_pos = (coords.row - view.offset.row) as u16;
             let mut markdown_doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
                 | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {

@@ -53,6 +53,10 @@ pub fn move_vertically(
     let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
+    // TODO: switch this to use `visual_coords_at_pos` rather than
+    // `coords_at_pos` as this will cause a jerky movement when the visual
+    // position does not match, like moving from a line with tabs/CJK to
+    // a line without
     let Position { row, col } = coords_at_pos(slice, pos);
     let horiz = range.horiz.unwrap_or(col as u32);
 
