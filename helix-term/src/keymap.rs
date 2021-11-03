@@ -136,8 +136,7 @@ impl KeyTrieNode {
             let desc = match trie {
                 KeyTrie::Leaf(cmd) => cmd.doc(),
                 KeyTrie::Node(n) => n.name(),
-                // TODO
-                KeyTrie::Sequence(_) => "",
+                KeyTrie::Sequence(_) => "[Multiple commands]",
             };
             match body.iter().position(|(d, _)| d == &desc) {
                 // FIXME: multiple keys are ordered randomly (use BTreeSet)
