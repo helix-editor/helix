@@ -1172,24 +1172,12 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
 }
 
 fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
-    let mut exist_elems = std::collections::BTreeSet::new();
-    reg.and_then(|reg| cx.editor.registers.get(reg))
-        .map_or(Vec::new(), |reg| {
-            reg.read()
-                .iter()
-                .rev()
-                .filter(|&item| {
-                    if exist_elems.contains(item) {
-                        false
-                    } else {
-                        exist_elems.insert(item);
-                        true
-                    }
-                })
-                .take(20)
-                .cloned()
-                .collect()
-        })
+    let mut items = reg
+        .and_then(|reg| cx.editor.registers.get(reg))
+        .map_or(Vec::new(), |reg| reg.read().iter().take(200).collect());
+    items.sort_unstable();
+    items.dedup();
+    items.into_iter().cloned().collect()
 }
 
 // TODO: use one function for search vs extend
