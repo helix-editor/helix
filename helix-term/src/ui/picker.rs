@@ -40,6 +40,27 @@ pub enum Preview<'picker, 'editor> {
     Cached(&'picker CachedPreview),
     EditorDocument(&'editor Document),
 }
+impl Preview<'_, '_> {
+    fn document(&self) -> Option<&Document> {
+        match self {
+            Preview::EditorDocument(doc) => Some(doc),
+            Preview::Cached(CachedPreview::Document(doc)) => Some(doc),
+            _ => None,
+        }
+    }
+
+    fn placeholder(&self) -> &str {
+        match *self {
+            Self::EditorDocument(_) => "<File preview>",
+            Self::Cached(preview) => match preview {
+                CachedPreview::Document(_) => "<File preview>",
+                CachedPreview::Binary => "<Binary file>",
+                CachedPreview::LargeFile => "<File too large to preview>",
+                CachedPreview::NotFound => "<File not found>",
+            },
+        }
+    }
+}
 
 pub enum CachedPreview {
     Document(Document),
@@ -165,39 +186,14 @@ impl<T: 'static> Component for FilePicker<T> {
         block.render(preview_area, surface);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
-            let doc = match self.get_preview(path, cx.editor) {
-                Preview::Cached(CachedPreview::Binary) => {
-                    surface.set_stringn(
-                        inner.x,
-                        inner.y,
-                        "<Binary file>",
-                        inner.width as usize,
-                        text,
-                    );
+            let preview = self.get_preview(path, cx.editor);
+            let doc = match preview.document() {
+                Some(doc) => doc,
+                None => {
+                    let alt_text = preview.placeholder();
+                    surface.set_stringn(inner.x, inner.y, alt_text, inner.width as usize, text);
                     return;
                 }
-                Preview::Cached(CachedPreview::LargeFile) => {
-                    surface.set_stringn(
-                        inner.x,
-                        inner.y,
-                        "<File too large to preview>",
-                        inner.width as usize,
-                        text,
-                    );
-                    return;
-                }
-                Preview::Cached(CachedPreview::NotFound) => {
-                    surface.set_stringn(
-                        inner.x,
-                        inner.y,
-                        "<File not found>",
-                        inner.width as usize,
-                        text,
-                    );
-                    return;
-                }
-                Preview::Cached(CachedPreview::Document(doc)) => doc,
-                Preview::EditorDocument(doc) => doc,
             };
 
             // align to middle
