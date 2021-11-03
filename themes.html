@@ -211,9 +211,6 @@ over it and is merged into the default palette.</p>
 <a href="https://macromates.com/manual/en/language_grammars">TextMate</a> scopes.</p>
 <ul>
 <li>
-<p><code>escape</code> (TODO: rename to (constant).character.escape)</p>
-</li>
-<li>
 <p><code>type</code> - Types</p>
 <ul>
 <li><code>builtin</code> - Primitive types provided by the language (<code>int</code>, <code>usize</code>)</li>
@@ -227,11 +224,18 @@ over it and is merged into the default palette.</p>
 <li><code>boolean</code></li>
 </ul>
 </li>
-<li><code>character</code></li>
+<li><code>character</code>
+<ul>
+<li><code>escape</code></li>
 </ul>
 </li>
-<li>
-<p><code>number</code> (TODO: rename to constant.number/.numeric.{integer, float, complex})</p>
+<li><code>numeric</code> (numbers)
+<ul>
+<li><code>integer</code></li>
+<li><code>float</code></li>
+</ul>
+</li>
+</ul>
 </li>
 <li>
 <p><code>string</code> (TODO: string.quoted.{single, double}, string.raw/.unquoted)?</p>
@@ -262,7 +266,11 @@ over it and is merged into the default palette.</p>
 <ul>
 <li><code>builtin</code> - Reserved language variables (<code>self</code>, <code>this</code>, <code>super</code>, etc)</li>
 <li><code>parameter</code> - Function parameters</li>
-<li><code>property</code></li>
+<li><code>other</code>
+<ul>
+<li><code>member</code> - Fields of composite data types (e.g. structs, unions)</li>
+</ul>
+</li>
 <li><code>function</code> (TODO: ?)</li>
 </ul>
 </li>
