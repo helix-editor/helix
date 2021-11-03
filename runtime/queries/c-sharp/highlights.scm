@@ -20,16 +20,16 @@
 ] @type.builtin
 
 ;; Enum
-(enum_member_declaration (identifier) @variable.property)
+(enum_member_declaration (identifier) @variable.other.member)
 
 ;; Literals
 [
   (real_literal)
   (integer_literal)
-] @number
+] @constant.numeric.integer
 
+(character_literal) @constant.character
 [
-  (character_literal)
   (string_literal)
   (verbatim_string_literal)
   (interpolated_string_text)
@@ -40,8 +40,8 @@
   "$@\""
  ] @string
 
+(boolean_literal) @constant.builtin.boolean
 [
-  (boolean_literal)
   (null_literal)
   (void_keyword)
 ] @constant.builtin
@@ -98,7 +98,7 @@
 ;; Keywords
 (modifier) @keyword
 (this_expression) @keyword
-(escape_sequence) @keyword
+(escape_sequence) @constant.character.escape
 
 [
   "as"

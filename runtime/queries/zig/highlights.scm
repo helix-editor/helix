@@ -14,7 +14,7 @@ parameter: (IDENTIFIER) @variable.parameter
 [
   field_member: (IDENTIFIER)
   field_access: (IDENTIFIER)
-] @variable.property
+] @variable.other.member
 
 ;; assume TitleCase is a type
 (
@@ -75,9 +75,9 @@ field_constant: (IDENTIFIER) @constant
 ((BUILTINIDENTIFIER) @keyword.control.import
   (#any-of? @keyword.control.import "@import" "@cImport"))
 
-(INTEGER) @number
+(INTEGER) @constant.numeric.integer
 
-(FLOAT) @number
+(FLOAT) @constant.numeric.float
 
 [
   (LINESTRING)
@@ -85,7 +85,7 @@ field_constant: (IDENTIFIER) @constant
 ] @string
 
 (CHAR_LITERAL) @constant.character
-(EscapeSequence) @escape
+(EscapeSequence) @constant.character.escape
 (FormatSequence) @string.special
 
 [

@@ -7,7 +7,7 @@
 "type.builtin" = { fg = "type" }
 "type.enum.variant" = { fg = "constant" } 
 "constructor" = { fg = "constant" }
-"property" = { fg = "variable" }
+"variable.other.member" = { fg = "variable" }
 
 "keyword" = { fg = "keyword" }
 "keyword.directive" = { fg = "keyword" }
@@ -31,47 +31,64 @@
 "function.macro" = { fg = "keyword" }
 "attribute" = { fg = "fn_declaration" }
 
-"comment" = { fg = "#6A9955" }
+"comment" = { fg = "dark_green" }
 
-"string" = { fg = "#ce9178" }
-"string.regexp" = { fg = "regex" }
-"number" = { fg = "#b5cea8" }
-"escape" = { fg = "#d7ba7d" }
+"string" = { fg = "orange" }
+"constant.character" = { fg = "orange" }
+"string.regexp" = { fg = "gold" }
+"constant.numeric" = { fg = "pale_green" }
+"constant.character.escape" = { fg = "gold" }
 
-"ui.background" = { fg = "#d4d4d4", bg = "#1e1e1e" }
+"ui.background" = { fg = "light_gray", bg = "dark_gray2" }
 
 "ui.window" = { bg = "widget" }
 "ui.popup" = { bg = "widget" }
 "ui.help" = { bg = "widget" }
 "ui.menu.selected" = { bg = "widget" }
 
+# TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
 "ui.cursor.match" = { bg = "#3a3d41", modifiers = ["underlined"] }
 
 "ui.selection" = { bg = "#3a3d41" }
-"ui.selection.primary" = { bg = "#264f78" }
+"ui.selection.primary" = { bg = "dark_blue" }
 
-"ui.linenr" = { fg = "#858585" }
-"ui.linenr.selected" = { fg = "#c6c6c6" }
+"ui.linenr" = { fg = "dark_gray" }
+"ui.linenr.selected" = { fg = "light_gray2" }
 
-"ui.statusline" = { fg = "#ffffff", bg = "#007acc" }
-"ui.statusline.inactive" = { fg = "#ffffff", bg = "#007acc" }
+"ui.statusline" = { fg = "white", bg = "blue" }
+"ui.statusline.inactive" = { fg = "white", bg = "blue" }
 
 "ui.text" = { fg = "text", bg = "background" }
-"ui.text.focus" = { fg = "#ffffff" }
+"ui.text.focus" = { fg = "white" }
 
-"warning" = { fg = "#cca700" }
-"error" = { fg = "#ff1212" }
-"info" = { fg = "#75beff" }
-"hint" = { fg = "#eeeeeeb3" }
+"warning" = { fg = "gold2" }
+"error" = { fg = "red" }
+"info" = { fg = "light_blue" }
+"hint" = { fg = "light_gray3" }
 
 diagnostic = { modifiers = ["underlined"] }
 
 [palette]
+white = "#ffffff"
+orange = "#ce9178"
+gold = "#d7ba7d"
+gold2 = "#cca700"
+pale_green = "#b5cea8"
+dark_green = "#6A9955"
+light_gray = "#d4d4d4"
+light_gray2 = "#c6c6c6"
+light_gray3 = "#eeeeee"
+dark_gray = "#858585"
+dark_gray2 = "#1e1e1e"
+blue = "#007acc"
+light_blue = "#75beff"
+dark_blue = "#264f78"
+red = "#ff1212"
+
 type = "#4EC9B0"
 keyword = "#569CD6"
-regex = "#CE9178"
 special = "#C586C0"
 variable = "#9CDCFE"
 fn_declaration = "#DCDCAA"

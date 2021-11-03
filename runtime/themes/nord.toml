@@ -59,7 +59,7 @@
 # nord9 - operator, tags, units, punctuations
 "punctuation.delimiter" = "nord9"
 "operator" = { fg = "nord9" }
-"property" = "nord9"
+"variable.other.member" = "nord9"
 
 # nord10 - keywords, special
 "keyword" = { fg = "nord10" }
@@ -76,13 +76,13 @@
 
 # nord13 - warnings, escape characters, regex
 "warning" = "nord13"
-"escape" = { fg = "nord13" }
+"constant.character.escape" = { fg = "nord13" }
 
 # nord14 - strings
 "string" = "nord14"
 
 # nord15 - integer, floating point
-"number" = "nord15"
+"constant.numeric" = "nord15"
 
 [palette]
 nord0 = "#2e3440"

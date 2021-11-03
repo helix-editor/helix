@@ -65,7 +65,7 @@
 ; Properties
 ;-----------
 
-(property_identifier) @property
+(property_identifier) @variable.other.member
 
 ; Literals
 ;---------
@@ -88,7 +88,7 @@
 ] @string
 
 (regex) @string.regexp
-(number) @number
+(number) @constant.numeric.integer
 
 ; Tokens
 ;-------

@@ -29,7 +29,7 @@
   name: (identifier) @function)
 
 (identifier) @variable
-(attribute attribute: (identifier) @property)
+(attribute attribute: (identifier) @variable.other.member)
 (type (identifier) @type)
 
 ; Literals
@@ -40,14 +40,11 @@
   (false)
 ] @constant.builtin
 
-[
-  (integer)
-  (float)
-] @number
-
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (comment) @comment
 (string) @string
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 (interpolation
   "{" @punctuation.special

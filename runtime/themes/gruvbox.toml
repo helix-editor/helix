@@ -9,8 +9,7 @@
 "punctuation.delimiter" = "orange1"
 "operator" = "purple1"
 "special" = "purple0"
-"property" = "blue1"
-"variable.property" = "blue1"
+"variable.other.member" = "blue1"
 "variable" = "fg1"
 "variable.builtin" = "orange1"
 "variable.parameter" = "fg2"
@@ -24,8 +23,8 @@
 "constant" = { fg = "purple1" }
 "constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
 "string" = "green1"
-"number" = "purple1"
-"escape" = { fg = "fg2", modifiers = ["bold"] }
+"constant.numeric" = "purple1"
+"constant.character.escape" = { fg = "fg2", modifiers = ["bold"] }
 "label" = "aqua1"
 "module" = "aqua1"
 

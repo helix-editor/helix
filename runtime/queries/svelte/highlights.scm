@@ -29,7 +29,7 @@
  (#match? @_attr "^(href|src)$"))
 
 (tag_name) @tag
-(attribute_name) @property
+(attribute_name) @variable.other.member
 (erroneous_end_tag_name) @error
 (comment) @comment
 

@@ -16,14 +16,14 @@
 "operator" = "rose"
 "ui.text.focus" = { fg = "base05" }
 "variable" = "text"
-"number" = "iris"
+"constant.numeric" = "iris"
 "constant" = "gold"
 "attributes" = "gold" 
 "type" = "foam"
 "ui.cursor.match" = { fg = "gold", modifiers = ["underlined"] }
 "string"  = "gold"
 "property" = "foam"
-"escape" = "subtle"
+"constant.character.escape" = "subtle"
 "function" = "rose"
 "function.builtin" = "rose"
 "function.method"  = "foam"

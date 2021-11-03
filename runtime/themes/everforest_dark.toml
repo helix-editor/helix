@@ -8,16 +8,16 @@
 # Email: sainnhe@gmail.com
 # License: MIT License
 
-"escape" = "orange"
+"constant.character.escape" = "orange"
 "type" = "yellow"
 "constant" = "purple"
-"number" = "purple"
+"constant.numeric" = "purple"
 "string" = "grey2"
 "comment" = "grey0"
 "variable" = "fg"
 "variable.builtin" = "blue"
 "variable.parameter" = "fg"
-"variable.property" = "fg"
+"variable.other.member" = "fg"
 "label" = "aqua"
 "punctuation" = "grey2"
 "punctuation.delimiter" = "grey2"
@@ -32,7 +32,6 @@
 "attribute" = "aqua"
 "constructor" = "yellow"
 "module" = "blue"
-"property" = "fg"
 "special" = "orange"
 
 "ui.background" = { bg = "bg0" }

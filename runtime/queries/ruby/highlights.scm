@@ -55,7 +55,7 @@
 [
   (class_variable)
   (instance_variable)
-] @property
+] @variable.other.member
 
 ((identifier) @constant.builtin
  (#match? @constant.builtin "^__(FILE|LINE|ENCODING)__$"))
@@ -101,12 +101,12 @@
 ] @string.special.symbol
 
 (regex) @string.regexp
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 [
   (integer)
   (float)
-] @number
+] @constant.numeric.integer
 
 [
   (nil)

@@ -8,7 +8,7 @@
 "punctuation.delimiter" = "#dc7759"
 "operator" = { fg = "#dc7759", modifiers = ["bold"] }
 "special" = "#7fdc59"
-"property" = "#c6b8ad"
+"variable.other.member" = "#c6b8ad"
 "variable" = "#c6b8ad"
 "variable.parameter" = "#c6b8ad"
 "type" = "#dc597f"
@@ -22,8 +22,8 @@
 "constant" = "#59dcb7"
 "constant.builtin" = "#59dcb7"
 "string" = "#59dcb7"
-"number" = "#59c0dc"
-"escape" = { fg = "#7fdc59", modifiers = ["bold"] }
+"constant.numeric" = "#59c0dc"
+"constant.character.escape" = { fg = "#7fdc59", modifiers = ["bold"] }
 "label" = "#59c0dc"
 
 "module" = "#d32c5d"

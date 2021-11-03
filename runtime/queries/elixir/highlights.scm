@@ -39,13 +39,13 @@
 
 ; * module attribute
 (unary_operator
-  operator: "@" @variable.property
+  operator: "@" @variable.other.member
   operand: [
-    (identifier) @variable.property
+    (identifier) @variable.other.member
     (call
-      target: (identifier) @variable.property)
-    (boolean) @variable.property
-    (nil) @variable.property
+      target: (identifier) @variable.other.member)
+    (boolean) @variable.other.member
+    (nil) @variable.other.member
   ])
 
 ; * capture operator
@@ -79,11 +79,8 @@
 (nil) @constant.builtin
 
 (boolean) @constant.builtin.boolean
-
-[
-  (integer)
-  (float)
-] @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 
 (alias) @type
 
@@ -97,7 +94,7 @@
 
 (interpolation "#{" @punctuation.special "}" @punctuation.special) @embedded
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 [
   (atom)
