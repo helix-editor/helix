@@ -74,9 +74,9 @@ Some suggestions to get started:
 - To use print debugging to the [Helix log file](https://github.com/helix-editor/helix/wiki/FAQ#access-the-log-file), you must:
   * Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
   * Pass the appropriate verbosity level option for the desired log level. (`hx -v <file>` for info, more `v`s for higher severity inclusive)
-- If your preferred language is missing, integrating a tree-sitter grammar for
+- [If your preferred language is missing, integrating a tree-sitter grammar for
     it and defining syntax highlight queries for it is straight forward and
-    doesn't require much knowledge of the internals.
+    doesn't require much knowledge of the internals.](https://github.com/helix-editor/helix/wiki/FAQ#adding-a-language)
 
 We provide an [architecture.md](./docs/architecture.md) that should give you
 a good overview of the internals.
