@@ -317,34 +317,29 @@ impl Buffer {
                 self.content[index].set_symbol("…");
             }
         } else {
-            let mut truncated = false;
-            let mut end = Vec::new();
-            let mut total_width = 0;
-            for s in graphemes.rev() {
-                let width = s.width();
-                if total_width + width > max_offset.saturating_sub(x_offset) {
-                    truncated = true;
-                    break;
-                }
-                end.push(s);
-                total_width += width;
-            }
+            let mut start_index = self.index_of(x, y);
+            let mut index = self.index_of(max_offset as u16, y);
+            let mut x_offset = max_offset;
+
+            let total_width = string.as_ref().width();
+            let truncated = total_width + width > max_offset.saturating_sub(x_offset);
             if ellipsis && truncated {
-                self.content[index].set_symbol("…");
-                index += 1;
+                self.content[start_index].set_symbol("…");
+                start_index += 1;
             }
-            for s in end.into_iter().rev() {
+            for s in graphemes.rev() {
                 let width = s.width();
                 if width == 0 {
                     continue;
                 }
-                self.content[index].set_symbol(s);
-                self.content[index].set_style(style);
-                for i in index + 1..index + width {
+                let start = index - width;
+                self.content[start].set_symbol(s);
+                self.content[start].set_style(style);
+                for i in start + 1..index {
                     self.content[i].reset();
                 }
-                index += width;
-                x_offset += width;
+                index -= width;
+                x_offset -= width;
             }
         }
         (x_offset as u16, y)
