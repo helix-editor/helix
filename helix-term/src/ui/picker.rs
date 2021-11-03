@@ -30,7 +30,7 @@ type FileLocation = (PathBuf, Option<(usize, usize)>);
 pub struct FilePicker<T> {
     picker: Picker<T>,
     /// Caches paths to documents
-    preview_cache: HashMap<PathBuf, CaluculatedPreview>,
+    preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
@@ -84,7 +84,7 @@ impl<T> FilePicker<T> {
         let path = path.as_ref();
 
         if self.preview_cache.contains_key(path) {
-            return Preview::OwenedPreview(&self.preview_cache[path]);
+            return Preview::Cached(&self.preview_cache[path]);
         }
 
         if let Some(doc) = editor.document_by_path(path) {
@@ -104,19 +104,19 @@ impl<T> FilePicker<T> {
         let preview = data
             .map(
                 |(metadata, content_type)| match (metadata.len(), content_type) {
-                    (_, content_inspector::ContentType::BINARY) => CaluculatedPreview::Binary,
-                    (size, _) if size > MAX_PREVIEW_SIZE => CaluculatedPreview::LargeFile,
+                    (_, content_inspector::ContentType::BINARY) => CachedPreview::Binary,
+                    (size, _) if size > MAX_PREVIEW_SIZE => CachedPreview::LargeFile,
                     _ => {
                         // TODO: enable syntax highlighting; blocked by async rendering
                         Document::open(path, None, Some(&editor.theme), None)
-                            .map(CaluculatedPreview::OwenedDocument)
-                            .unwrap_or(CaluculatedPreview::NotFound)
+                            .map(CachedPreview::Document)
+                            .unwrap_or(CachedPreview::NotFound)
                     }
                 },
             )
-            .unwrap_or(CaluculatedPreview::NotFound);
+            .unwrap_or(CachedPreview::NotFound);
         self.preview_cache.insert(path.to_owned(), preview);
-        Preview::OwenedPreview(&self.preview_cache[path])
+        Preview::Cached(&self.preview_cache[path])
     }
 }
 
@@ -166,7 +166,7 @@ impl<T: 'static> Component for FilePicker<T> {
 
         if let Some((path, range)) = self.current_file(cx.editor) {
             let doc = match self.get_preview(path, cx.editor) {
-                Preview::OwenedPreview(CaluculatedPreview::Binary) => {
+                Preview::Cached(CachedPreview::Binary) => {
                     surface.set_stringn(
                         inner.x,
                         inner.y,
@@ -176,7 +176,7 @@ impl<T: 'static> Component for FilePicker<T> {
                     );
                     return;
                 }
-                Preview::OwenedPreview(CaluculatedPreview::LargeFile) => {
+                Preview::Cached(CachedPreview::LargeFile) => {
                     surface.set_stringn(
                         inner.x,
                         inner.y,
@@ -186,7 +186,7 @@ impl<T: 'static> Component for FilePicker<T> {
                     );
                     return;
                 }
-                Preview::OwenedPreview(CaluculatedPreview::NotFound) => {
+                Preview::Cached(CachedPreview::NotFound) => {
                     surface.set_stringn(
                         inner.x,
                         inner.y,
@@ -196,7 +196,7 @@ impl<T: 'static> Component for FilePicker<T> {
                     );
                     return;
                 }
-                Preview::OwenedPreview(CaluculatedPreview::OwenedDocument(doc)) => doc,
+                Preview::Cached(CachedPreview::Document(doc)) => doc,
                 Preview::EditorDocument(doc) => doc,
             };
 
