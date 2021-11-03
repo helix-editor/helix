@@ -36,13 +36,13 @@ pub struct FilePicker<T> {
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
 }
 
-pub enum Preview<'c, 'e> {
-    OwenedPreview(&'c CaluculatedPreview),
-    EditorDocument(&'e Document),
+pub enum Preview<'picker, 'editor> {
+    Cached(&'picker CachedPreview),
+    EditorDocument(&'editor Document),
 }
-/// Caluculated file preview
-pub enum CaluculatedPreview {
-    OwenedDocument(Document),
+
+pub enum CachedPreview {
+    Document(Document),
     Binary,
     LargeFile,
     NotFound,
