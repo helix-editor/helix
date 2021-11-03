@@ -1195,14 +1195,18 @@ fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Rege
             return;
         }
 
-        let selection = if extend {
-            selection.clone().push(Range::new(start, end))
+        let primary = selection.primary();
+        let next_range = if primary.head < primary.anchor {
+            Range::new(end, start)
         } else {
-            selection
-                .clone()
-                .remove(selection.primary_index())
-                .push(Range::new(start, end))
+            Range::new(start, end)
         };
+        let selection = if extend {
+            selection.clone()
+        } else {
+            selection.clone().remove(selection.primary_index())
+        }
+        .push(next_range);
 
         doc.set_selection(view.id, selection);
         align_view(doc, view, Align::Center);
