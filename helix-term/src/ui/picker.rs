@@ -12,7 +12,12 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
-use std::{borrow::Cow, collections::HashMap, io::Read, path::PathBuf};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
@@ -23,8 +28,10 @@ use helix_view::{
 };
 
 pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
+/// Biggest file size to preview in bytes
+pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
-/// File path and line number (used to align and highlight a line)
+/// File path and range of lines (used to align and highlight lines)
 type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
@@ -36,10 +43,20 @@ pub struct FilePicker<T> {
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
 }
 
+pub enum CachedPreview {
+    Document(Document),
+    Binary,
+    LargeFile,
+    NotFound,
+}
+
+// We don't store this enum in the cache so as to avoid lifetime constraints
+// from borrowing a document already opened in the editor.
 pub enum Preview<'picker, 'editor> {
     Cached(&'picker CachedPreview),
     EditorDocument(&'editor Document),
 }
+
 impl Preview<'_, '_> {
     fn document(&self) -> Option<&Document> {
         match self {
@@ -49,6 +66,7 @@ impl Preview<'_, '_> {
         }
     }
 
+    /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
         match *self {
             Self::EditorDocument(_) => "<File preview>",
@@ -60,13 +78,6 @@ impl Preview<'_, '_> {
             },
         }
     }
-}
-
-pub enum CachedPreview {
-    Document(Document),
-    Binary,
-    LargeFile,
-    NotFound,
 }
 
 impl<T> FilePicker<T> {
@@ -95,25 +106,21 @@ impl<T> FilePicker<T> {
             })
     }
 
-    /// Get preview from preivew cache.
-    /// If not cached, calculate and cache preview, then return reference of it.
-    fn get_preview<'c, 'e>(
-        &'c mut self,
-        path: impl AsRef<std::path::Path>,
-        editor: &'e Editor,
-    ) -> Preview<'c, 'e> {
-        let path = path.as_ref();
+    /// Get (cached) preview for a given path. If a document corresponding
+    /// to the path is already open in the editor, it is used instead.
+    fn get_preview<'picker, 'editor>(
+        &'picker mut self,
+        path: &Path,
+        editor: &'editor Editor,
+    ) -> Preview<'picker, 'editor> {
+        if let Some(doc) = editor.document_by_path(path) {
+            return Preview::EditorDocument(doc);
+        }
 
         if self.preview_cache.contains_key(path) {
             return Preview::Cached(&self.preview_cache[path]);
         }
 
-        if let Some(doc) = editor.document_by_path(path) {
-            return Preview::EditorDocument(doc);
-        }
-
-        /// Biggest file size to preview in bytes
-        const MAX_PREVIEW_SIZE: u64 = 10 * 1024 * 1024;
         let data = std::fs::File::open(path).and_then(|file| {
             let metadata = file.metadata()?;
             // Read up to 1kb to detect the content type
@@ -126,7 +133,7 @@ impl<T> FilePicker<T> {
             .map(
                 |(metadata, content_type)| match (metadata.len(), content_type) {
                     (_, content_inspector::ContentType::BINARY) => CachedPreview::Binary,
-                    (size, _) if size > MAX_PREVIEW_SIZE => CachedPreview::LargeFile,
+                    (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => CachedPreview::LargeFile,
                     _ => {
                         // TODO: enable syntax highlighting; blocked by async rendering
                         Document::open(path, None, Some(&editor.theme), None)
@@ -186,12 +193,14 @@ impl<T: 'static> Component for FilePicker<T> {
         block.render(preview_area, surface);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
-            let preview = self.get_preview(path, cx.editor);
+            let preview = self.get_preview(&path, cx.editor);
             let doc = match preview.document() {
                 Some(doc) => doc,
                 None => {
                     let alt_text = preview.placeholder();
-                    surface.set_stringn(inner.x, inner.y, alt_text, inner.width as usize, text);
+                    let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
+                    let y = inner.y + inner.height / 2;
+                    surface.set_stringn(x, y, alt_text, inner.width as usize, text);
                     return;
                 }
             };
