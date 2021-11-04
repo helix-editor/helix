@@ -59,7 +59,7 @@ pub struct Config {
     #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
-    /// Whether to display infoboxes.
+    /// Whether to display infoboxes. Defaults to true.
     pub infoboxes: bool,
 }
 
