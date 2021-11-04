@@ -21,7 +21,6 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::CursorShapeConfig,
     graphics::{CursorKind, Modifier, Rect, Style},
-    info::Info,
     input::KeyEvent,
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -37,7 +36,6 @@ pub struct EditorView {
     last_insert: (commands::MappableCommand, Vec<KeyEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
-    autoinfo: Option<Info>,
 }
 
 impl Default for EditorView {
@@ -54,7 +52,6 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
-            autoinfo: None,
         }
     }
 
@@ -678,13 +675,13 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        self.autoinfo = None;
+        cxt.editor.autoinfo = None;
         let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
-        self.autoinfo = key_result.sticky.map(|node| node.infobox());
+        cxt.editor.autoinfo = key_result.sticky.map(|node| node.infobox());
 
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
-            KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
+            KeymapResultKind::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResultKind::MatchedSequence(commands) => {
                 for command in commands {
                     command.execute(cxt);
@@ -1093,8 +1090,9 @@ impl Component for EditorView {
         }
 
         if cx.editor.config.auto_info {
-            if let Some(ref mut info) = self.autoinfo {
+            if let Some(mut info) = cx.editor.autoinfo.take() {
                 info.render(area, surface, cx);
+                cx.editor.autoinfo = Some(info)
             }
         }
 

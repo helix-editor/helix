@@ -2,6 +2,7 @@ use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
+    info::Info,
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -243,6 +244,7 @@ pub struct Editor {
     pub theme_loader: Arc<theme::Loader>,
 
     pub status_msg: Option<(String, Severity)>,
+    pub autoinfo: Option<Info>,
 
     pub config: Config,
 
@@ -286,6 +288,7 @@ impl Editor {
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
+            autoinfo: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
             config,

@@ -222,9 +222,8 @@ impl KeyTrieNode {
                 .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
                 .collect();
         }
-        Info::new(self.name(), body)
+        Info::from_keymap(self.name(), body)
     }
-
     /// Get a reference to the key trie node's order.
     pub fn order(&self) -> &[KeyEvent] {
         self.order.as_slice()
