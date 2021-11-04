@@ -530,22 +530,28 @@ fn goto_previous_buffer(cx: &mut Context) {
 }
 
 fn goto_buffer(cx: &mut Context, direction: Direction) {
-    let buf_cur = current!(cx.editor).1.id();
+    let current = view!(cx.editor).doc;
 
-    if let Some(pos) = cx.editor.documents.iter().position(|(id, _)| id == buf_cur) {
-        let goto_id = if direction == Direction::Forward {
-            if pos < cx.editor.documents.iter().count() - 1 {
-                cx.editor.documents.iter().nth(pos + 1).unwrap().0
-            } else {
-                cx.editor.documents.iter().next().unwrap().0
-            }
-        } else if pos > 0 {
-            cx.editor.documents.iter().nth(pos - 1).unwrap().0
-        } else {
-            cx.editor.documents.iter().last().unwrap().0
-        };
-        cx.editor.switch(goto_id, Action::Replace);
+    let id = match direction {
+        Direction::Forward => {
+            let iter = cx.editor.documents.keys();
+            let mut iter = iter.skip_while(|id| *id != &current);
+            iter.next(); // skip current item
+            iter.next().or_else(|| cx.editor.documents.keys().next())
+        }
+        Direction::Backward => {
+            let iter = cx.editor.documents.keys();
+            let mut iter = iter.rev().skip_while(|id| *id != &current);
+            iter.next(); // skip current item
+            iter.next()
+                .or_else(|| cx.editor.documents.keys().rev().next())
+        }
     }
+    .unwrap();
+
+    let id = *id;
+
+    cx.editor.switch(id, Action::Replace);
 }
 
 fn extend_to_line_start(cx: &mut Context) {
