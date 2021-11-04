@@ -29,6 +29,7 @@ pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
+    completion_fn: impl FnMut(&str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
@@ -38,7 +39,7 @@ pub fn regex_prompt(
     Prompt::new(
         prompt,
         history_register,
-        |_input: &str| Vec::new(), // this is fine because Vec::new() doesn't allocate
+        completion_fn,
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
