@@ -17,6 +17,7 @@ mod position;
 pub mod register;
 pub mod search;
 pub mod selection;
+pub mod snippet;
 mod state;
 pub mod surround;
 pub mod syntax;
