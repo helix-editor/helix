@@ -704,7 +704,7 @@ impl Document {
         success
     }
 
-    /// Undo the last modification to the [`Document`]. Returns whether undo was successful.
+    /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
     pub fn undo(&mut self, view_id: ViewId) -> bool {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
