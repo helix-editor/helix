@@ -344,7 +344,6 @@ impl Buffer {
                     self.content[i].reset();
                 }
                 index -= width;
-                x_offset -= width;
             }
         }
         (x_offset as u16, y)
