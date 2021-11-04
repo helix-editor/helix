@@ -44,6 +44,17 @@ language-server = { command = "elixir-ls" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "mint"
+scope = "source.mint"
+injection-regex = "mint"
+file-types = ["mint"]
+roots = []
+comment-token = "//"
+
+language-server = { command = "mint", args = ["ls"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "json"
 scope = "source.json"
 injection-regex = "json"
