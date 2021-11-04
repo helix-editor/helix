@@ -1086,7 +1086,7 @@ impl Component for EditorView {
             );
         }
 
-        if cx.editor.config.infoboxes {
+        if cx.editor.config.auto_info {
             if let Some(ref mut info) = self.autoinfo {
                 info.render(area, surface, cx);
             }
