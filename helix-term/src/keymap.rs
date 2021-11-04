@@ -140,7 +140,12 @@ impl KeyTrieNode {
         let mut body: Vec<(&str, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
         for (&key, trie) in self.iter() {
             let desc = match trie {
-                KeyTrie::Leaf(cmd) => cmd.doc(),
+                KeyTrie::Leaf(cmd) => {
+                    if cmd.name() == "no_op" {
+                        continue;
+                    }
+                    cmd.doc()
+                }
                 KeyTrie::Node(n) => n.name(),
             };
             match body.iter().position(|(d, _)| d == &desc) {
