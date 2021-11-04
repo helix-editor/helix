@@ -20,6 +20,7 @@ use helix_view::{
     clipboard::ClipboardType,
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
+    info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
     view::View,
@@ -5745,8 +5746,10 @@ fn wonly(cx: &mut Context) {
 }
 
 fn select_register(cx: &mut Context) {
+    cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
+            cx.editor.autoinfo = None;
             cx.editor.selected_register = Some(ch);
         }
     })
