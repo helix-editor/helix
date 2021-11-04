@@ -60,7 +60,7 @@ pub struct Config {
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
-    pub infoboxes: bool,
+    pub auto_info: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -91,7 +91,7 @@ impl Default for Config {
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
-            infoboxes: true,
+            auto_info: true,
         }
     }
 }
