@@ -21,6 +21,24 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 
+fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer)?
+        .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
+        .transpose()
+}
+
+fn deserialize_lsp_config<'de, D>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<toml::Value>::deserialize(deserializer)?
+        .map(|toml| toml.try_into().map_err(serde::de::Error::custom))
+        .transpose()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
@@ -31,18 +49,21 @@ pub struct Configuration {
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub(crate) language_id: String,
+    pub language_id: String,
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
-    pub config: Option<String>,
+
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub config: Option<serde_json::Value>,
 
     #[serde(default)]
     pub auto_format: bool,
 
     // content_regex
-    // injection_regex
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
+    pub injection_regex: Option<Regex>,
     // first_line_regex
     //
     #[serde(skip)]
@@ -55,6 +76,8 @@ pub struct LanguageConfiguration {
 
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    #[serde(skip)]
+    pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -82,6 +105,32 @@ pub struct IndentQuery {
     #[serde(default)]
     #[serde(skip_serializing_if = "HashSet::is_empty")]
     pub outdent: HashSet<String>,
+}
+
+#[derive(Debug)]
+pub struct TextObjectQuery {
+    pub query: Query,
+}
+
+impl TextObjectQuery {
+    /// Run the query on the given node and return sub nodes which match given
+    /// capture ("function.inside", "class.around", etc).
+    pub fn capture_nodes<'a>(
+        &'a self,
+        capture_name: &str,
+        node: Node<'a>,
+        slice: RopeSlice<'a>,
+        cursor: &'a mut QueryCursor,
+    ) -> Option<impl Iterator<Item = Node<'a>>> {
+        let capture_idx = self.query.capture_index_for_name(capture_name)?;
+        let captures = cursor.captures(&self.query, node, RopeProvider(slice));
+
+        captures
+            .filter_map(move |(mat, idx)| {
+                (mat.captures[idx].index == capture_idx).then(|| mat.captures[idx].node)
+            })
+            .into()
+    }
 }
 
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
@@ -132,13 +181,14 @@ impl LanguageConfiguration {
         // highlights_query += "\n(ERROR) @error";
 
         let injections_query = read_query(&language, "injections.scm");
-
         let locals_query = read_query(&language, "locals.scm");
 
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(&crate::RUNTIME_DIR, &self.language_id).ok()?;
+            let language = get_language(&crate::RUNTIME_DIR, &self.language_id)
+                .map_err(|e| log::info!("{}", e))
+                .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
@@ -178,6 +228,18 @@ impl LanguageConfiguration {
 
                 let toml = load_runtime_file(&language, "indents.toml").ok()?;
                 toml::from_slice(toml.as_bytes()).ok()
+            })
+            .as_ref()
+    }
+
+    pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
+        self.textobject_query
+            .get_or_init(|| -> Option<TextObjectQuery> {
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "textobjects.scm");
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                let query = Query::new(lang, &query_text).ok()?;
+                Some(TextObjectQuery { query })
             })
             .as_ref()
     }
@@ -243,6 +305,30 @@ impl Loader {
             .cloned()
     }
 
+    pub fn language_configuration_for_injection_string(
+        &self,
+        string: &str,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        let mut best_match_length = 0;
+        let mut best_match_position = None;
+        for (i, configuration) in self.language_configs.iter().enumerate() {
+            if let Some(injection_regex) = &configuration.injection_regex {
+                if let Some(mat) = injection_regex.find(string) {
+                    let length = mat.end() - mat.start();
+                    if length > best_match_length {
+                        best_match_position = Some(i);
+                        best_match_length = length;
+                    }
+                }
+            }
+        }
+
+        if let Some(i) = best_match_position {
+            let configuration = &self.language_configs[i];
+            return Some(configuration.clone());
+        }
+        None
+    }
     pub fn language_configs_iter(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
         self.language_configs.iter()
     }
@@ -351,7 +437,7 @@ impl Syntax {
 
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
-        &self,
+        &'a self,
         source: RopeSlice<'a>,
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
@@ -366,16 +452,13 @@ impl Syntax {
             let highlighter = &mut ts_parser.borrow_mut();
             highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
         });
-        let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(self.tree()) };
+        let tree_ref = self.tree();
         let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-        let query_ref = unsafe { mem::transmute::<_, &'static Query>(&self.config.query) };
-        let config_ref =
-            unsafe { mem::transmute::<_, &'static HighlightConfiguration>(self.config.as_ref()) };
+        let query_ref = &self.config.query;
+        let config_ref = self.config.as_ref();
 
-        // TODO: if reusing cursors this might need resetting
-        if let Some(range) = &range {
-            cursor_ref.set_byte_range(range.clone());
-        }
+        // if reusing cursors & no range this resets to whole range
+        cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
 
         let captures = cursor_ref
             .captures(query_ref, tree_ref.root_node(), RopeProvider(source))
@@ -484,39 +567,7 @@ impl LanguageLayer {
                     self.tree.as_ref(),
                 )
                 .ok_or(Error::Cancelled)?;
-            // unsafe { syntax.parser.set_cancellation_flag(None) };
-            // let mut cursor = syntax.cursors.pop().unwrap_or_else(QueryCursor::new);
 
-            // Process combined injections. (ERB, EJS, etc https://github.com/tree-sitter/tree-sitter/pull/526)
-            // if let Some(combined_injections_query) = &config.combined_injections_query {
-            //     let mut injections_by_pattern_index =
-            //         vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
-            //     let matches =
-            //         cursor.matches(combined_injections_query, tree.root_node(), RopeProvider(source));
-            //     for mat in matches {
-            //         let entry = &mut injections_by_pattern_index[mat.pattern_index];
-            //         let (language_name, content_node, include_children) =
-            //             injection_for_match(config, combined_injections_query, &mat, source);
-            //         if language_name.is_some() {
-            //             entry.0 = language_name;
-            //         }
-            //         if let Some(content_node) = content_node {
-            //             entry.1.push(content_node);
-            //         }
-            //         entry.2 = include_children;
-            //     }
-            //     for (lang_name, content_nodes, includes_children) in injections_by_pattern_index {
-            //         if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
-            //             if let Some(next_config) = (injection_callback)(lang_name) {
-            //                 let ranges =
-            //                     Self::intersect_ranges(&ranges, &content_nodes, includes_children);
-            //                 if !ranges.is_empty() {
-            //                     queue.push((next_config, depth + 1, ranges));
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
             self.tree = Some(tree)
         }
         Ok(())

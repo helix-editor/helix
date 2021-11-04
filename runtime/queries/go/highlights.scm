@@ -25,7 +25,7 @@
 (variadic_parameter_declaration (identifier) @variable.parameter)
 
 (type_identifier) @type
-(field_identifier) @property
+(field_identifier) @variable.other.member
 (identifier) @variable
 (package_identifier) @variable
 
@@ -130,13 +130,13 @@
   (rune_literal)
 ] @string
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 [
   (int_literal)
   (float_literal)
   (imaginary_literal)
-] @number
+] @constant.numeric.integer
 
 [
   (true)

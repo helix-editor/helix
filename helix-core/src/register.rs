@@ -7,7 +7,7 @@ pub struct Register {
 }
 
 impl Register {
-    pub fn new(name: char) -> Self {
+    pub const fn new(name: char) -> Self {
         Self {
             name,
             values: Vec::new(),
@@ -18,7 +18,7 @@ impl Register {
         Self { name, values }
     }
 
-    pub fn name(&self) -> char {
+    pub const fn name(&self) -> char {
         self.name
     }
 

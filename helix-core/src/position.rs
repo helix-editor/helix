@@ -2,6 +2,7 @@ use crate::{
     chars::char_is_line_ending,
     graphemes::{ensure_grapheme_boundary_prev, RopeGraphemes},
     line_ending::line_end_char_index,
+    unicode::width::UnicodeWidthChar,
     RopeSlice,
 };
 
@@ -54,17 +55,36 @@ impl From<Position> for tree_sitter::Point {
 }
 /// Convert a character index to (line, column) coordinates.
 ///
-/// TODO: this should be split into two methods: one for visual
-/// row/column, and one for "objective" row/column (possibly with
-/// the column specified in `char`s).  The former would be used
-/// for cursor movement, and the latter would be used for e.g. the
-/// row:column display in the status line.
+/// column in `char` count which can be used for row:column display in
+/// status line. See [`visual_coords_at_pos`] for a visual one.
 pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
     let line = text.char_to_line(pos);
 
     let line_start = text.line_to_char(line);
     let pos = ensure_grapheme_boundary_prev(text, pos);
     let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
+
+    Position::new(line, col)
+}
+
+/// Convert a character index to (line, column) coordinates visually.
+///
+/// Takes \t, double-width characters (CJK) into account as well as text
+/// not in the document in the future.
+/// See [`coords_at_pos`] for an "objective" one.
+pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Position {
+    let line = text.char_to_line(pos);
+
+    let line_start = text.line_to_char(line);
+    let pos = ensure_grapheme_boundary_prev(text, pos);
+    let col = text
+        .slice(line_start..pos)
+        .chars()
+        .flat_map(|c| match c {
+            '\t' => Some(tab_width),
+            c => UnicodeWidthChar::width(c),
+        })
+        .sum();
 
     Position::new(line, col)
 }
@@ -130,7 +150,6 @@ mod test {
         assert_eq!(coords_at_pos(slice, 10), (1, 4).into()); // position on d
 
         // Test with wide characters.
-        // TODO: account for character width.
         let text = Rope::from("今日はいい\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
@@ -151,7 +170,6 @@ mod test {
         assert_eq!(coords_at_pos(slice, 9), (1, 0).into());
 
         // Test with wide-character grapheme clusters.
-        // TODO: account for character width.
         let text = Rope::from("किमपि\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
@@ -161,12 +179,59 @@ mod test {
         assert_eq!(coords_at_pos(slice, 6), (1, 0).into());
 
         // Test with tabs.
-        // Todo: account for tab stops.
         let text = Rope::from("\tHello\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
         assert_eq!(coords_at_pos(slice, 1), (0, 1).into());
         assert_eq!(coords_at_pos(slice, 2), (0, 2).into());
+    }
+
+    #[test]
+    fn test_visual_coords_at_pos() {
+        let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
+        let slice = text.slice(..);
+        assert_eq!(visual_coords_at_pos(slice, 0, 8), (0, 0).into());
+        assert_eq!(visual_coords_at_pos(slice, 5, 8), (0, 5).into()); // position on \n
+        assert_eq!(visual_coords_at_pos(slice, 6, 8), (1, 0).into()); // position on w
+        assert_eq!(visual_coords_at_pos(slice, 7, 8), (1, 1).into()); // position on o
+        assert_eq!(visual_coords_at_pos(slice, 10, 8), (1, 4).into()); // position on d
+
+        // Test with wide characters.
+        let text = Rope::from("今日はいい\n");
+        let slice = text.slice(..);
+        assert_eq!(visual_coords_at_pos(slice, 0, 8), (0, 0).into());
+        assert_eq!(visual_coords_at_pos(slice, 1, 8), (0, 2).into());
+        assert_eq!(visual_coords_at_pos(slice, 2, 8), (0, 4).into());
+        assert_eq!(visual_coords_at_pos(slice, 3, 8), (0, 6).into());
+        assert_eq!(visual_coords_at_pos(slice, 4, 8), (0, 8).into());
+        assert_eq!(visual_coords_at_pos(slice, 5, 8), (0, 10).into());
+        assert_eq!(visual_coords_at_pos(slice, 6, 8), (1, 0).into());
+
+        // Test with grapheme clusters.
+        let text = Rope::from("a̐éö̲\r\n");
+        let slice = text.slice(..);
+        assert_eq!(visual_coords_at_pos(slice, 0, 8), (0, 0).into());
+        assert_eq!(visual_coords_at_pos(slice, 2, 8), (0, 1).into());
+        assert_eq!(visual_coords_at_pos(slice, 4, 8), (0, 2).into());
+        assert_eq!(visual_coords_at_pos(slice, 7, 8), (0, 3).into());
+        assert_eq!(visual_coords_at_pos(slice, 9, 8), (1, 0).into());
+
+        // Test with wide-character grapheme clusters.
+        // TODO: account for cluster.
+        let text = Rope::from("किमपि\n");
+        let slice = text.slice(..);
+        assert_eq!(visual_coords_at_pos(slice, 0, 8), (0, 0).into());
+        assert_eq!(visual_coords_at_pos(slice, 2, 8), (0, 2).into());
+        assert_eq!(visual_coords_at_pos(slice, 3, 8), (0, 3).into());
+        assert_eq!(visual_coords_at_pos(slice, 5, 8), (0, 5).into());
+        assert_eq!(visual_coords_at_pos(slice, 6, 8), (1, 0).into());
+
+        // Test with tabs.
+        let text = Rope::from("\tHello\n");
+        let slice = text.slice(..);
+        assert_eq!(visual_coords_at_pos(slice, 0, 8), (0, 0).into());
+        assert_eq!(visual_coords_at_pos(slice, 1, 8), (0, 8).into());
+        assert_eq!(visual_coords_at_pos(slice, 2, 8), (0, 9).into());
     }
 
     #[test]

@@ -2,18 +2,19 @@ use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
-    tree::Tree,
+    tree::{self, Tree},
     Document, DocumentId, View, ViewId,
 };
 
 use futures_util::future;
 use std::{
+    collections::BTreeMap,
     path::{Path, PathBuf},
+    pin::Pin,
     sync::Arc,
-    time::Duration,
 };
 
-use slotmap::SlotMap;
+use tokio::time::{sleep, Duration, Instant, Sleep};
 
 use anyhow::Error;
 
@@ -23,6 +24,14 @@ use helix_core::syntax;
 use helix_core::Position;
 
 use serde::Deserialize;
+
+fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let millis = u64::deserialize(deserializer)?;
+    Ok(Duration::from_millis(millis))
+}
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case", default)]
@@ -37,8 +46,18 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
-    /// Middle click paste support. Defaults to true
+    /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
+    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
+    pub smart_case: bool,
+    /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
+    pub auto_pairs: bool,
+    /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
+    pub auto_completion: bool,
+    /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
+    pub idle_timeout: Duration,
+    pub completion_trigger_len: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -64,14 +83,32 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
+            smart_case: true,
+            auto_pairs: true,
+            auto_completion: true,
+            idle_timeout: Duration::from_millis(400),
+            completion_trigger_len: 2,
         }
+    }
+}
+
+pub struct Motion(pub Box<dyn Fn(&mut Editor)>);
+impl Motion {
+    pub fn run(&self, e: &mut Editor) {
+        (self.0)(e)
+    }
+}
+impl std::fmt::Debug for Motion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("motion")
     }
 }
 
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
-    pub documents: SlotMap<DocumentId, Document>,
+    pub next_document_id: usize,
+    pub documents: BTreeMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
@@ -85,6 +122,9 @@ pub struct Editor {
     pub status_msg: Option<(String, Severity)>,
 
     pub config: Config,
+
+    pub idle_timer: Pin<Box<Sleep>>,
+    pub last_motion: Option<Motion>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -109,7 +149,8 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            documents: SlotMap::with_key(),
+            next_document_id: 0,
+            documents: BTreeMap::new(),
             count: None,
             selected_register: None,
             theme: themes.default(),
@@ -119,8 +160,23 @@ impl Editor {
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
+            idle_timer: Box::pin(sleep(config.idle_timeout)),
+            last_motion: None,
             config,
         }
+    }
+
+    pub fn clear_idle_timer(&mut self) {
+        // equivalent to internal Instant::far_future() (30 years)
+        self.idle_timer
+            .as_mut()
+            .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+    }
+
+    pub fn reset_idle_timer(&mut self) {
+        self.idle_timer
+            .as_mut()
+            .reset(Instant::now() + self.config.idle_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -161,7 +217,7 @@ impl Editor {
 
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
-            let doc = &self.documents[view.doc];
+            let doc = &self.documents[&view.doc];
             view.ensure_cursor_in_view(doc, self.config.scrolloff)
         }
     }
@@ -170,22 +226,38 @@ impl Editor {
         use crate::tree::Layout;
         use helix_core::Selection;
 
-        if !self.documents.contains_key(id) {
+        if !self.documents.contains_key(&id) {
             log::error!("cannot switch to document that does not exist (anymore)");
             return;
         }
 
         match action {
             Action::Replace => {
-                let view = view!(self);
-                let jump = (
-                    view.doc,
-                    self.documents[view.doc].selection(view.id).clone(),
-                );
-
+                let (view, doc) = current_ref!(self);
+                // If the current view is an empty scratch buffer and is not displayed in any other views, delete it.
+                // Boolean value is determined before the call to `view_mut` because the operation requires a borrow
+                // of `self.tree`, which is mutably borrowed when `view_mut` is called.
+                let remove_empty_scratch = !doc.is_modified()
+                    // If the buffer has no path and is not modified, it is an empty scratch buffer.
+                    && doc.path().is_none()
+                    // If the buffer we are changing to is not this buffer
+                    && id != doc.id
+                    // Ensure the buffer is not displayed in any other splits.
+                    && !self
+                        .tree
+                        .traverse()
+                        .any(|(_, v)| v.doc == doc.id && v.id != view.id);
                 let view = view_mut!(self);
-                view.jumps.push(jump);
-                view.last_accessed_doc = Some(view.doc);
+                if remove_empty_scratch {
+                    // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
+                    // borrow, invalidating direct access to `doc.id`.
+                    let id = doc.id;
+                    self.documents.remove(&id);
+                } else {
+                    let jump = (view.doc, doc.selection(view.id).clone());
+                    view.jumps.push(jump);
+                    view.last_accessed_doc = Some(view.doc);
+                }
                 view.doc = id;
                 view.offset = Position::default();
 
@@ -212,14 +284,14 @@ impl Editor {
                 let view = View::new(id);
                 let view_id = self.tree.split(view, Layout::Horizontal);
                 // initialize selection for view
-                let doc = &mut self.documents[id];
+                let doc = self.documents.get_mut(&id).unwrap();
                 doc.selections.insert(view_id, Selection::point(0));
             }
             Action::VerticalSplit => {
                 let view = View::new(id);
                 let view_id = self.tree.split(view, Layout::Vertical);
                 // initialize selection for view
-                let doc = &mut self.documents[id];
+                let doc = self.documents.get_mut(&id).unwrap();
                 doc.selections.insert(view_id, Selection::point(0));
             }
         }
@@ -228,9 +300,11 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        let doc = Document::default();
-        let id = self.documents.insert(doc);
-        self.documents[id].id = id;
+        let id = DocumentId(self.next_document_id);
+        self.next_document_id += 1;
+        let mut doc = Document::default();
+        doc.id = id;
+        self.documents.insert(id, doc);
         self.switch(id, action);
         id
     }
@@ -249,10 +323,18 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
-            let language_server = doc
-                .language
-                .as_ref()
-                .and_then(|language| self.language_servers.get(language).ok());
+            let language_server = doc.language.as_ref().and_then(|language| {
+                self.language_servers
+                    .get(language)
+                    .map_err(|e| {
+                        log::error!(
+                            "Failed to initialize the LSP for `{}` {{ {} }}",
+                            language.scope(),
+                            e
+                        )
+                    })
+                    .ok()
+            });
 
             if let Some(language_server) = language_server {
                 let language_id = doc
@@ -272,8 +354,10 @@ impl Editor {
                 doc.set_language_server(Some(language_server));
             }
 
-            let id = self.documents.insert(doc);
-            self.documents[id].id = id;
+            let id = DocumentId(self.next_document_id);
+            self.next_document_id += 1;
+            doc.id = id;
+            self.documents.insert(id, doc);
             id
         };
 
@@ -284,16 +368,20 @@ impl Editor {
     pub fn close(&mut self, id: ViewId, close_buffer: bool) {
         let view = self.tree.get(self.tree.focus);
         // remove selection
-        self.documents[view.doc].selections.remove(&id);
+        self.documents
+            .get_mut(&view.doc)
+            .unwrap()
+            .selections
+            .remove(&id);
 
         if close_buffer {
             // get around borrowck issues
-            let doc = &self.documents[view.doc];
+            let doc = &self.documents[&view.doc];
 
             if let Some(language_server) = doc.language_server() {
                 tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }
-            self.documents.remove(view.doc);
+            self.documents.remove(&view.doc);
         }
 
         self.tree.remove(id);
@@ -310,24 +398,40 @@ impl Editor {
         self.tree.focus_next();
     }
 
+    pub fn focus_right(&mut self) {
+        self.tree.focus_direction(tree::Direction::Right);
+    }
+
+    pub fn focus_left(&mut self) {
+        self.tree.focus_direction(tree::Direction::Left);
+    }
+
+    pub fn focus_up(&mut self) {
+        self.tree.focus_direction(tree::Direction::Up);
+    }
+
+    pub fn focus_down(&mut self) {
+        self.tree.focus_direction(tree::Direction::Down);
+    }
+
     pub fn should_close(&self) -> bool {
         self.tree.is_empty()
     }
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
-        let doc = &self.documents[view.doc];
+        let doc = &self.documents[&view.doc];
         view.ensure_cursor_in_view(doc, self.config.scrolloff)
     }
 
     #[inline]
     pub fn document(&self, id: DocumentId) -> Option<&Document> {
-        self.documents.get(id)
+        self.documents.get(&id)
     }
 
     #[inline]
     pub fn document_mut(&mut self, id: DocumentId) -> Option<&mut Document> {
-        self.documents.get_mut(id)
+        self.documents.get_mut(&id)
     }
 
     #[inline]
@@ -352,7 +456,7 @@ impl Editor {
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let view = view!(self);
-        let doc = &self.documents[view.doc];
+        let doc = &self.documents[&view.doc];
         let cursor = doc
             .selection(view.id)
             .primary()

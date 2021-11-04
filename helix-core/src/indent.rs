@@ -454,6 +454,7 @@ where
                 highlight_config: OnceCell::new(),
                 config: None,
                 //
+                injection_regex: None,
                 roots: vec![],
                 comment_token: None,
                 auto_format: false,
@@ -463,6 +464,7 @@ where
                     unit: String::from("    "),
                 }),
                 indent_query: OnceCell::new(),
+                textobject_query: OnceCell::new(),
             }],
         });
 

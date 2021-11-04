@@ -318,7 +318,7 @@ impl Registry {
                 let (client, incoming, initialize_notify) = Client::start(
                     &config.command,
                     &config.args,
-                    serde_json::from_str(language_config.config.as_deref().unwrap_or("")).ok(),
+                    language_config.config.clone(),
                     id,
                 )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));

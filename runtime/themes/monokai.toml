@@ -7,7 +7,7 @@
 "type.builtin" = { fg = "#66D9EF" }
 "type.enum.variant" = { fg = "text" } 
 "constructor" = { fg = "text" }
-"property" = { fg = "variable" }
+"variable.other.member" = { fg = "variable" }
 
 "keyword" = { fg = "keyword" }
 "keyword.directive" = { fg = "keyword" }
@@ -34,9 +34,10 @@
 "comment" = { fg = "#88846F" }
 
 "string" = { fg = "#e6db74" }
+"constant.character" = { fg = "#e6db74" }
 "string.regexp" = { fg = "regex" }
-"number" = { fg = "#ae81ff" }
-"escape" = { fg = "#ae81ff" }
+"constant.numeric" = { fg = "#ae81ff" }
+"constant.character.escape" = { fg = "#ae81ff" }
 
 "ui.background" = { fg = "text", bg = "background" }
 

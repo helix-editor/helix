@@ -2,7 +2,7 @@
 
 One-way key remapping is temporarily supported via a simple TOML configuration
 file. (More powerful solutions such as rebinding via commands will be
-available in the feature).
+available in the future).
 
 To remap keys, write a `config.toml` file in your `helix` configuration
 directory (default `~/.config/helix` in Linux systems) with a structure like
@@ -48,5 +48,7 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 | Insert       | `"ins"`        |
 | Null         | `"null"`       |
 | Escape       | `"esc"`        |
+
+Keys can be disabled by binding them to the `no_op` command.
 
 Commands can be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)

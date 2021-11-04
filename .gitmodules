@@ -84,7 +84,7 @@
 	shallow = true
 [submodule "helix-syntax/languages/tree-sitter-elixir"]
 	path = helix-syntax/languages/tree-sitter-elixir
-	url = https://github.com/IceDragon200/tree-sitter-elixir
+	url = https://github.com/elixir-lang/tree-sitter-elixir
 	shallow = true
 [submodule "helix-syntax/languages/tree-sitter-nix"]
 	path = helix-syntax/languages/tree-sitter-nix
@@ -117,4 +117,20 @@
 [submodule "helix-syntax/languages/tree-sitter-zig"]
 	path = helix-syntax/languages/tree-sitter-zig
 	url = https://github.com/maxxnino/tree-sitter-zig
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-svelte"]
+	path = helix-syntax/languages/tree-sitter-svelte
+	url = https://github.com/Himujjal/tree-sitter-svelte
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-vue"]
+	path = helix-syntax/languages/tree-sitter-vue
+	url = https://github.com/ikatyang/tree-sitter-vue
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-tsq"]
+	path = helix-syntax/languages/tree-sitter-tsq
+	url = https://github.com/tree-sitter/tree-sitter-tsq
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-cmake"]
+	path = helix-syntax/languages/tree-sitter-cmake
+	url = https://github.com/uyha/tree-sitter-cmake
 	shallow = true

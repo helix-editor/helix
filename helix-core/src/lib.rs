@@ -35,6 +35,7 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
     line.chars().position(|ch| !ch.is_whitespace())
 }
 
+/// Find `.git` root.
 pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
 
@@ -193,7 +194,7 @@ pub use tendril::StrTendril as Tendril;
 pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
-pub use position::{coords_at_pos, pos_at_coords, Position};
+pub use position::{coords_at_pos, pos_at_coords, visual_coords_at_pos, Position};
 pub use selection::{Range, Selection};
 pub use smallvec::SmallVec;
 pub use syntax::Syntax;

@@ -12,8 +12,10 @@ pub mod theme;
 pub mod tree;
 pub mod view;
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct DocumentId(usize);
+
 slotmap::new_key_type! {
-    pub struct DocumentId;
     pub struct ViewId;
 }
 

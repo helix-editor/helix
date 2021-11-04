@@ -3,9 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
     nixCargoIntegration = {
       url = "github:yusdacra/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rustOverlay.follows = "rust-overlay";
     };
     flakeCompat = {
       url = "github:edolstra/flake-compat";
@@ -30,22 +32,7 @@
           };
           # link languages and theme toml files since helix-view expects them
           helix-view = _: { preConfigure = "ln -s ${common.root}/{languages.toml,theme.toml} .."; };
-          helix-syntax = prev: {
-            src =
-              let
-                pkgs = common.pkgs;
-                helix = pkgs.fetchgit {
-                  url = "https://github.com/helix-editor/helix.git";
-                  rev = "d4bd5b37669708361a0a6cd2917464b010e6b7f5";
-                  fetchSubmodules = true;
-                  sha256 = "sha256-KayR7K7UC0mT6EjHsZsCYY9IVDJzft63fGpPKGSY8nQ=";
-                };
-              in
-              pkgs.runCommand prev.src.name { } ''
-                mkdir -p $out
-                ln -s ${prev.src}/* $out
-                ln -sf ${helix}/helix-syntax/languages $out
-              '';
+          helix-syntax = _prev: {
             preConfigure = "mkdir -p ../runtime/grammars";
             postInstall = "cp -r ../runtime $out/runtime";
           };
@@ -76,7 +63,7 @@
             '';
           };
         shell = common: prev: {
-          packages = prev.packages ++ (with common.pkgs; [ lld_10 lldb cargo-tarpaulin ]);
+          packages = prev.packages ++ (with common.pkgs; [ lld_12 lldb cargo-tarpaulin ]);
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }

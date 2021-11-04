@@ -29,10 +29,10 @@ use std::borrow::Cow;
 /// "(anchor, head)", followed by example text with "[" and "]"
 /// inserted to represent the anchor and head positions:
 ///
-/// - (0, 3): [Som]e text.
-/// - (3, 0): ]Som[e text.
-/// - (2, 7): So[me te]xt.
-/// - (1, 1): S[]ome text.
+/// - (0, 3): `[Som]e text`.
+/// - (3, 0): `]Som[e text`.
+/// - (2, 7): `So[me te]xt`.
+/// - (1, 1): `S[]ome text`.
 ///
 /// Ranges are considered to be inclusive on the left and
 /// exclusive on the right, regardless of anchor-head ordering.
@@ -358,6 +358,15 @@ impl Selection {
         self.ranges.push(range);
         self.set_primary_index(self.ranges().len() - 1);
         self.normalize()
+    }
+
+    /// Adds a new range to the selection and makes it the primary range.
+    pub fn remove(mut self, index: usize) -> Self {
+        self.ranges.remove(index);
+        if index < self.primary_index || self.primary_index == self.ranges.len() {
+            self.primary_index -= 1;
+        }
+        self
     }
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after

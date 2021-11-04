@@ -30,19 +30,19 @@
 ; Member
 
 (property_element
-  (variable_name) @property)
+  (variable_name) @variable.other.member)
 
 (member_access_expression
-  name: (variable_name (name)) @property)
+  name: (variable_name (name)) @variable.other.member)
 (member_access_expression
-  name: (name) @property)
+  name: (name) @variable.other.member)
 
 ; Variables
 
 (relative_scope) @variable.builtin
 
 ((name) @constant
- (#match? @constant "^_?[A-Z][A-Z\d_]+$"))
+ (#match? @constant "^_?[A-Z][A-Z\\d_]+$"))
 
 ((name) @constructor
  (#match? @constructor "^[A-Z]"))
@@ -56,10 +56,10 @@
 
 (string) @string
 (heredoc) @string
-(boolean) @constant.builtin
+(boolean) @constant.builtin.boolean
 (null) @constant.builtin
-(integer) @number
-(float) @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (comment) @comment
 
 "$" @operator

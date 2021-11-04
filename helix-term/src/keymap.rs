@@ -5,20 +5,20 @@ use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     ops::{Deref, DerefMut},
 };
 
 #[macro_export]
 macro_rules! key {
     ($key:ident) => {
-        KeyEvent {
+        ::helix_view::input::KeyEvent {
             code: ::helix_view::keyboard::KeyCode::$key,
             modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
     };
     ($($ch:tt)*) => {
-        KeyEvent {
+        ::helix_view::input::KeyEvent {
             code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
             modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
         }
@@ -82,17 +82,28 @@ macro_rules! keymap {
     };
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
-    #[serde(skip)]
     name: String,
-    #[serde(flatten)]
     map: HashMap<KeyEvent, KeyTrie>,
-    #[serde(skip)]
     order: Vec<KeyEvent>,
-    #[serde(skip)]
     pub is_sticky: bool,
+}
+
+impl<'de> Deserialize<'de> for KeyTrieNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let map = HashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?;
+        let order = map.keys().copied().collect::<Vec<_>>(); // NOTE: map.keys() has arbitrary order
+        Ok(Self {
+            map,
+            order,
+            ..Default::default()
+        })
+    }
 }
 
 impl KeyTrieNode {
@@ -122,7 +133,6 @@ impl KeyTrieNode {
             }
             self.map.insert(key, trie);
         }
-
         for &key in self.map.keys() {
             if !self.order.contains(&key) {
                 self.order.push(key);
@@ -131,21 +141,30 @@ impl KeyTrieNode {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(&str, Vec<KeyEvent>)> = Vec::with_capacity(self.len());
+        let mut body: Vec<(&str, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
         for (&key, trie) in self.iter() {
             let desc = match trie {
-                KeyTrie::Leaf(cmd) => cmd.doc(),
+                KeyTrie::Leaf(cmd) => {
+                    if cmd.name() == "no_op" {
+                        continue;
+                    }
+                    cmd.doc()
+                }
                 KeyTrie::Node(n) => n.name(),
                 KeyTrie::Sequence(_) => "[Multiple commands]",
             };
             match body.iter().position(|(d, _)| d == &desc) {
-                // FIXME: multiple keys are ordered randomly (use BTreeSet)
-                Some(pos) => body[pos].1.push(key),
-                None => body.push((desc, vec![key])),
+                Some(pos) => {
+                    body[pos].1.insert(key);
+                }
+                None => body.push((desc, BTreeSet::from([key]))),
             }
         }
         body.sort_unstable_by_key(|(_, keys)| {
-            self.order.iter().position(|&k| k == keys[0]).unwrap()
+            self.order
+                .iter()
+                .position(|&k| k == *keys.iter().next().unwrap())
+                .unwrap()
         });
         let prefix = format!("{} ", self.name());
         if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
@@ -155,6 +174,11 @@ impl KeyTrieNode {
                 .collect();
         }
         Info::new(self.name(), body)
+    }
+
+    /// Get a reference to the key trie node's order.
+    pub fn order(&self) -> &[KeyEvent] {
+        self.order.as_slice()
     }
 }
 
@@ -243,6 +267,7 @@ pub enum KeymapResultKind {
 
 /// Returned after looking up a key in [`Keymap`]. The `sticky` field has a
 /// reference to the sticky node if one is currently active.
+#[derive(Debug)]
 pub struct KeymapResult<'a> {
     pub kind: KeymapResultKind,
     pub sticky: Option<&'a KeyTrieNode>,
@@ -416,6 +441,7 @@ impl Default for Keymaps {
             "F" => find_prev_char,
             "r" => replace,
             "R" => replace_with_yanked,
+            "A-." =>  repeat_last_motion,
 
             "~" => switch_case,
             "`" => switch_to_lowercase,
@@ -448,6 +474,8 @@ impl Default for Keymaps {
                 "m" => goto_window_middle,
                 "b" => goto_window_bottom,
                 "a" => goto_last_accessed_file,
+                "n" => goto_next_buffer,
+                "p" => goto_previous_buffer,
             },
             ":" => command_mode,
 
@@ -457,7 +485,6 @@ impl Default for Keymaps {
             "A" => append_to_line,
             "o" => open_below,
             "O" => open_above,
-            // [<space>  ]<space> equivalents too (add blank new line, no edit)
 
             "d" => delete_selection,
             // TODO: also delete without yanking
@@ -517,12 +544,11 @@ impl Default for Keymaps {
             "<" => unindent,
             "=" => format_selections,
             "J" => join_selections,
-            // TODO: conflicts hover/doc
             "K" => keep_selections,
             // TODO: and another method for inverse
 
-            // TODO: clashes with space mode
-            "space" => keep_primary_selection,
+            "," => keep_primary_selection,
+            "A-," => remove_primary_selection,
 
             // "q" => record_macro,
             // "Q" => replay_macro,
@@ -543,14 +569,17 @@ impl Default for Keymaps {
 
             "C-w" => { "Window"
                 "C-w" | "w" => rotate_view,
-                "C-h" | "h" => hsplit,
+                "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-q" | "q" => wclose,
+                "C-h" | "h" | "left" => jump_view_left,
+                "C-j" | "j" | "down" => jump_view_down,
+                "C-k" | "k" | "up" => jump_view_up,
+                "C-l" | "l" | "right" => jump_view_right,
             },
 
             // move under <space>c
             "C-c" => toggle_comments,
-            "K" => hover,
 
             // z family for save/restore/combine from/to sels from register
 
@@ -575,7 +604,8 @@ impl Default for Keymaps {
                 "p" => paste_clipboard_after,
                 "P" => paste_clipboard_before,
                 "R" => replace_selections_with_clipboard,
-                "space" => keep_primary_selection,
+                "/" => global_search,
+                "k" => hover,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
@@ -584,6 +614,22 @@ impl Default for Keymaps {
                 "m" => align_view_middle,
                 "k" => scroll_up,
                 "j" => scroll_down,
+                "b" => page_up,
+                "f" => page_down,
+                "u" => half_page_up,
+                "d" => half_page_down,
+            },
+            "Z" => { "View" sticky=true
+                "z" | "c" => align_view_center,
+                "t" => align_view_top,
+                "b" => align_view_bottom,
+                "m" => align_view_middle,
+                "k" => scroll_up,
+                "j" => scroll_down,
+                "b" => page_up,
+                "f" => page_down,
+                "u" => half_page_up,
+                "d" => half_page_down,
             },
 
             "\"" => select_register,
@@ -656,63 +702,101 @@ pub fn merge_keys(mut config: Config) -> Config {
     config
 }
 
-#[test]
-fn merge_partial_keys() {
-    let config = Config {
-        keys: Keymaps(hashmap! {
-            Mode::Normal => Keymap::new(
-                keymap!({ "Normal mode"
-                    "i" => normal_mode,
-                    "无" => insert_mode,
-                    "z" => jump_backward,
-                    "g" => { "Merge into goto mode"
-                        "$" => goto_line_end,
-                        "g" => delete_char_forward,
-                    },
-                })
-            )
-        }),
-        ..Default::default()
-    };
-    let mut merged_config = merge_keys(config.clone());
-    assert_ne!(config, merged_config);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn merge_partial_keys() {
+        let config = Config {
+            keys: Keymaps(hashmap! {
+                Mode::Normal => Keymap::new(
+                    keymap!({ "Normal mode"
+                        "i" => normal_mode,
+                        "无" => insert_mode,
+                        "z" => jump_backward,
+                        "g" => { "Merge into goto mode"
+                            "$" => goto_line_end,
+                            "g" => delete_char_forward,
+                        },
+                    })
+                )
+            }),
+            ..Default::default()
+        };
+        let mut merged_config = merge_keys(config.clone());
+        assert_ne!(config, merged_config);
 
-    let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
-    assert_eq!(
-        keymap.get(key!('i')).kind,
-        KeymapResultKind::Matched(Command::normal_mode),
-        "Leaf should replace leaf"
-    );
-    assert_eq!(
-        keymap.get(key!('无')).kind,
-        KeymapResultKind::Matched(Command::insert_mode),
-        "New leaf should be present in merged keymap"
-    );
-    // Assumes that z is a node in the default keymap
-    assert_eq!(
-        keymap.get(key!('z')).kind,
-        KeymapResultKind::Matched(Command::jump_backward),
-        "Leaf should replace node"
-    );
-    // Assumes that `g` is a node in default keymap
-    assert_eq!(
-        keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
-        &KeyTrie::Leaf(Command::goto_line_end),
-        "Leaf should be present in merged subnode"
-    );
-    // Assumes that `gg` is in default keymap
-    assert_eq!(
-        keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
-        &KeyTrie::Leaf(Command::delete_char_forward),
-        "Leaf should replace old leaf in merged subnode"
-    );
-    // Assumes that `ge` is in default keymap
-    assert_eq!(
-        keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
-        &KeyTrie::Leaf(Command::goto_last_line),
-        "Old leaves in subnode should be present in merged node"
-    );
+        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        assert_eq!(
+            keymap.get(key!('i')).kind,
+            KeymapResultKind::Matched(Command::normal_mode),
+            "Leaf should replace leaf"
+        );
+        assert_eq!(
+            keymap.get(key!('无')).kind,
+            KeymapResultKind::Matched(Command::insert_mode),
+            "New leaf should be present in merged keymap"
+        );
+        // Assumes that z is a node in the default keymap
+        assert_eq!(
+            keymap.get(key!('z')).kind,
+            KeymapResultKind::Matched(Command::jump_backward),
+            "Leaf should replace node"
+        );
+        // Assumes that `g` is a node in default keymap
+        assert_eq!(
+            keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
+            &KeyTrie::Leaf(Command::goto_line_end),
+            "Leaf should be present in merged subnode"
+        );
+        // Assumes that `gg` is in default keymap
+        assert_eq!(
+            keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
+            &KeyTrie::Leaf(Command::delete_char_forward),
+            "Leaf should replace old leaf in merged subnode"
+        );
+        // Assumes that `ge` is in default keymap
+        assert_eq!(
+            keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
+            &KeyTrie::Leaf(Command::goto_last_line),
+            "Old leaves in subnode should be present in merged node"
+        );
 
-    assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
-    assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
+        assert!(merged_config.keys.0.get(&Mode::Normal).unwrap().len() > 1);
+        assert!(merged_config.keys.0.get(&Mode::Insert).unwrap().len() > 0);
+    }
+
+    #[test]
+    fn order_should_be_set() {
+        let config = Config {
+            keys: Keymaps(hashmap! {
+                Mode::Normal => Keymap::new(
+                    keymap!({ "Normal mode"
+                        "space" => { ""
+                            "s" => { ""
+                                "v" => vsplit,
+                                "c" => hsplit,
+                            },
+                        },
+                    })
+                )
+            }),
+            ..Default::default()
+        };
+        let mut merged_config = merge_keys(config.clone());
+        assert_ne!(config, merged_config);
+        let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
+        // Make sure mapping works
+        assert_eq!(
+            keymap
+                .root()
+                .search(&[key!(' '), key!('s'), key!('v')])
+                .unwrap(),
+            &KeyTrie::Leaf(Command::vsplit),
+            "Leaf should be present in merged subnode"
+        );
+        // Make sure an order was set during merge
+        let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
+        assert!(!node.node().unwrap().order().is_empty())
+    }
 }

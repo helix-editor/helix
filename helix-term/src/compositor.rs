@@ -171,6 +171,12 @@ impl Compositor {
         (None, CursorKind::Hidden)
     }
 
+    pub fn has_component(&self, type_name: &str) -> bool {
+        self.layers
+            .iter()
+            .any(|component| component.type_name() == type_name)
+    }
+
     pub fn find(&mut self, type_name: &str) -> Option<&mut dyn Component> {
         self.layers
             .iter_mut()
@@ -201,7 +207,7 @@ pub trait AnyComponent {
     ///
     /// ```rust
     /// use helix_term::{ui::Text, compositor::Component};
-    /// let boxed: Box<Component> = Box::new(Text::new("text".to_string()));
+    /// let boxed: Box<dyn Component> = Box::new(Text::new("text".to_string()));
     /// let text: Box<Text> = boxed.as_boxed_any().downcast().unwrap();
     /// ```
     fn as_boxed_any(self: Box<Self>) -> Box<dyn Any>;

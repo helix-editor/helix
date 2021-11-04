@@ -27,10 +27,10 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 It's a terminal-based editor first, but I'd like to explore a custom renderer
 (similar to emacs) in wgpu or skulpin.
 
-# Installation
-
 Note: Only certain languages have indentation definitions at the moment. Check
 `runtime/queries/<lang>/` for `indents.toml`.
+
+# Installation
 
 We provide packaging for various distributions, but here's a quick method to
 build from source.
@@ -71,7 +71,7 @@ Some suggestions to get started:
 
 - You can look at the [good first issue](https://github.com/helix-editor/helix/labels/E-easy) label on the issue tracker.
 - Help with packaging on various distributions needed!
-- To use print debugging to the `~/.cache/helix/helix.log` file, you must:
+- To use print debugging to the [Helix log file](https://github.com/helix-editor/helix/wiki/FAQ#access-the-log-file), you must:
   * Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
   * Pass the appropriate verbosity level option for the desired log level. (`hx -v <file>` for info, more `v`s for higher severity inclusive)
 - If your preferred language is missing, integrating a tree-sitter grammar for
@@ -82,5 +82,7 @@ We provide an [architecture.md](./docs/architecture.md) that should give you
 a good overview of the internals.
 
 # Getting help
+
+Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
 
 Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
