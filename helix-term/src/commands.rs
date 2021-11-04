@@ -1190,6 +1190,12 @@ fn search_impl(
         selection.primary().cursor(text),
     ));
 
+    //A regex::Match returns byte-positions in the str. In the case where we
+    //do a reverse search and wraparound to the end, we don't need to search
+    //the text before the current cursor position for matches, but by slicing
+    //it out, we need to add it back to the position of the selection.
+    let mut reverse_search_wrapped_offset = 0;
+
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mat = match direction {
@@ -1200,12 +1206,15 @@ fn search_impl(
             .find_iter(&contents[..start])
             .fold((None, None), |(_x, y), new| (y, Some(new)))
             .0
-            .or_else(|| regex.find_iter(contents).last()),
+            .or_else(|| {
+                reverse_search_wrapped_offset = start;
+                regex.find_iter(&contents[start..]).last()
+            }),
     };
     // TODO: message on wraparound
     if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start());
-        let end = text.byte_to_char(mat.end());
+        let start = text.byte_to_char(mat.start() + reverse_search_wrapped_offset);
+        let end = text.byte_to_char(mat.end() + reverse_search_wrapped_offset);
 
         if end == 0 {
             // skip empty matches that don't make sense
