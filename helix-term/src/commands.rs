@@ -1818,7 +1818,7 @@ mod cmd {
         let mut errors = String::new();
 
         // save all documents
-        for (_, doc) in &mut cx.editor.documents {
+        for doc in &mut cx.editor.documents.values_mut() {
             if doc.path().is_none() {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
@@ -2512,7 +2512,7 @@ fn buffer_picker(cx: &mut Context) {
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (id, doc.path().cloned()))
+            .map(|(id, doc)| (*id, doc.path().cloned()))
             .collect(),
         move |(id, path): &(DocumentId, Option<PathBuf>)| {
             let path = path.as_deref().map(helix_core::path::get_relative_path);
@@ -2531,7 +2531,7 @@ fn buffer_picker(cx: &mut Context) {
             editor.switch(*id, Action::Replace);
         },
         |editor, (id, path)| {
-            let doc = &editor.documents.get(*id)?;
+            let doc = &editor.documents.get(id)?;
             let &view_id = doc.selections().keys().next()?;
             let line = doc
                 .selection(view_id)

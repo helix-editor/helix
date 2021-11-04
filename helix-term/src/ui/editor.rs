@@ -813,12 +813,12 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
                         .map(|pos| (pos, view.id))
                 });
 
                 if let Some((pos, view_id)) = result {
-                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+                    let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
@@ -870,7 +870,7 @@ impl EditorView {
                 };
 
                 let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&cxt.editor.documents[view.doc], row, column)
+                    view.pos_at_screen_coords(&cxt.editor.documents[&view.doc], row, column)
                         .map(|_| view.id)
                 });
 
@@ -926,12 +926,12 @@ impl EditorView {
                 }
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
                         .map(|pos| (pos, view.id))
                 });
 
                 if let Some((pos, view_id)) = result {
-                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+                    let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
                     commands::Command::paste_primary_clipboard_before.execute(cxt);

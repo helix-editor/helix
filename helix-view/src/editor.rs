@@ -8,14 +8,13 @@ use crate::{
 
 use futures_util::future;
 use std::{
+    collections::BTreeMap,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
 };
 
 use tokio::time::{sleep, Duration, Instant, Sleep};
-
-use slotmap::SlotMap;
 
 use anyhow::Error;
 
@@ -108,7 +107,8 @@ impl std::fmt::Debug for Motion {
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
-    pub documents: SlotMap<DocumentId, Document>,
+    pub next_document_id: usize,
+    pub documents: BTreeMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
@@ -149,7 +149,8 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            documents: SlotMap::with_key(),
+            next_document_id: 0,
+            documents: BTreeMap::new(),
             count: None,
             selected_register: None,
             theme: themes.default(),
@@ -216,7 +217,7 @@ impl Editor {
 
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
-            let doc = &self.documents[view.doc];
+            let doc = &self.documents[&view.doc];
             view.ensure_cursor_in_view(doc, self.config.scrolloff)
         }
     }
@@ -225,7 +226,7 @@ impl Editor {
         use crate::tree::Layout;
         use helix_core::Selection;
 
-        if !self.documents.contains_key(id) {
+        if !self.documents.contains_key(&id) {
             log::error!("cannot switch to document that does not exist (anymore)");
             return;
         }
@@ -249,7 +250,7 @@ impl Editor {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
-                    self.documents.remove(id);
+                    self.documents.remove(&id);
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
@@ -281,14 +282,14 @@ impl Editor {
                 let view = View::new(id);
                 let view_id = self.tree.split(view, Layout::Horizontal);
                 // initialize selection for view
-                let doc = &mut self.documents[id];
+                let doc = self.documents.get_mut(&id).unwrap();
                 doc.selections.insert(view_id, Selection::point(0));
             }
             Action::VerticalSplit => {
                 let view = View::new(id);
                 let view_id = self.tree.split(view, Layout::Vertical);
                 // initialize selection for view
-                let doc = &mut self.documents[id];
+                let doc = self.documents.get_mut(&id).unwrap();
                 doc.selections.insert(view_id, Selection::point(0));
             }
         }
@@ -297,9 +298,11 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        let doc = Document::default();
-        let id = self.documents.insert(doc);
-        self.documents[id].id = id;
+        let id = DocumentId(self.next_document_id);
+        self.next_document_id += 1;
+        let mut doc = Document::default();
+        doc.id = id;
+        self.documents.insert(id, doc);
         self.switch(id, action);
         id
     }
@@ -349,8 +352,10 @@ impl Editor {
                 doc.set_language_server(Some(language_server));
             }
 
-            let id = self.documents.insert(doc);
-            self.documents[id].id = id;
+            let id = DocumentId(self.next_document_id);
+            self.next_document_id += 1;
+            doc.id = id;
+            self.documents.insert(id, doc);
             id
         };
 
@@ -361,16 +366,20 @@ impl Editor {
     pub fn close(&mut self, id: ViewId, close_buffer: bool) {
         let view = self.tree.get(self.tree.focus);
         // remove selection
-        self.documents[view.doc].selections.remove(&id);
+        self.documents
+            .get_mut(&view.doc)
+            .unwrap()
+            .selections
+            .remove(&id);
 
         if close_buffer {
             // get around borrowck issues
-            let doc = &self.documents[view.doc];
+            let doc = &self.documents[&view.doc];
 
             if let Some(language_server) = doc.language_server() {
                 tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }
-            self.documents.remove(view.doc);
+            self.documents.remove(&view.doc);
         }
 
         self.tree.remove(id);
@@ -409,18 +418,18 @@ impl Editor {
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
-        let doc = &self.documents[view.doc];
+        let doc = &self.documents[&view.doc];
         view.ensure_cursor_in_view(doc, self.config.scrolloff)
     }
 
     #[inline]
     pub fn document(&self, id: DocumentId) -> Option<&Document> {
-        self.documents.get(id)
+        self.documents.get(&id)
     }
 
     #[inline]
     pub fn document_mut(&mut self, id: DocumentId) -> Option<&mut Document> {
-        self.documents.get_mut(id)
+        self.documents.get_mut(&id)
     }
 
     #[inline]
@@ -445,7 +454,7 @@ impl Editor {
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let view = view!(self);
-        let doc = &self.documents[view.doc];
+        let doc = &self.documents[&view.doc];
         let cursor = doc
             .selection(view.id)
             .primary()
