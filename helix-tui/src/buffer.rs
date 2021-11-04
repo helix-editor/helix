@@ -333,6 +333,9 @@ impl Buffer {
                     continue;
                 }
                 let start = index - width;
+                if start < start_index {
+                    break;
+                }
                 self.content[start].set_symbol(s);
                 self.content[start].set_style(style);
                 for i in start + 1..index {
