@@ -319,13 +319,15 @@ impl Buffer {
         } else {
             let mut start_index = self.index_of(x, y);
             let mut index = self.index_of(max_offset as u16, y);
-            let mut x_offset = max_offset;
 
             let total_width = string.as_ref().width();
-            let truncated = total_width + width > max_offset.saturating_sub(x_offset);
+            let truncated = total_width > width;
             if ellipsis && truncated {
                 self.content[start_index].set_symbol("…");
                 start_index += 1;
+            }
+            if !truncated {
+                index -= width - total_width;
             }
             for s in graphemes.rev() {
                 let width = s.width();
