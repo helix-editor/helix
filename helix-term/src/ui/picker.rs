@@ -483,6 +483,7 @@ impl<T: 'static> Component for Picker<T> {
                     text_style
                 },
                 true,
+                true,
             );
         }
     }

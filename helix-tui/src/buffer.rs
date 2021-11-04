@@ -266,12 +266,14 @@ impl Buffer {
     where
         S: AsRef<str>,
     {
-        self.set_string_truncated(x, y, string, width, style, false)
+        self.set_string_truncated(x, y, string, width, style, false, false)
     }
 
     /// Print at most the first `width` characters of a string if enough space is available
-    /// until the end of the line. If `markend` is true appends a `…` at the end of
-    /// truncated lines.
+    /// until the end of the line. If `ellipsis` is true appends a `…` at the end of
+    /// truncated lines. If `truncate_start` is `true`, truncate the beginning of the string
+    /// instead of the end.
+    #[allow(clippy::too_many_arguments)]
     pub fn set_string_truncated<S>(
         &mut self,
         x: u16,
@@ -280,6 +282,7 @@ impl Buffer {
         width: usize,
         style: Style,
         ellipsis: bool,
+        truncate_start: bool,
     ) -> (u16, u16)
     where
         S: AsRef<str>,
@@ -289,28 +292,59 @@ impl Buffer {
         let width = if ellipsis { width - 1 } else { width };
         let graphemes = UnicodeSegmentation::graphemes(string.as_ref(), true);
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
-        for s in graphemes {
-            let width = s.width();
-            if width == 0 {
-                continue;
-            }
-            // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
-            // change dimenstions to usize or u32 and someone resizes the terminal to 1x2^32.
-            if width > max_offset.saturating_sub(x_offset) {
-                break;
-            }
+        if !truncate_start {
+            for s in graphemes {
+                let width = s.width();
+                if width == 0 {
+                    continue;
+                }
+                // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
+                // change dimenstions to usize or u32 and someone resizes the terminal to 1x2^32.
+                if width > max_offset.saturating_sub(x_offset) {
+                    break;
+                }
 
-            self.content[index].set_symbol(s);
-            self.content[index].set_style(style);
-            // Reset following cells if multi-width (they would be hidden by the grapheme),
-            for i in index + 1..index + width {
-                self.content[i].reset();
+                self.content[index].set_symbol(s);
+                self.content[index].set_style(style);
+                // Reset following cells if multi-width (they would be hidden by the grapheme),
+                for i in index + 1..index + width {
+                    self.content[i].reset();
+                }
+                index += width;
+                x_offset += width;
             }
-            index += width;
-            x_offset += width;
-        }
-        if ellipsis && x_offset - (x as usize) < string.as_ref().width() {
-            self.content[index].set_symbol("…");
+            if ellipsis && x_offset - (x as usize) < string.as_ref().width() {
+                self.content[index].set_symbol("…");
+            }
+        } else {
+            let mut start_index = self.index_of(x, y);
+            let mut index = self.index_of(max_offset as u16, y);
+
+            let total_width = string.as_ref().width();
+            let truncated = total_width > width;
+            if ellipsis && truncated {
+                self.content[start_index].set_symbol("…");
+                start_index += 1;
+            }
+            if !truncated {
+                index -= width - total_width;
+            }
+            for s in graphemes.rev() {
+                let width = s.width();
+                if width == 0 {
+                    continue;
+                }
+                let start = index - width;
+                if start < start_index {
+                    break;
+                }
+                self.content[start].set_symbol(s);
+                self.content[start].set_style(style);
+                for i in start + 1..index {
+                    self.content[i].reset();
+                }
+                index -= width;
+            }
         }
         (x_offset as u16, y)
     }
