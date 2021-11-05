@@ -24,7 +24,7 @@ pub struct Prompt {
     history_pos: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
-    pub doc_fn: Box<dyn Fn(&str) -> Option<&'static str>>,
+    pub doc_fn: Box<dyn Fn(&str) -> Option<(&'static str, &'static [&'static str])>>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -372,14 +372,19 @@ impl Prompt {
                 string.pop();
             }
 
+            let width = BASE_WIDTH * 3;
+            let height = 2 + string
+                .lines()
+                .fold(0, |acc, s| acc + (s.len() as u16 / width) + 1);
+
             let mut text = ui::Text::new(string);
 
             let viewport = area;
             let area = viewport.intersection(Rect::new(
                 completion_area.x,
-                completion_area.y.saturating_sub(3),
-                BASE_WIDTH * 3,
-                3,
+                completion_area.y.saturating_sub(height),
+                width,
+                height,
             ));
 
             let background = theme.get("ui.help");
