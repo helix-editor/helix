@@ -2524,8 +2524,8 @@ fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let part = input.split(' ').next().unwrap_or_default();
 
-        if let Some(cmd::TypableCommand { doc, .. }) = cmd::COMMANDS.get(part) {
-            return Some(doc);
+        if let Some(cmd::TypableCommand { doc, aliases, .. }) = cmd::COMMANDS.get(part) {
+            return Some((doc, aliases));
         }
 
         None

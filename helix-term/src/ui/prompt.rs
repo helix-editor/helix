@@ -355,8 +355,24 @@ impl Prompt {
             }
         }
 
-        if let Some(doc) = (self.doc_fn)(&self.line) {
-            let mut text = ui::Text::new(doc.to_string());
+        if let Some((doc, aliases)) = (self.doc_fn)(&self.line) {
+            let mut string = String::with_capacity(
+                doc.len() + aliases.iter().fold(0, |acc, alias| acc + alias.len() + 2) + 12,
+            );
+            string.push_str(doc);
+
+            if aliases.len() > 0 {
+                string.push_str("\n");
+                string.push_str("Aliases: ");
+                for alias in aliases {
+                    string.push_str(alias);
+                    string.push_str(", ");
+                }
+                string.pop();
+                string.pop();
+            }
+
+            let mut text = ui::Text::new(string);
 
             let viewport = area;
             let area = viewport.intersection(Rect::new(
