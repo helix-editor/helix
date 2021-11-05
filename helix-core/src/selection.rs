@@ -363,7 +363,9 @@ impl Selection {
     /// Adds a new range to the selection and makes it the primary range.
     pub fn remove(mut self, index: usize) -> Self {
         self.ranges.remove(index);
-        if index < self.primary_index || self.primary_index == self.ranges.len() {
+        if index < self.primary_index
+            || self.primary_index == self.ranges.len() && self.primary_index > 0
+        {
             self.primary_index -= 1;
         }
         self
