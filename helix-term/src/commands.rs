@@ -32,7 +32,7 @@ use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
-    ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, FilePicker, Picker, Popup, Prompt, PromptDoc, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -2525,7 +2525,7 @@ fn command_mode(cx: &mut Context) {
         let part = input.split(' ').next().unwrap_or_default();
 
         if let Some(cmd::TypableCommand { doc, aliases, .. }) = cmd::COMMANDS.get(part) {
-            return Some((doc, aliases));
+            return Some(PromptDoc { doc, aliases });
         }
 
         None

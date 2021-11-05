@@ -24,7 +24,12 @@ pub struct Prompt {
     history_pos: Option<usize>,
     completion_fn: Box<dyn FnMut(&str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
-    pub doc_fn: Box<dyn Fn(&str) -> Option<(&'static str, &'static [&'static str])>>,
+    pub doc_fn: Box<dyn Fn(&str) -> Option<PromptDoc>>,
+}
+
+pub struct PromptDoc {
+    pub doc: &'static str,
+    pub aliases: &'static [&'static str],
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -355,14 +360,14 @@ impl Prompt {
             }
         }
 
-        if let Some((doc, aliases)) = (self.doc_fn)(&self.line) {
+        if let Some(PromptDoc { doc, aliases }) = (self.doc_fn)(&self.line) {
             let mut string = String::with_capacity(
                 doc.len() + aliases.iter().fold(0, |acc, alias| acc + alias.len() + 2) + 12,
             );
             string.push_str(doc);
 
-            if aliases.len() > 0 {
-                string.push_str("\n");
+            if !aliases.is_empty() {
+                string.push('\n');
                 string.push_str("Aliases: ");
                 for alias in aliases {
                     string.push_str(alias);
