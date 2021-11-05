@@ -2263,14 +2263,14 @@ mod cmd {
         TypableCommand {
             name: "write-quit",
             aliases: &["wq", "x"],
-            doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
+            doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt).",
             fun: write_quit,
             completer: Some(completers::filename),
         },
         TypableCommand {
             name: "write-quit!",
             aliases: &["wq!", "x!"],
-            doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
+            doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt).",
             fun: force_write_quit,
             completer: Some(completers::filename),
         },
