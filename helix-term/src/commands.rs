@@ -3679,13 +3679,19 @@ pub mod insert {
 fn undo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
-    doc.undo(view_id);
+    let success = doc.undo(view_id);
+    if !success {
+        cx.editor.set_status("Already at oldest change".to_owned());
+    }
 }
 
 fn redo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
-    doc.redo(view_id);
+    let success = doc.redo(view_id);
+    if !success {
+        cx.editor.set_status("Already at newest change".to_owned());
+    }
 }
 
 // Yank / Paste
