@@ -3,6 +3,7 @@ use serde::Deserialize;
 use crate::keymap::Keymaps;
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     pub theme: Option<String>,
     #[serde(default)]
@@ -14,7 +15,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     pub display_messages: bool,
 }
