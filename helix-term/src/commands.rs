@@ -23,7 +23,7 @@ use helix_view::{
 
 use anyhow::{anyhow, bail, Context as _};
 use helix_lsp::{
-    lsp,
+    block_on, lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -339,6 +339,7 @@ impl Command {
         shell_append_output, "Append output of shell command after each selection",
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
+        rename_symbol, "Rename symbol",
     );
 }
 
@@ -2749,14 +2750,104 @@ pub fn code_action(cx: &mut Context) {
     )
 }
 
+pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
+    use lsp::ResourceOp;
+    use std::fs;
+    match op {
+        ResourceOp::Create(op) => {
+            let path = op.uri.to_file_path().unwrap();
+            let ignore_if_exists = if let Some(options) = &op.options {
+                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
+            } else {
+                false
+            };
+            if ignore_if_exists && path.exists() {
+                Ok(())
+            } else {
+                fs::write(&path, [])
+            }
+        }
+        ResourceOp::Delete(op) => {
+            let path = op.uri.to_file_path().unwrap();
+            if path.is_dir() {
+                let recursive = if let Some(options) = &op.options {
+                    options.recursive.unwrap_or(false)
+                } else {
+                    false
+                };
+                if recursive {
+                    fs::remove_dir_all(&path)
+                } else {
+                    fs::remove_dir(&path)
+                }
+            } else if path.is_file() {
+                fs::remove_file(&path)
+            } else {
+                Ok(())
+            }
+        }
+        ResourceOp::Rename(op) => {
+            let from = op.old_uri.to_file_path().unwrap();
+            let to = op.new_uri.to_file_path().unwrap();
+            let ignore_if_exists = if let Some(options) = &op.options {
+                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
+            } else {
+                false
+            };
+            if ignore_if_exists && to.exists() {
+                Ok(())
+            } else {
+                fs::rename(&from, &to)
+            }
+        }
+    }
+}
+
 fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
+    let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
+        let path = uri
+            .to_file_path()
+            .expect("unable to convert URI to filepath");
+
+        let current_view_id = view!(editor).id;
+        let doc_id = editor.open(path, Action::Load).unwrap();
+        let doc = editor
+            .document_mut(doc_id)
+            .expect("Document for document_changes not found");
+
+        // Need to determine a view for apply/append_changes_to_history
+        let selections = doc.selections();
+        let view_id = if selections.contains_key(&current_view_id) {
+            // use current if possible
+            current_view_id
+        } else {
+            // Hack: we take the first available view_id
+            selections
+                .keys()
+                .next()
+                .copied()
+                .expect("No view_id available")
+        };
+
+        let transaction = helix_lsp::util::generate_transaction_from_edits(
+            doc.text(),
+            text_edits,
+            offset_encoding,
+        );
+        doc.apply(&transaction, view_id);
+        doc.append_changes_to_history(view_id);
+    };
+
     if let Some(ref changes) = workspace_edit.changes {
         log::debug!("workspace changes: {:?}", changes);
-        editor.set_error(String::from("Handling workspace_edit.changes is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+        for (uri, text_edits) in changes {
+            let text_edits = text_edits.to_vec();
+            apply_edits(uri, text_edits);
+        }
         return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
         // TODO: find some example that uses workspace changes, and test it
@@ -2774,30 +2865,6 @@ fn apply_workspace_edit(
         match document_changes {
             lsp::DocumentChanges::Edits(document_edits) => {
                 for document_edit in document_edits {
-                    let path = document_edit
-                        .text_document
-                        .uri
-                        .to_file_path()
-                        .expect("unable to convert URI to filepath");
-                    let current_view_id = view!(editor).id;
-                    let doc = editor
-                        .document_by_path_mut(path)
-                        .expect("Document for document_changes not found");
-
-                    // Need to determine a view for apply/append_changes_to_history
-                    let selections = doc.selections();
-                    let view_id = if selections.contains_key(&current_view_id) {
-                        // use current if possible
-                        current_view_id
-                    } else {
-                        // Hack: we take the first available view_id
-                        selections
-                            .keys()
-                            .next()
-                            .copied()
-                            .expect("No view_id available")
-                    };
-
                     let edits = document_edit
                         .edits
                         .iter()
@@ -2809,19 +2876,33 @@ fn apply_workspace_edit(
                         })
                         .cloned()
                         .collect();
-
-                    let transaction = helix_lsp::util::generate_transaction_from_edits(
-                        doc.text(),
-                        edits,
-                        offset_encoding,
-                    );
-                    doc.apply(&transaction, view_id);
-                    doc.append_changes_to_history(view_id);
+                    apply_edits(&document_edit.text_document.uri, edits);
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                editor.set_error(String::from("Handling document operations is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+                for operateion in operations {
+                    match operateion {
+                        lsp::DocumentChangeOperation::Op(op) => {
+                            apply_document_resource_op(op).unwrap();
+                        }
+
+                        lsp::DocumentChangeOperation::Edit(document_edit) => {
+                            let edits = document_edit
+                                .edits
+                                .iter()
+                                .map(|edit| match edit {
+                                    lsp::OneOf::Left(text_edit) => text_edit,
+                                    lsp::OneOf::Right(annotated_text_edit) => {
+                                        &annotated_text_edit.text_edit
+                                    }
+                                })
+                                .cloned()
+                                .collect();
+                            apply_edits(&document_edit.text_document.uri, edits);
+                        }
+                    }
+                }
             }
         }
     }
@@ -4981,4 +5062,41 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     let transaction = Transaction::change(text, changes);
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+}
+
+fn rename_symbol(cx: &mut Context) {
+    let prompt = Prompt::new(
+        "Rename to: ".into(),
+        None,
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+
+            log::debug!("renaming to: {:?}", input);
+
+            let (view, doc) = current!(cx.editor);
+            let language_server = match doc.language_server() {
+                Some(language_server) => language_server,
+                None => return,
+            };
+
+            let offset_encoding = language_server.offset_encoding();
+
+            let pos = pos_to_lsp_pos(
+                doc.text(),
+                doc.selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..)),
+                offset_encoding,
+            );
+
+            let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
+            let edits = block_on(task).unwrap_or_default();
+            log::debug!("Edits from LSP: {:?}", edits);
+            apply_workspace_edit(&mut cx.editor, offset_encoding, &edits);
+        },
+    );
+    cx.push_layer(Box::new(prompt));
 }
