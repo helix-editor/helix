@@ -1184,17 +1184,24 @@ fn search_impl(
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
-    // Get the right side of the primary block cursor.
-    let start = text.char_to_byte(graphemes::next_grapheme_boundary(
-        text,
-        selection.primary().cursor(text),
-    ));
+    // Get the right side of the primary block cursor for forward search, or the
+    //grapheme before the start of the selection for reverse search.
+    let start = match direction {
+        Direction::Forward => text.char_to_byte(graphemes::next_grapheme_boundary(
+            text,
+            selection.primary().to(),
+        )),
+        Direction::Backward => text.char_to_byte(graphemes::prev_grapheme_boundary(
+            text,
+            selection.primary().from(),
+        )),
+    };
 
     //A regex::Match returns byte-positions in the str. In the case where we
     //do a reverse search and wraparound to the end, we don't need to search
     //the text before the current cursor position for matches, but by slicing
     //it out, we need to add it back to the position of the selection.
-    let mut reverse_search_wrapped_offset = 0;
+    let mut offset = 0;
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
@@ -1202,19 +1209,15 @@ fn search_impl(
         Direction::Forward => regex
             .find_at(contents, start)
             .or_else(|| regex.find(contents)),
-        Direction::Backward => regex
-            .find_iter(&contents[..start])
-            .fold((None, None), |(_x, y), new| (y, Some(new)))
-            .0
-            .or_else(|| {
-                reverse_search_wrapped_offset = start;
-                regex.find_iter(&contents[start..]).last()
-            }),
+        Direction::Backward => regex.find_iter(&contents[..start]).last().or_else(|| {
+            offset = start;
+            regex.find_iter(&contents[start..]).last()
+        }),
     };
     // TODO: message on wraparound
     if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start() + reverse_search_wrapped_offset);
-        let end = text.byte_to_char(mat.end() + reverse_search_wrapped_offset);
+        let start = text.byte_to_char(mat.start() + offset);
+        let end = text.byte_to_char(mat.end() + offset);
 
         if end == 0 {
             // skip empty matches that don't make sense
