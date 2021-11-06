@@ -1085,7 +1085,7 @@ impl EditorView {
                 if let Some((line, _, view_id)) = result {
                     editor.tree.focus = view_id;
 
-                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+                    let doc = editor.documents.get_mut(&editor.tree.get(view_id).doc).unwrap();
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
                         commands::dap_toggle_breakpoint(cxt);
@@ -1184,7 +1184,7 @@ impl EditorView {
                 if let Some((line, _, view_id)) = result {
                     cxt.editor.tree.focus = view_id;
 
-                    let doc = &mut cxt.editor.documents[cxt.editor.tree.get(view_id).doc];
+                    let doc = cxt.editor.documents.get_mut(&cxt.editor.tree.get(view_id).doc).unwrap();
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
                         if modifiers == crossterm::event::KeyModifiers::ALT {

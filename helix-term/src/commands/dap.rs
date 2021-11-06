@@ -321,7 +321,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     cx.push_layer(Box::new(Picker::new(
         true,
-        config.templates.clone(),
+        config.templates,
         |template| template.name.as_str().into(),
         |editor, template, _action| {
             let completions = template.completion.clone();
@@ -560,7 +560,6 @@ pub fn dap_enable_exceptions(cx: &mut Context) {
     ) {
         cx.editor
             .set_error(format!("Failed to set up exception breakpoints: {:?}", e));
-        return;
     }
 }
 
@@ -573,7 +572,6 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
     if let Err(e) = block_on(debugger.set_exception_breakpoints(vec![])) {
         cx.editor
             .set_error(format!("Failed to set up exception breakpoints: {:?}", e));
-        return;
     }
 }
 
