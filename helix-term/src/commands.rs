@@ -2229,6 +2229,45 @@ mod cmd {
         Ok(())
     }
 
+    fn help(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        if args.is_empty() {
+            // TODO: Open a list of commands?
+            todo!()
+        }
+
+        let command = {
+            if Command::COMMAND_LIST
+                .iter()
+                .any(|command| command.name() == args[0])
+            {
+                args[0]
+            } else {
+                let _keys = args
+                    .iter()
+                    .map(|key| key.parse::<KeyEvent>())
+                    .collect::<Result<Vec<KeyEvent>, _>>()?;
+                // TODO: Need to access the keymap here to find the corresponding command
+                todo!()
+            }
+        };
+
+        let mut path = helix_core::runtime_dir();
+        path.push("help");
+        path.push(format!("{}.txt", command));
+
+        if !path.is_file() {
+            return Err(anyhow!("No help available for '{}'", args.join(" ")));
+        }
+        let id = cx.editor.open(path, Action::HorizontalSplit)?;
+        cx.editor.document_mut(id).unwrap().set_path(None)?;
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2488,6 +2527,13 @@ mod cmd {
             doc: "Open the tutorial.",
             fun: tutor,
             completer: None,
+        },
+        TypableCommand {
+            name: "help",
+            aliases: &["h"],
+            doc: "Open documentation for a command or keybind.",
+            fun: help,
+            completer: Some(completers::help),
         },
     ];
 

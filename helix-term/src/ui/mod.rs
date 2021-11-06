@@ -220,6 +220,36 @@ pub mod completers {
         })
     }
 
+    pub fn help(input: &str) -> Vec<Completion> {
+        let path = helix_core::runtime_dir().join("help");
+        let commands: Vec<String> = std::fs::read_dir(path)
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        let entry = entry.ok()?;
+                        let path = entry.path();
+                        (path.extension()? == "txt")
+                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = commands
+            .into_iter()
+            .map(|name| ((0..), Cow::from(name)))
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+
+        matches.into_iter().map(|(name, _)| ((0..), name)).collect()
+    }
+
     #[derive(Copy, Clone, PartialEq, Eq)]
     enum FileMatch {
         /// Entry should be ignored
