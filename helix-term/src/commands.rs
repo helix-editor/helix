@@ -743,13 +743,7 @@ where
             // usually mix line endings.  But we should fix it eventually
             // anyway.
             {
-                current!(cx.editor)
-                    .1
-                    .line_ending
-                    .as_str()
-                    .chars()
-                    .next()
-                    .unwrap()
+                doc!(cx.editor).line_ending.as_str().chars().next().unwrap()
             }
 
             KeyEvent {
@@ -1746,7 +1740,7 @@ mod cmd {
 
         // If no argument, report current indent style.
         if args.is_empty() {
-            let style = current!(cx.editor).1.indent_style;
+            let style = doc!(cx.editor).indent_style;
             cx.editor.set_status(match style {
                 Tabs => "tabs".into(),
                 Spaces(1) => "1 space".into(),
@@ -1785,7 +1779,7 @@ mod cmd {
 
         // If no argument, report current line ending setting.
         if args.is_empty() {
-            let line_ending = current!(cx.editor).1.line_ending;
+            let line_ending = doc!(cx.editor).line_ending;
             cx.editor.set_status(match line_ending {
                 Crlf => "crlf".into(),
                 LF => "line feed".into(),
@@ -3794,7 +3788,7 @@ fn yank_joined_to_clipboard_impl(
 }
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
-    let line_ending = current!(cx.editor).1.line_ending;
+    let line_ending = doc!(cx.editor).line_ending;
     let _ = yank_joined_to_clipboard_impl(
         &mut cx.editor,
         line_ending.as_str(),
@@ -3828,7 +3822,7 @@ fn yank_main_selection_to_clipboard(cx: &mut Context) {
 }
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
-    let line_ending = current!(cx.editor).1.line_ending;
+    let line_ending = doc!(cx.editor).line_ending;
     let _ = yank_joined_to_clipboard_impl(
         &mut cx.editor,
         line_ending.as_str(),
@@ -4517,7 +4511,7 @@ fn match_brackets(cx: &mut Context) {
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
-    let (view, _doc) = current!(cx.editor);
+    let view = view_mut!(cx.editor);
 
     if let Some((id, selection)) = view.jumps.forward(count) {
         view.doc = *id;
