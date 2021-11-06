@@ -12,7 +12,7 @@ homepage = "https://helix-editor.com"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-core = { version = "0.4", path = "../helix-core" }
+helix-core = { version = "0.5", path = "../helix-core" }
 anyhow = "1.0"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
