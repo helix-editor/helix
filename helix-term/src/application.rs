@@ -60,14 +60,19 @@ impl Application {
             std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
 
         // load default and user config, and merge both
-        let def_lang_conf: toml::Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Could not parse built-in languages.toml, something must be very wrong");
-        let user_lang_conf: Option<toml::Value> = std::fs::read(conf_dir.join("languages.toml"))
+        let builtin_err_msg =
+            "Could not parse built-in languages.toml, something must be very wrong";
+        let def_lang_conf: toml::Value =
+            toml::from_slice(include_bytes!("../../languages.toml")).expect(builtin_err_msg);
+        let def_syn_loader_conf: helix_core::syntax::Configuration =
+            def_lang_conf.clone().try_into().expect(builtin_err_msg);
+        let user_lang_conf = std::fs::read(conf_dir.join("languages.toml"))
             .ok()
-            .map(|raw| toml::from_slice(&raw).expect("Could not parse user languages.toml"));
+            .map(|raw| toml::from_slice(&raw));
         let lang_conf = match user_lang_conf {
-            Some(value) => merge_toml_values(def_lang_conf, value),
-            None => def_lang_conf,
+            Some(Ok(value)) => Ok(merge_toml_values(def_lang_conf, value)),
+            Some(err @ Err(_)) => err,
+            None => Ok(def_lang_conf),
         };
 
         let theme = if let Some(theme) = &config.theme {
@@ -83,8 +88,15 @@ impl Application {
         };
 
         let syn_loader_conf: helix_core::syntax::Configuration = lang_conf
-            .try_into()
-            .expect("Could not parse merged (built-in + user) languages.toml");
+            .and_then(|conf| conf.try_into())
+            .unwrap_or_else(|err| {
+                eprintln!("Bad language config: {}", err);
+                eprintln!("Press <ENTER> to continue with default language config");
+                use std::io::Read;
+                // This waits for an enter press.
+                let _ = std::io::stdin().read(&mut []);
+                def_syn_loader_conf
+            });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut editor = Editor::new(
