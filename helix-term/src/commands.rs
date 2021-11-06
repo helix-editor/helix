@@ -217,8 +217,11 @@ impl Command {
         split_selection, "Split selection into subselections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
         search, "Search for regex pattern",
+        rsearch, "Reverse search for regex pattern",
         search_next, "Select next search match",
+        search_prev, "Select previous search match",
         extend_search_next, "Add next search match to selection",
+        extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
         global_search, "Global Search in workspace folder",
         extend_line, "Select current line, if already selected, extend to next line",
@@ -1170,38 +1173,62 @@ fn split_selection_on_newline(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
+fn search_impl(
+    doc: &mut Document,
+    view: &mut View,
+    contents: &str,
+    regex: &Regex,
+    movement: Movement,
+    direction: Direction,
+) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
-    // Get the right side of the primary block cursor.
-    let start = text.char_to_byte(graphemes::next_grapheme_boundary(
-        text,
-        selection.primary().cursor(text),
-    ));
+    // Get the right side of the primary block cursor for forward search, or the
+    //grapheme before the start of the selection for reverse search.
+    let start = match direction {
+        Direction::Forward => text.char_to_byte(graphemes::next_grapheme_boundary(
+            text,
+            selection.primary().to(),
+        )),
+        Direction::Backward => text.char_to_byte(graphemes::prev_grapheme_boundary(
+            text,
+            selection.primary().from(),
+        )),
+    };
+
+    //A regex::Match returns byte-positions in the str. In the case where we
+    //do a reverse search and wraparound to the end, we don't need to search
+    //the text before the current cursor position for matches, but by slicing
+    //it out, we need to add it back to the position of the selection.
+    let mut offset = 0;
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mat = regex
-        .find_at(contents, start)
-        .or_else(|| regex.find(contents));
+    let mat = match direction {
+        Direction::Forward => regex
+            .find_at(contents, start)
+            .or_else(|| regex.find(contents)),
+        Direction::Backward => regex.find_iter(&contents[..start]).last().or_else(|| {
+            offset = start;
+            regex.find_iter(&contents[start..]).last()
+        }),
+    };
     // TODO: message on wraparound
     if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start());
-        let end = text.byte_to_char(mat.end());
+        let start = text.byte_to_char(mat.start() + offset);
+        let end = text.byte_to_char(mat.end() + offset);
 
         if end == 0 {
             // skip empty matches that don't make sense
             return;
         }
-
-        let selection = if extend {
-            selection.clone().push(Range::new(start, end))
-        } else {
-            selection
+        let selection = match movement {
+            Movement::Extend => selection.clone().push(Range::new(start, end)),
+            Movement::Move => selection
                 .clone()
                 .remove(selection.primary_index())
-                .push(Range::new(start, end))
+                .push(Range::new(start, end)),
         };
 
         doc.set_selection(view.id, selection);
@@ -1220,6 +1247,14 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
 
 // TODO: use one function for search vs extend
 fn search(cx: &mut Context) {
+    searcher(cx, Direction::Forward)
+}
+
+fn rsearch(cx: &mut Context) {
+    searcher(cx, Direction::Backward)
+}
+// TODO: use one function for search vs extend
+fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let (_, doc) = current!(cx.editor);
 
@@ -1245,14 +1280,14 @@ fn search(cx: &mut Context) {
             if event != PromptEvent::Update {
                 return;
             }
-            search_impl(doc, view, &contents, &regex, false);
+            search_impl(doc, view, &contents, &regex, Movement::Move, direction);
         },
     );
 
     cx.push_layer(Box::new(prompt));
 }
 
-fn search_next_impl(cx: &mut Context, extend: bool) {
+fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
@@ -1267,7 +1302,7 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, extend);
+            search_impl(doc, view, &contents, &regex, movement, direction);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
@@ -1279,11 +1314,18 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
 }
 
 fn search_next(cx: &mut Context) {
-    search_next_impl(cx, false);
+    search_next_or_prev_impl(cx, Movement::Move, Direction::Forward);
 }
 
+fn search_prev(cx: &mut Context) {
+    search_next_or_prev_impl(cx, Movement::Move, Direction::Backward);
+}
 fn extend_search_next(cx: &mut Context) {
-    search_next_impl(cx, true);
+    search_next_or_prev_impl(cx, Movement::Extend, Direction::Forward);
+}
+
+fn extend_search_prev(cx: &mut Context) {
+    search_next_or_prev_impl(cx, Movement::Extend, Direction::Backward);
 }
 
 fn search_selection(cx: &mut Context) {
