@@ -381,6 +381,7 @@ dependencies = [
  "serde",
  "serde_json",
  "similar",
+ "slotmap",
  "smallvec",
  "tendril",
  "toml",

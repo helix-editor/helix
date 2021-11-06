@@ -283,7 +283,7 @@ impl Editor {
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
-        doc.detect_language(Some(&self.theme), &self.syn_loader);
+        doc.detect_language(Some(&self.theme), self.syn_loader.clone());
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
@@ -462,7 +462,12 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
+            let mut doc = Document::open(
+                &path,
+                None,
+                Some(&self.theme),
+                Some(self.syn_loader.clone()),
+            )?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 

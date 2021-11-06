@@ -68,13 +68,12 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        loader: &syntax::Loader,
         config: &helix_view::editor::Config,
     ) {
         let inner = view.inner_area();
         let area = view.area;
 
-        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, loader);
+        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
@@ -121,8 +120,7 @@ impl EditorView {
         doc: &'doc Document,
         offset: Position,
         height: u16,
-        theme: &Theme,
-        loader: &syntax::Loader,
+        _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
         let last_line = std::cmp::min(
@@ -142,25 +140,8 @@ impl EditorView {
         // TODO: range doesn't actually restrict source, just highlight range
         let highlights = match doc.syntax() {
             Some(syntax) => {
-                let scopes = theme.scopes();
                 syntax
-                    .highlight_iter(text.slice(..), Some(range), None, |language| {
-                        loader.language_configuration_for_injection_string(language)
-                            .and_then(|language_config| {
-                                let config = language_config.highlight_config(scopes)?;
-                                let config_ref = config.as_ref();
-                                // SAFETY: the referenced `HighlightConfiguration` behind
-                                // the `Arc` is guaranteed to remain valid throughout the
-                                // duration of the highlight.
-                                let config_ref = unsafe {
-                                    std::mem::transmute::<
-                                        _,
-                                        &'static syntax::HighlightConfiguration,
-                                    >(config_ref)
-                                };
-                                Some(config_ref)
-                            })
-                    })
+                    .highlight_iter(text.slice(..), Some(range), None)
                     .map(|event| event.unwrap())
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
@@ -1070,7 +1051,6 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            let loader = &cx.editor.syn_loader;
             self.render_view(
                 doc,
                 view,
@@ -1078,7 +1058,6 @@ impl Component for EditorView {
                 surface,
                 &cx.editor.theme,
                 is_focused,
-                loader,
                 &cx.editor.config,
             );
         }

@@ -454,7 +454,7 @@ where
 
         let language_config = loader.language_config_for_scope("source.rust").unwrap();
         let highlight_config = language_config.highlight_config(&[]).unwrap();
-        let syntax = Syntax::new(&doc, highlight_config.clone());
+        let syntax = Syntax::new(&doc, highlight_config.clone(), std::sync::Arc::new(loader));
         let text = doc.slice(..);
         let tab_width = 4;
 
