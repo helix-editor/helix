@@ -1223,11 +1223,18 @@ fn search_impl(
             // skip empty matches that don't make sense
             return;
         }
+
+        // Determine range direction based on the primary range
+        let primary = selection.primary();
+        let range = if primary.head < primary.anchor {
+            Range::new(end, start)
+        } else {
+            Range::new(start, end)
+        };
+
         let selection = match movement {
-            Movement::Extend => selection.clone().push(Range::new(start, end)),
-            Movement::Move => selection
-                .clone()
-                .replace(selection.primary_index(), Range::new(start, end)),
+            Movement::Extend => selection.clone().push(range),
+            Movement::Move => selection.clone().replace(selection.primary_index(), range),
         };
 
         doc.set_selection(view.id, selection);
