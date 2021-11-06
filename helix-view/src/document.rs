@@ -918,6 +918,9 @@ impl Document {
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
+        // sort by range
+        self.diagnostics
+            .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
 }
 
