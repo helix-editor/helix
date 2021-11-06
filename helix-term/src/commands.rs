@@ -4698,7 +4698,7 @@ fn surround_add(cx: &mut Context) {
             let selection = doc.selection(view.id);
             let (open, close) = surround::get_pair(ch);
 
-            let mut changes = Vec::new();
+            let mut changes = Vec::with_capacity(selection.len() * 2);
             for range in selection.iter() {
                 changes.push((range.from(), range.from(), Some(Tendril::from_char(open))));
                 changes.push((range.to(), range.to(), Some(Tendril::from_char(close))));
