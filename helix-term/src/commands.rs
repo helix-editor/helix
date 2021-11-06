@@ -2196,8 +2196,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-        let id = doc.id();
+        let id = view!(cx.editor).doc;
 
         if let Some(path) = args.get(0) {
             cx.editor.open(path.into(), Action::VerticalSplit)?;
@@ -2213,8 +2212,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-        let id = doc.id();
+        let id = view!(cx.editor).doc;
 
         if let Some(path) = args.get(0) {
             cx.editor.open(path.into(), Action::HorizontalSplit)?;
