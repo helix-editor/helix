@@ -525,11 +525,7 @@ impl EditorView {
 
                 if let Some(breakpoint) = user.iter().find(|breakpoint| breakpoint.line - 1 == line)
                 {
-                    let unverified = match dbg_breakpoints {
-                        Some(_) => debugger_breakpoint.map(|b| !b.verified).unwrap_or(true),
-                        // We cannot mark breakpoint as unverified unless we have a debugger
-                        None => false,
-                    };
+                    let verified = debugger_breakpoint.map(|b| b.verified).unwrap_or(false);
                     let mut style =
                         if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
                             error.add_modifier(Modifier::UNDERLINED)
@@ -540,7 +536,7 @@ impl EditorView {
                         } else {
                             warning
                         };
-                    if unverified {
+                    if !verified {
                         // Faded colors
                         style = if let Some(Color::Rgb(r, g, b)) = style.fg {
                             style.fg(Color::Rgb(
