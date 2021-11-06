@@ -7,7 +7,7 @@ use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 use log::{error, warn};
 
 use std::{
-    io::{stdout, Write},
+    io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -17,6 +17,7 @@ use anyhow::Error;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute, terminal,
+    tty::IsTty,
 };
 #[cfg(not(windows))]
 use {
@@ -122,8 +123,12 @@ impl Application {
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
             }
-        } else {
+        } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
+        } else {
+            if let Err(_) = editor.new_file_from_stdin(Action::VerticalSplit) {
+                editor.new_file(Action::VerticalSplit);
+            }
         }
 
         editor.set_theme(theme);
