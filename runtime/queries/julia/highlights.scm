@@ -15,7 +15,7 @@
 
 (field_expression
   (identifier)
-  (identifier) @field .)
+  (identifier) @variable.other.member .)
 
 (function_definition
   name: (identifier) @function)
@@ -80,14 +80,14 @@
 (struct_definition
   name: (identifier) @type)
 
-(number) @number
+(number) @constant.numeric.integer
 (range_expression
-    (identifier) @number
-      (eq? @number "end"))
+    (identifier) @constant.numeric.integer
+      (eq? @constant.numeric.integer "end"))
 (range_expression
   (_
-    (identifier) @number
-      (eq? @number "end")))
+    (identifier) @constant.numeric.integer
+      (eq? @constant.numeric.integer "end")))
 (coefficient_expression
   (number)
   (identifier) @constant.builtin)

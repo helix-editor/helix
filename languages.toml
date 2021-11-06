@@ -312,7 +312,7 @@ injection-regex = "php"
 file-types = ["php"]
 roots = []
 
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "latex"
@@ -458,3 +458,12 @@ file-types = ["scm"]
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "cmake"
+scope = "source.cmake"
+file-types = ["cmake", "CMakeLists.txt"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "cmake-language-server" }

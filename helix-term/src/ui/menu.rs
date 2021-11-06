@@ -64,25 +64,23 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn score(&mut self, pattern: &str) {
-        // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self {
-            ref mut matcher,
-            ref mut matches,
-            ref options,
-            ..
-        } = *self;
-
         // reuse the matches allocation
-        matches.clear();
-        matches.extend(options.iter().enumerate().filter_map(|(index, option)| {
-            let text = option.filter_text();
-            // TODO: using fuzzy_indices could give us the char idx for match highlighting
-            matcher
-                .fuzzy_match(text, pattern)
-                .map(|score| (index, score))
-        }));
+        self.matches.clear();
+        self.matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    let text = option.filter_text();
+                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    self.matcher
+                        .fuzzy_match(text, pattern)
+                        .map(|score| (index, score))
+                }),
+        );
         // matches.sort_unstable_by_key(|(_, score)| -score);
-        matches.sort_unstable_by_key(|(index, _score)| options[*index].sort_text());
+        self.matches
+            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text());
 
         // reset cursor position
         self.cursor = None;
@@ -100,7 +98,8 @@ impl<T: Item> Menu<T> {
 
     pub fn move_up(&mut self) {
         let len = self.matches.len();
-        let pos = self.cursor.map_or(0, |i| (i + len.saturating_sub(1)) % len) % len;
+        let max_index = len.saturating_sub(1);
+        let pos = self.cursor.map_or(max_index, |i| (i + max_index) % len) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
@@ -216,6 +215,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             | KeyEvent {
                 code: KeyCode::Char('p'),
                 modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
@@ -232,6 +235,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             }
             | KeyEvent {
                 code: KeyCode::Char('n'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Char('j'),
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 self.move_down();

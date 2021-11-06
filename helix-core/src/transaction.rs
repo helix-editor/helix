@@ -132,6 +132,9 @@ impl ChangeSet {
         if self.changes.is_empty() {
             return other;
         }
+        if other.changes.is_empty() {
+            return self;
+        }
 
         let len = self.changes.len();
 
@@ -463,6 +466,13 @@ impl Transaction {
             changes,
             selection: None,
         }
+    }
+
+    pub fn compose(mut self, other: Self) -> Self {
+        self.changes = self.changes.compose(other.changes);
+        // Other selection takes precedence
+        self.selection = other.selection;
+        self
     }
 
     pub fn with_selection(mut self, selection: Selection) -> Self {

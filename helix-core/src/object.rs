@@ -13,8 +13,13 @@ pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection)
         let parent = match tree
             .root_node()
             .descendant_for_byte_range(from, to)
-            .and_then(|node| node.parent())
-        {
+            .and_then(|node| {
+                if node.child_count() == 0 || (node.start_byte() == from && node.end_byte() == to) {
+                    node.parent()
+                } else {
+                    Some(node)
+                }
+            }) {
             Some(parent) => parent,
             None => return range,
         };

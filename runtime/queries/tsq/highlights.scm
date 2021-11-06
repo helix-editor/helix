@@ -35,12 +35,12 @@
 
 (comment) @comment
 
-(field_name) @property
+(field_name) @variable.other.member
 
 (capture) @label
 
 (predicate_name) @function
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 (node_name) @variable

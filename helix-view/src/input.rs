@@ -8,7 +8,7 @@ use crate::keyboard::{KeyCode, KeyModifiers};
 
 /// Represents a key event.
 // We use a newtype here because we want to customize Deserialize and Display.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct KeyEvent {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,

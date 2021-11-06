@@ -186,6 +186,11 @@ impl Prompt {
         self.exit_selection();
     }
 
+    pub fn insert_str(&mut self, s: &str) {
+        self.line.insert_str(self.cursor, s);
+        self.cursor += s.len();
+    }
+
     pub fn move_cursor(&mut self, movement: Movement) {
         let pos = self.eval_movement(movement);
         self.cursor = pos
@@ -475,6 +480,26 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             KeyEvent {
+                code: KeyCode::Char('s'),
+                modifiers: KeyModifiers::CONTROL,
+            } => {
+                let (view, doc) = current!(cx.editor);
+                let text = doc.text().slice(..);
+
+                use helix_core::textobject;
+                let range = textobject::textobject_word(
+                    text,
+                    doc.selection(view.id).primary(),
+                    textobject::TextObject::Inside,
+                    1,
+                );
+                let line = text.slice(range.from()..range.to()).to_string();
+                if !line.is_empty() {
+                    self.insert_str(line.as_str());
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+                }
+            }
+            KeyEvent {
                 code: KeyCode::Enter,
                 ..
             } => {
@@ -502,6 +527,7 @@ impl Component for Prompt {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Backward);
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             KeyEvent {
@@ -515,15 +541,22 @@ impl Component for Prompt {
                 if let Some(register) = self.history_register {
                     let register = cx.editor.registers.get_mut(register);
                     self.change_history(register.read(), CompletionDirection::Forward);
+                    (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
             KeyEvent {
                 code: KeyCode::Tab, ..
-            } => self.change_completion_selection(CompletionDirection::Forward),
+            } => {
+                self.change_completion_selection(CompletionDirection::Forward);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update)
+            }
             KeyEvent {
                 code: KeyCode::BackTab,
                 ..
-            } => self.change_completion_selection(CompletionDirection::Backward),
+            } => {
+                self.change_completion_selection(CompletionDirection::Backward);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update)
+            }
             KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::CONTROL,

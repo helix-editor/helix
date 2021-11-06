@@ -21,6 +21,8 @@ To override global configuration parameters, create a `config.toml` file located
 | `auto-pairs` | Enable automatic insertion of pairs to parenthese, brackets, etc. | `true` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
+| `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
+| `auto-info` | Whether to display infoboxes | `true` |
 
 ## LSP
 

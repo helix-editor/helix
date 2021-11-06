@@ -4,48 +4,50 @@ use regex::Regex;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 
-// Stores the history of changes to a buffer.
-//
-// Currently the history is represented as a vector of revisions. The vector
-// always has at least one element: the empty root revision. Each revision
-// with the exception of the root has a parent revision, a [Transaction]
-// that can be applied to its parent to transition from the parent to itself,
-// and an inversion of that transaction to transition from the parent to its
-// latest child.
-//
-// When using `u` to undo a change, an inverse of the stored transaction will
-// be applied which will transition the buffer to the parent state.
-//
-// Each revision with the exception of the last in the vector also has a
-// last child revision. When using `U` to redo a change, the last child transaction
-// will be applied to the current state of the buffer.
-//
-// The current revision is the one currently displayed in the buffer.
-//
-// Commiting a new revision to the history will update the last child of the
-// current revision, and push a new revision to the end of the vector.
-//
-// Revisions are commited with a timestamp. :earlier and :later can be used
-// to jump to the closest revision to a moment in time relative to the timestamp
-// of the current revision plus (:later) or minus (:earlier) the duration
-// given to the command. If a single integer is given, the editor will instead
-// jump the given number of revisions in the vector.
-//
-// Limitations:
-//  * Changes in selections currently don't commit history changes. The selection
-//    will only be updated to the state after a commited buffer change.
-//  * The vector of history revisions is currently unbounded. This might
-//    cause the memory consumption to grow significantly large during long
-//    editing sessions.
-//  * Because delete transactions currently don't store the text that they
-//    delete, we also store an inversion of the transaction.
+/// Stores the history of changes to a buffer.
+///
+/// Currently the history is represented as a vector of revisions. The vector
+/// always has at least one element: the empty root revision. Each revision
+/// with the exception of the root has a parent revision, a [Transaction]
+/// that can be applied to its parent to transition from the parent to itself,
+/// and an inversion of that transaction to transition from the parent to its
+/// latest child.
+///
+/// When using `u` to undo a change, an inverse of the stored transaction will
+/// be applied which will transition the buffer to the parent state.
+///
+/// Each revision with the exception of the last in the vector also has a
+/// last child revision. When using `U` to redo a change, the last child transaction
+/// will be applied to the current state of the buffer.
+///
+/// The current revision is the one currently displayed in the buffer.
+///
+/// Commiting a new revision to the history will update the last child of the
+/// current revision, and push a new revision to the end of the vector.
+///
+/// Revisions are commited with a timestamp. :earlier and :later can be used
+/// to jump to the closest revision to a moment in time relative to the timestamp
+/// of the current revision plus (:later) or minus (:earlier) the duration
+/// given to the command. If a single integer is given, the editor will instead
+/// jump the given number of revisions in the vector.
+///
+/// Limitations:
+///  * Changes in selections currently don't commit history changes. The selection
+///    will only be updated to the state after a commited buffer change.
+///  * The vector of history revisions is currently unbounded. This might
+///    cause the memory consumption to grow significantly large during long
+///    editing sessions.
+///  * Because delete transactions currently don't store the text that they
+///    delete, we also store an inversion of the transaction.
+///
+/// Using time to navigate the history: <https://github.com/helix-editor/helix/pull/194>
 #[derive(Debug)]
 pub struct History {
     revisions: Vec<Revision>,
     current: usize,
 }
 
-// A single point in history. See [History] for more information.
+/// A single point in history. See [History] for more information.
 #[derive(Debug)]
 struct Revision {
     parent: usize,
@@ -111,6 +113,7 @@ impl History {
         self.current == 0
     }
 
+    /// Undo the last edit.
     pub fn undo(&mut self) -> Option<&Transaction> {
         if self.at_root() {
             return None;
@@ -121,6 +124,7 @@ impl History {
         Some(&current_revision.inversion)
     }
 
+    /// Redo the last edit.
     pub fn redo(&mut self) -> Option<&Transaction> {
         let current_revision = &self.revisions[self.current];
         let last_child = current_revision.last_child?;
@@ -147,8 +151,8 @@ impl History {
         }
     }
 
-    // List of nodes on the way from `n` to 'a`. Doesn`t include `a`.
-    // Includes `n` unless `a == n`. `a` must be an ancestor of `n`.
+    /// List of nodes on the way from `n` to 'a`. Doesn`t include `a`.
+    /// Includes `n` unless `a == n`. `a` must be an ancestor of `n`.
     fn path_up(&self, mut n: usize, a: usize) -> Vec<usize> {
         let mut path = Vec::new();
         while n != a {
@@ -158,6 +162,7 @@ impl History {
         path
     }
 
+    /// Create a [`Transaction`] that will jump to a specific revision in the history.
     fn jump_to(&mut self, to: usize) -> Vec<Transaction> {
         let lca = self.lowest_common_ancestor(self.current, to);
         let up = self.path_up(self.current, lca);
@@ -171,10 +176,12 @@ impl History {
         up_txns.chain(down_txns).collect()
     }
 
+    /// Creates a [`Transaction`] that will undo `delta` revisions.
     fn jump_backward(&mut self, delta: usize) -> Vec<Transaction> {
         self.jump_to(self.current.saturating_sub(delta))
     }
 
+    /// Creates a [`Transaction`] that will redo `delta` revisions.
     fn jump_forward(&mut self, delta: usize) -> Vec<Transaction> {
         self.jump_to(
             self.current
@@ -183,7 +190,7 @@ impl History {
         )
     }
 
-    // Helper for a binary search case below.
+    /// Helper for a binary search case below.
     fn revision_closer_to_instant(&self, i: usize, instant: Instant) -> usize {
         let dur_im1 = instant.duration_since(self.revisions[i - 1].timestamp);
         let dur_i = self.revisions[i].timestamp.duration_since(instant);
@@ -194,6 +201,8 @@ impl History {
         }
     }
 
+    /// Creates a [`Transaction`] that will match a revision created at around
+    /// `instant`.
     fn jump_instant(&mut self, instant: Instant) -> Vec<Transaction> {
         let search_result = self
             .revisions
@@ -209,6 +218,8 @@ impl History {
         self.jump_to(revision)
     }
 
+    /// Creates a [`Transaction`] that will match a revision created `duration` ago
+    /// from the timestamp of current revision.
     fn jump_duration_backward(&mut self, duration: Duration) -> Vec<Transaction> {
         match self.revisions[self.current].timestamp.checked_sub(duration) {
             Some(instant) => self.jump_instant(instant),
@@ -216,6 +227,8 @@ impl History {
         }
     }
 
+    /// Creates a [`Transaction`] that will match a revision created `duration` in
+    /// the future from the timestamp of the current revision.
     fn jump_duration_forward(&mut self, duration: Duration) -> Vec<Transaction> {
         match self.revisions[self.current].timestamp.checked_add(duration) {
             Some(instant) => self.jump_instant(instant),
@@ -223,6 +236,7 @@ impl History {
         }
     }
 
+    /// Creates an undo [`Transaction`].
     pub fn earlier(&mut self, uk: UndoKind) -> Vec<Transaction> {
         use UndoKind::*;
         match uk {
@@ -231,6 +245,7 @@ impl History {
         }
     }
 
+    /// Creates a redo [`Transaction`].
     pub fn later(&mut self, uk: UndoKind) -> Vec<Transaction> {
         use UndoKind::*;
         match uk {
@@ -240,13 +255,14 @@ impl History {
     }
 }
 
+/// Whether to undo by a number of edits or a duration of time.
 #[derive(Debug, PartialEq)]
 pub enum UndoKind {
     Steps(usize),
     TimePeriod(std::time::Duration),
 }
 
-// A subset of sytemd.time time span syntax units.
+/// A subset of sytemd.time time span syntax units.
 const TIME_UNITS: &[(&[&str], &str, u64)] = &[
     (&["seconds", "second", "sec", "s"], "seconds", 1),
     (&["minutes", "minute", "min", "m"], "minutes", 60),
@@ -254,11 +270,20 @@ const TIME_UNITS: &[(&[&str], &str, u64)] = &[
     (&["days", "day", "d"], "days", 24 * 60 * 60),
 ];
 
+/// Checks if the duration input can be turned into a valid duration. It must be a
+/// positive integer and denote the [unit of time.](`TIME_UNITS`)
+/// Examples of valid durations:
+///  * `5 sec`
+///  * `5 min`
+///  * `5 hr`
+///  * `5 days`
 static DURATION_VALIDATION_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?:\d+\s*[a-z]+\s*)+$").unwrap());
 
+/// Captures both the number and unit as separate capture groups.
 static NUMBER_UNIT_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\d+)\s*([a-z]+)").unwrap());
 
+/// Parse a string (e.g. "5 sec") and try to convert it into a [`Duration`].
 fn parse_human_duration(s: &str) -> Result<Duration, String> {
     if !DURATION_VALIDATION_REGEX.is_match(s) {
         return Err("duration should be composed \

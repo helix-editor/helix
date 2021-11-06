@@ -99,12 +99,17 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
-        if !args.files.is_empty() {
+        if args.load_tutor {
+            let path = helix_core::runtime_dir().join("tutor.txt");
+            editor.open(path, Action::VerticalSplit)?;
+            // Unset path to prevent accidentally saving to the original tutor file.
+            doc_mut!(editor).set_path(None)?;
+        } else if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                compositor.push(Box::new(ui::file_picker(first.clone())));
+                compositor.push(Box::new(ui::file_picker(".".into())));
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
@@ -240,7 +245,7 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::commands::{completion, Context};
+        use crate::commands::{insert::idle_completion, Context};
         use helix_view::document::Mode;
 
         if doc_mut!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
@@ -267,7 +272,7 @@ impl Application {
             callback: None,
             on_next_key_callback: None,
         };
-        completion(&mut cx);
+        idle_completion(&mut cx);
         self.render();
     }
 
@@ -548,10 +553,11 @@ impl Application {
                                         message: diagnostic.message,
                                         severity: diagnostic.severity.map(
                                             |severity| match severity {
-                                                DiagnosticSeverity::Error => Error,
-                                                DiagnosticSeverity::Warning => Warning,
-                                                DiagnosticSeverity::Information => Info,
-                                                DiagnosticSeverity::Hint => Hint,
+                                                DiagnosticSeverity::ERROR => Error,
+                                                DiagnosticSeverity::WARNING => Warning,
+                                                DiagnosticSeverity::INFORMATION => Info,
+                                                DiagnosticSeverity::HINT => Hint,
+                                                severity => unimplemented!("{:?}", severity),
                                             },
                                         ),
                                         // code
@@ -727,7 +733,9 @@ impl Application {
         let mut stdout = stdout();
         // reset cursor shape
         write!(stdout, "\x1B[2 q")?;
-        execute!(stdout, DisableMouseCapture)?;
+        // Ignore errors on disabling, this might trigger on windows if we call
+        // disable without calling enable previously
+        let _ = execute!(stdout, DisableMouseCapture);
         execute!(stdout, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()?;
         Ok(())

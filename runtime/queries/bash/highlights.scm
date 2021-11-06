@@ -7,7 +7,7 @@
 
 (command_name) @function
 
-(variable_name) @property
+(variable_name) @variable.other.member
 
 [
   "case"
@@ -31,7 +31,7 @@
 
 (function_definition name: (word) @function)
 
-(file_descriptor) @number
+(file_descriptor) @constant.numeric.integer
 
 [
   (command_substitution)

@@ -13,9 +13,9 @@
 (constraint class: (class_name (type)) @class)
 (class (class_head class: (class_name (type)) @class))
 (instance (instance_head class: (class_name (type)) @class))
-(integer) @number
-(exp_literal (float)) @number
-(char) @literal
+(integer) @constant.numeric.integer
+(exp_literal (float)) @constant.numeric.float
+(char) @constant.character
 (con_unit) @literal
 (con_list) @literal
 (tycon_arrow) @operator

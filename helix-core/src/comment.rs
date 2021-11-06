@@ -1,3 +1,6 @@
+//! This module contains the functionality toggle comments on lines over the selection
+//! using the comment character defined in the user's `languages.toml`
+
 use crate::{
     find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
@@ -60,7 +63,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let token = token.unwrap_or("//");
     let comment = Tendril::from(format!("{} ", token));
 
-    let mut lines: Vec<usize> = Vec::new();
+    let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
 
     let mut min_next_line = 0;
     for selection in selection {

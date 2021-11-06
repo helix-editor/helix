@@ -689,6 +689,8 @@ impl EditorView {
         theme: &Theme,
         is_focused: bool,
     ) {
+        use tui::text::{Span, Spans};
+
         //-------------------------------
         // Left side of the status line.
         //-------------------------------
@@ -707,17 +709,17 @@ impl EditorView {
             })
             .unwrap_or("");
 
-        let style = if is_focused {
+        let base_style = if is_focused {
             theme.get("ui.statusline")
         } else {
             theme.get("ui.statusline.inactive")
         };
         // statusline
-        surface.set_style(viewport.with_height(1), style);
+        surface.set_style(viewport.with_height(1), base_style);
         if is_focused {
-            surface.set_string(viewport.x + 1, viewport.y, mode, style);
+            surface.set_string(viewport.x + 1, viewport.y, mode, base_style);
         }
-        surface.set_string(viewport.x + 5, viewport.y, progress, style);
+        surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
         if let Some(path) = doc.relative_path() {
             let path = path.to_string_lossy();
@@ -728,7 +730,7 @@ impl EditorView {
                 viewport.y,
                 title,
                 viewport.width.saturating_sub(6) as usize,
-                style,
+                base_style,
             );
         }
 
@@ -736,8 +738,50 @@ impl EditorView {
         // Right side of the status line.
         //-------------------------------
 
-        // Compute the individual info strings.
-        let diag_count = format!("{}", doc.diagnostics().len());
+        let mut right_side_text = Spans::default();
+
+        // Compute the individual info strings and add them to `right_side_text`.
+
+        // Diagnostics
+        let diags = doc.diagnostics().iter().fold((0, 0), |mut counts, diag| {
+            use helix_core::diagnostic::Severity;
+            match diag.severity {
+                Some(Severity::Warning) => counts.0 += 1,
+                Some(Severity::Error) | None => counts.1 += 1,
+                _ => {}
+            }
+            counts
+        });
+        let (warnings, errors) = diags;
+        let warning_style = theme.get("warning");
+        let error_style = theme.get("error");
+        for i in 0..2 {
+            let (count, style) = match i {
+                0 => (warnings, warning_style),
+                1 => (errors, error_style),
+                _ => unreachable!(),
+            };
+            if count == 0 {
+                continue;
+            }
+            let style = base_style.patch(style);
+            right_side_text.0.push(Span::styled("●", style));
+            right_side_text
+                .0
+                .push(Span::styled(format!(" {} ", count), base_style));
+        }
+
+        // Selections
+        let sels_count = doc.selection(view.id).len();
+        right_side_text.0.push(Span::styled(
+            format!(
+                " {} sel{} ",
+                sels_count,
+                if sels_count == 1 { "" } else { "s" }
+            ),
+            base_style,
+        ));
+
         // let indent_info = match doc.indent_style {
         //     IndentStyle::Tabs => "tabs",
         //     IndentStyle::Spaces(1) => "spaces:1",
@@ -750,29 +794,28 @@ impl EditorView {
         //     IndentStyle::Spaces(8) => "spaces:8",
         //     _ => "indent:ERROR",
         // };
-        let position_info = {
-            let pos = coords_at_pos(
-                doc.text().slice(..),
-                doc.selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..)),
-            );
-            format!("{}:{}", pos.row + 1, pos.col + 1) // convert to 1-indexing
-        };
 
-        // Render them to the status line together.
-        let right_side_text = format!(
-            "{}    {} ",
-            &diag_count[..diag_count.len().min(4)],
-            // indent_info,
-            position_info
+        // Position
+        let pos = coords_at_pos(
+            doc.text().slice(..),
+            doc.selection(view.id)
+                .primary()
+                .cursor(doc.text().slice(..)),
         );
-        let text_len = right_side_text.len() as u16;
-        surface.set_string(
-            viewport.x + viewport.width.saturating_sub(text_len),
+        right_side_text.0.push(Span::styled(
+            format!(" {}:{} ", pos.row + 1, pos.col + 1), // Convert to 1-indexing.
+            base_style,
+        ));
+
+        // Render to the statusline.
+        surface.set_spans(
+            viewport.x
+                + viewport
+                    .width
+                    .saturating_sub(right_side_text.width() as u16),
             viewport.y,
-            right_side_text,
-            style,
+            &right_side_text,
+            right_side_text.width() as u16,
         );
     }
 
@@ -984,7 +1027,7 @@ impl EditorView {
 
     pub fn set_completion(
         &mut self,
-        editor: &Editor,
+        editor: &mut Editor,
         items: Vec<helix_lsp::lsp::CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
         start_offset: usize,
@@ -999,9 +1042,20 @@ impl EditorView {
             return;
         }
 
+        // Immediately initialize a savepoint
+        doc_mut!(editor).savepoint();
+
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
+    }
+
+    pub fn clear_completion(&mut self, editor: &mut Editor) {
+        self.completion = None;
+        // Clear any savepoints
+        let (_, doc) = current!(editor);
+        doc.savepoint = None;
+        editor.clear_idle_timer(); // don't retrigger
     }
 }
 
@@ -1022,12 +1076,12 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
                         .map(|pos| (pos, view.id))
                 });
 
                 if let Some((pos, view_id)) = result {
-                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+                    let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
 
                     if modifiers == crossterm::event::KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
@@ -1096,7 +1150,7 @@ impl EditorView {
                 };
 
                 let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&cxt.editor.documents[view.doc], row, column)
+                    view.pos_at_screen_coords(&cxt.editor.documents[&view.doc], row, column)
                         .map(|_| view.id)
                 });
 
@@ -1182,12 +1236,12 @@ impl EditorView {
                 }
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
-                    view.pos_at_screen_coords(&editor.documents[view.doc], row, column)
+                    view.pos_at_screen_coords(&editor.documents[&view.doc], row, column)
                         .map(|pos| (pos, view.id))
                 });
 
                 if let Some((pos, view_id)) = result {
-                    let doc = &mut editor.documents[editor.tree.get(view_id).doc];
+                    let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
                     commands::Command::paste_primary_clipboard_before.execute(cxt);
@@ -1254,8 +1308,7 @@ impl Component for EditorView {
 
                                     if callback.is_some() {
                                         // assume close_fn
-                                        self.completion = None;
-                                        cxt.editor.clear_idle_timer(); // don't retrigger
+                                        self.clear_completion(cxt.editor);
                                     }
                                 }
                             }
@@ -1268,8 +1321,7 @@ impl Component for EditorView {
                                 if let Some(completion) = &mut self.completion {
                                     completion.update(&mut cxt);
                                     if completion.is_empty() {
-                                        self.completion = None;
-                                        cxt.editor.clear_idle_timer(); // don't retrigger
+                                        self.clear_completion(cxt.editor);
                                     }
                                 }
                             }
@@ -1397,8 +1449,10 @@ impl Component for EditorView {
             info.render(area, surface, cx);
         }
 
-        if let Some(ref mut info) = self.autoinfo {
-            info.render(area, surface, cx);
+        if cx.editor.config.auto_info {
+            if let Some(ref mut info) = self.autoinfo {
+                info.render(area, surface, cx);
+            }
         }
 
         let key_width = 15u16; // for showing pending keys
@@ -1469,7 +1523,7 @@ fn canonicalize_key(key: &mut KeyEvent) {
 }
 
 #[inline]
-fn abs_diff(a: usize, b: usize) -> usize {
+const fn abs_diff(a: usize, b: usize) -> usize {
     if a > b {
         a - b
     } else {

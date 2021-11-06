@@ -2,10 +2,9 @@ use std::borrow::Cow;
 
 use crate::{graphics::Rect, Document, DocumentId, ViewId};
 use helix_core::{
-    coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
     line_ending::line_end_char_index,
-    Position, RopeSlice, Selection,
+    visual_coords_at_pos, Position, RopeSlice, Selection,
 };
 
 type Jump = (DocumentId, Selection);
@@ -91,7 +90,10 @@ impl View {
             .selection(self.id)
             .primary()
             .cursor(doc.text().slice(..));
-        let Position { col, row: line } = coords_at_pos(doc.text().slice(..), cursor);
+
+        let Position { col, row: line } =
+            visual_coords_at_pos(doc.text().slice(..), cursor, doc.tab_width());
+
         let inner_area = self.inner_area();
         let last_line = (self.offset.row + inner_area.height as usize).saturating_sub(1);
 
