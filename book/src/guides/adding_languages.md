@@ -32,7 +32,7 @@ These are the available keys and descriptions for the file.
 | roots         | description TBD                                               |
 | auto-format   | Whether to autoformat this language when saving               |
 | comment-token | The token to use as a comment-token                           |
-| indent        | The indent to use. Has sub keys tab-width and unit            |
+| indent        | The indent to use. Has sub keys `tab-width` and `unit`            |
 | config        | Language server configuration                                 |
 
 ## Queries
