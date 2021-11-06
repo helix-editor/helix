@@ -1227,8 +1227,7 @@ fn search_impl(
             Movement::Extend => selection.clone().push(Range::new(start, end)),
             Movement::Move => selection
                 .clone()
-                .remove(selection.primary_index())
-                .push(Range::new(start, end)),
+                .replace(selection.primary_index(), Range::new(start, end)),
         };
 
         doc.set_selection(view.id, selection);
