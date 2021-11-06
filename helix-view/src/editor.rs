@@ -6,9 +6,11 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 
+use crossterm::tty::IsTty;
 use futures_util::future;
 use std::{
     collections::BTreeMap,
+    io::stdin,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -311,7 +313,13 @@ impl Editor {
     pub fn new_file(&mut self, action: Action) -> DocumentId {
         let id = DocumentId(self.next_document_id);
         self.next_document_id += 1;
-        let mut doc = Document::default();
+        let mut doc = if stdin().is_tty() {
+            Document::default()
+        } else if let Ok((rope, encoding)) = crate::document::from_reader(&mut stdin(), None) {
+            Document::from(rope, Some(encoding))
+        } else {
+            Document::default()
+        };
         doc.id = id;
         self.documents.insert(id, doc);
         self.switch(id, action);
