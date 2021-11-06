@@ -34,7 +34,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
@@ -195,6 +195,12 @@ impl Editor {
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
+        // `ui.selection` is the only scope required to be able to render a theme.
+        if theme.find_scope_index("ui.selection").is_none() {
+            self.set_error("Invalid theme: `ui.selection` required".to_owned());
+            return;
+        }
+
         let scopes = theme.scopes();
         for config in self
             .syn_loader
