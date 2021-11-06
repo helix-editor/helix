@@ -3348,26 +3348,24 @@ fn goto_first_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (_, doc) = current!(editor);
 
-    let diag = if let Some(diag) = doc.diagnostics().first() {
-        diag.range.start
-    } else {
-        return;
+    let pos = match doc.diagnostics().first() {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn goto_last_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (_, doc) = current!(editor);
 
-    let diag = if let Some(diag) = doc.diagnostics().last() {
-        diag.range.start
-    } else {
-        return;
+    let pos = match doc.diagnostics().last() {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -3378,20 +3376,19 @@ fn goto_next_diag(cx: &mut Context) {
         .selection(view.id)
         .primary()
         .cursor(doc.text().slice(..));
-    let diag = if let Some(diag) = doc
+
+    let diag = doc
         .diagnostics()
         .iter()
-        .map(|diag| diag.range.start)
-        .find(|&pos| pos > cursor_pos)
-    {
-        diag
-    } else if let Some(diag) = doc.diagnostics().first() {
-        diag.range.start
-    } else {
-        return;
+        .find(|diag| diag.range.start > cursor_pos)
+        .or_else(|| doc.diagnostics().first());
+
+    let pos = match diag {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
@@ -3402,21 +3399,20 @@ fn goto_prev_diag(cx: &mut Context) {
         .selection(view.id)
         .primary()
         .cursor(doc.text().slice(..));
-    let diag = if let Some(diag) = doc
+
+    let diag = doc
         .diagnostics()
         .iter()
         .rev()
-        .map(|diag| diag.range.start)
-        .find(|&pos| pos < cursor_pos)
-    {
-        diag
-    } else if let Some(diag) = doc.diagnostics().last() {
-        diag.range.start
-    } else {
-        return;
+        .find(|diag| diag.range.start < cursor_pos)
+        .or_else(|| doc.diagnostics().last());
+
+    let pos = match diag {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn signature_help(cx: &mut Context) {
