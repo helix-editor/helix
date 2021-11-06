@@ -640,9 +640,6 @@ impl Default for Keymaps {
             "T" => extend_till_prev_char,
             "F" => extend_prev_char,
 
-            "n" => extend_search_next,
-            "N" => extend_search_prev,
-
             "home" => extend_to_line_start,
             "end" => extend_to_line_end,
             "esc" => exit_select_mode,
