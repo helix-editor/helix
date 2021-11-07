@@ -1,0 +1,86 @@
+# Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
+
+"namespace" = { fg = "yellow" }
+"module" = { fg = "yellow" }
+
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "#66D9EF" }
+"type.enum.variant" = { fg = "text" } 
+"constructor" = { fg = "text" }
+"property" = { fg = "variable" }
+
+"keyword" = { fg = "green" }
+"keyword.directive" = { fg = "green" }
+"keyword.control" = { fg = "green" }
+"label" = { fg = "green" }
+
+"special" = { fg = "red" }
+"operator" = { fg = "text" }
+
+"punctuation" = { fg = "text" }
+"punctuation.delimiter" = { fg = "text" }
+
+"variable" = { fg = "variable" }
+"variable.parameter" = { fg = "#fd971f" }
+"variable.builtin" = { fg = "green" }
+"constant" = { fg = "cyan" }
+"constant.builtin" = { fg = "cyan" }
+
+"function" = { fg = "fn_declaration" }
+"function.builtin" = { fg = "fn_declaration" }
+"function.macro" = { fg = "orange" }
+"attribute" = { fg = "fn_declaration" }
+
+"comment" = { fg = "base01", modifiers = ["italic"] }
+
+"string" = { fg = "cyan" }
+"number" = { fg = "cyan" }
+
+"ui.background" = { fg = "text", bg = "base03" }
+
+"ui.window" = { bg = "widget" }
+"ui.popup" = { bg = "widget" }
+"ui.help" = { bg = "widget" }
+"ui.menu.selected" = { bg = "widget" }
+
+"ui.cursor" = { fg = "base03", bg ="base0", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "red", bg = "base01", modifiers = ["bold"] }
+
+"ui.selection" = { bg = "#878b91" }
+"ui.selection.primary" = { bg = "#575b61" }
+
+"ui.linenr" = { fg = "base01" }
+
+"ui.statusline" = { fg = "base1", bg = "base02" }
+"ui.statusline.inactive" = { fg = "base00", bg = "base02" }
+
+"ui.text" = { fg = "text", bg = "background" }
+"ui.text.focus" = { fg = "active_text" }
+
+"warning" = { fg = "#cca700" }
+"error" = { fg = "red" }
+"info" = { fg = "#75beff" }
+"hint" = { fg = "#eeeeeeb3" }
+
+diagnostic = { modifiers = ["underlined"] }
+
+[palette]
+# keyword = "green"
+# type = "yellow"
+
+base03 = "#002b36"
+base02 = "#073642"
+base01 = "#586e75"
+base00 = "#657b63"
+base0 = "#839496"
+base1 = "#93a1a1"
+base2 = "#eee8d5"
+base3 = "#fdf6e3"
+yellow = "#b58900"
+orange = "#cb4b16"
+red = "#dc322f"
+magenta = "#d33682"
+violet = "#6c71c4"
+blue = "#268bd2"
+cyan = "#2aa198"
+green = "#859900"
