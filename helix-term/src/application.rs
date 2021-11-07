@@ -129,9 +129,7 @@ impl Application {
             // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
             // This doesn't currently work on macOS because of the following issue:
             //   https://github.com/crossterm-rs/crossterm/issues/500
-            return Err(anyhow::anyhow!(
-                "Piping into helix-term is currently not supported on macOS"
-            ));
+            anyhow::bail!("Piping into helix-term is currently not supported on macOS");
         } else {
             if let Err(_) = editor.new_file_from_stdin(Action::VerticalSplit) {
                 editor.new_file(Action::VerticalSplit);
