@@ -24,7 +24,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::syntax::{self, DebugConfigCompletion};
+use helix_core::syntax;
 use helix_core::Position;
 use helix_dap as dap;
 
@@ -126,7 +126,6 @@ pub struct Editor {
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<dap::SourceBreakpoint>>,
-    pub debug_config_completions: Vec<DebugConfigCompletion>,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
@@ -172,7 +171,6 @@ impl Editor {
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
-            debug_config_completions: Vec::new(),
             syn_loader: config_loader,
             theme_loader: themes,
             registers: Registers::default(),

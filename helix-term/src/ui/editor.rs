@@ -1,7 +1,6 @@
 use crate::{
     commands,
-    compositor::{Component, Compositor, Context, EventResult},
-    job::Callback,
+    compositor::{Component, Context, EventResult},
     key,
     keymap::{KeymapResult, KeymapResultKind, Keymaps},
     ui::{Completion, ProgressSpinners},
@@ -11,7 +10,7 @@ use helix_core::{
     coords_at_pos,
     graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
-    syntax::{self, DebugConfigCompletion, HighlightEvent},
+    syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection,
@@ -30,8 +29,6 @@ use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
-
-use super::{Prompt, PromptEvent};
 
 pub struct EditorView {
     keymaps: Keymaps,
@@ -815,79 +812,6 @@ impl EditorView {
         );
     }
 
-    fn debug_parameter_prompt(
-        completions: Vec<DebugConfigCompletion>,
-        config_name: String,
-        mut params: Vec<String>,
-    ) -> Prompt {
-        let i = params.len();
-        let completion = completions.get(i).unwrap();
-        let field_type = if let DebugConfigCompletion::Advanced(cfg) = completion {
-            cfg.completion.clone().unwrap_or_else(|| "".to_owned())
-        } else {
-            "".to_owned()
-        };
-        let name = match completion {
-            DebugConfigCompletion::Advanced(cfg) => {
-                cfg.name.clone().unwrap_or_else(|| field_type.to_owned())
-            }
-            DebugConfigCompletion::Named(name) => name.clone(),
-        };
-        let default_val = match completion {
-            DebugConfigCompletion::Advanced(cfg) => {
-                cfg.default.clone().unwrap_or_else(|| "".to_owned())
-            }
-            _ => "".to_owned(),
-        };
-
-        let noop = |_input: &str| Vec::new();
-        let completer = match &field_type[..] {
-            "filename" => super::completers::filename,
-            "directory" => super::completers::directory,
-            _ => noop,
-        };
-        Prompt::new(
-            format!("{}: ", name).into(),
-            None,
-            completer,
-            move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
-                if event != PromptEvent::Validate {
-                    return;
-                }
-
-                let mut value = input.to_owned();
-                if value.is_empty() {
-                    value = default_val.clone();
-                }
-                params.push(value);
-
-                if params.len() < completions.len() {
-                    let completions = completions.clone();
-                    let config_name = config_name.clone();
-                    let params = params.clone();
-                    let callback = Box::pin(async move {
-                        let call: Callback =
-                            Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
-                                let prompt =
-                                    Self::debug_parameter_prompt(completions, config_name, params);
-                                compositor.push(Box::new(prompt));
-                            });
-                        Ok(call)
-                    });
-                    cx.jobs.callback(callback);
-                } else {
-                    commands::dap_start_impl(
-                        cx.editor,
-                        Some(&config_name),
-                        None,
-                        Some(params.iter().map(|x| x.as_str()).collect()),
-                    );
-                }
-            },
-            None,
-        )
-    }
-
     /// Handle events by looking them up in `self.keymaps`. Returns None
     /// if event was handled (a command was executed or a subkeymap was
     /// activated). Only KeymapResultKind::{NotFound, Cancelled} is returned
@@ -898,14 +822,6 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        if !cxt.editor.debug_config_completions.is_empty() {
-            let completions = std::mem::take(&mut cxt.editor.debug_config_completions);
-            // TODO name
-            let prompt = Self::debug_parameter_prompt(completions, "test".to_string(), Vec::new());
-            cxt.push_layer(Box::new(prompt));
-            return None;
-        }
-
         let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
         self.autoinfo = key_result.sticky.map(|node| node.infobox());
 

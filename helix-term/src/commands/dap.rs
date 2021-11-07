@@ -3,7 +3,7 @@ use crate::{
     commands,
     compositor::Compositor,
     job::Callback,
-    ui::{FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use helix_core::{
     syntax::{DebugArgumentValue, DebugConfigCompletion},
@@ -325,10 +325,90 @@ pub fn dap_launch(cx: &mut Context) {
         |template| template.name.as_str().into(),
         |cx, template, _action| {
             let completions = template.completion.clone();
-            cx.editor.debug_config_completions = completions;
-            // TODO: need some way to manipulate the compositor to push a new prompt here
+            let name = template.name.clone();
+            let callback = Box::pin(async move {
+                let call: Callback =
+                    Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+                        let prompt = debug_parameter_prompt(completions, name, Vec::new());
+                        compositor.push(Box::new(prompt));
+                    });
+                Ok(call)
+            });
+            cx.jobs.callback(callback);
         },
     ))); // TODO: wrap in popup with fixed size
+}
+
+fn debug_parameter_prompt(
+    completions: Vec<DebugConfigCompletion>,
+    config_name: String,
+    mut params: Vec<String>,
+) -> Prompt {
+    let i = params.len();
+    let completion = completions.get(i).unwrap();
+    let field_type = if let DebugConfigCompletion::Advanced(cfg) = completion {
+        cfg.completion.clone().unwrap_or_else(|| "".to_owned())
+    } else {
+        "".to_owned()
+    };
+    let name = match completion {
+        DebugConfigCompletion::Advanced(cfg) => {
+            cfg.name.clone().unwrap_or_else(|| field_type.to_owned())
+        }
+        DebugConfigCompletion::Named(name) => name.clone(),
+    };
+    let default_val = match completion {
+        DebugConfigCompletion::Advanced(cfg) => {
+            cfg.default.clone().unwrap_or_else(|| "".to_owned())
+        }
+        _ => "".to_owned(),
+    };
+
+    let noop = |_input: &str| Vec::new();
+    let completer = match &field_type[..] {
+        "filename" => ui::completers::filename,
+        "directory" => ui::completers::directory,
+        _ => noop,
+    };
+    Prompt::new(
+        format!("{}: ", name).into(),
+        None,
+        completer,
+        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+
+            let mut value = input.to_owned();
+            if value.is_empty() {
+                value = default_val.clone();
+            }
+            params.push(value);
+
+            if params.len() < completions.len() {
+                let completions = completions.clone();
+                let config_name = config_name.clone();
+                let params = params.clone();
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+                            let prompt = debug_parameter_prompt(completions, config_name, params);
+                            compositor.push(Box::new(prompt));
+                        });
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            } else {
+                commands::dap_start_impl(
+                    cx.editor,
+                    Some(&config_name),
+                    None,
+                    Some(params.iter().map(|x| x.as_str()).collect()),
+                );
+            }
+        },
+        None,
+    )
 }
 
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
