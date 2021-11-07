@@ -3,7 +3,7 @@ use crate::{
     commands,
     compositor::Compositor,
     job::Callback,
-    ui::{FilePicker, Picker, Prompt, PromptEvent},
+    ui::{FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use helix_core::{
     syntax::{DebugArgumentValue, DebugConfigCompletion},
@@ -518,15 +518,14 @@ pub fn dap_variables(cx: &mut Context) {
                     Some(data_type) => format!("{} ", data_type),
                     None => "".to_owned(),
                 };
-                variables.push(format!("{}{} = {}\n", prefix, var.name, var.value));
+                variables.push(format!("{}{} = {}", prefix, var.name, var.value));
             }
         }
     }
 
-    if !variables.is_empty() {
-        cx.editor.variables = Some(variables);
-        cx.editor.variables_page = 0;
-    }
+    let contents = Text::new(variables.join("\n"));
+    let popup = Popup::new(contents);
+    cx.push_layer(Box::new(popup));
 }
 
 pub fn dap_terminate(cx: &mut Context) {

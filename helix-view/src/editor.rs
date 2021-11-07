@@ -11,8 +11,8 @@ use futures_util::stream::select_all::SelectAll;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
-    collections::HashMap,
     collections::BTreeMap,
+    collections::HashMap,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -127,8 +127,6 @@ pub struct Editor {
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<dap::SourceBreakpoint>>,
     pub debug_config_completions: Vec<DebugConfigCompletion>,
-    pub variables: Option<Vec<String>>,
-    pub variables_page: usize,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
@@ -175,8 +173,6 @@ impl Editor {
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
             debug_config_completions: Vec::new(),
-            variables: None,
-            variables_page: 0,
             syn_loader: config_loader,
             theme_loader: themes,
             registers: Registers::default(),

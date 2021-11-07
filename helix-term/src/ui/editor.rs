@@ -906,30 +906,6 @@ impl EditorView {
             return None;
         }
 
-        if cxt.editor.variables.is_some() {
-            match event {
-                KeyEvent {
-                    code: KeyCode::Char('h'),
-                    ..
-                } => {
-                    cxt.editor.variables_page = cxt.editor.variables_page.saturating_sub(1);
-                }
-                KeyEvent {
-                    code: KeyCode::Char('l'),
-                    ..
-                } => {
-                    cxt.editor.variables_page = cxt.editor.variables_page.saturating_add(1);
-                }
-                KeyEvent {
-                    code: KeyCode::Esc, ..
-                } => {
-                    cxt.editor.variables = None;
-                }
-                _ => {}
-            }
-            return None;
-        }
-
         let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
         self.autoinfo = key_result.sticky.map(|node| node.infobox());
 
@@ -1081,7 +1057,10 @@ impl EditorView {
                 if let Some((line, _, view_id)) = result {
                     editor.tree.focus = view_id;
 
-                    let doc = editor.documents.get_mut(&editor.tree.get(view_id).doc).unwrap();
+                    let doc = editor
+                        .documents
+                        .get_mut(&editor.tree.get(view_id).doc)
+                        .unwrap();
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
                         commands::dap_toggle_breakpoint(cxt);
@@ -1180,7 +1159,11 @@ impl EditorView {
                 if let Some((line, _, view_id)) = result {
                     cxt.editor.tree.focus = view_id;
 
-                    let doc = cxt.editor.documents.get_mut(&cxt.editor.tree.get(view_id).doc).unwrap();
+                    let doc = cxt
+                        .editor
+                        .documents
+                        .get_mut(&cxt.editor.tree.get(view_id).doc)
+                        .unwrap();
                     if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
                         if modifiers == crossterm::event::KeyModifiers::ALT {
@@ -1376,35 +1359,6 @@ impl Component for EditorView {
                 &cx.editor.breakpoints,
                 &dbg_breakpoints,
             );
-        }
-
-        if let Some(ref vars) = cx.editor.variables {
-            let mut text = String::new();
-            let mut height = 0;
-            let mut max_len = 20;
-
-            let per_page = 15;
-            let num_vars = vars.len();
-            let start = (per_page * cx.editor.variables_page).min(num_vars);
-            let end = (start + per_page).min(num_vars);
-            for line in vars[start..end].to_vec() {
-                max_len = max_len.max(line.len() as u16);
-                height += 1;
-                text.push_str(&line);
-            }
-
-            if vars.len() > per_page {
-                text += "\nMove h, l";
-                height += 1;
-            }
-
-            let mut info = Info {
-                height: 20.min(height + 2),
-                width: 70.min(max_len),
-                title: format!("{} variables", num_vars),
-                text: text + "\nExit Esc",
-            };
-            info.render(area, surface, cx);
         }
 
         if cx.editor.config.auto_info {
