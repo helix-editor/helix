@@ -42,25 +42,19 @@ pub struct Client {
 impl Client {
     // Spawn a process and communicate with it by either TCP or stdio
     pub async fn process(
-        transport: String,
-        command: String,
-        args: Vec<String>,
-        port_arg: Option<String>,
+        transport: &str,
+        command: &str,
+        args: Vec<&str>,
+        port_arg: Option<&str>,
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
         if transport == "tcp" && port_arg.is_some() {
-            Self::tcp_process(
-                &command,
-                args.iter().map(|s| s.as_str()).collect(),
-                &port_arg.unwrap(),
-                id,
-            )
-            .await
+            Self::tcp_process(command, args, port_arg.unwrap(), id).await
         } else if transport == "stdio" {
-            Self::stdio(&command, args.iter().map(|s| s.as_str()).collect(), id)
+            Self::stdio(command, args, id)
         } else {
             Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport)))
         }

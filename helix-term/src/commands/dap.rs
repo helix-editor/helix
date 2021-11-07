@@ -170,11 +170,11 @@ pub fn dap_start_impl(
         }
     };
 
-    let config = editor
-        .syn_loader
-        .language_config_for_file_name(&path)
-        .and_then(|x| x.debugger.clone());
-    let config = match config {
+    let language_config = editor.syn_loader.language_config_for_file_name(&path);
+    let config = match language_config
+        .as_deref()
+        .and_then(|config| config.debugger.as_ref())
+    {
         Some(c) => c,
         None => {
             editor.set_error(
@@ -187,10 +187,10 @@ pub fn dap_start_impl(
     let result = match socket {
         Some(socket) => block_on(Client::tcp(socket, 0)),
         None => block_on(Client::process(
-            config.transport.clone(),
-            config.command.clone(),
-            config.args.clone(),
-            config.port_arg.clone(),
+            &config.transport,
+            &config.command,
+            config.args.iter().map(|arg| arg.as_str()).collect(),
+            config.port_arg.as_deref(),
             0,
         )),
     };
@@ -209,7 +209,7 @@ pub fn dap_start_impl(
         return;
     }
 
-    debugger.quirks = config.quirks;
+    debugger.quirks = config.quirks.clone();
 
     let start_config = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
@@ -296,7 +296,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     let (_, doc) = current!(cx.editor);
     let path = match doc.path() {
-        Some(path) => path.to_path_buf(),
+        Some(path) => path,
         None => {
             cx.editor
                 .set_error("Can't start debug: document has no path".to_string());
@@ -304,12 +304,11 @@ pub fn dap_launch(cx: &mut Context) {
         }
     };
 
-    let config = cx
-        .editor
-        .syn_loader
-        .language_config_for_file_name(&path)
-        .and_then(|x| x.debugger.clone());
-    let config = match config {
+    let language_config = cx.editor.syn_loader.language_config_for_file_name(path);
+    let config = match language_config
+        .as_deref()
+        .and_then(|config| config.debugger.as_ref())
+    {
         Some(c) => c,
         None => {
             cx.editor.set_error(
@@ -321,7 +320,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     cx.push_layer(Box::new(Picker::new(
         true,
-        config.templates,
+        config.templates.clone(),
         |template| template.name.as_str().into(),
         |cx, template, _action| {
             let completions = template.completion.clone();
