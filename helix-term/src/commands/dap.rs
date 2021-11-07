@@ -364,11 +364,10 @@ fn debug_parameter_prompt(
         _ => "".to_owned(),
     };
 
-    let noop = |_input: &str| Vec::new();
     let completer = match &field_type[..] {
         "filename" => ui::completers::filename,
         "directory" => ui::completers::directory,
-        _ => noop,
+        _ => |_input: &str| Vec::new(),
     };
     Prompt::new(
         format!("{}: ", name).into(),
