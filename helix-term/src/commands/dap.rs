@@ -104,7 +104,7 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
         Ok(threads) => threads,
         Err(e) => {
             cx.editor
-                .set_error(format!("Failed to retrieve threads: {:?}", e));
+                .set_error(format!("Failed to retrieve threads: {}", e));
             return;
         }
     };
@@ -203,14 +203,14 @@ pub fn dap_start_impl(
     let (mut debugger, events) = match result {
         Ok(r) => r,
         Err(e) => {
-            editor.set_error(format!("Failed to start debug session: {:?}", e));
+            editor.set_error(format!("Failed to start debug session: {}", e));
             return;
         }
     };
 
     let request = debugger.initialize(config.name.clone());
     if let Err(e) = block_on(request) {
-        editor.set_error(format!("Failed to initialize debug adapter: {:?}", e));
+        editor.set_error(format!("Failed to initialize debug adapter: {}", e));
         return;
     }
 
@@ -283,7 +283,7 @@ pub fn dap_start_impl(
         }
     };
     if let Err(e) = result {
-        editor.set_error(format!("Failed {} target: {:?}", start_config.request, e));
+        editor.set_error(format!("Failed {} target: {}", start_config.request, e));
         return;
     }
 
@@ -466,7 +466,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
         }
         Err(e) => cx
             .editor
-            .set_error(format!("Failed to set breakpoints: {:?}", e)),
+            .set_error(format!("Failed to set breakpoints: {}", e)),
         _ => {}
     };
 }
@@ -480,7 +480,7 @@ pub fn dap_continue(cx: &mut Context) {
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.continue_thread(thread_id);
         if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {:?}", e));
+            cx.editor.set_error(format!("Failed to continue: {}", e));
             return;
         }
         resume_application(debugger);
@@ -499,7 +499,7 @@ pub fn dap_pause(cx: &mut Context) {
         let request = debugger.pause(thread.id);
         // NOTE: we don't need to set active thread id here because DAP will emit a "stopped" event
         if let Err(e) = block_on(request) {
-            editor.set_error(format!("Failed to pause: {:?}", e));
+            editor.set_error(format!("Failed to pause: {}", e));
         }
     })
 }
@@ -513,7 +513,7 @@ pub fn dap_step_in(cx: &mut Context) {
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.step_in(thread_id);
         if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {:?}", e));
+            cx.editor.set_error(format!("Failed to continue: {}", e));
             return;
         }
         resume_application(debugger);
@@ -532,7 +532,7 @@ pub fn dap_step_out(cx: &mut Context) {
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.step_out(thread_id);
         if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {:?}", e));
+            cx.editor.set_error(format!("Failed to continue: {}", e));
             return;
         }
         resume_application(debugger);
@@ -551,7 +551,7 @@ pub fn dap_next(cx: &mut Context) {
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.next(thread_id);
         if let Err(e) = block_on(request) {
-            cx.editor.set_error(format!("Failed to continue: {:?}", e));
+            cx.editor.set_error(format!("Failed to continue: {}", e));
             return;
         }
         resume_application(debugger);
@@ -585,8 +585,7 @@ pub fn dap_variables(cx: &mut Context) {
     let scopes = match block_on(debugger.scopes(frame_id)) {
         Ok(s) => s,
         Err(e) => {
-            cx.editor
-                .set_error(format!("Failed to get scopes: {:?}", e));
+            cx.editor.set_error(format!("Failed to get scopes: {}", e));
             return;
         }
     };
@@ -620,8 +619,7 @@ pub fn dap_terminate(cx: &mut Context) {
 
     let request = debugger.disconnect();
     if let Err(e) = block_on(request) {
-        cx.editor
-            .set_error(format!("Failed to disconnect: {:?}", e));
+        cx.editor.set_error(format!("Failed to disconnect: {}", e));
         return;
     }
     cx.editor.debugger = None;
@@ -642,7 +640,7 @@ pub fn dap_enable_exceptions(cx: &mut Context) {
         debugger.set_exception_breakpoints(filters.iter().map(|f| f.filter.clone()).collect()),
     ) {
         cx.editor
-            .set_error(format!("Failed to set up exception breakpoints: {:?}", e));
+            .set_error(format!("Failed to set up exception breakpoints: {}", e));
     }
 }
 
@@ -654,7 +652,7 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 
     if let Err(e) = block_on(debugger.set_exception_breakpoints(vec![])) {
         cx.editor
-            .set_error(format!("Failed to set up exception breakpoints: {:?}", e));
+            .set_error(format!("Failed to set up exception breakpoints: {}", e));
     }
 }
 
@@ -723,7 +721,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                                     debugger.set_breakpoints(path.clone(), breakpoints.clone());
                                 if let Err(e) = block_on(request) {
                                     cx.editor
-                                        .set_status(format!("Failed to set breakpoints: {:?}", e))
+                                        .set_status(format!("Failed to set breakpoints: {}", e))
                                 }
                             }
                         },
@@ -802,7 +800,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                                     debugger.set_breakpoints(path.clone(), breakpoints.clone());
                                 if let Err(e) = block_on(request) {
                                     cx.editor
-                                        .set_status(format!("Failed to set breakpoints: {:?}", e))
+                                        .set_status(format!("Failed to set breakpoints: {}", e))
                                 }
                             }
                         },
