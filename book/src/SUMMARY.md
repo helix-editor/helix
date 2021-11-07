@@ -8,5 +8,7 @@
   - [Keymap](./keymap.md)
   - [Key Remapping](./remapping.md)
   - [Hooks](./hooks.md)
+  - [Languages](./languages.md)
 - [Guides](./guides/README.md)
+  - [Adding Languages](./guides/adding_languages.md)
   - [Adding Textobject Queries](./guides/textobject.md)
