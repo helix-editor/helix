@@ -1,13 +1,12 @@
 # Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
 
-"namespace" = { fg = "yellow" }
-"module" = { fg = "yellow" }
+"namespace" = { fg = "orange" }
+"module" = { fg = "orange" }
 
-"type" = { fg = "yellow" }
-"type.builtin" = { fg = "#66D9EF" }
-"type.enum.variant" = { fg = "text" } 
-"constructor" = { fg = "text" }
-"property" = { fg = "variable" }
+"type" = { fg = "orange" }
+"type.builtin" = { fg = "green" }
+"type.enum.variant" = { fg = "blue" } 
+"constructor" = { fg = "blue" }
 
 "keyword" = { fg = "green" }
 "keyword.directive" = { fg = "green" }
@@ -15,59 +14,57 @@
 "label" = { fg = "green" }
 
 "special" = { fg = "red" }
-"operator" = { fg = "text" }
+"operator" = { fg = "green" }
 
 "punctuation" = { fg = "text" }
-"punctuation.delimiter" = { fg = "text" }
+"punctuation.delimiter" = { fg = "green" }
 
-"variable" = { fg = "variable" }
-"variable.parameter" = { fg = "#fd971f" }
+"variable" = { fg = "blue" }
 "variable.builtin" = { fg = "green" }
-"constant" = { fg = "cyan" }
-"constant.builtin" = { fg = "cyan" }
+"constant" = { fg = "blue" }
+"constant.builtin" = { fg = "yellow" }
 
-"function" = { fg = "fn_declaration" }
-"function.builtin" = { fg = "fn_declaration" }
-"function.macro" = { fg = "orange" }
-"attribute" = { fg = "fn_declaration" }
+"function" = { fg = "blue" }
+"function.builtin" = { fg = "blue" }
+"function.macro" = { fg = "blue" }
 
 "comment" = { fg = "base01", modifiers = ["italic"] }
 
 "string" = { fg = "cyan" }
-"number" = { fg = "cyan" }
+"constant.character" = { fg = "cyan" }
+"constant.character.escape" = { fg = "red" }
+"constant.numeric" = { fg = "magenta" }
 
-"ui.background" = { fg = "text", bg = "base03" }
+"ui.background" = { fg = "base1", bg = "base03" }
 
-"ui.window" = { bg = "widget" }
-"ui.popup" = { bg = "widget" }
-"ui.help" = { bg = "widget" }
-"ui.menu.selected" = { bg = "widget" }
+"ui.window" = { fg = "base1", bg = "base03" }
+"ui.popup" = { fg = "base1", bg = "base03" }
+"ui.help" = { fg = "base1", bg = "base03" }
+"ui.menu.selected" = { fg = "base1", bg = "base02" }
 
-"ui.cursor" = { fg = "base03", bg ="base0", modifiers = ["reversed"] }
+"ui.cursor" = { fg = "base03", bg ="base0" }
 "ui.cursor.match" = { fg = "red", bg = "base01", modifiers = ["bold"] }
 
-"ui.selection" = { bg = "#878b91" }
-"ui.selection.primary" = { bg = "#575b61" }
+"ui.selection" = { bg = "base01" }
+"ui.selection.primary" = { bg = "base01" }
 
 "ui.linenr" = { fg = "base01" }
+"ui.linenr.selected" = { fg = "base01", bg = "base02" }
 
 "ui.statusline" = { fg = "base1", bg = "base02" }
 "ui.statusline.inactive" = { fg = "base00", bg = "base02" }
 
-"ui.text" = { fg = "text", bg = "background" }
-"ui.text.focus" = { fg = "active_text" }
+"ui.text" = { fg = "base1", bg = "base03" }
+"ui.text.focus" = { bg = "base02" }
 
 "warning" = { fg = "#cca700" }
 "error" = { fg = "red" }
-"info" = { fg = "#75beff" }
-"hint" = { fg = "#eeeeeeb3" }
+"info" = { fg = "magenta" }
+"hint" = { fg = "#eeeeee" }
 
 diagnostic = { modifiers = ["underlined"] }
 
 [palette]
-# keyword = "green"
-# type = "yellow"
-
 base03 = "#002b36"
 base02 = "#073642"
 base01 = "#586e75"
