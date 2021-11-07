@@ -34,7 +34,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
@@ -58,6 +58,8 @@ pub struct Config {
     #[serde(skip_serializing, deserialize_with = "deserialize_duration_millis")]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
+    /// Whether to display infoboxes. Defaults to true.
+    pub auto_info: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -88,6 +90,7 @@ impl Default for Config {
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
+            auto_info: true,
         }
     }
 }
@@ -192,6 +195,12 @@ impl Editor {
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
+        // `ui.selection` is the only scope required to be able to render a theme.
+        if theme.find_scope_index("ui.selection").is_none() {
+            self.set_error("Invalid theme: `ui.selection` required".to_owned());
+            return;
+        }
+
         let scopes = theme.scopes();
         for config in self
             .syn_loader
@@ -240,6 +249,8 @@ impl Editor {
                 let remove_empty_scratch = !doc.is_modified()
                     // If the buffer has no path and is not modified, it is an empty scratch buffer.
                     && doc.path().is_none()
+                    // If the buffer we are changing to is not this buffer
+                    && id != doc.id
                     // Ensure the buffer is not displayed in any other splits.
                     && !self
                         .tree

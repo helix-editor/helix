@@ -704,8 +704,8 @@ impl Document {
         success
     }
 
-    /// Undo the last modification to the [`Document`].
-    pub fn undo(&mut self, view_id: ViewId) {
+    /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
+    pub fn undo(&mut self, view_id: ViewId) -> bool {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
             self.apply_impl(transaction, view_id)
@@ -718,10 +718,11 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
+        success
     }
 
-    /// Redo the last modification to the [`Document`].
-    pub fn redo(&mut self, view_id: ViewId) {
+    /// Redo the last modification to the [`Document`]. Returns whether the redo was sucessful.
+    pub fn redo(&mut self, view_id: ViewId) -> bool {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.redo() {
             self.apply_impl(transaction, view_id)
@@ -734,6 +735,7 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
+        success
     }
 
     pub fn savepoint(&mut self) {
@@ -916,6 +918,9 @@ impl Document {
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
+        // sort by range
+        self.diagnostics
+            .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
 }
 

@@ -362,11 +362,22 @@ impl Selection {
 
     /// Adds a new range to the selection and makes it the primary range.
     pub fn remove(mut self, index: usize) -> Self {
+        assert!(
+            self.ranges.len() > 1,
+            "can't remove the last range from a selection!"
+        );
+
         self.ranges.remove(index);
         if index < self.primary_index || self.primary_index == self.ranges.len() {
             self.primary_index -= 1;
         }
         self
+    }
+
+    /// Replace a range in the selection with a new range.
+    pub fn replace(mut self, index: usize, range: Range) -> Self {
+        self.ranges[index] = range;
+        self.normalize()
     }
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after

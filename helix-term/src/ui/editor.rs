@@ -1086,8 +1086,10 @@ impl Component for EditorView {
             );
         }
 
-        if let Some(ref mut info) = self.autoinfo {
-            info.render(area, surface, cx);
+        if cx.editor.config.auto_info {
+            if let Some(ref mut info) = self.autoinfo {
+                info.render(area, surface, cx);
+            }
         }
 
         let key_width = 15u16; // for showing pending keys

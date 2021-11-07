@@ -217,8 +217,11 @@ impl Command {
         split_selection, "Split selection into subselections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
         search, "Search for regex pattern",
+        rsearch, "Reverse search for regex pattern",
         search_next, "Select next search match",
+        search_prev, "Select previous search match",
         extend_search_next, "Add next search match to selection",
+        extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
         global_search, "Global Search in workspace folder",
         extend_line, "Select current line, if already selected, extend to next line",
@@ -740,13 +743,7 @@ where
             // usually mix line endings.  But we should fix it eventually
             // anyway.
             {
-                current!(cx.editor)
-                    .1
-                    .line_ending
-                    .as_str()
-                    .chars()
-                    .next()
-                    .unwrap()
+                doc!(cx.editor).line_ending.as_str().chars().next().unwrap()
             }
 
             KeyEvent {
@@ -1170,38 +1167,68 @@ fn split_selection_on_newline(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn search_impl(doc: &mut Document, view: &mut View, contents: &str, regex: &Regex, extend: bool) {
+fn search_impl(
+    doc: &mut Document,
+    view: &mut View,
+    contents: &str,
+    regex: &Regex,
+    movement: Movement,
+    direction: Direction,
+) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
-    // Get the right side of the primary block cursor.
-    let start = text.char_to_byte(graphemes::next_grapheme_boundary(
-        text,
-        selection.primary().cursor(text),
-    ));
+    // Get the right side of the primary block cursor for forward search, or the
+    //grapheme before the start of the selection for reverse search.
+    let start = match direction {
+        Direction::Forward => text.char_to_byte(graphemes::next_grapheme_boundary(
+            text,
+            selection.primary().to(),
+        )),
+        Direction::Backward => text.char_to_byte(graphemes::prev_grapheme_boundary(
+            text,
+            selection.primary().from(),
+        )),
+    };
+
+    //A regex::Match returns byte-positions in the str. In the case where we
+    //do a reverse search and wraparound to the end, we don't need to search
+    //the text before the current cursor position for matches, but by slicing
+    //it out, we need to add it back to the position of the selection.
+    let mut offset = 0;
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mat = regex
-        .find_at(contents, start)
-        .or_else(|| regex.find(contents));
+    let mat = match direction {
+        Direction::Forward => regex
+            .find_at(contents, start)
+            .or_else(|| regex.find(contents)),
+        Direction::Backward => regex.find_iter(&contents[..start]).last().or_else(|| {
+            offset = start;
+            regex.find_iter(&contents[start..]).last()
+        }),
+    };
     // TODO: message on wraparound
     if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start());
-        let end = text.byte_to_char(mat.end());
+        let start = text.byte_to_char(mat.start() + offset);
+        let end = text.byte_to_char(mat.end() + offset);
 
         if end == 0 {
             // skip empty matches that don't make sense
             return;
         }
 
-        let selection = if extend {
-            selection.clone().push(Range::new(start, end))
+        // Determine range direction based on the primary range
+        let primary = selection.primary();
+        let range = if primary.head < primary.anchor {
+            Range::new(end, start)
         } else {
-            selection
-                .clone()
-                .remove(selection.primary_index())
-                .push(Range::new(start, end))
+            Range::new(start, end)
+        };
+
+        let selection = match movement {
+            Movement::Extend => selection.clone().push(range),
+            Movement::Move => selection.clone().replace(selection.primary_index(), range),
         };
 
         doc.set_selection(view.id, selection);
@@ -1220,6 +1247,14 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
 
 // TODO: use one function for search vs extend
 fn search(cx: &mut Context) {
+    searcher(cx, Direction::Forward)
+}
+
+fn rsearch(cx: &mut Context) {
+    searcher(cx, Direction::Backward)
+}
+// TODO: use one function for search vs extend
+fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let (_, doc) = current!(cx.editor);
 
@@ -1245,14 +1280,14 @@ fn search(cx: &mut Context) {
             if event != PromptEvent::Update {
                 return;
             }
-            search_impl(doc, view, &contents, &regex, false);
+            search_impl(doc, view, &contents, &regex, Movement::Move, direction);
         },
     );
 
     cx.push_layer(Box::new(prompt));
 }
 
-fn search_next_impl(cx: &mut Context, extend: bool) {
+fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
@@ -1267,7 +1302,7 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, extend);
+            search_impl(doc, view, &contents, &regex, movement, direction);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
@@ -1279,11 +1314,18 @@ fn search_next_impl(cx: &mut Context, extend: bool) {
 }
 
 fn search_next(cx: &mut Context) {
-    search_next_impl(cx, false);
+    search_next_or_prev_impl(cx, Movement::Move, Direction::Forward);
 }
 
+fn search_prev(cx: &mut Context) {
+    search_next_or_prev_impl(cx, Movement::Move, Direction::Backward);
+}
 fn extend_search_next(cx: &mut Context) {
-    search_next_impl(cx, true);
+    search_next_or_prev_impl(cx, Movement::Extend, Direction::Forward);
+}
+
+fn extend_search_prev(cx: &mut Context) {
+    search_next_or_prev_impl(cx, Movement::Extend, Direction::Backward);
 }
 
 fn search_selection(cx: &mut Context) {
@@ -1698,7 +1740,7 @@ mod cmd {
 
         // If no argument, report current indent style.
         if args.is_empty() {
-            let style = current!(cx.editor).1.indent_style;
+            let style = doc!(cx.editor).indent_style;
             cx.editor.set_status(match style {
                 Tabs => "tabs".into(),
                 Spaces(1) => "1 space".into(),
@@ -1737,7 +1779,7 @@ mod cmd {
 
         // If no argument, report current line ending setting.
         if args.is_empty() {
-            let line_ending = current!(cx.editor).1.line_ending;
+            let line_ending = doc!(cx.editor).line_ending;
             cx.editor.set_status(match line_ending {
                 Crlf => "crlf".into(),
                 LF => "line feed".into(),
@@ -2148,8 +2190,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-        let id = doc.id();
+        let id = view!(cx.editor).doc;
 
         if let Some(path) = args.get(0) {
             cx.editor.open(path.into(), Action::VerticalSplit)?;
@@ -2165,8 +2206,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-        let id = doc.id();
+        let id = view!(cx.editor).doc;
 
         if let Some(path) = args.get(0) {
             cx.editor.open(path.into(), Action::HorizontalSplit)?;
@@ -3302,26 +3342,24 @@ fn goto_first_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (_, doc) = current!(editor);
 
-    let diag = if let Some(diag) = doc.diagnostics().first() {
-        diag.range.start
-    } else {
-        return;
+    let pos = match doc.diagnostics().first() {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn goto_last_diag(cx: &mut Context) {
     let editor = &mut cx.editor;
     let (_, doc) = current!(editor);
 
-    let diag = if let Some(diag) = doc.diagnostics().last() {
-        diag.range.start
-    } else {
-        return;
+    let pos = match doc.diagnostics().last() {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -3332,20 +3370,19 @@ fn goto_next_diag(cx: &mut Context) {
         .selection(view.id)
         .primary()
         .cursor(doc.text().slice(..));
-    let diag = if let Some(diag) = doc
+
+    let diag = doc
         .diagnostics()
         .iter()
-        .map(|diag| diag.range.start)
-        .find(|&pos| pos > cursor_pos)
-    {
-        diag
-    } else if let Some(diag) = doc.diagnostics().first() {
-        diag.range.start
-    } else {
-        return;
+        .find(|diag| diag.range.start > cursor_pos)
+        .or_else(|| doc.diagnostics().first());
+
+    let pos = match diag {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
@@ -3356,21 +3393,20 @@ fn goto_prev_diag(cx: &mut Context) {
         .selection(view.id)
         .primary()
         .cursor(doc.text().slice(..));
-    let diag = if let Some(diag) = doc
+
+    let diag = doc
         .diagnostics()
         .iter()
         .rev()
-        .map(|diag| diag.range.start)
-        .find(|&pos| pos < cursor_pos)
-    {
-        diag
-    } else if let Some(diag) = doc.diagnostics().last() {
-        diag.range.start
-    } else {
-        return;
+        .find(|diag| diag.range.start < cursor_pos)
+        .or_else(|| doc.diagnostics().last());
+
+    let pos = match diag {
+        Some(diag) => diag.range.start,
+        None => return,
     };
 
-    goto_pos(editor, diag);
+    goto_pos(editor, pos);
 }
 
 fn signature_help(cx: &mut Context) {
@@ -3679,13 +3715,19 @@ pub mod insert {
 fn undo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
-    doc.undo(view_id);
+    let success = doc.undo(view_id);
+    if !success {
+        cx.editor.set_status("Already at oldest change".to_owned());
+    }
 }
 
 fn redo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
-    doc.redo(view_id);
+    let success = doc.redo(view_id);
+    if !success {
+        cx.editor.set_status("Already at newest change".to_owned());
+    }
 }
 
 // Yank / Paste
@@ -3746,7 +3788,7 @@ fn yank_joined_to_clipboard_impl(
 }
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
-    let line_ending = current!(cx.editor).1.line_ending;
+    let line_ending = doc!(cx.editor).line_ending;
     let _ = yank_joined_to_clipboard_impl(
         &mut cx.editor,
         line_ending.as_str(),
@@ -3780,7 +3822,7 @@ fn yank_main_selection_to_clipboard(cx: &mut Context) {
 }
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
-    let line_ending = current!(cx.editor).1.line_ending;
+    let line_ending = doc!(cx.editor).line_ending;
     let _ = yank_joined_to_clipboard_impl(
         &mut cx.editor,
         line_ending.as_str(),
@@ -4469,7 +4511,7 @@ fn match_brackets(cx: &mut Context) {
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
-    let (view, _doc) = current!(cx.editor);
+    let view = view_mut!(cx.editor);
 
     if let Some((id, selection)) = view.jumps.forward(count) {
         view.doc = *id;
@@ -4656,7 +4698,7 @@ fn surround_add(cx: &mut Context) {
             let selection = doc.selection(view.id);
             let (open, close) = surround::get_pair(ch);
 
-            let mut changes = Vec::new();
+            let mut changes = Vec::with_capacity(selection.len() * 2);
             for range in selection.iter() {
                 changes.push((range.from(), range.from(), Some(Tendril::from_char(open))));
                 changes.push((range.to(), range.to(), Some(Tendril::from_char(close))));
