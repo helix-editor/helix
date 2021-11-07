@@ -163,7 +163,7 @@ pub fn dap_start_impl(
     let (_, doc) = current!(editor);
 
     let path = match doc.path() {
-        Some(path) => path.to_path_buf(),
+        Some(path) => path,
         None => {
             editor.set_error("Can't start debug: document has no path".to_string());
             return;
@@ -420,7 +420,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     };
 
     let path = match doc.path() {
-        Some(path) => path.to_path_buf(),
+        Some(path) => path,
         None => {
             cx.editor
                 .set_error("Can't set breakpoint: document has no path".to_string());
@@ -444,7 +444,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
         Some(debugger) => debugger,
         None => return,
     };
-    let request = debugger.set_breakpoints(path, breakpoints);
+    let request = debugger.set_breakpoints(path.clone(), breakpoints);
     match block_on(request) {
         Ok(Some(breakpoints)) => {
             let old_breakpoints = debugger.breakpoints.clone();
@@ -671,7 +671,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
 
                             let (_, doc) = current!(cx.editor);
                             let path = match doc.path() {
-                                Some(path) => path.to_path_buf(),
+                                Some(path) => path,
                                 None => {
                                     cx.editor.set_status(
                                         "Can't edit breakpoint: document has no path".to_owned(),
@@ -713,7 +713,8 @@ pub fn dap_edit_condition(cx: &mut Context) {
                                 // {
                                 //     bail!("Can't edit breakpoint: debugger does not support logpoints")
                                 // }
-                                let request = debugger.set_breakpoints(path, breakpoints.clone());
+                                let request =
+                                    debugger.set_breakpoints(path.clone(), breakpoints.clone());
                                 if let Err(e) = block_on(request) {
                                     cx.editor
                                         .set_status(format!("Failed to set breakpoints: {:?}", e))
@@ -749,7 +750,7 @@ pub fn dap_edit_log(cx: &mut Context) {
 
                             let (_, doc) = current!(cx.editor);
                             let path = match doc.path() {
-                                Some(path) => path.to_path_buf(),
+                                Some(path) => path,
                                 None => {
                                     cx.editor.set_status(
                                         "Can't edit breakpoint: document has no path".to_owned(),
@@ -791,7 +792,8 @@ pub fn dap_edit_log(cx: &mut Context) {
                                 // {
                                 //     bail!("Can't edit breakpoint: debugger does not support logpoints")
                                 // }
-                                let request = debugger.set_breakpoints(path, breakpoints.clone());
+                                let request =
+                                    debugger.set_breakpoints(path.clone(), breakpoints.clone());
                                 if let Err(e) = block_on(request) {
                                     cx.editor
                                         .set_status(format!("Failed to set breakpoints: {:?}", e))
