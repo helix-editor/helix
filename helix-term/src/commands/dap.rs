@@ -123,7 +123,8 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
                 thread.name,
                 thread_states
                     .get(&thread.id)
-                    .unwrap_or(&"unknown".to_owned())
+                    .map(|state| state.as_str())
+                    .unwrap_or("unknown")
             )
             .into()
         },
@@ -173,9 +174,7 @@ pub fn dap_start_impl(
     {
         Some(c) => c,
         None => {
-            editor.set_error(
-                "Can't start debug: no debug adapter available for language".to_string(),
-            );
+            editor.set_error("No debug adapter available for language".to_string());
             return;
         }
     };
@@ -215,7 +214,7 @@ pub fn dap_start_impl(
     let start_config = match start_config {
         Some(c) => c,
         None => {
-            editor.set_error("Can't start debug: no debug config with given name".to_string());
+            editor.set_error("No debug config with given name".to_string());
             return;
         }
     };
@@ -288,7 +287,7 @@ pub fn dap_start_impl(
 pub fn dap_launch(cx: &mut Context) {
     if cx.editor.debugger.is_some() {
         cx.editor
-            .set_error("Can't start debug: debugger is running".to_string());
+            .set_error("Debugger is already running".to_string());
         return;
     }
 
@@ -300,9 +299,8 @@ pub fn dap_launch(cx: &mut Context) {
     {
         Some(c) => c,
         None => {
-            cx.editor.set_error(
-                "Can't start debug: no debug adapter available for language".to_string(),
-            );
+            cx.editor
+                .set_error("No debug adapter available for language".to_string());
             return;
         }
     };
@@ -658,7 +656,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                                 return;
                             }
 
-                            let (_, doc) = current!(cx.editor);
+                            let doc = doc!(cx.editor);
                             let path = match doc.path() {
                                 Some(path) => path,
                                 None => {
@@ -737,7 +735,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                                 return;
                             }
 
-                            let (_, doc) = current!(cx.editor);
+                            let doc = doc!(cx.editor);
                             let path = match doc.path() {
                                 Some(path) => path,
                                 None => {
