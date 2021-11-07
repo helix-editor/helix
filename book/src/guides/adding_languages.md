@@ -43,7 +43,7 @@ For a language to have syntax-highlighting and indentation among other things, y
 
 - If you get errors when building after switching branches, you may have to remove or update tree-sitter submodules. You can update submodules by running
 ```sh
-$ git submodule update --init
+$ git submodule sync; git submodule update --init
 ```
 - Make sure to not use the `--remote` flag. To remove submodules look inside the `.gitmodules` and remove directories that are not present inside of it.
 
