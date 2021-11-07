@@ -165,19 +165,10 @@ pub fn dap_start_impl(
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<&str>>,
 ) {
-    let (_, doc) = current!(editor);
+    let doc = doc!(editor);
 
-    let path = match doc.path() {
-        Some(path) => path,
-        None => {
-            editor.set_error("Can't start debug: document has no path".to_string());
-            return;
-        }
-    };
-
-    let language_config = editor.syn_loader.language_config_for_file_name(path);
-    let config = match language_config
-        .as_deref()
+    let config = match doc
+        .language_config()
         .and_then(|config| config.debugger.as_ref())
     {
         Some(c) => c,
@@ -283,7 +274,8 @@ pub fn dap_start_impl(
         }
     };
     if let Err(e) = result {
-        editor.set_error(format!("Failed {} target: {}", start_config.request, e));
+        let msg = format!("Failed {} target: {}", start_config.request, e);
+        editor.set_error(msg);
         return;
     }
 
@@ -300,19 +292,10 @@ pub fn dap_launch(cx: &mut Context) {
         return;
     }
 
-    let (_, doc) = current!(cx.editor);
-    let path = match doc.path() {
-        Some(path) => path,
-        None => {
-            cx.editor
-                .set_error("Can't start debug: document has no path".to_string());
-            return;
-        }
-    };
+    let doc = doc!(cx.editor);
 
-    let language_config = cx.editor.syn_loader.language_config_for_file_name(path);
-    let config = match language_config
-        .as_deref()
+    let config = match doc
+        .language_config()
         .and_then(|config| config.debugger.as_ref())
     {
         Some(c) => c,
@@ -324,9 +307,11 @@ pub fn dap_launch(cx: &mut Context) {
         }
     };
 
+    let templates = config.templates.clone();
+
     cx.push_layer(Box::new(Picker::new(
         true,
-        config.templates.clone(),
+        templates,
         |template| template.name.as_str().into(),
         |cx, template, _action| {
             let completions = template.completion.clone();
