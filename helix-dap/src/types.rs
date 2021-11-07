@@ -26,7 +26,7 @@ pub struct ColumnDescriptor {
     pub label: String,
     pub format: Option<String>,
     #[serde(rename = "type")]
-    pub col_type: Option<String>,
+    pub ty: Option<String>,
     pub width: Option<usize>,
 }
 
@@ -200,7 +200,7 @@ pub struct Variable {
     pub name: String,
     pub value: String,
     #[serde(rename = "type")]
-    pub data_type: Option<String>,
+    pub ty: Option<String>,
     pub presentation_hint: Option<VariablePresentationHint>,
     pub evaluate_name: Option<String>,
     pub variables_reference: usize,
@@ -502,7 +502,7 @@ pub mod requests {
     pub struct EvaluateResponse {
         pub result: String,
         #[serde(rename = "type")]
-        pub data_type: Option<String>,
+        pub ty: Option<String>,
         pub presentation_hint: Option<VariablePresentationHint>,
         pub variables_reference: usize,
         pub named_variables: Option<usize>,

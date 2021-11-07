@@ -598,7 +598,7 @@ pub fn dap_variables(cx: &mut Context) {
         if let Ok(vars) = response {
             variables.reserve(vars.len());
             for var in vars {
-                let prefix = match var.data_type {
+                let prefix = match var.ty {
                     Some(data_type) => format!("{} ", data_type),
                     None => "".to_owned(),
                 };
