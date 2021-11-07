@@ -207,27 +207,26 @@ pub fn dap_start_impl(
     debugger.quirks = config.quirks.clone();
 
     // TODO: avoid refetching all of this... pass a config in
-    let start_config = match name {
+    let template = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
         None => config.templates.get(0),
     };
-    let start_config = match start_config {
-        Some(c) => c,
+    let template = match template {
+        Some(template) => template,
         None => {
             editor.set_error("No debug config with given name".to_string());
             return;
         }
     };
 
-    let template = start_config.args.clone();
-    let mut args: HashMap<String, Value> = HashMap::new();
+    let mut args: HashMap<&str, Value> = HashMap::new();
 
     if let Some(params) = params {
-        for (k, t) in template {
-            let mut value = t;
+        for (k, t) in &template.args {
+            let mut value = t.clone();
             for (i, x) in params.iter().enumerate() {
                 let mut param = x.to_string();
-                if let Some(DebugConfigCompletion::Advanced(cfg)) = start_config.completion.get(i) {
+                if let Some(DebugConfigCompletion::Advanced(cfg)) = template.completion.get(i) {
                     if cfg.completion == Some("filename".to_owned())
                         || cfg.completion == Some("directory".to_owned())
                     {
@@ -238,14 +237,13 @@ pub fn dap_start_impl(
                     }
                 }
                 // For param #0 replace {0} in args
+                let pattern = format!("{{{}}}", i);
                 value = match value {
                     DebugArgumentValue::String(v) => {
-                        DebugArgumentValue::String(v.replace(format!("{{{}}}", i).as_str(), &param))
+                        DebugArgumentValue::String(v.replace(&pattern, &param))
                     }
                     DebugArgumentValue::Array(arr) => DebugArgumentValue::Array(
-                        arr.iter()
-                            .map(|v| v.replace(format!("{{{}}}", i).as_str(), &param))
-                            .collect(),
+                        arr.iter().map(|v| v.replace(&pattern, &param)).collect(),
                     ),
                 };
             }
@@ -264,7 +262,7 @@ pub fn dap_start_impl(
 
     let args = to_value(args).unwrap();
 
-    let result = match &start_config.request[..] {
+    let result = match &template.request[..] {
         "launch" => block_on(debugger.launch(args)),
         "attach" => block_on(debugger.attach(args)),
         _ => {
@@ -273,7 +271,7 @@ pub fn dap_start_impl(
         }
     };
     if let Err(e) = result {
-        let msg = format!("Failed {} target: {}", start_config.request, e);
+        let msg = format!("Failed {} target: {}", template.request, e);
         editor.set_error(msg);
         return;
     }
