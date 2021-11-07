@@ -175,7 +175,7 @@ pub fn dap_start_impl(
         }
     };
 
-    let language_config = editor.syn_loader.language_config_for_file_name(&path);
+    let language_config = editor.syn_loader.language_config_for_file_name(path);
     let config = match language_config
         .as_deref()
         .and_then(|config| config.debugger.as_ref())
@@ -216,6 +216,7 @@ pub fn dap_start_impl(
 
     debugger.quirks = config.quirks.clone();
 
+    // TODO: avoid refetching all of this... pass a config in
     let start_config = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
         None => config.templates.get(0),
@@ -452,8 +453,8 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     let request = debugger.set_breakpoints(path.clone(), breakpoints);
     match block_on(request) {
         Ok(Some(breakpoints)) => {
-            let old_breakpoints = debugger.breakpoints.clone();
-            debugger.breakpoints = breakpoints.clone();
+            // TODO: avoid this clone here
+            let old_breakpoints = std::mem::replace(&mut debugger.breakpoints, breakpoints.clone());
             for bp in breakpoints {
                 if !old_breakpoints.iter().any(|b| b.message == bp.message) {
                     if let Some(msg) = &bp.message {
