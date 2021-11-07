@@ -115,7 +115,6 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
     }
 
     let thread_states = debugger.thread_states.clone();
-    let frames = debugger.stack_frames.clone();
     let picker = FilePicker::new(
         threads,
         move |thread| {
@@ -129,8 +128,14 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
             .into()
         },
         move |cx, thread, _action| callback_fn(cx.editor, thread),
-        move |_editor, thread| {
-            if let Some(frame) = frames.get(&thread.id).and_then(|bt| bt.get(0)) {
+        move |editor, thread| {
+            let frame = editor
+                .debugger
+                .as_ref()
+                .and_then(|debugger| debugger.stack_frames.get(&thread.id))
+                .and_then(|bt| bt.get(0));
+
+            if let Some(frame) = frame {
                 frame
                     .source
                     .as_ref()
