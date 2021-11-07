@@ -1458,11 +1458,11 @@ fn global_search(cx: &mut Context) {
                             relative_path.into()
                         }
                     },
-                    move |editor: &mut Editor, (line_num, path), action| {
-                        match editor.open(path.into(), action) {
+                    move |cx, (line_num, path), action| {
+                        match cx.editor.open(path.into(), action) {
                             Ok(_) => {}
                             Err(e) => {
-                                editor.set_error(format!(
+                                cx.editor.set_error(format!(
                                     "Failed to open file '{}': {}",
                                     path.display(),
                                     e
@@ -1472,7 +1472,7 @@ fn global_search(cx: &mut Context) {
                         }
 
                         let line_num = *line_num;
-                        let (view, doc) = current!(editor);
+                        let (view, doc) = current!(cx.editor);
                         let text = doc.text();
                         let start = text.line_to_char(line_num);
                         let end = text.line_to_char((line_num + 1).min(text.len_lines()));
@@ -2717,8 +2717,8 @@ fn buffer_picker(cx: &mut Context) {
                 None => "[scratch buffer]".into(),
             }
         },
-        |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
-            editor.switch(*id, Action::Replace);
+        |cx, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
+            cx.editor.switch(*id, Action::Replace);
         },
         |editor, (id, path)| {
             let doc = &editor.documents.get(id)?;
@@ -2785,9 +2785,9 @@ fn symbol_picker(cx: &mut Context) {
                 let picker = FilePicker::new(
                     symbols,
                     |symbol| (&symbol.name).into(),
-                    move |editor: &mut Editor, symbol, _action| {
-                        push_jump(editor);
-                        let (view, doc) = current!(editor);
+                    move |cx, symbol, _action| {
+                        push_jump(cx.editor);
+                        let (view, doc) = current!(cx.editor);
 
                         if let Some(range) =
                             lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
@@ -2845,15 +2845,15 @@ pub fn code_action(cx: &mut Context) {
                         }
                         lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
                     },
-                    move |editor, code_action, _action| match code_action {
+                    move |cx, code_action, _action| match code_action {
                         lsp::CodeActionOrCommand::Command(command) => {
                             log::debug!("code action command: {:?}", command);
-                            editor.set_error(String::from("Handling code action command is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+                            cx.editor.set_error(String::from("Handling code action command is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
                         }
                         lsp::CodeActionOrCommand::CodeAction(code_action) => {
                             log::debug!("code action: {:?}", code_action);
                             if let Some(ref workspace_edit) = code_action.edit {
-                                apply_workspace_edit(editor, offset_encoding, workspace_edit)
+                                apply_workspace_edit(cx.editor, offset_encoding, workspace_edit)
                             }
                         }
                     },
@@ -3267,9 +3267,7 @@ fn goto_impl(
                     let line = location.range.start.line;
                     format!("{}:{}", file, line).into()
                 },
-                move |editor: &mut Editor, location, action| {
-                    jump_to(editor, location, offset_encoding, action)
-                },
+                move |cx, location, action| jump_to(cx.editor, location, offset_encoding, action),
                 |_editor, location| {
                     let path = location.uri.to_file_path().unwrap();
                     let line = Some((

@@ -128,7 +128,7 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
             )
             .into()
         },
-        move |editor, thread, _action| callback_fn(editor, thread),
+        move |cx, thread, _action| callback_fn(cx.editor, thread),
         move |_editor, thread| {
             if let Some(frame) = frames.get(&thread.id).and_then(|bt| bt.get(0)) {
                 frame
@@ -323,9 +323,9 @@ pub fn dap_launch(cx: &mut Context) {
         true,
         config.templates,
         |template| template.name.as_str().into(),
-        |editor, template, _action| {
+        |cx, template, _action| {
             let completions = template.completion.clone();
-            editor.debug_config_completions = completions;
+            cx.editor.debug_config_completions = completions;
             // TODO: need some way to manipulate the compositor to push a new prompt here
         },
     ))); // TODO: wrap in popup with fixed size
@@ -755,8 +755,8 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
     let picker = FilePicker::new(
         frames,
         |frame| frame.name.clone().into(), // TODO: include thread_states in the label
-        move |editor, frame, _action| {
-            let debugger = match &mut editor.debugger {
+        move |cx, frame, _action| {
+            let debugger = match &mut cx.editor.debugger {
                 Some(debugger) => debugger,
                 None => return,
             };
@@ -770,7 +770,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
                 .get(pos.unwrap_or(0))
                 .cloned();
             if let Some(frame) = &frame {
-                jump_to_stack_frame(editor, frame);
+                jump_to_stack_frame(cx.editor, frame);
             }
         },
         move |_editor, frame| {

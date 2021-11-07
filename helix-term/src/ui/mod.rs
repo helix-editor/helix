@@ -21,7 +21,7 @@ pub use text::Text;
 
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
-use helix_view::{Document, Editor, View};
+use helix_view::{Document, View};
 
 use std::path::PathBuf;
 
@@ -151,8 +151,8 @@ pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
                 .unwrap()
                 .into()
         },
-        move |editor: &mut Editor, path: &PathBuf, action| {
-            editor
+        move |cx, path: &PathBuf, action| {
+            cx.editor
                 .open(path.into(), action)
                 .expect("editor.open failed");
         },

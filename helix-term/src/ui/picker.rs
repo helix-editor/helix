@@ -84,7 +84,7 @@ impl<T> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
-        callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         Self {
@@ -278,7 +278,7 @@ pub struct Picker<T> {
     render_centered: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
-    callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
+    callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 }
 
 impl<T> Picker<T> {
@@ -286,7 +286,7 @@ impl<T> Picker<T> {
         render_centered: bool,
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
-        callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -452,7 +452,7 @@ impl<T: 'static> Component for Picker<T> {
                 ..
             } => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::Replace);
+                    (self.callback_fn)(cx, option, Action::Replace);
                 }
                 return close_fn;
             }
@@ -461,7 +461,7 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::HorizontalSplit);
+                    (self.callback_fn)(cx, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
@@ -470,7 +470,7 @@ impl<T: 'static> Component for Picker<T> {
                 modifiers: KeyModifiers::CONTROL,
             } => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
+                    (self.callback_fn)(cx, option, Action::VerticalSplit);
                 }
                 return close_fn;
             }
