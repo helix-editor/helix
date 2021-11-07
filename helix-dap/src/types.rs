@@ -84,14 +84,6 @@ pub struct DebuggerCapabilities {
     pub supported_checksum_algorithms: Option<Vec<String>>,
 }
 
-impl std::ops::Deref for DebuggerCapabilities {
-    type Target = Option<bool>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.supports_exception_options
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Checksum {
