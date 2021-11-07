@@ -44,7 +44,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    ui::{self, overlay::overlayed, FilePicker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Job, Jobs};
@@ -3670,8 +3670,17 @@ pub fn command_palette(cx: &mut Context) {
                         format!("{}: {}", name, doc).into()
                     }
                 },
-                move |_editor, command, _action| {
+                move |cx, command, _action| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: std::num::NonZeroUsize::new(1 as usize),
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
                     log::info!("would execute: {}", command.name());
+                    command.execute(&mut ctx);
                 },
             );
             compositor.push(Box::new(picker));
@@ -4853,7 +4862,7 @@ pub mod insert {
             .transform(|range| movement::move_next_word_start(text, range, count));
         delete_selection_insert_mode(doc, view, &selection);
     }
-}
+
 
 // Undo / Redo
 
