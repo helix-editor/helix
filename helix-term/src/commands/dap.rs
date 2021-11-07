@@ -227,9 +227,7 @@ pub fn dap_start_impl(
             for (i, x) in params.iter().enumerate() {
                 let mut param = x.to_string();
                 if let Some(DebugConfigCompletion::Advanced(cfg)) = template.completion.get(i) {
-                    if cfg.completion == Some("filename".to_owned())
-                        || cfg.completion == Some("directory".to_owned())
-                    {
+                    if matches!(cfg.completion.as_deref(), Some("filename" | "directory")) {
                         param = std::fs::canonicalize(x)
                             .ok()
                             .and_then(|pb| pb.into_os_string().into_string().ok())
@@ -330,27 +328,23 @@ fn debug_parameter_prompt(
     config_name: String,
     mut params: Vec<String>,
 ) -> Prompt {
-    let i = params.len();
-    let completion = completions.get(i).unwrap();
+    let completion = completions.get(params.len()).unwrap();
     let field_type = if let DebugConfigCompletion::Advanced(cfg) = completion {
-        cfg.completion.clone().unwrap_or_else(|| "".to_owned())
+        cfg.completion.as_deref().unwrap_or("")
     } else {
-        "".to_owned()
+        ""
     };
     let name = match completion {
-        DebugConfigCompletion::Advanced(cfg) => {
-            cfg.name.clone().unwrap_or_else(|| field_type.to_owned())
-        }
-        DebugConfigCompletion::Named(name) => name.clone(),
+        DebugConfigCompletion::Advanced(cfg) => cfg.name.as_deref().unwrap_or(field_type),
+        DebugConfigCompletion::Named(name) => name.as_str(),
     };
     let default_val = match completion {
-        DebugConfigCompletion::Advanced(cfg) => {
-            cfg.default.clone().unwrap_or_else(|| "".to_owned())
-        }
-        _ => "".to_owned(),
-    };
+        DebugConfigCompletion::Advanced(cfg) => cfg.default.as_deref().unwrap_or(""),
+        _ => "",
+    }
+    .to_owned();
 
-    let completer = match &field_type[..] {
+    let completer = match field_type {
         "filename" => ui::completers::filename,
         "directory" => ui::completers::directory,
         _ => |_input: &str| Vec::new(),
