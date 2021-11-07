@@ -93,7 +93,7 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: PathBuf, config: helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time;
 
