@@ -131,7 +131,9 @@ impl Application {
             //   https://github.com/crossterm-rs/crossterm/issues/500
             anyhow::bail!("Piping into helix-term is currently not supported on macOS");
         } else {
-            editor.new_file_from_stdin(Action::VerticalSplit).unwrap_or_else(|| editor.new_file(Action::VerticalSplit))
+            editor
+                .new_file_from_stdin(Action::VerticalSplit)
+                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
         editor.set_theme(theme);
