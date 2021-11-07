@@ -2268,13 +2268,13 @@ mod cmd {
         let pos = doc.selection(view.id).primary().cursor(text);
         let line = text.char_to_line(pos) + 1; // 1-indexing in DAP, 0-indexing in Helix
         let path = match doc.path() {
-            Some(path) => path.to_path_buf(),
+            Some(path) => path,
             None => return None,
         };
-        let vec = vec![];
-        let breakpoints = editor.breakpoints.get(&path).unwrap_or(&vec);
-        let i = breakpoints.iter().position(|b| b.line == line);
-        i.map(|i| (i, breakpoints.get(i).unwrap().clone()))
+        editor.breakpoints.get(path).and_then(|breakpoints| {
+            let i = breakpoints.iter().position(|b| b.line == line);
+            i.map(|i| (i, breakpoints[i].clone()))
+        })
     }
 
     fn debug_start(
