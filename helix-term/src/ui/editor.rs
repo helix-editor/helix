@@ -499,6 +499,8 @@ impl EditorView {
 
             let selected = cursors.contains(&line);
 
+            // TODO: debugger should translate received breakpoints to 0-indexing
+
             if let Some(user) = breakpoints.as_ref() {
                 let debugger_breakpoint = if let Some(debugger) = dbg_breakpoints.as_ref() {
                     debugger.iter().find(|breakpoint| {

@@ -381,6 +381,7 @@ impl Application {
                             Some(i) => {
                                 let item = debugger.breakpoints.get_mut(i).unwrap();
                                 item.verified = breakpoint.verified;
+                                // TODO: wasteful clones
                                 item.message = breakpoint.message.or_else(|| item.message.clone());
                                 item.source = breakpoint.source.or_else(|| item.source.clone());
                                 item.line = breakpoint.line.or(item.line);
