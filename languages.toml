@@ -405,6 +405,7 @@ language-server = { command = "cmake-language-server" }
 name = "glsl"
 scope = "source.glsl"
 file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
+shebangs = []
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
