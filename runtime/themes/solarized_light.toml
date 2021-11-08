@@ -24,6 +24,7 @@
 "constant" = { fg = "base1" }
 "constant.character" = { fg = "base1" }
 "constant.builtin" = { fg = "base1", modifiers = ["bold"] }
+"constant.numeric" = { fg= "base1" }
 "constant.numeric.integer" = { fg= "base1" }
 "constant.numeric.float" = { fg= "base1" }
 "constant.character.escape" = { fg = "red", modifiers = ["bold"] }
