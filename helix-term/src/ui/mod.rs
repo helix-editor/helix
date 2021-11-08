@@ -239,10 +239,8 @@ pub mod completers {
 
         let mut matches: Vec<_> = commands
             .into_iter()
-            .map(|name| ((0..), Cow::from(name)))
-            .filter_map(|(_range, name)| {
-                matcher.fuzzy_match(&name, input).map(|score| (name, score))
-            })
+            .map(|name| Cow::from(name))
+            .filter_map(|name| matcher.fuzzy_match(&name, input).map(|score| (name, score)))
             .collect();
 
         matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
