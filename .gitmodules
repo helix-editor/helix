@@ -138,3 +138,7 @@
 	path = helix-syntax/languages/tree-sitter-glsl
 	url = https://github.com/theHamsta/tree-sitter-glsl.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-perl"]
+	path = helix-syntax/languages/tree-sitter-perl
+	url = https://github.com/ganezdragon/tree-sitter-perl
+	shallow = true

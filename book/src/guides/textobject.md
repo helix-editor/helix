@@ -5,7 +5,7 @@ require an accompanying tree-sitter grammar and a `textobjects.scm` query file
 to work properly. Tree-sitter allows us to query the source code syntax tree
 and capture specific parts of it. The queries are written in a lisp dialect.
 More information on how to write queries can be found in the [official tree-sitter
-documentation](tree-sitter-queries).
+documentation][tree-sitter-queries].
 
 Query files should be placed in `runtime/queries/{language}/textobjects.scm`
 when contributing. Note that to test the query files locally you should put

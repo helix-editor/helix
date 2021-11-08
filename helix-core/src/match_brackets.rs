@@ -1,6 +1,13 @@
 use crate::{Rope, Syntax};
 
-const PAIRS: &[(char, char)] = &[('(', ')'), ('{', '}'), ('[', ']'), ('<', '>')];
+const PAIRS: &[(char, char)] = &[
+    ('(', ')'),
+    ('{', '}'),
+    ('[', ']'),
+    ('<', '>'),
+    ('\'', '\''),
+    ('"', '"'),
+];
 // limit matching pairs to only ( ) { } [ ] < >
 
 #[must_use]

@@ -494,7 +494,9 @@ impl Document {
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
         if let Some(path) = &self.path {
-            let language_config = config_loader.language_config_for_file_name(path);
+            let language_config = config_loader
+                .language_config_for_file_name(path)
+                .or_else(|| config_loader.language_config_for_shebang(path));
             self.set_language(theme, language_config);
         }
     }
