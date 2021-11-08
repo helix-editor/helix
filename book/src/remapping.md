@@ -38,6 +38,7 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 | Left         | `"left"`       |
 | Right        | `"right"`      |
 | Up           | `"up"`         |
+| Down         | `"down"`       |
 | Home         | `"home"`       |
 | End          | `"end"`        |
 | Page         | `"pageup"`     |
