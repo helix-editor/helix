@@ -287,6 +287,12 @@ impl Editor {
                 return;
             }
             Action::Load => {
+                let view_id = view!(self).id;
+                if let Some(doc) = self.document_mut(id) {
+                    if doc.selections().is_empty() {
+                        doc.selections.insert(view_id, Selection::point(0));
+                    }
+                }
                 return;
             }
             Action::HorizontalSplit => {

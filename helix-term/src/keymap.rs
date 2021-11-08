@@ -584,6 +584,7 @@ impl Default for Keymaps {
                 "R" => replace_selections_with_clipboard,
                 "/" => global_search,
                 "k" => hover,
+                "r" => rename_symbol,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
