@@ -2260,7 +2260,7 @@ mod cmd {
         path.push(format!("{}.txt", command));
 
         if !path.is_file() {
-            return Err(anyhow!("No help available for '{}'", args.join(" ")));
+            bail!("No help available for '{}'", args.join(" "));
         }
         let id = cx.editor.open(path, Action::HorizontalSplit)?;
         cx.editor.document_mut(id).unwrap().set_path(None)?;
