@@ -14,8 +14,6 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     fmt,
-    fs::File,
-    io::Read,
     path::Path,
     sync::Arc,
 };
@@ -308,15 +306,12 @@ impl Loader {
         // TODO: content_regex handling conflict resolution
     }
 
-    pub fn language_config_for_shebang(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
-        // Read the first 128 bytes of the file. If its a shebang line, try to find the language
-        let file = File::open(path).ok()?;
-        let mut buf = String::with_capacity(128);
-        file.take(128).read_to_string(&mut buf).ok()?;
+    pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
+        let line = Cow::from(source.line(0));
         static SHEBANG_REGEX: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+)?)?([^\s\.\d]+)").unwrap());
         let configuration_id = SHEBANG_REGEX
-            .captures(&buf)
+            .captures(&line)
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
