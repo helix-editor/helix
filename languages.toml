@@ -402,6 +402,14 @@ indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cmake-language-server" }
 
 [[language]]
+name = "glsl"
+scope = "source.glsl"
+file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
 name = "perl"
 scope = "source.perl"
 file-types = ["pl", "pm"]
