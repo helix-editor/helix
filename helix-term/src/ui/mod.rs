@@ -239,7 +239,7 @@ pub mod completers {
 
         let mut matches: Vec<_> = commands
             .into_iter()
-            .map(|name| Cow::from(name))
+            .map(Cow::from)
             .filter_map(|name| matcher.fuzzy_match(&name, input).map(|score| (name, score)))
             .collect();
 
