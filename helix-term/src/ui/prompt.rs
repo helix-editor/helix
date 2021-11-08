@@ -491,6 +491,7 @@ impl Component for Prompt {
                     doc.selection(view.id).primary(),
                     textobject::TextObject::Inside,
                     1,
+                    false,
                 );
                 let line = text.slice(range.from()..range.to()).to_string();
                 if !line.is_empty() {

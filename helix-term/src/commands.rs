@@ -4672,7 +4672,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count),
+                        'w' => textobject::textobject_word(text, range, objtype, count, false),
+                        'W' => textobject::textobject_word(text, range, objtype, count, true),
                         'c' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'p' => textobject_treesitter("parameter", range),

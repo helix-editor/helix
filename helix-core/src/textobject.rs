@@ -10,7 +10,7 @@ use crate::surround;
 use crate::syntax::LanguageConfiguration;
 use crate::Range;
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) -> usize {
+fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -33,7 +33,7 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) ->
         match categorize_char(ch) {
             Eol | Whitespace => return pos,
             category => {
-                if category != prev_category && pos != 0 && pos != slice.len_chars() {
+                if !long && category != prev_category && pos != 0 && pos != slice.len_chars() {
                     return pos;
                 } else {
                     match direction {
@@ -70,13 +70,14 @@ pub fn textobject_word(
     range: Range,
     textobject: TextObject,
     _count: usize,
+    long: bool,
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward);
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
     let word_end = match slice.get_char(pos).map(categorize_char) {
         None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward),
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
     };
 
     // Special case.
@@ -268,7 +269,7 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range) = case;
-                let result = textobject_word(slice, Range::point(pos), objtype, 1);
+                let result = textobject_word(slice, Range::point(pos), objtype, 1, false);
                 assert_eq!(
                     result,
                     expected_range.into(),
