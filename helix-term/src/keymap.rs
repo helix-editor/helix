@@ -595,8 +595,8 @@ impl Default for Keymaps {
                 "j" | "down" => scroll_down,
                 "b" | "S-up" => page_up,
                 "f" | "S-down" => page_down,
-                "u" | "C-up" => half_page_up,
-                "d" | "C-down" => half_page_down,
+                "u" => half_page_up,
+                "d" => half_page_down,
             },
             "Z" => { "View" sticky=true
                 "z" | "c" => align_view_center,
@@ -607,8 +607,8 @@ impl Default for Keymaps {
                 "j" | "down" => scroll_down,
                 "b" | "S-up" => page_up,
                 "f" | "S-down" => page_down,
-                "u" | "C-up" => half_page_up,
-                "d" | "C-down" => half_page_down,
+                "u" => half_page_up,
+                "d" => half_page_down,
             },
 
             "\"" => select_register,
