@@ -139,23 +139,27 @@
                     <main>
                         <h1 id="adding-languages"><a class="header" href="#adding-languages">Adding languages</a></h1>
 <h2 id="submodules"><a class="header" href="#submodules">Submodules</a></h2>
-<p>To add a new langauge, you should first add a tree-sitter submodule. To do this, you can run the command</p>
-<pre><code class="language-sh">$ git submodule add -f &lt;repository&gt; helix-syntax/languages/tree-sitter-&lt;name&gt;
+<p>To add a new langauge, you should first add a tree-sitter submodule. To do this,
+you can run the command</p>
+<pre><code class="language-sh">git submodule add -f &lt;repository&gt; helix-syntax/languages/tree-sitter-&lt;name&gt;
 </code></pre>
 <p>For example, to add tree-sitter-ocaml you would run</p>
-<pre><code class="language-sh">$ git submodule add -f https://github.com/tree-sitter/tree-sitter-ocaml helix-syntax/languages/tree-sitter-ocaml
+<pre><code class="language-sh">git submodule add -f https://github.com/tree-sitter/tree-sitter-ocaml helix-syntax/languages/tree-sitter-ocaml
 </code></pre>
 <p>Make sure the submodule is shallow by doing</p>
 <pre><code class="language-sh">git config -f .gitmodules submodule.helix-syntax/languages/tree-sitter-&lt;name&gt;.shallow true
 </code></pre>
 <p>or you can manually add <code>shallow = true</code> to <code>.gitmodules</code>.</p>
 <h2 id="languagestoml"><a class="header" href="#languagestoml">languages.toml</a></h2>
-<p>Next, you need to add the language to the <code>languages.toml</code> found in the root of the repository; this <code>languages.toml</code> file is included at compilation time, and is distinct from the <code>language.toml</code> file in the user's <a href="../configuration.html">configuration directory</a>.</p>
+<p>Next, you need to add the language to the <a href="https://github.com/helix-editor/helix/blob/master/languages.toml"><code>languages.toml</code></a> found in the root of
+the repository; this <code>languages.toml</code> file is included at compilation time, and
+is distinct from the <code>language.toml</code> file in the user's <a href="../configuration.html">configuration
+directory</a>.</p>
 <p>These are the available keys and descriptions for the file.</p>
 <table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td>name</td><td>The name of the language</td></tr>
 <tr><td>scope</td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
-<tr><td>injection-regex</td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential language injection site. <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">link</a></td></tr>
+<tr><td>injection-regex</td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">language injection</a> site.</td></tr>
 <tr><td>file-types</td><td>The filetypes of the language, for example <code>[&quot;yml&quot;, &quot;yaml&quot;]</code></td></tr>
 <tr><td>roots</td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
 <tr><td>auto-format</td><td>Whether to autoformat this language when saving</td></tr>
@@ -167,11 +171,11 @@
 <p>For a language to have syntax-highlighting and indentation among other things, you have to add queries. Add a directory for your language with the path <code>runtime/queries/&lt;name&gt;/</code>. The tree-sitter <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries">website</a> gives more info on how to write queries.</p>
 <h2 id="common-issues"><a class="header" href="#common-issues">Common Issues</a></h2>
 <ul>
-<li>If you get errors when building after switching branches, you may have to remove or update tree-sitter submodules. You can update submodules by running</li>
-</ul>
-<pre><code class="language-sh">$ git submodule sync; git submodule update --init
+<li>
+<p>If you get errors when building after switching branches, you may have to remove or update tree-sitter submodules. You can update submodules by running</p>
+<pre><code class="language-sh">git submodule sync; git submodule update --init
 </code></pre>
-<ul>
+</li>
 <li>
 <p>Make sure to not use the <code>--remote</code> flag. To remove submodules look inside the <code>.gitmodules</code> and remove directories that are not present inside of it.</p>
 </li>
