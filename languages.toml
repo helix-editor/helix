@@ -366,3 +366,11 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cmake-language-server" }
+
+[[language]]
+name = "perl"
+scope = "source.perl"
+file-types = ["pl", "pm"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
