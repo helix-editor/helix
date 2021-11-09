@@ -54,6 +54,10 @@ impl JumpList {
             None
         }
     }
+
+    pub fn remove(&mut self, doc_id: &DocumentId) {
+        self.jumps.retain(|(other_id, _)| other_id != doc_id);
+    }
 }
 
 #[derive(Debug)]
