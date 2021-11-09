@@ -215,6 +215,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `Y`     | Yank main selection to clipboard                                      | `yank_main_selection_to_clipboard`  |
 | `R`     | Replace selections by clipboard contents                              | `replace_selections_with_clipboard` |
 | `/`     | Global search in workspace folder                                     | `global_search`                     |
+| `r`     | rename symbol by lsp                                                  | `rename_symbol`                     |
 
 > NOTE: Global search display results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
  
