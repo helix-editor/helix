@@ -1698,6 +1698,17 @@ mod cmd {
         Ok(())
     }
 
+    fn force_buffer_close(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let view = view!(cx.editor);
+        let doc_id = view.doc;
+        cx.editor.close_document(doc_id, true)?;
+        Ok(())
+    }
+
     fn write_impl<P: AsRef<Path>>(
         cx: &mut compositor::Context,
         path: Option<P>,
@@ -2292,6 +2303,13 @@ mod cmd {
           aliases: &["bc", "bclose"],
           doc: "Close the current buffer.",
           fun: buffer_close,
+          completer: None, // FIXME: buffer completer
+        },
+        TypableCommand {
+          name: "buffer-close!",
+          aliases: &["bc!", "bclose!"],
+          doc: "Close the current buffer forcefully (ignoring unsaved changes).",
+          fun: force_buffer_close,
           completer: None, // FIXME: buffer completer
         },
         TypableCommand {
