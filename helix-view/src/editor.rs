@@ -389,7 +389,7 @@ impl Editor {
         Ok(id)
     }
 
-    pub fn close(&mut self, id: ViewId, close_buffer: bool) {
+    pub fn close(&mut self, id: ViewId) {
         let view = self.tree.get(self.tree.focus);
         // remove selection
         self.documents
@@ -397,16 +397,6 @@ impl Editor {
             .unwrap()
             .selections
             .remove(&id);
-
-        if close_buffer {
-            // get around borrowck issues
-            let doc = &self.documents[&view.doc];
-
-            if let Some(language_server) = doc.language_server() {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-            }
-            self.documents.remove(&view.doc);
-        }
 
         self.tree.remove(id);
         self._refresh();

@@ -1659,8 +1659,7 @@ mod cmd {
             buffers_remaining_impl(cx.editor)?
         }
 
-        cx.editor
-            .close(view!(cx.editor).id, /* close_buffer */ false);
+        cx.editor.close(view!(cx.editor).id);
 
         Ok(())
     }
@@ -1670,8 +1669,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        cx.editor
-            .close(view!(cx.editor).id, /* close_buffer */ false);
+        cx.editor.close(view!(cx.editor).id);
 
         Ok(())
     }
@@ -1941,7 +1939,7 @@ mod cmd {
             // close all views
             let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
             for view_id in views {
-                cx.editor.close(view_id, false);
+                cx.editor.close(view_id);
             }
         }
 
@@ -1985,7 +1983,7 @@ mod cmd {
         // close all views
         let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
         for view_id in views {
-            editor.close(view_id, false);
+            editor.close(view_id);
         }
 
         Ok(())
@@ -4740,7 +4738,7 @@ fn wclose(cx: &mut Context) {
     }
     let view_id = view!(cx.editor).id;
     // close current split
-    cx.editor.close(view_id, /* close_buffer */ false);
+    cx.editor.close(view_id);
 }
 
 fn wonly(cx: &mut Context) {
