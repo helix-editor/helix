@@ -412,6 +412,47 @@ impl Editor {
         self._refresh();
     }
 
+    pub fn close_document(&mut self, id: DocumentId, force: bool) -> anyhow::Result<()> {
+        let view = view!(self);
+        let doc = &self.documents[&id];
+
+        if !force && doc.is_modified() {
+            anyhow::bail!(
+                "buffer {:?} is modified",
+                doc.relative_path()
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "[scratch]".into())
+            );
+        }
+
+        if let Some(language_server) = doc.language_server() {
+            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+        }
+
+        if let Some(alt) = view.last_accessed_doc {
+            self.switch(alt, Action::Replace);
+            let view_mut = view_mut!(self);
+            view_mut.last_accessed_doc = None;
+        } else if self.documents.len() > 1 {
+            let first_other_doc = self
+                .documents
+                .iter()
+                .find_map(|(&other_id, _)| if other_id == id { None } else { Some(id) })
+                .unwrap();
+            self.switch(first_other_doc, Action::Replace);
+        } else {
+            self.new_file(Action::Replace);
+        }
+
+        let view_mut = view_mut!(self);
+        view_mut.jumps.remove(&id);
+        self.documents.remove(&id);
+
+        self._refresh();
+
+        Ok(())
+    }
+
     pub fn resize(&mut self, area: Rect) {
         if self.tree.resize(area) {
             self._refresh();
