@@ -81,7 +81,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("helix {}", env!("CARGO_PKG_VERSION"));
+        println!("helix {}", env!("VERSION_WITH_GIT_HASH"));
         std::process::exit(0);
     }
 
