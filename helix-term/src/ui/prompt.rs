@@ -229,6 +229,14 @@ impl Prompt {
         self.completion = (self.completion_fn)(&self.line);
     }
 
+    pub fn delete_word_forwards(&mut self) {
+        let pos = self.eval_movement(Movement::ForwardWord(1));
+        self.line.replace_range(self.cursor..pos, "");
+
+        self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
+    }
+
     pub fn kill_to_start_of_line(&mut self) {
         let pos = self.eval_movement(Movement::StartOfLine);
         self.line.replace_range(pos..self.cursor, "");
@@ -484,6 +492,10 @@ impl Component for Prompt {
                 code: KeyCode::Char('w'),
                 modifiers: KeyModifiers::CONTROL,
             } => self.delete_word_backwards(),
+            KeyEvent {
+                code: KeyCode::Char('d'),
+                modifiers: KeyModifiers::ALT,
+            } => self.delete_word_forwards(),
             KeyEvent {
                 code: KeyCode::Char('k'),
                 modifiers: KeyModifiers::CONTROL,

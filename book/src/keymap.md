@@ -234,24 +234,25 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 
 ## Insert Mode
 
-| Key      | Description           | Command                |
-| -----    | -----------           | -------                |
-| `Escape` | Switch to normal mode | `normal_mode`          |
-| `Ctrl-x` | Autocomplete          | `completion`           |
-| `Ctrl-w` | Delete previous word  | `delete_word_backward` |
-| `Alt-b`, `Alt-Left`     | Backward a word                                                         |
-| `Ctrl-b`, `Left`        | Backward a char                                                         |
-| `Alt-f`, `Alt-Right`    | Forward a word                                                          |
-| `Ctrl-f`, `Right`       | Forward a char                                                          |
-| `Ctrl-e`, `End`         | move to line end                                                        |
-| `Ctrl-a`, `Home`        | move to line start                                                      |
-| `Ctrl-w`                | delete previous word                                                    |
-| `Ctrl-u`                | delete to start of line                                                 |
-| `Ctrl-k`                | delete to end of line                                                   |
-| `backspace`, `Ctrl-h`   | delete previous char                                                    |
-| `delete`, `Ctrl-d`      | delete previous char                                                    |
-| `Ctrl-p`, `Up`          | move to previous line                                                   |
-| `Ctrl-n`, `Down`        | move to next line                                                       |
+| Key                     | Description                 | Command                 |
+| -----                   | -----------                 | -------                 |
+| `Escape`                | Switch to normal mode       | `normal_mode`           |
+| `Ctrl-x`                | Autocomplete                | `completion`            |
+| `Ctrl-w`                | Delete previous word        | `delete_word_backward`  |
+| `Alt-d`                 | Delete next word            | `delete_word_forward`   |
+| `Alt-b`, `Alt-Left`     | Backward a word             | `move_prev_word_end`    |
+| `Ctrl-b`, `Left`        | Backward a char             | `move_char_left`        |
+| `Alt-f`, `Alt-Right`    | Forward a word              | `move_next_word_start`  |
+| `Ctrl-f`, `Right`       | Forward a char              | `move_char_right`       |
+| `Ctrl-e`, `End`         | move to line end            | `goto_line_end_newline` |
+| `Ctrl-a`, `Home`        | move to line start          | `goto_line_start`       |
+| `Ctrl-w`                | delete previous word        | `delete_word_backwar`   |
+| `Ctrl-u`                | delete to start of line     | `kill_to_line_start`    |
+| `Ctrl-k`                | delete to end of line       | `kill_to_line_end`      |
+| `backspace`, `Ctrl-h`   | delete previous char        | `delete_char_backward`  |
+| `delete`, `Ctrl-d`      | delete previous char        | `delete_char_forward`   |
+| `Ctrl-p`, `Up`          | move to previous line       | `move_line_up`          |
+| `Ctrl-n`, `Down`        | move to next line           | `move_line_down`        |
 
 ## Select / extend mode
 
@@ -287,6 +288,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-e`, `End`         | move prompt end                                                         |
 | `Ctrl-a`, `Home`        | move prompt start                                                       |
 | `Ctrl-w`                | delete previous word                                                    |
+| `Alt-d`                 | delete next word                                                        |
 | `Ctrl-u`                | delete to start of line                                                 |
 | `Ctrl-k`                | delete to end of line                                                   |
 | `backspace`, `Ctrl-h`   | delete previous char                                                    |
