@@ -597,9 +597,9 @@ fn goto_window(cx: &mut Context, align: Align) {
 
     let line = match align {
         Align::Top => (view.offset.row + scrolloff),
-        // the last line might far above height,  so use content middle if the view is not fullfilled
+        // the last line might far above height,  so use content middle if the view is not fulfilled
         Align::Center => (view.offset.row + ((last_line - view.offset.row) / 2)),
-        // the last line might far above height,  so se use last line if the view is not fullfilled
+        // the last line might far above height,  so se use last line if the view is not fulfilled
         Align::Bottom => std::cmp::min(
             last_line,
             (view.offset.row + height - 1).saturating_sub(scrolloff),
