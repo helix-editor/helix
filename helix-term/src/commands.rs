@@ -185,6 +185,7 @@ impl Command {
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to beginning of next word",
         move_prev_word_start, "Move to beginning of previous word",
+        move_prev_word_end, "Move to end of previous word",
         move_next_word_end, "Move to end of next word",
         move_next_long_word_start, "Move to beginning of next long word",
         move_prev_long_word_start, "Move to beginning of previous long word",
@@ -279,6 +280,9 @@ impl Command {
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
+        delete_word_forward, "Delete next word",
+        kill_to_line_start, "Delete content till the start of the line",
+        kill_to_line_end, "Delete content till the end of the line",
         undo, "Undo change",
         redo, "Redo change",
         yank, "Yank selection",
@@ -563,6 +567,16 @@ fn extend_to_line_start(cx: &mut Context) {
     goto_line_start_impl(view, doc, Movement::Extend)
 }
 
+fn kill_to_line_start(cx: &mut Context) {
+    extend_to_line_start(cx);
+    delete_selection(cx);
+}
+
+fn kill_to_line_end(cx: &mut Context) {
+    extend_to_line_end(cx);
+    delete_selection(cx);
+}
+
 fn goto_first_nonwhitespace(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -637,6 +651,10 @@ fn move_next_word_start(cx: &mut Context) {
 
 fn move_prev_word_start(cx: &mut Context) {
     move_word_impl(cx, movement::move_prev_word_start)
+}
+
+fn move_prev_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_word_end)
 }
 
 fn move_next_word_end(cx: &mut Context) {
@@ -3799,6 +3817,19 @@ pub mod insert {
             .selection(view.id)
             .clone()
             .transform(|range| movement::move_prev_word_start(text, range, count));
+        doc.set_selection(view.id, selection);
+        delete_selection(cx)
+    }
+
+    pub fn delete_word_forward(cx: &mut Context) {
+        let count = cx.count();
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| movement::move_next_word_start(text, range, count));
         doc.set_selection(view.id, selection);
         delete_selection(cx)
     }

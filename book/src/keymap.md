@@ -239,6 +239,19 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `Escape` | Switch to normal mode | `normal_mode`          |
 | `Ctrl-x` | Autocomplete          | `completion`           |
 | `Ctrl-w` | Delete previous word  | `delete_word_backward` |
+| `Alt-b`, `Alt-Left`     | Backward a word                                                         |
+| `Ctrl-b`, `Left`        | Backward a char                                                         |
+| `Alt-f`, `Alt-Right`    | Forward a word                                                          |
+| `Ctrl-f`, `Right`       | Forward a char                                                          |
+| `Ctrl-e`, `End`         | move to line end                                                        |
+| `Ctrl-a`, `Home`        | move to line start                                                      |
+| `Ctrl-w`                | delete previous word                                                    |
+| `Ctrl-u`                | delete to start of line                                                 |
+| `Ctrl-k`                | delete to end of line                                                   |
+| `backspace`, `Ctrl-h`   | delete previous char                                                    |
+| `delete`, `Ctrl-d`      | delete previous char                                                    |
+| `Ctrl-p`, `Up`          | move to previous line                                                   |
+| `Ctrl-n`, `Down`        | move to next line                                                       |
 
 ## Select / extend mode
 
