@@ -274,8 +274,10 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-e`, `End`         | move prompt end                                                         |
 | `Ctrl-a`, `Home`        | move prompt start                                                       |
 | `Ctrl-w`                | delete previous word                                                    |
+| `Ctrl-u`                | delete to start of line                                                 |
 | `Ctrl-k`                | delete to end of line                                                   |
-| `backspace`             | delete previous char                                                    |
+| `backspace`, `Ctrl-h`   | delete previous char                                                    |
+| `delete`, `Ctrl-d`      | delete previous char                                                    |
 | `Ctrl-s`                | insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`          | select previous history                                                 |
 | `Ctrl-n`, `Down`        | select next history                                                     |

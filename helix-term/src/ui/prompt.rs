@@ -212,8 +212,25 @@ impl Prompt {
         self.completion = (self.completion_fn)(&self.line);
     }
 
+    pub fn delete_char_forwards(&mut self) {
+        let pos = self.eval_movement(Movement::ForwardChar(1));
+        self.line.replace_range(self.cursor..pos, "");
+
+        self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
+    }
+
     pub fn delete_word_backwards(&mut self) {
         let pos = self.eval_movement(Movement::BackwardWord(1));
+        self.line.replace_range(pos..self.cursor, "");
+        self.cursor = pos;
+
+        self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
+    }
+
+    pub fn kill_to_start_of_line(&mut self) {
+        let pos = self.eval_movement(Movement::StartOfLine);
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
 
@@ -472,10 +489,29 @@ impl Component for Prompt {
                 modifiers: KeyModifiers::CONTROL,
             } => self.kill_to_end_of_line(),
             KeyEvent {
+                code: KeyCode::Char('u'),
+                modifiers: KeyModifiers::CONTROL,
+            } => self.kill_to_start_of_line(),
+            KeyEvent {
+                code: KeyCode::Char('h'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
             } => {
                 self.delete_char_backwards();
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            }
+            KeyEvent {
+                code: KeyCode::Char('d'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+            | KeyEvent {
+                code: KeyCode::Delete,
+                modifiers: KeyModifiers::NONE,
+            } => {
+                self.delete_char_forwards();
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             KeyEvent {
