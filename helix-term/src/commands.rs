@@ -1687,6 +1687,17 @@ mod cmd {
         Ok(())
     }
 
+    fn buffer_close(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let view = view!(cx.editor);
+        let doc_id = view.doc;
+        cx.editor.close_document(doc_id, false)?;
+        Ok(())
+    }
+
     fn write_impl<P: AsRef<Path>>(
         cx: &mut compositor::Context,
         path: Option<P>,
@@ -2275,6 +2286,13 @@ mod cmd {
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+          name: "buffer-close",
+          aliases: &["bc", "bclose"],
+          doc: "Close the current buffer.",
+          fun: buffer_close,
+          completer: None, // FIXME: buffer completer
         },
         TypableCommand {
             name: "write",
