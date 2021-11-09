@@ -3,7 +3,6 @@ name = "rust"
 scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
-shebangs = []
 roots = []
 auto-format = true
 comment-token = "//"
@@ -18,7 +17,6 @@ name = "toml"
 scope = "source.toml"
 injection-regex = "toml"
 file-types = ["toml"]
-shebangs = []
 roots = []
 comment-token = "#"
 
@@ -29,7 +27,6 @@ name = "protobuf"
 scope = "source.proto"
 injection-regex = "protobuf"
 file-types = ["proto"]
-shebangs = []
 roots = []
 comment-token = "//"
 
@@ -40,7 +37,7 @@ name = "elixir"
 scope = "source.elixir"
 injection-regex = "elixir"
 file-types = ["ex", "exs"]
-shebangs = []
+shebangs = ["elixir"]
 roots = []
 comment-token = "#"
 
@@ -64,7 +61,6 @@ name = "json"
 scope = "source.json"
 injection-regex = "json"
 file-types = ["json"]
-shebangs = []
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
@@ -74,7 +70,6 @@ name = "c"
 scope = "source.c"
 injection-regex = "c"
 file-types = ["c"] # TODO: ["h"]
-shebangs = []
 roots = []
 comment-token = "//"
 
@@ -86,7 +81,6 @@ name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
 file-types = ["cc", "hh", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino"]
-shebangs = []
 roots = []
 comment-token = "//"
 
@@ -98,7 +92,6 @@ name = "c-sharp"
 scope = "source.csharp"
 injection-regex = "c-?sharp"
 file-types = ["cs"]
-shebangs = []
 roots = []
 comment-token = "//"
 
@@ -109,7 +102,6 @@ name = "go"
 scope = "source.go"
 injection-regex = "go"
 file-types = ["go"]
-shebangs = []
 roots = ["Gopkg.toml", "go.mod"]
 auto-format = true
 comment-token = "//"
@@ -123,7 +115,7 @@ name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
 file-types = ["js", "mjs"]
-shebangs = []
+shebangs = ["node"]
 roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
@@ -147,7 +139,6 @@ name = "tsx"
 scope = "source.tsx"
 injection-regex = "^(tsx)$" # |typescript
 file-types = ["tsx"]
-shebangs = []
 roots = []
 # TODO: highlights-jsx, highlights-params
 
@@ -159,7 +150,6 @@ name = "css"
 scope = "source.css"
 injection-regex = "css"
 file-types = ["css"]
-shebangs = []
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
@@ -169,7 +159,6 @@ name = "html"
 scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html"]
-shebangs = []
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
@@ -238,7 +227,6 @@ name = "latex"
 scope = "source.tex"
 injection-regex = "tex"
 file-types = ["tex"]
-shebangs = []
 roots = []
 comment-token = "%"
 
@@ -249,7 +237,6 @@ name = "julia"
 scope = "source.julia"
 injection-regex = "julia"
 file-types = ["jl"]
-shebangs = []
 roots = []
 comment-token = "#"
 language-server = { command = "julia", args = [
@@ -275,7 +262,6 @@ name = "java"
 scope = "source.java"
 injection-regex = "java"
 file-types = ["java"]
-shebangs = []
 roots = []
 indent = { tab-width = 4, unit = "    " }
 
@@ -284,7 +270,6 @@ name = "ledger"
 scope = "source.ledger"
 injection-regex = "ledger"
 file-types = ["ldg", "ledger", "journal"]
-shebangs = []
 roots = []
 comment-token = ";"
 indent = { tab-width = 4, unit = "    " }
@@ -312,7 +297,7 @@ indent = { tab-width = 2, unit = "  "}
 name = "lua"
 scope = "source.lua"
 file-types = ["lua"]
-shebangs = []
+shebangs = ["lua"]
 roots = []
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
@@ -322,7 +307,6 @@ name = "svelte"
 scope = "source.svelte"
 injection-regex = "svelte"
 file-types = ["svelte"]
-shebangs = []
 roots = []
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "svelteserver", args = ["--stdio"] }
@@ -333,7 +317,6 @@ name = "vue"
 scope = "source.vue"
 injection-regex = "vue"
 file-types = ["vue"]
-shebangs = []
 roots = []
 indent = { tab-width = 2, unit = "  " }
 
@@ -341,7 +324,6 @@ indent = { tab-width = 2, unit = "  " }
 name = "yaml"
 scope = "source.yaml"
 file-types = ["yml", "yaml"]
-shebangs = []
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -361,7 +343,6 @@ name = "zig"
 scope = "source.zig"
 injection-regex = "zig"
 file-types = ["zig"]
-shebangs = []
 roots = ["build.zig"]
 auto-format = true
 comment-token = "//"
@@ -386,7 +367,6 @@ language-server = { command = "swipl", args = [
 name = "tsq"
 scope = "source.tsq"
 file-types = ["scm"]
-shebangs = []
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
@@ -395,7 +375,6 @@ indent = { tab-width = 2, unit = "  " }
 name = "cmake"
 scope = "source.cmake"
 file-types = ["cmake", "CMakeLists.txt"]
-shebangs = []
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -405,7 +384,6 @@ language-server = { command = "cmake-language-server" }
 name = "glsl"
 scope = "source.glsl"
 file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
-shebangs = []
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
