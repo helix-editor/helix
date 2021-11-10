@@ -23,6 +23,7 @@ To override global configuration parameters, create a `config.toml` file located
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
+| `git_ignore` | Whether to hide files listed in .gitignore in filepicker. | `false` |
 
 ## LSP
 

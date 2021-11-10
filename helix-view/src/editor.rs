@@ -61,6 +61,7 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
     pub git_ignore: bool,
 }
 
