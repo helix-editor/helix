@@ -3385,7 +3385,7 @@ fn buffer_picker(cx: &mut Context) {
                 .map(helix_core::path::get_relative_path);
             let path = match path.as_deref().and_then(Path::to_str) {
                 Some(path) => path,
-                None => return Cow::Borrowed(SCRATCH_BUFFER_NAME),
+                None => SCRATCH_BUFFER_NAME,
             };
 
             let mut flags = Vec::new();
@@ -3401,7 +3401,7 @@ fn buffer_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            Cow::Owned(format!("{}{}", path, flag))
+            Cow::Owned(format!("{} {}{}", self.id, path, flag))
         }
     }
 
