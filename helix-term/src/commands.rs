@@ -2618,36 +2618,66 @@ fn file_picker(cx: &mut Context) {
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
+    struct BufferMeta {
+        id: DocumentId,
+        path: Option<PathBuf>,
+        is_modified: bool,
+        is_current: bool,
+    }
+
+    impl BufferMeta {
+        fn format(&self) -> Cow<str> {
+            let path = self
+                .path
+                .as_deref()
+                .map(helix_core::path::get_relative_path);
+            let path = match path.as_deref().and_then(Path::to_str) {
+                Some(path) => path,
+                None => return Cow::Borrowed("[scratch buffer]"),
+            };
+
+            let mut flags = Vec::new();
+            if self.is_modified {
+                flags.push("+");
+            }
+            if self.is_current {
+                flags.push("*");
+            }
+
+            let flag = if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join(""))
+            };
+            Cow::Owned(format!("{}{}", path, flag))
+        }
+    }
+
+    let new_meta = |doc: &Document| BufferMeta {
+        id: doc.id(),
+        path: doc.path().cloned(),
+        is_modified: doc.is_modified(),
+        is_current: doc.id() == current,
+    };
+
     let picker = FilePicker::new(
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (*id, doc.path().cloned()))
+            .map(|(_, doc)| new_meta(doc))
             .collect(),
-        move |(id, path): &(DocumentId, Option<PathBuf>)| {
-            let path = path.as_deref().map(helix_core::path::get_relative_path);
-            match path.as_ref().and_then(|path| path.to_str()) {
-                Some(path) => {
-                    if *id == current {
-                        format!("{} (*)", &path).into()
-                    } else {
-                        path.to_owned().into()
-                    }
-                }
-                None => "[scratch buffer]".into(),
-            }
+        BufferMeta::format,
+        |editor: &mut Editor, meta, _action| {
+            editor.switch(meta.id, Action::Replace);
         },
-        |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
-            editor.switch(*id, Action::Replace);
-        },
-        |editor, (id, path)| {
-            let doc = &editor.documents.get(id)?;
+        |editor, meta| {
+            let doc = &editor.documents.get(&meta.id)?;
             let &view_id = doc.selections().keys().next()?;
             let line = doc
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, Some((line, line))))
+            Some((meta.path.clone()?, Some((line, line))))
         },
     );
     cx.push_layer(Box::new(picker));

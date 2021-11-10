@@ -142,9 +142,8 @@ over text and not actively editing it).
 
 #### Goto mode
 
-Jumps to various locations.
-
-> NOTE: Some of these features are only available with the LSP present.
+Jumps to various locations. Mappings marked (**LSP**) require an
+active language server for the file to work.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
@@ -156,10 +155,10 @@ Jumps to various locations.
 | `t`   | Go to the top of the screen                      | `goto_window_top`          |
 | `m`   | Go to the middle of the screen                   | `goto_window_middle`       |
 | `b`   | Go to the bottom of the screen                   | `goto_window_bottom`       |
-| `d`   | Go to definition                                 | `goto_definition`          |
-| `y`   | Go to type definition                            | `goto_type_definition`     |
-| `r`   | Go to references                                 | `goto_reference`           |
-| `i`   | Go to implementation                             | `goto_implementation`      |
+| `d`   | Go to definition (**LSP**)                       | `goto_definition`          |
+| `y`   | Go to type definition (**LSP**)                  | `goto_type_definition`     |
+| `r`   | Go to references (**LSP**)                       | `goto_reference`           |
+| `i`   | Go to implementation (**LSP**)                   | `goto_implementation`      |
 | `a`   | Go to the last accessed/alternate file           | `goto_last_accessed_file`  |
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
@@ -198,15 +197,18 @@ This layer is similar to vim keybindings as kakoune does not support window.
 
 #### Space mode
 
-This layer is a kludge of mappings, mostly pickers.
+This layer is a kludge of mappings, mostly pickers. Mappings marked
+(**LSP**) require an active language server for the file to work.
+
 
 | Key     | Description                                                           | Command                             |
 | -----   | -----------                                                           | -------                             |
-| `k`     | Show documentation for the item under the cursor                      | `hover`                             |
 | `f`     | Open file picker                                                      | `file_picker`                       |
 | `b`     | Open buffer picker                                                    | `buffer_picker`                     |
-| `s`     | Open symbol picker (current document)                                 | `symbol_picker`                     |
-| `a`     | Apply code action                                                     | `code_action`                       |
+| `k`     | Show documentation for item under cursor (**LSP**)                      | `hover`                             |
+| `s`     | Open document symbol picker (**LSP**)                                     | `symbol_picker`                     |
+| `r`     | Rename symbol (**LSP**)                                                   | `rename_symbol`                     |
+| `a`     | Apply code action  (**LSP**)                                              | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                | `last_picker`                       |
 | `w`     | Enter [window mode](#window-mode)                                     | N/A                                 |
 | `p`     | Paste system clipboard after selections                               | `paste_clipboard_after`             |
@@ -215,9 +217,8 @@ This layer is a kludge of mappings, mostly pickers.
 | `Y`     | Yank main selection to clipboard                                      | `yank_main_selection_to_clipboard`  |
 | `R`     | Replace selections by clipboard contents                              | `replace_selections_with_clipboard` |
 | `/`     | Global search in workspace folder                                     | `global_search`                     |
-| `r`     | Rename symbol using the language server                               | `rename_symbol`                     |
 
-> NOTE: Global search display results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
+> TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
  
 #### Unimpaired
 
@@ -234,25 +235,11 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 
 ## Insert Mode
 
-| Key                     | Description                 | Command                 |
-| -----                   | -----------                 | -------                 |
-| `Escape`                | Switch to normal mode       | `normal_mode`           |
-| `Ctrl-x`                | Autocomplete                | `completion`            |
-| `Ctrl-w`                | Delete previous word        | `delete_word_backward`  |
-| `Alt-d`                 | Delete next word            | `delete_word_forward`   |
-| `Alt-b`, `Alt-Left`     | Backward a word             | `move_prev_word_end`    |
-| `Ctrl-b`, `Left`        | Backward a char             | `move_char_left`        |
-| `Alt-f`, `Alt-Right`    | Forward a word              | `move_next_word_start`  |
-| `Ctrl-f`, `Right`       | Forward a char              | `move_char_right`       |
-| `Ctrl-e`, `End`         | move to line end            | `goto_line_end_newline` |
-| `Ctrl-a`, `Home`        | move to line start          | `goto_line_start`       |
-| `Ctrl-w`                | delete previous word        | `delete_word_backwar`   |
-| `Ctrl-u`                | delete to start of line     | `kill_to_line_start`    |
-| `Ctrl-k`                | delete to end of line       | `kill_to_line_end`      |
-| `backspace`, `Ctrl-h`   | delete previous char        | `delete_char_backward`  |
-| `delete`, `Ctrl-d`      | delete previous char        | `delete_char_forward`   |
-| `Ctrl-p`, `Up`          | move to previous line       | `move_line_up`          |
-| `Ctrl-n`, `Down`        | move to next line           | `move_line_down`        |
+| Key      | Description           | Command                |
+| -----    | -----------           | -------                |
+| `Escape` | Switch to normal mode | `normal_mode`          |
+| `Ctrl-x` | Autocomplete          | `completion`           |
+| `Ctrl-w` | Delete previous word  | `delete_word_backward` |
 
 ## Select / extend mode
 
@@ -277,7 +264,9 @@ Keys to use within picker. Remapping currently not supported.
 | `Escape`, `Ctrl-c`           | Close picker      |
 
 # Prompt
+
 Keys to use within prompt, Remapping currently not supported.
+
 | Key                     | Description                                                             |
 | -----                   | -------------                                                           |
 | `Escape`, `Ctrl-c`      | Close prompt                                                            |
@@ -285,18 +274,18 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-b`, `Left`        | Backward a char                                                         |
 | `Alt-f`, `Alt-Right`    | Forward a word                                                          |
 | `Ctrl-f`, `Right`       | Forward a char                                                          |
-| `Ctrl-e`, `End`         | move prompt end                                                         |
-| `Ctrl-a`, `Home`        | move prompt start                                                       |
-| `Ctrl-w`                | delete previous word                                                    |
-| `Alt-d`                 | delete next word                                                        |
-| `Ctrl-u`                | delete to start of line                                                 |
-| `Ctrl-k`                | delete to end of line                                                   |
-| `backspace`, `Ctrl-h`   | delete previous char                                                    |
-| `delete`, `Ctrl-d`      | delete previous char                                                    |
-| `Ctrl-s`                | insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
-| `Ctrl-p`, `Up`          | select previous history                                                 |
-| `Ctrl-n`, `Down`        | select next history                                                     |
-| `Tab`                   | slect next completion item                                              |
-| `BackTab`               | slect previous completion item                                          |
+| `Ctrl-e`, `End`         | Move prompt end                                                         |
+| `Ctrl-a`, `Home`        | Move prompt start                                                       |
+| `Ctrl-w`                | Delete previous word                                                    |
+| `Alt-d`                 | Delete next word                                                        |
+| `Ctrl-u`                | Delete to start of line                                                 |
+| `Ctrl-k`                | Delete to end of line                                                   |
+| `backspace`, `Ctrl-h`   | Delete previous char                                                    |
+| `delete`, `Ctrl-d`      | Delete previous char                                                    |
+| `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
+| `Ctrl-p`, `Up`          | Select previous history                                                 |
+| `Ctrl-n`, `Down`        | Select next history                                                     |
+| `Tab`                   | Select next completion item                                             |
+| `BackTab`               | Select previous completion item                                         |
 | `Enter`                 | Open selected                                                           |
 

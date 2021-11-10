@@ -7,7 +7,7 @@ use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 use log::{error, warn};
 
 use std::{
-    io::{stdout, Write},
+    io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -17,6 +17,7 @@ use anyhow::Error;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute, terminal,
+    tty::IsTty,
 };
 #[cfg(not(windows))]
 use {
@@ -134,8 +135,17 @@ impl Application {
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
             }
-        } else {
+        } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
+        } else if cfg!(target_os = "macos") {
+            // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
+            // This doesn't currently work on macOS because of the following issue:
+            //   https://github.com/crossterm-rs/crossterm/issues/500
+            anyhow::bail!("Piping into helix-term is currently not supported on macOS");
+        } else {
+            editor
+                .new_file_from_stdin(Action::VerticalSplit)
+                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
         editor.set_theme(theme);
