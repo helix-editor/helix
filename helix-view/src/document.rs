@@ -496,7 +496,7 @@ impl Document {
         if let Some(path) = &self.path {
             let language_config = config_loader
                 .language_config_for_file_name(path)
-                .or_else(|| config_loader.language_config_for_shebang(path));
+                .or_else(|| config_loader.language_config_for_shebang(self.text()));
             self.set_language(theme, language_config);
         }
     }

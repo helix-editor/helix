@@ -1175,6 +1175,7 @@ fn search_impl(
     regex: &Regex,
     movement: Movement,
     direction: Direction,
+    scrolloff: usize,
 ) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
@@ -1233,7 +1234,11 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        align_view(doc, view, Align::Center);
+        if view.is_cursor_in_view(doc, 0) {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        } else {
+            align_view(doc, view, Align::Center)
+        }
     };
 }
 
@@ -1257,6 +1262,8 @@ fn rsearch(cx: &mut Context) {
 // TODO: use one function for search vs extend
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
+    let scrolloff = cx.editor.config.scrolloff;
+
     let (_, doc) = current!(cx.editor);
 
     // TODO: could probably share with select_on_matches?
@@ -1281,7 +1288,15 @@ fn searcher(cx: &mut Context, direction: Direction) {
             if event != PromptEvent::Update {
                 return;
             }
-            search_impl(doc, view, &contents, &regex, Movement::Move, direction);
+            search_impl(
+                doc,
+                view,
+                &contents,
+                &regex,
+                Movement::Move,
+                direction,
+                scrolloff,
+            );
         },
     );
 
@@ -1289,6 +1304,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
+    let scrolloff = cx.editor.config.scrolloff;
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
@@ -1303,7 +1319,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, movement, direction);
+            search_impl(doc, view, &contents, &regex, movement, direction, scrolloff);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
@@ -2584,36 +2600,66 @@ fn file_picker(cx: &mut Context) {
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
+    struct BufferMeta {
+        id: DocumentId,
+        path: Option<PathBuf>,
+        is_modified: bool,
+        is_current: bool,
+    }
+
+    impl BufferMeta {
+        fn format(&self) -> Cow<str> {
+            let path = self
+                .path
+                .as_deref()
+                .map(helix_core::path::get_relative_path);
+            let path = match path.as_deref().and_then(Path::to_str) {
+                Some(path) => path,
+                None => return Cow::Borrowed("[scratch buffer]"),
+            };
+
+            let mut flags = Vec::new();
+            if self.is_modified {
+                flags.push("+");
+            }
+            if self.is_current {
+                flags.push("*");
+            }
+
+            let flag = if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join(""))
+            };
+            Cow::Owned(format!("{}{}", path, flag))
+        }
+    }
+
+    let new_meta = |doc: &Document| BufferMeta {
+        id: doc.id(),
+        path: doc.path().cloned(),
+        is_modified: doc.is_modified(),
+        is_current: doc.id() == current,
+    };
+
     let picker = FilePicker::new(
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (*id, doc.path().cloned()))
+            .map(|(_, doc)| new_meta(doc))
             .collect(),
-        move |(id, path): &(DocumentId, Option<PathBuf>)| {
-            let path = path.as_deref().map(helix_core::path::get_relative_path);
-            match path.as_ref().and_then(|path| path.to_str()) {
-                Some(path) => {
-                    if *id == current {
-                        format!("{} (*)", &path).into()
-                    } else {
-                        path.to_owned().into()
-                    }
-                }
-                None => "[scratch buffer]".into(),
-            }
+        BufferMeta::format,
+        |editor: &mut Editor, meta, _action| {
+            editor.switch(meta.id, Action::Replace);
         },
-        |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
-            editor.switch(*id, Action::Replace);
-        },
-        |editor, (id, path)| {
-            let doc = &editor.documents.get(id)?;
+        |editor, meta| {
+            let doc = &editor.documents.get(&meta.id)?;
             let &view_id = doc.selections().keys().next()?;
             let line = doc
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, Some((line, line))))
+            Some((meta.path.clone()?, Some((line, line))))
         },
     );
     cx.push_layer(Box::new(picker));
