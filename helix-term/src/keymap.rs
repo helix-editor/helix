@@ -25,6 +25,38 @@ macro_rules! key {
     };
 }
 
+#[macro_export]
+macro_rules! ctrl {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! alt {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+}
+
 /// Macro for defining the root of a `Keymap` object. Example:
 ///
 /// ```
