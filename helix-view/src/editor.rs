@@ -403,7 +403,11 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, id: DocumentId, force: bool) -> anyhow::Result<()> {
-        let view = view!(self);
+        if !self.documents.contains_key(&id) {
+            anyhow::bail!("document does not exist");
+        }
+
+        log::error!("remove: {:?}", &id);
         let doc = &self.documents[&id];
 
         if !force && doc.is_modified() {
@@ -419,26 +423,78 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
-        if let Some(alt) = view.last_accessed_doc {
-            self.switch(alt, Action::Replace);
-            let view_mut = view_mut!(self);
-            view_mut.last_accessed_doc = None;
-        } else if self.documents.len() > 1 {
-            let first_other_doc = self
-                .documents
-                .iter()
-                .find_map(|(&other_id, _)| if other_id == id { None } else { Some(id) })
-                .unwrap();
-            self.switch(first_other_doc, Action::Replace);
-        } else {
-            self.new_file(Action::Replace);
+        let old_focus = self.tree.focus;
+        let view_ids = self
+            .tree
+            .traverse()
+            .filter(|(_, view)| view.doc == id)
+            .map(|(id, _)| id)
+            .collect::<Vec<_>>();
+
+        // NOTE: issues are:
+        // * have to set the tree focus in order for switch to work properly (it
+        // wants to switch to the document in the currently focused document,
+        // which doesn't work well for modifying *other* views)
+        //   -> maybe make switch take a viewid explicitly, get other stuff from that?
+        for view_id in view_ids {
+            self.tree.focus = view_id;
+            let view = self.tree.get_mut(view_id);
+
+            if let Some(alt) = view.last_accessed_doc {
+                log::error!("reset last doc");
+                if !self.documents.contains_key(&alt) {
+                    view.last_accessed_doc = None;
+                }
+            }
+
+            let new_id = if let Some(alt) = view.last_accessed_doc {
+                log::error!("alt hit: {:?}", alt);
+                Some(alt)
+            } else if self.documents.len() > 1 {
+                log::error!("other hit");
+                // FIXME: We don't store enough "alternate buffer" context --
+                // opening three buffers, and then closing two will leave the
+                // user with the first buffer still there, but not currently
+                // visible. To work around this, we use a "best guess" -- if
+                // there is a buffer that is before it in the tree, switch to
+                // that one. Otherwise, find the first not-to-be-removed
+                // document and switch to that.
+                let other = self.documents.range(..id).next_back().map_or(
+                    self.documents.iter().find_map(|(&other_id, _)| {
+                        if other_id == id {
+                            None
+                        } else {
+                            Some(other_id)
+                        }
+                    }),
+                    |(&other_id, _)| Some(other_id),
+                );
+                log::error!("other: {:?}", &other);
+                other
+            } else {
+                log::error!("none hit");
+                None
+            };
+
+            match new_id {
+                Some(new_id) if new_id != id && self.documents.contains_key(&new_id) => {
+                    self.switch(new_id, Action::Replace);
+                }
+                _ => {
+                    self.new_file(Action::Replace);
+                }
+            }
+
+            let view = self.tree.get_mut(view_id);
+            log::error!("new last: {:?}", view.last_accessed_doc);
+            view.jumps.remove(&id);
+
+            self._refresh();
         }
 
-        let view_mut = view_mut!(self);
-        view_mut.jumps.remove(&id);
         self.documents.remove(&id);
-
-        self._refresh();
+        self.tree.focus = old_focus;
+        log::error!("{:?}", &self.documents);
 
         Ok(())
     }
