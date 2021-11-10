@@ -325,6 +325,7 @@ impl Command {
         vsplit, "Vertical right split",
         wclose, "Close window",
         select_register, "Select register",
+        insert_register, "Insert register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
@@ -4773,6 +4774,15 @@ fn select_register(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
             cx.editor.selected_register = Some(ch);
+        }
+    })
+}
+
+fn insert_register(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let Some(ch) = event.char() {
+            cx.editor.selected_register = Some(ch);
+            paste_before(cx);
         }
     })
 }

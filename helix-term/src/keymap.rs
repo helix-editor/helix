@@ -682,6 +682,7 @@ impl Default for Keymaps {
             "C-u" => kill_to_line_start,
 
             "C-x" => completion,
+            "C-r" => insert_register,
         });
         Keymaps(hashmap!(
             Mode::Normal => Keymap::new(normal),

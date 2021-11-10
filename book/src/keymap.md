@@ -235,11 +235,26 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 
 ## Insert Mode
 
-| Key      | Description           | Command                |
-| -----    | -----------           | -------                |
-| `Escape` | Switch to normal mode | `normal_mode`          |
-| `Ctrl-x` | Autocomplete          | `completion`           |
-| `Ctrl-w` | Delete previous word  | `delete_word_backward` |
+| Key                     | Description                 | Command                 |
+| -----                   | -----------                 | -------                 |
+| `Escape`                | Switch to normal mode       | `normal_mode`           |
+| `Ctrl-x`                | Autocomplete                | `completion`            |
+| `Ctrl-r`                | Insert a register content   | `insert_register`       |
+| `Ctrl-w`                | Delete previous word        | `delete_word_backward`  |
+| `Alt-d`                 | Delete next word            | `delete_word_forward`   |
+| `Alt-b`, `Alt-Left`     | Backward a word             | `move_prev_word_end`    |
+| `Ctrl-b`, `Left`        | Backward a char             | `move_char_left`        |
+| `Alt-f`, `Alt-Right`    | Forward a word              | `move_next_word_start`  |
+| `Ctrl-f`, `Right`       | Forward a char              | `move_char_right`       |
+| `Ctrl-e`, `End`         | move to line end            | `goto_line_end_newline` |
+| `Ctrl-a`, `Home`        | move to line start          | `goto_line_start`       |
+| `Ctrl-w`                | delete previous word        | `delete_word_backwar`   |
+| `Ctrl-u`                | delete to start of line     | `kill_to_line_start`    |
+| `Ctrl-k`                | delete to end of line       | `kill_to_line_end`      |
+| `backspace`, `Ctrl-h`   | delete previous char        | `delete_char_backward`  |
+| `delete`, `Ctrl-d`      | delete previous char        | `delete_char_forward`   |
+| `Ctrl-p`, `Up`          | move to previous line       | `move_line_up`          |
+| `Ctrl-n`, `Down`        | move to next line           | `move_line_down`        |
 
 ## Select / extend mode
 
