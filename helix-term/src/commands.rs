@@ -569,12 +569,12 @@ fn extend_to_line_start(cx: &mut Context) {
 
 fn kill_to_line_start(cx: &mut Context) {
     extend_to_line_start(cx);
-    delete_selection_and_append_history(cx, false);
+    delete_selection(cx);
 }
 
 fn kill_to_line_end(cx: &mut Context) {
     extend_to_line_end(cx);
-    delete_selection_and_append_history(cx, false);
+    delete_selection(cx);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -1560,19 +1560,13 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
 }
 
 fn delete_selection(cx: &mut Context) {
-    delete_selection_and_append_history(cx, true);
-}
-
-fn delete_selection_and_append_history(cx: &mut Context, append_change_to_history: bool) {
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
     let reg = registers.get_mut(reg_name);
     delete_selection_impl(reg, doc, view.id);
 
-    if append_change_to_history {
-        doc.append_changes_to_history(view.id);
-    }
+    doc.append_changes_to_history(view.id);
 
     // exit select mode, if currently in select mode
     exit_select_mode(cx);
@@ -3867,7 +3861,7 @@ pub mod insert {
             .clone()
             .transform(|range| movement::move_next_word_start(text, range, count));
         doc.set_selection(view.id, selection);
-        delete_selection_and_append_history(cx, false)
+        delete_selection(cx)
     }
 }
 
