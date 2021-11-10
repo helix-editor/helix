@@ -261,10 +261,8 @@ over text and not actively editing it).</p>
 <tr><td><code>u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 </tbody></table>
 <h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
-<p>Jumps to various locations.</p>
-<blockquote>
-<p>NOTE: Some of these features are only available with the LSP present.</p>
-</blockquote>
+<p>Jumps to various locations. Mappings marked (<strong>LSP</strong>) require an
+active language server for the file to work.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>g</code></td><td>Go to the start of the file</td><td><code>goto_file_start</code></td></tr>
 <tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
@@ -274,10 +272,10 @@ over text and not actively editing it).</p>
 <tr><td><code>t</code></td><td>Go to the top of the screen</td><td><code>goto_window_top</code></td></tr>
 <tr><td><code>m</code></td><td>Go to the middle of the screen</td><td><code>goto_window_middle</code></td></tr>
 <tr><td><code>b</code></td><td>Go to the bottom of the screen</td><td><code>goto_window_bottom</code></td></tr>
-<tr><td><code>d</code></td><td>Go to definition</td><td><code>goto_definition</code></td></tr>
-<tr><td><code>y</code></td><td>Go to type definition</td><td><code>goto_type_definition</code></td></tr>
-<tr><td><code>r</code></td><td>Go to references</td><td><code>goto_reference</code></td></tr>
-<tr><td><code>i</code></td><td>Go to implementation</td><td><code>goto_implementation</code></td></tr>
+<tr><td><code>d</code></td><td>Go to definition (<strong>LSP</strong>)</td><td><code>goto_definition</code></td></tr>
+<tr><td><code>y</code></td><td>Go to type definition (<strong>LSP</strong>)</td><td><code>goto_type_definition</code></td></tr>
+<tr><td><code>r</code></td><td>Go to references (<strong>LSP</strong>)</td><td><code>goto_reference</code></td></tr>
+<tr><td><code>i</code></td><td>Go to implementation (<strong>LSP</strong>)</td><td><code>goto_implementation</code></td></tr>
 <tr><td><code>a</code></td><td>Go to the last accessed/alternate file</td><td><code>goto_last_accessed_file</code></td></tr>
 <tr><td><code>n</code></td><td>Go to next buffer</td><td><code>goto_next_buffer</code></td></tr>
 <tr><td><code>p</code></td><td>Go to previous buffer</td><td><code>goto_previous_buffer</code></td></tr>
@@ -308,13 +306,15 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>q</code>, <code>Ctrl-q</code></td><td>Close current window</td><td><code>wclose</code></td></tr>
 </tbody></table>
 <h4 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h4>
-<p>This layer is a kludge of mappings, mostly pickers.</p>
+<p>This layer is a kludge of mappings, mostly pickers. Mappings marked
+(<strong>LSP</strong>) require an active language server for the file to work.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>k</code></td><td>Show documentation for the item under the cursor</td><td><code>hover</code></td></tr>
 <tr><td><code>f</code></td><td>Open file picker</td><td><code>file_picker</code></td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
-<tr><td><code>s</code></td><td>Open symbol picker (current document)</td><td><code>symbol_picker</code></td></tr>
-<tr><td><code>a</code></td><td>Apply code action</td><td><code>code_action</code></td></tr>
+<tr><td><code>k</code></td><td>Show documentation for item under cursor (<strong>LSP</strong>)</td><td><code>hover</code></td></tr>
+<tr><td><code>s</code></td><td>Open document symbol picker (<strong>LSP</strong>)</td><td><code>symbol_picker</code></td></tr>
+<tr><td><code>r</code></td><td>Rename symbol (<strong>LSP</strong>)</td><td><code>rename_symbol</code></td></tr>
+<tr><td><code>a</code></td><td>Apply code action  (<strong>LSP</strong>)</td><td><code>code_action</code></td></tr>
 <tr><td><code>'</code></td><td>Open last fuzzy picker</td><td><code>last_picker</code></td></tr>
 <tr><td><code>w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
 <tr><td><code>p</code></td><td>Paste system clipboard after selections</td><td><code>paste_clipboard_after</code></td></tr>
@@ -323,10 +323,9 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>Y</code></td><td>Yank main selection to clipboard</td><td><code>yank_main_selection_to_clipboard</code></td></tr>
 <tr><td><code>R</code></td><td>Replace selections by clipboard contents</td><td><code>replace_selections_with_clipboard</code></td></tr>
 <tr><td><code>/</code></td><td>Global search in workspace folder</td><td><code>global_search</code></td></tr>
-<tr><td><code>r</code></td><td>Rename symbol using the language server</td><td><code>rename_symbol</code></td></tr>
 </tbody></table>
 <blockquote>
-<p>NOTE: Global search display results in a fuzzy picker, use <code>space + '</code> to bring it back up after opening a file.</p>
+<p>TIP: Global search displays results in a fuzzy picker, use <code>space + '</code> to bring it back up after opening a file.</p>
 </blockquote>
 <h4 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h4>
 <p>Mappings in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
@@ -363,27 +362,27 @@ implemented for all movement commands yet.</p>
 <tr><td><code>Escape</code>, <code>Ctrl-c</code></td><td>Close picker</td></tr>
 </tbody></table>
 <h1 id="prompt"><a class="header" href="#prompt">Prompt</a></h1>
-<p>Keys to use within prompt, Remapping currently not supported.
-| Key                     | Description                                                             |
-| -----                   | -------------                                                           |
-| <code>Escape</code>, <code>Ctrl-c</code>      | Close prompt                                                            |
-| <code>Alt-b</code>, <code>Alt-Left</code>     | Backward a word                                                         |
-| <code>Ctrl-b</code>, <code>Left</code>        | Backward a char                                                         |
-| <code>Alt-f</code>, <code>Alt-Right</code>    | Forward a word                                                          |
-| <code>Ctrl-f</code>, <code>Right</code>       | Forward a char                                                          |
-| <code>Ctrl-e</code>, <code>End</code>         | move prompt end                                                         |
-| <code>Ctrl-a</code>, <code>Home</code>        | move prompt start                                                       |
-| <code>Ctrl-w</code>                | delete previous word                                                    |
-| <code>Ctrl-u</code>                | delete to start of line                                                 |
-| <code>Ctrl-k</code>                | delete to end of line                                                   |
-| <code>backspace</code>, <code>Ctrl-h</code>   | delete previous char                                                    |
-| <code>delete</code>, <code>Ctrl-d</code>      | delete previous char                                                    |
-| <code>Ctrl-s</code>                | insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
-| <code>Ctrl-p</code>, <code>Up</code>          | select previous history                                                 |
-| <code>Ctrl-n</code>, <code>Down</code>        | select next history                                                     |
-| <code>Tab</code>                   | slect next completion item                                              |
-| <code>BackTab</code>               | slect previous completion item                                          |
-| <code>Enter</code>                 | Open selected                                                           |</p>
+<p>Keys to use within prompt, Remapping currently not supported.</p>
+<table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Escape</code>, <code>Ctrl-c</code></td><td>Close prompt</td></tr>
+<tr><td><code>Alt-b</code>, <code>Alt-Left</code></td><td>Backward a word</td></tr>
+<tr><td><code>Ctrl-b</code>, <code>Left</code></td><td>Backward a char</td></tr>
+<tr><td><code>Alt-f</code>, <code>Alt-Right</code></td><td>Forward a word</td></tr>
+<tr><td><code>Ctrl-f</code>, <code>Right</code></td><td>Forward a char</td></tr>
+<tr><td><code>Ctrl-e</code>, <code>End</code></td><td>Move prompt end</td></tr>
+<tr><td><code>Ctrl-a</code>, <code>Home</code></td><td>Move prompt start</td></tr>
+<tr><td><code>Ctrl-w</code></td><td>Delete previous word</td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Delete to start of line</td></tr>
+<tr><td><code>Ctrl-k</code></td><td>Delete to end of line</td></tr>
+<tr><td><code>backspace</code>, <code>Ctrl-h</code></td><td>Delete previous char</td></tr>
+<tr><td><code>delete</code>, <code>Ctrl-d</code></td><td>Delete previous char</td></tr>
+<tr><td><code>Ctrl-s</code></td><td>Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later</td></tr>
+<tr><td><code>Ctrl-p</code>, <code>Up</code></td><td>Select previous history</td></tr>
+<tr><td><code>Ctrl-n</code>, <code>Down</code></td><td>Select next history</td></tr>
+<tr><td><code>Tab</code></td><td>Select next completion item</td></tr>
+<tr><td><code>BackTab</code></td><td>Select previous completion item</td></tr>
+<tr><td><code>Enter</code></td><td>Open selected</td></tr>
+</tbody></table>
 
                     </main>
 
