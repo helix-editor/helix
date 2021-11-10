@@ -802,4 +802,20 @@ mod tests {
         let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
         assert!(!node.node().unwrap().order().is_empty())
     }
+
+    #[test]
+    fn aliased_modes_are_same_in_default_keymap() {
+        let keymaps = Keymaps::default();
+        let root = keymaps.get(&Mode::Normal).unwrap().root();
+        assert_eq!(
+            root.search(&[key!(' '), key!('w')]).unwrap(),
+            root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
+            "Mismatch for window mode on `Space-w` and `Ctrl-w`"
+        );
+        assert_eq!(
+            root.search(&[key!('z')]).unwrap(),
+            root.search(&[key!('Z')]).unwrap(),
+            "Mismatch for view mode on `z` and `Z`"
+        );
+    }
 }
