@@ -194,6 +194,7 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `k`, `Ctrl-k`, `up`    | Move to split above            | `jump_view_up`    |
 | `l`, `Ctrl-l`, `right` | Move to right split            | `jump_view_right` |
 | `q`, `Ctrl-q`          | Close current window           | `wclose`          |
+| `o`, `Ctrl-o`          | Current window only            | `wonly`           |
 
 #### Space mode
 

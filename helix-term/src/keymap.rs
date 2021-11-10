@@ -545,11 +545,13 @@ impl Default for Keymaps {
             "C-u" => half_page_up,
             "C-d" => half_page_down,
 
+            // TODO extract the common binding with `Space w`
             "C-w" => { "Window"
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-q" | "q" => wclose,
+                "C-o" | "o" => wonly,
                 "C-h" | "h" | "left" => jump_view_left,
                 "C-j" | "j" | "down" => jump_view_down,
                 "C-k" | "k" | "up" => jump_view_up,

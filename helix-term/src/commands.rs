@@ -320,6 +320,7 @@ impl Command {
         hsplit, "Horizontal bottom split",
         vsplit, "Vertical right split",
         wclose, "Close window",
+        wonly, "Current window only",
         select_register, "Select register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
@@ -4721,6 +4722,20 @@ fn wclose(cx: &mut Context) {
     let view_id = view!(cx.editor).id;
     // close current split
     cx.editor.close(view_id, /* close_buffer */ false);
+}
+
+fn wonly(cx: &mut Context) {
+    let views = cx
+        .editor
+        .tree
+        .views()
+        .map(|(v, focus)| (v.id, focus))
+        .collect::<Vec<_>>();
+    for (view_id, focus) in views {
+        if !focus {
+            cx.editor.close(view_id, /* close_buffer */ false);
+        }
+    }
 }
 
 fn select_register(cx: &mut Context) {
