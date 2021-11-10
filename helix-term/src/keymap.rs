@@ -64,10 +64,11 @@ macro_rules! keymap {
             $(
                 $(
                     let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
-                    _map.insert(
+                    let _duplicate = _map.insert(
                         _key,
                         keymap!(@trie $value)
                     );
+                    debug_assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
                     _order.push(_key);
                 )+
             )*
@@ -687,6 +688,22 @@ pub fn merge_keys(mut config: Config) -> Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[should_panic]
+    fn duplicate_keys_should_panic() {
+        keymap!({ "Normal mode"
+            "i" => normal_mode,
+            "i" => goto_definition,
+        });
+    }
+
+    #[test]
+    fn check_duplicate_keys_in_default_keymap() {
+        // will panic on duplicate keys, assumes that `Keymaps` uses keymap! macro
+        Keymaps::default();
+    }
+
     #[test]
     fn merge_partial_keys() {
         let config = Config {
