@@ -135,8 +135,8 @@ over text and not actively editing it).
 | `m`           | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
 | `j` , `down`  | Scroll the view downwards                                 | `scroll_down`       |
 | `k` , `up`    | Scroll the view upwards                                   | `scroll_up`         |
-| `f` , `S-down`| Move page down                                            | `page_down`         |
-| `b` , `S-up`  | Move page up                                              | `page_up`           |
+| `f`           | Move page down                                            | `page_down`         |
+| `b`           | Move page up                                              | `page_up`           |
 | `d`           | Move half page down                                       | `half_page_down`    |
 | `u`           | Move half page up                                         | `half_page_up`      |
 
