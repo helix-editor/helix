@@ -569,12 +569,12 @@ fn extend_to_line_start(cx: &mut Context) {
 
 fn kill_to_line_start(cx: &mut Context) {
     extend_to_line_start(cx);
-    delete_selection(cx);
+    delete_selection_insert_mode(cx);
 }
 
 fn kill_to_line_end(cx: &mut Context) {
     extend_to_line_end(cx);
-    delete_selection(cx);
+    delete_selection_insert_mode(cx);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -1557,6 +1557,21 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
         (range.from(), range.to(), None)
     });
     doc.apply(&transaction, view_id);
+}
+
+fn delete_selection_insert_mode(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let view_id = view.id;
+    let selection = doc.selection(view_id);
+
+    // then delete
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        (range.from(), range.to(), None)
+    });
+    doc.apply(&transaction, view_id);
+
+    // exit select mode, if currently in select mode
+    exit_select_mode(cx);
 }
 
 fn delete_selection(cx: &mut Context) {
@@ -3848,7 +3863,7 @@ pub mod insert {
             .clone()
             .transform(|range| movement::move_prev_word_start(text, range, count));
         doc.set_selection(view.id, selection);
-        delete_selection(cx)
+        delete_selection_insert_mode(cx)
     }
 
     pub fn delete_word_forward(cx: &mut Context) {
@@ -3861,7 +3876,7 @@ pub mod insert {
             .clone()
             .transform(|range| movement::move_next_word_start(text, range, count));
         doc.set_selection(view.id, selection);
-        delete_selection(cx)
+        delete_selection_insert_mode(cx)
     }
 }
 
