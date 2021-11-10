@@ -1359,6 +1359,7 @@ fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let smart_case = cx.editor.config.smart_case;
+    let git_ignore = cx.editor.config.git_ignore;
 
     let completions = search_completions(cx, None);
     let prompt = ui::regex_prompt(
@@ -1387,41 +1388,49 @@ fn global_search(cx: &mut Context) {
 
                 let search_root = std::env::current_dir()
                     .expect("Global search error: Failed to get current dir");
-                WalkBuilder::new(search_root).build_parallel().run(|| {
-                    let mut searcher_cl = searcher.clone();
-                    let matcher_cl = matcher.clone();
-                    let all_matches_sx_cl = all_matches_sx.clone();
-                    Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
-                        let dent = match dent {
-                            Ok(dent) => dent,
-                            Err(_) => return WalkState::Continue,
-                        };
+                WalkBuilder::new(search_root)
+                    .git_ignore(git_ignore)
+                    .build_parallel()
+                    .run(|| {
+                        let mut searcher_cl = searcher.clone();
+                        let matcher_cl = matcher.clone();
+                        let all_matches_sx_cl = all_matches_sx.clone();
+                        Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
+                            let dent = match dent {
+                                Ok(dent) => dent,
+                                Err(_) => return WalkState::Continue,
+                            };
 
-                        match dent.file_type() {
-                            Some(fi) => {
-                                if !fi.is_file() {
-                                    return WalkState::Continue;
+                            match dent.file_type() {
+                                Some(fi) => {
+                                    if !fi.is_file() {
+                                        return WalkState::Continue;
+                                    }
                                 }
+                                None => return WalkState::Continue,
                             }
-                            None => return WalkState::Continue,
-                        }
 
-                        let result_sink = sinks::UTF8(|line_num, _| {
-                            match all_matches_sx_cl
-                                .send((line_num as usize - 1, dent.path().to_path_buf()))
-                            {
-                                Ok(_) => Ok(true),
-                                Err(_) => Ok(false),
+                            let result_sink = sinks::UTF8(|line_num, _| {
+                                match all_matches_sx_cl
+                                    .send((line_num as usize - 1, dent.path().to_path_buf()))
+                                {
+                                    Ok(_) => Ok(true),
+                                    Err(_) => Ok(false),
+                                }
+                            });
+                            let result =
+                                searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
+
+                            if let Err(err) = result {
+                                log::error!(
+                                    "Global search error: {}, {}",
+                                    dent.path().display(),
+                                    err
+                                );
                             }
-                        });
-                        let result = searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
-
-                        if let Err(err) = result {
-                            log::error!("Global search error: {}, {}", dent.path().display(), err);
-                        }
-                        WalkState::Continue
-                    })
-                });
+                            WalkState::Continue
+                        })
+                    });
             } else {
                 // Otherwise do nothing
                 // log::warn!("Global Search Invalid Pattern")
