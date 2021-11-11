@@ -7,6 +7,7 @@ use crate::{
     Range,
 };
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct NumberInfo {
     pub range: Range,
     pub value: i64,
@@ -42,4 +43,122 @@ pub fn number_at(text: RopeSlice, range: Range) -> Option<NumberInfo> {
         value,
         radix,
     })
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::Rope;
+
+    #[test]
+    fn test_decimal_at_point() {
+        let rope = Rope::from_str("Test text 12345 more text.");
+        let range = Range::point(12);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 15),
+                value: 12345,
+                radix: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn test_uppercase_hexadecimal_at_point() {
+        let rope = Rope::from_str("Test text 0x123ABCDEF more text.");
+        let range = Range::point(12);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 21),
+                value: 0x123ABCDEF,
+                radix: 16,
+            })
+        );
+    }
+
+    #[test]
+    fn test_lowercase_hexadecimal_at_point() {
+        let rope = Rope::from_str("Test text 0xfa3b4e more text.");
+        let range = Range::point(12);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 18),
+                value: 0xfa3b4e,
+                radix: 16,
+            })
+        );
+    }
+
+    #[test]
+    fn test_octal_at_point() {
+        let rope = Rope::from_str("Test text 0o1074312 more text.");
+        let range = Range::point(12);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 19),
+                value: 0o1074312,
+                radix: 8,
+            })
+        );
+    }
+
+    #[test]
+    fn test_binary_at_point() {
+        let rope = Rope::from_str("Test text 0b10111010010101 more text.");
+        let range = Range::point(12);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 26),
+                value: 0b10111010010101,
+                radix: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn test_negative_decimal_at_point() {
+        let rope = Rope::from_str("Test text -54321 more text.");
+        let range = Range::point(12);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 16),
+                value: -54321,
+                radix: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn test_decimal_with_leading_zeroes_at_point() {
+        let rope = Rope::from_str("Test text 000045326 more text.");
+        let range = Range::point(12);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 19),
+                value: 45326,
+                radix: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn test_not_a_number_point() {
+        let rope = Rope::from_str("Test text 45326 more text.");
+        let range = Range::point(6);
+        assert_eq!(number_at(rope.slice(..), range), None);
+    }
+
+    #[test]
+    fn test_number_too_large_at_point() {
+        let rope = Rope::from_str("Test text 0xFFFFFFFFFFFFFFFFF more text.");
+        let range = Range::point(12);
+        assert_eq!(number_at(rope.slice(..), range), None);
+    }
 }
