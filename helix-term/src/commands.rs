@@ -5117,41 +5117,35 @@ fn decrement_number(cx: &mut Context) {
 /// If there is a number at the cursor, increment it by `amount`.
 fn increment_number_impl(cx: &mut Context, amount: i64) {
     let (view, doc) = current!(cx.editor);
-
     let selection = doc.selection(view.id);
-    if selection.len() != 1 {
-        return;
-    }
-
-    let primary_selection = selection.primary();
-    if primary_selection.to() - primary_selection.from() != 1 {
-        return;
-    }
-
     let text = doc.text();
-    let cursor = primary_selection.cursor(text.slice(..));
 
-    if let Some(NumberInfo {
-        start,
-        end,
-        value: old_value,
-        radix,
-    }) = number_at(text, cursor)
-    {
-        let number_text: Cow<str> = text.slice(start..end).into();
-        let number_text = number_text.strip_prefix('-').unwrap_or(&number_text);
+    let changes = selection.ranges().iter().filter_map(|range| {
+        if let Some(NumberInfo {
+            range,
+            value: old_value,
+            radix,
+        }) = number_at(text.slice(..), *range)
+        {
+            let new_value = old_value.wrapping_add(amount);
+            let old_text: Cow<str> = text.slice(range.from()..range.to()).into();
+            let prefix = if radix == 10 { "" } else { &old_text[..2] };
 
-        let new_value = old_value.wrapping_add(amount);
-        let old_length = end - start;
-
-        let (replacement, new_length) = {
-            let mut replacement = match radix {
+            let mut new_text = match radix {
                 2 => format!("{:b}", new_value),
                 8 => format!("{:o}", new_value),
                 10 => format!("{}", new_value.abs()),
                 16 => {
-                    let lower_count = number_text.chars().filter(char::is_ascii_lowercase).count();
-                    let upper_count = number_text.chars().filter(char::is_ascii_uppercase).count();
+                    let lower_count = old_text
+                        .chars()
+                        .skip(2)
+                        .filter(char::is_ascii_lowercase)
+                        .count();
+                    let upper_count = old_text
+                        .chars()
+                        .skip(2)
+                        .filter(char::is_ascii_uppercase)
+                        .count();
                     if upper_count > lower_count {
                         format!("{:X}", new_value)
                     } else {
@@ -5161,37 +5155,41 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
                 _ => unimplemented!("radix not supported: {}", radix),
             };
 
-            let mut new_length = replacement.chars().count();
-
-            let old_length_no_sign = number_text.chars().count();
-            if new_length < old_length_no_sign && (radix != 10 || number_text.starts_with('0')) {
-                replacement = "0".repeat(old_length_no_sign - new_length) + &replacement;
-                new_length = old_length_no_sign;
+            // Pad with leading zeros if necessary.
+            // * For non-decimal numbers, we want to keep at least as many digits as before the change.
+            // * For decimal numbers we do this if there are leading zeros, like 000145, before the change.
+            let new_length_no_prefix = new_text.len();
+            let old_text_no_prefix = {
+                let mut stripped: &str = old_text[prefix.len()..].as_ref();
+                if stripped.starts_with('-') {
+                    stripped = &stripped[1..];
+                }
+                stripped
+            };
+            let old_length_no_prefix = old_text_no_prefix.len();
+            if new_length_no_prefix < old_length_no_prefix
+                && (radix != 10 || old_text_no_prefix.starts_with('0'))
+            {
+                new_text = "0".repeat(old_length_no_prefix - new_length_no_prefix) + &new_text;
             }
 
+            // Add prefix or sign if needed
             if radix == 10 && new_value.is_negative() {
-                replacement = format!("-{}", replacement);
-                new_length += 1;
+                new_text = format!("-{}", new_text);
+            } else {
+                new_text = prefix.to_owned() + &new_text;
             }
 
-            (replacement, new_length)
-        };
+            let new_text: Tendril = new_text.into();
 
-        let changes = std::iter::once((start, end, Some(replacement.into())));
-        let mut transaction = Transaction::change(text, changes);
-
-        // Move cursor to the last character of the number.
-        let mut selection = doc.selection(view.id).clone();
-        let mut primary = selection.primary_mut();
-        primary.anchor = if new_length < old_length {
-            end - 1 - old_length + new_length
+            Some((range.from(), range.to(), Some(new_text)))
         } else {
-            end - 1 + new_length - old_length
-        };
-        primary.head = primary.anchor;
-        transaction = transaction.with_selection(selection);
+            None
+        }
+    });
 
-        doc.apply(&transaction, view.id);
-        doc.append_changes_to_history(view.id);
-    }
+    let transaction = Transaction::change(doc.text(), changes);
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
 }
