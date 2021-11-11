@@ -695,6 +695,11 @@ impl EditorView {
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
             KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
+            KeymapResultKind::MatchedSequence(commands) => {
+                for command in commands {
+                    command.execute(cxt);
+                }
+            }
             KeymapResultKind::NotFound | KeymapResultKind::Cancelled(_) => return Some(key_result),
         }
         None
