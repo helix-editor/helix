@@ -2725,7 +2725,7 @@ fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let picker = FilePicker::new(
+                let mut picker = FilePicker::new(
                     symbols,
                     |symbol| (&symbol.name).into(),
                     move |editor: &mut Editor, symbol, _action| {
@@ -2750,6 +2750,7 @@ fn symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
+                picker.truncate_start = false;
                 compositor.push(Box::new(picker))
             }
         },
@@ -2774,7 +2775,7 @@ fn workspace_symbol_picker(cx: &mut Context) {
               compositor: &mut Compositor,
               response: Option<Vec<lsp::SymbolInformation>>| {
             if let Some(symbols) = response {
-                let picker = FilePicker::new(
+                let mut picker = FilePicker::new(
                     symbols,
                     move |symbol| {
                         let path = symbol.location.uri.to_file_path().unwrap();
@@ -2811,6 +2812,7 @@ fn workspace_symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
+                picker.truncate_start = false;
                 compositor.push(Box::new(picker))
             }
         },
