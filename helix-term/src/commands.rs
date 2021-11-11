@@ -1570,9 +1570,6 @@ fn delete_selection_insert_mode(cx: &mut Context) {
         (range.from(), range.to(), None)
     });
     doc.apply(&transaction, view_id);
-
-    // exit select mode, if currently in select mode
-    exit_select_mode(cx);
 }
 
 fn delete_selection(cx: &mut Context) {
