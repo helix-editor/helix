@@ -30,7 +30,7 @@ pub fn number_at(text: RopeSlice, range: Range) -> Option<NumberInfo> {
 
     let number = if prefixed { &word[2..] } else { &word };
 
-    let value = i128::from_str_radix(&number, radix).ok()?;
+    let value = i128::from_str_radix(number, radix).ok()?;
     if (value.is_positive() && value.leading_zeros() < 64)
         || (value.is_negative() && value.leading_ones() < 64)
     {
