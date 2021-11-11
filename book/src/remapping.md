@@ -15,6 +15,7 @@ a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
 "C-S-esc" = "extend_line" # Maps Control-Shift-Escape to extend_line
 g = { a = "code_action" } # Maps `ga` to show possible code actions
+"ret" = ["open_below", "normal_mode"] # Maps the enter key to open_below then re-enter normal mode
 
 [keys.insert]
 "A-x" = "normal_mode" # Maps Alt-X to enter normal mode
