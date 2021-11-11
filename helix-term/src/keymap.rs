@@ -25,6 +25,38 @@ macro_rules! key {
     };
 }
 
+#[macro_export]
+macro_rules! ctrl {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! alt {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+}
+
 /// Macro for defining the root of a `Keymap` object. Example:
 ///
 /// ```
@@ -64,10 +96,11 @@ macro_rules! keymap {
             $(
                 $(
                     let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
-                    _map.insert(
+                    let _duplicate = _map.insert(
                         _key,
                         keymap!(@trie $value)
                     );
+                    debug_assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
                     _order.push(_key);
                 )+
             )*
@@ -573,9 +606,13 @@ impl Default for Keymaps {
                 "'" => last_picker,
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,
-                    "C-h" | "h" => hsplit,
+                    "C-s" | "s" => hsplit,
                     "C-v" | "v" => vsplit,
                     "C-q" | "q" => wclose,
+                    "C-h" | "h" | "left" => jump_view_left,
+                    "C-j" | "j" | "down" => jump_view_down,
+                    "C-k" | "k" | "up" => jump_view_up,
+                    "C-l" | "l" | "right" => jump_view_right,
                 },
                 "y" => yank_joined_to_clipboard,
                 "Y" => yank_main_selection_to_clipboard,
@@ -593,10 +630,10 @@ impl Default for Keymaps {
                 "m" => align_view_middle,
                 "k" => scroll_up,
                 "j" => scroll_down,
-                "b" => page_up,
-                "f" => page_down,
-                "u" => half_page_up,
-                "d" => half_page_down,
+                "C-b" | "pageup" => page_up,
+                "C-f" | "pagedown" => page_down,
+                "C-u" => half_page_up,
+                "C-d" => half_page_down,
             },
             "Z" => { "View" sticky=true
                 "z" | "c" => align_view_center,
@@ -605,10 +642,10 @@ impl Default for Keymaps {
                 "m" => align_view_middle,
                 "k" => scroll_up,
                 "j" => scroll_down,
-                "b" => page_up,
-                "f" => page_down,
-                "u" => half_page_up,
-                "d" => half_page_down,
+                "C-b" | "pageup" => page_up,
+                "C-f" | "pagedown" => page_down,
+                "C-u" => half_page_up,
+                "C-d" => half_page_down,
             },
 
             "\"" => select_register,
@@ -704,6 +741,22 @@ pub fn merge_keys(mut config: Config) -> Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[should_panic]
+    fn duplicate_keys_should_panic() {
+        keymap!({ "Normal mode"
+            "i" => normal_mode,
+            "i" => goto_definition,
+        });
+    }
+
+    #[test]
+    fn check_duplicate_keys_in_default_keymap() {
+        // will panic on duplicate keys, assumes that `Keymaps` uses keymap! macro
+        Keymaps::default();
+    }
+
     #[test]
     fn merge_partial_keys() {
         let config = Config {
@@ -797,5 +850,21 @@ mod tests {
         // Make sure an order was set during merge
         let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
         assert!(!node.node().unwrap().order().is_empty())
+    }
+
+    #[test]
+    fn aliased_modes_are_same_in_default_keymap() {
+        let keymaps = Keymaps::default();
+        let root = keymaps.get(&Mode::Normal).unwrap().root();
+        assert_eq!(
+            root.search(&[key!(' '), key!('w')]).unwrap(),
+            root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
+            "Mismatch for window mode on `Space-w` and `Ctrl-w`"
+        );
+        assert_eq!(
+            root.search(&[key!('z')]).unwrap(),
+            root.search(&[key!('Z')]).unwrap(),
+            "Mismatch for view mode on `z` and `Z`"
+        );
     }
 }
