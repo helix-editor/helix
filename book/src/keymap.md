@@ -101,6 +101,7 @@
 |          | Expand selection to parent syntax node TODO: pick a key           | `expand_selection`                   |
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
 | `K`      | Keep selections matching the regex                                | `keep_selections`                    |
+| `Alt-K`  | Remove selections matching the regex                              | `remove_selections`                  |
 | `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
 
