@@ -1,5 +1,8 @@
 # Keymap
 
+- Mappings marked (**LSP**) require an active language server for the file.
+- Mappings marked (**TS**) require a tree-sitter grammar for the filetype.
+
 ## Normal mode
 
 ### Movement
@@ -64,7 +67,7 @@
 | `"` `<reg>` | Select a register to yank to or paste from      | `select_register`     |
 | `>`         | Indent selection                                | `indent`              |
 | `<`         | Unindent selection                              | `unindent`            |
-| `=`         | Format selection                                | `format_selections`   |
+| `=`         | Format selection (**LSP**)                      | `format_selections`   |
 | `d`         | Delete selection                                | `delete_selection`    |
 | `c`         | Change selection (delete and enter insert mode) | `change_selection`    |
 
@@ -98,7 +101,7 @@
 | `%`      | Select entire file                                                | `select_all`                         |
 | `x`      | Select current line, if already selected, extend to next line     | `extend_line`                        |
 | `X`      | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
-|          | Expand selection to parent syntax node TODO: pick a key           | `expand_selection`                   |
+|          | Expand selection to parent syntax node TODO: pick a key (**TS**)  | `expand_selection`                   |
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
 | `K`      | Keep selections matching the regex                                | `keep_selections`                    |
 | `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
@@ -142,8 +145,7 @@ over text and not actively editing it).
 
 #### Goto mode
 
-Jumps to various locations. Mappings marked (**LSP**) require an
-active language server for the file to work.
+Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
@@ -171,7 +173,7 @@ and [textobject](./usage.md#textobject) usage.
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
-| `m`              | Goto matching bracket                           | `match_brackets`           |
+| `m`              | Goto matching bracket (**TS**)                  | `match_brackets`           |
 | `s` `<char>`     | Surround current selection with `<char>`        | `surround_add`             |
 | `r` `<from><to>` | Replace surround character `<from>` with `<to>` | `surround_replace`         |
 | `d` `<char>`     | Delete surround character `<char>`              | `surround_delete`          |
@@ -197,18 +199,17 @@ This layer is similar to vim keybindings as kakoune does not support window.
 
 #### Space mode
 
-This layer is a kludge of mappings, mostly pickers. Mappings marked
-(**LSP**) require an active language server for the file to work.
+This layer is a kludge of mappings, mostly pickers.
 
 
 | Key     | Description                                                           | Command                             |
 | -----   | -----------                                                           | -------                             |
 | `f`     | Open file picker                                                      | `file_picker`                       |
 | `b`     | Open buffer picker                                                    | `buffer_picker`                     |
-| `k`     | Show documentation for item under cursor (**LSP**)                      | `hover`                             |
-| `s`     | Open document symbol picker (**LSP**)                                     | `symbol_picker`                     |
-| `r`     | Rename symbol (**LSP**)                                                   | `rename_symbol`                     |
-| `a`     | Apply code action  (**LSP**)                                              | `code_action`                       |
+| `k`     | Show documentation for item under cursor (**LSP**)                    | `hover`                             |
+| `s`     | Open document symbol picker (**LSP**)                                 | `symbol_picker`                     |
+| `r`     | Rename symbol (**LSP**)                                               | `rename_symbol`                     |
+| `a`     | Apply code action  (**LSP**)                                          | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                | `last_picker`                       |
 | `w`     | Enter [window mode](#window-mode)                                     | N/A                                 |
 | `p`     | Paste system clipboard after selections                               | `paste_clipboard_after`             |
@@ -224,14 +225,14 @@ This layer is a kludge of mappings, mostly pickers. Mappings marked
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
-| Key       | Description                        | Command             |
-| -----     | -----------                        | -------             |
-| `[d`      | Go to previous diagnostic          | `goto_prev_diag`    |
-| `]d`      | Go to next diagnostic              | `goto_next_diag`    |
-| `[D`      | Go to first diagnostic in document | `goto_first_diag`   |
-| `]D`      | Go to last diagnostic in document  | `goto_last_diag`    |
-| `[space`  | Add newline above                  | `add_newline_above` |
-| `]space`  | Add newline below                  | `add_newline_below` |
+| Key      | Description                                  | Command             |
+| -----    | -----------                                  | -------             |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`    |
+| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`    |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`   |
+| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`    |
+| `[space` | Add newline above                            | `add_newline_above` |
+| `]space` | Add newline below                            | `add_newline_below` |
 
 ## Insert Mode
 
