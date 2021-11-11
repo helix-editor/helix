@@ -430,8 +430,8 @@ impl Component for Prompt {
             }
             alt!('b') | alt!(Left) => self.move_cursor(Movement::BackwardWord(1)),
             alt!('f') | alt!(Right) => self.move_cursor(Movement::ForwardWord(1)),
-            ctrl!('b') | ctrl!(Left) => self.move_cursor(Movement::BackwardChar(1)),
-            ctrl!('f') | ctrl!(Right) => self.move_cursor(Movement::ForwardChar(1)),
+            ctrl!('b') | key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
+            ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
             ctrl!('w') => self.delete_word_backwards(),
