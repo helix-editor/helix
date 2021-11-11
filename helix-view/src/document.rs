@@ -96,7 +96,7 @@ pub struct Document {
     // It can be used as a cell where we will take it out to get some parts of the history and put
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
-    history: Cell<History>,
+    pub history: Cell<History>,
 
     pub savepoint: Option<Transaction>,
 

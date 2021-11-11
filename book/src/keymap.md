@@ -162,6 +162,7 @@ active language server for the file to work.
 | `a`   | Go to the last accessed/alternate file           | `goto_last_accessed_file`  |
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
+| `.`   | Go to last modification in current file          | `goto_last_modification`   |
 
 #### Match mode
 

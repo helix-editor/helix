@@ -741,7 +741,7 @@ impl EditorView {
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
-            key!('.') => {
+            key!('.') if self.keymaps.pending().is_empty() => {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
