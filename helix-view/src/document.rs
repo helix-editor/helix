@@ -751,19 +751,35 @@ impl Document {
     }
 
     /// Undo modifications to the [`Document`] according to `uk`.
-    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
         let txns = self.history.get_mut().earlier(uk);
+        let mut success = false;
         for txn in txns {
-            self.apply_impl(&txn, view_id);
+            if self.apply_impl(&txn, view_id) {
+                success = true;
+            }
         }
+        if success {
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+        }
+        success
     }
 
     /// Redo modifications to the [`Document`] according to `uk`.
-    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
         let txns = self.history.get_mut().later(uk);
+        let mut success = false;
         for txn in txns {
-            self.apply_impl(&txn, view_id);
+            if self.apply_impl(&txn, view_id) {
+                success = true;
+            }
         }
+        if success {
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+        }
+        success
     }
 
     /// Commit pending changes to history
