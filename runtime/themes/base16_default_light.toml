@@ -1,4 +1,4 @@
-# Author: RayGervais <raygervais@hotmail.ca>
+# Author: NNB <nnbnh@protonmail.com>
 
 "ui.background" = { bg = "base00" }
 "ui.menu" = "base01"
@@ -42,14 +42,14 @@
 "error" = "base0E"
 
 [palette]
-base00 = "#181818" # Default Background
-base01 = "#282828" # Lighter Background (Used for status bars, line number and folding marks)
-base02 = "#383838" # Selection Background
-base03 = "#585858" # Comments, Invisibles, Line Highlighting
-base04 = "#b8b8b8" # Dark Foreground (Used for status bars)
-base05 = "#d8d8d8" # Default Foreground, Caret, Delimiters, Operators
-base06 = "#e8e8e8" # Light Foreground (Not often used)
-base07 = "#f8f8f8" # Light Background (Not often used)
+base00 = "#f8f8f8" # Default Background
+base01 = "#e8e8e8" # Lighter Background (Used for status bars, line number and folding marks)
+base02 = "#d8d8d8" # Selection Background
+base03 = "#b8b8b8" # Comments, Invisibles, Line Highlighting
+base04 = "#585858" # Dark Foreground (Used for status bars)
+base05 = "#383838" # Default Foreground, Caret, Delimiters, Operators
+base06 = "#282828" # Light Foreground (Not often used)
+base07 = "#181818" # Light Background (Not often used)
 base08 = "#ab4642" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
 base09 = "#dc9656" # Integers, Boolean, Constants, XML Attributes, Markup Link Url
 base0A = "#f7ca88" # Classes, Markup Bold, Search Text Background
