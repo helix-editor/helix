@@ -1845,7 +1845,10 @@ mod cmd {
             .map_err(|s| anyhow!(s))?;
 
         let (view, doc) = current!(cx.editor);
-        doc.earlier(view.id, uk);
+        let success = doc.earlier(view.id, uk);
+        if !success {
+            cx.editor.set_status("Already at oldest change".to_owned());
+        }
 
         Ok(())
     }
@@ -1860,7 +1863,10 @@ mod cmd {
             .parse::<helix_core::history::UndoKind>()
             .map_err(|s| anyhow!(s))?;
         let (view, doc) = current!(cx.editor);
-        doc.later(view.id, uk);
+        let success = doc.later(view.id, uk);
+        if !success {
+            cx.editor.set_status("Already at newest change".to_owned());
+        }
 
         Ok(())
     }
