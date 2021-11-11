@@ -53,6 +53,8 @@ use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
+
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
@@ -1889,7 +1891,7 @@ mod cmd {
             .map(|doc| {
                 doc.relative_path()
                     .map(|path| path.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "[scratch]".into())
+                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
             })
             .collect();
         if !modified.is_empty() {
@@ -2615,7 +2617,7 @@ fn buffer_picker(cx: &mut Context) {
                 .map(helix_core::path::get_relative_path);
             let path = match path.as_deref().and_then(Path::to_str) {
                 Some(path) => path,
-                None => return Cow::Borrowed("[scratch buffer]"),
+                None => return Cow::Borrowed(SCRATCH_BUFFER_NAME),
             };
 
             let mut flags = Vec::new();
