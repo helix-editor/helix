@@ -323,6 +323,7 @@ impl Command {
         vsplit, "Vertical right split",
         wclose, "Close window",
         wonly, "Current window only",
+        window_mode, "Window",
         select_register, "Select register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
@@ -389,6 +390,38 @@ impl PartialEq for Command {
 }
 
 fn no_op(_cx: &mut Context) {}
+
+fn raise_key(cx: &mut Context, key_event: KeyEvent) {
+    let callback = Box::pin(async move {
+        let call: job::Callback =
+            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let mut cx = crate::compositor::Context {
+                    editor,
+                    scroll: None,
+                    jobs: &mut Jobs::new(),
+                };
+                compositor.handle_event(
+                    crossterm::event::Event::Key(crossterm::event::KeyEvent {
+                        code: key_event.code.into(),
+                        modifiers: key_event.modifiers.into(),
+                    }),
+                    &mut cx,
+                );
+            });
+        Ok(call)
+    });
+    cx.jobs.callback(callback);
+}
+
+fn window_mode(cx: &mut Context) {
+    raise_key(
+        cx,
+        KeyEvent {
+            code: KeyCode::Char('w'),
+            modifiers: helix_view::keyboard::KeyModifiers::CONTROL,
+        },
+    );
+}
 
 fn move_impl<F>(cx: &mut Context, move_fn: F, dir: Direction, behaviour: Movement)
 where

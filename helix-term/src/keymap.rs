@@ -626,17 +626,7 @@ impl Default for Keymaps {
                 "s" => symbol_picker,
                 "a" => code_action,
                 "'" => last_picker,
-                "w" => { "Window"
-                    "C-w" | "w" => rotate_view,
-                    "C-s" | "s" => hsplit,
-                    "C-v" | "v" => vsplit,
-                    "C-q" | "q" => wclose,
-                    "C-o" | "o" => wonly,
-                    "C-h" | "h" | "left" => jump_view_left,
-                    "C-j" | "j" | "down" => jump_view_down,
-                    "C-k" | "k" | "up" => jump_view_up,
-                    "C-l" | "l" | "right" => jump_view_right,
-                },
+                "w" => window_mode,
                 "y" => yank_joined_to_clipboard,
                 "Y" => yank_main_selection_to_clipboard,
                 "p" => paste_clipboard_after,
@@ -862,11 +852,6 @@ mod tests {
     fn aliased_modes_are_same_in_default_keymap() {
         let keymaps = Keymaps::default();
         let root = keymaps.get(&Mode::Normal).unwrap().root();
-        assert_eq!(
-            root.search(&[key!(' '), key!('w')]).unwrap(),
-            root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
-            "Mismatch for window mode on `Space-w` and `Ctrl-w`"
-        );
         assert_eq!(
             root.search(&[key!('z')]).unwrap(),
             root.search(&[key!('Z')]).unwrap(),
