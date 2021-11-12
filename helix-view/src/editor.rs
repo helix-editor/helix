@@ -232,6 +232,28 @@ impl Editor {
         }
     }
 
+    fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
+        use helix_core::Selection;
+
+        let view = self.tree.get_mut(current_view);
+        view.doc = doc_id;
+        view.offset = Position::default();
+
+        let doc = self.documents.get_mut(&doc_id).unwrap();
+
+        // initialize selection for view
+        doc.selections
+            .entry(view.id)
+            .or_insert_with(|| Selection::point(0));
+        // TODO: reuse align_view
+        let pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        let line = doc.text().char_to_line(pos);
+        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+    }
+
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
         use helix_core::Selection;
@@ -268,22 +290,9 @@ impl Editor {
                     view.jumps.push(jump);
                     view.last_accessed_doc = Some(view.doc);
                 }
-                view.doc = id;
-                view.offset = Position::default();
 
-                let (view, doc) = current!(self);
-
-                // initialize selection for view
-                doc.selections
-                    .entry(view.id)
-                    .or_insert_with(|| Selection::point(0));
-                // TODO: reuse align_view
-                let pos = doc
-                    .selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..));
-                let line = doc.text().char_to_line(pos);
-                view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+                let view_id = view.id;
+                self.replace_document_in_view(view_id, id);
 
                 return;
             }
@@ -315,11 +324,16 @@ impl Editor {
         self._refresh();
     }
 
-    fn new_file_from_document(&mut self, action: Action, mut document: Document) -> DocumentId {
+    fn new_document(&mut self, mut document: Document) -> DocumentId {
         let id = DocumentId(self.next_document_id);
         self.next_document_id += 1;
         document.id = id;
         self.documents.insert(id, document);
+        id
+    }
+
+    fn new_file_from_document(&mut self, action: Action, document: Document) -> DocumentId {
+        let id = self.new_document(document);
         self.switch(id, action);
         id
     }
@@ -402,13 +416,12 @@ impl Editor {
         self._refresh();
     }
 
-    pub fn close_document(&mut self, id: DocumentId, force: bool) -> anyhow::Result<()> {
-        if !self.documents.contains_key(&id) {
+    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
+        if !self.documents.contains_key(&doc_id) {
             anyhow::bail!("document does not exist");
         }
 
-        log::error!("remove: {:?}", &id);
-        let doc = &self.documents[&id];
+        let doc = &self.documents[&doc_id];
 
         if !force && doc.is_modified() {
             anyhow::bail!(
@@ -423,78 +436,64 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
-        let old_focus = self.tree.focus;
-        let view_ids = self
-            .tree
-            .traverse()
-            .filter(|(_, view)| view.doc == id)
-            .map(|(id, _)| id)
-            .collect::<Vec<_>>();
+        let mut v = vec![];
 
-        // NOTE: issues are:
-        // * have to set the tree focus in order for switch to work properly (it
-        // wants to switch to the document in the currently focused document,
-        // which doesn't work well for modifying *other* views)
-        //   -> maybe make switch take a viewid explicitly, get other stuff from that?
-        for view_id in view_ids {
-            self.tree.focus = view_id;
-            let view = self.tree.get_mut(view_id);
+        for (view, _focused) in self.tree.views_mut() {
+            view.jumps.remove(&doc_id);
 
             if let Some(alt) = view.last_accessed_doc {
-                log::error!("reset last doc");
-                if !self.documents.contains_key(&alt) {
+                if alt == doc_id {
                     view.last_accessed_doc = None;
                 }
             }
 
-            let new_id = if let Some(alt) = view.last_accessed_doc {
-                log::error!("alt hit: {:?}", alt);
-                Some(alt)
-            } else if self.documents.len() > 1 {
-                log::error!("other hit");
-                // FIXME: We don't store enough "alternate buffer" context --
-                // opening three buffers, and then closing two will leave the
-                // user with the first buffer still there, but not currently
-                // visible. To work around this, we use a "best guess" -- if
-                // there is a buffer that is before it in the tree, switch to
-                // that one. Otherwise, find the first not-to-be-removed
-                // document and switch to that.
-                let other = self.documents.range(..id).next_back().map_or(
-                    self.documents.iter().find_map(|(&other_id, _)| {
-                        if other_id == id {
-                            None
-                        } else {
-                            Some(other_id)
-                        }
-                    }),
-                    |(&other_id, _)| Some(other_id),
-                );
-                log::error!("other: {:?}", &other);
-                other
-            } else {
-                log::error!("none hit");
-                None
-            };
+            if view.doc == doc_id {
+                let new_id = if let Some(alt) = view.last_accessed_doc {
+                    Some(alt)
+                } else if self.documents.len() > 1 {
+                    // FIXME: We don't store enough "alternate buffer" context -- opening three
+                    // buffers, and then closing two will leave the user with the first buffer still
+                    // there, but not currently visible. To work around this, we use a "best guess"
+                    // -- if there is a buffer that is before it in the tree, switch to that one.
+                    // Otherwise, find the first not-to-be-removed document and switch to that.
+                    self.documents.range(..doc_id).next_back().map_or(
+                        self.documents.iter().find_map(|(&other_id, _)| {
+                            if other_id == doc_id {
+                                None
+                            } else {
+                                Some(other_id)
+                            }
+                        }),
+                        |(&other_id, _)| Some(other_id),
+                    )
+                } else {
+                    None
+                };
 
-            match new_id {
-                Some(new_id) if new_id != id && self.documents.contains_key(&new_id) => {
-                    self.switch(new_id, Action::Replace);
-                }
-                _ => {
-                    self.new_file(Action::Replace);
+                v.push((view.id, new_id, view.doc == doc_id));
+            }
+        }
+
+        for (view_id, doc_id, doc_is_focused) in v {
+            if doc_is_focused {
+                if self.tree.views().count() > 1 {
+                    self.close(view_id);
+                    continue;
                 }
             }
 
-            let view = self.tree.get_mut(view_id);
-            log::error!("new last: {:?}", view.last_accessed_doc);
-            view.jumps.remove(&id);
-
+            let doc_id = if let Some(doc_id) = doc_id {
+                doc_id
+            } else {
+                self.new_document(Document::default())
+            };
+            self.replace_document_in_view(view_id, doc_id);
             self._refresh();
         }
 
-        self.documents.remove(&id);
-        self.tree.focus = old_focus;
-        log::error!("{:?}", &self.documents);
+        if !self.tree.views().any(|(view, _)| view.doc == doc_id) {
+            self.documents.remove(&doc_id);
+        }
 
         Ok(())
     }
