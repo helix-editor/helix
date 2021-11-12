@@ -302,6 +302,7 @@ impl Command {
         format_selections, "Format selection",
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
+        remove_selections, "Remove selections matching regex",
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
@@ -4320,12 +4321,12 @@ fn join_selections(cx: &mut Context) {
     doc.append_changes_to_history(view.id);
 }
 
-fn keep_selections(cx: &mut Context) {
-    // keep selections matching regex
+fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
+    // keep or remove selections matching regex
     let reg = cx.register.unwrap_or('/');
     let prompt = ui::regex_prompt(
         cx,
-        "keep:".into(),
+        if !remove { "keep:" } else { "remove:" }.into(),
         Some(reg),
         |_input: &str| Vec::new(),
         move |view, doc, regex, event| {
@@ -4334,13 +4335,23 @@ fn keep_selections(cx: &mut Context) {
             }
             let text = doc.text().slice(..);
 
-            if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
+            if let Some(selection) =
+                selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
+            {
                 doc.set_selection(view.id, selection);
             }
         },
     );
 
     cx.push_layer(Box::new(prompt));
+}
+
+fn keep_selections(cx: &mut Context) {
+    keep_or_remove_selections_impl(cx, false)
+}
+
+fn remove_selections(cx: &mut Context) {
+    keep_or_remove_selections_impl(cx, true)
 }
 
 fn keep_primary_selection(cx: &mut Context) {
