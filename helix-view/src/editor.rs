@@ -484,9 +484,9 @@ impl Editor {
             self.replace_document_in_view(view_id, doc_id);
         }
 
-        if !self.tree.views().any(|(view, _)| view.doc == doc_id) {
-            self.documents.remove(&doc_id);
-        }
+        debug_assert!(!self.tree.views().any(|(view, _)| view.doc == doc_id));
+        self.documents.remove(&doc_id);
+        self._refresh();
 
         Ok(())
     }
