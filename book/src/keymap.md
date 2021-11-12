@@ -61,6 +61,8 @@
 | `.`         | Repeat last change                              | N/A                   |
 | `u`         | Undo change                                     | `undo`                |
 | `U`         | Redo change                                     | `redo`                |
+| `Alt-u`     | Move backward in history                        | `earlier`             |
+| `Alt-U`     | Move forward in history                         | `later`               |
 | `y`         | Yank selection                                  | `yank`                |
 | `p`         | Paste after selection                           | `paste_after`         |
 | `P`         | Paste before selection                          | `paste_before`        |

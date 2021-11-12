@@ -256,7 +256,7 @@ impl History {
 }
 
 /// Whether to undo by a number of edits or a duration of time.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum UndoKind {
     Steps(usize),
     TimePeriod(std::time::Duration),

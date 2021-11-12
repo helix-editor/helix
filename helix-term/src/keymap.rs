@@ -565,6 +565,8 @@ impl Default for Keymaps {
 
             "u" => undo,
             "U" => redo,
+            "A-u" => earlier,
+            "A-U" => later,
 
             "y" => yank,
             // yank_all
