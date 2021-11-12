@@ -35,6 +35,11 @@ To override global configuration parameters, create a `config.toml` file located
 |`git-global` | Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option. | true
 |`git-exclude` | Enables reading `.git/info/exclude` files. | true
 |`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
+|`width-factor` | File picker width, treated as a factor. | `0.9` |
+|`height-factor` | File picker height, treated as a factor. | `0.9` |
+|`preview-width-factor` | File picker preview width, treated as a factor. | `0.5` |
+|`preview-min-width` |  File picker preview minimum width in columns. | `60` |
+|`file-min-width` | File picker filenames minimum width in columns when preview is showed. | `20` |
 
 ## LSP
 

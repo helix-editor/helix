@@ -15,6 +15,7 @@ use tui::widgets::Widget;
 
 use std::{
     borrow::Cow,
+    cmp,
     collections::HashMap,
     io::Read,
     path::{Path, PathBuf},
@@ -28,7 +29,6 @@ use helix_view::{
     Document, Editor,
 };
 
-pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -159,8 +159,14 @@ impl<T: 'static> Component for FilePicker<T> {
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
-        let render_preview = area.width > MIN_SCREEN_WIDTH_FOR_PREVIEW;
-        let area = inner_rect(area);
+        let area = inner_rect(
+            area,
+            cx.editor.config.file_picker.width_factor,
+            cx.editor.config.file_picker.height_factor,
+        );
+        let render_preview = area.width
+            > cx.editor.config.file_picker.preview_min_width
+                + cx.editor.config.file_picker.file_min_width;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
@@ -168,7 +174,17 @@ impl<T: 'static> Component for FilePicker<T> {
         surface.clear_with(area, background);
 
         let picker_width = if render_preview {
-            area.width / 2
+            let preview_width = (area.width as f32
+                * cx.editor.config.file_picker.preview_width_factor)
+                .round() as u16;
+            cmp::max(
+                area.width
+                    - cmp::max(
+                        preview_width,
+                        cx.editor.config.file_picker.preview_min_width,
+                    ),
+                cx.editor.config.file_picker.file_min_width,
+            )
         } else {
             area.width
         };
@@ -388,10 +404,10 @@ impl<T> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-fn inner_rect(area: Rect) -> Rect {
+fn inner_rect(area: Rect, width_factor: f32, height_factor: f32) -> Rect {
     let margin = Margin {
-        vertical: area.height * 10 / 100,
-        horizontal: area.width * 10 / 100,
+        vertical: (area.height as f32 * (1.0 - width_factor)).round() as u16,
+        horizontal: (area.width as f32 * (1.0 - height_factor)).round() as u16,
     };
     area.inner(&margin)
 }
@@ -453,7 +469,11 @@ impl<T: 'static> Component for Picker<T> {
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let area = if self.render_centered {
-            inner_rect(area)
+            inner_rect(
+                area,
+                cx.editor.config.file_picker.width_factor,
+                cx.editor.config.file_picker.height_factor,
+            )
         } else {
             area
         };
@@ -534,7 +554,11 @@ impl<T: 'static> Component for Picker<T> {
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         // TODO: this is mostly duplicate code
-        let area = inner_rect(area);
+        let area = inner_rect(
+            area,
+            editor.config.file_picker.width_factor,
+            editor.config.file_picker.height_factor,
+        );
         let block = Block::default().borders(Borders::ALL);
         // calculate the inner area inside the box
         let inner = block.inner(area);

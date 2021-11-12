@@ -60,6 +60,16 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// File picker width, treated as a factor. Defaults to 0.9.
+    pub width_factor: f32,
+    /// File picker height, treated as a factor. Defaults to 0.9.
+    pub height_factor: f32,
+    /// File picker preview width, treated as a factor. Defaults to 0.5.
+    pub preview_width_factor: f32,
+    /// File picker preview minimum width in columns. Default to 60.
+    pub preview_min_width: u16,
+    /// File picker filenames minimum width in columns when preview is showed. Default to 20.
+    pub file_min_width: u16,
 }
 
 impl Default for FilePickerConfig {
@@ -72,6 +82,13 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            width_factor: 0.9,
+            height_factor: 0.9,
+            preview_width_factor: 0.5,
+            // Default values `preview_min_width` and `file_min_width`
+            // should total up to 80 to fit 80 column terminals.
+            preview_min_width: 60,
+            file_min_width: 20,
         }
     }
 }
