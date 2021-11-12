@@ -4786,7 +4786,7 @@ fn wonly(cx: &mut Context) {
         .collect::<Vec<_>>();
     for (view_id, focus) in views {
         if !focus {
-            cx.editor.close(view_id, /* close_buffer */ false);
+            cx.editor.close(view_id);
         }
     }
 }
