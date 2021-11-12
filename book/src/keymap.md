@@ -128,18 +128,18 @@ key to return to normal mode after usage (useful when you're simply looking
 over text and not actively editing it).
 
 
-| Key       | Description                                               | Command             |
-| -----     | -----------                                               | -------             |
-| `z` , `c` | Vertically center the line                                | `align_view_center` |
-| `t`       | Align the line to the top of the screen                   | `align_view_top`    |
-| `b`       | Align the line to the bottom of the screen                | `align_view_bottom` |
-| `m`       | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
-| `j`       | Scroll the view downwards                                 | `scroll_down`       |
-| `k`       | Scroll the view upwards                                   | `scroll_up`         |
-| `f`       | Move page down                                            | `page_down`         |
-| `b`       | Move page up                                              | `page_up`           |
-| `d`       | Move half page down                                       | `half_page_down`    |
-| `u`       | Move half page up                                         | `half_page_up`      |
+| Key           | Description                                               | Command             |
+| -----         | -----------                                               | -------             |
+| `z` , `c`     | Vertically center the line                                | `align_view_center` |
+| `t`           | Align the line to the top of the screen                   | `align_view_top`    |
+| `b`           | Align the line to the bottom of the screen                | `align_view_bottom` |
+| `m`           | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
+| `j` , `down`  | Scroll the view downwards                                 | `scroll_down`       |
+| `k` , `up`    | Scroll the view upwards                                   | `scroll_up`         |
+| `f`           | Move page down                                            | `page_down`         |
+| `b`           | Move page up                                              | `page_up`           |
+| `d`           | Move half page down                                       | `half_page_down`    |
+| `u`           | Move half page up                                         | `half_page_up`      |
 
 #### Goto mode
 
