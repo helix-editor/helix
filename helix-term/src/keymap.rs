@@ -557,7 +557,6 @@ impl Default for Keymaps {
             "J" => join_selections,
             "K" => keep_selections,
             "A-K" => remove_selections,
-            // TODO: and another method for inverse
 
             "," => keep_primary_selection,
             "A-," => remove_primary_selection,
