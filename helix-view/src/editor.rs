@@ -482,7 +482,6 @@ impl Editor {
             let doc_id = doc_id.unwrap_or_else(|| self.new_document(Document::default()));
 
             self.replace_document_in_view(view_id, doc_id);
-            self._refresh();
         }
 
         if !self.tree.views().any(|(view, _)| view.doc == doc_id) {
