@@ -36,6 +36,37 @@ where
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FilePickerConfig {
+    pub hidden: bool,
+    pub parents: bool,
+    pub ignore: bool,
+    pub git_ignore: bool,
+    pub git_global: bool,
+    pub git_exclude: bool,
+}
+
+impl Default for FilePickerConfig {
+    fn default() -> Self {
+        Self {
+            // Enables ignoring hidden files.
+            hidden: false,
+            // Enables reading ignore files from parent directories.
+            parents: false,
+            // Enables reading `.ignore` files.
+            ignore: false,
+            // Enables reading `.gitignore` files.
+            /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
+            git_ignore: false,
+            // Enables reading global .gitignore, whose path is specified in git's `core.excludesFile` option.
+            git_global: false,
+            // Enables reading `.git/info/exclude` files.
+            git_exclude: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
@@ -62,7 +93,8 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
-    pub git_ignore: bool,
+    //pub git_ignore: bool,
+    pub file_picker: FilePickerConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -94,7 +126,7 @@ impl Default for Config {
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
-            git_ignore: false,
+            file_picker: FilePickerConfig::default(),
         }
     }
 }

@@ -1359,7 +1359,7 @@ fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let smart_case = cx.editor.config.smart_case;
-    let git_ignore = cx.editor.config.git_ignore;
+    let file_picker_config = cx.editor.config.file_picker.clone();
 
     let completions = search_completions(cx, None);
     let prompt = ui::regex_prompt(
@@ -1389,7 +1389,8 @@ fn global_search(cx: &mut Context) {
                 let search_root = std::env::current_dir()
                     .expect("Global search error: Failed to get current dir");
                 WalkBuilder::new(search_root)
-                    .git_ignore(git_ignore)
+                    .git_ignore(file_picker_config.git_ignore)
+                    // etc
                     .build_parallel()
                     .run(|| {
                         let mut searcher_cl = searcher.clone();
