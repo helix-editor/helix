@@ -479,11 +479,7 @@ impl Editor {
                 continue;
             }
 
-            let doc_id = if let Some(doc_id) = doc_id {
-                doc_id
-            } else {
-                self.new_document(Document::default())
-            };
+            let doc_id = doc_id.unwrap_or_else(|| self.new_document(Document::default()));
 
             self.replace_document_in_view(view_id, doc_id);
             self._refresh();
