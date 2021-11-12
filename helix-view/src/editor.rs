@@ -485,6 +485,7 @@ impl Editor {
             } else {
                 self.new_document(Document::default())
             };
+
             self.replace_document_in_view(view_id, doc_id);
             self._refresh();
         }
