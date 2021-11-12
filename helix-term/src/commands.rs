@@ -5127,58 +5127,38 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
             radix,
         }) = number_at(text.slice(..), *range)
         {
-            let new_value = old_value.wrapping_add(amount);
             let old_text: Cow<str> = text.slice(range.from()..range.to()).into();
-            let prefix = if radix == 10 { "" } else { &old_text[..2] };
+            let new_value = old_value.wrapping_add(amount);
+            let new_length = if radix == 10 {
+                match (old_value.is_negative(), new_value.is_negative()) {
+                    (true, false) => old_text.len() - 1,
+                    (false, true) => old_text.len() + 1,
+                    _ => old_text.len(),
+                }
+            } else {
+                old_text.len() - 2
+            };
 
-            let mut new_text = match radix {
-                2 => format!("{:b}", new_value),
-                8 => format!("{:o}", new_value),
-                10 => format!("{}", new_value.abs()),
+            let new_text = match radix {
+                2 => format!("0b{:01$b}", new_value, new_length),
+                8 => format!("0o{:01$o}", new_value, new_length),
+                10 => format!("{:01$}", new_value, new_length),
                 16 => {
-                    let lower_count = old_text
-                        .chars()
-                        .skip(2)
-                        .filter(char::is_ascii_lowercase)
-                        .count();
-                    let upper_count = old_text
-                        .chars()
-                        .skip(2)
-                        .filter(char::is_ascii_uppercase)
-                        .count();
+                    let (lower_count, upper_count): (usize, usize) =
+                        old_text.chars().skip(2).fold((0, 0), |(lower, upper), c| {
+                            (
+                                lower + c.is_ascii_lowercase().then(|| 1).unwrap_or(0),
+                                upper + c.is_ascii_uppercase().then(|| 1).unwrap_or(0),
+                            )
+                        });
                     if upper_count > lower_count {
-                        format!("{:X}", new_value)
+                        format!("0x{:01$X}", new_value, new_length)
                     } else {
-                        format!("{:x}", new_value)
+                        format!("0x{:01$x}", new_value, new_length)
                     }
                 }
                 _ => unimplemented!("radix not supported: {}", radix),
             };
-
-            // Pad with leading zeros if necessary.
-            // * For non-decimal numbers, we want to keep at least as many digits as before the change.
-            // * For decimal numbers we do this if there are leading zeros, like 000145, before the change.
-            let new_length_no_prefix = new_text.len();
-            let old_text_no_prefix = {
-                let mut stripped: &str = old_text[prefix.len()..].as_ref();
-                if stripped.starts_with('-') {
-                    stripped = &stripped[1..];
-                }
-                stripped
-            };
-            let old_length_no_prefix = old_text_no_prefix.len();
-            if new_length_no_prefix < old_length_no_prefix
-                && (radix != 10 || old_text_no_prefix.starts_with('0'))
-            {
-                new_text = "0".repeat(old_length_no_prefix - new_length_no_prefix) + &new_text;
-            }
-
-            // Add prefix or sign if needed
-            if radix == 10 && new_value.is_negative() {
-                new_text = format!("-{}", new_text);
-            } else {
-                new_text = prefix.to_owned() + &new_text;
-            }
 
             let new_text: Tendril = new_text.into();
 
