@@ -2791,7 +2791,7 @@ fn workspace_symbol_picker(cx: &mut Context) {
                     },
                     move |editor: &mut Editor, symbol, action| {
                         let path = symbol.location.uri.to_file_path().unwrap();
-                        editor.open(path, action).expect("editor.open faild");
+                        editor.open(path, action).expect("editor.open failed");
                         let (view, doc) = current!(editor);
 
                         if let Some(range) =
