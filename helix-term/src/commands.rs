@@ -1367,7 +1367,7 @@ fn global_search(cx: &mut Context) {
     let completions = search_completions(cx, None);
     let prompt = ui::regex_prompt(
         cx,
-        "global search:".into(),
+        "global-search:".into(),
         None,
         move |input: &str| {
             completions
@@ -5154,7 +5154,7 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 
 fn rename_symbol(cx: &mut Context) {
     let prompt = Prompt::new(
-        "Rename to: ".into(),
+        "rename-to:".into(),
         None,
         |_input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
