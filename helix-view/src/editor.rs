@@ -475,11 +475,9 @@ impl Editor {
         }
 
         for (view_id, doc_id, doc_is_focused) in v {
-            if doc_is_focused {
-                if self.tree.views().count() > 1 {
-                    self.close(view_id);
-                    continue;
-                }
+            if doc_is_focused && self.tree.views().count() > 1 {
+                self.close(view_id);
+                continue;
             }
 
             let doc_id = if let Some(doc_id) = doc_id {
