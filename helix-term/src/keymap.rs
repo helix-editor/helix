@@ -26,6 +26,22 @@ macro_rules! key {
 }
 
 #[macro_export]
+macro_rules! shift {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::SHIFT,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::SHIFT,
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! ctrl {
     ($key:ident) => {
         ::helix_view::input::KeyEvent {

@@ -1,6 +1,6 @@
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
-    ctrl, key,
+    ctrl, key, shift,
     ui::EditorView,
 };
 use crossterm::event::Event;
@@ -404,7 +404,7 @@ impl<T: 'static> Component for Picker<T> {
         })));
 
         match key_event.into() {
-            key!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {

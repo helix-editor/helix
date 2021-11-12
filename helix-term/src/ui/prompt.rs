@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Compositor, Context, EventResult};
-use crate::{alt, ctrl, key, ui};
+use crate::{alt, ctrl, key, shift, ui};
 use crossterm::event::Event;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::{KeyCode, KeyModifiers};
@@ -496,7 +496,7 @@ impl Component for Prompt {
                 self.change_completion_selection(CompletionDirection::Forward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
-            key!(BackTab) => {
+            shift!(BackTab) => {
                 self.change_completion_selection(CompletionDirection::Backward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
