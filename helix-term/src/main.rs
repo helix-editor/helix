@@ -91,7 +91,16 @@ FLAGS:
     }
 
     let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
-        Ok(config) => merge_keys(toml::from_str(&config)?),
+        Ok(config) => toml::from_str(&config)
+            .map(merge_keys)
+            .unwrap_or_else(|err| {
+                eprintln!("Bad config: {}", err);
+                eprintln!("Press <ENTER> to continue with default config");
+                use std::io::Read;
+                // This waits for an enter press.
+                let _ = std::io::stdin().read(&mut []);
+                Config::default()
+            }),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
         Err(err) => return Err(Error::new(err)),
     };

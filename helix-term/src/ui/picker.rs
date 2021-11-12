@@ -1,8 +1,9 @@
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key,
     ui::EditorView,
 };
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, BorderType, Borders},
@@ -402,81 +403,35 @@ impl<T: 'static> Component for Picker<T> {
             compositor.last_picker = compositor.pop();
         })));
 
-        match key_event {
-            KeyEvent {
-                code: KeyCode::Up, ..
-            }
-            | KeyEvent {
-                code: KeyCode::BackTab,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('k'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+        match key_event.into() {
+            key!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
             }
-            KeyEvent {
-                code: KeyCode::Down,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Tab, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('j'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
                 self.move_down();
             }
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => {
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
+            key!(Enter) => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::Replace);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char('s'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('s') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char('v'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('v') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char(' '),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!(' ') => {
                 self.save_filter();
             }
             _ => {

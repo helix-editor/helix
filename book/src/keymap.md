@@ -101,18 +101,19 @@
 |          | Expand selection to parent syntax node TODO: pick a key           | `expand_selection`                   |
 | `J`      | Join lines inside selection                                       | `join_selections`                    |
 | `K`      | Keep selections matching the regex                                | `keep_selections`                    |
+| `Alt-K`  | Remove selections matching the regex                              | `remove_selections`                  |
 | `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
 
 ### Search
 
-> TODO: The search implementation isn't ideal yet -- we don't support searching in reverse.
 
 | Key   | Description                                 | Command              |
 | ----- | -----------                                 | -------              |
 | `/`   | Search for regex pattern                    | `search`             |
+| `?`   | Search for previous pattern                 | `rsearch`            |
 | `n`   | Select next search match                    | `search_next`        |
-| `N`   | Add next search match to selection          | `extend_search_next` |
+| `N`   | Select previous search match                | `search_prev`        |
 | `*`   | Use current selection as the search pattern | `search_selection`   |
 
 ### Minor modes
@@ -142,9 +143,8 @@ over text and not actively editing it).
 
 #### Goto mode
 
-Jumps to various locations.
-
-> NOTE: Some of these features are only available with the LSP present.
+Jumps to various locations. Mappings marked (**LSP**) require an
+active language server for the file to work.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
@@ -156,10 +156,10 @@ Jumps to various locations.
 | `t`   | Go to the top of the screen                      | `goto_window_top`          |
 | `m`   | Go to the middle of the screen                   | `goto_window_middle`       |
 | `b`   | Go to the bottom of the screen                   | `goto_window_bottom`       |
-| `d`   | Go to definition                                 | `goto_definition`          |
-| `y`   | Go to type definition                            | `goto_type_definition`     |
-| `r`   | Go to references                                 | `goto_reference`           |
-| `i`   | Go to implementation                             | `goto_implementation`      |
+| `d`   | Go to definition (**LSP**)                       | `goto_definition`          |
+| `y`   | Go to type definition (**LSP**)                  | `goto_type_definition`     |
+| `r`   | Go to references (**LSP**)                       | `goto_reference`           |
+| `i`   | Go to implementation (**LSP**)                   | `goto_implementation`      |
 | `a`   | Go to the last accessed/alternate file           | `goto_last_accessed_file`  |
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
@@ -185,28 +185,32 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 This layer is similar to vim keybindings as kakoune does not support window.
 
-| Key           | Description             | Command           |
-| -----         | -------------           | -------           |
-| `w`, `Ctrl-w` | Switch to next window   | `rotate_view`     |
-| `v`, `Ctrl-v` | Vertical right split    | `vsplit`          |
-| `s`, `Ctrl-s` | Horizontal bottom split | `hsplit`          |
-| `h`, `Ctrl-h`, `left` | Move to left split      | `jump_view_left`  |
-| `j`, `Ctrl-j`, `down` | Move to split below     | `jump_view_down`  |
-| `k`, `Ctrl-k`, `up` | Move to split above     | `jump_view_up`    |
-| `l`, `Ctrl-l`, `right` | Move to right split     | `jump_view_right` |
-| `q`, `Ctrl-q` | Close current window    | `wclose`          |
+| Key                    | Description                    | Command           |
+| -----                  | -------------                  | -------           |
+| `w`, `Ctrl-w`          | Switch to next window          | `rotate_view`     |
+| `v`, `Ctrl-v`          | Vertical right split           | `vsplit`          |
+| `s`, `Ctrl-s`          | Horizontal bottom split        | `hsplit`          |
+| `h`, `Ctrl-h`, `left`  | Move to left split             | `jump_view_left`  |
+| `j`, `Ctrl-j`, `down`  | Move to split below            | `jump_view_down`  |
+| `k`, `Ctrl-k`, `up`    | Move to split above            | `jump_view_up`    |
+| `l`, `Ctrl-l`, `right` | Move to right split            | `jump_view_right` |
+| `q`, `Ctrl-q`          | Close current window           | `wclose`          |
+| `o`, `Ctrl-o`          | Only keep the current window, closing all the others            | `wonly`           |
 
 #### Space mode
 
-This layer is a kludge of mappings, mostly pickers.
+This layer is a kludge of mappings, mostly pickers. Mappings marked
+(**LSP**) require an active language server for the file to work.
+
 
 | Key     | Description                                                           | Command                             |
 | -----   | -----------                                                           | -------                             |
-| `k`     | Show documentation for the item under the cursor                      | `hover`                             |
 | `f`     | Open file picker                                                      | `file_picker`                       |
 | `b`     | Open buffer picker                                                    | `buffer_picker`                     |
-| `s`     | Open symbol picker (current document)                                 | `symbol_picker`                     |
-| `a`     | Apply code action                                                     | `code_action`                       |
+| `k`     | Show documentation for item under cursor (**LSP**)                      | `hover`                             |
+| `s`     | Open document symbol picker (**LSP**)                                     | `symbol_picker`                     |
+| `r`     | Rename symbol (**LSP**)                                                   | `rename_symbol`                     |
+| `a`     | Apply code action  (**LSP**)                                              | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                | `last_picker`                       |
 | `w`     | Enter [window mode](#window-mode)                                     | N/A                                 |
 | `p`     | Paste system clipboard after selections                               | `paste_clipboard_after`             |
@@ -216,18 +220,18 @@ This layer is a kludge of mappings, mostly pickers.
 | `R`     | Replace selections by clipboard contents                              | `replace_selections_with_clipboard` |
 | `/`     | Global search in workspace folder                                     | `global_search`                     |
 
-> NOTE: Global search display results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
+> TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
  
 #### Unimpaired
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
-| Key       | Description                        | Command           |
-| -----     | -----------                        | -------           |
-| `[d`      | Go to previous diagnostic          | `goto_prev_diag`  |
-| `]d`      | Go to next diagnostic              | `goto_next_diag`  |
-| `[D`      | Go to first diagnostic in document | `goto_first_diag` |
-| `]D`      | Go to last diagnostic in document  | `goto_last_diag`  |
+| Key       | Description                        | Command             |
+| -----     | -----------                        | -------             |
+| `[d`      | Go to previous diagnostic          | `goto_prev_diag`    |
+| `]d`      | Go to next diagnostic              | `goto_next_diag`    |
+| `[D`      | Go to first diagnostic in document | `goto_first_diag`   |
+| `]D`      | Go to last diagnostic in document  | `goto_last_diag`    |
 | `[space`  | Add newline above                  | `add_newline_above` |
 | `]space`  | Add newline below                  | `add_newline_below` |
 
@@ -262,7 +266,9 @@ Keys to use within picker. Remapping currently not supported.
 | `Escape`, `Ctrl-c`           | Close picker      |
 
 # Prompt
+
 Keys to use within prompt, Remapping currently not supported.
+
 | Key                     | Description                                                             |
 | -----                   | -------------                                                           |
 | `Escape`, `Ctrl-c`      | Close prompt                                                            |
@@ -270,15 +276,17 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-b`, `Left`        | Backward a char                                                         |
 | `Alt-f`, `Alt-Right`    | Forward a word                                                          |
 | `Ctrl-f`, `Right`       | Forward a char                                                          |
-| `Ctrl-e`, `End`         | move prompt end                                                         |
-| `Ctrl-a`, `Home`        | move prompt start                                                       |
-| `Ctrl-w`                | delete previous word                                                    |
-| `Ctrl-k`                | delete to end of line                                                   |
-| `backspace`             | delete previous char                                                    |
-| `Ctrl-s`                | insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
-| `Ctrl-p`, `Up`          | select previous history                                                 |
-| `Ctrl-n`, `Down`        | select next history                                                     |
-| `Tab`                   | slect next completion item                                              |
-| `BackTab`               | slect previous completion item                                          |
+| `Ctrl-e`, `End`         | Move prompt end                                                         |
+| `Ctrl-a`, `Home`        | Move prompt start                                                       |
+| `Ctrl-w`                | Delete previous word                                                    |
+| `Ctrl-u`                | Delete to start of line                                                 |
+| `Ctrl-k`                | Delete to end of line                                                   |
+| `backspace`, `Ctrl-h`   | Delete previous char                                                    |
+| `delete`, `Ctrl-d`      | Delete previous char                                                    |
+| `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
+| `Ctrl-p`, `Up`          | Select previous history                                                 |
+| `Ctrl-n`, `Down`        | Select next history                                                     |
+| `Tab`                   | Select next completion item                                              |
+| `BackTab`               | Select previous completion item                                          |
 | `Enter`                 | Open selected                                                           |
 

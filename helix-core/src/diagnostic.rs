@@ -10,7 +10,7 @@ pub enum Severity {
 }
 
 /// A range of `char`s within the text.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Range {
     pub start: usize,
     pub end: usize,

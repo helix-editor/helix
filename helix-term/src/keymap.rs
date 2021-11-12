@@ -25,6 +25,38 @@ macro_rules! key {
     };
 }
 
+#[macro_export]
+macro_rules! ctrl {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! alt {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+}
+
 /// Macro for defining the root of a `Keymap` object. Example:
 ///
 /// ```
@@ -53,6 +85,10 @@ macro_rules! keymap {
         keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ })
     };
 
+    (@trie [$($cmd:ident),* $(,)?]) => {
+        $crate::keymap::KeyTrie::Sequence(vec![$($crate::commands::Command::$cmd),*])
+    };
+
     (
         { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
     ) => {
@@ -64,10 +100,11 @@ macro_rules! keymap {
             $(
                 $(
                     let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
-                    _map.insert(
+                    let _duplicate = _map.insert(
                         _key,
                         keymap!(@trie $value)
                     );
+                    debug_assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
                     _order.push(_key);
                 )+
             )*
@@ -147,6 +184,7 @@ impl KeyTrieNode {
                     cmd.doc()
                 }
                 KeyTrie::Node(n) => n.name(),
+                KeyTrie::Sequence(_) => "[Multiple commands]",
             };
             match body.iter().position(|(d, _)| d == &desc) {
                 Some(pos) => {
@@ -207,6 +245,7 @@ impl DerefMut for KeyTrieNode {
 #[serde(untagged)]
 pub enum KeyTrie {
     Leaf(Command),
+    Sequence(Vec<Command>),
     Node(KeyTrieNode),
 }
 
@@ -214,14 +253,14 @@ impl KeyTrie {
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),
-            KeyTrie::Leaf(_) => None,
+            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
         }
     }
 
     pub fn node_mut(&mut self) -> Option<&mut KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref mut node) => Some(node),
-            KeyTrie::Leaf(_) => None,
+            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
         }
     }
 
@@ -238,7 +277,7 @@ impl KeyTrie {
             trie = match trie {
                 KeyTrie::Node(map) => map.get(key),
                 // leaf encountered while keys left to process
-                KeyTrie::Leaf(_) => None,
+                KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
             }?
         }
         Some(trie)
@@ -250,6 +289,8 @@ pub enum KeymapResultKind {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
     Matched(Command),
+    /// Matched a sequence of commands to execute.
+    MatchedSequence(Vec<Command>),
     /// Key was not found in the root keymap
     NotFound,
     /// Key is invalid in combination with previous keys. Contains keys leading upto
@@ -332,6 +373,12 @@ impl Keymap {
             Some(&KeyTrie::Leaf(cmd)) => {
                 return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky())
             }
+            Some(&KeyTrie::Sequence(ref cmds)) => {
+                return KeymapResult::new(
+                    KeymapResultKind::MatchedSequence(cmds.clone()),
+                    self.sticky(),
+                )
+            }
             None => return KeymapResult::new(KeymapResultKind::NotFound, self.sticky()),
             Some(t) => t,
         };
@@ -348,6 +395,13 @@ impl Keymap {
             Some(&KeyTrie::Leaf(cmd)) => {
                 self.state.clear();
                 return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky());
+            }
+            Some(&KeyTrie::Sequence(ref cmds)) => {
+                self.state.clear();
+                KeymapResult::new(
+                    KeymapResultKind::MatchedSequence(cmds.clone()),
+                    self.sticky(),
+                )
             }
             None => KeymapResult::new(
                 KeymapResultKind::Cancelled(self.state.drain(..).collect()),
@@ -504,10 +558,9 @@ impl Default for Keymaps {
             },
 
             "/" => search,
-            // ? for search_reverse
+            "?" => rsearch,
             "n" => search_next,
-            "N" => extend_search_next,
-            // N for search_prev
+            "N" => search_prev,
             "*" => search_selection,
 
             "u" => undo,
@@ -524,7 +577,7 @@ impl Default for Keymaps {
             "=" => format_selections,
             "J" => join_selections,
             "K" => keep_selections,
-            // TODO: and another method for inverse
+            "A-K" => remove_selections,
 
             "," => keep_primary_selection,
             "A-," => remove_primary_selection,
@@ -551,6 +604,7 @@ impl Default for Keymaps {
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-q" | "q" => wclose,
+                "C-o" | "o" => wonly,
                 "C-h" | "h" | "left" => jump_view_left,
                 "C-j" | "j" | "down" => jump_view_down,
                 "C-k" | "k" | "up" => jump_view_up,
@@ -574,9 +628,14 @@ impl Default for Keymaps {
                 "'" => last_picker,
                 "w" => { "Window"
                     "C-w" | "w" => rotate_view,
-                    "C-h" | "h" => hsplit,
+                    "C-s" | "s" => hsplit,
                     "C-v" | "v" => vsplit,
                     "C-q" | "q" => wclose,
+                    "C-o" | "o" => wonly,
+                    "C-h" | "h" | "left" => jump_view_left,
+                    "C-j" | "j" | "down" => jump_view_down,
+                    "C-k" | "k" | "up" => jump_view_up,
+                    "C-l" | "l" | "right" => jump_view_right,
                 },
                 "y" => yank_joined_to_clipboard,
                 "Y" => yank_main_selection_to_clipboard,
@@ -585,6 +644,7 @@ impl Default for Keymaps {
                 "R" => replace_selections_with_clipboard,
                 "/" => global_search,
                 "k" => hover,
+                "r" => rename_symbol,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
@@ -593,10 +653,10 @@ impl Default for Keymaps {
                 "m" => align_view_middle,
                 "k" | "up" => scroll_up,
                 "j" | "down" => scroll_down,
-                "b" => page_up,
-                "f" => page_down,
-                "u" => half_page_up,
-                "d" => half_page_down,
+                "C-b" | "pageup" => page_up,
+                "C-f" | "pagedown" => page_down,
+                "C-u" => half_page_up,
+                "C-d" => half_page_down,
             },
             "Z" => { "View" sticky=true
                 "z" | "c" => align_view_center,
@@ -605,10 +665,10 @@ impl Default for Keymaps {
                 "m" => align_view_middle,
                 "k" | "up" => scroll_up,
                 "j" | "down" => scroll_down,
-                "b" => page_up,
-                "f" => page_down,
-                "u" => half_page_up,
-                "d" => half_page_down,
+                "C-b" | "pageup" => page_up,
+                "C-f" | "pagedown" => page_down,
+                "C-u" => half_page_up,
+                "C-d" => half_page_down,
             },
 
             "\"" => select_register,
@@ -632,6 +692,9 @@ impl Default for Keymaps {
             "W" => extend_next_long_word_start,
             "B" => extend_prev_long_word_start,
             "E" => extend_next_long_word_end,
+
+            "n" => extend_search_next,
+            "N" => extend_search_prev,
 
             "t" => extend_till_char,
             "f" => extend_next_char,
@@ -684,6 +747,22 @@ pub fn merge_keys(mut config: Config) -> Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[should_panic]
+    fn duplicate_keys_should_panic() {
+        keymap!({ "Normal mode"
+            "i" => normal_mode,
+            "i" => goto_definition,
+        });
+    }
+
+    #[test]
+    fn check_duplicate_keys_in_default_keymap() {
+        // will panic on duplicate keys, assumes that `Keymaps` uses keymap! macro
+        Keymaps::default();
+    }
+
     #[test]
     fn merge_partial_keys() {
         let config = Config {
@@ -777,5 +856,21 @@ mod tests {
         // Make sure an order was set during merge
         let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
         assert!(!node.node().unwrap().order().is_empty())
+    }
+
+    #[test]
+    fn aliased_modes_are_same_in_default_keymap() {
+        let keymaps = Keymaps::default();
+        let root = keymaps.get(&Mode::Normal).unwrap().root();
+        assert_eq!(
+            root.search(&[key!(' '), key!('w')]).unwrap(),
+            root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
+            "Mismatch for window mode on `Space-w` and `Ctrl-w`"
+        );
+        assert_eq!(
+            root.search(&[key!('z')]).unwrap(),
+            root.search(&[key!('Z')]).unwrap(),
+            "Mismatch for view mode on `z` and `Z`"
+        );
     }
 }
