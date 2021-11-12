@@ -100,14 +100,15 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
     let mut walk_builder = WalkBuilder::new(&root);
-    // from 'standard filters'
     walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
         .ignore(config.file_picker.ignore)
         .git_ignore(config.file_picker.git_ignore)
         .git_global(config.file_picker.git_global)
-        .git_exclude(config.file_picker.git_exclude);
+        .git_exclude(config.file_picker.git_exclude)
+        .follow_links(config.file_picker.git_exclude)
+        .max_depth(Some(1));
 
     let walk_builder = match type_builder.add(
         "compressed",
