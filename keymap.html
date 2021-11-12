@@ -138,6 +138,10 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="keymap"><a class="header" href="#keymap">Keymap</a></h1>
+<ul>
+<li>Mappings marked (<strong>LSP</strong>) require an active language server for the file.</li>
+<li>Mappings marked (<strong>TS</strong>) require a tree-sitter grammar for the filetype.</li>
+</ul>
 <h2 id="normal-mode"><a class="header" href="#normal-mode">Normal mode</a></h2>
 <h3 id="movement"><a class="header" href="#movement">Movement</a></h3>
 <blockquote>
@@ -198,7 +202,7 @@
 <tr><td><code>&quot;</code> <code>&lt;reg&gt;</code></td><td>Select a register to yank to or paste from</td><td><code>select_register</code></td></tr>
 <tr><td><code>&gt;</code></td><td>Indent selection</td><td><code>indent</code></td></tr>
 <tr><td><code>&lt;</code></td><td>Unindent selection</td><td><code>unindent</code></td></tr>
-<tr><td><code>=</code></td><td>Format selection</td><td><code>format_selections</code></td></tr>
+<tr><td><code>=</code></td><td>Format selection (<strong>LSP</strong>)</td><td><code>format_selections</code></td></tr>
 <tr><td><code>d</code></td><td>Delete selection</td><td><code>delete_selection</code></td></tr>
 <tr><td><code>c</code></td><td>Change selection (delete and enter insert mode)</td><td><code>change_selection</code></td></tr>
 </tbody></table>
@@ -227,7 +231,7 @@
 <tr><td><code>%</code></td><td>Select entire file</td><td><code>select_all</code></td></tr>
 <tr><td><code>x</code></td><td>Select current line, if already selected, extend to next line</td><td><code>extend_line</code></td></tr>
 <tr><td><code>X</code></td><td>Extend selection to line bounds (line-wise selection)</td><td><code>extend_to_line_bounds</code></td></tr>
-<tr><td></td><td>Expand selection to parent syntax node TODO: pick a key</td><td><code>expand_selection</code></td></tr>
+<tr><td></td><td>Expand selection to parent syntax node TODO: pick a key (<strong>TS</strong>)</td><td><code>expand_selection</code></td></tr>
 <tr><td><code>J</code></td><td>Join lines inside selection</td><td><code>join_selections</code></td></tr>
 <tr><td><code>K</code></td><td>Keep selections matching the regex</td><td><code>keep_selections</code></td></tr>
 <tr><td><code>Alt-K</code></td><td>Remove selections matching the regex</td><td><code>remove_selections</code></td></tr>
@@ -262,8 +266,7 @@ over text and not actively editing it).</p>
 <tr><td><code>u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
 </tbody></table>
 <h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
-<p>Jumps to various locations. Mappings marked (<strong>LSP</strong>) require an
-active language server for the file to work.</p>
+<p>Jumps to various locations.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>g</code></td><td>Go to the start of the file</td><td><code>goto_file_start</code></td></tr>
 <tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
@@ -286,7 +289,7 @@ active language server for the file to work.</p>
 in <a href="./usage.html">Usage</a> for an explanation about <a href="./usage.html#surround">surround</a>
 and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>m</code></td><td>Goto matching bracket</td><td><code>match_brackets</code></td></tr>
+<tr><td><code>m</code></td><td>Goto matching bracket (<strong>TS</strong>)</td><td><code>match_brackets</code></td></tr>
 <tr><td><code>s</code> <code>&lt;char&gt;</code></td><td>Surround current selection with <code>&lt;char&gt;</code></td><td><code>surround_add</code></td></tr>
 <tr><td><code>r</code> <code>&lt;from&gt;&lt;to&gt;</code></td><td>Replace surround character <code>&lt;from&gt;</code> with <code>&lt;to&gt;</code></td><td><code>surround_replace</code></td></tr>
 <tr><td><code>d</code> <code>&lt;char&gt;</code></td><td>Delete surround character <code>&lt;char&gt;</code></td><td><code>surround_delete</code></td></tr>
@@ -308,8 +311,7 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>o</code>, <code>Ctrl-o</code></td><td>Only keep the current window, closing all the others</td><td><code>wonly</code></td></tr>
 </tbody></table>
 <h4 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h4>
-<p>This layer is a kludge of mappings, mostly pickers. Mappings marked
-(<strong>LSP</strong>) require an active language server for the file to work.</p>
+<p>This layer is a kludge of mappings, mostly pickers.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>f</code></td><td>Open file picker</td><td><code>file_picker</code></td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
@@ -332,10 +334,10 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <h4 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h4>
 <p>Mappings in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>[d</code></td><td>Go to previous diagnostic</td><td><code>goto_prev_diag</code></td></tr>
-<tr><td><code>]d</code></td><td>Go to next diagnostic</td><td><code>goto_next_diag</code></td></tr>
-<tr><td><code>[D</code></td><td>Go to first diagnostic in document</td><td><code>goto_first_diag</code></td></tr>
-<tr><td><code>]D</code></td><td>Go to last diagnostic in document</td><td><code>goto_last_diag</code></td></tr>
+<tr><td><code>[d</code></td><td>Go to previous diagnostic (<strong>LSP</strong>)</td><td><code>goto_prev_diag</code></td></tr>
+<tr><td><code>]d</code></td><td>Go to next diagnostic (<strong>LSP</strong>)</td><td><code>goto_next_diag</code></td></tr>
+<tr><td><code>[D</code></td><td>Go to first diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_first_diag</code></td></tr>
+<tr><td><code>]D</code></td><td>Go to last diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_last_diag</code></td></tr>
 <tr><td><code>[space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
 <tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
 </tbody></table>
