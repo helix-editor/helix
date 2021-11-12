@@ -417,11 +417,10 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
-        if !self.documents.contains_key(&doc_id) {
-            anyhow::bail!("document does not exist");
-        }
-
-        let doc = &self.documents[&doc_id];
+        let doc = match self.documents.get(&doc_id) {
+            Some(doc) => doc,
+            None => anyhow::bail!("document does not exist"),
+        };
 
         if !force && doc.is_modified() {
             anyhow::bail!(
