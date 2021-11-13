@@ -45,28 +45,30 @@ pub struct FilePickerConfig {
     pub git_exclude: bool,
     pub follow_links: bool,
     pub max_depth: Option<usize>,
-    // filter_entry - maybe use for a handle to block descent into .git ?
 }
 
 impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
-            // could simply use .standard_filters if these are uniform.
+            // IgnoreOptions
             // Enables ignoring hidden files.
-            hidden: false,
+            hidden: true,
             // Enables reading ignore files from parent directories.
-            parents: false,
+            parents: true,
             // Enables reading `.ignore` files.
-            ignore: false,
+            ignore: true,
             // Enables reading `.gitignore` files.
             /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
-            git_ignore: false,
+            git_ignore: true,
             // Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
-            git_global: false,
+            git_global: true,
             // Enables reading `.git/info/exclude` files.
-            git_exclude: false,
-            follow_links: true,
-            max_depth: Some(1),
+            git_exclude: true,
+            // WalkBuilder options
+            // Whether to follow symbolic links.
+            follow_links: false,
+            // Maximum Depth to recurse.
+            max_depth: None,
         }
     }
 }
