@@ -5168,8 +5168,11 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
         }
     });
 
-    let transaction = Transaction::change(doc.text(), changes);
+    if changes.clone().count() > 0 {
+        let transaction = Transaction::change(doc.text(), changes);
+        let transaction = transaction.with_selection(selection.clone());
 
-    doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
+    }
 }
