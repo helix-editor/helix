@@ -23,7 +23,15 @@ To override global configuration parameters, create a `config.toml` file located
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
-| `git_ignore` | Whether to hide files listed in .gitignore in filepicker. | `false` |
+| `file-picker` | Sets options for file picker and global search. Multiple pairs in an inline table. Details below.  | `{hidden = true, parents = true, ignore = false, git-ignore = true, git-global = true, git-exclude = true } |
+All the pairs listed in the default configuration above are IgnoreOptions: which types of files are ignored in the file picker and global search. 
+`hidden` Directly enables ignoring hidden files.
+`parents` Enables reading ignore files from parent directories. 
+`ignore` Enables reading `.ignore` files.
+`git-ignore` Enables reading `.gitignore` files.
+`git-global` Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+`git-exclude` Enables reading `.git/info/exclude` files.
+`max-depth` can also be used as a key, and can be bound to an integer value for maximum depth to recurse. Defaults to `None`.
 
 ## LSP
 
