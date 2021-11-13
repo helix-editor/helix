@@ -5129,20 +5129,19 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
         {
             let old_text: Cow<str> = text.slice(range.from()..range.to()).into();
             let new_value = old_value.wrapping_add(amount);
-            let new_length = if radix == 10 {
-                match (old_value.is_negative(), new_value.is_negative()) {
-                    (true, false) => old_text.len() - 1,
-                    (false, true) => old_text.len() + 1,
-                    _ => old_text.len(),
-                }
-            } else {
-                old_text.len() - 2
-            };
 
             let new_text = match radix {
-                2 => format!("0b{:01$b}", new_value, new_length),
-                8 => format!("0o{:01$o}", new_value, new_length),
-                10 => format!("{:01$}", new_value, new_length),
+                2 => format!("0b{:01$b}", new_value, old_text.len() - 2),
+                8 => format!("0o{:01$o}", new_value, old_text.len() - 2),
+                10 if old_text.starts_with('0') || old_text.starts_with("-0") => {
+                    let length = match (old_value.is_negative(), new_value.is_negative()) {
+                        (true, false) => old_text.len() - 1,
+                        (false, true) => old_text.len() + 1,
+                        _ => old_text.len(),
+                    };
+                    format!("{:01$}", new_value, length)
+                }
+                10 => format!("{}", new_value),
                 16 => {
                     let (lower_count, upper_count): (usize, usize) =
                         old_text.chars().skip(2).fold((0, 0), |(lower, upper), c| {
@@ -5152,9 +5151,9 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
                             )
                         });
                     if upper_count > lower_count {
-                        format!("0x{:01$X}", new_value, new_length)
+                        format!("0x{:01$X}", new_value, old_text.len() - 2)
                     } else {
-                        format!("0x{:01$x}", new_value, new_length)
+                        format!("0x{:01$x}", new_value, old_text.len() - 2)
                     }
                 }
                 _ => unimplemented!("radix not supported: {}", radix),
