@@ -43,7 +43,6 @@ pub struct FilePickerConfig {
     pub git_ignore: bool,
     pub git_global: bool,
     pub git_exclude: bool,
-    pub follow_links: bool,
     pub max_depth: Option<usize>,
 }
 
@@ -65,8 +64,6 @@ impl Default for FilePickerConfig {
             // Enables reading `.git/info/exclude` files.
             git_exclude: true,
             // WalkBuilder options
-            // Whether to follow symbolic links.
-            follow_links: false,
             // Maximum Depth to recurse.
             max_depth: None,
         }

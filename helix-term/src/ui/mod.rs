@@ -107,8 +107,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .git_ignore(config.file_picker.git_ignore)
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
-        .follow_links(config.file_picker.git_exclude)
-        .max_depth(Some(1));
+        .max_depth(config.file_picker.max_depth);
 
     let walk_builder = match type_builder.add(
         "compressed",

@@ -1395,7 +1395,6 @@ fn global_search(cx: &mut Context) {
                     .git_ignore(file_picker_config.git_ignore)
                     .git_global(file_picker_config.git_global)
                     .git_exclude(file_picker_config.git_exclude)
-                    .follow_links(file_picker_config.follow_links)
                     .max_depth(file_picker_config.max_depth)
                     .build_parallel()
                     .run(|| {
