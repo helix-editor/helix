@@ -5128,18 +5128,32 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
         }) = number_at(text.slice(..), *range)
         {
             let old_text: Cow<str> = text.slice(range.from()..range.to()).into();
+            let old_length = old_text.len();
             let new_value = old_value.wrapping_add(amount);
 
-            let new_text = match radix {
-                2 => format!("0b{:01$b}", new_value, old_text.len() - 2),
-                8 => format!("0o{:01$o}", new_value, old_text.len() - 2),
+            // Get separator indexes from right to left.
+            let separator_rtl_indexes: Vec<usize> = old_text
+                .chars()
+                .rev()
+                .enumerate()
+                .filter_map(|(i, c)| if c == '_' { Some(i) } else { None })
+                .collect();
+
+            let format_length = if radix == 10 {
+                match (old_value.is_negative(), new_value.is_negative()) {
+                    (true, false) => old_length - 1,
+                    (false, true) => old_length + 1,
+                    _ => old_text.len(),
+                }
+            } else {
+                old_text.len() - 2
+            } - separator_rtl_indexes.len();
+
+            let mut new_text = match radix {
+                2 => format!("0b{:01$b}", new_value, format_length),
+                8 => format!("0o{:01$o}", new_value, format_length),
                 10 if old_text.starts_with('0') || old_text.starts_with("-0") => {
-                    let length = match (old_value.is_negative(), new_value.is_negative()) {
-                        (true, false) => old_text.len() - 1,
-                        (false, true) => old_text.len() + 1,
-                        _ => old_text.len(),
-                    };
-                    format!("{:01$}", new_value, length)
+                    format!("{:01$}", new_value, format_length)
                 }
                 10 => format!("{}", new_value),
                 16 => {
@@ -5151,13 +5165,38 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
                             )
                         });
                     if upper_count > lower_count {
-                        format!("0x{:01$X}", new_value, old_text.len() - 2)
+                        format!("0x{:01$X}", new_value, format_length)
                     } else {
-                        format!("0x{:01$x}", new_value, old_text.len() - 2)
+                        format!("0x{:01$x}", new_value, format_length)
                     }
                 }
                 _ => unimplemented!("radix not supported: {}", radix),
             };
+
+            // Add separators from original number.
+            for &rtl_index in &separator_rtl_indexes {
+                if rtl_index < new_text.len() {
+                    let new_index = new_text.len() - rtl_index;
+                    new_text.insert(new_index, '_');
+                }
+            }
+
+            // Add in additional separators if necessary.
+            if new_text.len() > old_length && !separator_rtl_indexes.is_empty() {
+                let spacing = if separator_rtl_indexes.len() > 1 {
+                    separator_rtl_indexes[separator_rtl_indexes.len() - 1]
+                        - separator_rtl_indexes[separator_rtl_indexes.len() - 2]
+                } else {
+                    separator_rtl_indexes[0]
+                };
+                let prefix_length = if radix == 10 { 0 } else { 2 };
+                if let Some(mut index) = new_text.find('_') {
+                    while index - prefix_length > spacing {
+                        index -= spacing;
+                        new_text.insert(index, '_');
+                    }
+                }
+            }
 
             let new_text: Tendril = new_text.into();
 

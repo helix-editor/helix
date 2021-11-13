@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use ropey::RopeSlice;
 
 use crate::{
@@ -36,7 +34,11 @@ pub fn number_at(text: RopeSlice, range: Range) -> Option<NumberInfo> {
         range
     };
 
-    let word: Cow<str> = text.slice(range.from()..range.to()).into();
+    let word: String = text
+        .slice(range.from()..range.to())
+        .chars()
+        .filter(|&c| c != '_')
+        .collect();
     let (radix, prefixed) = if word.starts_with("0x") {
         (16, true)
     } else if word.starts_with("0o") {
