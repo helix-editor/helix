@@ -22,7 +22,7 @@ use anyhow::Error;
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::syntax;
-use helix_core::Position;
+use helix_core::{Position, Selection};
 
 use serde::Deserialize;
 
@@ -233,8 +233,6 @@ impl Editor {
     }
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
-        use helix_core::Selection;
-
         let view = self.tree.get_mut(current_view);
         view.doc = doc_id;
         view.offset = Position::default();
@@ -256,7 +254,6 @@ impl Editor {
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
-        use helix_core::Selection;
 
         if !self.documents.contains_key(&id) {
             log::error!("cannot switch to document that does not exist (anymore)");
@@ -435,57 +432,38 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
-        let mut v = vec![];
-
-        for (view, _focused) in self.tree.views_mut() {
-            view.jumps.remove(&doc_id);
-
-            if let Some(alt) = view.last_accessed_doc {
-                if alt == doc_id {
-                    view.last_accessed_doc = None;
-                }
-            }
-
-            if view.doc == doc_id {
-                let new_id = if let Some(alt) = view.last_accessed_doc {
-                    Some(alt)
-                } else if self.documents.len() > 1 {
-                    // FIXME: We don't store enough "alternate buffer" context -- opening three
-                    // buffers, and then closing two will leave the user with the first buffer still
-                    // there, but not currently visible. To work around this, we use a "best guess"
-                    // -- if there is a buffer that is before it in the tree, switch to that one.
-                    // Otherwise, find the first not-to-be-removed document and switch to that.
-                    self.documents.range(..doc_id).next_back().map_or(
-                        self.documents.iter().find_map(|(&other_id, _)| {
-                            if other_id == doc_id {
-                                None
-                            } else {
-                                Some(other_id)
-                            }
-                        }),
-                        |(&other_id, _)| Some(other_id),
-                    )
+        let views_to_close = self
+            .tree
+            .views()
+            .filter_map(|(view, focus)| {
+                if view.doc == doc_id {
+                    Some((view.id, focus))
                 } else {
                     None
-                };
+                }
+            })
+            .collect::<Vec<_>>();
 
-                v.push((view.id, new_id, view.doc == doc_id));
-            }
+        for (view_id, _focus) in views_to_close {
+            self.close(view_id);
         }
 
-        for (view_id, doc_id, doc_is_focused) in v {
-            if doc_is_focused && self.tree.views().count() > 1 {
-                self.close(view_id);
-                continue;
-            }
-
-            let doc_id = doc_id.unwrap_or_else(|| self.new_document(Document::default()));
-
-            self.replace_document_in_view(view_id, doc_id);
-        }
-
-        debug_assert!(!self.tree.views().any(|(view, _)| view.doc == doc_id));
         self.documents.remove(&doc_id);
+
+        if self.tree.views().next().is_none() {
+            let doc_id = self
+                .documents
+                .iter()
+                .map(|(&doc_id, _)| doc_id)
+                .next()
+                .unwrap_or_else(|| self.new_document(Document::default()));
+            let view = View::new(doc_id);
+            let view_id = self.tree.insert(view);
+            let view = self.tree.get(view_id);
+            let doc = self.documents.get_mut(&view.doc).unwrap();
+            doc.selections.insert(view_id, Selection::point(0));
+        }
+
         self._refresh();
 
         Ok(())
