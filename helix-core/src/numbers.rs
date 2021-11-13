@@ -16,8 +16,27 @@ pub struct NumberInfo {
 
 /// Return information about number under cursor if there is one.
 pub fn number_at(text: RopeSlice, range: Range) -> Option<NumberInfo> {
-    let word_range = textobject_word(text, range, TextObject::Inside, 1, true);
-    let word: Cow<str> = text.slice(word_range.from()..word_range.to()).into();
+    // If the cursor is on the minus sign of a number we want to get the word textobject to the
+    // right of it.
+    let range = if range.to() < text.len_chars()
+        && range.to() - range.from() <= 1
+        && text.char(range.from()) == '-'
+    {
+        Range::new(range.from() + 1, range.to() + 1)
+    } else {
+        range
+    };
+
+    let range = textobject_word(text, range, TextObject::Inside, 1, false);
+
+    // If there is a minus sign to the left of the word object, we want to include it in the range.
+    let range = if range.from() > 0 && text.char(range.from() - 1) == '-' {
+        range.extend(range.from() - 1, range.from())
+    } else {
+        range
+    };
+
+    let word: Cow<str> = text.slice(range.from()..range.to()).into();
     let (radix, prefixed) = if word.starts_with("0x") {
         (16, true)
     } else if word.starts_with("0o") {
@@ -39,7 +58,7 @@ pub fn number_at(text: RopeSlice, range: Range) -> Option<NumberInfo> {
 
     let value = value as i64;
     Some(NumberInfo {
-        range: word_range,
+        range,
         value,
         radix,
     })
@@ -149,6 +168,62 @@ mod test {
     }
 
     #[test]
+    fn test_negative_decimal_cursor_on_minus_sign() {
+        let rope = Rope::from_str("Test text -54321 more text.");
+        let range = Range::point(10);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(10, 16),
+                value: -54321,
+                radix: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn test_number_at_start_of_rope() {
+        let rope = Rope::from_str("100");
+        let range = Range::point(0);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(0, 3),
+                value: 100,
+                radix: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn test_number_at_end_of_rope() {
+        let rope = Rope::from_str("100");
+        let range = Range::point(2);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(0, 3),
+                value: 100,
+                radix: 10,
+            })
+        );
+    }
+
+    #[test]
+    fn test_number_surrounded_by_punctuation() {
+        let rope = Rope::from_str(",100;");
+        let range = Range::point(1);
+        assert_eq!(
+            number_at(rope.slice(..), range),
+            Some(NumberInfo {
+                range: Range::new(1, 4),
+                value: 100,
+                radix: 10,
+            })
+        );
+    }
+
+    #[test]
     fn test_not_a_number_point() {
         let rope = Rope::from_str("Test text 45326 more text.");
         let range = Range::point(6);
@@ -159,6 +234,20 @@ mod test {
     fn test_number_too_large_at_point() {
         let rope = Rope::from_str("Test text 0xFFFFFFFFFFFFFFFFF more text.");
         let range = Range::point(12);
+        assert_eq!(number_at(rope.slice(..), range), None);
+    }
+
+    #[test]
+    fn test_number_cursor_one_right_of_number() {
+        let rope = Rope::from_str("100 ");
+        let range = Range::point(3);
+        assert_eq!(number_at(rope.slice(..), range), None);
+    }
+
+    #[test]
+    fn test_number_cursor_one_left_of_number() {
+        let rope = Rope::from_str(" 100");
+        let range = Range::point(0);
         assert_eq!(number_at(rope.slice(..), range), None);
     }
 }
