@@ -1389,13 +1389,14 @@ fn global_search(cx: &mut Context) {
                 let search_root = std::env::current_dir()
                     .expect("Global search error: Failed to get current dir");
                 WalkBuilder::new(search_root)
-                    // opinionated to look for everything, this is a search?
-                    //.hidden(file_picker_config.hidden)
-                    //.parents(file_picker_config.parents)
-                    //.ignore(file_picker_config.ignore)
-                    //.git_ignore(file_picker_config.git_ignore)
-                    //.git_global(file_picker_config.git_global)
-                    //.git_exclude(file_picker_config.git_exclude)
+                    .hidden(file_picker_config.hidden)
+                    .parents(file_picker_config.parents)
+                    .ignore(file_picker_config.ignore)
+                    .git_ignore(file_picker_config.git_ignore)
+                    .git_global(file_picker_config.git_global)
+                    .git_exclude(file_picker_config.git_exclude)
+                    .follow_links(file_picker_config.follow_links)
+                    .max_depth(file_picker_config.max_depth)
                     .build_parallel()
                     .run(|| {
                         let mut searcher_cl = searcher.clone();
