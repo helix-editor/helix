@@ -88,6 +88,7 @@
 | `s`      | Select all regex matches inside selections                        | `select_regex`                       |
 | `S`      | Split selection into subselections on regex matches               | `split_selection`                    |
 | `Alt-s`  | Split selection on newlines                                       | `split_selection_on_newline`         |
+| `_`      | Trim whitespace from the selection                                | `trim_selections`                    |
 | `;`      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
 | `Alt-;`  | Flip selection cursor and anchor                                  | `flip_selections`                    |
 | `,`      | Keep only the primary selection                                   | `keep_primary_selection`             |
