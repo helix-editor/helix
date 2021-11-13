@@ -25,6 +25,8 @@ const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Spaces(4);
 
+pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,

@@ -13,7 +13,7 @@ use helix_core::{
 
 use helix_view::{
     clipboard::ClipboardType,
-    document::Mode,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     input::KeyEvent,
     keyboard::KeyCode,
@@ -52,8 +52,6 @@ use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-
-pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
 pub struct Context<'a> {
     pub register: Option<char>,
