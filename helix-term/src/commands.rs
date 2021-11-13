@@ -4,7 +4,7 @@ use helix_core::{
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
-    numbers::{number_at, NumberInfo},
+    numbers::NumberIncrementor,
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     register::Register,
@@ -5121,89 +5121,10 @@ fn increment_number_impl(cx: &mut Context, amount: i64) {
     let text = doc.text();
 
     let changes = selection.ranges().iter().filter_map(|range| {
-        if let Some(NumberInfo {
-            range,
-            value: old_value,
-            radix,
-        }) = number_at(text.slice(..), *range)
-        {
-            let old_text: Cow<str> = text.slice(range.from()..range.to()).into();
-            let old_length = old_text.len();
-            let new_value = old_value.wrapping_add(amount);
-
-            // Get separator indexes from right to left.
-            let separator_rtl_indexes: Vec<usize> = old_text
-                .chars()
-                .rev()
-                .enumerate()
-                .filter_map(|(i, c)| if c == '_' { Some(i) } else { None })
-                .collect();
-
-            let format_length = if radix == 10 {
-                match (old_value.is_negative(), new_value.is_negative()) {
-                    (true, false) => old_length - 1,
-                    (false, true) => old_length + 1,
-                    _ => old_text.len(),
-                }
-            } else {
-                old_text.len() - 2
-            } - separator_rtl_indexes.len();
-
-            let mut new_text = match radix {
-                2 => format!("0b{:01$b}", new_value, format_length),
-                8 => format!("0o{:01$o}", new_value, format_length),
-                10 if old_text.starts_with('0') || old_text.starts_with("-0") => {
-                    format!("{:01$}", new_value, format_length)
-                }
-                10 => format!("{}", new_value),
-                16 => {
-                    let (lower_count, upper_count): (usize, usize) =
-                        old_text.chars().skip(2).fold((0, 0), |(lower, upper), c| {
-                            (
-                                lower + c.is_ascii_lowercase().then(|| 1).unwrap_or(0),
-                                upper + c.is_ascii_uppercase().then(|| 1).unwrap_or(0),
-                            )
-                        });
-                    if upper_count > lower_count {
-                        format!("0x{:01$X}", new_value, format_length)
-                    } else {
-                        format!("0x{:01$x}", new_value, format_length)
-                    }
-                }
-                _ => unimplemented!("radix not supported: {}", radix),
-            };
-
-            // Add separators from original number.
-            for &rtl_index in &separator_rtl_indexes {
-                if rtl_index < new_text.len() {
-                    let new_index = new_text.len() - rtl_index;
-                    new_text.insert(new_index, '_');
-                }
-            }
-
-            // Add in additional separators if necessary.
-            if new_text.len() > old_length && !separator_rtl_indexes.is_empty() {
-                let spacing = if separator_rtl_indexes.len() > 1 {
-                    separator_rtl_indexes[separator_rtl_indexes.len() - 1]
-                        - separator_rtl_indexes[separator_rtl_indexes.len() - 2]
-                } else {
-                    separator_rtl_indexes[0]
-                };
-                let prefix_length = if radix == 10 { 0 } else { 2 };
-                if let Some(mut index) = new_text.find('_') {
-                    while index - prefix_length > spacing {
-                        index -= spacing;
-                        new_text.insert(index, '_');
-                    }
-                }
-            }
-
-            let new_text: Tendril = new_text.into();
-
-            Some((range.from(), range.to(), Some(new_text)))
-        } else {
-            None
-        }
+        NumberIncrementor::from_range(text.slice(..), *range).map(|incrementor| {
+            let new_text = incrementor.incremented_text(amount);
+            (range.from(), range.to(), Some(new_text))
+        })
     });
 
     if changes.clone().count() > 0 {
