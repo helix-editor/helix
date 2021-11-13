@@ -16,7 +16,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection,
 };
 use helix_view::{
-    document::Mode,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
@@ -580,18 +580,20 @@ impl EditorView {
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
-        if let Some(path) = doc.relative_path() {
-            let path = path.to_string_lossy();
+        let rel_path = doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
 
-            let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
-            surface.set_stringn(
-                viewport.x + 8,
-                viewport.y,
-                title,
-                viewport.width.saturating_sub(6) as usize,
-                base_style,
-            );
-        }
+        let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
+        surface.set_stringn(
+            viewport.x + 8,
+            viewport.y,
+            title,
+            viewport.width.saturating_sub(6) as usize,
+            base_style,
+        );
 
         //-------------------------------
         // Right side of the status line.
