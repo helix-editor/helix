@@ -260,7 +260,8 @@ impl Editor {
                         .tree
                         .traverse()
                         .any(|(_, v)| v.doc == doc.id && v.id != view.id);
-                let view = view_mut!(self);
+
+                let (view, doc) = current!(self);
                 if remove_empty_scratch {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
@@ -269,7 +270,16 @@ impl Editor {
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
-                    view.last_accessed_doc = Some(view.doc);
+                    // Set last accessed doc if it is a different document
+                    if doc.id != id {
+                        view.last_accessed_doc = Some(view.doc);
+                        // Set last modified doc if modified and last modified doc is different
+                        if std::mem::take(&mut doc.modified_since_accessed)
+                            && view.last_modified_docs[0] != Some(id)
+                        {
+                            view.last_modified_docs = [Some(view.doc), view.last_modified_docs[0]];
+                        }
+                    }
                 }
                 view.doc = id;
                 view.offset = Position::default();
