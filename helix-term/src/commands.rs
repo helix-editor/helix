@@ -3905,7 +3905,6 @@ fn align_lines(cx: &mut Context) {
                     }
                 }
             }
-            log::error!("align contents\n {:?}\n {:?}", &column_widths, &fields);
             let transaction = Transaction::change(
                 doc.text(),
                 fields.iter().flat_map(|line| {
