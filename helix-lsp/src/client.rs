@@ -257,6 +257,12 @@ impl Client {
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
+                    rename: Some(lsp::RenameClientCapabilities {
+                        dynamic_registration: Some(false),
+                        prepare_support: Some(false),
+                        prepare_support_default_behavior: None,
+                        honors_change_annotations: Some(false),
+                    }),
                     code_action: Some(lsp::CodeActionClientCapabilities {
                         code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
                             code_action_kind: lsp::CodeActionKindLiteralSupport {
@@ -772,5 +778,26 @@ impl Client {
         };
 
         self.call::<lsp::request::CodeActionRequest>(params)
+    }
+
+    pub async fn rename_symbol(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        new_name: String,
+    ) -> anyhow::Result<lsp::WorkspaceEdit> {
+        let params = lsp::RenameParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            new_name,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::Rename>(params).await?;
+        Ok(response.unwrap_or_default())
     }
 }

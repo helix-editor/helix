@@ -63,7 +63,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let token = token.unwrap_or("//");
     let comment = Tendril::from(format!("{} ", token));
 
-    let mut lines: Vec<usize> = Vec::new();
+    let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
 
     let mut min_next_line = 0;
     for selection in selection {

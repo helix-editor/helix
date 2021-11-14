@@ -25,6 +25,8 @@ const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Spaces(4);
 
+pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
@@ -96,7 +98,7 @@ pub struct Document {
     // It can be used as a cell where we will take it out to get some parts of the history and put
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
-    history: Cell<History>,
+    pub history: Cell<History>,
 
     pub savepoint: Option<Transaction>,
 
@@ -494,7 +496,9 @@ impl Document {
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
         if let Some(path) = &self.path {
-            let language_config = config_loader.language_config_for_file_name(path);
+            let language_config = config_loader
+                .language_config_for_file_name(path)
+                .or_else(|| config_loader.language_config_for_shebang(self.text()));
             self.set_language(theme, language_config);
         }
     }
@@ -749,19 +753,35 @@ impl Document {
     }
 
     /// Undo modifications to the [`Document`] according to `uk`.
-    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
         let txns = self.history.get_mut().earlier(uk);
+        let mut success = false;
         for txn in txns {
-            self.apply_impl(&txn, view_id);
+            if self.apply_impl(&txn, view_id) {
+                success = true;
+            }
         }
+        if success {
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+        }
+        success
     }
 
     /// Redo modifications to the [`Document`] according to `uk`.
-    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
         let txns = self.history.get_mut().later(uk);
+        let mut success = false;
         for txn in txns {
-            self.apply_impl(&txn, view_id);
+            if self.apply_impl(&txn, view_id) {
+                success = true;
+            }
         }
+        if success {
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+        }
+        success
     }
 
     /// Commit pending changes to history

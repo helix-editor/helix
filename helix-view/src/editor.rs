@@ -9,6 +9,7 @@ use crate::{
 use futures_util::future;
 use std::{
     collections::BTreeMap,
+    io::stdin,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -287,6 +288,12 @@ impl Editor {
                 return;
             }
             Action::Load => {
+                let view_id = view!(self).id;
+                if let Some(doc) = self.document_mut(id) {
+                    if doc.selections().is_empty() {
+                        doc.selections.insert(view_id, Selection::point(0));
+                    }
+                }
                 return;
             }
             Action::HorizontalSplit => {
@@ -308,14 +315,22 @@ impl Editor {
         self._refresh();
     }
 
-    pub fn new_file(&mut self, action: Action) -> DocumentId {
+    fn new_file_from_document(&mut self, action: Action, mut document: Document) -> DocumentId {
         let id = DocumentId(self.next_document_id);
         self.next_document_id += 1;
-        let mut doc = Document::default();
-        doc.id = id;
-        self.documents.insert(id, doc);
+        document.id = id;
+        self.documents.insert(id, document);
         self.switch(id, action);
         id
+    }
+
+    pub fn new_file(&mut self, action: Action) -> DocumentId {
+        self.new_file_from_document(action, Document::default())
+    }
+
+    pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
+        let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
+        Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
     }
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
