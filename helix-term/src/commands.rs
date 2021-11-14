@@ -5121,14 +5121,13 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let text = doc.text();
 
     let changes = selection.ranges().iter().filter_map(|range| {
-        NumberIncrementor::from_range(text.slice(..), *range).map(|incrementor| {
-            let new_text = incrementor.incremented_text(amount);
-            (
-                incrementor.range.from(),
-                incrementor.range.to(),
-                Some(new_text),
-            )
-        })
+        let incrementor = NumberIncrementor::from_range(text.slice(..), *range)?;
+        let new_text = incrementor.incremented_text(amount);
+        Some((
+            incrementor.range.from(),
+            incrementor.range.to(),
+            Some(new_text),
+        ))
     });
 
     if changes.clone().count() > 0 {
