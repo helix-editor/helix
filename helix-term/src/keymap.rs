@@ -641,6 +641,7 @@ impl Default for Keymaps {
                 "f" => file_picker,
                 "b" => buffer_picker,
                 "s" => symbol_picker,
+                "S" => workspace_symbol_picker,
                 "a" => code_action,
                 "'" => last_picker,
                 "w" => { "Window"

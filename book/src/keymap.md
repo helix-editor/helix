@@ -211,6 +211,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `b`     | Open buffer picker                                                    | `buffer_picker`                     |
 | `k`     | Show documentation for item under cursor (**LSP**)                    | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                 | `symbol_picker`                     |
+| `S`     | Open workspace symbol picker (**LSP**)                                | `workspace_symbol_picker`           |
 | `r`     | Rename symbol (**LSP**)                                               | `rename_symbol`                     |
 | `a`     | Apply code action  (**LSP**)                                          | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                | `last_picker`                       |

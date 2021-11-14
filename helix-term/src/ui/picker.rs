@@ -37,6 +37,7 @@ type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
+    pub truncate_start: bool,
     /// Caches paths to documents
     preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
@@ -90,6 +91,7 @@ impl<T> FilePicker<T> {
     ) -> Self {
         Self {
             picker: Picker::new(false, options, format_fn, callback_fn),
+            truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
@@ -172,6 +174,7 @@ impl<T: 'static> Component for FilePicker<T> {
         };
 
         let picker_area = area.with_width(picker_width);
+        self.picker.truncate_start = self.truncate_start;
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
@@ -277,6 +280,8 @@ pub struct Picker<T> {
     prompt: Prompt,
     /// Whether to render in the middle of the area
     render_centered: bool,
+    /// Wheather to truncate the start (default true)
+    pub truncate_start: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
@@ -306,6 +311,7 @@ impl<T> Picker<T> {
             cursor: 0,
             prompt,
             render_centered,
+            truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
         };
@@ -521,7 +527,7 @@ impl<T: 'static> Component for Picker<T> {
                     text_style
                 },
                 true,
-                true,
+                self.truncate_start,
             );
         }
     }
