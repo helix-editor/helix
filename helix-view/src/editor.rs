@@ -435,22 +435,25 @@ impl Editor {
         let views_to_close = self
             .tree
             .views()
-            .filter_map(|(view, focus)| {
+            .filter_map(|(view, _focus)| {
                 if view.doc == doc_id {
-                    Some((view.id, focus))
+                    Some(view.id)
                 } else {
                     None
                 }
             })
             .collect::<Vec<_>>();
 
-        for (view_id, _focus) in views_to_close {
+        for view_id in views_to_close {
             self.close(view_id);
         }
 
         self.documents.remove(&doc_id);
 
-        if self.tree.views().next().is_none() {
+        // If the document we removed was visible in all views, we will have no more views. We don't
+        // want to close the editor just for a simple buffer close, so we need to create a new view
+        // containing either an existing document, or a brand new document.
+        if self.tree.views().peekable().peek().is_none() {
             let doc_id = self
                 .documents
                 .iter()
@@ -459,8 +462,7 @@ impl Editor {
                 .unwrap_or_else(|| self.new_document(Document::default()));
             let view = View::new(doc_id);
             let view_id = self.tree.insert(view);
-            let view = self.tree.get(view_id);
-            let doc = self.documents.get_mut(&view.doc).unwrap();
+            let doc = self.documents.get_mut(&doc_id).unwrap();
             doc.selections.insert(view_id, Selection::point(0));
         }
 
