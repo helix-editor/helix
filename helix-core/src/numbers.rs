@@ -130,13 +130,11 @@ impl<'a> NumberIncrementor<'a> {
 
         // Add in additional separators if necessary.
         if new_text.len() > old_length && !separator_rtl_indexes.is_empty() {
-            let spacing = if separator_rtl_indexes.len() > 1 {
-                separator_rtl_indexes[separator_rtl_indexes.len() - 1]
-                    - separator_rtl_indexes[separator_rtl_indexes.len() - 2]
-                    - 1
-            } else {
-                separator_rtl_indexes[0]
+            let spacing = match separator_rtl_indexes.as_slice() {
+                [.., b, a] => a - b - 1,
+                _ => separator_rtl_indexes[0],
             };
+
             let prefix_length = if self.radix == 10 { 0 } else { 2 };
             if let Some(mut index) = new_text.find('_') {
                 while index - prefix_length > spacing {
