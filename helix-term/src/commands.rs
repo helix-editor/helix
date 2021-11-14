@@ -257,6 +257,7 @@ impl Command {
         goto_window_middle, "Goto window middle",
         goto_window_bottom, "Goto window bottom",
         goto_last_accessed_file, "Goto last accessed file",
+        goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
         goto_first_diag, "Goto first diagnostic",
@@ -3192,6 +3193,19 @@ fn goto_last_accessed_file(cx: &mut Context) {
         cx.editor.switch(alt, Action::Replace);
     } else {
         cx.editor.set_error("no last accessed buffer".to_owned())
+    }
+}
+
+fn goto_last_modification(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let pos = doc.history.get_mut().last_edit_pos();
+    let text = doc.text().slice(..);
+    if let Some(pos) = pos {
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+        doc.set_selection(view.id, selection);
     }
 }
 
