@@ -599,7 +599,7 @@ impl Application {
         Ok(())
     }
 
-    pub async fn run(&mut self) -> Result<(), Error> {
+    pub async fn run(&mut self) -> Result<i32, Error> {
         self.claim_term().await?;
 
         // Exit the alternate screen and disable raw mode before panicking
@@ -622,6 +622,6 @@ impl Application {
 
         self.restore_term()?;
 
-        Ok(())
+        Ok(self.editor.exit_code)
     }
 }

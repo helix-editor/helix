@@ -129,6 +129,8 @@ pub struct Editor {
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
+
+    pub exit_code: i32,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -167,6 +169,7 @@ impl Editor {
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
             config,
+            exit_code: 0,
         }
     }
 

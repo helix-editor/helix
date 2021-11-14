@@ -38,8 +38,13 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     Ok(())
 }
 
+fn main() -> Result<()> {
+    let exit_code = main_impl()?;
+    std::process::exit(exit_code);
+}
+
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main_impl() -> Result<i32> {
     let cache_dir = helix_core::cache_dir();
     if !cache_dir.exists() {
         std::fs::create_dir_all(&cache_dir).ok();
@@ -109,7 +114,8 @@ FLAGS:
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;
-    app.run().await.unwrap();
 
-    Ok(())
+    let exit_code = app.run().await?;
+
+    Ok(exit_code)
 }
