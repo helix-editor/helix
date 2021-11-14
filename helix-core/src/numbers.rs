@@ -144,8 +144,7 @@ impl<'a> NumberIncrementor<'a> {
             }
         }
 
-        let new_text: Tendril = new_text.into();
-        new_text
+        new_text.into()
     }
 }
 
