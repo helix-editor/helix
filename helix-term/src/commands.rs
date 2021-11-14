@@ -272,6 +272,7 @@ impl Command {
         // TODO: different description ?
         goto_line_end_newline, "Goto line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
@@ -582,6 +583,42 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
         }
     });
     doc.set_selection(view.id, selection);
+}
+
+fn trim_selections(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let ranges: SmallVec<[Range; 1]> = doc
+        .selection(view.id)
+        .iter()
+        .filter_map(|range| {
+            if range.is_empty() || range.fragment(text).chars().all(|ch| ch.is_whitespace()) {
+                return None;
+            }
+            let mut start = range.from();
+            let mut end = range.to();
+            start = movement::skip_while(text, start, |x| x.is_whitespace()).unwrap_or(start);
+            end = movement::backwards_skip_while(text, end, |x| x.is_whitespace()).unwrap_or(end);
+            if range.anchor < range.head {
+                Some(Range::new(start, end))
+            } else {
+                Some(Range::new(end, start))
+            }
+        })
+        .collect();
+
+    if !ranges.is_empty() {
+        let primary = doc.selection(view.id).primary();
+        let idx = ranges
+            .iter()
+            .position(|range| range.overlaps(&primary))
+            .unwrap_or(ranges.len() - 1);
+        doc.set_selection(view.id, Selection::new(ranges, idx));
+    } else {
+        collapse_selection(cx);
+        keep_primary_selection(cx);
+    };
 }
 
 fn goto_window(cx: &mut Context, align: Align) {

@@ -603,7 +603,7 @@ impl Default for Keymaps {
             // "Q" => replay_macro,
 
             // & align selections
-            // _ trim selections
+            "_" => trim_selections,
 
             "(" => rotate_selections_backward,
             ")" => rotate_selections_forward,
