@@ -1,5 +1,7 @@
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
+    history::UndoKind,
+    indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
@@ -284,6 +286,8 @@ impl Command {
         delete_word_backward, "Delete previous word",
         undo, "Undo change",
         redo, "Redo change",
+        earlier, "Move backward in history",
+        later, "Move forward in history",
         yank, "Yank selection",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -1877,10 +1881,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let uk = args
-            .join(" ")
-            .parse::<helix_core::history::UndoKind>()
-            .map_err(|s| anyhow!(s))?;
+        let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
         let (view, doc) = current!(cx.editor);
         let success = doc.earlier(view.id, uk);
@@ -1896,10 +1897,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let uk = args
-            .join(" ")
-            .parse::<helix_core::history::UndoKind>()
-            .map_err(|s| anyhow!(s))?;
+        let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
         let (view, doc) = current!(cx.editor);
         let success = doc.later(view.id, uk);
         if !success {
@@ -3963,20 +3961,48 @@ pub mod insert {
 // storing it?
 
 fn undo(cx: &mut Context) {
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let success = doc.undo(view_id);
-    if !success {
-        cx.editor.set_status("Already at oldest change".to_owned());
+    for _ in 0..count {
+        if !doc.undo(view.id) {
+            cx.editor.set_status("Already at oldest change".to_owned());
+            break;
+        }
     }
 }
 
 fn redo(cx: &mut Context) {
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let success = doc.redo(view_id);
-    if !success {
-        cx.editor.set_status("Already at newest change".to_owned());
+    for _ in 0..count {
+        if !doc.redo(view.id) {
+            cx.editor.set_status("Already at newest change".to_owned());
+            break;
+        }
+    }
+}
+
+fn earlier(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        // rather than doing in batch we do this so get error halfway
+        if !doc.earlier(view.id, UndoKind::Steps(1)) {
+            cx.editor.set_status("Already at oldest change".to_owned());
+            break;
+        }
+    }
+}
+
+fn later(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        // rather than doing in batch we do this so get error halfway
+        if !doc.later(view.id, UndoKind::Steps(1)) {
+            cx.editor.set_status("Already at newest change".to_owned());
+            break;
+        }
     }
 }
 
