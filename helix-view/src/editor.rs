@@ -11,6 +11,7 @@ use futures_util::future;
 use std::{
     collections::BTreeMap,
     io::stdin,
+    num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -154,7 +155,7 @@ impl std::fmt::Debug for Motion {
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
-    pub next_document_id: usize,
+    pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
@@ -198,7 +199,8 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            next_document_id: 0,
+            // Safety: 1 is non-zero
+            next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             count: None,
             selected_register: None,
@@ -367,16 +369,19 @@ impl Editor {
         self._refresh();
     }
 
-    fn new_document(&mut self, mut document: Document) -> DocumentId {
-        let id = DocumentId(self.next_document_id);
-        self.next_document_id += 1;
-        document.id = id;
-        self.documents.insert(id, document);
+    /// Generate an id for a new document and register it.
+    fn new_document(&mut self, mut doc: Document) -> DocumentId {
+        let id = self.next_document_id;
+        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
+        self.next_document_id =
+            DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
+        doc.id = id;
+        self.documents.insert(id, doc);
         id
     }
 
-    fn new_file_from_document(&mut self, action: Action, document: Document) -> DocumentId {
-        let id = self.new_document(document);
+    fn new_file_from_document(&mut self, action: Action, doc: Document) -> DocumentId {
+        let id = self.new_document(doc);
         self.switch(id, action);
         id
     }
@@ -435,11 +440,7 @@ impl Editor {
                 doc.set_language_server(Some(language_server));
             }
 
-            let id = DocumentId(self.next_document_id);
-            self.next_document_id += 1;
-            doc.id = id;
-            self.documents.insert(id, doc);
-            id
+            self.new_document(doc)
         };
 
         self.switch(id, action);
