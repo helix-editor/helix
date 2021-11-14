@@ -1,4 +1,4 @@
-use crate::{Assoc, ChangeSet, Rope, State, Transaction};
+use crate::{Assoc, ChangeSet, Range, Rope, State, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::num::NonZeroUsize;
@@ -148,9 +148,7 @@ impl History {
             .transaction
             .changes_iter()
             // find a change that matches the primary selection
-            .find(|(from, to, _fragment)| {
-                crate::Range::new(*from, *to).overlaps(&primary_selection)
-            })
+            .find(|(from, to, _fragment)| Range::new(*from, *to).overlaps(&primary_selection))
             // or use the first change
             .or_else(|| current_revision.transaction.changes_iter().next())
             .unwrap();
