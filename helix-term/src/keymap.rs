@@ -619,8 +619,8 @@ impl Default for Keymaps {
             "$" => shell_keep_pipe,
             "C-z" => suspend,
 
-            "C-a" => increment_number,
-            "C-x" => decrement_number,
+            "C-a" => increment,
+            "C-x" => decrement,
         });
         let mut select = normal.clone();
         select.merge_nodes(keymap!({ "Select mode"

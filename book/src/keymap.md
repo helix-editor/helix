@@ -67,8 +67,8 @@
 | `=`         | Format selection                                | `format_selections`   |
 | `d`         | Delete selection                                | `delete_selection`    |
 | `c`         | Change selection (delete and enter insert mode) | `change_selection`    |
-| `Ctrl-a`    | Increment number under cursor                   | `increment_number`    |
-| `Ctrl-x`    | Decrement number under cursor                   | `decrement_number`    |
+| `Ctrl-a`    | Increment object under cursor                   | `increment`           |
+| `Ctrl-x`    | Decrement object under cursor                   | `decrement`           |
 
 #### Shell
 

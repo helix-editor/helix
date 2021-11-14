@@ -341,8 +341,8 @@ impl Command {
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
         rename_symbol, "Rename symbol",
-        increment_number, "Increment number under cursor",
-        decrement_number, "Decrement number under cursor",
+        increment, "Increment",
+        decrement, "Decrement",
     );
 }
 
@@ -5104,18 +5104,18 @@ fn rename_symbol(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-/// If there is a number at the cursor, increment it by the count.
-fn increment_number(cx: &mut Context) {
-    increment_number_impl(cx, cx.count() as i64);
+/// Increment object under cursor by count.
+fn increment(cx: &mut Context) {
+    increment_impl(cx, cx.count() as i64);
 }
 
-/// If there is a number at the cursor, decrement it by the count.
-fn decrement_number(cx: &mut Context) {
-    increment_number_impl(cx, -(cx.count() as i64));
+/// Decrement object under cursor by count.
+fn decrement(cx: &mut Context) {
+    increment_impl(cx, -(cx.count() as i64));
 }
 
-/// If there is a number at the cursor, increment it by `amount`.
-fn increment_number_impl(cx: &mut Context, amount: i64) {
+/// Decrement object under cursor by `amount`.
+fn increment_impl(cx: &mut Context, amount: i64) {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let text = doc.text();
