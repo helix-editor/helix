@@ -601,6 +601,7 @@ impl Default for Keymaps {
             // "q" => record_macro,
             // "Q" => replay_macro,
 
+            "&" => align_lines,
             // & align selections
             // _ trim selections
 

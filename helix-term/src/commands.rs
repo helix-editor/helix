@@ -301,6 +301,7 @@ impl Command {
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
         remove_selections, "Remove selections matching regex",
+        align_lines, "Align lines by matching regex",
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
@@ -3863,6 +3864,85 @@ fn redo(cx: &mut Context) {
     if !success {
         cx.editor.set_status("Already at newest change".to_owned());
     }
+}
+
+// align text in selection
+fn align_lines(cx: &mut Context) {
+    let align_style = cx.count();
+    let reg = cx.register.unwrap_or('/');
+    let prompt = ui::regex_prompt(
+        cx,
+        "align:".into(),
+        Some(reg),
+        |_input: &str| Vec::new(),
+        move |view, doc, regex, event| {
+            if event != PromptEvent::Update {
+                return;
+            }
+            let text = doc.text().slice(..);
+            let selection = doc.selection(view.id);
+            let start_line = text.char_to_line(selection.ranges()[0].from());
+            let end_line = text.char_to_line(selection.ranges()[selection.len() - 1].to());
+            if start_line == end_line {
+                return;
+            }
+            let mut column_widths = vec![];
+            let mut fields = vec![vec![]; end_line - start_line + 1];
+            for l in start_line..end_line + 1 {
+                let line_text = text.line(l).to_string();
+                let line_start = text.line_to_byte(l);
+                let line_fields = &mut fields[l - start_line];
+                let mut start = line_start;
+                for mat in regex.find_iter(line_text.as_str()) {
+                    line_fields.push((start, line_start + mat.start()));
+                    let w = line_start + mat.start() - start;
+                    start = line_start + mat.end() + 1;
+
+                    if column_widths.len() < line_fields.len() {
+                        column_widths.push(w);
+                    } else if w > column_widths[line_fields.len() - 1] {
+                        column_widths[line_fields.len() - 1] = w;
+                    }
+                }
+            }
+            log::error!("align contents\n {:?}\n {:?}", &column_widths, &fields);
+            let transaction = Transaction::change(
+                doc.text(),
+                fields.iter().flat_map(|line| {
+                    line.into_iter().enumerate().map(|(i, &(from, to))| {
+                        (
+                            from,
+                            to,
+                            Some(
+                                align_fragment_to_width(
+                                    text.slice(from..to).to_string().as_str(),
+                                    column_widths[i],
+                                    align_style,
+                                )
+                                .into(),
+                            ),
+                        )
+                    })
+                }),
+            );
+
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view.id);
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
+}
+
+fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> String {
+    let trimed = fragment.trim();
+    let mut s = " ".repeat(width - trimed.chars().count());
+    match align_style {
+        2 => s.insert_str(s.len() / 2, trimed), // center align
+        3 => s.push_str(trimed),                // right align
+        _ => s.insert_str(0, trimed),           // left align
+    }
+    s
 }
 
 // Yank / Paste
