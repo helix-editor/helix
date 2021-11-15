@@ -604,8 +604,7 @@ impl Default for Keymaps {
             // "q" => record_macro,
             // "Q" => replay_macro,
 
-            "&" => align_lines,
-            // & align selections
+            "&" => align_selections,
             "_" => trim_selections,
 
             "(" => rotate_selections_backward,
