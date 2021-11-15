@@ -581,7 +581,7 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 }
 
 fn goto_window(cx: &mut Context, align: Align) {
-    let count = cx.count.map(|_| cx.count() - 1);
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
 
     let height = view.inner_area().height as usize;
