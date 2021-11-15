@@ -231,6 +231,14 @@ impl Prompt {
         self.completion = (self.completion_fn)(&self.line);
     }
 
+    pub fn delete_word_forwards(&mut self) {
+        let pos = self.eval_movement(Movement::ForwardWord(1));
+        self.line.replace_range(self.cursor..pos, "");
+
+        self.exit_selection();
+        self.completion = (self.completion_fn)(&self.line);
+    }
+
     pub fn kill_to_start_of_line(&mut self) {
         let pos = self.eval_movement(Movement::StartOfLine);
         self.line.replace_range(pos..self.cursor, "");
@@ -435,6 +443,7 @@ impl Component for Prompt {
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
             ctrl!('w') => self.delete_word_backwards(),
+            alt!('d') => self.delete_word_forwards(),
             ctrl!('k') => self.kill_to_end_of_line(),
             ctrl!('u') => self.kill_to_start_of_line(),
             ctrl!('h') | key!(Backspace) => {

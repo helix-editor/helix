@@ -187,6 +187,7 @@ impl Command {
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to beginning of next word",
         move_prev_word_start, "Move to beginning of previous word",
+        move_prev_word_end, "Move to end of previous word",
         move_next_word_end, "Move to end of next word",
         move_next_long_word_start, "Move to beginning of next long word",
         move_prev_long_word_start, "Move to beginning of previous long word",
@@ -284,6 +285,9 @@ impl Command {
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
+        delete_word_forward, "Delete next word",
+        kill_to_line_start, "Delete content till the start of the line",
+        kill_to_line_end, "Delete content till the end of the line",
         undo, "Undo change",
         redo, "Redo change",
         earlier, "Move backward in history",
@@ -330,6 +334,7 @@ impl Command {
         wclose, "Close window",
         wonly, "Current window only",
         select_register, "Select register",
+        insert_register, "Insert register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
@@ -572,6 +577,29 @@ fn extend_to_line_start(cx: &mut Context) {
     goto_line_start_impl(view, doc, Movement::Extend)
 }
 
+fn kill_to_line_start(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.cursor_line(text);
+        range.put_cursor(text, text.line_to_char(line), true)
+    });
+    delete_selection_insert_mode(doc, view, &selection);
+}
+
+fn kill_to_line_end(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.cursor_line(text);
+        let pos = line_end_char_index(&text, line);
+        range.put_cursor(text, pos, true)
+    });
+    delete_selection_insert_mode(doc, view, &selection);
+}
+
 fn goto_first_nonwhitespace(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -682,6 +710,10 @@ fn move_next_word_start(cx: &mut Context) {
 
 fn move_prev_word_start(cx: &mut Context) {
     move_word_impl(cx, movement::move_prev_word_start)
+}
+
+fn move_prev_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_word_end)
 }
 
 fn move_next_word_end(cx: &mut Context) {
@@ -1578,6 +1610,17 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
     // first yank the selection
     let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
     reg.write(values);
+
+    // then delete
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        (range.from(), range.to(), None)
+    });
+    doc.apply(&transaction, view_id);
+}
+
+#[inline]
+fn delete_selection_insert_mode(doc: &mut Document, view: &View, selection: &Selection) {
+    let view_id = view.id;
 
     // then delete
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -4010,8 +4053,19 @@ pub mod insert {
             .selection(view.id)
             .clone()
             .transform(|range| movement::move_prev_word_start(text, range, count));
-        doc.set_selection(view.id, selection);
-        delete_selection(cx)
+        delete_selection_insert_mode(doc, view, &selection);
+    }
+
+    pub fn delete_word_forward(cx: &mut Context) {
+        let count = cx.count();
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| movement::move_next_word_start(text, range, count));
+        delete_selection_insert_mode(doc, view, &selection);
     }
 }
 
@@ -4969,6 +5023,15 @@ fn select_register(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
             cx.editor.selected_register = Some(ch);
+        }
+    })
+}
+
+fn insert_register(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let Some(ch) = event.char() {
+            cx.editor.selected_register = Some(ch);
+            paste_before(cx);
         }
     })
 }
