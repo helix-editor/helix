@@ -61,6 +61,8 @@
 | `.`         | Repeat last change                              | N/A                   |
 | `u`         | Undo change                                     | `undo`                |
 | `U`         | Redo change                                     | `redo`                |
+| `Alt-u`     | Move backward in history                        | `earlier`             |
+| `Alt-U`     | Move forward in history                         | `later`               |
 | `y`         | Yank selection                                  | `yank`                |
 | `p`         | Paste after selection                           | `paste_after`         |
 | `P`         | Paste before selection                          | `paste_before`        |
@@ -88,6 +90,7 @@
 | `s`      | Select all regex matches inside selections                        | `select_regex`                       |
 | `S`      | Split selection into subselections on regex matches               | `split_selection`                    |
 | `Alt-s`  | Split selection on newlines                                       | `split_selection_on_newline`         |
+| `_`      | Trim whitespace from the selection                                | `trim_selections`                    |
 | `;`      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
 | `Alt-;`  | Flip selection cursor and anchor                                  | `flip_selections`                    |
 | `,`      | Keep only the primary selection                                   | `keep_primary_selection`             |
@@ -165,6 +168,7 @@ Jumps to various locations.
 | `a`   | Go to the last accessed/alternate file           | `goto_last_accessed_file`  |
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
+| `.`   | Go to last modification in current file          | `goto_last_modification`   |
 
 #### Match mode
 
@@ -210,6 +214,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `b`     | Open buffer picker                                                    | `buffer_picker`                     |
 | `k`     | Show documentation for item under cursor (**LSP**)                    | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                 | `symbol_picker`                     |
+| `S`     | Open workspace symbol picker (**LSP**)                                | `workspace_symbol_picker`           |
 | `r`     | Rename symbol (**LSP**)                                               | `rename_symbol`                     |
 | `a`     | Apply code action  (**LSP**)                                          | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                | `last_picker`                       |

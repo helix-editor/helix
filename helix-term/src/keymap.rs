@@ -525,6 +525,7 @@ impl Default for Keymaps {
                 "a" => goto_last_accessed_file,
                 "n" => goto_next_buffer,
                 "p" => goto_previous_buffer,
+                "." => goto_last_modification,
             },
             ":" => command_mode,
 
@@ -581,6 +582,8 @@ impl Default for Keymaps {
 
             "u" => undo,
             "U" => redo,
+            "A-u" => earlier,
+            "A-U" => later,
 
             "y" => yank,
             // yank_all
@@ -603,7 +606,7 @@ impl Default for Keymaps {
 
             "&" => align_lines,
             // & align selections
-            // _ trim selections
+            "_" => trim_selections,
 
             "(" => rotate_selections_backward,
             ")" => rotate_selections_forward,
@@ -641,6 +644,7 @@ impl Default for Keymaps {
                 "f" => file_picker,
                 "b" => buffer_picker,
                 "s" => symbol_picker,
+                "S" => workspace_symbol_picker,
                 "a" => code_action,
                 "'" => last_picker,
                 "w" => { "Window"

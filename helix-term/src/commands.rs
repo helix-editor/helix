@@ -1,5 +1,7 @@
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
+    history::UndoKind,
+    indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
@@ -237,6 +239,7 @@ impl Command {
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
+        workspace_symbol_picker, "Open workspace symbol picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
@@ -257,6 +260,7 @@ impl Command {
         goto_window_middle, "Goto window middle",
         goto_window_bottom, "Goto window bottom",
         goto_last_accessed_file, "Goto last accessed file",
+        goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
         goto_first_diag, "Goto first diagnostic",
@@ -270,6 +274,7 @@ impl Command {
         // TODO: different description ?
         goto_line_end_newline, "Goto line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
@@ -281,6 +286,8 @@ impl Command {
         delete_word_backward, "Delete previous word",
         undo, "Undo change",
         redo, "Redo change",
+        earlier, "Move backward in history",
+        later, "Move forward in history",
         yank, "Yank selection",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -581,6 +588,42 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
         }
     });
     doc.set_selection(view.id, selection);
+}
+
+fn trim_selections(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let ranges: SmallVec<[Range; 1]> = doc
+        .selection(view.id)
+        .iter()
+        .filter_map(|range| {
+            if range.is_empty() || range.fragment(text).chars().all(|ch| ch.is_whitespace()) {
+                return None;
+            }
+            let mut start = range.from();
+            let mut end = range.to();
+            start = movement::skip_while(text, start, |x| x.is_whitespace()).unwrap_or(start);
+            end = movement::backwards_skip_while(text, end, |x| x.is_whitespace()).unwrap_or(end);
+            if range.anchor < range.head {
+                Some(Range::new(start, end))
+            } else {
+                Some(Range::new(end, start))
+            }
+        })
+        .collect();
+
+    if !ranges.is_empty() {
+        let primary = doc.selection(view.id).primary();
+        let idx = ranges
+            .iter()
+            .position(|range| range.overlaps(&primary))
+            .unwrap_or(ranges.len() - 1);
+        doc.set_selection(view.id, Selection::new(ranges, idx));
+    } else {
+        collapse_selection(cx);
+        keep_primary_selection(cx);
+    };
 }
 
 fn goto_window(cx: &mut Context, align: Align) {
@@ -1839,10 +1882,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let uk = args
-            .join(" ")
-            .parse::<helix_core::history::UndoKind>()
-            .map_err(|s| anyhow!(s))?;
+        let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
         let (view, doc) = current!(cx.editor);
         let success = doc.earlier(view.id, uk);
@@ -1858,10 +1898,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let uk = args
-            .join(" ")
-            .parse::<helix_core::history::UndoKind>()
-            .map_err(|s| anyhow!(s))?;
+        let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
         let (view, doc) = current!(cx.editor);
         let success = doc.later(view.id, uk);
         if !success {
@@ -2723,7 +2760,7 @@ fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let picker = FilePicker::new(
+                let mut picker = FilePicker::new(
                     symbols,
                     |symbol| (&symbol.name).into(),
                     move |editor: &mut Editor, symbol, _action| {
@@ -2748,6 +2785,69 @@ fn symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
+                picker.truncate_start = false;
+                compositor.push(Box::new(picker))
+            }
+        },
+    )
+}
+
+fn workspace_symbol_picker(cx: &mut Context) {
+    let (_, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+    let offset_encoding = language_server.offset_encoding();
+
+    let future = language_server.workspace_symbols("".to_string());
+
+    let current_path = doc_mut!(cx.editor).path().cloned();
+    cx.callback(
+        future,
+        move |_editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<Vec<lsp::SymbolInformation>>| {
+            if let Some(symbols) = response {
+                let mut picker = FilePicker::new(
+                    symbols,
+                    move |symbol| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
+                        if current_path.as_ref().map(|p| p == &path).unwrap_or(false) {
+                            (&symbol.name).into()
+                        } else {
+                            let relative_path = helix_core::path::get_relative_path(path.as_path())
+                                .to_str()
+                                .unwrap()
+                                .to_owned();
+                            format!("{} ({})", &symbol.name, relative_path).into()
+                        }
+                    },
+                    move |editor: &mut Editor, symbol, action| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
+                        editor.open(path, action).expect("editor.open failed");
+                        let (view, doc) = current!(editor);
+
+                        if let Some(range) =
+                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+                        {
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                            align_view(doc, view, Align::Center);
+                        }
+                    },
+                    move |_editor, symbol| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
+                        let line = Some((
+                            symbol.location.range.start.line as usize,
+                            symbol.location.range.end.line as usize,
+                        ));
+                        Some((path, line))
+                    },
+                );
+                picker.truncate_start = false;
                 compositor.push(Box::new(picker))
             }
         },
@@ -3193,6 +3293,19 @@ fn goto_last_accessed_file(cx: &mut Context) {
         cx.editor.switch(alt, Action::Replace);
     } else {
         cx.editor.set_error("no last accessed buffer".to_owned())
+    }
+}
+
+fn goto_last_modification(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let pos = doc.history.get_mut().last_edit_pos();
+    let text = doc.text().slice(..);
+    if let Some(pos) = pos {
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+        doc.set_selection(view.id, selection);
     }
 }
 
@@ -3849,20 +3962,48 @@ pub mod insert {
 // storing it?
 
 fn undo(cx: &mut Context) {
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let success = doc.undo(view_id);
-    if !success {
-        cx.editor.set_status("Already at oldest change".to_owned());
+    for _ in 0..count {
+        if !doc.undo(view.id) {
+            cx.editor.set_status("Already at oldest change".to_owned());
+            break;
+        }
     }
 }
 
 fn redo(cx: &mut Context) {
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let success = doc.redo(view_id);
-    if !success {
-        cx.editor.set_status("Already at newest change".to_owned());
+    for _ in 0..count {
+        if !doc.redo(view.id) {
+            cx.editor.set_status("Already at newest change".to_owned());
+            break;
+        }
+    }
+}
+
+fn earlier(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        // rather than doing in batch we do this so get error halfway
+        if !doc.earlier(view.id, UndoKind::Steps(1)) {
+            cx.editor.set_status("Already at oldest change".to_owned());
+            break;
+        }
+    }
+}
+
+fn later(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        // rather than doing in batch we do this so get error halfway
+        if !doc.later(view.id, UndoKind::Steps(1)) {
+            cx.editor.set_status("Already at newest change".to_owned());
+            break;
+        }
     }
 }
 
