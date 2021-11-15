@@ -512,6 +512,7 @@ impl Default for Keymaps {
             "g" => { "Goto"
                 "g" => goto_file_start,
                 "e" => goto_last_line,
+                "f" => goto_file,
                 "h" => goto_line_start,
                 "l" => goto_line_end,
                 "s" => goto_first_nonwhitespace,

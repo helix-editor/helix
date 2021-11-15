@@ -155,6 +155,7 @@ Jumps to various locations.
 | ----- | -----------                                      | -------                    |
 | `g`   | Go to the start of the file                      | `goto_file_start`          |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
+| `f`   | Go to files in the selection                     | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
 | `l`   | Go to the end of the line                        | `goto_line_end`            |
 | `s`   | Go to first non-whitespace character of the line | `goto_first_nonwhitespace` |

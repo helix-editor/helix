@@ -255,6 +255,7 @@ impl Command {
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
         goto_file_end, "Goto file end",
+        goto_file, "Goto files in the selection",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_middle, "Goto window middle",
@@ -725,6 +726,26 @@ fn goto_file_end(cx: &mut Context) {
         .clone()
         .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
     doc.set_selection(view.id, selection);
+}
+
+fn goto_file(cx: &mut Context) {
+    let action = match cx.count() {
+        2 => Action::HorizontalSplit,
+        3 => Action::VerticalSplit,
+        _ => Action::Replace,
+    };
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text();
+    let paths: Vec<_> = doc
+        .selection(view.id)
+        .iter()
+        .map(|r| text.slice(r.from()..r.to()).to_string())
+        .collect();
+    for sel in paths {
+        if let Err(e) = cx.editor.open(PathBuf::from(sel.trim()), action) {
+            cx.editor.set_error(format!("Open file failed: {:?}", e));
+        }
+    }
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
