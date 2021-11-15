@@ -2042,6 +2042,25 @@ mod cmd {
         quit_all_impl(&mut cx.editor, args, event, true)
     }
 
+    fn cquit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let exit_code = args
+            .first()
+            .and_then(|code| code.parse::<i32>().ok())
+            .unwrap_or(1);
+        cx.editor.exit_code = exit_code;
+
+        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
+        for view_id in views {
+            cx.editor.close(view_id, false);
+        }
+
+        Ok(())
+    }
+
     fn theme(
         cx: &mut compositor::Context,
         args: &[&str],
@@ -2409,6 +2428,13 @@ mod cmd {
             aliases: &["qa!"],
             doc: "Close all views forcefully (ignoring unsaved changes).",
             fun: force_quit_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "cquit",
+            aliases: &["cq"],
+            doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
+            fun: cquit,
             completer: None,
         },
         TypableCommand {
