@@ -1,5 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
+    document::SCRATCH_BUFFER_NAME,
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::{self, Tree},
@@ -427,7 +428,7 @@ impl Editor {
                 "buffer {:?} is modified",
                 doc.relative_path()
                     .map(|path| path.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "[scratch]".into())
+                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
             );
         }
 
