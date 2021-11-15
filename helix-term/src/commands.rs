@@ -590,22 +590,17 @@ fn goto_window(cx: &mut Context, align: Align) {
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
-    let scrolloff =
-        count.unwrap_or_else(|| cx.editor.config.scrolloff.min(height.saturating_sub(1) / 2));
+    let scrolloff = cx.editor.config.scrolloff.min(height.saturating_sub(1) / 2);
 
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.offset.row + scrolloff),
-        // the last line might far above height,  so use content middle if the view is not fulfilled
+        Align::Top => (view.offset.row + scrolloff + count),
         Align::Center => (view.offset.row + ((last_line - view.offset.row) / 2)),
-        // the last line might far above height,  so se use last line if the view is not fulfilled
-        Align::Bottom => std::cmp::min(
-            last_line,
-            (view.offset.row + height - 1).saturating_sub(scrolloff),
-        ),
+        Align::Bottom => last_line.saturating_sub((scrolloff + count).min(last_line)),
     }
-    .min(last_line.saturating_sub(scrolloff));
+    .min((view.offset.row + height - 1).saturating_sub(scrolloff))
+    .max(view.offset.row + scrolloff);
 
     let pos = doc.text().line_to_char(line);
 
