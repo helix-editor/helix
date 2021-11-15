@@ -6,6 +6,7 @@ use helix_core::{
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
+    numbers::NumberIncrementor,
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     register::Register,
@@ -354,6 +355,8 @@ impl Command {
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
         rename_symbol, "Rename symbol",
+        increment, "Increment",
+        decrement, "Decrement",
     );
 }
 
@@ -5458,4 +5461,39 @@ fn rename_symbol(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(prompt));
+}
+
+/// Increment object under cursor by count.
+fn increment(cx: &mut Context) {
+    increment_impl(cx, cx.count() as i64);
+}
+
+/// Decrement object under cursor by count.
+fn decrement(cx: &mut Context) {
+    increment_impl(cx, -(cx.count() as i64));
+}
+
+/// Decrement object under cursor by `amount`.
+fn increment_impl(cx: &mut Context, amount: i64) {
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text();
+
+    let changes = selection.ranges().iter().filter_map(|range| {
+        let incrementor = NumberIncrementor::from_range(text.slice(..), *range)?;
+        let new_text = incrementor.incremented_text(amount);
+        Some((
+            incrementor.range.from(),
+            incrementor.range.to(),
+            Some(new_text),
+        ))
+    });
+
+    if changes.clone().count() > 0 {
+        let transaction = Transaction::change(doc.text(), changes);
+        let transaction = transaction.with_selection(selection.clone());
+
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
+    }
 }

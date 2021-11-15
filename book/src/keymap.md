@@ -72,6 +72,8 @@
 | `=`         | Format selection (**LSP**)                      | `format_selections`   |
 | `d`         | Delete selection                                | `delete_selection`    |
 | `c`         | Change selection (delete and enter insert mode) | `change_selection`    |
+| `Ctrl-a`    | Increment object (number) under cursor          | `increment`           |
+| `Ctrl-x`    | Decrement object (number) under cursor          | `decrement`           |
 
 #### Shell
 
