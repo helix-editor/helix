@@ -4660,18 +4660,28 @@ fn hover(cx: &mut Context) {
         move |editor: &mut Editor, compositor: &mut Compositor, response: Option<lsp::Hover>| {
             if let Some(hover) = response {
                 // hover.contents / .range <- used for visualizing
+
+                fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
+                    match contents {
+                        lsp::MarkedString::String(contents) => contents,
+                        lsp::MarkedString::LanguageString(string) => {
+                            log::error!("MarkedString {}: {}", string.language, string.value);
+                            if string.language == "markdown" {
+                                string.value
+                            } else {
+                                format!("```{}\n{}\n```", string.language, string.value)
+                            }
+                        }
+                    }
+                }
+
                 let contents = match hover.contents {
-                    lsp::HoverContents::Scalar(contents) => {
-                        // markedstring(string/languagestring to be highlighted)
-                        // TODO
-                        log::error!("hover contents {:?}", contents);
-                        return;
-                    }
-                    lsp::HoverContents::Array(contents) => {
-                        log::error!("hover contents {:?}", contents);
-                        return;
-                    }
-                    // TODO: render markdown
+                    lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
+                    lsp::HoverContents::Array(contents) => contents
+                        .into_iter()
+                        .map(marked_string_to_markdown)
+                        .collect::<Vec<_>>()
+                        .join("\n\n"),
                     lsp::HoverContents::Markup(contents) => contents.value,
                 };
 
