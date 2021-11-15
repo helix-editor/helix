@@ -2121,7 +2121,7 @@ mod cmd {
 
         let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
         for view_id in views {
-            cx.editor.close(view_id, false);
+            cx.editor.close(view_id);
         }
 
         Ok(())
