@@ -576,7 +576,7 @@ fn kill_to_line_start(cx: &mut Context) {
         let line = range.cursor_line(text);
         range.put_cursor(text, text.line_to_char(line), true)
     });
-    delete_selection_insert_mode(cx, &selection);
+    delete_selection_insert_mode(doc, view, &selection);
 }
 
 fn kill_to_line_end(cx: &mut Context) {
@@ -588,7 +588,7 @@ fn kill_to_line_end(cx: &mut Context) {
         let pos = line_end_char_index(&text, line);
         range.put_cursor(text, pos, true)
     });
-    delete_selection_insert_mode(cx, &selection);
+    delete_selection_insert_mode(doc, view, &selection);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -1574,8 +1574,7 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
 }
 
 #[inline]
-fn delete_selection_insert_mode(cx: &mut Context, selection: &Selection) {
-    let (view, doc) = current!(cx.editor);
+fn delete_selection_insert_mode(doc: &mut Document, view: &View, selection: &Selection) {
     let view_id = view.id;
 
     // then delete
@@ -3873,7 +3872,7 @@ pub mod insert {
             .selection(view.id)
             .clone()
             .transform(|range| movement::move_prev_word_start(text, range, count));
-        delete_selection_insert_mode(cx, &selection);
+        delete_selection_insert_mode(doc, view, &selection);
     }
 
     pub fn delete_word_forward(cx: &mut Context) {
@@ -3885,7 +3884,7 @@ pub mod insert {
             .selection(view.id)
             .clone()
             .transform(|range| movement::move_next_word_start(text, range, count));
-        delete_selection_insert_mode(cx, &selection);
+        delete_selection_insert_mode(doc, view, &selection);
     }
 }
 
