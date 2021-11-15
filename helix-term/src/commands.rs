@@ -639,7 +639,7 @@ fn align_selections(cx: &mut Context) {
         let (l1, l2) = sel.line_range(text);
         if l1 != l2 {
             cx.editor
-                .set_error(format!("align cannot work with multi line selections"));
+                .set_error("align cannot work with multi line selections".to_string());
             return;
         }
         column = if l1 != last_line { 0 } else { column + 1 };
