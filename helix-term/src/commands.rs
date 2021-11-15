@@ -1700,8 +1700,7 @@ mod cmd {
             buffers_remaining_impl(cx.editor)?
         }
 
-        cx.editor
-            .close(view!(cx.editor).id, /* close_buffer */ false);
+        cx.editor.close(view!(cx.editor).id);
 
         Ok(())
     }
@@ -1711,8 +1710,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        cx.editor
-            .close(view!(cx.editor).id, /* close_buffer */ false);
+        cx.editor.close(view!(cx.editor).id);
 
         Ok(())
     }
@@ -1727,6 +1725,28 @@ mod cmd {
         let _ = cx
             .editor
             .open(expand_tilde(Path::new(path)), Action::Replace)?;
+        Ok(())
+    }
+
+    fn buffer_close(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let view = view!(cx.editor);
+        let doc_id = view.doc;
+        cx.editor.close_document(doc_id, false)?;
+        Ok(())
+    }
+
+    fn force_buffer_close(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let view = view!(cx.editor);
+        let doc_id = view.doc;
+        cx.editor.close_document(doc_id, true)?;
         Ok(())
     }
 
@@ -1976,7 +1996,7 @@ mod cmd {
             // close all views
             let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
             for view_id in views {
-                cx.editor.close(view_id, false);
+                cx.editor.close(view_id);
             }
         }
 
@@ -2020,7 +2040,7 @@ mod cmd {
         // close all views
         let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
         for view_id in views {
-            editor.close(view_id, false);
+            editor.close(view_id);
         }
 
         Ok(())
@@ -2331,6 +2351,20 @@ mod cmd {
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+          name: "buffer-close",
+          aliases: &["bc", "bclose"],
+          doc: "Close the current buffer.",
+          fun: buffer_close,
+          completer: None, // FIXME: buffer completer
+        },
+        TypableCommand {
+          name: "buffer-close!",
+          aliases: &["bc!", "bclose!"],
+          doc: "Close the current buffer forcefully (ignoring unsaved changes).",
+          fun: force_buffer_close,
+          completer: None, // FIXME: buffer completer
         },
         TypableCommand {
             name: "write",
@@ -4914,7 +4948,7 @@ fn wclose(cx: &mut Context) {
     }
     let view_id = view!(cx.editor).id;
     // close current split
-    cx.editor.close(view_id, /* close_buffer */ false);
+    cx.editor.close(view_id);
 }
 
 fn wonly(cx: &mut Context) {
@@ -4926,7 +4960,7 @@ fn wonly(cx: &mut Context) {
         .collect::<Vec<_>>();
     for (view_id, focus) in views {
         if !focus {
-            cx.editor.close(view_id, /* close_buffer */ false);
+            cx.editor.close(view_id);
         }
     }
 }

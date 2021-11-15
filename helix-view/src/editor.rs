@@ -22,7 +22,7 @@ use anyhow::Error;
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::syntax;
-use helix_core::Position;
+use helix_core::{Position, Selection};
 
 use serde::Deserialize;
 
@@ -235,9 +235,28 @@ impl Editor {
         }
     }
 
+    fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
+        let view = self.tree.get_mut(current_view);
+        view.doc = doc_id;
+        view.offset = Position::default();
+
+        let doc = self.documents.get_mut(&doc_id).unwrap();
+
+        // initialize selection for view
+        doc.selections
+            .entry(view.id)
+            .or_insert_with(|| Selection::point(0));
+        // TODO: reuse align_view
+        let pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        let line = doc.text().char_to_line(pos);
+        view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+    }
+
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
-        use helix_core::Selection;
 
         if !self.documents.contains_key(&id) {
             log::error!("cannot switch to document that does not exist (anymore)");
@@ -271,22 +290,9 @@ impl Editor {
                     view.jumps.push(jump);
                     view.last_accessed_doc = Some(view.doc);
                 }
-                view.doc = id;
-                view.offset = Position::default();
 
-                let (view, doc) = current!(self);
-
-                // initialize selection for view
-                doc.selections
-                    .entry(view.id)
-                    .or_insert_with(|| Selection::point(0));
-                // TODO: reuse align_view
-                let pos = doc
-                    .selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..));
-                let line = doc.text().char_to_line(pos);
-                view.offset.row = line.saturating_sub(view.inner_area().height as usize / 2);
+                let view_id = view.id;
+                self.replace_document_in_view(view_id, id);
 
                 return;
             }
@@ -318,11 +324,16 @@ impl Editor {
         self._refresh();
     }
 
-    fn new_file_from_document(&mut self, action: Action, mut document: Document) -> DocumentId {
+    fn new_document(&mut self, mut document: Document) -> DocumentId {
         let id = DocumentId(self.next_document_id);
         self.next_document_id += 1;
         document.id = id;
         self.documents.insert(id, document);
+        id
+    }
+
+    fn new_file_from_document(&mut self, action: Action, document: Document) -> DocumentId {
+        let id = self.new_document(document);
         self.switch(id, action);
         id
     }
@@ -392,7 +403,7 @@ impl Editor {
         Ok(id)
     }
 
-    pub fn close(&mut self, id: ViewId, close_buffer: bool) {
+    pub fn close(&mut self, id: ViewId) {
         let view = self.tree.get(self.tree.focus);
         // remove selection
         self.documents
@@ -401,18 +412,66 @@ impl Editor {
             .selections
             .remove(&id);
 
-        if close_buffer {
-            // get around borrowck issues
-            let doc = &self.documents[&view.doc];
-
-            if let Some(language_server) = doc.language_server() {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-            }
-            self.documents.remove(&view.doc);
-        }
-
         self.tree.remove(id);
         self._refresh();
+    }
+
+    pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
+        let doc = match self.documents.get(&doc_id) {
+            Some(doc) => doc,
+            None => anyhow::bail!("document does not exist"),
+        };
+
+        if !force && doc.is_modified() {
+            anyhow::bail!(
+                "buffer {:?} is modified",
+                doc.relative_path()
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "[scratch]".into())
+            );
+        }
+
+        if let Some(language_server) = doc.language_server() {
+            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+        }
+
+        let views_to_close = self
+            .tree
+            .views()
+            .filter_map(|(view, _focus)| {
+                if view.doc == doc_id {
+                    Some(view.id)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for view_id in views_to_close {
+            self.close(view_id);
+        }
+
+        self.documents.remove(&doc_id);
+
+        // If the document we removed was visible in all views, we will have no more views. We don't
+        // want to close the editor just for a simple buffer close, so we need to create a new view
+        // containing either an existing document, or a brand new document.
+        if self.tree.views().peekable().peek().is_none() {
+            let doc_id = self
+                .documents
+                .iter()
+                .map(|(&doc_id, _)| doc_id)
+                .next()
+                .unwrap_or_else(|| self.new_document(Document::default()));
+            let view = View::new(doc_id);
+            let view_id = self.tree.insert(view);
+            let doc = self.documents.get_mut(&doc_id).unwrap();
+            doc.selections.insert(view_id, Selection::point(0));
+        }
+
+        self._refresh();
+
+        Ok(())
     }
 
     pub fn resize(&mut self, area: Rect) {
