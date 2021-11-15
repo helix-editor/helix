@@ -16,7 +16,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection,
 };
 use helix_view::{
-    document::Mode,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
@@ -580,18 +580,20 @@ impl EditorView {
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
-        if let Some(path) = doc.relative_path() {
-            let path = path.to_string_lossy();
+        let rel_path = doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
 
-            let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
-            surface.set_stringn(
-                viewport.x + 8,
-                viewport.y,
-                title,
-                viewport.width.saturating_sub(6) as usize,
-                base_style,
-            );
-        }
+        let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
+        surface.set_stringn(
+            viewport.x + 8,
+            viewport.y,
+            title,
+            viewport.width.saturating_sub(6) as usize,
+            base_style,
+        );
 
         //-------------------------------
         // Right side of the status line.
@@ -695,6 +697,11 @@ impl EditorView {
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
             KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
+            KeymapResultKind::MatchedSequence(commands) => {
+                for command in commands {
+                    command.execute(cxt);
+                }
+            }
             KeymapResultKind::NotFound | KeymapResultKind::Cancelled(_) => return Some(key_result),
         }
         None
@@ -736,7 +743,7 @@ impl EditorView {
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
-            key!('.') => {
+            key!('.') if self.keymaps.pending().is_empty() => {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
