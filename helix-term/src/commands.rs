@@ -4665,7 +4665,6 @@ fn hover(cx: &mut Context) {
                     match contents {
                         lsp::MarkedString::String(contents) => contents,
                         lsp::MarkedString::LanguageString(string) => {
-                            log::error!("MarkedString {}: {}", string.language, string.value);
                             if string.language == "markdown" {
                                 string.value
                             } else {
