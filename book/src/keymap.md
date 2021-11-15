@@ -258,7 +258,6 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `Ctrl-f`, `Right`       | Forward a char              | `move_char_right`       |
 | `Ctrl-e`, `End`         | move to line end            | `goto_line_end_newline` |
 | `Ctrl-a`, `Home`        | move to line start          | `goto_line_start`       |
-| `Ctrl-w`                | delete previous word        | `delete_word_backwar`   |
 | `Ctrl-u`                | delete to start of line     | `kill_to_line_start`    |
 | `Ctrl-k`                | delete to end of line       | `kill_to_line_end`      |
 | `backspace`, `Ctrl-h`   | delete previous char        | `delete_char_backward`  |
