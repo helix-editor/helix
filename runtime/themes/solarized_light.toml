@@ -2,15 +2,9 @@
 "keyword" = { fg = "green" }
 "keyword.directive" = { fg = "orange" }
 "namespace" = { fg = "violet" }
-"punctuation" = { fg = "orange" }
-"punctuation.delimiter" = { fg = "orange" }
 "operator" = { fg = "green" }
 "special" = { fg = "orange" }
-# "property" = { fg = "cyan" }
-"variable" = { fg = "cyan" }
-"variable.parameter" = { fg = "cyan" }
 "variable.builtin" = { fg = "cyan", modifiers = ["bold"] }
-"variable.other.member" = { fg = "cyan" }
 "variable.function" = { fg = "blue" }
 "type" = { fg = "yellow" }
 "type.builtin" = { fg = "yellow", modifiers = ["bold"] }
@@ -19,14 +13,10 @@
 "function.macro" = { fg = "magenta" }
 "function.builtin" = { fg = "blue", modifiers = ["bold"] }
 "function.special" = { fg = "magenta" }
-"comment" = { fg = "base01", modifiers = ["italic"] }
-"string" = { fg= "base1" }
-"constant" = { fg = "base1" }
-"constant.character" = { fg = "base1" }
-"constant.builtin" = { fg = "base1", modifiers = ["bold"] }
-"constant.numeric" = { fg= "base1" }
-"constant.numeric.integer" = { fg= "base1" }
-"constant.numeric.float" = { fg= "base1" }
+"comment" = { fg = "base01" }
+"string" = { fg = "cyan" }
+"constant" = { fg = "cyan" }
+"constant.builtin" = { fg = "cyan", modifiers = ["bold"] }
 "constant.character.escape" = { fg = "red", modifiers = ["bold"] }
 "label" = { fg = "green" }
 "module" = { fg = "violet" }
@@ -78,7 +68,6 @@
 "ui.cursor.insert" = {fg = "base03", bg = "base3"}
 # 当前光标匹配的标点符号
 "ui.cursor.match" = {modifiers = ["reversed"]}
-
 
 "warning" =  { fg = "orange", modifiers= ["bold", "underlined"] }
 "error" = { fg = "red", modifiers= ["bold", "underlined"] }
