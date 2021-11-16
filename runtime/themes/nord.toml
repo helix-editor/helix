@@ -10,11 +10,11 @@
 # Polar Night
 # nord0 - background color
 "ui.background" = { bg = "nord0" }
-"ui.statusline.inactive" = { fg = "nord4", bg = "nord0" }
+"ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
 
 
 # nord1 - status bars, panels, modals, autocompletion
-"ui.statusline" = { fg = "nord8", bg = "nord1" }
+"ui.statusline" = { fg = "nord4", bg = "#4c566a" }
 "ui.popup" = { bg = "#232d38" }
 "ui.window" = { bg = "#232d38" }
 "ui.help" = { bg = "#232d38", fg = "nord4" }
@@ -25,7 +25,7 @@
 
 # nord3 - comments, nord3 based lighter color
 # relative: https://github.com/arcticicestudio/nord/issues/94
-"comment" = "gray"
+"comment" = { fg = "gray", modifiers = ["italic"] }
 "ui.linenr" = { fg = "gray" }
 
 # Snow Storm
