@@ -39,24 +39,24 @@ where
 pub struct FilePickerConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
-    /// Whether to hide, that is, to stop hidden files from displaying in file picker. Defaults to false.
+    /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
-    /// Enables reading ignore files from parent directories.
+    /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
-    /// Whether to hide files listed in .ignore from displaying in file picker. Defaults to false.
+    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
     pub ignore: bool,
     /// Enables reading `.gitignore` files.
-    /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
+    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to true.
     pub git_ignore: bool,
     /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
-    /// Whether to hide files in global .gitignore from displaying in file picker. Defaults to false.
+    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to true.
     pub git_global: bool,
     /// Enables reading `.git/info/exclude` files.
-    /// Whether to hide files in .git/info/exclude from displaying in file picker. Defaults to false.
+    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
     pub git_exclude: bool,
     /// WalkBuilder options
-    /// Maximum Depth to recurse.
+    /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
 }
 
