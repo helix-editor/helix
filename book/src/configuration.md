@@ -28,13 +28,13 @@ To override global configuration parameters, create a `config.toml` file located
 
 | Key | Description | Default |
 |--|--|---------|
-|`hidden` | Directly enables ignoring hidden files. | true
+|`hidden` | Enables ignoring hidden files. | true
 |`parents` | Enables reading ignore files from parent directories. | true
 |`ignore` | Enables reading `.ignore` files. | true
 |`git-ignore` | Enables reading `.gitignore` files. | true
 |`git-global` | Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option. | true
 |`git-exclude` | Enables reading `.git/info/exclude` files. | true
-|`max-depth` | May be used as a key, bound to an integer value for maximum depth to recurse. Defaults within helix logic to `None`. | N/A: not present by default.
+|`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
 
 ## LSP
 
