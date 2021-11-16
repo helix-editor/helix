@@ -370,6 +370,7 @@ name = "helix-core"
 version = "0.5.0"
 dependencies = [
  "arc-swap",
+ "chrono",
  "etcetera",
  "helix-syntax",
  "log",
