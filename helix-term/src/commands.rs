@@ -1,5 +1,7 @@
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
+    comment, coords_at_pos,
+    date::DateIncrementor,
+    find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
     indent,
     indent::IndentStyle,
@@ -5802,13 +5804,23 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let text = doc.text();
 
     let changes = selection.ranges().iter().filter_map(|range| {
-        let incrementor = NumberIncrementor::from_range(text.slice(..), *range)?;
-        let new_text = incrementor.incremented_text(amount);
-        Some((
-            incrementor.range.from(),
-            incrementor.range.to(),
-            Some(new_text),
-        ))
+        if let Some(incrementor) = DateIncrementor::from_range(text.slice(..), *range) {
+            let new_text = incrementor.incremented_text(amount);
+            Some((
+                incrementor.range.from(),
+                incrementor.range.to(),
+                Some(new_text),
+            ))
+        } else if let Some(incrementor) = NumberIncrementor::from_range(text.slice(..), *range) {
+            let new_text = incrementor.incremented_text(amount);
+            Some((
+                incrementor.range.from(),
+                incrementor.range.to(),
+                Some(new_text),
+            ))
+        } else {
+            None
+        }
     });
 
     if changes.clone().count() > 0 {
