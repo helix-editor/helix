@@ -497,7 +497,7 @@ impl EditorView {
         use tui::{
             layout::Alignment,
             text::Text,
-            widgets::{Paragraph, Widget},
+            widgets::{Paragraph, Widget, Wrap},
         };
 
         let cursor = doc
@@ -529,8 +529,10 @@ impl EditorView {
             lines.extend(text.lines);
         }
 
-        let paragraph = Paragraph::new(lines).alignment(Alignment::Right);
-        let width = 80.min(viewport.width);
+        let paragraph = Paragraph::new(lines)
+            .alignment(Alignment::Right)
+            .wrap(Wrap { trim: true });
+        let width = 100.min(viewport.width);
         let height = 15.min(viewport.height);
         paragraph.render(
             Rect::new(viewport.right() - width, viewport.y + 1, width, height),
