@@ -736,14 +736,30 @@ fn goto_file(cx: &mut Context) {
     };
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
-    let paths: Vec<_> = doc
-        .selection(view.id)
+    let selections = doc.selection(view.id);
+    let mut paths: Vec<_> = selections
         .iter()
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
+    let primary = selections.primary();
+    if selections.len() == 1 && primary.to() - primary.from() == 1 {
+        let current_word = movement::move_next_long_word_start(
+            text.slice(..),
+            movement::move_prev_long_word_start(text.slice(..), primary, 1),
+            1,
+        );
+        paths.clear();
+        paths.push(
+            text.slice(current_word.from()..current_word.to())
+                .to_string(),
+        );
+    }
     for sel in paths {
-        if let Err(e) = cx.editor.open(PathBuf::from(sel.trim()), action) {
-            cx.editor.set_error(format!("Open file failed: {:?}", e));
+        let p = sel.trim();
+        if !p.is_empty() {
+            if let Err(e) = cx.editor.open(PathBuf::from(sel.trim()), action) {
+                cx.editor.set_error(format!("Open file failed: {:?}", e));
+            }
         }
     }
 }
