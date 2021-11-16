@@ -37,34 +37,38 @@ where
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
+    /// IgnoreOptions
+    /// Enables ignoring hidden files.
+    /// Whether to hide, that is, to stop hidden files from displaying in file picker. Defaults to false.
     pub hidden: bool,
+    /// Enables reading ignore files from parent directories.
     pub parents: bool,
+    /// Enables reading `.ignore` files.
+    /// Whether to hide files listed in .ignore from displaying in file picker. Defaults to false.
     pub ignore: bool,
+    /// Enables reading `.gitignore` files.
+    /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
     pub git_ignore: bool,
+    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+    /// Whether to hide files in global .gitignore from displaying in file picker. Defaults to false.
     pub git_global: bool,
+    /// Enables reading `.git/info/exclude` files.
+    /// Whether to hide files in .git/info/exclude from displaying in file picker. Defaults to false.
     pub git_exclude: bool,
+    /// WalkBuilder options
+    /// Maximum Depth to recurse.
     pub max_depth: Option<usize>,
 }
 
 impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
-            // IgnoreOptions
-            // Enables ignoring hidden files.
             hidden: true,
-            // Enables reading ignore files from parent directories.
             parents: true,
-            // Enables reading `.ignore` files.
             ignore: true,
-            // Enables reading `.gitignore` files.
-            /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
             git_ignore: true,
-            // Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
             git_global: true,
-            // Enables reading `.git/info/exclude` files.
             git_exclude: true,
-            // WalkBuilder options
-            // Maximum Depth to recurse.
             max_depth: None,
         }
     }
@@ -97,8 +101,6 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
-    /// Whether to hide files in .gitignore from displaying in file picker. Defaults to false.
-    //pub git_ignore: bool,
     pub file_picker: FilePickerConfig,
 }
 
