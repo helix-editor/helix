@@ -525,6 +525,7 @@ impl Default for Keymaps {
                 "a" => goto_last_accessed_file,
                 "n" => goto_next_buffer,
                 "p" => goto_previous_buffer,
+                "j" => jump_mode,
             },
             ":" => command_mode,
 

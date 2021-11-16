@@ -344,6 +344,7 @@ impl Command {
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
         rename_symbol, "Rename symbol",
+        jump_mode, "Jump mode",
     );
 }
 
@@ -1238,8 +1239,12 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        if view.is_cursor_in_view(doc, 0) {
-            view.ensure_cursor_in_view(doc, scrolloff);
+        let cursor = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        if view.is_cursor_in_view(cursor, doc, 0) {
+            view.ensure_cursor_in_view(cursor, doc, scrolloff);
         } else {
             align_view(doc, view, Align::Center)
         }
@@ -5187,4 +5192,80 @@ fn rename_symbol(cx: &mut Context) {
         },
     );
     cx.push_layer(Box::new(prompt));
+}
+
+fn jump_mode(cx: &mut Context) {
+    static SINGLE_JUMP_KEYS: &[char] = &[
+        'a', 's', 'd', 'g', 'h', 'k', 'l', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'z',
+        'x', 'c', 'v', 'b',
+    ];
+
+    let (view, doc) = current!(cx.editor);
+
+    // TODO: Get this from input
+    let motion = movement::move_next_word_start;
+
+    let mut jump_locations = Vec::new();
+
+    for i in 1.. {
+        let text = doc.text().slice(..);
+        let range = doc.selection(view.id).primary();
+        let transformed = motion(text, range, i);
+        let cursor_pos = transformed.cursor(text);
+        // Check if cursor is adjacent to the previous location and skip if it is;
+        // multiple adjacent jump targets aren't useful.
+        if jump_locations
+            .last()
+            .map(|pos| cursor_pos - pos <= 1)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        // Check if cursor is outside the window before adding it to the jumplist;
+        // we don't want any cursors outside the window getting added.
+        if !view.is_cursor_in_view(cursor_pos, doc, 0) {
+            break;
+        }
+        jump_locations.push(cursor_pos);
+        // Check if the cursor is at file bounds after adding it to the jumplist;
+        // if file bounds are reached, we want one cursor and no more.
+        if cursor_pos == 0 || cursor_pos >= doc.text().len_bytes() - 1 {
+            break;
+        }
+    }
+
+    use helix_view::decorations::{TextAnnotation, TextAnnotationKind};
+    use helix_view::graphics::{Color, Modifier, Style};
+    use std::collections::HashMap;
+    let style = Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
+    let jumps = jump_locations
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, pos)| SINGLE_JUMP_KEYS.get(i).copied().map(|k| (k, pos)))
+        .collect::<HashMap<char, usize>>();
+    doc.extend_text_annotations(
+        jumps
+            .iter()
+            .map(|(&c, &pos)| {
+                let line = doc.text().byte_to_line(pos);
+                let offset = pos - doc.text().line_to_byte(line);
+                TextAnnotation {
+                    scope: "jump_label".to_owned(),
+                    text: c.into(),
+                    style,
+                    line,
+                    kind: TextAnnotationKind::Overlay(offset),
+                }
+            })
+            .collect(),
+    );
+    cx.on_next_key(move |cx, event| {
+        let doc = doc_mut!(cx.editor);
+        doc.remove_text_annotations(|annot| annot.scope == "jump_label");
+        if let Some(pos) = event.char().and_then(|c| jumps.get(&c).copied()) {
+            push_jump(cx.editor);
+            let (view, doc) = current!(cx.editor);
+            doc.set_selection(view.id, Selection::single(pos, pos));
+        }
+    });
 }

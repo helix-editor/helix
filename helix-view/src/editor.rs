@@ -228,7 +228,11 @@ impl Editor {
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
-            view.ensure_cursor_in_view(doc, self.config.scrolloff)
+            let cursor = doc
+                .selection(view.id)
+                .primary()
+                .cursor(doc.text().slice(..));
+            view.ensure_cursor_in_view(cursor, doc, self.config.scrolloff)
         }
     }
 
@@ -445,7 +449,11 @@ impl Editor {
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let view = self.tree.get_mut(id);
         let doc = &self.documents[&view.doc];
-        view.ensure_cursor_in_view(doc, self.config.scrolloff)
+        let cursor = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        view.ensure_cursor_in_view(cursor, doc, self.config.scrolloff)
     }
 
     #[inline]
