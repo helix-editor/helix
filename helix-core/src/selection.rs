@@ -360,7 +360,7 @@ impl Selection {
         self.normalize()
     }
 
-    /// Adds a new range to the selection and makes it the primary range.
+    /// Removes a range from the selection.
     pub fn remove(mut self, index: usize) -> Self {
         assert!(
             self.ranges.len() > 1,
