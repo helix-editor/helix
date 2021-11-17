@@ -210,23 +210,23 @@ This layer is similar to vim keybindings as kakoune does not support window.
 This layer is a kludge of mappings, mostly pickers.
 
 
-| Key     | Description                                                           | Command                             |
-| -----   | -----------                                                           | -------                             |
-| `f`     | Open file picker                                                      | `file_picker`                       |
-| `b`     | Open buffer picker                                                    | `buffer_picker`                     |
-| `k`     | Show documentation for item under cursor (**LSP**)                    | `hover`                             |
-| `s`     | Open document symbol picker (**LSP**)                                 | `symbol_picker`                     |
-| `S`     | Open workspace symbol picker (**LSP**)                                | `workspace_symbol_picker`           |
-| `r`     | Rename symbol (**LSP**)                                               | `rename_symbol`                     |
-| `a`     | Apply code action  (**LSP**)                                          | `code_action`                       |
-| `'`     | Open last fuzzy picker                                                | `last_picker`                       |
-| `w`     | Enter [window mode](#window-mode)                                     | N/A                                 |
-| `p`     | Paste system clipboard after selections                               | `paste_clipboard_after`             |
-| `P`     | Paste system clipboard before selections                              | `paste_clipboard_before`            |
-| `y`     | Join and yank selections to clipboard                                 | `yank_joined_to_clipboard`          |
-| `Y`     | Yank main selection to clipboard                                      | `yank_main_selection_to_clipboard`  |
-| `R`     | Replace selections by clipboard contents                              | `replace_selections_with_clipboard` |
-| `/`     | Global search in workspace folder                                     | `global_search`                     |
+| Key     | Description                                                                               | Command                             |
+| -----   | -----------                                                                               | -------                             |
+| `f`     | Open file picker                                                                          | `file_picker`                       |
+| `b`     | Open buffer picker                                                                        | `buffer_picker`                     |
+| `k`     | Show documentation for item under cursor, use `Ctrl-u` and `Ctrl-d` to scroll (**LSP**)   | `hover`                             |
+| `s`     | Open document symbol picker (**LSP**)                                                     | `symbol_picker`                     |
+| `S`     | Open workspace symbol picker (**LSP**)                                                    | `workspace_symbol_picker`           |
+| `r`     | Rename symbol (**LSP**)                                                                   | `rename_symbol`                     |
+| `a`     | Apply code action  (**LSP**)                                                              | `code_action`                       |
+| `'`     | Open last fuzzy picker                                                                    | `last_picker`                       |
+| `w`     | Enter [window mode](#window-mode)                                                         | N/A                                 |
+| `p`     | Paste system clipboard after selections                                                   | `paste_clipboard_after`             |
+| `P`     | Paste system clipboard before selections                                                  | `paste_clipboard_before`            |
+| `y`     | Join and yank selections to clipboard                                                     | `yank_joined_to_clipboard`          |
+| `Y`     | Yank main selection to clipboard                                                          | `yank_main_selection_to_clipboard`  |
+| `R`     | Replace selections by clipboard contents                                                  | `replace_selections_with_clipboard` |
+| `/`     | Global search in workspace folder                                                         | `global_search`                     |
 
 > TIP: Global search displays results in a fuzzy picker, use `space + '` to bring it back up after opening a file.
  
