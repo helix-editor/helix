@@ -1949,7 +1949,7 @@ fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-mod cmd {
+pub mod cmd {
     use super::*;
     use std::collections::HashMap;
 
@@ -2679,7 +2679,7 @@ mod cmd {
         TypableCommand {
             name: "format",
             aliases: &["fmt"],
-            doc: "Format the file using a formatter.",
+            doc: "Format the file using the LSP formatter.",
             fun: format,
             completer: None,
         },
@@ -2770,7 +2770,7 @@ mod cmd {
         TypableCommand {
             name: "theme",
             aliases: &[],
-            doc: "Change the theme of current view. Requires theme name as argument (:theme <name>)",
+            doc: "Change the editor theme.",
             fun: theme,
             completer: Some(completers::theme),
         },
@@ -2854,7 +2854,7 @@ mod cmd {
         TypableCommand {
             name: "change-current-directory",
             aliases: &["cd"],
-            doc: "Change the current working directory (:cd <dir>).",
+            doc: "Change the current working directory.",
             fun: change_current_directory,
             completer: Some(completers::directory),
         },
