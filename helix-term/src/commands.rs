@@ -13,7 +13,6 @@ use helix_core::{
     search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
-
 use helix_view::{
     clipboard::ClipboardType,
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -4014,7 +4013,6 @@ pub mod insert {
         doc.apply(&transaction, view.id);
     }
 
-    // TODO: handle indent-aware delete
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current!(cx.editor);
@@ -4022,8 +4020,43 @@ pub mod insert {
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
+                let line_start_pos = text.line_to_char(range.cursor_line(text));
+
+                // considier to delete by indent level if all characters before `pos` are indent units.
+                let indent_unit = doc.indent_unit();
+                let line_to_start = text.slice(line_start_pos..pos).as_str().unwrap();
+                // using unwrap here is ok because indent_unit always contains `spaces` or `tab`.
+                let indent_unit_base = indent_unit.chars().nth(0).unwrap();
+
+                // it's ok to dedent when there are only `indent_unit_base` character(e.g: ' ') in `line_to_start`.
+                let mut ok_to_dedent = true;
+                for c in line_to_start.chars() {
+                    if c != indent_unit_base {
+                        ok_to_dedent = false;
+                        break;
+                    }
+                }
+
+                let delete_count = if ok_to_dedent {
+                    // current position just at start of line.
+                    if line_to_start.is_empty() {
+                        count
+                    } else {
+                        let steps_to_aligned = line_to_start.len() % indent_unit.len();
+                        // current position is just aligned with indent_unit length, when hit delete, should
+                        // delete a whole `indent_unit`.
+                        if steps_to_aligned == 0 {
+                            indent_unit.len()
+                        } else {
+                            steps_to_aligned
+                        }
+                    }
+                } else {
+                    count
+                };
+
                 (
-                    graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                    graphemes::nth_prev_grapheme_boundary(text, pos, delete_count),
                     pos,
                     None,
                 )
