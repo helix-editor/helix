@@ -54,3 +54,72 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 Keys can be disabled by binding them to the `no_op` command.
 
 Commands can be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
+
+## Suggestions
+These are some keys which can be re-mapped without clashes with other commands.
+
+### Normal Mode
+
+> nums: `1 2 3 4 5 6 7 8 9 0`
+> arrow: `left right up down`
+> KEYS: All captial alphabet keys
+
+|`H`  |`M`      |
+|`@`  |`C-~`    |
+|`#`  |`C-nums` |
+|`^`  |`C--`    |
+|`-`  |`C-=`    |
+|`+`  |`C-q`    |
+|`\`  |`C-e`    |
+|`.`  |`C-r`    |
+|`D`  |`C-t`    |
+|`L`  |`C-y`    |
+|`V`  |`C-p`    |
+|`C-j`|`C-[`    |
+|`C-k`|`C-]`    |
+|`C-l`|`C-\`    |
+|`C-;`|`C-{`    |
+|`C-'`|`C-}`    |
+|`C-:`|`C-|`    |
+|`C-"`|`C-g`    |
+|`C-v`|`C-h`    |
+|`C-b`|`C-.`    |
+|`C-n`|`C-/`    |
+|`C-m`|`C-<`    |
+|`C->`|`C-arrow`|
+|`C-/`|`C-KEYS` |
+|`C-?`|`C-!`    |
+|`C-@`|`C-^`    |
+|`C-#`|`C-&`    |
+|`C-$`|`C-*`    |
+|`C-%`|`C-(`    |
+|`C-_`|`C-+`    |
+|`A--`|`A-nums` |
+|`A-=`|`A-\`    |
+|`A-_`|`A-a`    |
+|`A-+`|`A-d`    |
+|`A-~`|`A-f`    |
+|`A-q`|`A-g`    |
+|`A-w`|`A-h`    |
+|`A-e`|`A-j`    |
+|`A-r`|`A-k`    |
+|`A-t`|`A-l`    |
+|`A-y`|`A-:`    |
+|`A-u`|`A-'`    |
+|`A-i`|`A-"`    |
+|`A-o`|`A-z`    |
+|`A-p`|`A-x`    |
+|`A-[`|`A-c`    |
+|`A-]`|`A-v`    |
+|`A-n`|`A-KEYS` [^1]|
+|`A-m`|`A-@`    |
+|`A-/`|`A-#`    |
+|`A-<`|`A-$`    |
+|`A->`|`A-%`    |
+|`A-?`|`A-\`    |
+|`A-{`|`A-}`    |
+|`A-^`|`A-*`    |
+|`A-&`|`A-arrow`|
+|`S-arrow`|`C-arrow`|
+
+[^1]: All KEYS other than U, K and C
