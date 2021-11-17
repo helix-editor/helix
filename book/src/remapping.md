@@ -61,7 +61,9 @@ These are some keys which can be re-mapped without clashes with other commands.
 ### Normal Mode
 
 > nums: `1 2 3 4 5 6 7 8 9 0`
+> 
 > arrow: `left right up down`
+> 
 > KEYS: All captial alphabet keys
 
 |Keys|Keys|
