@@ -84,7 +84,7 @@ These are some keys which can be re-mapped without clashes with other commands.
 |`C-l`|`C-\`    |
 |`C-;`|`C-{`    |
 |`C-'`|`C-}`    |
-|`C-:`|`C-|`    |
+|`C-:`|`C-\|`    |
 |`C-"`|`C-g`    |
 |`C-v`|`C-h`    |
 |`C-b`|`C-.`    |
