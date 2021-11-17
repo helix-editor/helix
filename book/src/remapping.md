@@ -64,6 +64,7 @@ These are some keys which can be re-mapped without clashes with other commands.
 > arrow: `left right up down`
 > KEYS: All captial alphabet keys
 
+
 |`H`  |`M`      |
 |`@`  |`C-~`    |
 |`#`  |`C-nums` |
@@ -121,5 +122,6 @@ These are some keys which can be re-mapped without clashes with other commands.
 |`A-^`|`A-*`    |
 |`A-&`|`A-arrow`|
 |`S-arrow`|`C-arrow`|
+
 
 [^1]: All KEYS other than U, K and C
