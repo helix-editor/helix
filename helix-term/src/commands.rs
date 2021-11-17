@@ -5195,10 +5195,12 @@ fn rename_symbol(cx: &mut Context) {
 }
 
 fn jump_mode(cx: &mut Context) {
-    static SINGLE_JUMP_KEYS: &[char] = &[
+    let jump_keys = &[
         'a', 's', 'd', 'g', 'h', 'k', 'l', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'z',
-        'x', 'c', 'v', 'b',
+        'x', 'c', 'v', 'b', 'f', 'j', 'n', 'm', ';',
     ];
+    let single_jump_keys = &jump_keys[..22];
+    let double_jump_keys = &jump_keys[22..];
 
     let (view, doc) = current!(cx.editor);
 
@@ -5216,7 +5218,7 @@ fn jump_mode(cx: &mut Context) {
         // multiple adjacent jump targets aren't useful.
         if jump_locations
             .last()
-            .map(|pos| cursor_pos - pos <= 1)
+            .map(|pos| cursor_pos - pos <= 2)
             .unwrap_or(false)
         {
             continue;
@@ -5237,35 +5239,118 @@ fn jump_mode(cx: &mut Context) {
     use helix_view::decorations::{TextAnnotation, TextAnnotationKind};
     use helix_view::graphics::{Color, Modifier, Style};
     use std::collections::HashMap;
-    let style = Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
-    let jumps = jump_locations
+
+    enum Jump {
+        Single(usize),
+        Double(HashMap<char, usize>),
+    }
+
+    let single_style = Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
+    let double_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
+    let single_jumps = jump_locations
+        .iter()
+        .copied()
+        .enumerate()
+        .take_while(|&(i, _)| i < single_jump_keys.len())
+        .map(|(i, pos)| (single_jump_keys[i], Jump::Single(pos)));
+    let double_jumps = jump_locations
+        .iter()
+        .copied()
+        .enumerate()
+        .skip_while(|&(i, _)| i < single_jump_keys.len())
+        .fold(Vec::<HashMap<char, usize>>::new(), |mut maps, (i, pos)| {
+            let i = i - single_jump_keys.len();
+            if let Some(map) = maps
+                .last_mut()
+                .filter(|map| map.len() < single_jump_keys.len())
+            {
+                map.insert(jump_keys[i % jump_keys.len()], pos);
+            } else {
+                let mut map = HashMap::new();
+                map.insert(jump_keys[i % jump_keys.len()], pos);
+                maps.push(map);
+            }
+            maps
+        })
         .into_iter()
         .enumerate()
-        .filter_map(|(i, pos)| SINGLE_JUMP_KEYS.get(i).copied().map(|k| (k, pos)))
-        .collect::<HashMap<char, usize>>();
+        .filter_map(|(i, map)| double_jump_keys.get(i).map(|&k| (k, Jump::Double(map))));
+    let mut jumps = single_jumps
+        .chain(double_jumps)
+        .collect::<HashMap<char, Jump>>();
     doc.extend_text_annotations(
         jumps
             .iter()
-            .map(|(&c, &pos)| {
-                let line = doc.text().byte_to_line(pos);
-                let offset = pos - doc.text().line_to_byte(line);
-                TextAnnotation {
-                    scope: "jump_label".to_owned(),
-                    text: c.into(),
-                    style,
-                    line,
-                    kind: TextAnnotationKind::Overlay(offset),
+            .flat_map(|(&c1, jump)| {
+                let text = doc.text();
+                match jump {
+                    &Jump::Single(pos) => {
+                        let line = text.byte_to_line(pos);
+                        let offset = pos - text.line_to_byte(line);
+                        Box::new(std::iter::once(TextAnnotation {
+                            scope: "jump_label".to_owned(),
+                            text: c1.into(),
+                            style: single_style,
+                            line,
+                            kind: TextAnnotationKind::Overlay(offset),
+                        })) as Box<dyn Iterator<Item = TextAnnotation>>
+                    }
+                    Jump::Double(jumps) => Box::new(jumps.iter().map(move |(&c2, &pos)| {
+                        let line = text.byte_to_line(pos);
+                        let offset = pos - text.line_to_byte(line);
+                        TextAnnotation {
+                            scope: "jump_label".to_owned(),
+                            text: format!("{}{}", c1, c2),
+                            style: double_style,
+                            line,
+                            kind: TextAnnotationKind::Overlay(offset),
+                        }
+                    }))
+                        as Box<dyn Iterator<Item = TextAnnotation>>,
                 }
             })
             .collect(),
     );
     cx.on_next_key(move |cx, event| {
-        let doc = doc_mut!(cx.editor);
-        doc.remove_text_annotations(|annot| annot.scope == "jump_label");
-        if let Some(pos) = event.char().and_then(|c| jumps.get(&c).copied()) {
-            push_jump(cx.editor);
-            let (view, doc) = current!(cx.editor);
-            doc.set_selection(view.id, Selection::single(pos, pos));
+        doc_mut!(cx.editor).remove_text_annotations(|annot| annot.scope == "jump_label");
+        if let Some(jump) = event.char().and_then(|c| jumps.remove(&c)) {
+            match jump {
+                Jump::Single(pos) => {
+                    push_jump(cx.editor);
+                    let (view, doc) = current!(cx.editor);
+                    doc.set_selection(view.id, Selection::single(pos, pos));
+                }
+                Jump::Double(mut jumps) => {
+                    let doc = doc_mut!(cx.editor);
+                    doc.extend_text_annotations(
+                        jumps
+                            .iter()
+                            .map(|(&c, &pos)| {
+                                let line = doc.text().byte_to_line(pos);
+                                let offset = pos - doc.text().line_to_byte(line);
+                                TextAnnotation {
+                                    scope: "jump_label".to_owned(),
+                                    text: c.into(),
+                                    style: single_style,
+                                    line,
+                                    kind: TextAnnotationKind::Overlay(offset),
+                                }
+                            })
+                            .collect(),
+                    );
+                    cx.on_next_key(move |cx, event| {
+                        doc_mut!(cx.editor)
+                            .remove_text_annotations(|annot| annot.scope == "jump_label");
+                        if let Some(pos) = event.char().and_then(|c| jumps.remove(&c)) {
+                            push_jump(cx.editor);
+                            let (view, doc) = current!(cx.editor);
+                            doc.set_selection(view.id, Selection::single(pos, pos));
+                        }
+                    })
+                }
+            }
         }
     });
 }
