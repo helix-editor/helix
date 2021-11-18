@@ -23,6 +23,19 @@ const PAIRS: &[(char, char)] = &[
     (DOUBLE_QUOTE, DOUBLE_QUOTE),
 ];
 
+const VALID_CHARS: &[char] = &[
+    O_PAREN,
+    C_PAREN,
+    O_CURLY,
+    C_CURLY,
+    O_BRCKT,
+    C_BRCKT,
+    O_ANGLE,
+    C_ANGLE,
+    SINGLE_QUOTE,
+    DOUBLE_QUOTE,
+];
+
 // limit matching pairs to only ( ) { } [ ] < >
 
 // Returns the position of the matching bracket under cursor.
@@ -35,6 +48,11 @@ const PAIRS: &[(char, char)] = &[
 #[must_use]
 pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
     let tree = syntax.tree();
+
+    if pos >= doc.len_chars() || !VALID_CHARS.contains(&doc.char(pos)) {
+        return None;
+    }
+
     let byte_pos = doc.char_to_byte(pos);
 
     let node = match tree
