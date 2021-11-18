@@ -10,8 +10,10 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     register::Register,
-    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    search, selection, surround, textobject,
+    unicode::width::UnicodeWidthChar,
+    LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
+    Transaction,
 };
 use helix_view::{
     clipboard::ClipboardType,
@@ -4017,49 +4019,66 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
+        let indent_unit = doc.indent_unit();
+        let tab_size = doc.tab_width();
+
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
-
                 // considier to delete by indent level if all characters before `pos` are indent units.
-                let indent_unit = doc.indent_unit();
-                let line_to_start = text.slice(line_start_pos..pos).as_str().unwrap();
-                // using unwrap here is ok because indent_unit always contains `spaces` or `tab`.
-                let indent_unit_base = indent_unit.chars().nth(0).unwrap();
-
-                // it's ok to dedent when there are only `indent_unit_base` character(e.g: ' ') in `line_to_start`.
-                let mut ok_to_dedent = true;
-                for c in line_to_start.chars() {
-                    if c != indent_unit_base {
-                        ok_to_dedent = false;
-                        break;
-                    }
-                }
-
-                let delete_count = if ok_to_dedent {
-                    // current position just at start of line.
-                    if line_to_start.is_empty() {
-                        count
+                let fragment = Cow::from(text.slice(line_start_pos..pos));
+                if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
+                    if text.get_char(pos.saturating_sub(1)) == Some('\t') {
+                        // fast path, delete one char
+                        (
+                            graphemes::nth_prev_grapheme_boundary(text, pos, 1),
+                            pos,
+                            None,
+                        )
                     } else {
-                        let steps_to_aligned = line_to_start.len() % indent_unit.len();
-                        // current position is just aligned with indent_unit length, when hit delete, should
-                        // delete a whole `indent_unit`.
-                        if steps_to_aligned == 0 {
-                            indent_unit.len()
+                        let unit_len = indent_unit.chars().count();
+                        // NOTE: indent_unit always contains 'only spaces' or 'only tab' according to `IndentStyle` definition.
+                        let unit_size = if indent_unit.starts_with('\t') {
+                            tab_size * unit_len
                         } else {
-                            steps_to_aligned
+                            unit_len
+                        };
+                        let width: usize = fragment
+                            .chars()
+                            .map(|ch| {
+                                if ch == '\t' {
+                                    tab_size
+                                } else {
+                                    // it can be none if it still meet control characters other than '\t'
+                                    // here just set the width to 1 (or some value better?).
+                                    ch.width().unwrap_or(1)
+                                }
+                            })
+                            .sum();
+                        let mut drop = width % unit_size; // round down to nearest unit
+                        if drop == 0 {
+                            drop = unit_size
+                        }; // if it's already at a unit, consume a whole unit
+                        let mut chars = fragment.chars().rev();
+                        let mut start = pos;
+                        for _ in 0..drop {
+                            // delete up to `drop` spaces
+                            match chars.next() {
+                                Some(' ') => start -= 1,
+                                _ => break,
+                            }
                         }
+                        (start, pos, None) // delete!
                     }
                 } else {
-                    count
-                };
-
-                (
-                    graphemes::nth_prev_grapheme_boundary(text, pos, delete_count),
-                    pos,
-                    None,
-                )
+                    // delete char
+                    (
+                        graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                        pos,
+                        None,
+                    )
+                }
             });
         doc.apply(&transaction, view.id);
     }
