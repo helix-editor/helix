@@ -2337,10 +2337,12 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
+        use helix_core::path::expand_tilde;
         let id = view!(cx.editor).doc;
 
         if let Some(path) = args.get(0) {
-            cx.editor.open(path.into(), Action::VerticalSplit)?;
+            cx.editor
+                .open(expand_tilde(Path::new(path)), Action::VerticalSplit)?;
         } else {
             cx.editor.switch(id, Action::VerticalSplit);
         }
@@ -2353,10 +2355,12 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
+        use helix_core::path::expand_tilde;
         let id = view!(cx.editor).doc;
 
         if let Some(path) = args.get(0) {
-            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+            cx.editor
+                .open(expand_tilde(Path::new(path)), Action::HorizontalSplit)?;
         } else {
             cx.editor.switch(id, Action::HorizontalSplit);
         }
