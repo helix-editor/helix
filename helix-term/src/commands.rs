@@ -2460,6 +2460,22 @@ mod cmd {
         Ok(())
     }
 
+    fn goto_line_number(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let line = args[0].parse::<usize>()?;
+
+        goto_line_internal(&mut cx.editor, NonZeroUsize::new(line));
+
+        let (view, doc) = current!(cx.editor);
+
+        view.ensure_cursor_in_view(doc, line);
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2741,6 +2757,13 @@ mod cmd {
             fun: tutor,
             completer: None,
         },
+        TypableCommand {
+            name: "goto",
+            aliases: &["g"],
+            doc: "Go to line number.",
+            fun: goto_line_number,
+            completer: None,
+        }
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
@@ -3436,10 +3459,14 @@ fn push_jump(editor: &mut Editor) {
 }
 
 fn goto_line(cx: &mut Context) {
-    if let Some(count) = cx.count {
-        push_jump(cx.editor);
+    goto_line_internal(&mut cx.editor, cx.count)
+}
 
-        let (view, doc) = current!(cx.editor);
+fn goto_line_internal(editor: &mut Editor, count: Option<NonZeroUsize>) {
+    if let Some(count) = count {
+        push_jump(editor);
+
+        let (view, doc) = current!(editor);
         let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
             // If the last line is blank, don't jump to it.
             doc.text().len_lines().saturating_sub(2)
