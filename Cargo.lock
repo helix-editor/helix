@@ -326,6 +326,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gregorian"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3452972f2c995c38dc9b84f09fe14f1ca462a0580642fe6756fed58fdef29050"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "grep-matcher"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -369,8 +378,8 @@ name = "helix-core"
 version = "0.5.0"
 dependencies = [
  "arc-swap",
- "chrono",
  "etcetera",
+ "gregorian",
  "helix-syntax",
  "log",
  "once_cell",
