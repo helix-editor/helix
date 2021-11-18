@@ -5377,6 +5377,10 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                 doc.apply(&transaction, view.id);
                 doc.append_changes_to_history(view.id);
             }
+
+            // after replace cursor may be out of bounds, do this to
+            // make sure cursor is in view and update scroll as well
+            view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
         },
     );
 
