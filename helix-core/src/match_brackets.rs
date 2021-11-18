@@ -34,35 +34,10 @@ const PAIRS: &[(char, char)] = &[
 // If the cursor is not on a bracket, `None` is returned.
 #[must_use]
 pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
-    let tree = syntax.tree();
-
     if pos >= doc.len_chars() || !is_valid_bracket(doc.char(pos)) {
         return None;
     }
-
-    let byte_pos = doc.char_to_byte(pos);
-
-    let node = match tree
-        .root_node()
-        .named_descendant_for_byte_range(byte_pos, byte_pos)
-    {
-        Some(node) if !node.is_error() => node,
-        _ => return None,
-    };
-
-    let (start_byte, end_byte) = surrounding_bytes(&doc, &node)?;
-    let (start_char, end_char) = (doc.byte_to_char(start_byte), doc.byte_to_char(end_byte));
-
-    if is_valid_pair(&doc, start_char, end_char) {
-        if start_byte == byte_pos {
-            return Some(end_char);
-        }
-        if end_byte == byte_pos {
-            return Some(start_char);
-        }
-    }
-
-    None
+    find_pair(syntax, doc, pos, false)
 }
 
 // Returns the position of the bracket that is closing the current scope.
@@ -77,41 +52,30 @@ pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<
 // If no surrounding scope is found, the function returns `None`.
 #[must_use]
 pub fn find_matching_bracket_fuzzy(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
+    find_pair(syntax, doc, pos, true)
+}
+
+fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) -> Option<usize> {
     let tree = syntax.tree();
-    let byte_pos = doc.char_to_byte(pos);
+    let pos = doc.char_to_byte(pos);
 
-    let mut cursor = tree.walk();
-    let mut node = None;
+    let mut node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
 
-    // Walk the tree until we find the node for the given byte position.
-    while cursor.goto_first_child_for_byte(byte_pos).is_some() {
-        if cursor.node().is_named() && !cursor.node().is_error() {
-            node = Some(cursor.node());
-        }
-    }
-
-    let mut node = node?;
-
-    // Travere the tree upwards to find first node with surrounding brackets.
     loop {
-        let (start_byte, end_byte) = surrounding_bytes(&doc, &node)?;
+        let (start_byte, end_byte) = surrounding_bytes(doc, &node)?;
         let (start_char, end_char) = (doc.byte_to_char(start_byte), doc.byte_to_char(end_byte));
 
-        if is_valid_pair(&doc, start_char, end_char) {
-            if start_byte == byte_pos {
-                return Some(end_char);
-            }
-            if end_byte == byte_pos {
+        if is_valid_pair(doc, start_char, end_char) {
+            if end_byte == pos {
                 return Some(start_char);
             }
-            // We found a surrounding node, but the cursor
-            // is within the scope of that node. Hence, we
-            // return the closing bracket.
+            // We return the end char if the cursor is either on the start char
+            // or at some arbitrary position between start and end char.
             return Some(end_char);
         }
 
-        if cursor.goto_parent() {
-            node = cursor.node();
+        if traverse_parents {
+            node = node.parent()?;
         } else {
             return None;
         }
