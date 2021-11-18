@@ -11,7 +11,7 @@ _________________________________________________________________
  Welcome to the Helix editor! Helix is different from editors
  you might be used to in that it is modal, meaning that it has
  different modes for editing text. The primary modes you will
- use are Normal mode and Insert mode. While in Normal mode, the
+ use are Normal Mode and Insert Mode. While in Normal Mode, the
  keys you press won't actually type text. Instead, they will
  perform various actions with the text. This allows for more
  efficient editing. This tutor will teach you how you can make
@@ -46,7 +46,7 @@ _________________________________________________________________
 =                        EXITING HELIX                          =
 =================================================================
 
- 1. Press the : key to enter command mode. Your cursor will
+ 1. Press the : key to enter Command Mode. Your cursor will
     move to the bottom of the screen.
  2. Type q or quit and press <ENTER> to exit Helix.
 
@@ -54,7 +54,7 @@ _________________________________________________________________
        To force quit and DISCARD these changes, use q! or quit!.
        You will learn how to save files later.
 
- To exit command mode without entering a command, press <ESC>.
+ To exit Command Mode without entering a command, press <ESC>.
 
  Now, move on to the next lesson.
 
@@ -90,21 +90,21 @@ _________________________________________________________________
 =                          INSERT MODE                          =
 =================================================================
 
- Press the i key to enter Insert mode.
+ Press the i key to enter Insert Mode.
 
  1. Move the cursor to the line below marked -->.
  2. Move to a place in the line which is missing text and press
-    i to enter Insert mode. Keys you press will now type text.
+    i to enter Insert Mode. Keys you press will now type text.
  3. Enter the missing text.
- 4. Press <ESC> to exit Insert mode and return to Normal mode.
+ 4. Press <ESC> to exit Insert Mode and return to Normal Mode.
  5. Repeat until the line matches the line below it.
 
  --> Th stce misg so.
      This sentence is missing some text.
 
- Note: If you want to move the cursor while in Insert mode,
+ Note: If you want to move the cursor while in Insert Mode,
        you may use the arrow keys instead of exiting and
-       reentering Insert mode.
+       reentering Insert Mode.
  Note: The status bar will display your current mode.
        Notice that when you press i, 'NOR' changes to 'INS'.
 
@@ -112,9 +112,9 @@ _________________________________________________________________
 =                      MORE ON INSERT MODE                      =
 =================================================================
 
- As you saw, you can press i to enter Insert mode at the current
+ As you saw, you can press i to enter Insert Mode at the current
  position of the cursor. There are a few other ways you can
- enter Insert mode at different locations.
+ enter Insert Mode at different locations.
 
  Common examples of insertion commands include:
    i - Insert before the selection.
@@ -140,7 +140,7 @@ _________________________________________________________________
     terminal.
  2. Open a file in Helix by running: hx FILENAME
  3. Make some edits to the file.
- 4. Press the : key to enter command mode.
+ 4. Press the : key to enter Command Mode.
  5. Type w or write, and press <ENTER> to save the file.
 
  You can also use wq or write-quit to save and exit.
@@ -158,7 +158,7 @@ _________________________________________________________________
 
  * Use the h,j,k,l keys to move the cursor.
 
- * Press : to enter command mode.
+ * Press : to enter Command Mode.
    * The q/quit and q!/quit! commands will exit Helix. The
      former fails when there are unsaved changes. The latter
      discards them.
@@ -167,8 +167,8 @@ _________________________________________________________________
 
  * Press d to delete the character at the cursor.
 
- * Press i to enter Insert mode and type text. Press <ESC> to
-   return to Normal mode.
+ * Press i to enter Insert Mode and type text. Press <ESC> to
+   return to Normal Mode.
 
 
 
@@ -214,7 +214,7 @@ _________________________________________________________________
  whitespace, whereas words can be separated by other characters
  in addition to whitespace.
 
- All of these motions select the last word and whitespace they
+ All of these motions select the final word and whitespace they
  traverse.
 
 
@@ -226,12 +226,12 @@ _________________________________________________________________
  Press c to change the current selection.
 
  The change command deletes the current selection and enters
- Insert mode, so it is a very common shorthand for di.
+ Insert Mode, so it is a very common shorthand for di.
 
  1. Move the cursor to the line below marked -->.
  2. Move to the start of an incorrect word and press w to
     select it.
- 3. Press c to delete the word and enter Insert mode.
+ 3. Press c to delete the word and enter Insert Mode.
  4. Type the correct word.
  5. Repeat until the line matches the line below it.
 
@@ -319,7 +319,7 @@ _________________________________________________________________
  * Typing d deletes the entire selection, so you can delete a
    word forward by typing wd.
 
- * Type c to delete the selection and enter Insert mode.
+ * Type c to delete the selection and enter Insert Mode.
 
  * Type a number before a motion to repeat it that many times.
 
@@ -338,7 +338,7 @@ _________________________________________________________________
  1. Move the cursor to the first line below marked -->.
  2. Type C to duplicate the cursor to the next line. Keys you
     press will now affect both cursors.
- 3. Use Insert mode to correct the lines. The two cursors will
+ 3. Use Insert Mode to correct the lines. The two cursors will
     fix both lines simultaneously.
  4. Type , to remove the second cursor.
 
