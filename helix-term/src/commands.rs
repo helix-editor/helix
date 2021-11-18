@@ -2467,7 +2467,7 @@ mod cmd {
     ) -> anyhow::Result<()> {
         let line = args[0].parse::<usize>()?;
 
-        goto_line_internal(&mut cx.editor, NonZeroUsize::new(line));
+        goto_line_impl(&mut cx.editor, NonZeroUsize::new(line));
 
         let (view, doc) = current!(cx.editor);
 
@@ -3467,10 +3467,10 @@ fn push_jump(editor: &mut Editor) {
 }
 
 fn goto_line(cx: &mut Context) {
-    goto_line_internal(&mut cx.editor, cx.count)
+    goto_line_impl(&mut cx.editor, cx.count)
 }
 
-fn goto_line_internal(editor: &mut Editor, count: Option<NonZeroUsize>) {
+fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
     if let Some(count) = count {
         push_jump(editor);
 
