@@ -13,7 +13,7 @@ use helix_core::{
     Rope,
 };
 use helix_view::{
-    graphics::{Color, Margin, Rect, Style},
+    graphics::{Margin, Rect},
     Theme,
 };
 
