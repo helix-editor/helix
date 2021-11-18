@@ -2,14 +2,27 @@ use tree_sitter::Node;
 
 use crate::{Rope, Syntax};
 
+const O_PAREN: char = '(';
+const C_PAREN: char = ')';
+const O_CURLY: char = '{';
+const C_CURLY: char = '}';
+const O_BRCKT: char = '[';
+const C_BRCKT: char = ']';
+const O_ANGLE: char = '<';
+const C_ANGLE: char = '>';
+
+const SINGLE_QUOTE: char = '\'';
+const DOUBLE_QUOTE: char = '\"';
+
 const PAIRS: &[(char, char)] = &[
-    ('(', ')'),
-    ('{', '}'),
-    ('[', ']'),
-    ('<', '>'),
-    ('\'', '\''),
-    ('"', '"'),
+    (O_PAREN, C_PAREN),
+    (O_CURLY, C_CURLY),
+    (O_BRCKT, C_BRCKT),
+    (O_ANGLE, C_ANGLE),
+    (SINGLE_QUOTE, SINGLE_QUOTE),
+    (DOUBLE_QUOTE, DOUBLE_QUOTE),
 ];
+
 // limit matching pairs to only ( ) { } [ ] < >
 
 // Returns the position of the matching bracket under cursor.
