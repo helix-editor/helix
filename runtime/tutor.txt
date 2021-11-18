@@ -214,7 +214,8 @@ _________________________________________________________________
  whitespace, whereas words can be separated by other characters
  in addition to whitespace.
 
- All of these motions select the text they traverse.
+ All of these motions select the last word and whitespace they
+ traverse.
 
 
 
