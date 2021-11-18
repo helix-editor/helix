@@ -28,18 +28,18 @@
 # 行号栏
 "ui.linenr" = { fg = "base0", bg = "base02" }
 # 当前行号栏
-"ui.linenr.selected" = { fg = "red", modifiers = ["bold"] }
+"ui.linenr.selected" = { fg = "blue", modifiers = ["bold"] }
 
 # 状态栏
-"ui.statusline" = { fg = "base02", bg = "base1" }
+"ui.statusline" = { fg = "base03", bg = "base0" }
 # 非活动状态栏
-"ui.statusline.inactive" = { fg = "base02", bg = "base00" }
+"ui.statusline.inactive" = { fg = "base1", bg = "base01" }
 
 # 补全窗口, preview窗口
-"ui.popup" = { bg = "base1" }
+"ui.popup" = { bg = "base02" }
 # 影响 补全选中 cmd弹出信息选中
-"ui.menu.selected" = { fg = "base02", bg = "violet"}
-"ui.menu" = { fg = "base02" }
+"ui.menu.selected" = { fg = "base02", bg = "base2"}
+"ui.menu" = { fg = "base1" }
 # ??
 "ui.window" = { fg = "base3" }
 # 命令行 补全的帮助信息
