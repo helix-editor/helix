@@ -45,8 +45,21 @@ pub struct DateIncrementor {
 
 impl DateIncrementor {
     pub fn from_range(text: RopeSlice, range: Range) -> Option<DateIncrementor> {
+        let range = if range.is_empty() {
+            if range.anchor < text.len_bytes() {
+                // Treat empty range as a cursor range.
+                range.put_cursor(text, range.anchor + 1, true)
+            } else {
+                // The range is empty and at the end of the text.
+                return None;
+            }
+        } else {
+            range
+        };
+
         let from = range.from().saturating_sub(DATE_LENGTH);
         let to = (range.from() + DATE_LENGTH).min(text.len_chars());
+
         let (from_in_text, to_in_text) = (range.from() - from, range.to() - from);
         let text: Cow<str> = text.slice(from..to).into();
 
@@ -58,35 +71,28 @@ impl DateIncrementor {
             let offset = range.from() - from_in_text;
             let range = Range::new(date.start() + offset, date.end() + offset);
 
-            let year = captures.get(1)?;
-            let month = captures.get(2)?;
-            let day = captures.get(3)?;
+            let (year, month, day) = (captures.get(1)?, captures.get(2)?, captures.get(3)?);
+            let (year_range, month_range, day_range) = (year.range(), month.range(), day.range());
 
-            let year_range = year.range();
-            let month_range = month.range();
-            let day_range = day.range();
-
-            let to_inclusive = if to_in_text > from_in_text {
-                to_in_text - 1
-            } else {
-                to_in_text
-            };
-            let field = if year_range.contains(&from_in_text) && year_range.contains(&to_inclusive)
+            let field = if year_range.contains(&from_in_text)
+                && year_range.contains(&(to_in_text - 1))
             {
                 DateField::Year
-            } else if month_range.contains(&from_in_text) && month_range.contains(&to_inclusive) {
+            } else if month_range.contains(&from_in_text) && month_range.contains(&(to_in_text - 1))
+            {
                 DateField::Month
-            } else if day_range.contains(&from_in_text) && day_range.contains(&to_inclusive) {
+            } else if day_range.contains(&from_in_text) && day_range.contains(&(to_in_text - 1)) {
                 DateField::Day
             } else {
                 return None;
             };
 
-            let year: i16 = year.as_str().parse().ok()?;
-            let month: u8 = month.as_str().parse().ok()?;
-            let day: u8 = day.as_str().parse().ok()?;
-
-            let date = Date::new(year, month, day).ok()?;
+            let date = Date::new(
+                year.as_str().parse::<i16>().ok()?,
+                month.as_str().parse::<u8>().ok()?,
+                day.as_str().parse::<u8>().ok()?,
+            )
+            .ok()?;
 
             Some(DateIncrementor {
                 date,
@@ -131,8 +137,8 @@ mod test {
     fn test_create_incrementor_for_year_with_dashes() {
         let rope = Rope::from_str("2021-11-15");
 
-        for head in 0..=3 {
-            let range = Range::point(head);
+        for cursor in 0..=3 {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
@@ -149,8 +155,8 @@ mod test {
     fn test_create_incrementor_for_month_with_dashes() {
         let rope = Rope::from_str("2021-11-15");
 
-        for head in 5..=6 {
-            let range = Range::point(head);
+        for cursor in 5..=6 {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
@@ -167,8 +173,8 @@ mod test {
     fn test_create_incrementor_for_day_with_dashes() {
         let rope = Rope::from_str("2021-11-15");
 
-        for head in 8..=9 {
-            let range = Range::point(head);
+        for cursor in 8..=9 {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
@@ -185,8 +191,8 @@ mod test {
     fn test_try_create_incrementor_on_dashes() {
         let rope = Rope::from_str("2021-11-15");
 
-        for head in &[4, 7] {
-            let range = Range::point(*head);
+        for &cursor in &[4, 7] {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(DateIncrementor::from_range(rope.slice(..), range), None,);
         }
     }
@@ -195,8 +201,8 @@ mod test {
     fn test_create_incrementor_for_year_with_slashes() {
         let rope = Rope::from_str("2021/11/15");
 
-        for head in 0..=3 {
-            let range = Range::point(head);
+        for cursor in 0..=3 {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
@@ -213,8 +219,8 @@ mod test {
     fn test_create_incrementor_for_month_with_slashes() {
         let rope = Rope::from_str("2021/11/15");
 
-        for head in 5..=6 {
-            let range = Range::point(head);
+        for cursor in 5..=6 {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
@@ -231,8 +237,8 @@ mod test {
     fn test_create_incrementor_for_day_with_slashes() {
         let rope = Rope::from_str("2021/11/15");
 
-        for head in 8..=9 {
-            let range = Range::point(head);
+        for cursor in 8..=9 {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
@@ -249,8 +255,8 @@ mod test {
     fn test_try_create_incrementor_on_slashes() {
         let rope = Rope::from_str("2021/11/15");
 
-        for head in &[4, 7] {
-            let range = Range::point(*head);
+        for &cursor in &[4, 7] {
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(DateIncrementor::from_range(rope.slice(..), range), None,);
         }
     }
@@ -258,7 +264,7 @@ mod test {
     #[test]
     fn test_date_surrounded_by_spaces() {
         let rope = Rope::from_str("   2021-11-15  ");
-        let range = Range::point(3);
+        let range = Range::new(3, 4);
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
@@ -273,7 +279,7 @@ mod test {
     #[test]
     fn test_date_in_single_quotes() {
         let rope = Rope::from_str("date = '2021-11-15'");
-        let range = Range::point(10);
+        let range = Range::new(10, 11);
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
@@ -288,7 +294,7 @@ mod test {
     #[test]
     fn test_date_in_double_quotes() {
         let rope = Rope::from_str("let date = \"2021-11-15\";");
-        let range = Range::point(12);
+        let range = Range::new(12, 13);
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
@@ -303,14 +309,51 @@ mod test {
     #[test]
     fn test_date_cursor_one_right_of_date() {
         let rope = Rope::from_str("2021-11-15 ");
-        let range = Range::point(10);
+        let range = Range::new(10, 11);
         assert_eq!(DateIncrementor::from_range(rope.slice(..), range), None);
     }
 
     #[test]
     fn test_date_cursor_one_left_of_number() {
         let rope = Rope::from_str(" 2021-11-15");
+        let range = Range::new(0, 1);
+        assert_eq!(DateIncrementor::from_range(rope.slice(..), range), None);
+    }
+
+    #[test]
+    fn test_date_empty_range_at_beginning() {
+        let rope = Rope::from_str("2021-11-15");
         let range = Range::point(0);
+        assert_eq!(
+            DateIncrementor::from_range(rope.slice(..), range),
+            Some(DateIncrementor {
+                date: Date::new(2021, 11, 15).unwrap(),
+                range: Range::new(0, 10),
+                field: DateField::Year,
+                format: FORMATS[0],
+            })
+        );
+    }
+
+    #[test]
+    fn test_date_empty_range_at_in_middle() {
+        let rope = Rope::from_str("2021-11-15");
+        let range = Range::point(5);
+        assert_eq!(
+            DateIncrementor::from_range(rope.slice(..), range),
+            Some(DateIncrementor {
+                date: Date::new(2021, 11, 15).unwrap(),
+                range: Range::new(0, 10),
+                field: DateField::Month,
+                format: FORMATS[0],
+            })
+        );
+    }
+
+    #[test]
+    fn test_date_empty_range_at_end() {
+        let rope = Rope::from_str("2021-11-15");
+        let range = Range::point(10);
         assert_eq!(DateIncrementor::from_range(rope.slice(..), range), None);
     }
 
@@ -337,7 +380,7 @@ mod test {
 
         for invalid in tests {
             let rope = Rope::from_str(invalid);
-            let range = Range::point(0);
+            let range = Range::new(0, 1);
 
             assert_eq!(DateIncrementor::from_range(rope.slice(..), range), None);
         }
@@ -367,7 +410,7 @@ mod test {
 
         for (original, cursor, amount, expected) in tests {
             let rope = Rope::from_str(original);
-            let range = Range::point(cursor);
+            let range = Range::new(cursor, cursor + 1);
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
