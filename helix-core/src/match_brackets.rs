@@ -23,19 +23,6 @@ const PAIRS: &[(char, char)] = &[
     (DOUBLE_QUOTE, DOUBLE_QUOTE),
 ];
 
-const VALID_CHARS: &[char] = &[
-    O_PAREN,
-    C_PAREN,
-    O_CURLY,
-    C_CURLY,
-    O_BRCKT,
-    C_BRCKT,
-    O_ANGLE,
-    C_ANGLE,
-    SINGLE_QUOTE,
-    DOUBLE_QUOTE,
-];
-
 // limit matching pairs to only ( ) { } [ ] < >
 
 // Returns the position of the matching bracket under cursor.
@@ -49,7 +36,7 @@ const VALID_CHARS: &[char] = &[
 pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
     let tree = syntax.tree();
 
-    if pos >= doc.len_chars() || !VALID_CHARS.contains(&doc.char(pos)) {
+    if pos >= doc.len_chars() || !is_valid_bracket(doc.char(pos)) {
         return None;
     }
 
@@ -129,6 +116,10 @@ pub fn find_matching_bracket_fuzzy(syntax: &Syntax, doc: &Rope, pos: usize) -> O
             return None;
         }
     }
+}
+
+fn is_valid_bracket(c: char) -> bool {
+    PAIRS.iter().any(|(l, r)| *l == c || *r == c)
 }
 
 fn is_valid_pair(doc: &Rope, start_char: usize, end_char: usize) -> bool {
