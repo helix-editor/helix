@@ -2758,7 +2758,7 @@ mod cmd {
             completer: None,
         },
         TypableCommand {
-            name: "goto",
+            name: cmd::GOTO_CMD,
             aliases: &["g"],
             doc: "Go to line number.",
             fun: goto_line_number,
@@ -2775,6 +2775,8 @@ mod cmd {
             })
             .collect()
     });
+
+    pub(super) const GOTO_CMD: &str = "goto";
 }
 
 fn command_mode(cx: &mut Context) {
@@ -2821,11 +2823,17 @@ fn command_mode(cx: &mut Context) {
                 return;
             }
 
-            let parts = input.split_whitespace().collect::<Vec<&str>>();
+            let mut parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
             }
 
+            // If command is numeric, insert goto command.
+            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
+                parts.insert(0, cmd::GOTO_CMD);
+            }
+
+            // Handle typable commands
             if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
                 if let Err(e) = (cmd.fun)(cx, &parts[1..], event) {
                     cx.editor.set_error(format!("{}", e));
