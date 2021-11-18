@@ -8,6 +8,7 @@ pub struct Args {
     pub load_tutor: bool,
     pub verbosity: u64,
     pub files: Vec<PathBuf>,
+    pub positions: Vec<Option<(usize, Option<usize>)>>,
 }
 
 impl Args {
@@ -18,6 +19,7 @@ impl Args {
 
         iter.next(); // skip the program, we don't care about that
 
+        let mut position: Option<(usize, Option<usize>)> = None;
         for arg in &mut iter {
             match arg.as_str() {
                 "--" => break, // stop parsing at this point treat the remaining as files
@@ -41,13 +43,46 @@ impl Args {
                         }
                     }
                 }
-                arg => args.files.push(PathBuf::from(arg)),
+                arg if arg.starts_with('+') => {
+                    let mut line_col: Vec<usize> = vec![];
+                    for number_str in arg[1..].split(':') {
+                        match number_str.parse() {
+                            Ok(number) => line_col.push(number),
+                            Err(_) => {
+                                return Err(Error::msg(format!(
+                                    "parsing {} expected number, actual {}",
+                                    arg, number_str
+                                )));
+                            }
+                        }
+                    }
+                    match line_col.len() {
+                        1 => {
+                            position = Some((line_col[0], None));
+                        }
+                        2 => {
+                            position = Some((line_col[0], Some(line_col[1])));
+                        }
+                        _ => {
+                            return Err(Error::msg(format!(
+                                "expected +<line>:<column>, actual {}",
+                                arg
+                            )))
+                        }
+                    }
+                }
+                arg => {
+                    args.files.push(PathBuf::from(arg));
+                    args.positions.push(position);
+                    position = None;
+                }
             }
         }
 
         // push the remaining args, if any to the files
         for filename in iter {
             args.files.push(PathBuf::from(filename));
+            args.positions.push(position);
         }
 
         Ok(args)

@@ -51,6 +51,7 @@ pub struct Application {
 
 impl Application {
     pub fn new(args: Args, mut config: Config) -> Result<Self, Error> {
+        use helix_view::document::Mode;
         use helix_view::editor::Action;
         let mut compositor = Compositor::new()?;
         let size = compositor.size();
@@ -124,13 +125,38 @@ impl Application {
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
-                for file in args.files {
+                for (file, pos) in args.files.iter().zip(args.positions.iter()) {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
                         editor.open(file.to_path_buf(), Action::Load)?;
+                        if let Some((line, column)) = pos {
+                            let (view, doc) = current!(editor);
+                            let text = doc.text();
+                            let max_line = if text.line(text.len_lines() - 1).len_chars() == 0 {
+                                // If the last line is blank, don't jump to it.
+                                text.len_lines().saturating_sub(2)
+                            } else {
+                                text.len_lines() - 1
+                            };
+                            let line_idx = std::cmp::min(line - 1, max_line);
+                            let text = text.slice(..);
+                            let mut pos = text.line_to_char(line_idx);
+                            if let Some(col) = column {
+                                let line_len_chars = text.line(line_idx).len_chars();
+                                pos += if col > &line_len_chars {
+                                    &line_len_chars
+                                } else {
+                                    col
+                                } - 1;
+                            }
+                            let selection = doc.selection(view.id).clone().transform(|range| {
+                                range.put_cursor(text, pos, doc.mode == Mode::Select)
+                            });
+                            doc.set_selection(view.id, selection);
+                        }
                     }
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
