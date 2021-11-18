@@ -36,7 +36,7 @@ similar = "2.1"
 
 etcetera = "0.3"
 
-chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
+gregorian = "0.2.1"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
