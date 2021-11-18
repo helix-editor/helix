@@ -4735,19 +4735,15 @@ pub fn completion(cx: &mut Context) {
                 return;
             }
             let size = compositor.size();
-            let ui = compositor
-                .find(std::any::type_name::<ui::EditorView>())
-                .unwrap();
-            if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                ui.set_completion(
-                    editor,
-                    items,
-                    offset_encoding,
-                    start_offset,
-                    trigger_offset,
-                    size,
-                );
-            };
+            let ui = compositor.find::<ui::EditorView>().unwrap();
+            ui.set_completion(
+                editor,
+                items,
+                offset_encoding,
+                start_offset,
+                trigger_offset,
+                size,
+            );
         },
     );
 }

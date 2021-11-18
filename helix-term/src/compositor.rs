@@ -177,11 +177,12 @@ impl Compositor {
             .any(|component| component.type_name() == type_name)
     }
 
-    pub fn find(&mut self, type_name: &str) -> Option<&mut dyn Component> {
+    pub fn find<T: 'static>(&mut self) -> Option<&mut T> {
+        let type_name = std::any::type_name::<T>();
         self.layers
             .iter_mut()
             .find(|component| component.type_name() == type_name)
-            .map(|component| component.as_mut())
+            .and_then(|component| component.as_any_mut().downcast_mut())
     }
 }
 

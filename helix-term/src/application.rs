@@ -270,12 +270,8 @@ impl Application {
         }
         let editor_view = self
             .compositor
-            .find(std::any::type_name::<ui::EditorView>())
+            .find::<ui::EditorView>()
             .expect("expected at least one EditorView");
-        let editor_view = editor_view
-            .as_any_mut()
-            .downcast_mut::<ui::EditorView>()
-            .unwrap();
 
         if editor_view.completion.is_some() {
             return;
@@ -440,12 +436,8 @@ impl Application {
                     {
                         let editor_view = self
                             .compositor
-                            .find(std::any::type_name::<ui::EditorView>())
+                            .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let editor_view = editor_view
-                            .as_any_mut()
-                            .downcast_mut::<ui::EditorView>()
-                            .unwrap();
                         let lsp::ProgressParams { token, value } = params;
 
                         let lsp::ProgressParamsValue::WorkDone(work) = value;
@@ -559,12 +551,8 @@ impl Application {
 
                         let editor_view = self
                             .compositor
-                            .find(std::any::type_name::<ui::EditorView>())
+                            .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let editor_view = editor_view
-                            .as_any_mut()
-                            .downcast_mut::<ui::EditorView>()
-                            .unwrap();
                         let spinner = editor_view.spinners_mut().get_or_create(server_id);
                         if spinner.is_stopped() {
                             spinner.start();
