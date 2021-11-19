@@ -629,6 +629,12 @@ fn trim_selections(cx: &mut Context) {
 // align text in selection
 fn align_selections(cx: &mut Context) {
     let align_style = cx.count();
+    if align_style > 3 {
+        cx.editor.set_error(
+            "align only accept 1,2,3 as count to set left/center/right align".to_string(),
+        );
+    }
+
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
