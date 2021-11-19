@@ -16,11 +16,6 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     };
 
     // Separate file config so we can include year, month and day in file logs
-    let file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(logpath)?;
     let file_config = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -31,7 +26,7 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(file);
+        .chain(fern::log_file(logpath)?);
 
     base_config.chain(file_config).apply()?;
 
