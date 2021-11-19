@@ -27,8 +27,25 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 It's a terminal-based editor first, but I'd like to explore a custom renderer
 (similar to emacs) in wgpu or skulpin.
 
-Note: Only certain languages have indentation definitions at the moment. Check
-`runtime/queries/<lang>/` for `indents.toml`.
+<details> <summary> Languages with indentation definitons </summary>
+ <ul>
+  <li> glsl </li>
+  <li> go </li>
+  <li> javascript </li>
+  <li> json </li>
+  <li> lua </li>
+  <li> nix </li>
+  <li> ocaml </li>
+  <li> php </li>
+  <li> protobuf </li>
+  <li> python </li>
+  <li> rust </li>
+  <li> svelte </li>
+  <li> typescript </li>
+  <li> yaml </li>
+  <li> zig </li>
+ </ul>
+</details>
 
 # Installation
 
