@@ -55,7 +55,7 @@ fn parse<'a>(
     fn to_span(text: pulldown_cmark::CowStr) -> Span {
         use std::ops::Deref;
         Span::raw::<std::borrow::Cow<_>>(match text {
-            CowStr::Borrowed(s) => s.to_string().into(), // could retain borrow
+            CowStr::Borrowed(s) => s.into(),
             CowStr::Boxed(s) => s.to_string().into(),
             CowStr::Inlined(s) => s.deref().to_owned().into(),
         })
@@ -179,7 +179,9 @@ fn parse<'a>(
                 spans.push(Span::raw(" "));
             }
             Event::Rule => {
-                lines.push(Spans::from("---"));
+                let mut span = Span::raw("---");
+                span.style = code_style;
+                lines.push(Spans::from(span));
                 lines.push(Spans::default());
             }
             // TaskListMarker(bool) true if checked
