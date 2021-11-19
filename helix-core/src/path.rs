@@ -40,7 +40,6 @@ pub fn expand_tilde(path: &Path) -> PathBuf {
 /// needs to improve on.
 /// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
 pub fn get_normalized_path(path: &Path) -> PathBuf {
-    let path = expand_tilde(path);
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
@@ -72,10 +71,11 @@ pub fn get_normalized_path(path: &Path) -> PathBuf {
 /// This function is used instead of `std::fs::canonicalize` because we don't want to verify
 /// here if the path exists, just normalize it's components.
 pub fn get_canonicalized_path(path: &Path) -> std::io::Result<PathBuf> {
+    let path = expand_tilde(path);
     let path = if path.is_relative() {
         std::env::current_dir().map(|current_dir| current_dir.join(path))?
     } else {
-        path.to_path_buf()
+        path
     };
 
     Ok(get_normalized_path(path.as_path()))
