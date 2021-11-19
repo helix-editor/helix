@@ -685,7 +685,8 @@ fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> 
     match align_style {
         2 => s.insert_str(s.len() / 2, trimed), // center align
         3 => s.push_str(trimed),                // right align
-        _ => s.insert_str(0, trimed),           // left align
+        1 => s.insert_str(0, trimed),           // left align
+        n => unimplemented!(n),
     }
     s
 }
