@@ -30,10 +30,10 @@
 "label" = "#b1951d"
 "module" = "#b1951d"
 
-"warning" = { fg = "#da8b55", bg = "bg1" }
-"error" = { fg = "#e0211d", bg = "bg1" }
-"info" = { fg = "#b1951d", bg = "bg1" }
-"hint" = { fg = "#d1dcdf", bg = "bg1" }
+"warning" = { fg = "#da8b55" }
+"error" = { fg = "#e0211d" }
+"info" = { fg = "#b1951d" }
+"hint" = { fg = "#d1dcdf" }
 
 "ui.background" = { bg = "bg0" }
 "ui.linenr" = { fg = "bg3" }
