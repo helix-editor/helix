@@ -642,6 +642,7 @@ fn align_selections(cx: &mut Context) {
     let mut column_widths = vec![];
     let mut last_line = text.len_lines();
     let mut column = 0;
+    // first of all, we need compute all column's width, let use max width of the selections in a column
     for sel in selection {
         let (l1, l2) = sel.line_range(text);
         if l1 != l2 {
@@ -649,6 +650,7 @@ fn align_selections(cx: &mut Context) {
                 .set_error("align cannot work with multi line selections".to_string());
             return;
         }
+        // if the selection is not in the same line with last selection, we set the column to 0
         column = if l1 != last_line { 0 } else { column + 1 };
         last_line = l1;
 
@@ -657,10 +659,12 @@ fn align_selections(cx: &mut Context) {
                 column_widths[column] = sel.to() - sel.from();
             }
         } else {
+            // a new column, current selection width is the temp width of the column
             column_widths.push(sel.to() - sel.from());
         }
     }
     last_line = text.len_lines();
+    // once we get the with of each column, we transform each selection with to it's column width based on the align style
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         let l = range.cursor_line(text);
         column = if l != last_line { 0 } else { column + 1 };
@@ -684,9 +688,9 @@ fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> 
     let trimed = fragment.trim_matches(|c| c == ' ');
     let mut s = " ".repeat(width - trimed.chars().count());
     match align_style {
+        1 => s.insert_str(0, trimed),           // left align
         2 => s.insert_str(s.len() / 2, trimed), // center align
         3 => s.push_str(trimed),                // right align
-        1 => s.insert_str(0, trimed),           // left align
         n => unimplemented!("{}", n),
     }
     s
