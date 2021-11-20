@@ -2090,6 +2090,7 @@ pub mod cmd {
             return Ok(());
         }
 
+        let mut nonexistent_buffers = vec![];
         for arg in args {
             let doc_id = editor.documents().find_map(|doc| {
                 let arg_path = Some(Path::new(arg.as_ref()));
@@ -2104,11 +2105,18 @@ pub mod cmd {
 
             match doc_id {
                 Some(doc_id) => editor.close_document(doc_id, force)?,
-                None => {
-                    editor.set_error(format!("couldn't close buffer '{}': does not exist", arg));
-                }
+                None => nonexistent_buffers.push(arg),
             }
         }
+
+        let nonexistent_buffers: Vec<_> = nonexistent_buffers
+            .into_iter()
+            .map(|str| format!("'{}'", str))
+            .collect();
+        editor.set_error(format!(
+            "couldn't close buffer(s) {}: does not exist",
+            nonexistent_buffers.join(", ")
+        ));
 
         Ok(())
     }
