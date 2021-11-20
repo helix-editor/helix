@@ -30,7 +30,7 @@ pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&crate::compositor::Context, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut View, &mut Document, Regex, PromptEvent) + 'static,
 ) -> Prompt {
     let (view, doc) = current!(cx.editor);
@@ -168,18 +168,53 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub mod completers {
+    use crate::compositor::Context;
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
+    use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::editor::Config;
     use helix_view::theme;
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
 
-    pub type Completer = fn(&str) -> Vec<Completion>;
+    pub type Completer = fn(&Context, &str) -> Vec<Completion>;
 
-    pub fn theme(input: &str) -> Vec<Completion> {
+    pub fn none(_cx: &Context, _input: &str) -> Vec<Completion> {
+        Vec::new()
+    }
+
+    pub fn buffer(cx: &Context, input: &str) -> Vec<Completion> {
+        let mut names: Vec<_> = cx
+            .editor
+            .documents
+            .iter()
+            .map(|(_id, doc)| {
+                let name = doc
+                    .relative_path()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| String::from(SCRATCH_BUFFER_NAME));
+                ((0..), Cow::from(name))
+            })
+            .collect();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = names
+            .into_iter()
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
+        names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
+
+        names
+    }
+
+    pub fn theme(_cx: &Context, input: &str) -> Vec<Completion> {
         let mut names = theme::Loader::read_names(&helix_core::runtime_dir().join("themes"));
         names.extend(theme::Loader::read_names(
             &helix_core::config_dir().join("themes"),
@@ -207,7 +242,7 @@ pub mod completers {
         names
     }
 
-    pub fn setting(input: &str) -> Vec<Completion> {
+    pub fn setting(_cx: &Context, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             serde_json::to_value(Config::default())
                 .unwrap()
@@ -232,7 +267,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(input: &str) -> Vec<Completion> {
+    pub fn filename(_cx: &Context, input: &str) -> Vec<Completion> {
         filename_impl(input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -244,7 +279,7 @@ pub mod completers {
         })
     }
 
-    pub fn directory(input: &str) -> Vec<Completion> {
+    pub fn directory(_cx: &Context, input: &str) -> Vec<Completion> {
         filename_impl(input, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 

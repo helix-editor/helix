@@ -361,8 +361,9 @@ fn debug_parameter_prompt(
     let completer = match field_type {
         "filename" => ui::completers::filename,
         "directory" => ui::completers::directory,
-        _ => |_input: &str| Vec::new(),
+        _ => ui::completers::none,
     };
+
     Prompt::new(
         format!("{}: ", name).into(),
         None,
@@ -696,7 +697,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                     let mut prompt = Prompt::new(
                         "condition:".into(),
                         None,
-                        |_input: &str| Vec::new(),
+                        ui::completers::none,
                         move |cx, input: &str, event: PromptEvent| {
                             if event != PromptEvent::Validate {
                                 return;
@@ -740,7 +741,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                     let mut prompt = Prompt::new(
                         "log-message:".into(),
                         None,
-                        |_input: &str| Vec::new(),
+                        ui::completers::none,
                         move |cx, input: &str, event: PromptEvent| {
                             if event != PromptEvent::Validate {
                                 return;

@@ -302,7 +302,7 @@ impl<T> Picker<T> {
         let prompt = Prompt::new(
             "".into(),
             None,
-            |_pattern: &str| Vec::new(),
+            |_ctx: &Context, _pattern: &str| Vec::new(),
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {
                 //
             },
@@ -395,12 +395,12 @@ impl<T> Picker<T> {
             .map(|(index, _score)| &self.options[*index])
     }
 
-    pub fn save_filter(&mut self) {
+    pub fn save_filter(&mut self, cx: &Context) {
         self.filters.clear();
         self.filters
             .extend(self.matches.iter().map(|(index, _)| *index));
         self.filters.sort_unstable(); // used for binary search later
-        self.prompt.clear();
+        self.prompt.clear(cx);
     }
 }
 
@@ -468,7 +468,7 @@ impl<T: 'static> Component for Picker<T> {
                 return close_fn;
             }
             ctrl!(' ') => {
-                self.save_filter();
+                self.save_filter(cx);
             }
             _ => {
                 if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
