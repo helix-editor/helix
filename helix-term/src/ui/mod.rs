@@ -93,13 +93,22 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: PathBuf) -> FilePicker<PathBuf> {
+pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time;
 
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
     let mut walk_builder = WalkBuilder::new(&root);
+    walk_builder
+        .hidden(config.file_picker.hidden)
+        .parents(config.file_picker.parents)
+        .ignore(config.file_picker.ignore)
+        .git_ignore(config.file_picker.git_ignore)
+        .git_global(config.file_picker.git_global)
+        .git_exclude(config.file_picker.git_exclude)
+        .max_depth(config.file_picker.max_depth);
+
     let walk_builder = match type_builder.add(
         "compressed",
         "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
