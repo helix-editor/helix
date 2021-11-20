@@ -623,6 +623,8 @@ impl Default for Keymaps {
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
+                "f" => goto_file_hsplit,
+                "F" => goto_file_vsplit,
                 "C-q" | "q" => wclose,
                 "C-o" | "o" => wonly,
                 "C-h" | "h" | "left" => jump_view_left,

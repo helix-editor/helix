@@ -198,6 +198,8 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `v`, `Ctrl-v`          | Vertical right split           | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split        | `hsplit`          |
 | `h`, `Ctrl-h`, `left`  | Move to left split             | `jump_view_left`  |
+| `f`                    | Go to files in the selection in horizontal splits  | `goto_file`                |
+| `F`                    | Go to files in the selection in vertical splits    | `goto_file`                |
 | `j`, `Ctrl-j`, `down`  | Move to split below            | `jump_view_down`  |
 | `k`, `Ctrl-k`, `up`    | Move to split above            | `jump_view_up`    |
 | `l`, `Ctrl-l`, `right` | Move to right split            | `jump_view_right` |

@@ -256,6 +256,8 @@ impl Command {
         goto_file_start, "Goto file start/line",
         goto_file_end, "Goto file end",
         goto_file, "Goto files in the selection",
+        goto_file_hsplit, "Goto files in the selection in horizontal splits",
+        goto_file_vsplit, "Goto files in the selection in vertical splits",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_middle, "Goto window middle",
@@ -729,11 +731,18 @@ fn goto_file_end(cx: &mut Context) {
 }
 
 fn goto_file(cx: &mut Context) {
-    let action = match cx.count() {
-        2 => Action::HorizontalSplit,
-        3 => Action::VerticalSplit,
-        _ => Action::Replace,
-    };
+    goto_file_impl(cx, Action::Replace);
+}
+
+fn goto_file_hsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::HorizontalSplit);
+}
+
+fn goto_file_vsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
