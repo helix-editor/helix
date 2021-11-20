@@ -4954,7 +4954,9 @@ fn match_brackets(cx: &mut Context) {
     if let Some(syntax) = doc.syntax() {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id).clone().transform(|range| {
-            if let Some(pos) = match_brackets::find(syntax, doc.text(), range.anchor) {
+            if let Some(pos) =
+                match_brackets::find_matching_bracket_fuzzy(syntax, doc.text(), range.anchor)
+            {
                 range.put_cursor(text, pos, doc.mode == Mode::Select)
             } else {
                 range

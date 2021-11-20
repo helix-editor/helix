@@ -377,7 +377,7 @@ impl EditorView {
             use helix_core::match_brackets;
             let pos = doc.selection(view.id).primary().cursor(text);
 
-            let pos = match_brackets::find(syntax, doc.text(), pos)
+            let pos = match_brackets::find_matching_bracket(syntax, doc.text(), pos)
                 .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
             if let Some(pos) = pos {
