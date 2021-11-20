@@ -1435,7 +1435,7 @@ fn select_regex(cx: &mut Context) {
         cx,
         "select:".into(),
         Some(reg),
-        |_input: &str| Vec::new(),
+        |_ctx: &compositor::Context, _input: &str| Vec::new(),
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -1458,7 +1458,7 @@ fn split_selection(cx: &mut Context) {
         cx,
         "split:".into(),
         Some(reg),
-        |_input: &str| Vec::new(),
+        |_ctx: &compositor::Context, _input: &str| Vec::new(),
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -1600,7 +1600,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
         cx,
         "search:".into(),
         Some(reg),
-        move |input: &str| {
+        move |_ctx: &compositor::Context, input: &str| {
             completions
                 .iter()
                 .filter(|comp| comp.starts_with(input))
@@ -1701,7 +1701,7 @@ fn global_search(cx: &mut Context) {
         cx,
         "global-search:".into(),
         None,
-        move |input: &str| {
+        move |_ctx: &compositor::Context, input: &str| {
             completions
                 .iter()
                 .filter(|comp| comp.starts_with(input))
@@ -2079,26 +2079,54 @@ pub mod cmd {
         Ok(())
     }
 
+    fn buffer_close_impl(
+        editor: &mut Editor,
+        args: &[Cow<str>],
+        force: bool,
+    ) -> anyhow::Result<()> {
+        if args.is_empty() {
+            let doc_id = view!(editor).doc;
+            editor.close_document(doc_id, force)?;
+            return Ok(());
+        }
+
+        for arg in args {
+            let doc_id = editor.documents().find_map(|doc| {
+                let arg_path = Some(Path::new(arg.as_ref()));
+                if doc.path().map(|p| p.as_path()) == arg_path
+                    || doc.relative_path().as_deref() == arg_path
+                {
+                    Some(doc.id())
+                } else {
+                    None
+                }
+            });
+
+            match doc_id {
+                Some(doc_id) => editor.close_document(doc_id, force)?,
+                None => {
+                    editor.set_error(format!("couldn't close buffer '{}': does not exist", arg));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn buffer_close(
         cx: &mut compositor::Context,
-        _args: &[Cow<str>],
+        args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let view = view!(cx.editor);
-        let doc_id = view.doc;
-        cx.editor.close_document(doc_id, false)?;
-        Ok(())
+        buffer_close_impl(cx.editor, args, false)
     }
 
     fn force_buffer_close(
         cx: &mut compositor::Context,
-        _args: &[Cow<str>],
+        args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let view = view!(cx.editor);
-        let doc_id = view.doc;
-        cx.editor.close_document(doc_id, true)?;
-        Ok(())
+        buffer_close_impl(cx.editor, args, true)
     }
 
     fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
@@ -2927,14 +2955,14 @@ pub mod cmd {
             aliases: &["bc", "bclose"],
             doc: "Close the current buffer.",
             fun: buffer_close,
-            completer: None, // FIXME: buffer completer
+          completer: Some(completers::buffer),
         },
         TypableCommand {
             name: "buffer-close!",
             aliases: &["bc!", "bclose!"],
             doc: "Close the current buffer forcefully (ignoring unsaved changes).",
             fun: force_buffer_close,
-            completer: None, // FIXME: buffer completer
+          completer: Some(completers::buffer),
         },
         TypableCommand {
             name: "write",
@@ -3262,7 +3290,7 @@ fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
-        |input: &str| {
+        |ctx: &compositor::Context, input: &str| {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
@@ -3294,7 +3322,7 @@ fn command_mode(cx: &mut Context) {
                     ..
                 }) = cmd::TYPABLE_COMMAND_MAP.get(parts[0])
                 {
-                    completer(part)
+                    completer(ctx, part)
                         .into_iter()
                         .map(|(range, file)| {
                             // offset ranges to input
@@ -5358,7 +5386,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
         cx,
         if !remove { "keep:" } else { "remove:" }.into(),
         Some(reg),
-        |_input: &str| Vec::new(),
+        |_ctx: &compositor::Context, _input: &str| Vec::new(),
         move |view, doc, regex, event| {
             if event != PromptEvent::Update {
                 return;
@@ -6122,7 +6150,7 @@ fn shell_keep_pipe(cx: &mut Context) {
     let prompt = Prompt::new(
         "keep-pipe:".into(),
         Some('|'),
-        |_input: &str| Vec::new(),
+        |_ctx: &compositor::Context, _input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shell = &cx.editor.config.shell;
             if event != PromptEvent::Validate {
@@ -6218,7 +6246,7 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     let prompt = Prompt::new(
         prompt,
         Some('|'),
-        |_input: &str| Vec::new(),
+        |_ctx: &compositor::Context, _input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shell = &cx.editor.config.shell;
             if event != PromptEvent::Validate {
@@ -6314,7 +6342,7 @@ fn rename_symbol(cx: &mut Context) {
     let prompt = Prompt::new(
         "rename-to:".into(),
         None,
-        |_input: &str| Vec::new(),
+        |_ctx: &compositor::Context, _input: &str| Vec::new(),
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
