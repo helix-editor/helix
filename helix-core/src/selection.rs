@@ -360,7 +360,7 @@ impl Selection {
         self.normalize()
     }
 
-    /// Adds a new range to the selection and makes it the primary range.
+    /// Removes a range from the selection.
     pub fn remove(mut self, index: usize) -> Self {
         assert!(
             self.ranges.len() > 1,
@@ -528,14 +528,15 @@ impl<'a> IntoIterator for &'a Selection {
 
 // TODO: checkSelection -> check if valid for doc length && sorted
 
-pub fn keep_matches(
+pub fn keep_or_remove_matches(
     text: RopeSlice,
     selection: &Selection,
     regex: &crate::regex::Regex,
+    remove: bool,
 ) -> Option<Selection> {
     let result: SmallVec<_> = selection
         .iter()
-        .filter(|range| regex.is_match(&range.fragment(text)))
+        .filter(|range| regex.is_match(&range.fragment(text)) ^ remove)
         .copied()
         .collect();
 

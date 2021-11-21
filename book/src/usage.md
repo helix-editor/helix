@@ -62,6 +62,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | Key after `mi` or `ma` | Textobject selected      |
 | ---                    | ---                      |
 | `w`                    | Word                     |
+| `W`                    | WORD                     |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `f`                    | Function                 |
 | `c`                    | Class                    |

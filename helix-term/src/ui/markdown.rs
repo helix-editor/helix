@@ -13,7 +13,7 @@ use helix_core::{
     Rope,
 };
 use helix_view::{
-    graphics::{Color, Margin, Rect, Style},
+    graphics::{Margin, Rect},
     Theme,
 };
 
@@ -61,9 +61,15 @@ fn parse<'a>(
         })
     }
 
-    let text_style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
-    let code_style = Style::default().fg(Color::Rgb(255, 255, 255)); // white
-    let heading_style = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
+    let text_style = theme.map(|theme| theme.get("ui.text")).unwrap_or_default();
+
+    // TODO: use better scopes for these, `markup.raw.block`, `markup.heading`
+    let code_style = theme
+        .map(|theme| theme.get("ui.text.focus"))
+        .unwrap_or_default(); // white
+    let heading_style = theme
+        .map(|theme| theme.get("ui.linenr.selected"))
+        .unwrap_or_default(); // lilac
 
     for event in parser {
         match event {

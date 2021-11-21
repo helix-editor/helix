@@ -54,6 +54,10 @@ impl JumpList {
             None
         }
     }
+
+    pub fn remove(&mut self, doc_id: &DocumentId) {
+        self.jumps.retain(|(other_id, _)| other_id != doc_id);
+    }
 }
 
 #[derive(Debug)]
@@ -85,7 +89,12 @@ impl View {
         self.area.clip_left(OFFSET).clip_bottom(1) // -1 for statusline
     }
 
-    pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
+    //
+    pub fn offset_coords_to_in_view(
+        &self,
+        doc: &Document,
+        scrolloff: usize,
+    ) -> Option<(usize, usize)> {
         let cursor = doc
             .selection(self.id)
             .primary()
@@ -104,21 +113,41 @@ impl View {
 
         let last_col = self.offset.col + inner_area.width.saturating_sub(1) as usize;
 
-        if line > last_line.saturating_sub(scrolloff) {
+        let row = if line > last_line.saturating_sub(scrolloff) {
             // scroll down
-            self.offset.row += line - (last_line.saturating_sub(scrolloff));
+            self.offset.row + line - (last_line.saturating_sub(scrolloff))
         } else if line < self.offset.row + scrolloff {
             // scroll up
-            self.offset.row = line.saturating_sub(scrolloff);
-        }
+            line.saturating_sub(scrolloff)
+        } else {
+            self.offset.row
+        };
 
-        if col > last_col.saturating_sub(scrolloff) {
+        let col = if col > last_col.saturating_sub(scrolloff) {
             // scroll right
-            self.offset.col += col - (last_col.saturating_sub(scrolloff));
+            self.offset.col + col - (last_col.saturating_sub(scrolloff))
         } else if col < self.offset.col + scrolloff {
             // scroll left
-            self.offset.col = col.saturating_sub(scrolloff);
+            col.saturating_sub(scrolloff)
+        } else {
+            self.offset.col
+        };
+        if row == self.offset.row && col == self.offset.col {
+            None
+        } else {
+            Some((row, col))
         }
+    }
+
+    pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
+        if let Some((row, col)) = self.offset_coords_to_in_view(doc, scrolloff) {
+            self.offset.row = row;
+            self.offset.col = col;
+        }
+    }
+
+    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) -> bool {
+        self.offset_coords_to_in_view(doc, scrolloff).is_none()
     }
 
     /// Calculates the last visible line on screen

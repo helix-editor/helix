@@ -1,4 +1,4 @@
-use crate::{ChangeSet, Rope, State, Transaction};
+use crate::{Assoc, ChangeSet, Range, Rope, State, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::num::NonZeroUsize;
@@ -133,6 +133,32 @@ impl History {
         Some(&self.revisions[last_child.get()].transaction)
     }
 
+    // Get the position of last change
+    pub fn last_edit_pos(&self) -> Option<usize> {
+        if self.current == 0 {
+            return None;
+        }
+        let current_revision = &self.revisions[self.current];
+        let primary_selection = current_revision
+            .inversion
+            .selection()
+            .expect("inversion always contains a selection")
+            .primary();
+        let (_from, to, _fragment) = current_revision
+            .transaction
+            .changes_iter()
+            // find a change that matches the primary selection
+            .find(|(from, to, _fragment)| Range::new(*from, *to).overlaps(&primary_selection))
+            // or use the first change
+            .or_else(|| current_revision.transaction.changes_iter().next())
+            .unwrap();
+        let pos = current_revision
+            .transaction
+            .changes()
+            .map_pos(to, Assoc::After);
+        Some(pos)
+    }
+
     fn lowest_common_ancestor(&self, mut a: usize, mut b: usize) -> usize {
         use std::collections::HashSet;
         let mut a_path_set = HashSet::new();
@@ -256,7 +282,7 @@ impl History {
 }
 
 /// Whether to undo by a number of edits or a duration of time.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum UndoKind {
     Steps(usize),
     TimePeriod(std::time::Duration),

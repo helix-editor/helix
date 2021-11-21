@@ -1,5 +1,8 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::{
+    compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key, shift,
+};
+use crossterm::event::Event;
 use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -192,63 +195,25 @@ impl<T: Item + 'static> Component for Menu<T> {
             compositor.pop();
         })));
 
-        match event {
+        match event.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
                 return close_fn;
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::BackTab,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Up, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('k'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Down,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('j'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+                // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
                 self.move_down();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
+            key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
                 }

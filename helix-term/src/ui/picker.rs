@@ -1,8 +1,9 @@
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key, shift,
     ui::EditorView,
 };
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, BorderType, Borders},
@@ -36,6 +37,7 @@ type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
+    pub truncate_start: bool,
     /// Caches paths to documents
     preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
@@ -89,6 +91,7 @@ impl<T> FilePicker<T> {
     ) -> Self {
         Self {
             picker: Picker::new(false, options, format_fn, callback_fn),
+            truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
@@ -171,6 +174,7 @@ impl<T: 'static> Component for FilePicker<T> {
         };
 
         let picker_area = area.with_width(picker_width);
+        self.picker.truncate_start = self.truncate_start;
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
@@ -276,6 +280,8 @@ pub struct Picker<T> {
     prompt: Prompt,
     /// Whether to render in the middle of the area
     render_centered: bool,
+    /// Wheather to truncate the start (default true)
+    pub truncate_start: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
@@ -306,6 +312,7 @@ impl<T> Picker<T> {
             cursor: 0,
             prompt,
             render_centered,
+            truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
         };
@@ -403,81 +410,35 @@ impl<T: 'static> Component for Picker<T> {
             compositor.last_picker = compositor.pop();
         })));
 
-        match key_event {
-            KeyEvent {
-                code: KeyCode::Up, ..
-            }
-            | KeyEvent {
-                code: KeyCode::BackTab,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('k'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+        match key_event.into() {
+            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
             }
-            KeyEvent {
-                code: KeyCode::Down,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Tab, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('j'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-            | KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
                 self.move_down();
             }
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => {
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
+            key!(Enter) => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(cx, option, Action::Replace);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char('s'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('s') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(cx, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char('v'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('v') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(cx, option, Action::VerticalSplit);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char(' '),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!(' ') => {
                 self.save_filter();
             }
             _ => {
@@ -567,7 +528,7 @@ impl<T: 'static> Component for Picker<T> {
                     text_style
                 },
                 true,
-                true,
+                self.truncate_start,
             );
         }
     }

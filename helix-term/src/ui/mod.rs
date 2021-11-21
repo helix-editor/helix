@@ -35,6 +35,7 @@ pub fn regex_prompt(
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
     let snapshot = doc.selection(view_id).clone();
+    let offset_snapshot = view.offset;
 
     Prompt::new(
         prompt,
@@ -45,6 +46,7 @@ pub fn regex_prompt(
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);
                     doc.set_selection(view.id, snapshot.clone());
+                    view.offset = offset_snapshot;
                 }
                 PromptEvent::Validate => {
                     // TODO: push_jump to store selection just before jump
