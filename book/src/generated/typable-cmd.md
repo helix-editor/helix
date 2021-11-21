@@ -1,5 +1,5 @@
 | Name | Description |
-| ---  | ---         |
+| --- | --- |
 | `:quit`, `:q` | Close the current view. |
 | `:quit!`, `:q!` | Close the current view forcefully (ignoring unsaved changes). |
 | `:open`, `:o` | Open a file from disk into the current view. |

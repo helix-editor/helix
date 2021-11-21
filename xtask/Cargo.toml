@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 helix-term = { version = "0.5", path = "../helix-term" }
+helix-core = { version = "0.5", path = "../helix-core" }
+toml = "0.5"

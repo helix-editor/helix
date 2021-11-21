@@ -23,7 +23,7 @@ like the list of `:commands` and supported languages. To generate these
 files, run
 
 ```shell
-cargo xtask bookgen
+cargo xtask docgen
 ```
 
 inside the project. We use [xtask][xtask] as an ad-hoc task runner and

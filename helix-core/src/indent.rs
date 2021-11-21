@@ -452,6 +452,7 @@ where
                 file_types: vec!["rs".to_string()],
                 shebangs: vec![],
                 language_id: "Rust".to_string(),
+                display_name: "Rust".to_string(),
                 highlight_config: OnceCell::new(),
                 config: None,
                 //

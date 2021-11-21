@@ -1,17 +1,138 @@
-use std::env;
+use std::{env, error::Error};
+
+type DynError = Box<dyn Error>;
+
+pub mod helpers {
+    use std::{
+        fmt::Display,
+        path::{Path, PathBuf},
+    };
+
+    use crate::path;
+    use helix_core::syntax::Configuration as LangConfig;
+
+    #[derive(Copy, Clone)]
+    pub enum TsFeature {
+        Highlight,
+        TextObjects,
+        AutoIndent,
+    }
+
+    impl TsFeature {
+        pub fn all() -> &'static [Self] {
+            &[Self::Highlight, Self::TextObjects, Self::AutoIndent]
+        }
+
+        pub fn runtime_filename(&self) -> &'static str {
+            match *self {
+                Self::Highlight => "highlights.scm",
+                Self::TextObjects => "textobjects.scm",
+                Self::AutoIndent => "indents.toml",
+            }
+        }
+    }
+
+    impl Display for TsFeature {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(
+                f,
+                "{}",
+                match *self {
+                    Self::Highlight => "Syntax Highlighting",
+                    Self::TextObjects => "Treesitter Textobjects",
+                    Self::AutoIndent => "Auto Indent",
+                }
+            )
+        }
+    }
+
+    /// Get the list of languages that support a particular tree-sitter
+    /// based feature.
+    pub fn ts_lang_support(feat: TsFeature) -> Vec<String> {
+        let queries_dir = path::ts_queries();
+
+        find_files(&queries_dir, feat.runtime_filename())
+            .iter()
+            .map(|f| {
+                // .../helix/runtime/queries/python/highlights.scm
+                let tail = f.strip_prefix(&queries_dir).unwrap(); // python/highlights.scm
+                let lang = tail.components().next().unwrap(); // python
+                lang.as_os_str().to_string_lossy().to_string()
+            })
+            .collect()
+    }
+
+    /// Get the list of languages that have any form of tree-sitter
+    /// queries defined in the runtime directory.
+    pub fn langs_with_ts_queries() -> Vec<String> {
+        std::fs::read_dir(path::ts_queries())
+            .unwrap()
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                entry
+                    .file_type()
+                    .ok()?
+                    .is_dir()
+                    .then(|| entry.file_name().to_string_lossy().to_string())
+            })
+            .collect()
+    }
+
+    // naive implementation, but suffices for our needs
+    pub fn find_files(dir: &Path, filename: &str) -> Vec<PathBuf> {
+        std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|entry| {
+                let path = entry.ok()?.path();
+                if path.is_dir() {
+                    Some(find_files(&path, filename))
+                } else {
+                    (path.file_name()?.to_string_lossy() == filename).then(|| vec![path])
+                }
+            })
+            .flatten()
+            .collect()
+    }
+
+    pub fn lang_config() -> LangConfig {
+        let bytes = std::fs::read(path::lang_config()).unwrap();
+        toml::from_slice(&bytes).unwrap()
+    }
+}
 
 pub mod md_gen {
-    use super::path;
+    use crate::DynError;
+
+    use crate::helpers;
+    use crate::path;
     use std::fs;
 
     use helix_term::commands::cmd::TYPABLE_COMMAND_LIST;
 
     pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
+    pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
 
-    pub fn typable_commands() -> String {
+    fn md_table_heading(cols: &[String]) -> String {
+        let mut header = String::new();
+        header += &md_table_row(cols);
+        header += &md_table_row(&vec!["---".to_string(); cols.len()]);
+        header
+    }
+
+    fn md_table_row(cols: &[String]) -> String {
+        "| ".to_owned() + &cols.join(" | ") + " |\n"
+    }
+
+    fn md_mono(s: &str) -> String {
+        format!("`{}`", s)
+    }
+
+    pub fn typable_commands() -> Result<String, DynError> {
         let mut md = String::new();
-        md.push_str("| Name | Description |\n");
-        md.push_str("| ---  | ---         |\n");
+        md.push_str(&md_table_heading(&[
+            "Name".to_owned(),
+            "Description".to_owned(),
+        ]));
 
         let cmdify = |s: &str| format!("`:{}`", s);
 
@@ -22,11 +143,72 @@ pub mod md_gen {
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            let entry = format!("| {} | {} |\n", names, cmd.doc);
-            md.push_str(&entry);
+            md.push_str(&md_table_row(&[names.to_owned(), cmd.doc.to_owned()]));
         }
 
-        md
+        Ok(md)
+    }
+
+    pub fn lang_features() -> Result<String, DynError> {
+        let mut md = String::new();
+        let ts_features = helpers::TsFeature::all();
+
+        let mut cols = vec!["Language".to_owned()];
+        cols.append(
+            &mut ts_features
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<_>>(),
+        );
+        cols.push("Default LSP".to_owned());
+
+        md.push_str(&md_table_heading(&cols));
+        let config = helpers::lang_config();
+
+        let mut langs = config
+            .language
+            .iter()
+            .map(|l| l.language_id.clone())
+            .collect::<Vec<_>>();
+        langs.sort_unstable();
+
+        let mut ts_features_to_langs = Vec::new();
+        for &feat in ts_features {
+            ts_features_to_langs.push((feat, helpers::ts_lang_support(feat)));
+        }
+
+        let mut row = Vec::new();
+        for lang in langs {
+            let lc = config
+                .language
+                .iter()
+                .find(|l| l.language_id == lang)
+                .unwrap(); // lang comes from config
+            row.push(lc.display_name.clone());
+
+            for (_feat, support_list) in &ts_features_to_langs {
+                row.push(
+                    if support_list.contains(&lang) {
+                        "✓"
+                    } else {
+                        ""
+                    }
+                    .to_owned(),
+                );
+            }
+            row.push(
+                lc.language_server
+                    .as_ref()
+                    .map(|s| s.command.clone())
+                    .map(|c| md_mono(&c))
+                    .unwrap_or_default(),
+            );
+
+            md.push_str(&md_table_row(&row));
+            row.clear();
+        }
+
+        Ok(md)
     }
 
     pub fn write(filename: &str, data: &str) {
@@ -49,37 +231,46 @@ pub mod path {
     pub fn book_gen() -> PathBuf {
         project_root().join("book/src/generated/")
     }
+
+    pub fn ts_queries() -> PathBuf {
+        project_root().join("runtime/queries")
+    }
+
+    pub fn lang_config() -> PathBuf {
+        project_root().join("languages.toml")
+    }
 }
 
 pub mod tasks {
-    use super::md_gen;
+    use crate::md_gen;
+    use crate::DynError;
 
-    pub fn bookgen() {
-        md_gen::write(
-            md_gen::TYPABLE_COMMANDS_MD_OUTPUT,
-            &md_gen::typable_commands(),
-        );
+    pub fn docgen() -> Result<(), DynError> {
+        use md_gen::*;
+        write(TYPABLE_COMMANDS_MD_OUTPUT, &typable_commands()?);
+        write(LANG_SUPPORT_MD_OUTPUT, &lang_features()?);
+        Ok(())
     }
 
     pub fn print_help() {
         println!(
             "
-Usage: Run with `cargo xtask <task>`, eg. `cargo xtask bookgen`.
+Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
 
     Tasks:
-        bookgen: Generate files to be included in the mdbook output.
+        docgen: Generate files to be included in the mdbook output.
 "
         );
     }
 }
 
-fn main() -> Result<(), String> {
+fn main() -> Result<(), DynError> {
     let task = env::args().nth(1);
     match task {
         None => tasks::print_help(),
         Some(t) => match t.as_str() {
-            "bookgen" => tasks::bookgen(),
-            invalid => return Err(format!("Invalid task name: {}", invalid)),
+            "docgen" => tasks::docgen()?,
+            invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
     Ok(())
