@@ -607,13 +607,11 @@ pub fn dap_enable_exceptions(cx: &mut Context) {
     };
 
     let filters = match &debugger.capabilities().exception_breakpoint_filters {
-        Some(filters) => filters.clone(),
+        Some(filters) => filters.iter().map(|f| f.filter.clone()).collect(),
         None => return,
     };
 
-    if let Err(e) = block_on(
-        debugger.set_exception_breakpoints(filters.iter().map(|f| f.filter.clone()).collect()),
-    ) {
+    if let Err(e) = block_on(debugger.set_exception_breakpoints(filters)) {
         cx.editor
             .set_error(format!("Failed to set up exception breakpoints: {}", e));
     }
