@@ -1,11 +1,60 @@
-use gregorian::{Date, DateResultExt};
 use regex::Regex;
 
 use std::borrow::Cow;
+use std::cmp;
 
 use ropey::RopeSlice;
 
 use crate::{Range, Tendril};
+
+use chrono::{Datelike, Duration, NaiveDate};
+
+fn ndays_in_month(year: i32, month: u32) -> u32 {
+    // The first day of the next month...
+    let (y, m) = if month == 12 {
+        (year + 1, 1)
+    } else {
+        (year, month + 1)
+    };
+    let d = NaiveDate::from_ymd(y, m, 1);
+
+    // ...is preceded by the last day of the original month.
+    d.pred().day()
+}
+
+fn add_days(date: NaiveDate, amount: i64) -> Option<NaiveDate> {
+    date.checked_add_signed(Duration::days(amount))
+}
+
+fn add_months(date: NaiveDate, amount: i64) -> Option<NaiveDate> {
+    let month = date.month0() as i64 + amount;
+    let year = date.year() + i32::try_from(month / 12).ok()?;
+
+    // Normalize month
+    let month = month % 12;
+    let month = if month.is_negative() {
+        month + 13
+    } else {
+        month + 1
+    } as u32;
+
+    let day = cmp::min(date.day(), ndays_in_month(year, month));
+
+    Some(NaiveDate::from_ymd(year, month, day))
+}
+
+fn add_years(date: NaiveDate, amount: i64) -> Option<NaiveDate> {
+    let year = i32::try_from(date.year() as i64 + amount).ok()?;
+
+    let ndays = ndays_in_month(year, date.month());
+
+    if date.day() > ndays {
+        let d = NaiveDate::from_ymd(year, date.month(), ndays);
+        Some(d.succ())
+    } else {
+        date.with_year(year)
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 struct Format {
@@ -36,7 +85,7 @@ enum DateField {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DateIncrementor {
-    pub date: Date,
+    pub date: NaiveDate,
     pub range: Range,
 
     field: DateField,
@@ -87,12 +136,11 @@ impl DateIncrementor {
                 return None;
             };
 
-            let date = Date::new(
-                year.as_str().parse::<i16>().ok()?,
-                month.as_str().parse::<u8>().ok()?,
-                day.as_str().parse::<u8>().ok()?,
-            )
-            .ok()?;
+            let date = NaiveDate::from_ymd_opt(
+                year.as_str().parse::<i32>().ok()?,
+                month.as_str().parse::<u32>().ok()?,
+                day.as_str().parse::<u32>().ok()?,
+            )?;
 
             Some(DateIncrementor {
                 date,
@@ -105,22 +153,17 @@ impl DateIncrementor {
 
     pub fn incremented_text(&self, amount: i64) -> Tendril {
         let date = match self.field {
-            DateField::Year => self
-                .date
-                .add_years(amount.try_into().unwrap_or(0))
-                .or_next_valid(),
-            DateField::Month => self
-                .date
-                .add_months(amount.try_into().unwrap_or(0))
-                .or_prev_valid(),
-            DateField::Day => self.date.add_days(amount.try_into().unwrap_or(0)),
-        };
+            DateField::Year => add_years(self.date, amount),
+            DateField::Month => add_months(self.date, amount),
+            DateField::Day => add_days(self.date, amount),
+        }
+        .unwrap_or(self.date);
 
         format!(
             "{:04}{}{:02}{}{:02}",
             date.year(),
             self.format.separator,
-            date.month().to_number(),
+            date.month(),
             self.format.separator,
             date.day()
         )
@@ -142,7 +185,7 @@ mod test {
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
-                    date: Date::new(2021, 11, 15).unwrap(),
+                    date: NaiveDate::from_ymd(2021, 11, 15),
                     range: Range::new(0, 10),
                     field: DateField::Year,
                     format: FORMATS[0],
@@ -160,7 +203,7 @@ mod test {
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
-                    date: Date::new(2021, 11, 15).unwrap(),
+                    date: NaiveDate::from_ymd(2021, 11, 15),
                     range: Range::new(0, 10),
                     field: DateField::Month,
                     format: FORMATS[0],
@@ -178,7 +221,7 @@ mod test {
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
-                    date: Date::new(2021, 11, 15).unwrap(),
+                    date: NaiveDate::from_ymd(2021, 11, 15),
                     range: Range::new(0, 10),
                     field: DateField::Day,
                     format: FORMATS[0],
@@ -206,7 +249,7 @@ mod test {
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
-                    date: Date::new(2021, 11, 15).unwrap(),
+                    date: NaiveDate::from_ymd(2021, 11, 15),
                     range: Range::new(0, 10),
                     field: DateField::Year,
                     format: FORMATS[1],
@@ -224,7 +267,7 @@ mod test {
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
-                    date: Date::new(2021, 11, 15).unwrap(),
+                    date: NaiveDate::from_ymd(2021, 11, 15),
                     range: Range::new(0, 10),
                     field: DateField::Month,
                     format: FORMATS[1],
@@ -242,7 +285,7 @@ mod test {
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range),
                 Some(DateIncrementor {
-                    date: Date::new(2021, 11, 15).unwrap(),
+                    date: NaiveDate::from_ymd(2021, 11, 15),
                     range: Range::new(0, 10),
                     field: DateField::Day,
                     format: FORMATS[1],
@@ -268,7 +311,7 @@ mod test {
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
-                date: Date::new(2021, 11, 15).unwrap(),
+                date: NaiveDate::from_ymd(2021, 11, 15),
                 range: Range::new(3, 13),
                 field: DateField::Year,
                 format: FORMATS[0],
@@ -283,7 +326,7 @@ mod test {
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
-                date: Date::new(2021, 11, 15).unwrap(),
+                date: NaiveDate::from_ymd(2021, 11, 15),
                 range: Range::new(8, 18),
                 field: DateField::Year,
                 format: FORMATS[0],
@@ -298,7 +341,7 @@ mod test {
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
-                date: Date::new(2021, 11, 15).unwrap(),
+                date: NaiveDate::from_ymd(2021, 11, 15),
                 range: Range::new(12, 22),
                 field: DateField::Year,
                 format: FORMATS[0],
@@ -327,7 +370,7 @@ mod test {
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
-                date: Date::new(2021, 11, 15).unwrap(),
+                date: NaiveDate::from_ymd(2021, 11, 15),
                 range: Range::new(0, 10),
                 field: DateField::Year,
                 format: FORMATS[0],
@@ -342,7 +385,7 @@ mod test {
         assert_eq!(
             DateIncrementor::from_range(rope.slice(..), range),
             Some(DateIncrementor {
-                date: Date::new(2021, 11, 15).unwrap(),
+                date: NaiveDate::from_ymd(2021, 11, 15),
                 range: Range::new(0, 10),
                 field: DateField::Month,
                 format: FORMATS[0],
