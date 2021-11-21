@@ -1,14 +1,13 @@
 use helix_core::{
-    comment, coords_at_pos,
-    date::DateIncrementor,
-    find_first_non_whitespace_char, find_root, graphemes,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
+    increment::date::DateIncrementor,
+    increment::{number::NumberIncrementor, Increment},
     indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
-    numbers::NumberIncrementor,
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     register::Register,
@@ -5482,23 +5481,18 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let text = doc.text();
 
     let changes = selection.ranges().iter().filter_map(|range| {
-        if let Some(incrementor) = DateIncrementor::from_range(text.slice(..), *range) {
-            let new_text = incrementor.incremented_text(amount);
-            Some((
-                incrementor.range.from(),
-                incrementor.range.to(),
-                Some(new_text),
-            ))
+        let incrementor: Option<Box<dyn Increment>> = if let Some(incrementor) =
+            DateIncrementor::from_range(text.slice(..), *range)
+        {
+            Some(Box::new(incrementor))
         } else if let Some(incrementor) = NumberIncrementor::from_range(text.slice(..), *range) {
-            let new_text = incrementor.incremented_text(amount);
-            Some((
-                incrementor.range.from(),
-                incrementor.range.to(),
-                Some(new_text),
-            ))
+            Some(Box::new(incrementor))
         } else {
             None
-        }
+        };
+
+        let (range, new_text) = incrementor?.increment(amount);
+        Some((range.from(), range.to(), Some(new_text)))
     });
 
     if changes.clone().count() > 0 {

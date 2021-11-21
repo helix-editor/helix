@@ -1,17 +1,16 @@
 pub mod auto_pairs;
 pub mod chars;
 pub mod comment;
-pub mod date;
 pub mod diagnostic;
 pub mod diff;
 pub mod graphemes;
 pub mod history;
+pub mod increment;
 pub mod indent;
 pub mod line_ending;
 pub mod macros;
 pub mod match_brackets;
 pub mod movement;
-pub mod numbers;
 pub mod object;
 pub mod path;
 mod position;

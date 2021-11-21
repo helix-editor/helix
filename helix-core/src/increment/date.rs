@@ -9,6 +9,8 @@ use crate::{Range, Tendril};
 
 use chrono::{Datelike, Duration, NaiveDate};
 
+use super::Increment;
+
 fn ndays_in_month(year: i32, month: u32) -> u32 {
     // The first day of the next month...
     let (y, m) = if month == 12 {
@@ -29,6 +31,7 @@ fn add_days(date: NaiveDate, amount: i64) -> Option<NaiveDate> {
 fn add_months(date: NaiveDate, amount: i64) -> Option<NaiveDate> {
     let month = date.month0() as i64 + amount;
     let year = date.year() + i32::try_from(month / 12).ok()?;
+    let year = if month.is_negative() { year - 1 } else { year };
 
     // Normalize month
     let month = month % 12;
@@ -45,7 +48,6 @@ fn add_months(date: NaiveDate, amount: i64) -> Option<NaiveDate> {
 
 fn add_years(date: NaiveDate, amount: i64) -> Option<NaiveDate> {
     let year = i32::try_from(date.year() as i64 + amount).ok()?;
-
     let ndays = ndays_in_month(year, date.month());
 
     if date.day() > ndays {
@@ -85,9 +87,8 @@ enum DateField {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DateIncrementor {
-    pub date: NaiveDate,
-    pub range: Range,
-
+    date: NaiveDate,
+    range: Range,
     field: DateField,
     format: Format,
 }
@@ -150,8 +151,10 @@ impl DateIncrementor {
             })
         })
     }
+}
 
-    pub fn incremented_text(&self, amount: i64) -> Tendril {
+impl Increment for DateIncrementor {
+    fn increment(&self, amount: i64) -> (Range, Tendril) {
         let date = match self.field {
             DateField::Year => add_years(self.date, amount),
             DateField::Month => add_months(self.date, amount),
@@ -159,15 +162,18 @@ impl DateIncrementor {
         }
         .unwrap_or(self.date);
 
-        format!(
-            "{:04}{}{:02}{}{:02}",
-            date.year(),
-            self.format.separator,
-            date.month(),
-            self.format.separator,
-            date.day()
+        (
+            self.range,
+            format!(
+                "{:04}{}{:02}{}{:02}",
+                date.year(),
+                self.format.separator,
+                date.month(),
+                self.format.separator,
+                date.day()
+            )
+            .into(),
         )
-        .into()
     }
 }
 
@@ -437,6 +443,8 @@ mod test {
             ("2020-02-29", 0, 1, "2021-03-01"),
             ("2020-01-31", 5, 1, "2020-02-29"),
             ("2020-01-20", 5, 1, "2020-02-20"),
+            ("2021-01-01", 5, -1, "2020-12-01"),
+            ("2021-01-31", 5, -2, "2020-11-30"),
             ("2020-02-28", 8, 1, "2020-02-29"),
             ("2021-02-28", 8, 1, "2021-03-01"),
             ("2021-02-28", 0, -1, "2020-02-28"),
@@ -457,7 +465,8 @@ mod test {
             assert_eq!(
                 DateIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
-                    .incremented_text(amount),
+                    .increment(amount)
+                    .1,
                 expected.into()
             );
         }
