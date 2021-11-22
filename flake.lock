@@ -30,22 +30,6 @@
         "type": "github"
       }
     },
-    "flakeCompat": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1627913399,
-        "narHash": "sha256-hY8g6H2KFL8ownSiFeMOjwPC8P0ueXpCVEbxgda3pko=",
-        "owner": "edolstra",
-        "repo": "flake-compat",
-        "rev": "12c64ca55c1014cdc1b16ed5a804aa8576601ff2",
-        "type": "github"
-      },
-      "original": {
-        "owner": "edolstra",
-        "repo": "flake-compat",
-        "type": "github"
-      }
-    },
     "nixCargoIntegration": {
       "inputs": {
         "devshell": "devshell",
@@ -103,7 +87,6 @@
     },
     "root": {
       "inputs": {
-        "flakeCompat": "flakeCompat",
         "nixCargoIntegration": "nixCargoIntegration",
         "nixpkgs": "nixpkgs",
         "rust-overlay": "rust-overlay"
