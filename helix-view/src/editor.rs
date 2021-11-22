@@ -297,8 +297,6 @@ impl Editor {
                 .ok()
         });
 
-        log::info!("ls is {:?}", language_server);
-
         if let Some(language_server) = language_server {
             let language_id = doc
                 .language()
