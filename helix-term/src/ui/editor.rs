@@ -482,7 +482,8 @@ impl EditorView {
 
         for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
             use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
+            if let Ok(diagnostic) = doc.diagnostics().binary_search_by_key(&line, |d| d.line) {
+                let diagnostic = &doc.diagnostics()[diagnostic];
                 surface.set_stringn(
                     viewport.x,
                     viewport.y + i as u16,
