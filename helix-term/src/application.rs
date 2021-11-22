@@ -397,19 +397,20 @@ impl Application {
                             .position(|b| b.id == breakpoint.id)
                         {
                             Some(i) => {
-                                let item = debugger.breakpoints.get_mut(i).unwrap();
-                                item.verified = breakpoint.verified;
-                                // TODO: wasteful clones
-                                item.message = breakpoint.message.or_else(|| item.message.clone());
-                                item.source = breakpoint.source.or_else(|| item.source.clone());
-                                item.line = breakpoint.line.or(item.line);
-                                item.column = breakpoint.column.or(item.column);
-                                item.end_line = breakpoint.end_line.or(item.end_line);
-                                item.end_column = breakpoint.end_column.or(item.end_column);
-                                item.instruction_reference = breakpoint
-                                    .instruction_reference
-                                    .or_else(|| item.instruction_reference.clone());
-                                item.offset = breakpoint.offset.or(item.offset);
+                                debugger.breakpoints[i] = breakpoint;
+                                // let item = debugger.breakpoints.get_mut(i).unwrap();
+                                // item.verified = breakpoint.verified;
+                                // // TODO: wasteful clones
+                                // item.message = breakpoint.message.or_else(|| item.message.clone());
+                                // item.source = breakpoint.source.or_else(|| item.source.clone());
+                                // item.line = breakpoint.line.or(item.line);
+                                // item.column = breakpoint.column.or(item.column);
+                                // item.end_line = breakpoint.end_line.or(item.end_line);
+                                // item.end_column = breakpoint.end_column.or(item.end_column);
+                                // item.instruction_reference = breakpoint
+                                //     .instruction_reference
+                                //     .or_else(|| item.instruction_reference.clone());
+                                // item.offset = breakpoint.offset.or(item.offset);
                             }
                             None => {
                                 warn!("Changed breakpoint with id {:?} not found", breakpoint.id);
