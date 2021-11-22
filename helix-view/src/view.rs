@@ -253,7 +253,7 @@ impl View {
     /// Translates screen coordinates into coordinates on the gutter of the view.
     /// Returns a tuple of usize typed line and column numbers starting with 0.
     /// Returns None if coordinates are not on the gutter.
-    pub fn gutter_coords_at_screen_coords(&self, row: u16, column: u16) -> Option<(usize, usize)> {
+    pub fn gutter_coords_at_screen_coords(&self, row: u16, column: u16) -> Option<Position> {
         // 1 for status
         if row < self.area.top() || row >= self.area.bottom() {
             return None;
@@ -263,7 +263,7 @@ impl View {
             return None;
         }
 
-        Some((
+        Some(Position::new(
             (row - self.area.top()) as usize,
             (column - self.area.left()) as usize,
         ))

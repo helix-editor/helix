@@ -391,6 +391,7 @@ fn debug_parameter_prompt(
 }
 
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
+    // TODO: accept line instead of current selection
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let pos = doc.selection(view.id).primary().cursor(text);
@@ -413,6 +414,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     // we shouldn't really allow editing while debug is running though
 
     let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
+    // TODO: always keep breakpoints sorted and use binary search
     if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
         breakpoints.remove(pos);
     } else {
@@ -629,12 +631,14 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
     }
 }
 
+// TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
+// we also might be editing a breakpoint in a document that's no longer focused
 pub fn dap_edit_condition(cx: &mut Context) {
-    if let Some((pos, mut bp)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
+    if let Some((pos, breakpoint)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
         let callback = Box::pin(async move {
             let call: Callback =
                 Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let condition = bp.condition.clone();
+                    let condition = breakpoint.condition;
                     let prompt = Prompt::new(
                         "condition: ".into(),
                         None,
@@ -657,14 +661,11 @@ pub fn dap_edit_condition(cx: &mut Context) {
                                 }
                             };
 
-                            let breakpoints =
-                                cx.editor.breakpoints.entry(path.clone()).or_default();
-                            breakpoints.remove(pos);
-                            bp.condition = match input {
+                            let breakpoints = &mut cx.editor.breakpoints.get_mut(path).unwrap();
+                            breakpoints[pos].condition = match input {
                                 "" => None,
                                 input => Some(input.to_owned()),
                             };
-                            breakpoints.push(bp.clone());
 
                             if let Some(debugger) = &mut cx.editor.debugger {
                                 // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
@@ -709,11 +710,11 @@ pub fn dap_edit_condition(cx: &mut Context) {
 }
 
 pub fn dap_edit_log(cx: &mut Context) {
-    if let Some((pos, mut bp)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
+    if let Some((pos, breakpoint)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
         let callback = Box::pin(async move {
             let call: Callback =
                 Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let log_message = bp.log_message.clone();
+                    let log_message = breakpoint.log_message;
                     let prompt = Prompt::new(
                         "log message: ".into(),
                         None,
@@ -736,14 +737,11 @@ pub fn dap_edit_log(cx: &mut Context) {
                                 }
                             };
 
-                            let breakpoints =
-                                cx.editor.breakpoints.entry(path.clone()).or_default();
-                            breakpoints.remove(pos);
-                            bp.log_message = match input {
+                            let breakpoints = &mut cx.editor.breakpoints.get_mut(path).unwrap();
+                            breakpoints[pos].log_message = match input {
                                 "" => None,
                                 input => Some(input.to_owned()),
                             };
-                            breakpoints.push(bp.clone());
 
                             if let Some(debugger) = &mut cx.editor.debugger {
                                 // TODO: handle capabilities correctly again, by filterin breakpoints when emitting

@@ -978,17 +978,17 @@ impl EditorView {
 
                 let result = editor.tree.views().find_map(|(view, _focus)| {
                     view.gutter_coords_at_screen_coords(row, column)
-                        .map(|coords| (coords.0, coords.1, view.id))
+                        .map(|coords| (coords, view.id))
                 });
 
-                if let Some((line, _, view_id)) = result {
+                if let Some((coords, view_id)) = result {
                     editor.tree.focus = view_id;
 
                     let doc = editor
                         .documents
                         .get_mut(&editor.tree.get(view_id).doc)
                         .unwrap();
-                    if let Ok(pos) = doc.text().try_line_to_char(line) {
+                    if let Ok(pos) = doc.text().try_line_to_char(coords.row) {
                         doc.set_selection(view_id, Selection::point(pos));
                         commands::dap_toggle_breakpoint(cxt);
 
@@ -1080,10 +1080,10 @@ impl EditorView {
             } => {
                 let result = cxt.editor.tree.views().find_map(|(view, _focus)| {
                     view.gutter_coords_at_screen_coords(row, column)
-                        .map(|coords| (coords.0, coords.1, view.id))
+                        .map(|coords| (coords, view.id))
                 });
 
-                if let Some((line, _, view_id)) = result {
+                if let Some((coords, view_id)) = result {
                     cxt.editor.tree.focus = view_id;
 
                     let doc = cxt
@@ -1091,7 +1091,7 @@ impl EditorView {
                         .documents
                         .get_mut(&cxt.editor.tree.get(view_id).doc)
                         .unwrap();
-                    if let Ok(pos) = doc.text().try_line_to_char(line) {
+                    if let Ok(pos) = doc.text().try_line_to_char(coords.row) {
                         doc.set_selection(view_id, Selection::point(pos));
                         if modifiers == crossterm::event::KeyModifiers::ALT {
                             commands::Command::dap_edit_log.execute(cxt);
