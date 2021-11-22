@@ -421,19 +421,19 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        fn diagnostic(
-            doc: &Document,
+        fn diagnostic<'doc>(
+            doc: &'doc Document,
             _view: &View,
             theme: &Theme,
             _config: &Config,
             _is_focused: bool,
             _width: usize,
-        ) -> GutterFn {
+        ) -> GutterFn<'doc> {
             let warning = theme.get("warning");
             let error = theme.get("error");
             let info = theme.get("info");
             let hint = theme.get("hint");
-            let diagnostics = doc.diagnostics().to_vec(); // TODO
+            let diagnostics = doc.diagnostics();
 
             Box::new(move |line: usize, _selected: bool| {
                 use helix_core::diagnostic::Severity;
@@ -452,14 +452,14 @@ impl EditorView {
             })
         }
 
-        fn line_number(
-            doc: &Document,
+        fn line_number<'doc>(
+            doc: &'doc Document,
             view: &View,
             theme: &Theme,
             config: &Config,
             is_focused: bool,
             width: usize,
-        ) -> GutterFn {
+        ) -> GutterFn<'doc> {
             let text = doc.text().slice(..);
             let last_line = view.last_line(doc);
             // Whether to draw the line number for the last line of the
@@ -499,8 +499,9 @@ impl EditorView {
             })
         }
 
-        type GutterFn = Box<dyn Fn(usize, bool) -> Option<(String, Style)>>;
-        type Gutter = fn(&Document, &View, &Theme, &Config, bool, usize) -> GutterFn;
+        type GutterFn<'doc> = Box<dyn Fn(usize, bool) -> Option<(String, Style)> + 'doc>;
+        type Gutter =
+            for<'doc> fn(&'doc Document, &View, &Theme, &Config, bool, usize) -> GutterFn<'doc>;
         let gutters: &[(Gutter, usize)] = &[(diagnostic, 1), (line_number, 5)];
 
         let mut offset = 0;
