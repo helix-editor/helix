@@ -396,3 +396,12 @@ shebangs = ["perl"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "racket"
+scope = "source.rkt"
+roots = []
+file-types = ["rkt"]
+shebangs = ["racket"]
+comment-token = ";"
+language-server = { command = "racket", args = ["-l", "racket-langserver"] }
