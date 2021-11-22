@@ -53,4 +53,5 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 
 Keys can be disabled by binding them to the `no_op` command.
 
-Commands can be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
+Commands can be found at [Keymap](https://docs.helix-editor.com/keymap.html) Commands.
+> Commands can also be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs) at the invocation of `commands!` macro.
