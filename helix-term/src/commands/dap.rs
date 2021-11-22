@@ -386,7 +386,6 @@ fn debug_parameter_prompt(
                 );
             }
         },
-        None,
     )
 }
 
@@ -638,9 +637,8 @@ pub fn dap_edit_condition(cx: &mut Context) {
         let callback = Box::pin(async move {
             let call: Callback =
                 Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let condition = breakpoint.condition;
-                    let prompt = Prompt::new(
-                        "condition: ".into(),
+                    let mut prompt = Prompt::new(
+                        "condition:".into(),
                         None,
                         |_input: &str| Vec::new(),
                         move |cx: &mut crate::compositor::Context,
@@ -699,8 +697,10 @@ pub fn dap_edit_condition(cx: &mut Context) {
                                 }
                             }
                         },
-                        condition,
                     );
+                    if let Some(condition) = breakpoint.condition {
+                        prompt.insert_str(&condition)
+                    }
                     compositor.push(Box::new(prompt));
                 });
             Ok(call)
@@ -714,9 +714,8 @@ pub fn dap_edit_log(cx: &mut Context) {
         let callback = Box::pin(async move {
             let call: Callback =
                 Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let log_message = breakpoint.log_message;
-                    let prompt = Prompt::new(
-                        "log message: ".into(),
+                    let mut prompt = Prompt::new(
+                        "log-message:".into(),
                         None,
                         |_input: &str| Vec::new(),
                         move |cx: &mut crate::compositor::Context,
@@ -775,8 +774,10 @@ pub fn dap_edit_log(cx: &mut Context) {
                                 }
                             }
                         },
-                        log_message,
                     );
+                    if let Some(log_message) = breakpoint.log_message {
+                        prompt.insert_str(&log_message);
+                    }
                     compositor.push(Box::new(prompt));
                 });
             Ok(call)

@@ -90,7 +90,6 @@ pub fn regex_prompt(
                 }
             }
         },
-        None,
     )
 }
 

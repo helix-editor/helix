@@ -2839,7 +2839,6 @@ fn command_mode(cx: &mut Context) {
                     .set_error(format!("no such command: '{}'", parts[0]));
             };
         },
-        None,
     );
     prompt.doc_fn = Box::new(|input: &str| {
         let part = input.split(' ').next().unwrap_or_default();
@@ -5440,7 +5439,6 @@ fn shell_keep_pipe(cx: &mut Context) {
             let index = index.unwrap_or_else(|| ranges.len() - 1);
             doc.set_selection(view.id, Selection::new(ranges, index));
         },
-        None,
     );
 
     cx.push_layer(Box::new(prompt));
@@ -5544,7 +5542,6 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
             // make sure cursor is in view and update scroll as well
             view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
         },
-        None,
     );
 
     cx.push_layer(Box::new(prompt));
@@ -5622,7 +5619,6 @@ fn rename_symbol(cx: &mut Context) {
             log::debug!("Edits from LSP: {:?}", edits);
             apply_workspace_edit(&mut cx.editor, offset_encoding, &edits);
         },
-        None,
     );
     cx.push_layer(Box::new(prompt));
 }
