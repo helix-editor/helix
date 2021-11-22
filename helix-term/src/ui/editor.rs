@@ -421,6 +421,8 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
+        use std::fmt::Write;
+
         fn diagnostic<'doc>(
             doc: &'doc Document,
             _view: &View,
@@ -435,18 +437,16 @@ impl EditorView {
             let hint = theme.get("hint");
             let diagnostics = doc.diagnostics();
 
-            Box::new(move |line: usize, _selected: bool| {
+            Box::new(move |line: usize, _selected: bool, out: &mut String| {
                 use helix_core::diagnostic::Severity;
                 if let Some(diagnostic) = diagnostics.iter().find(|d| d.line == line) {
-                    return Some((
-                        "●".to_string(),
-                        match diagnostic.severity {
-                            Some(Severity::Error) => error,
-                            Some(Severity::Warning) | None => warning,
-                            Some(Severity::Info) => info,
-                            Some(Severity::Hint) => hint,
-                        },
-                    ));
+                    write!(out, "●").unwrap();
+                    return Some(match diagnostic.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    });
                 }
                 None
             })
@@ -475,9 +475,10 @@ impl EditorView {
 
             let config = config.line_number;
 
-            Box::new(move |line: usize, selected: bool| {
+            Box::new(move |line: usize, selected: bool, out: &mut String| {
                 if line == last_line && !draw_last {
-                    Some((format!("{:>1$}", '~', width), linenr))
+                    write!(out, "{:>1$}", '~', width).unwrap();
+                    Some(linenr)
                 } else {
                     let line = match config {
                         LineNumber::Absolute => line + 1,
@@ -494,25 +495,38 @@ impl EditorView {
                     } else {
                         linenr
                     };
-                    Some((format!("{:>1$}", line, width), style))
+                    write!(out, "{:>1$}", line, width).unwrap();
+                    Some(style)
                 }
             })
         }
 
-        type GutterFn<'doc> = Box<dyn Fn(usize, bool) -> Option<(String, Style)> + 'doc>;
+        type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
         type Gutter =
             for<'doc> fn(&'doc Document, &View, &Theme, &Config, bool, usize) -> GutterFn<'doc>;
         let gutters: &[(Gutter, usize)] = &[(diagnostic, 1), (line_number, 5)];
 
         let mut offset = 0;
+
+        // avoid lots of small allocations by reusing a text buffer for each line
+        let mut text = String::with_capacity(8);
+
         for (constructor, width) in gutters {
             let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
 
-                if let Some((text, style)) = gutter(line, selected) {
-                    surface.set_stringn(viewport.x + offset, viewport.y + i as u16, text, 5, style);
+                if let Some(style) = gutter(line, selected, &mut text) {
+                    surface.set_stringn(
+                        viewport.x + offset,
+                        viewport.y + i as u16,
+                        &text,
+                        *width,
+                        style,
+                    );
                 }
+                text.clear();
             }
             offset += *width as u16;
         }
