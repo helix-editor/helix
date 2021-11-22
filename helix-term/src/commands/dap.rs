@@ -353,7 +353,7 @@ fn debug_parameter_prompt(
         format!("{}: ", name).into(),
         None,
         completer,
-        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+        move |cx, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
             }
@@ -634,6 +634,10 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 // we also might be editing a breakpoint in a document that's no longer focused
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, breakpoint)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
+        let path = match doc!(cx.editor).path() {
+            Some(path) => path.clone(),
+            None => return,
+        };
         let callback = Box::pin(async move {
             let call: Callback =
                 Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
@@ -641,25 +645,12 @@ pub fn dap_edit_condition(cx: &mut Context) {
                         "condition:".into(),
                         None,
                         |_input: &str| Vec::new(),
-                        move |cx: &mut crate::compositor::Context,
-                              input: &str,
-                              event: PromptEvent| {
+                        move |cx, input: &str, event: PromptEvent| {
                             if event != PromptEvent::Validate {
                                 return;
                             }
 
-                            let doc = doc!(cx.editor);
-                            let path = match doc.path() {
-                                Some(path) => path,
-                                None => {
-                                    cx.editor.set_status(
-                                        "Can't edit breakpoint: document has no path".to_owned(),
-                                    );
-                                    return;
-                                }
-                            };
-
-                            let breakpoints = &mut cx.editor.breakpoints.get_mut(path).unwrap();
+                            let breakpoints = &mut cx.editor.breakpoints.get_mut(&path).unwrap();
                             breakpoints[pos].condition = match input {
                                 "" => None,
                                 input => Some(input.to_owned()),
@@ -711,6 +702,10 @@ pub fn dap_edit_condition(cx: &mut Context) {
 
 pub fn dap_edit_log(cx: &mut Context) {
     if let Some((pos, breakpoint)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
+        let path = match doc!(cx.editor).path() {
+            Some(path) => path.clone(),
+            None => return,
+        };
         let callback = Box::pin(async move {
             let call: Callback =
                 Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
@@ -718,25 +713,12 @@ pub fn dap_edit_log(cx: &mut Context) {
                         "log-message:".into(),
                         None,
                         |_input: &str| Vec::new(),
-                        move |cx: &mut crate::compositor::Context,
-                              input: &str,
-                              event: PromptEvent| {
+                        move |cx, input: &str, event: PromptEvent| {
                             if event != PromptEvent::Validate {
                                 return;
                             }
 
-                            let doc = doc!(cx.editor);
-                            let path = match doc.path() {
-                                Some(path) => path,
-                                None => {
-                                    cx.editor.set_status(
-                                        "Can't edit breakpoint: document has no path".to_owned(),
-                                    );
-                                    return;
-                                }
-                            };
-
-                            let breakpoints = &mut cx.editor.breakpoints.get_mut(path).unwrap();
+                            let breakpoints = &mut cx.editor.breakpoints.get_mut(&path).unwrap();
                             breakpoints[pos].log_message = match input {
                                 "" => None,
                                 input => Some(input.to_owned()),
