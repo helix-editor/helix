@@ -1816,9 +1816,13 @@ mod cmd {
         let jobs = &mut cx.jobs;
         let (_, doc) = current!(cx.editor);
 
+        // Should refresh lang server or not
+        let mut refresh_ls = false;
+
         if let Some(path) = path {
             doc.set_path(Some(path.as_ref()))
                 .context("invalid filepath")?;
+            refresh_ls = true; // we want to refresh the lang server
         }
         if doc.path().is_none() {
             bail!("cannot write a buffer without a filename");
@@ -1836,6 +1840,11 @@ mod cmd {
         });
         let future = doc.format_and_save(fmt);
         cx.jobs.add(Job::new(future).wait_before_exiting());
+
+        if refresh_ls {
+            let id = doc.id();
+            let _ = cx.editor.refresh_language_server(id);
+        }
         Ok(())
     }
 

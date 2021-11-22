@@ -271,6 +271,53 @@ impl Editor {
         Ok(())
     }
 
+    /// Refreshes the language server for a given document
+    pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+        // don' know why but it feels good using this pattern :)
+        let Editor {
+            documents,
+            language_servers,
+            theme,
+            syn_loader,
+            ..
+        } = self;
+
+        let doc = documents.get_mut(&doc_id)?;
+        doc.detect_language(Some(&theme), &syn_loader);
+        let language_server = doc.language.as_ref().and_then(|language| {
+            language_servers
+                .get(language)
+                .map_err(|e| {
+                    log::error!(
+                        "Failed to initialize the LSP for `{}` {{ {} }}",
+                        language.scope(),
+                        e
+                    )
+                })
+                .ok()
+        });
+
+        log::info!("ls is {:?}", language_server);
+
+        if let Some(language_server) = language_server {
+            let language_id = doc
+                .language()
+                .and_then(|s| s.split('.').last()) // source.rust
+                .map(ToOwned::to_owned)
+                .unwrap_or_default();
+
+            // TODO: this now races with on_init code if the init happens too quickly
+            tokio::spawn(language_server.text_document_did_open(
+                doc.url().unwrap(),
+                doc.version(),
+                doc.text(),
+                language_id,
+            ));
+
+            doc.set_language_server(Some(language_server));
+        }
+    }
+
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
