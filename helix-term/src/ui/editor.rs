@@ -985,14 +985,19 @@ impl EditorView {
                 if let Some((coords, view_id)) = result {
                     editor.tree.focus = view_id;
 
-                    let doc = editor
-                        .documents
-                        .get_mut(&editor.tree.get(view_id).doc)
-                        .unwrap();
-                    if let Ok(pos) = doc.text().try_line_to_char(coords.row) {
-                        doc.set_selection(view_id, Selection::point(pos));
-                        commands::dap_toggle_breakpoint(cxt);
+                    let view = editor.tree.get(view_id);
+                    let doc = editor.documents.get_mut(&view.doc).unwrap();
 
+                    let path = match doc.path() {
+                        Some(path) => path.clone(),
+                        None => {
+                            return EventResult::Ignored;
+                        }
+                    };
+
+                    let line = coords.row + view.offset.row;
+                    if line < doc.text().len_lines() {
+                        commands::dap_toggle_breakpoint_impl(cxt, path, line);
                         return EventResult::Consumed(None);
                     }
                 }
@@ -1087,12 +1092,10 @@ impl EditorView {
                 if let Some((coords, view_id)) = result {
                     cxt.editor.tree.focus = view_id;
 
-                    let doc = cxt
-                        .editor
-                        .documents
-                        .get_mut(&cxt.editor.tree.get(view_id).doc)
-                        .unwrap();
-                    if let Ok(pos) = doc.text().try_line_to_char(coords.row) {
+                    let view = cxt.editor.tree.get(view_id);
+                    let doc = cxt.editor.documents.get_mut(&view.doc).unwrap();
+                    let line = coords.row + view.offset.row;
+                    if let Ok(pos) = doc.text().try_line_to_char(line) {
                         doc.set_selection(view_id, Selection::point(pos));
                         if modifiers == crossterm::event::KeyModifiers::ALT {
                             commands::Command::dap_edit_log.execute(cxt);

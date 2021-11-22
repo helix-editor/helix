@@ -392,21 +392,24 @@ fn debug_parameter_prompt(
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
     // TODO: accept line instead of current selection
     let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-    let pos = doc.selection(view.id).primary().cursor(text);
-
-    let breakpoint = helix_dap::SourceBreakpoint {
-        line: text.char_to_line(pos) + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
-        ..Default::default()
-    };
-
     let path = match doc.path() {
-        Some(path) => path,
+        Some(path) => path.clone(),
         None => {
             cx.editor
                 .set_error("Can't set breakpoint: document has no path".to_string());
             return;
         }
+    };
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view.id).primary().cursor(text);
+    let line = text.char_to_line(pos);
+    dap_toggle_breakpoint_impl(cx, path, line);
+}
+
+pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: std::path::PathBuf, line: usize) {
+    let breakpoint = helix_dap::SourceBreakpoint {
+        line: line + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
+        ..Default::default()
     };
 
     // TODO: need to map breakpoints over edits and update them?
@@ -429,16 +432,8 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     let request = debugger.set_breakpoints(path.clone(), breakpoints);
     match block_on(request) {
         Ok(Some(breakpoints)) => {
-            // TODO: avoid this clone here
-            let old_breakpoints = std::mem::replace(&mut debugger.breakpoints, breakpoints.clone());
-            for bp in breakpoints {
-                if !old_breakpoints.iter().any(|b| b.message == bp.message) {
-                    if let Some(msg) = &bp.message {
-                        cx.editor.set_status(format!("Breakpoint set: {}", msg));
-                        break;
-                    }
-                }
-            }
+            // TODO: handle breakpoint.message
+            debugger.breakpoints = breakpoints;
         }
         Err(e) => cx
             .editor
