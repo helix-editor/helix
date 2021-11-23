@@ -79,6 +79,7 @@ pub struct Document {
     /// Current editing mode.
     pub mode: Mode,
     pub restore_cursor: bool,
+    /// Controls if going to normal mode, the previous open-line indent can be restore.
     pub restore_indent: bool,
 
     /// Current indent style.
