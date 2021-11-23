@@ -602,7 +602,7 @@ fn kill_to_line_end(cx: &mut Context) {
         let pos = range.cursor(text);
 
         let mut new_range = range.put_cursor(text, line_end_pos, true);
-        // don't want to remove the line itself if the cursor doesn't reach the end of line.
+        // don't want to remove the line separator itself if the cursor doesn't reach the end of line.
         if pos != line_end_pos {
             new_range.head = line_end_pos;
         }
