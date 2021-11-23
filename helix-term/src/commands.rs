@@ -2460,7 +2460,7 @@ mod cmd {
         Ok(())
     }
 
-    fn goto_line_number(
+    pub(super) fn goto_line_number(
         cx: &mut compositor::Context,
         args: &[&str],
         _event: PromptEvent,
@@ -2758,7 +2758,7 @@ mod cmd {
             completer: None,
         },
         TypableCommand {
-            name: cmd::GOTO_CMD,
+            name: "goto",
             aliases: &["g"],
             doc: "Go to line number.",
             fun: goto_line_number,
@@ -2775,8 +2775,6 @@ mod cmd {
             })
             .collect()
     });
-
-    pub(super) const GOTO_CMD: &str = "goto";
 }
 
 fn command_mode(cx: &mut Context) {
@@ -2823,14 +2821,17 @@ fn command_mode(cx: &mut Context) {
                 return;
             }
 
-            let mut parts = input.split_whitespace().collect::<Vec<&str>>();
+            let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
             }
 
-            // If command is numeric, insert goto command.
+            // If command is numeric, interpret as line number and go there.
             if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
-                parts.insert(0, cmd::GOTO_CMD);
+                if let Err(e) = cmd::goto_line_number(cx, &parts[0..], event) {
+                    cx.editor.set_error(format!("{}", e));
+                }
+                return;
             }
 
             // Handle typable commands
