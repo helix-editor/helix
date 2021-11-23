@@ -5,6 +5,7 @@ pub mod clipboard;
 pub mod document;
 pub mod editor;
 pub mod graphics;
+pub mod gutter;
 pub mod info;
 pub mod input;
 pub mod keyboard;
