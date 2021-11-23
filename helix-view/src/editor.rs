@@ -275,18 +275,7 @@ impl Editor {
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
         doc.detect_language(Some(&self.theme), &self.syn_loader);
-        let language_server = doc.language.as_ref().and_then(|language| {
-            self.language_servers
-                .get(language)
-                .map_err(|e| {
-                    log::error!(
-                        "Failed to initialize the LSP for `{}` {{ {} }}",
-                        language.scope(),
-                        e
-                    )
-                })
-                .ok()
-        });
+        let language_server = Editor::get_lang_server(&mut self.language_servers, doc);
 
         if let Some(language_server) = language_server {
             let language_id = doc
@@ -306,6 +295,23 @@ impl Editor {
             doc.set_language_server(Some(language_server));
         }
         Some(())
+    }
+
+    fn get_lang_server(
+        ls: &mut helix_lsp::Registry,
+        doc: &mut Document,
+    ) -> Option<Arc<helix_lsp::Client>> {
+        doc.language.as_ref().and_then(|language| {
+            ls.get(language)
+                .map_err(|e| {
+                    log::error!(
+                        "Failed to initialize the LSP for `{}` {{ {} }}",
+                        language.scope(),
+                        e
+                    )
+                })
+                .ok()
+        })
     }
 
     fn _refresh(&mut self) {
@@ -441,18 +447,7 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
             // try to find a language server based on the language name
-            let language_server = doc.language.as_ref().and_then(|language| {
-                self.language_servers
-                    .get(language)
-                    .map_err(|e| {
-                        log::error!(
-                            "Failed to initialize the LSP for `{}` {{ {} }}",
-                            language.scope(),
-                            e
-                        )
-                    })
-                    .ok()
-            });
+            let language_server = Editor::get_lang_server(&mut self.language_servers, &mut doc);
 
             if let Some(language_server) = language_server {
                 let language_id = doc
