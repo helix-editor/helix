@@ -291,21 +291,33 @@ impl Editor {
                 .ok()
         });
         if let Some(language_server) = language_server {
-            let language_id = doc
-                .language()
-                .and_then(|s| s.split('.').last()) // source.rust
-                .map(ToOwned::to_owned)
-                .unwrap_or_default();
+            // only spawn a new lang server if the servers aren't the same
+            if language_server.id()
+                != doc
+                    .language_server()
+                    .map(|ls| ls.id())
+                    .unwrap_or(usize::MAX)
+            {
+                // we also want to kill the previous server
+                if let Some(ls) = doc.language_server() {
+                    tokio::spawn(ls.text_document_did_close(doc.identifier()));
+                }
+                let language_id = doc
+                    .language()
+                    .and_then(|s| s.split('.').last()) // source.rust
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_default();
 
-            // TODO: this now races with on_init code if the init happens too quickly
-            tokio::spawn(language_server.text_document_did_open(
-                doc.url().unwrap(),
-                doc.version(),
-                doc.text(),
-                language_id,
-            ));
+                // TODO: this now races with on_init code if the init happens too quickly
+                tokio::spawn(language_server.text_document_did_open(
+                    doc.url().unwrap(),
+                    doc.version(),
+                    doc.text(),
+                    language_id,
+                ));
 
-            doc.set_language_server(Some(language_server));
+                doc.set_language_server(Some(language_server));
+            }
         }
         Some(())
     }

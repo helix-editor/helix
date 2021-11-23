@@ -1817,12 +1817,11 @@ mod cmd {
         let (_, doc) = current!(cx.editor);
 
         // Should refresh lang server or not
-        let mut refresh_ls = false;
+        let refresh_ls = path.is_some();
 
         if let Some(path) = path {
             doc.set_path(Some(path.as_ref()))
                 .context("invalid filepath")?;
-            refresh_ls = true; // we want to refresh the lang server
         }
         if doc.path().is_none() {
             bail!("cannot write a buffer without a filename");
