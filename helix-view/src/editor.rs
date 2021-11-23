@@ -273,19 +273,10 @@ impl Editor {
 
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
-        // don' know why but it feels good using this pattern :)
-        let Editor {
-            documents,
-            language_servers,
-            theme,
-            syn_loader,
-            ..
-        } = self;
-
-        let doc = documents.get_mut(&doc_id)?;
-        doc.detect_language(Some(&theme), &syn_loader);
+        let doc = self.documents.get_mut(&doc_id)?;
+        doc.detect_language(Some(&self.theme), &self.syn_loader);
         let language_server = doc.language.as_ref().and_then(|language| {
-            language_servers
+            self.language_servers
                 .get(language)
                 .map_err(|e| {
                     log::error!(
@@ -314,6 +305,7 @@ impl Editor {
 
             doc.set_language_server(Some(language_server));
         }
+        Some(())
     }
 
     fn _refresh(&mut self) {
