@@ -3319,6 +3319,7 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+    doc.restore_indent = true;
 }
 
 // o inserts a new line after each line with a selection
@@ -3354,6 +3355,11 @@ fn normal_mode(cx: &mut Context) {
         doc.set_selection(view.id, selection);
 
         doc.restore_cursor = false;
+    }
+
+    if doc.restore_indent {
+        goto_line_start(cx);
+        kill_to_line_end(cx);
     }
 }
 
@@ -3937,6 +3943,7 @@ pub mod insert {
             }
         }
 
+        doc.restore_indent = false;
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
