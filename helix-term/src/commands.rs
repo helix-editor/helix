@@ -603,8 +603,15 @@ fn kill_to_line_end(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
-        let pos = line_end_char_index(&text, line);
-        range.put_cursor(text, pos, true)
+        let line_end_pos = line_end_char_index(&text, line);
+        let pos = range.cursor(text);
+
+        let mut new_range = range.put_cursor(text, line_end_pos, true);
+        // don't want to remove the line itself if the cursor doesn't at the end of line.
+        if pos != line_end_pos {
+            new_range.head = line_end_pos;
+        }
+        new_range
     });
     delete_selection_insert_mode(doc, view, &selection);
 }
@@ -3539,6 +3546,7 @@ fn normal_mode(cx: &mut Context) {
     }
 
     if doc.restore_indent {
+        doc.restore_indent = false;
         goto_line_start(cx);
         kill_to_line_end(cx);
     }
