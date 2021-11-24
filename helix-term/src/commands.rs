@@ -5195,10 +5195,7 @@ fn rename_symbol(cx: &mut Context) {
 }
 
 fn jump_mode(cx: &mut Context) {
-    let jump_keys = &[
-        'a', 's', 'd', 'g', 'h', 'k', 'l', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'z',
-        'x', 'c', 'v', 'b', 'f', 'j', 'n', 'm', ';',
-    ];
+    let jump_keys = "asdghklqwertyuiopzxcvbfjnm;".as_bytes();
     let single_jump_keys = &jump_keys[..22];
     let double_jump_keys = &jump_keys[22..];
 
@@ -5242,7 +5239,7 @@ fn jump_mode(cx: &mut Context) {
 
     enum Jump {
         Single(usize),
-        Double(HashMap<char, usize>),
+        Double(HashMap<u8, usize>),
     }
 
     let single_style = Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
@@ -5260,7 +5257,7 @@ fn jump_mode(cx: &mut Context) {
         .copied()
         .enumerate()
         .skip_while(|&(i, _)| i < single_jump_keys.len())
-        .fold(Vec::<HashMap<char, usize>>::new(), |mut maps, (i, pos)| {
+        .fold(Vec::<HashMap<u8, usize>>::new(), |mut maps, (i, pos)| {
             let i = i - single_jump_keys.len();
             if let Some(map) = maps
                 .last_mut()
@@ -5279,7 +5276,7 @@ fn jump_mode(cx: &mut Context) {
         .filter_map(|(i, map)| double_jump_keys.get(i).map(|&k| (k, Jump::Double(map))));
     let mut jumps = single_jumps
         .chain(double_jumps)
-        .collect::<HashMap<char, Jump>>();
+        .collect::<HashMap<u8, Jump>>();
     doc.extend_text_annotations(
         jumps
             .iter()
@@ -5291,7 +5288,7 @@ fn jump_mode(cx: &mut Context) {
                         let offset = pos - text.line_to_byte(line);
                         Box::new(std::iter::once(TextAnnotation {
                             scope: "jump_label".to_owned(),
-                            text: c1.into(),
+                            text: (c1 as char).into(),
                             style: single_style,
                             line,
                             kind: TextAnnotationKind::Overlay(offset),
@@ -5302,7 +5299,7 @@ fn jump_mode(cx: &mut Context) {
                         let offset = pos - text.line_to_byte(line);
                         TextAnnotation {
                             scope: "jump_label".to_owned(),
-                            text: format!("{}{}", c1, c2),
+                            text: format!("{}{}", c1 as char, c2 as char),
                             style: double_style,
                             line,
                             kind: TextAnnotationKind::Overlay(offset),
@@ -5315,7 +5312,11 @@ fn jump_mode(cx: &mut Context) {
     );
     cx.on_next_key(move |cx, event| {
         doc_mut!(cx.editor).remove_text_annotations(|annot| annot.scope == "jump_label");
-        if let Some(jump) = event.char().and_then(|c| jumps.remove(&c)) {
+        if let Some(jump) = event
+            .char()
+            .and_then(|c| u8::try_from(c as u32).ok())
+            .and_then(|c| jumps.remove(&c))
+        {
             match jump {
                 Jump::Single(pos) => {
                     push_jump(cx.editor);
@@ -5332,7 +5333,7 @@ fn jump_mode(cx: &mut Context) {
                                 let offset = pos - doc.text().line_to_byte(line);
                                 TextAnnotation {
                                     scope: "jump_label".to_owned(),
-                                    text: c.into(),
+                                    text: (c as char).into(),
                                     style: single_style,
                                     line,
                                     kind: TextAnnotationKind::Overlay(offset),
@@ -5343,7 +5344,11 @@ fn jump_mode(cx: &mut Context) {
                     cx.on_next_key(move |cx, event| {
                         doc_mut!(cx.editor)
                             .remove_text_annotations(|annot| annot.scope == "jump_label");
-                        if let Some(pos) = event.char().and_then(|c| jumps.remove(&c)) {
+                        if let Some(pos) = event
+                            .char()
+                            .and_then(|c| u8::try_from(c as u32).ok())
+                            .and_then(|c| jumps.remove(&c))
+                        {
                             push_jump(cx.editor);
                             let (view, doc) = current!(cx.editor);
                             doc.set_selection(view.id, Selection::single(pos, pos));
