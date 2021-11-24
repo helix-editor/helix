@@ -2460,6 +2460,22 @@ mod cmd {
         Ok(())
     }
 
+    pub(super) fn goto_line_number(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let line = args[0].parse::<usize>()?;
+
+        goto_line_impl(&mut cx.editor, NonZeroUsize::new(line));
+
+        let (view, doc) = current!(cx.editor);
+
+        view.ensure_cursor_in_view(doc, line);
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2741,6 +2757,13 @@ mod cmd {
             fun: tutor,
             completer: None,
         },
+        TypableCommand {
+            name: "goto",
+            aliases: &["g"],
+            doc: "Go to line number.",
+            fun: goto_line_number,
+            completer: None,
+        }
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
@@ -2803,6 +2826,15 @@ fn command_mode(cx: &mut Context) {
                 return;
             }
 
+            // If command is numeric, interpret as line number and go there.
+            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
+                if let Err(e) = cmd::goto_line_number(cx, &parts[0..], event) {
+                    cx.editor.set_error(format!("{}", e));
+                }
+                return;
+            }
+
+            // Handle typable commands
             if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
                 if let Err(e) = (cmd.fun)(cx, &parts[1..], event) {
                     cx.editor.set_error(format!("{}", e));
@@ -3436,10 +3468,14 @@ fn push_jump(editor: &mut Editor) {
 }
 
 fn goto_line(cx: &mut Context) {
-    if let Some(count) = cx.count {
-        push_jump(cx.editor);
+    goto_line_impl(&mut cx.editor, cx.count)
+}
 
-        let (view, doc) = current!(cx.editor);
+fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
+    if let Some(count) = count {
+        push_jump(editor);
+
+        let (view, doc) = current!(editor);
         let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
             // If the last line is blank, don't jump to it.
             doc.text().len_lines().saturating_sub(2)
