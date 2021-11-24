@@ -9,7 +9,6 @@ use helix_core::{
     numbers::NumberIncrementor,
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
-    register::Register,
     search, selection, surround, textobject,
     unicode::width::UnicodeWidthChar,
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
@@ -232,7 +231,9 @@ impl Command {
         extend_line, "Select current line, if already selected, extend to next line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
+        delete_selection_noyank, "Delete selection, without yanking",
         change_selection, "Change selection (delete and enter insert mode)",
+        change_selection_noyank, "Change selection (delete and enter insert mode, without yanking)",
         collapse_selection, "Collapse selection onto a single cursor",
         flip_selections, "Flip selection cursor and anchor",
         insert_mode, "Insert before selection",
@@ -1693,19 +1694,42 @@ fn extend_to_line_bounds(cx: &mut Context) {
     );
 }
 
-fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
-    let text = doc.text().slice(..);
-    let selection = doc.selection(view_id);
+enum Operation {
+    Delete,
+    Change,
+}
 
-    // first yank the selection
-    let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-    reg.write(values);
+fn delete_selection_impl(cx: &mut Context, op: Operation) {
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+
+    if cx.register != Some('_') {
+        // first yank the selection
+        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+        let reg_name = cx.register.unwrap_or('"');
+        let registers = &mut cx.editor.registers;
+        let reg = registers.get_mut(reg_name);
+        reg.write(values);
+    };
 
     // then delete
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         (range.from(), range.to(), None)
     });
-    doc.apply(&transaction, view_id);
+    doc.apply(&transaction, view.id);
+
+    match op {
+        Operation::Delete => {
+            doc.append_changes_to_history(view.id);
+            // exit select mode, if currently in select mode
+            exit_select_mode(cx);
+        }
+        Operation::Change => {
+            enter_insert_mode(doc);
+        }
+    }
 }
 
 #[inline]
@@ -1720,25 +1744,21 @@ fn delete_selection_insert_mode(doc: &mut Document, view: &View, selection: &Sel
 }
 
 fn delete_selection(cx: &mut Context) {
-    let reg_name = cx.register.unwrap_or('"');
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
-    let reg = registers.get_mut(reg_name);
-    delete_selection_impl(reg, doc, view.id);
+    delete_selection_impl(cx, Operation::Delete);
+}
 
-    doc.append_changes_to_history(view.id);
-
-    // exit select mode, if currently in select mode
-    exit_select_mode(cx);
+fn delete_selection_noyank(cx: &mut Context) {
+    cx.register = Some('_');
+    delete_selection_impl(cx, Operation::Delete);
 }
 
 fn change_selection(cx: &mut Context) {
-    let reg_name = cx.register.unwrap_or('"');
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
-    let reg = registers.get_mut(reg_name);
-    delete_selection_impl(reg, doc, view.id);
-    enter_insert_mode(doc);
+    delete_selection_impl(cx, Operation::Change);
+}
+
+fn change_selection_noyank(cx: &mut Context) {
+    cx.register = Some('_');
+    delete_selection_impl(cx, Operation::Change);
 }
 
 fn collapse_selection(cx: &mut Context) {

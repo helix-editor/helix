@@ -537,9 +537,9 @@ impl Default for Keymaps {
             "O" => open_above,
 
             "d" => delete_selection,
-            // TODO: also delete without yanking
+            "A-d" => delete_selection_noyank,
             "c" => change_selection,
-            // TODO: also change delete without yanking
+            "A-c" => change_selection_noyank,
 
             "C" => copy_selection_on_next_line,
             "A-C" => copy_selection_on_prev_line,
