@@ -2485,6 +2485,10 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
+        if args.len() == 0 {
+            bail!("Line number required");
+        }
+
         let line = args[0].parse::<usize>()?;
 
         goto_line_impl(&mut cx.editor, NonZeroUsize::new(line));
