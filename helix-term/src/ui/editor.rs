@@ -250,7 +250,9 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                spans.push((cursor_scope, range.head..range.head + 1));
+                if i != primary_idx {
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                }
                 continue;
             }
 
@@ -259,11 +261,15 @@ impl EditorView {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
                 spans.push((selection_scope, range.anchor..cursor_start));
-                spans.push((cursor_scope, cursor_start..range.head));
+                if i != primary_idx {
+                    spans.push((cursor_scope, cursor_start..range.head));
+                }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                spans.push((cursor_scope, range.head..cursor_end));
+                if i != primary_idx {
+                    spans.push((cursor_scope, range.head..cursor_end));
+                }
                 spans.push((selection_scope, cursor_end..range.anchor));
             }
         }

@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::SCRATCH_BUFFER_NAME,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     theme::{self, Theme},
     tree::{self, Tree},
@@ -9,7 +9,7 @@ use crate::{
 
 use futures_util::future;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     io::stdin,
     path::{Path, PathBuf},
     pin::Pin,
@@ -22,7 +22,7 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::syntax;
+use helix_core::{hashmap, syntax};
 use helix_core::{Position, Selection};
 
 use serde::Deserialize;
@@ -103,6 +103,30 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Shape for cursor in each mode
+    pub cursor_shape: CursorShapeConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct CursorShapeConfig(HashMap<Mode, CursorKind>);
+
+impl std::ops::Deref for CursorShapeConfig {
+    type Target = HashMap<Mode, CursorKind>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Default for CursorShapeConfig {
+    fn default() -> Self {
+        Self(hashmap!(
+            Mode::Insert => CursorKind::Bar,
+            Mode::Normal => CursorKind::Block,
+            Mode::Select => CursorKind::Underline,
+        ))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -110,7 +134,6 @@ pub struct Config {
 pub enum LineNumber {
     /// Show absolute line number
     Absolute,
-
     /// Show relative line number to the primary cursor
     Relative,
 }
@@ -135,6 +158,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            cursor_shape: CursorShapeConfig::default(),
         }
     }
 }
@@ -594,9 +618,15 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            (Some(pos), CursorKind::Hidden)
+            let cursorkind = self
+                .config
+                .cursor_shape
+                .get(&doc.mode())
+                .copied()
+                .unwrap_or_default();
+            (Some(pos), cursorkind)
         } else {
-            (None, CursorKind::Hidden)
+            (None, CursorKind::default())
         }
     }
 
