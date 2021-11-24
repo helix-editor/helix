@@ -2485,7 +2485,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        if args.len() == 0 {
+        if args.is_empty() {
             bail!("Line number required");
         }
 
