@@ -17,7 +17,7 @@ Please search on the issue tracker before creating one. -->
 ### Environment
 
 - Platform: <!--  macOS / Windows / Linux -->
-- Helix version: <!--  'hx -v' if using a release, 'git describe' if building from master -->
+- Helix version: <!--  'hx -V' if using a release, 'git describe' if building from master -->
 
 <details><summary>~/.cache/helix/helix.log</summary>
 
