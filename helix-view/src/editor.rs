@@ -275,10 +275,12 @@ impl Editor {
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
         doc.detect_language(Some(&self.theme), &self.syn_loader);
-        Editor::launch_language_server(&mut self.language_servers, doc)
+        Self::launch_language_server(&mut self.language_servers, doc)
     }
 
+    /// Launch a language server for a given document
     fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+        // try to find a language server based on the language name
         let language_server = doc.language.as_ref().and_then(|language| {
             ls.get(language)
                 .map_err(|e| {
@@ -292,15 +294,10 @@ impl Editor {
         });
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same
-            if language_server.id()
-                != doc
-                    .language_server()
-                    .map(|ls| ls.id())
-                    .unwrap_or(usize::MAX)
-            {
+            if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
                 // we also want to kill the previous server
-                if let Some(ls) = doc.language_server() {
-                    tokio::spawn(ls.text_document_did_close(doc.identifier()));
+                if let Some(language_server) = doc.language_server() {
+                    tokio::spawn(language_server.text_document_did_close(doc.identifier()));
                 }
                 let language_id = doc
                     .language()
@@ -454,8 +451,7 @@ impl Editor {
         } else {
             let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
-            // try to find a language server based on the language name
-            let _ = Editor::launch_language_server(&mut self.language_servers, &mut doc);
+            let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
             let id = DocumentId(self.next_document_id);
             self.next_document_id += 1;
