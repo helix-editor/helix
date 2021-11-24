@@ -32,7 +32,7 @@ use tui::buffer::Buffer as Surface;
 pub struct EditorView {
     keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    last_insert: (commands::Command, Vec<KeyEvent>),
+    last_insert: (commands::MappableCommand, Vec<KeyEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
     autoinfo: Option<Info>,
@@ -49,7 +49,7 @@ impl EditorView {
         Self {
             keymaps,
             on_next_key: None,
-            last_insert: (commands::Command::normal_mode, Vec::new()),
+            last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
             autoinfo: None,
@@ -911,7 +911,7 @@ impl EditorView {
                     return EventResult::Ignored;
                 }
 
-                commands::Command::yank_main_selection_to_primary_clipboard.execute(cxt);
+                commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
 
                 EventResult::Consumed(None)
             }
@@ -929,7 +929,8 @@ impl EditorView {
                 }
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {
-                    commands::Command::replace_selections_with_primary_clipboard.execute(cxt);
+                    commands::MappableCommand::replace_selections_with_primary_clipboard
+                        .execute(cxt);
 
                     return EventResult::Consumed(None);
                 }
@@ -943,7 +944,7 @@ impl EditorView {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
-                    commands::Command::paste_primary_clipboard_before.execute(cxt);
+                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
                     return EventResult::Consumed(None);
                 }
 

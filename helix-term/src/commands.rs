@@ -134,20 +134,28 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
     view.offset.row = line.saturating_sub(relative);
 }
 
-/// A command is composed of a static name, and a function that takes the current state plus a count,
-/// and does a side-effect on the state (usually by creating and applying a transaction).
-#[derive(Copy, Clone)]
-pub struct Command {
-    name: &'static str,
-    fun: fn(cx: &mut Context),
-    doc: &'static str,
+/// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
+/// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
+/// Both of these types of commands can be mapped with keybindings in the config.toml.
+#[derive(Clone)]
+pub enum MappableCommand {
+    Typable {
+        name: String,
+        args: Vec<String>,
+        doc: String,
+    },
+    Static {
+        name: &'static str,
+        fun: fn(cx: &mut Context),
+        doc: &'static str,
+    },
 }
 
-macro_rules! commands {
+macro_rules! static_commands {
     ( $($name:ident, $doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
-            pub const $name: Self = Self {
+            pub const $name: Self = Self::Static {
                 name: stringify!($name),
                 fun: $name,
                 doc: $doc
@@ -160,21 +168,38 @@ macro_rules! commands {
     }
 }
 
-impl Command {
+impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
-        (self.fun)(cx);
+        match &self {
+            MappableCommand::Typable { name, args, doc: _ } => {
+                let args: Vec<&str> = args.iter().map(|arg| arg.as_str()).collect();
+                if let Some(command) = cmd::COMMANDS.get(name.as_str()) {
+                    if let Err(e) = (command.fun)(cx.editor, cx.jobs, &args, PromptEvent::Validate)
+                    {
+                        cx.editor.set_error(format!("{}", e));
+                    }
+                }
+            }
+            MappableCommand::Static { fun, .. } => (fun)(cx),
+        }
     }
 
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &str {
+        match &self {
+            MappableCommand::Typable { name, .. } => name,
+            MappableCommand::Static { name, .. } => name,
+        }
     }
 
-    pub fn doc(&self) -> &'static str {
-        self.doc
+    pub fn doc(&self) -> &str {
+        match &self {
+            MappableCommand::Typable { doc, .. } => doc,
+            MappableCommand::Static { doc, .. } => doc,
+        }
     }
 
     #[rustfmt::skip]
-    commands!(
+    static_commands!(
         no_op, "Do nothing",
         move_char_left, "Move left",
         move_char_right, "Move right",
@@ -363,33 +388,52 @@ impl Command {
     );
 }
 
-impl fmt::Debug for Command {
+impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command { name, .. } = self;
-        f.debug_tuple("Command").field(name).finish()
+        f.debug_tuple("MappableCommand")
+            .field(&self.name())
+            .finish()
     }
 }
 
-impl fmt::Display for Command {
+impl fmt::Display for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command { name, .. } = self;
-        f.write_str(name)
+        f.write_str(self.name())
     }
 }
 
-impl std::str::FromStr for Command {
+impl std::str::FromStr for MappableCommand {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Command::COMMAND_LIST
-            .iter()
-            .copied()
-            .find(|cmd| cmd.name == s)
-            .ok_or_else(|| anyhow!("No command named '{}'", s))
+        if let Some(suffix) = s.strip_prefix(':') {
+            let mut typable_command = suffix.split(' ').into_iter().map(|arg| arg.trim());
+            let name = typable_command
+                .next()
+                .ok_or_else(|| anyhow!("Expected typable command name"))?;
+            let args = typable_command
+                .map(|s| s.to_owned())
+                .collect::<Vec<String>>();
+            cmd::TYPABLE_COMMAND_LIST
+                .iter()
+                .find(|cmd| cmd.name == name)
+                .map(|cmd| MappableCommand::Typable {
+                    name: cmd.name.to_owned(),
+                    doc: format!(":{} {:?}", cmd.name, args),
+                    args,
+                })
+                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+        } else {
+            MappableCommand::COMMAND_LIST
+                .iter()
+                .cloned()
+                .find(|cmd| cmd.name() == s)
+                .ok_or_else(|| anyhow!("No command named '{}'", s))
+        }
     }
 }
 
-impl<'de> Deserialize<'de> for Command {
+impl<'de> Deserialize<'de> for MappableCommand {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -399,7 +443,7 @@ impl<'de> Deserialize<'de> for Command {
     }
 }
 
-impl PartialEq for Command {
+impl PartialEq for MappableCommand {
     fn eq(&self, other: &Self) -> bool {
         self.name() == other.name()
     }
@@ -1839,73 +1883,78 @@ mod cmd {
         pub aliases: &'static [&'static str],
         pub doc: &'static str,
         // params, flags, helper, completer
-        pub fun: fn(&mut compositor::Context, &[&str], PromptEvent) -> anyhow::Result<()>,
+        pub fun: fn(&mut Editor, &mut Jobs, &[&str], PromptEvent) -> anyhow::Result<()>,
         pub completer: Option<Completer>,
     }
 
     fn quit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         // last view and we have unsaved changes
-        if cx.editor.tree.views().count() == 1 {
-            buffers_remaining_impl(cx.editor)?
+        if editor.tree.views().count() == 1 {
+            buffers_remaining_impl(editor)?
         }
 
-        cx.editor.close(view!(cx.editor).id);
+        editor.close(view!(editor).id);
 
         Ok(())
     }
 
     fn force_quit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        cx.editor.close(view!(cx.editor).id);
+        editor.close(view!(editor).id);
 
         Ok(())
     }
 
     fn open(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let path = args.get(0).context("wrong argument count")?;
-        let _ = cx.editor.open(path.into(), Action::Replace)?;
+        let _ = editor.open(path.into(), Action::Replace)?;
         Ok(())
     }
 
     fn buffer_close(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let view = view!(cx.editor);
+        let view = view!(editor);
         let doc_id = view.doc;
-        cx.editor.close_document(doc_id, false)?;
+        editor.close_document(doc_id, false)?;
         Ok(())
     }
 
     fn force_buffer_close(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let view = view!(cx.editor);
+        let view = view!(editor);
         let doc_id = view.doc;
-        cx.editor.close_document(doc_id, true)?;
+        editor.close_document(doc_id, true)?;
         Ok(())
     }
 
     fn write_impl<P: AsRef<Path>>(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         path: Option<P>,
     ) -> anyhow::Result<()> {
-        let jobs = &mut cx.jobs;
-        let (_, doc) = current!(cx.editor);
+        let (_, doc) = current!(editor);
 
         if let Some(ref path) = path {
             doc.set_path(Some(path.as_ref()))
@@ -1936,40 +1985,44 @@ mod cmd {
     }
 
     fn write(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_impl(cx, args.first())
+        write_impl(editor, jobs, args.first())
     }
 
     fn new_file(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        cx.editor.new_file(Action::Replace);
+        editor.new_file(Action::Replace);
 
         Ok(())
     }
 
     fn format(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let (_, doc) = current!(editor);
 
         if let Some(format) = doc.format() {
             let callback =
                 make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
-            cx.jobs.callback(callback);
+            jobs.callback(callback);
         }
 
         Ok(())
     }
     fn set_indent_style(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
@@ -1977,8 +2030,8 @@ mod cmd {
 
         // If no argument, report current indent style.
         if args.is_empty() {
-            let style = doc!(cx.editor).indent_style;
-            cx.editor.set_status(match style {
+            let style = doc!(editor).indent_style;
+            editor.set_status(match style {
                 Tabs => "tabs".into(),
                 Spaces(1) => "1 space".into(),
                 Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
@@ -2000,7 +2053,7 @@ mod cmd {
         };
 
         let style = style.context("invalid indent style")?;
-        let doc = doc_mut!(cx.editor);
+        let doc = doc_mut!(editor);
         doc.indent_style = style;
 
         Ok(())
@@ -2008,7 +2061,8 @@ mod cmd {
 
     /// Sets or reports the current document's line ending setting.
     fn set_line_ending(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
@@ -2016,8 +2070,8 @@ mod cmd {
 
         // If no argument, report current line ending setting.
         if args.is_empty() {
-            let line_ending = doc!(cx.editor).line_ending;
-            cx.editor.set_status(match line_ending {
+            let line_ending = doc!(editor).line_ending;
+            editor.set_status(match line_ending {
                 Crlf => "crlf".into(),
                 LF => "line feed".into(),
                 FF => "form feed".into(),
@@ -2047,57 +2101,61 @@ mod cmd {
             _ => bail!("invalid line ending"),
         };
 
-        doc_mut!(cx.editor).line_ending = line_ending;
+        doc_mut!(editor).line_ending = line_ending;
         Ok(())
     }
 
     fn earlier(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(editor);
         let success = doc.earlier(view.id, uk);
         if !success {
-            cx.editor.set_status("Already at oldest change".to_owned());
+            editor.set_status("Already at oldest change".to_owned());
         }
 
         Ok(())
     }
 
     fn later(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(editor);
         let success = doc.later(view.id, uk);
         if !success {
-            cx.editor.set_status("Already at newest change".to_owned());
+            editor.set_status("Already at newest change".to_owned());
         }
 
         Ok(())
     }
 
     fn write_quit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_impl(cx, args.first())?;
-        quit(cx, &[], event)
+        write_impl(editor, jobs, args.first())?;
+        quit(editor, jobs, &[], event)
     }
 
     fn force_write_quit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_impl(cx, args.first())?;
-        force_quit(cx, &[], event)
+        write_impl(editor, jobs, args.first())?;
+        force_quit(editor, jobs, &[], event)
     }
 
     /// Results an error if there are modified buffers remaining and sets editor error,
@@ -2123,7 +2181,8 @@ mod cmd {
     }
 
     fn write_all_impl(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
         quit: bool,
@@ -2132,7 +2191,7 @@ mod cmd {
         let mut errors = String::new();
 
         // save all documents
-        for doc in &mut cx.editor.documents.values_mut() {
+        for doc in &mut editor.documents.values_mut() {
             if doc.path().is_none() {
                 errors.push_str("cannot write a buffer without a filename\n");
                 continue;
@@ -2140,18 +2199,18 @@ mod cmd {
 
             // TODO: handle error.
             let handle = doc.save();
-            cx.jobs.add(Job::new(handle).wait_before_exiting());
+            jobs.add(Job::new(handle).wait_before_exiting());
         }
 
         if quit {
             if !force {
-                buffers_remaining_impl(cx.editor)?;
+                buffers_remaining_impl(editor)?;
             }
 
             // close all views
-            let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
+            let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
             for view_id in views {
-                cx.editor.close(view_id);
+                editor.close(view_id);
             }
         }
 
@@ -2159,27 +2218,30 @@ mod cmd {
     }
 
     fn write_all(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(cx, args, event, false, false)
+        write_all_impl(editor, jobs, args, event, false, false)
     }
 
     fn write_all_quit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(cx, args, event, true, false)
+        write_all_impl(editor, jobs, args, event, true, false)
     }
 
     fn force_write_all_quit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        write_all_impl(cx, args, event, true, true)
+        write_all_impl(editor, jobs, args, event, true, true)
     }
 
     fn quit_all_impl(
@@ -2202,23 +2264,26 @@ mod cmd {
     }
 
     fn quit_all(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(&mut cx.editor, args, event, false)
+        quit_all_impl(editor, args, event, false)
     }
 
     fn force_quit_all(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(&mut cx.editor, args, event, true)
+        quit_all_impl(editor, args, event, true)
     }
 
     fn cquit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
@@ -2226,106 +2291,116 @@ mod cmd {
             .first()
             .and_then(|code| code.parse::<i32>().ok())
             .unwrap_or(1);
-        cx.editor.exit_code = exit_code;
+        editor.exit_code = exit_code;
 
-        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
+        let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
         for view_id in views {
-            cx.editor.close(view_id);
+            editor.close(view_id);
         }
 
         Ok(())
     }
 
     fn theme(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let theme = args.first().context("theme not provided")?;
-        cx.editor.set_theme_from_name(theme)
+        editor.set_theme_from_name(theme)
     }
 
     fn yank_main_selection_to_clipboard(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Clipboard)
+        yank_main_selection_to_clipboard_impl(editor, ClipboardType::Clipboard)
     }
 
     fn yank_joined_to_clipboard(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let (_, doc) = current!(editor);
         let separator = args
             .first()
             .copied()
             .unwrap_or_else(|| doc.line_ending.as_str());
-        yank_joined_to_clipboard_impl(&mut cx.editor, separator, ClipboardType::Clipboard)
+        yank_joined_to_clipboard_impl(editor, separator, ClipboardType::Clipboard)
     }
 
     fn yank_main_selection_to_primary_clipboard(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Selection)
+        yank_main_selection_to_clipboard_impl(editor, ClipboardType::Selection)
     }
 
     fn yank_joined_to_primary_clipboard(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let (_, doc) = current!(editor);
         let separator = args
             .first()
             .copied()
             .unwrap_or_else(|| doc.line_ending.as_str());
-        yank_joined_to_clipboard_impl(&mut cx.editor, separator, ClipboardType::Selection)
+        yank_joined_to_clipboard_impl(editor, separator, ClipboardType::Selection)
     }
 
     fn paste_clipboard_after(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard)
+        paste_clipboard_impl(editor, Paste::After, ClipboardType::Clipboard)
     }
 
     fn paste_clipboard_before(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard)
+        paste_clipboard_impl(editor, Paste::After, ClipboardType::Clipboard)
     }
 
     fn paste_primary_clipboard_after(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection)
+        paste_clipboard_impl(editor, Paste::After, ClipboardType::Selection)
     }
 
     fn paste_primary_clipboard_before(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection)
+        paste_clipboard_impl(editor, Paste::After, ClipboardType::Selection)
     }
 
     fn replace_selections_with_clipboard_impl(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         clipboard_type: ClipboardType,
     ) -> anyhow::Result<()> {
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(editor);
 
-        match cx.editor.clipboard_provider.get_contents(clipboard_type) {
+        match editor.clipboard_provider.get_contents(clipboard_type) {
             Ok(contents) => {
                 let selection = doc.selection(view.id);
                 let transaction =
@@ -2342,33 +2417,36 @@ mod cmd {
     }
 
     fn replace_selections_with_clipboard(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard)
+        replace_selections_with_clipboard_impl(editor, jobs, ClipboardType::Clipboard)
     }
 
     fn replace_selections_with_primary_clipboard(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        replace_selections_with_clipboard_impl(cx, ClipboardType::Selection)
+        replace_selections_with_clipboard_impl(editor, jobs, ClipboardType::Selection)
     }
 
     fn show_clipboard_provider(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        cx.editor
-            .set_status(cx.editor.clipboard_provider.name().to_string());
+        editor.set_status(editor.clipboard_provider.name().to_string());
         Ok(())
     }
 
     fn change_current_directory(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
@@ -2383,7 +2461,7 @@ mod cmd {
         }
 
         let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
-        cx.editor.set_status(format!(
+        editor.set_status(format!(
             "Current working directory is now {}",
             cwd.display()
         ));
@@ -2391,102 +2469,109 @@ mod cmd {
     }
 
     fn show_current_directory(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
-        cx.editor
-            .set_status(format!("Current working directory is {}", cwd.display()));
+        editor.set_status(format!("Current working directory is {}", cwd.display()));
         Ok(())
     }
 
     /// Sets the [`Document`]'s encoding..
     fn set_encoding(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let (_, doc) = current!(editor);
         if let Some(label) = args.first() {
             doc.set_encoding(label)
         } else {
             let encoding = doc.encoding().name().to_string();
-            cx.editor.set_status(encoding);
+            editor.set_status(encoding);
             Ok(())
         }
     }
 
     /// Reload the [`Document`] from its source file.
     fn reload(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(editor);
         doc.reload(view.id)
     }
 
     fn tree_sitter_scopes(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
 
         let pos = doc.selection(view.id).primary().cursor(text);
         let scopes = indent::get_scopes(doc.syntax(), text, pos);
-        cx.editor.set_status(format!("scopes: {:?}", &scopes));
+        editor.set_status(format!("scopes: {:?}", &scopes));
         Ok(())
     }
 
     fn vsplit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let id = view!(cx.editor).doc;
+        let id = view!(editor).doc;
 
         if let Some(path) = args.get(0) {
-            cx.editor.open(path.into(), Action::VerticalSplit)?;
+            editor.open(path.into(), Action::VerticalSplit)?;
         } else {
-            cx.editor.switch(id, Action::VerticalSplit);
+            editor.switch(id, Action::VerticalSplit);
         }
 
         Ok(())
     }
 
     fn hsplit(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let id = view!(cx.editor).doc;
+        let id = view!(editor).doc;
 
         if let Some(path) = args.get(0) {
-            cx.editor.open(path.into(), Action::HorizontalSplit)?;
+            editor.open(path.into(), Action::HorizontalSplit)?;
         } else {
-            cx.editor.switch(id, Action::HorizontalSplit);
+            editor.switch(id, Action::HorizontalSplit);
         }
 
         Ok(())
     }
 
     fn tutor(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         let path = helix_core::runtime_dir().join("tutor.txt");
-        cx.editor.open(path, Action::Replace)?;
+        editor.open(path, Action::Replace)?;
         // Unset path to prevent accidentally saving to the original tutor file.
-        doc_mut!(cx.editor).set_path(None)?;
+        doc_mut!(editor).set_path(None)?;
         Ok(())
     }
 
     pub(super) fn goto_line_number(
-        cx: &mut compositor::Context,
+        editor: &mut Editor,
+        _jobs: &mut Jobs,
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
@@ -2496,9 +2581,9 @@ mod cmd {
 
         let line = args[0].parse::<usize>()?;
 
-        goto_line_impl(&mut cx.editor, NonZeroUsize::new(line));
+        goto_line_impl(editor, NonZeroUsize::new(line));
 
-        let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(editor);
 
         view.ensure_cursor_in_view(doc, line);
 
@@ -2857,7 +2942,7 @@ fn command_mode(cx: &mut Context) {
 
             // If command is numeric, interpret as line number and go there.
             if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
-                if let Err(e) = cmd::goto_line_number(cx, &parts[0..], event) {
+                if let Err(e) = cmd::goto_line_number(cx.editor, cx.jobs, &parts[0..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
                 return;
@@ -2865,7 +2950,7 @@ fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
-                if let Err(e) = (cmd.fun)(cx, &parts[1..], event) {
+                if let Err(e) = (cmd.fun)(cx.editor, cx.jobs, &parts[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
             } else {
@@ -5629,7 +5714,7 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 }
 
 fn rename_symbol(cx: &mut Context) {
-    let prompt = Prompt::new(
+    let promt = Prompt::new(
         "rename-to:".into(),
         None,
         |_input: &str| Vec::new(),
@@ -5662,7 +5747,7 @@ fn rename_symbol(cx: &mut Context) {
             apply_workspace_edit(&mut cx.editor, offset_encoding, &edits);
         },
     );
-    cx.push_layer(Box::new(prompt));
+    cx.push_layer(Box::new(promt));
 }
 
 /// Increment object under cursor by count.
