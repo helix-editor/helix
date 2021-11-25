@@ -1,12 +1,12 @@
-use anyhow::{anyhow, Error};
 use bitflags::bitflags;
-use serde::de::{self, Deserialize, Deserializer};
+use serde::Deserialize;
 use std::{
     cmp::{max, min},
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
 /// UNSTABLE
 pub enum CursorKind {
     /// █
@@ -22,30 +22,6 @@ pub enum CursorKind {
 impl Default for CursorKind {
     fn default() -> Self {
         Self::Block
-    }
-}
-
-impl FromStr for CursorKind {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "bar" => Ok(Self::Bar),
-            "block" => Ok(Self::Block),
-            "underline" => Ok(Self::Underline),
-            _ => Err(anyhow!("Invalid cursor '{}'", s)),
-        }
-    }
-}
-
-// toml deserializer doesn't seem to recognize string as enum
-impl<'de> Deserialize<'de> for CursorKind {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(de::Error::custom)
     }
 }
 
