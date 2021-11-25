@@ -295,7 +295,6 @@ impl Editor {
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same
             if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
-                // we also want to kill the previous server
                 if let Some(language_server) = doc.language_server() {
                     tokio::spawn(language_server.text_document_did_close(doc.identifier()));
                 }

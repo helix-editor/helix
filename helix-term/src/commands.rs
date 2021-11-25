@@ -1816,10 +1816,7 @@ mod cmd {
         let jobs = &mut cx.jobs;
         let (_, doc) = current!(cx.editor);
 
-        // Should refresh lang server or not
-        let refresh_ls = path.is_some();
-
-        if let Some(path) = path {
+        if let Some(ref path) = path {
             doc.set_path(Some(path.as_ref()))
                 .context("invalid filepath")?;
         }
@@ -1840,7 +1837,7 @@ mod cmd {
         let future = doc.format_and_save(fmt);
         cx.jobs.add(Job::new(future).wait_before_exiting());
 
-        if refresh_ls {
+        if path.is_some() {
             let id = doc.id();
             let _ = cx.editor.refresh_language_server(id);
         }
