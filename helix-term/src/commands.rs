@@ -1244,7 +1244,7 @@ fn search_impl(
             .primary()
             .cursor(doc.text().slice(..));
         if view.is_cursor_in_view(cursor, doc, 0) {
-            view.ensure_cursor_in_view(cursor, doc, scrolloff);
+            view.ensure_cursor_in_view(doc, scrolloff);
         } else {
             align_view(doc, view, Align::Center)
         }

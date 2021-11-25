@@ -1080,11 +1080,7 @@ impl Component for EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
-                let cursor = doc
-                    .selection(view.id)
-                    .primary()
-                    .cursor(doc.text().slice(..));
-                view.ensure_cursor_in_view(cursor, doc, cxt.editor.config.scrolloff);
+                view.ensure_cursor_in_view(doc, cxt.editor.config.scrolloff);
 
                 // mode transitions
                 match (mode, doc.mode()) {

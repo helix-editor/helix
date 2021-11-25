@@ -83,11 +83,7 @@ pub fn regex_prompt(
 
                             fun(view, doc, regex, event);
 
-                            let cursor = doc
-                                .selection(view.id)
-                                .primary()
-                                .cursor(doc.text().slice(..));
-                            view.ensure_cursor_in_view(cursor, doc, cx.editor.config.scrolloff);
+                            view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
                         }
                         Err(_err) => (), // TODO: mark command line as error
                     }

@@ -131,7 +131,11 @@ impl View {
         }
     }
 
-    pub fn ensure_cursor_in_view(&mut self, cursor: usize, doc: &Document, scrolloff: usize) {
+    pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
+        let cursor = doc
+            .selection(self.id)
+            .primary()
+            .cursor(doc.text().slice(..));
         if let Some((row, col)) = self.offset_coords_to_in_view(cursor, doc, scrolloff) {
             self.offset.row = row;
             self.offset.col = col;
