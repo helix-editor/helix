@@ -1,0 +1,14 @@
+(type) @type
+(statement) @keyword.operator
+(number) @constant.numeric.integer
+(comment) @comment
+(string) @string
+(label) @label
+(keyword) @keyword
+"ret" @keyword.control.return
+(boolean) @constant.builtin.boolean
+(float) @constant.numeric.float
+(constant) @constant
+(identifier) @variable
+(symbol) @punctuation.delimiter
+(bracket) @punctuation.bracket
