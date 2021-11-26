@@ -19,7 +19,7 @@ use std::{
 
 use tokio::time::{sleep, Duration, Instant, Sleep};
 
-use anyhow::Error;
+use anyhow::{bail, Context, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -188,8 +188,8 @@ pub enum Action {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        themes: Arc<theme::Loader>,
-        config_loader: Arc<syntax::Loader>,
+        theme_loader: Arc<theme::Loader>,
+        syn_loader: Arc<syntax::Loader>,
         config: Config,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
@@ -199,15 +199,14 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            // Safety: 1 is non-zero
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             count: None,
             selected_register: None,
-            theme: themes.default(),
+            theme: theme_loader.default(),
             language_servers,
-            syn_loader: config_loader,
-            theme_loader: themes,
+            syn_loader,
+            theme_loader,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -264,7 +263,6 @@ impl Editor {
     }
 
     pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
-        use anyhow::Context;
         let theme = self
             .theme_loader
             .load(theme.as_ref())
@@ -343,23 +341,22 @@ impl Editor {
             }
             Action::Load => {
                 let view_id = view!(self).id;
-                if let Some(doc) = self.document_mut(id) {
-                    if doc.selections().is_empty() {
-                        doc.selections.insert(view_id, Selection::point(0));
-                    }
+                let doc = self.documents.get_mut(&id).unwrap();
+                if doc.selections().is_empty() {
+                    doc.selections.insert(view_id, Selection::point(0));
                 }
                 return;
             }
-            Action::HorizontalSplit => {
+            Action::HorizontalSplit | Action::VerticalSplit => {
                 let view = View::new(id);
-                let view_id = self.tree.split(view, Layout::Horizontal);
-                // initialize selection for view
-                let doc = self.documents.get_mut(&id).unwrap();
-                doc.selections.insert(view_id, Selection::point(0));
-            }
-            Action::VerticalSplit => {
-                let view = View::new(id);
-                let view_id = self.tree.split(view, Layout::Vertical);
+                let view_id = self.tree.split(
+                    view,
+                    match action {
+                        Action::HorizontalSplit => Layout::Horizontal,
+                        Action::VerticalSplit => Layout::Vertical,
+                        _ => unreachable!(),
+                    },
+                );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
                 doc.selections.insert(view_id, Selection::point(0));
@@ -397,11 +394,7 @@ impl Editor {
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
         let path = helix_core::path::get_canonicalized_path(&path)?;
-
-        let id = self
-            .documents()
-            .find(|doc| doc.path() == Some(&path))
-            .map(|doc| doc.id);
+        let id = self.document_by_path(&path).map(|doc| doc.id);
 
         let id = if let Some(id) = id {
             id
@@ -463,11 +456,11 @@ impl Editor {
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
         let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,
-            None => anyhow::bail!("document does not exist"),
+            None => bail!("document does not exist"),
         };
 
         if !force && doc.is_modified() {
-            anyhow::bail!(
+            bail!(
                 "buffer {:?} is modified",
                 doc.relative_path()
                     .map(|path| path.to_string_lossy().to_string())
@@ -500,7 +493,7 @@ impl Editor {
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
         // containing either an existing document, or a brand new document.
-        if self.tree.views().peekable().peek().is_none() {
+        if self.tree.views().next().is_none() {
             let doc_id = self
                 .documents
                 .iter()
@@ -585,8 +578,7 @@ impl Editor {
     }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
-        let view = view!(self);
-        let doc = &self.documents[&view.doc];
+        let (view, doc) = current_ref!(self);
         let cursor = doc
             .selection(view.id)
             .primary()
