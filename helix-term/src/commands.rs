@@ -1,7 +1,7 @@
 use helix_core::{
     comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
-    increment::date::DateIncrementor,
+    increment::date_time::DateTimeIncrementor,
     increment::{number::NumberIncrementor, Increment},
     indent,
     indent::IndentStyle,
@@ -5482,7 +5482,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
 
     let changes = selection.ranges().iter().filter_map(|range| {
         let incrementor: Option<Box<dyn Increment>> = if let Some(incrementor) =
-            DateIncrementor::from_range(text.slice(..), *range)
+            DateTimeIncrementor::from_range(text.slice(..), *range)
         {
             Some(Box::new(incrementor))
         } else if let Some(incrementor) = NumberIncrementor::from_range(text.slice(..), *range) {
