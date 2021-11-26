@@ -142,3 +142,7 @@
 	path = helix-syntax/languages/tree-sitter-perl
 	url = https://github.com/ganezdragon/tree-sitter-perl
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-comment"]
+	path = helix-syntax/languages/tree-sitter-comment
+	url = https://github.com/stsewd/tree-sitter-comment
+	shallow = true
