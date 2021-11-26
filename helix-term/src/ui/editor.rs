@@ -657,6 +657,17 @@ impl EditorView {
         let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
         self.autoinfo = key_result.sticky.map(|node| node.infobox());
 
+        // `restore_indent` tag may be set by `commands::open`, we need to cancel it
+        // when we are not enter normal_mode command.
+        match &key_result.kind {
+            KeymapResultKind::Matched(command) => {
+                if command.name() != "normal_mode" {
+                    commands::cancel_restore_indent(cxt);
+                }
+            }
+            _ => commands::cancel_restore_indent(cxt),
+        }
+
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
             KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),

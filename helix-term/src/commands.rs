@@ -4136,7 +4136,6 @@ pub mod insert {
             }
         }
 
-        doc.restore_indent = false;
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
@@ -5762,4 +5761,9 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
+}
+
+pub(crate) fn cancel_restore_indent(cx: &mut Context) {
+    let (_, doc) = current!(cx.editor);
+    doc.restore_indent = false;
 }
