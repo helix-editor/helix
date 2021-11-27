@@ -405,3 +405,11 @@ file-types = ["rkt"]
 shebangs = ["racket"]
 comment-token = ";"
 language-server = { command = "racket", args = ["-l", "racket-langserver"] }
+
+[[language]]
+name = "wgsl"
+scope = "source.wgsl"
+file-types = ["wgsl"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
