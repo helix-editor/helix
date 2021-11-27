@@ -79,8 +79,6 @@ pub struct Document {
     /// Current editing mode.
     pub mode: Mode,
     pub restore_cursor: bool,
-    /// Controls if going to normal mode, the previous open-line indent can be restore.
-    pub restore_indent: bool,
 
     /// Current indent style.
     pub indent_style: IndentStyle,
@@ -337,7 +335,6 @@ impl Document {
             line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
             restore_cursor: false,
-            restore_indent: false,
             syntax: None,
             language: None,
             changes,
