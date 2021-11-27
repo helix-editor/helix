@@ -317,7 +317,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-u`                | Delete to start of line                                                 |
 | `Ctrl-k`                | Delete to end of line                                                   |
 | `backspace`, `Ctrl-h`   | Delete previous char                                                    |
-| `delete`, `Ctrl-d`      | Delete previous char                                                    |
+| `delete`, `Ctrl-d`      | Delete next char                                                        |
 | `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`          | Select previous history                                                 |
 | `Ctrl-n`, `Down`        | Select next history                                                     |
