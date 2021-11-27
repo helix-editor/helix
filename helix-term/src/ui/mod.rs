@@ -24,6 +24,10 @@ use helix_core::regex::RegexBuilder;
 use helix_view::{Document, Editor, View};
 
 use std::path::PathBuf;
+use std::time::SystemTime;
+
+/// The bonus that is given to the score of files that are contained in the current directory in the file picker.
+const FILE_CURRENT_DIR_BONUS: i64 = 5;
 
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
@@ -93,7 +97,11 @@ pub fn regex_prompt(
     )
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(
+    root: PathBuf,
+    current_dir: Option<PathBuf>,
+    config: &helix_view::editor::Config,
+) -> FilePicker<(PathBuf, SystemTime, bool)> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time;
 
@@ -136,24 +144,24 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
                 .or_else(|_| metadata.created())
                 .unwrap_or(time::UNIX_EPOCH)
         });
+        let in_current_dir = match &current_dir {
+            Some(current_dir) => entry.path().starts_with(current_dir),
+            None => false,
+        };
 
-        Some((entry.into_path(), time))
+        Some((entry.into_path(), time, in_current_dir))
     });
 
-    let mut files: Vec<_> = if root.join(".git").is_dir() {
+    let files: Vec<_> = if root.join(".git").is_dir() {
         files.collect()
     } else {
         const MAX: usize = 8192;
         files.take(MAX).collect()
     };
 
-    files.sort_by_key(|file| std::cmp::Reverse(file.1));
-
-    let files = files.into_iter().map(|(path, _)| path).collect();
-
     FilePicker::new(
         files,
-        move |path: &PathBuf| {
+        move |(path, _, _)| {
             // format_fn
             path.strip_prefix(&root)
                 .unwrap_or(path)
@@ -161,12 +169,24 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
                 .unwrap()
                 .into()
         },
-        move |editor: &mut Editor, path: &PathBuf, action| {
+        move |editor: &mut Editor, (path, _, _), action| {
             editor
                 .open(path.into(), action)
                 .expect("editor.open failed");
         },
-        |_editor, path| Some((path.clone(), None)),
+        |_editor, (path, _, _)| Some((path.clone(), None)),
+        |(_, l_time, l_in_current_dir), mut l_score, (_, r_time, r_in_current_dir), mut r_score| {
+            if *l_in_current_dir {
+                l_score += FILE_CURRENT_DIR_BONUS;
+            }
+            if *r_in_current_dir {
+                r_score += FILE_CURRENT_DIR_BONUS;
+            }
+            l_score
+                .cmp(&r_score)
+                .reverse()
+                .then_with(|| l_time.cmp(r_time).reverse())
+        },
     )
 }
 

@@ -15,6 +15,7 @@ use tui::widgets::Widget;
 
 use std::{
     borrow::Cow,
+    cmp::Ordering,
     collections::HashMap,
     io::Read,
     path::{Path, PathBuf},
@@ -70,7 +71,7 @@ impl Preview<'_, '_> {
 
     /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
-        match *self {
+        match self {
             Self::EditorDocument(_) => "<File preview>",
             Self::Cached(preview) => match preview {
                 CachedPreview::Document(_) => "<File preview>",
@@ -88,9 +89,10 @@ impl<T> FilePicker<T> {
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
+        sort_fn: impl Fn(&T, i64, &T, i64) -> Ordering + 'static,
     ) -> Self {
         Self {
-            picker: Picker::new(false, options, format_fn, callback_fn),
+            picker: Picker::new(false, options, format_fn, callback_fn, sort_fn),
             truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
@@ -285,6 +287,8 @@ pub struct Picker<T> {
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
+    /// The ordering of the matches of the picker
+    sort_fn: Box<dyn Fn(&T, i64, &T, i64) -> Ordering>,
 }
 
 impl<T> Picker<T> {
@@ -293,6 +297,7 @@ impl<T> Picker<T> {
         options: Vec<T>,
         format_fn: impl Fn(&T) -> Cow<str> + 'static,
         callback_fn: impl Fn(&mut Editor, &T, Action) + 'static,
+        sort_fn: impl Fn(&T, i64, &T, i64) -> Ordering + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -314,6 +319,7 @@ impl<T> Picker<T> {
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
+            sort_fn: Box::new(sort_fn),
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -344,7 +350,15 @@ impl<T> Picker<T> {
                         .map(|score| (index, score))
                 }),
         );
-        self.matches.sort_unstable_by_key(|(_, score)| -score);
+        self.matches
+            .sort_unstable_by(|(l_idx, l_score), (r_idx, r_score)| {
+                (self.sort_fn)(
+                    &self.options[*l_idx],
+                    *l_score,
+                    &self.options[*r_idx],
+                    *r_score,
+                )
+            });
 
         // reset cursor position
         self.cursor = 0;

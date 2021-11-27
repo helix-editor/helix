@@ -1575,6 +1575,7 @@ fn global_search(cx: &mut Context) {
                         align_view(doc, view, Align::Center);
                     },
                     |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
+                    |_, l_score, _, r_score| l_score.cmp(&r_score).reverse(),
                 );
                 compositor.push(Box::new(picker));
             });
@@ -2757,7 +2758,8 @@ fn command_mode(cx: &mut Context) {
 
 fn file_picker(cx: &mut Context) {
     let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
-    let picker = ui::file_picker(root, &cx.editor.config);
+    let current_dir = std::env::current_dir().ok();
+    let picker = ui::file_picker(root, current_dir, &cx.editor.config);
     cx.push_layer(Box::new(picker));
 }
 
@@ -2825,6 +2827,7 @@ fn buffer_picker(cx: &mut Context) {
                 .cursor_line(doc.text().slice(..));
             Some((meta.path.clone()?, Some((line, line))))
         },
+        |_, l_score, _, r_score| l_score.cmp(&r_score).reverse(),
     );
     cx.push_layer(Box::new(picker));
 }
@@ -2902,6 +2905,7 @@ fn symbol_picker(cx: &mut Context) {
                         ));
                         Some((path, line))
                     },
+                    |_, l_score, _, r_score| l_score.cmp(&r_score).reverse(),
                 );
                 picker.truncate_start = false;
                 compositor.push(Box::new(picker))
@@ -2964,6 +2968,7 @@ fn workspace_symbol_picker(cx: &mut Context) {
                         ));
                         Some((path, line))
                     },
+                    |_, l_score, _, r_score| l_score.cmp(&r_score).reverse(),
                 );
                 picker.truncate_start = false;
                 compositor.push(Box::new(picker))
@@ -3016,6 +3021,7 @@ pub fn code_action(cx: &mut Context) {
                             }
                         }
                     },
+                    |_, l_score, _, r_score| l_score.cmp(&r_score).reverse(),
                 );
                 compositor.push(Box::new(picker))
             }
@@ -3530,6 +3536,7 @@ fn goto_impl(
                     ));
                     Some((path, line))
                 },
+                |_, l_score, _, r_score| l_score.cmp(&r_score).reverse(),
             );
             compositor.push(Box::new(picker));
         }
