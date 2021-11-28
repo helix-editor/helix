@@ -271,6 +271,53 @@ impl Editor {
         Ok(())
     }
 
+    /// Refreshes the language server for a given document
+    pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+        let doc = self.documents.get_mut(&doc_id)?;
+        doc.detect_language(Some(&self.theme), &self.syn_loader);
+        Self::launch_language_server(&mut self.language_servers, doc)
+    }
+
+    /// Launch a language server for a given document
+    fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+        // try to find a language server based on the language name
+        let language_server = doc.language.as_ref().and_then(|language| {
+            ls.get(language)
+                .map_err(|e| {
+                    log::error!(
+                        "Failed to initialize the LSP for `{}` {{ {} }}",
+                        language.scope(),
+                        e
+                    )
+                })
+                .ok()
+        });
+        if let Some(language_server) = language_server {
+            // only spawn a new lang server if the servers aren't the same
+            if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
+                if let Some(language_server) = doc.language_server() {
+                    tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+                }
+                let language_id = doc
+                    .language()
+                    .and_then(|s| s.split('.').last()) // source.rust
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_default();
+
+                // TODO: this now races with on_init code if the init happens too quickly
+                tokio::spawn(language_server.text_document_did_open(
+                    doc.url().unwrap(),
+                    doc.version(),
+                    doc.text(),
+                    language_id,
+                ));
+
+                doc.set_language_server(Some(language_server));
+            }
+        }
+        Some(())
+    }
+
     fn _refresh(&mut self) {
         for (view, _) in self.tree.views_mut() {
             let doc = &self.documents[&view.doc];
@@ -401,37 +448,7 @@ impl Editor {
         } else {
             let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
-            // try to find a language server based on the language name
-            let language_server = doc.language.as_ref().and_then(|language| {
-                self.language_servers
-                    .get(language)
-                    .map_err(|e| {
-                        log::error!(
-                            "Failed to initialize the LSP for `{}` {{ {} }}",
-                            language.scope(),
-                            e
-                        )
-                    })
-                    .ok()
-            });
-
-            if let Some(language_server) = language_server {
-                let language_id = doc
-                    .language()
-                    .and_then(|s| s.split('.').last()) // source.rust
-                    .map(ToOwned::to_owned)
-                    .unwrap_or_default();
-
-                // TODO: this now races with on_init code if the init happens too quickly
-                tokio::spawn(language_server.text_document_did_open(
-                    doc.url().unwrap(),
-                    doc.version(),
-                    doc.text(),
-                    language_id,
-                ));
-
-                doc.set_language_server(Some(language_server));
-            }
+            let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
             self.new_document(doc)
         };
