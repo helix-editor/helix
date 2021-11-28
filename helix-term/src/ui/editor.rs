@@ -1025,10 +1025,8 @@ impl Component for EditorView {
                         self.completion = None;
 
                         // For user friendly,
-                        // If we go from insert mode to normal node, and press no extra keys,
-                        // should try to make current line empty(restore pre-inserted indent).
-                        //
-                        // When we press no extra keys to normal mode, the `last_insert.1` just contains one key(ESC).
+                        // Remove whitespaces if we go from insert mode to normal mode without any keys in between.
+                        // Example: `o<esc>`.
                         if self.last_insert.1.len() == 1 {
                             commands::Command::goto_line_start.execute(&mut cxt);
                             commands::Command::kill_to_line_end.execute(&mut cxt);
