@@ -5803,17 +5803,17 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let text = doc.text();
 
     let changes = selection.ranges().iter().filter_map(|range| {
-        let incrementor: Option<Box<dyn Increment>> = if let Some(incrementor) =
+        let incrementor: Box<dyn Increment> = if let Some(incrementor) =
             DateTimeIncrementor::from_range(text.slice(..), *range)
         {
-            Some(Box::new(incrementor))
+            Box::new(incrementor)
         } else if let Some(incrementor) = NumberIncrementor::from_range(text.slice(..), *range) {
-            Some(Box::new(incrementor))
+            Box::new(incrementor)
         } else {
-            None
+            return None;
         };
 
-        let (range, new_text) = incrementor?.increment(amount);
+        let (range, new_text) = incrementor.increment(amount);
         Some((range.from(), range.to(), Some(new_text)))
     });
 

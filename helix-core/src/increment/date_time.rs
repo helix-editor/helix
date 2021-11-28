@@ -67,27 +67,16 @@ impl DateTimeIncrementor {
             let has_date = format.fields.iter().any(|f| f.unit.is_date());
             let has_time = format.fields.iter().any(|f| f.unit.is_time());
 
+            let date_time = &text[date_time.start()..date_time.end()];
             let date_time = match (has_date, has_time) {
-                (true, true) => NaiveDateTime::parse_from_str(
-                    &text[date_time.start()..date_time.end()],
-                    format.fmt,
-                )
-                .ok()?,
+                (true, true) => NaiveDateTime::parse_from_str(date_time, format.fmt).ok()?,
                 (true, false) => {
-                    let date = NaiveDate::parse_from_str(
-                        &text[date_time.start()..date_time.end()],
-                        format.fmt,
-                    )
-                    .ok()?;
+                    let date = NaiveDate::parse_from_str(date_time, format.fmt).ok()?;
 
                     date.and_hms(0, 0, 0)
                 }
                 (false, true) => {
-                    let time = NaiveTime::parse_from_str(
-                        &text[date_time.start()..date_time.end()],
-                        format.fmt,
-                    )
-                    .ok()?;
+                    let time = NaiveTime::parse_from_str(date_time, format.fmt).ok()?;
 
                     NaiveDate::from_ymd(0, 1, 1).and_time(time)
                 }
@@ -123,22 +112,22 @@ impl Increment for DateTimeIncrementor {
 
 static FORMATS: Lazy<Vec<Format>> = Lazy::new(|| {
     vec![
-        Format::new("%Y-%m-%d %H:%M:%S"), // 2021-11-24 07:12:23
-        Format::new("%Y/%m/%d %H:%M:%S"), // 2021/11/24 07:12:23
-        Format::new("%Y-%m-%d %H:%M"),    // 2021-11-24 07:12
-        Format::new("%Y/%m/%d %H:%M"),    // 2021/11/24 07:12
-        Format::new("%Y-%m-%d"),          // 2021-11-24
-        Format::new("%Y/%m/%d"),          // 2021/11/24
-        Format::new("%a %b %d %Y"),       // Wed Nov 24 2021
-        Format::new("%d-%b-%Y"),          // 24-Nov-2021
-        Format::new("%Y %b %d"),          // 2021 Nov 24
-        Format::new("%b %d, %Y"),         // Nov 24, 2021
-        Format::new("%-I:%M:%S %P"),      // 7:21:53 am
-        Format::new("%-I:%M %P"),         // 7:21 am
-        Format::new("%-I:%M:%S %p"),      // 7:21:53 AM
-        Format::new("%-I:%M %p"),         // 7:21 AM
-        Format::new("%H:%M:%S"),          // 23:24:23
-        Format::new("%H:%M"),             // 23:24
+        Format::new("%Y-%m-%d %H:%M:%S").unwrap(), // 2021-11-24 07:12:23
+        Format::new("%Y/%m/%d %H:%M:%S").unwrap(), // 2021/11/24 07:12:23
+        Format::new("%Y-%m-%d %H:%M").unwrap(),    // 2021-11-24 07:12
+        Format::new("%Y/%m/%d %H:%M").unwrap(),    // 2021/11/24 07:12
+        Format::new("%Y-%m-%d").unwrap(),          // 2021-11-24
+        Format::new("%Y/%m/%d").unwrap(),          // 2021/11/24
+        Format::new("%a %b %d %Y").unwrap(),       // Wed Nov 24 2021
+        Format::new("%d-%b-%Y").unwrap(),          // 24-Nov-2021
+        Format::new("%Y %b %d").unwrap(),          // 2021 Nov 24
+        Format::new("%b %d, %Y").unwrap(),         // Nov 24, 2021
+        Format::new("%-I:%M:%S %P").unwrap(),      // 7:21:53 am
+        Format::new("%-I:%M %P").unwrap(),         // 7:21 am
+        Format::new("%-I:%M:%S %p").unwrap(),      // 7:21:53 AM
+        Format::new("%-I:%M %p").unwrap(),         // 7:21 AM
+        Format::new("%H:%M:%S").unwrap(),          // 23:24:23
+        Format::new("%H:%M").unwrap(),             // 23:24
     ]
 });
 
@@ -151,53 +140,63 @@ struct Format {
 }
 
 impl Format {
-    fn new(fmt: &'static str) -> Self {
+    fn new(fmt: &'static str) -> Result<Self, FormatError> {
         let mut remaining = fmt;
         let mut fields = Vec::new();
         let mut regex = String::new();
         let mut max_len = 0;
 
         while let Some(i) = remaining.find('%') {
-            let mut chars = remaining[i + 1..].chars();
-            let spec_len = if let Some(c) = chars.next() {
-                if c == '-' {
-                    if chars.next().is_some() {
-                        2
-                    } else {
-                        0
-                    }
+            let after = &remaining[i + 1..];
+            let mut chars = after.chars();
+            let c = chars
+                .next()
+                .ok_or(FormatError::UnexpectedEndOfFormatString)?;
+
+            let spec_len = if c == '-' {
+                if let Some(c) = chars.next() {
+                    1 + c.len_utf8()
                 } else {
-                    1
+                    return Err(FormatError::UnexpectedEndOfFormatString);
                 }
             } else {
-                0
+                c.len_utf8()
             };
 
             if i < remaining.len() - spec_len {
-                let specifier = &remaining[i + 1..i + 1 + spec_len];
+                let specifier = &after[..spec_len];
                 if let Some(field) = DateField::from_specifier(specifier) {
                     fields.push(field);
                     max_len += field.max_len + remaining[..i].len();
                     regex += &remaining[..i];
                     regex += &format!("({})", field.regex);
-                    remaining = &remaining[i + spec_len + 1..];
+                    remaining = &after[spec_len..];
                 } else {
-                    regex += &remaining[..=i];
+                    return Err(FormatError::UnsupportedSpecifier(
+                        &remaining[i..i + 1 + spec_len],
+                    ));
                 }
             } else {
-                regex += remaining;
+                return Err(FormatError::UnexpectedEndOfFormatString);
             }
         }
 
-        let regex = Regex::new(&regex).unwrap();
+        let regex = Regex::new(&regex).map_err(FormatError::Regex)?;
 
-        Self {
+        Ok(Self {
             fmt,
             fields,
             regex,
             max_len,
-        }
+        })
     }
+}
+
+#[derive(Clone, Debug)]
+enum FormatError {
+    UnexpectedEndOfFormatString,
+    UnsupportedSpecifier(&'static str),
+    Regex(regex::Error),
 }
 
 impl PartialEq for Format {
@@ -348,10 +347,11 @@ fn add_months(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
     // Normalize month
     let month = month % 12;
     let month = if month.is_negative() {
-        month + 13
+        month + 12
     } else {
-        month + 1
-    } as u32;
+        month
+    } as u32
+        + 1;
 
     let day = cmp::min(date_time.day(), ndays_in_month(year, month));
 
