@@ -448,7 +448,25 @@ impl<'de> Deserialize<'de> for MappableCommand {
 
 impl PartialEq for MappableCommand {
     fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name()
+        match (self, other) {
+            (
+                MappableCommand::Typable {
+                    name: first_name, ..
+                },
+                MappableCommand::Typable {
+                    name: second_name, ..
+                },
+            ) => first_name == second_name,
+            (
+                MappableCommand::Static {
+                    name: first_name, ..
+                },
+                MappableCommand::Static {
+                    name: second_name, ..
+                },
+            ) => first_name == second_name,
+            _ => false,
+        }
     }
 }
 
