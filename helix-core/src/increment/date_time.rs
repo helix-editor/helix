@@ -13,7 +13,7 @@ use crate::{Range, Tendril};
 pub struct DateTimeIncrementor {
     date_time: NaiveDateTime,
     range: Range,
-    format: Format,
+    fmt: &'static str,
     field: DateField,
 }
 
@@ -97,7 +97,7 @@ impl DateTimeIncrementor {
             Some(DateTimeIncrementor {
                 date_time,
                 range,
-                format: format.clone(),
+                fmt: format.fmt,
                 field,
             })
         })
@@ -117,10 +117,7 @@ impl Increment for DateTimeIncrementor {
         }
         .unwrap_or(self.date_time);
 
-        (
-            self.range,
-            date_time.format(self.format.fmt).to_string().into(),
-        )
+        (self.range, date_time.format(self.fmt).to_string().into())
     }
 }
 
