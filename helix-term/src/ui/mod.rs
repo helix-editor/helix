@@ -176,6 +176,9 @@ pub fn file_picker(
         },
         |_editor, (path, _, _)| Some((path.clone(), None)),
         |(_, l_time, l_in_current_dir), mut l_score, (_, r_time, r_in_current_dir), mut r_score| {
+            // Sort the matches of the picker by:
+            // * The closeness of the file name to the search with a small boost being given to files in the current directory
+            // * As a tie-breaker, use the timestamp of the file
             if *l_in_current_dir {
                 l_score += FILE_CURRENT_DIR_BONUS;
             }

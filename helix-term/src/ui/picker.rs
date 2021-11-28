@@ -287,7 +287,8 @@ pub struct Picker<T> {
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
-    /// The ordering of the matches of the picker
+    /// This function specifies the ordering of any 2 matches given as (l_element, l_matching_score, r_element, r_matching_score).
+    /// The matches are sorted in ascending order, so the highest priority match should be the smallest element in terms of this ordering.
     sort_fn: Box<dyn Fn(&T, i64, &T, i64) -> Ordering>,
 }
 
