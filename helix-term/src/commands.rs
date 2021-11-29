@@ -134,6 +134,7 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
     view.offset.row = line.saturating_sub(relative);
 }
 
+pub type CommandFun = fn(&mut Context);
 /// A command is composed of a static name, and a function that takes the current state plus a count,
 /// and does a side-effect on the state (usually by creating and applying a transaction).
 #[derive(Copy, Clone)]
@@ -171,6 +172,10 @@ impl Command {
 
     pub fn doc(&self) -> &'static str {
         self.doc
+    }
+
+    pub fn fun(&self) -> fn(&mut Context) {
+        self.fun
     }
 
     #[rustfmt::skip]
@@ -3510,12 +3515,12 @@ fn open(cx: &mut Context, open: Open) {
 }
 
 // o inserts a new line after each line with a selection
-fn open_below(cx: &mut Context) {
+pub(crate) fn open_below(cx: &mut Context) {
     open(cx, Open::Below)
 }
 
 // O inserts a new line before each line with a selection
-fn open_above(cx: &mut Context) {
+pub(crate) fn open_above(cx: &mut Context) {
     open(cx, Open::Above)
 }
 
