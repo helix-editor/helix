@@ -15,8 +15,9 @@ line-number = "relative"
 mouse = false
 
 [editor.cursor-shape]
-normal = "underline"
-insert = "block"
+insert = "bar"
+normal = "block"
+select = "underline"
 
 [editor.file-picker]
 hidden = false
@@ -46,11 +47,11 @@ hidden = false
 Defines the shape of cursor in each mode. Note that due to limitations
 of the terminal environment, only the primary cursor can change shape.
 
-| Key      | Description                                | Default     |
-| ---      | -----------                                | --------    |
-| `normal` | Cursor shape in [normal mode][normal mode] | `block`     |
-| `insert` | Cursor shape in [insert mode][insert mode] | `bar`       |
-| `select` | Cursor shape in [select mode][select mode] | `underline` |
+| Key      | Description                                | Default |
+| ---      | -----------                                | ------- |
+| `normal` | Cursor shape in [normal mode][normal mode] | `block` |
+| `insert` | Cursor shape in [insert mode][insert mode] | `block` |
+| `select` | Cursor shape in [select mode][select mode] | `block` |
 
 [normal mode]: ./keymap.md#normal-mode
 [insert mode]: ./keymap.md#insert-mode

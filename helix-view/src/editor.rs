@@ -122,9 +122,9 @@ impl std::ops::Deref for CursorShapeConfig {
 impl Default for CursorShapeConfig {
     fn default() -> Self {
         Self(hashmap!(
-            Mode::Insert => CursorKind::Bar,
+            Mode::Insert => CursorKind::Block,
             Mode::Normal => CursorKind::Block,
-            Mode::Select => CursorKind::Underline,
+            Mode::Select => CursorKind::Block,
         ))
     }
 }
