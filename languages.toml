@@ -413,3 +413,11 @@ file-types = ["wgsl"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "llvm"
+scope = "source.llvm"
+roots = []
+file-types = ["ll"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
