@@ -1026,7 +1026,7 @@ impl Component for EditorView {
 
                         let last_cmd = self.last_insert.0;
                         // For user friendly,
-                        // Remove whitespaces if we go from insert mode to normal mode without any keys in between.
+                        // Remove whitespaces if we go from insert mode(through open below/above) to normal mode without any keys in between.
                         // Example: `o<esc>`.
                         if (last_cmd.name() == "open_below" || last_cmd.name() == "open_above")
                             && self.last_insert.1.len() == 1
