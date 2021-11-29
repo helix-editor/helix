@@ -259,6 +259,9 @@ impl Command {
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
         goto_file_end, "Goto file end",
+        goto_file, "Goto files in the selection",
+        goto_file_hsplit, "Goto files in the selection in horizontal splits",
+        goto_file_vsplit, "Goto files in the selection in vertical splits",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_middle, "Goto window middle",
@@ -833,6 +836,49 @@ fn goto_file_end(cx: &mut Context) {
         .clone()
         .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
     doc.set_selection(view.id, selection);
+}
+
+fn goto_file(cx: &mut Context) {
+    goto_file_impl(cx, Action::Replace);
+}
+
+fn goto_file_hsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::HorizontalSplit);
+}
+
+fn goto_file_vsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_file_impl(cx: &mut Context, action: Action) {
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text();
+    let selections = doc.selection(view.id);
+    let mut paths: Vec<_> = selections
+        .iter()
+        .map(|r| text.slice(r.from()..r.to()).to_string())
+        .collect();
+    let primary = selections.primary();
+    if selections.len() == 1 && primary.to() - primary.from() == 1 {
+        let current_word = movement::move_next_long_word_start(
+            text.slice(..),
+            movement::move_prev_long_word_start(text.slice(..), primary, 1),
+            1,
+        );
+        paths.clear();
+        paths.push(
+            text.slice(current_word.from()..current_word.to())
+                .to_string(),
+        );
+    }
+    for sel in paths {
+        let p = sel.trim();
+        if !p.is_empty() {
+            if let Err(e) = cx.editor.open(PathBuf::from(p), action) {
+                cx.editor.set_error(format!("Open file failed: {:?}", e));
+            }
+        }
+    }
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
