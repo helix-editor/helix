@@ -134,7 +134,6 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
     view.offset.row = line.saturating_sub(relative);
 }
 
-pub type CommandFun = fn(&mut Context);
 /// A command is composed of a static name, and a function that takes the current state plus a count,
 /// and does a side-effect on the state (usually by creating and applying a transaction).
 #[derive(Copy, Clone)]

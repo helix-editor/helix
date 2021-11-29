@@ -1025,9 +1025,8 @@ impl Component for EditorView {
                         self.completion = None;
 
                         let last_cmd = self.last_insert.0.fun();
-                        use commands::CommandFun;
-                        const OPEN_BELOW_FUN: CommandFun = commands::open_below;
-                        const OPEN_ABOVE_FUN: CommandFun = commands::open_above;
+                        const OPEN_BELOW_FUN: fn(&mut commands::Context) = commands::open_below;
+                        const OPEN_ABOVE_FUN: fn(&mut commands::Context) = commands::open_above;
                         // For user friendly,
                         // Remove whitespaces if we go from insert mode(through open below/above) to normal mode without any keys in between.
                         // Example: `o<esc>`.
