@@ -66,6 +66,7 @@ pub enum Direction {
 pub struct Container {
     layout: Layout,
     children: Vec<ViewId>,
+    child_weights: Option<Vec<f32>>,
     area: Rect,
 }
 
@@ -74,6 +75,7 @@ impl Container {
         Self {
             layout,
             children: Vec::new(),
+            child_weights: None,
             area: Rect::default(),
         }
     }
@@ -134,6 +136,9 @@ impl Tree {
         };
 
         container.children.insert(pos, node);
+        if let Some(ws) = container.child_weights.as_mut() {
+            ws.insert(pos, 1f32);
+        }
         // focus the new node
         self.focus = node;
 
@@ -171,6 +176,9 @@ impl Tree {
                 pos + 1
             };
             container.children.insert(pos, node);
+            if let Some(ws) = container.child_weights.as_mut() {
+                ws.insert(pos, 1f32);
+            }
             self.nodes[node].parent = parent;
         } else {
             let mut split = Node::container(layout);
@@ -235,6 +243,9 @@ impl Tree {
             {
                 if let Some(pos) = container.children.iter().position(|&child| child == index) {
                     container.children.remove(pos);
+                    if let Some(ws) = container.child_weights.as_mut() {
+                        ws.remove(pos);
+                    }
 
                     // TODO: if container now only has one child, remove it and place child in parent
                     if container.children.is_empty() && parent_id != self.root {
@@ -342,12 +353,16 @@ impl Tree {
                     match container.layout {
                         Layout::Horizontal => {
                             let len = container.children.len();
-
-                            let height = area.height / len as u16;
-
+                            let weights = container
+                                .child_weights
+                                .clone()
+                                .unwrap_or_else(|| vec![1f32; len]);
+                            let step = container.area.height as f32 / weights.iter().sum::<f32>();
                             let mut child_y = area.y;
 
                             for (i, child) in container.children.iter().enumerate() {
+                                let height = (step * weights[i]) as u16;
+
                                 let mut area = Rect::new(
                                     container.area.x,
                                     child_y,
@@ -367,8 +382,11 @@ impl Tree {
                         }
                         Layout::Vertical => {
                             let len = container.children.len();
-
-                            let width = area.width / len as u16;
+                            let weights = container
+                                .child_weights
+                                .clone()
+                                .unwrap_or_else(|| vec![1f32; len]);
+                            let step = container.area.width as f32 / weights.iter().sum::<f32>();
 
                             let inner_gap = 1u16;
                             // let total_gap = inner_gap * (len as u16 - 1);
@@ -376,6 +394,8 @@ impl Tree {
                             let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
+                                let width = (step * weights[i]) as u16;
+
                                 let mut area = Rect::new(
                                     child_x,
                                     container.area.y,
