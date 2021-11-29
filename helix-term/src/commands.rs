@@ -733,10 +733,12 @@ fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> 
 }
 
 fn goto_window(cx: &mut Context, align: Align) {
+    let count = cx.count() - 1;
     let (view, doc) = current!(cx.editor);
 
     let height = view.inner_area().height as usize;
 
+    // respect user given count if any
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
@@ -745,11 +747,12 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.offset.row + scrolloff),
-        Align::Center => (view.offset.row + (height / 2)),
-        Align::Bottom => last_line.saturating_sub(scrolloff),
+        Align::Top => (view.offset.row + scrolloff + count),
+        Align::Center => (view.offset.row + ((last_line - view.offset.row) / 2)),
+        Align::Bottom => last_line.saturating_sub(scrolloff + count),
     }
-    .min(last_line.saturating_sub(scrolloff));
+    .min(last_line.saturating_sub(scrolloff))
+    .max(view.offset.row + scrolloff);
 
     let pos = doc.text().line_to_char(line);
 
