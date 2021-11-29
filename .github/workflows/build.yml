@@ -25,19 +25,19 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -64,19 +64,19 @@ jobs:
           override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -109,19 +109,19 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache cargo registry
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-v2-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-v2-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo target dir
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: target
           key: ${{ runner.os }}-v2-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
