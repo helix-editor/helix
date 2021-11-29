@@ -308,10 +308,10 @@ impl Range {
 }
 
 impl From<(usize, usize)> for Range {
-    fn from(tuple: (usize, usize)) -> Self {
+    fn from((anchor, head): (usize, usize)) -> Self {
         Self {
-            anchor: tuple.0,
-            head: tuple.1,
+            anchor,
+            head,
             horiz: None,
         }
     }
