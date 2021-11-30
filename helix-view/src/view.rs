@@ -65,8 +65,7 @@ impl JumpList {
 }
 
 const GUTTERS: &[(Gutter, usize)] = &[
-    (gutter::breakpoints, 1),
-    (gutter::diagnostic, 1),
+    (gutter::diagnostics_or_breakpoints, 1),
     (gutter::line_number, 5),
 ];
 

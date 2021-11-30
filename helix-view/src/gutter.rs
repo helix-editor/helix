@@ -155,3 +155,19 @@ pub fn breakpoints<'doc>(
         Some(style)
     })
 }
+
+pub fn diagnostics_or_breakpoints<'doc>(
+    editor: &'doc Editor,
+    doc: &'doc Document,
+    view: &View,
+    theme: &Theme,
+    is_focused: bool,
+    width: usize,
+) -> GutterFn<'doc> {
+    let diagnostics = diagnostic(editor, doc, view, theme, is_focused, width);
+    let breakpoints = breakpoints(editor, doc, view, theme, is_focused, width);
+
+    Box::new(move |line, selected, out| {
+        breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
+    })
+}
