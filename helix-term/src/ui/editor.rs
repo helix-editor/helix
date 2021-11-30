@@ -59,7 +59,6 @@ impl EditorView {
         &mut self.spinners
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_view(
         &self,
         editor: &Editor,
@@ -68,13 +67,13 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         is_focused: bool,
-        loader: &syntax::Loader,
     ) {
         let inner = view.inner_area();
         let area = view.area;
         let theme = &editor.theme;
 
-        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, loader);
+        let highlights =
+            Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, &editor.syn_loader);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
@@ -117,7 +116,6 @@ impl EditorView {
     /// Get syntax highlights for a document in a view represented by the first line
     /// and column (`offset`) and the last line. This is done instead of using a view
     /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
-    #[allow(clippy::too_many_arguments)]
     pub fn doc_syntax_highlights<'doc>(
         doc: &'doc Document,
         offset: Position,
@@ -556,7 +554,6 @@ impl EditorView {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_statusline(
         &self,
         doc: &Document,
@@ -1154,8 +1151,7 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            let loader = &cx.editor.syn_loader;
-            self.render_view(cx.editor, doc, view, area, surface, is_focused, loader);
+            self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
         if cx.editor.config.auto_info {
