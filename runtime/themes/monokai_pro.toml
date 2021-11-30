@@ -1,0 +1,106 @@
+# Author : RayGervais<raygervais@hotmail.ca>
+
+"ui.linenr.selected" = { fg = "nord4" }
+"ui.text.focus" = { fg = "nord8", modifiers= ["bold"] }
+"ui.menu.selected" = { fg = "nord8", bg = "nord2" }
+
+"info" = "nord8"
+"hint" = "nord8"
+
+# Polar Night
+# nord0 - background color
+"ui.background" = { bg = "base1" }
+"ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
+
+
+# nord1 - status bars, panels, modals, autocompletion
+"ui.statusline" = { fg = "nord4", bg = "#4c566a" }
+"ui.popup" = { bg = "#232d38" }
+"ui.window" = { bg = "#232d38" }
+"ui.help" = { bg = "#232d38", fg = "nord4" }
+
+# nord2 - active line, highlighting
+"ui.selection" = { bg = "nord2" }
+"ui.cursor.match" = { bg = "nord2" }
+
+# nord3 - comments, nord3 based lighter color
+# relative: https://github.com/arcticicestudio/nord/issues/94
+"comment" = { fg = "base5", modifiers = ["italic"] }
+"ui.linenr" = { fg = "base5" }
+
+# Snow Storm
+# nord4 - cursor, variables, constants, attributes, fields
+"ui.cursor.primary" = { fg = "nord4", modifiers = ["reversed"] }
+"attribute" = "nord4"
+"variable"  = "nord4"
+"constant"  = "nord4"
+"variable.builtin" = "nord4"
+"constant.builtin" = "nord4"
+"namespace" = "nord4"
+
+# nord5 - suble UI text
+
+# nord6 - base text, punctuation
+"ui.text" = { fg = "nord6" }
+"punctuation" = "nord6"
+
+# Frost
+# nord7 - classes, types, primiatives
+"type" = "nord7"
+"type.builtin" = { fg = "nord7"}
+"label" = "nord7"
+
+# nord8 - declaration, methods, routines
+"constructor" = "nord8"
+"function" = "nord8"
+"function.macro" = { fg = "nord8" }
+"function.builtin" = { fg = "nord8" }
+
+# nord9 - operator, tags, units, punctuations
+"punctuation.delimiter" = "nord9"
+"operator" = { fg = "nord9" }
+"variable.other.member" = "nord9"
+
+# nord10 - keywords, special
+"keyword" = { fg = "nord10" }
+"keyword.directive" = "nord10"
+"variable.parameter" = "nord10"
+
+# Aurora
+# nord11 - error
+"error" = "nord11"
+
+# nord12 - annotations, decorators
+"special" = "nord12"
+"module" = "nord12"
+
+# nord13 - warnings, escape characters, regex
+"warning" = "nord13"
+"constant.character.escape" = { fg = "nord13" }
+
+# nord14 - strings
+"string" = "nord14"
+
+# nord15 - integer, floating point
+"constant.numeric" = "nord15"
+
+[palette]
+# primary colors
+"red" = "#ff6188"
+"orange" = "#fc9867"
+"yellow" = "#ffd866"
+"green" = "#a9dc76"
+"blue" = "#78dce8"
+"purple" = "#ab9df2"
+# base colors, sorted from darkest to lightest
+"base0" = "19181a"
+"base1" = "221f22"
+"base2" = "2d2a2e"
+"base3" = "403e41"
+"base4" = "5b595c"
+"base5" = "727072"
+"base6" = "939293"
+"base7" = "c1c0c0"
+"base8" = "fcfcfa"
+# variants (for when transparency isn't supported)
+"base8x0c" = "363337" # using base2 as bg
