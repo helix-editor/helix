@@ -1897,8 +1897,8 @@ fn append_mode(cx: &mut Context) {
 mod cmd {
     use super::*;
 
-    use helix_dap::SourceBreakpoint;
     use helix_view::editor::Action;
+    use helix_view::editor::Breakpoint;
     use ui::completers::{self, Completer};
 
     #[derive(Clone)]
@@ -2563,9 +2563,7 @@ mod cmd {
         Ok(())
     }
 
-    pub fn get_breakpoint_at_current_line(
-        editor: &mut Editor,
-    ) -> Option<(usize, SourceBreakpoint)> {
+    pub fn get_breakpoint_at_current_line(editor: &mut Editor) -> Option<(usize, Breakpoint)> {
         let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
 

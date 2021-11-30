@@ -35,7 +35,6 @@ pub struct Client {
     pub thread_id: Option<ThreadId>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
-    pub breakpoints: Vec<Breakpoint>,
     pub quirks: DebuggerQuirks,
 }
 
@@ -81,7 +80,6 @@ impl Client {
             thread_states: HashMap::new(),
             thread_id: None,
             active_frame: None,
-            breakpoints: vec![],
             quirks: DebuggerQuirks::default(),
         };
 

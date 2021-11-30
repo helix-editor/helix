@@ -15,7 +15,6 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     LineEnding, Position, Range, Selection,
 };
-use helix_dap::{Breakpoint, SourceBreakpoint, StackFrame};
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
@@ -24,7 +23,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{borrow::Cow, collections::HashMap, path::PathBuf};
+use std::borrow::Cow;
 
 use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
@@ -74,7 +73,6 @@ impl EditorView {
         let inner = view.inner_area();
         let area = view.area;
         let theme = &editor.theme;
-        let all_breakpoints = HashMap::new();
 
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, loader);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
@@ -107,7 +105,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme, &all_breakpoints);
+        self.render_diagnostics(doc, view, inner, surface, theme);
 
         let statusline_area = view
             .area
@@ -436,38 +434,20 @@ impl EditorView {
             let error = theme.get("error");
             let info = theme.get("info");
 
-            let all_breakpoints = &editor.breakpoints;
-
-            // TODO: debugger breakpoints should keep editor level breakpoints in sync
-
             let breakpoints = doc
                 .path()
-                .and_then(|path| all_breakpoints.get(path))
+                .and_then(|path| editor.breakpoints.get(path))
                 .unwrap();
 
             Box::new(move |line: usize, _selected: bool, out: &mut String| {
-                // TODO: debugger should translate received breakpoints to 0-indexing
-                let breakpoint = breakpoints.iter().find(|breakpoint| {
-                    false
-                    // if breakpoint.source == doc.path() {
-                    //     match (breakpoint.line, breakpoint.end_line) {
-                    //         #[allow(clippy::int_plus_one)]
-                    //         (Some(l), Some(el)) => l - 1 <= line && line <= el - 1,
-                    //         (Some(l), None) => l - 1 == line,
-                    //         _ => false,
-                    //     }
-                    // } else {
-                    //     false
-                    // }
-                });
+                let breakpoint = breakpoints
+                    .iter()
+                    .find(|breakpoint| breakpoint.line == line);
 
                 let breakpoint = match breakpoint {
                     Some(b) => b,
                     None => return None,
                 };
-
-                // let verified = breakpoint.verified;
-                let verified = false;
 
                 let mut style =
                     if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
@@ -480,7 +460,7 @@ impl EditorView {
                         warning
                     };
 
-                if !verified {
+                if !breakpoint.verified {
                     // Faded colors
                     style = if let Some(Color::Rgb(r, g, b)) = style.fg {
                         style.fg(Color::Rgb(
@@ -495,7 +475,7 @@ impl EditorView {
 
                 // TODO: also handle breakpoints only present in the user struct
                 use std::fmt::Write;
-                let sym = if verified { "▲" } else { "⊚" };
+                let sym = if breakpoint.verified { "▲" } else { "⊚" };
                 write!(out, "{}", sym).unwrap();
                 Some(style)
             })
@@ -567,7 +547,6 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
-        all_breakpoints: &HashMap<PathBuf, Vec<SourceBreakpoint>>,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -605,28 +584,28 @@ impl EditorView {
             lines.extend(text.lines);
         }
 
-        if let Some(path) = doc.path() {
-            let line = doc.text().char_to_line(cursor);
-            if let Some(breakpoints) = all_breakpoints.get(path) {
-                if let Some(breakpoint) = breakpoints
-                    .iter()
-                    .find(|breakpoint| breakpoint.line - 1 == line)
-                {
-                    if let Some(condition) = &breakpoint.condition {
-                        lines.extend(
-                            Text::styled(condition, warning.add_modifier(Modifier::UNDERLINED))
-                                .lines,
-                        );
-                    }
-                    if let Some(log_message) = &breakpoint.log_message {
-                        lines.extend(
-                            Text::styled(log_message, info.add_modifier(Modifier::UNDERLINED))
-                                .lines,
-                        );
-                    }
-                }
-            }
-        }
+        // let line = doc.text().char_to_line(cursor);
+        // let breakpoint = doc
+        //     .path()
+        //     .and_then(|path| all_breakpoints.get(path))
+        //     .and_then(|breakpoints| {
+        //         breakpoints
+        //             .iter()
+        //             .find(|breakpoint| breakpoint.line == line)
+        //     });
+
+        // if let Some(breakpoint) = breakpoint {
+        //     if let Some(condition) = &breakpoint.condition {
+        //         lines.extend(
+        //             Text::styled(condition, warning.add_modifier(Modifier::UNDERLINED)).lines,
+        //         );
+        //     }
+        //     if let Some(log_message) = &breakpoint.log_message {
+        //         lines.extend(
+        //             Text::styled(log_message, info.add_modifier(Modifier::UNDERLINED)).lines,
+        //         );
+        //     }
+        // }
 
         let paragraph = Paragraph::new(lines)
             .alignment(Alignment::Right)

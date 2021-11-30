@@ -156,6 +156,19 @@ impl std::fmt::Debug for Motion {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Breakpoint {
+    pub id: Option<usize>,
+    pub verified: bool,
+    pub message: Option<String>,
+
+    pub line: usize,
+    pub column: Option<usize>,
+    pub condition: Option<String>,
+    pub hit_condition: Option<String>,
+    pub log_message: Option<String>,
+}
+
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
@@ -169,7 +182,7 @@ pub struct Editor {
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
-    pub breakpoints: HashMap<PathBuf, Vec<dap::SourceBreakpoint>>,
+    pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 

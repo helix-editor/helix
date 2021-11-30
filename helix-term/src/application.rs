@@ -1,7 +1,7 @@
 use helix_core::{merge_toml_values, syntax};
 use helix_dap::Payload;
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{theme, Editor};
+use helix_view::{editor::Breakpoint, theme, Editor};
 
 use crate::{
     args::Args, commands::fetch_stack_trace, compositor::Compositor, config::Config, job::Jobs, ui,
@@ -319,7 +319,7 @@ impl Application {
     }
 
     pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
-        use crate::commands::dap::{resume_application, select_thread_id};
+        use crate::commands::dap::{breakpoints_changed, resume_application, select_thread_id};
         use helix_dap::{events, Event};
         let debugger = match self.editor.debugger.as_mut() {
             Some(debugger) => debugger,
@@ -388,46 +388,35 @@ impl Application {
                 }
                 Event::Breakpoint(events::Breakpoint { reason, breakpoint }) => match &reason[..] {
                     "new" => {
-                        debugger.breakpoints.push(breakpoint);
+                        self.editor
+                            .breakpoints
+                            .entry(breakpoint.source.unwrap().path.unwrap()) // TODO: no unwraps
+                            .or_default()
+                            .push(Breakpoint {
+                                id: breakpoint.id,
+                                verified: breakpoint.verified,
+                                message: breakpoint.message,
+                                line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
+                                column: breakpoint.column,
+                                ..Default::default()
+                            });
                     }
                     "changed" => {
-                        match debugger
-                            .breakpoints
-                            .iter()
-                            .position(|b| b.id == breakpoint.id)
-                        {
-                            Some(i) => {
-                                debugger.breakpoints[i] = breakpoint;
-                                // let item = debugger.breakpoints.get_mut(i).unwrap();
-                                // item.verified = breakpoint.verified;
-                                // // TODO: wasteful clones
-                                // item.message = breakpoint.message.or_else(|| item.message.clone());
-                                // item.source = breakpoint.source.or_else(|| item.source.clone());
-                                // item.line = breakpoint.line.or(item.line);
-                                // item.column = breakpoint.column.or(item.column);
-                                // item.end_line = breakpoint.end_line.or(item.end_line);
-                                // item.end_column = breakpoint.end_column.or(item.end_column);
-                                // item.instruction_reference = breakpoint
-                                //     .instruction_reference
-                                //     .or_else(|| item.instruction_reference.clone());
-                                // item.offset = breakpoint.offset.or(item.offset);
-                            }
-                            None => {
-                                warn!("Changed breakpoint with id {:?} not found", breakpoint.id);
+                        for breakpoints in self.editor.breakpoints.values_mut() {
+                            if let Some(i) = breakpoints.iter().position(|b| b.id == breakpoint.id)
+                            {
+                                breakpoints[i].verified = breakpoint.verified;
+                                breakpoints[i].message = breakpoint.message.clone();
+                                breakpoints[i].line = breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
+                                breakpoints[i].column = breakpoint.column;
                             }
                         }
                     }
                     "removed" => {
-                        match debugger
-                            .breakpoints
-                            .iter()
-                            .position(|b| b.id == breakpoint.id)
-                        {
-                            Some(i) => {
-                                debugger.breakpoints.remove(i);
-                            }
-                            None => {
-                                warn!("Removed breakpoint with id {:?} not found", breakpoint.id);
+                        for breakpoints in self.editor.breakpoints.values_mut() {
+                            if let Some(i) = breakpoints.iter().position(|b| b.id == breakpoint.id)
+                            {
+                                breakpoints.remove(i);
                             }
                         }
                     }
@@ -453,13 +442,9 @@ impl Application {
                 }
                 Event::Initialized => {
                     // send existing breakpoints
-                    for (path, breakpoints) in &self.editor.breakpoints {
+                    for (path, breakpoints) in &mut self.editor.breakpoints {
                         // TODO: call futures in parallel, await all
-                        debugger.breakpoints = debugger
-                            .set_breakpoints(path.clone(), breakpoints.clone())
-                            .await
-                            .unwrap()
-                            .unwrap();
+                        let _ = breakpoints_changed(debugger, path.clone(), breakpoints);
                     }
                     // TODO: fetch breakpoints (in case we're attaching)
 

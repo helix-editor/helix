@@ -11,11 +11,13 @@ use helix_core::{
 };
 use helix_dap::{self as dap, Client, ThreadId};
 use helix_lsp::block_on;
+use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 // general utils:
 pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
@@ -406,40 +408,90 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     dap_toggle_breakpoint_impl(cx, path, line);
 }
 
-pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: std::path::PathBuf, line: usize) {
-    let breakpoint = helix_dap::SourceBreakpoint {
-        line: line + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
-        ..Default::default()
-    };
+pub fn breakpoints_changed(
+    debugger: &mut dap::Client,
+    path: PathBuf,
+    breakpoints: &mut [Breakpoint],
+) -> Result<(), anyhow::Error> {
+    // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
+    // if breakpoint.condition.is_some()
+    //     && !debugger
+    //         .caps
+    //         .as_ref()
+    //         .unwrap()
+    //         .supports_conditional_breakpoints
+    //         .unwrap_or_default()
+    // {
+    //     bail!(
+    //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
+    //     )
+    // }
+    // if breakpoint.log_message.is_some()
+    //     && !debugger
+    //         .caps
+    //         .as_ref()
+    //         .unwrap()
+    //         .supports_log_points
+    //         .unwrap_or_default()
+    // {
+    //     bail!("Can't edit breakpoint: debugger does not support logpoints")
+    // }
+    let source_breakpoints = breakpoints
+        .iter()
+        .map(|breakpoint| helix_dap::SourceBreakpoint {
+            line: breakpoint.line + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
+            ..Default::default()
+        })
+        .collect::<Vec<_>>();
 
+    let request = debugger.set_breakpoints(path, source_breakpoints);
+    match block_on(request) {
+        Ok(Some(dap_breakpoints)) => {
+            for (breakpoint, dap_breakpoint) in breakpoints.iter_mut().zip(dap_breakpoints) {
+                breakpoint.id = dap_breakpoint.id;
+                breakpoint.verified = dap_breakpoint.verified;
+                breakpoint.message = dap_breakpoint.message;
+                // TODO: handle breakpoint.message
+                // TODO: verify source matches
+                breakpoint.line = dap_breakpoint.line.unwrap_or(0).saturating_sub(1); // convert to 0-indexing
+                                                                                      // TODO: no unwrap
+                breakpoint.column = dap_breakpoint.column;
+                // TODO: verify end_linef/col instruction reference, offset
+            }
+        }
+        Err(e) => anyhow::bail!("Failed to set breakpoints: {}", e),
+        _ => {}
+    };
+    Ok(())
+}
+
+pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) {
     // TODO: need to map breakpoints over edits and update them?
     // we shouldn't really allow editing while debug is running though
 
     let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
-    // TODO: always keep breakpoints sorted and use binary search
-    if let Some(pos) = breakpoints.iter().position(|b| b.line == breakpoint.line) {
+    // TODO: always keep breakpoints sorted and use binary search to determine insertion point
+    if let Some(pos) = breakpoints
+        .iter()
+        .position(|breakpoint| breakpoint.line == line)
+    {
         breakpoints.remove(pos);
     } else {
-        breakpoints.push(breakpoint);
+        breakpoints.push(Breakpoint {
+            line,
+            ..Default::default()
+        });
     }
-
-    let breakpoints = breakpoints.clone();
 
     let debugger = match &mut cx.editor.debugger {
         Some(debugger) => debugger,
         None => return,
     };
-    let request = debugger.set_breakpoints(path, breakpoints);
-    match block_on(request) {
-        Ok(Some(breakpoints)) => {
-            // TODO: handle breakpoint.message
-            debugger.breakpoints = breakpoints;
-        }
-        Err(e) => cx
-            .editor
-            .set_error(format!("Failed to set breakpoints: {}", e)),
-        _ => {}
-    };
+
+    if let Err(e) = breakpoints_changed(debugger, path, breakpoints) {
+        cx.editor
+            .set_error(format!("Failed to set breakpoints: {}", e));
+    }
 }
 
 pub fn dap_continue(cx: &mut Context) {
@@ -651,36 +703,15 @@ pub fn dap_edit_condition(cx: &mut Context) {
                                 input => Some(input.to_owned()),
                             };
 
-                            if let Some(debugger) = &mut cx.editor.debugger {
-                                // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
-                                // if breakpoint.condition.is_some()
-                                //     && !debugger
-                                //         .caps
-                                //         .as_ref()
-                                //         .unwrap()
-                                //         .supports_conditional_breakpoints
-                                //         .unwrap_or_default()
-                                // {
-                                //     bail!(
-                                //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
-                                //     )
-                                // }
-                                // if breakpoint.log_message.is_some()
-                                //     && !debugger
-                                //         .caps
-                                //         .as_ref()
-                                //         .unwrap()
-                                //         .supports_log_points
-                                //         .unwrap_or_default()
-                                // {
-                                //     bail!("Can't edit breakpoint: debugger does not support logpoints")
-                                // }
-                                let request =
-                                    debugger.set_breakpoints(path.clone(), breakpoints.clone());
-                                if let Err(e) = block_on(request) {
-                                    cx.editor
-                                        .set_status(format!("Failed to set breakpoints: {}", e))
-                                }
+                            let debugger = match &mut cx.editor.debugger {
+                                Some(debugger) => debugger,
+                                None => return,
+                            };
+
+                            if let Err(e) = breakpoints_changed(debugger, path.clone(), breakpoints)
+                            {
+                                cx.editor
+                                    .set_error(format!("Failed to set breakpoints: {}", e));
                             }
                         },
                     );
@@ -719,36 +750,14 @@ pub fn dap_edit_log(cx: &mut Context) {
                                 input => Some(input.to_owned()),
                             };
 
-                            if let Some(debugger) = &mut cx.editor.debugger {
-                                // TODO: handle capabilities correctly again, by filterin breakpoints when emitting
-                                // if breakpoint.condition.is_some()
-                                //     && !debugger
-                                //         .caps
-                                //         .as_ref()
-                                //         .unwrap()
-                                //         .supports_conditional_breakpoints
-                                //         .unwrap_or_default()
-                                // {
-                                //     bail!(
-                                //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
-                                //     )
-                                // }
-                                // if breakpoint.log_message.is_some()
-                                //     && !debugger
-                                //         .caps
-                                //         .as_ref()
-                                //         .unwrap()
-                                //         .supports_log_points
-                                //         .unwrap_or_default()
-                                // {
-                                //     bail!("Can't edit breakpoint: debugger does not support logpoints")
-                                // }
-                                let request =
-                                    debugger.set_breakpoints(path.clone(), breakpoints.clone());
-                                if let Err(e) = block_on(request) {
-                                    cx.editor
-                                        .set_status(format!("Failed to set breakpoints: {}", e))
-                                }
+                            let debugger = match &mut cx.editor.debugger {
+                                Some(debugger) => debugger,
+                                None => return,
+                            };
+                            if let Err(e) = breakpoints_changed(debugger, path.clone(), breakpoints)
+                            {
+                                cx.editor
+                                    .set_error(format!("Failed to set breakpoints: {}", e));
                             }
                         },
                     );
