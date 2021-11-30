@@ -114,7 +114,7 @@ pub fn textobject_surround(
     ch: char,
     count: usize,
 ) -> Range {
-    surround::find_nth_pairs_pos(slice, ch, range.head, count)
+    surround::find_nth_pairs_pos(slice, ch, range, count)
         .map(|(anchor, head)| match textobject {
             TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
             TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
@@ -170,7 +170,7 @@ mod test {
 
     #[test]
     fn test_textobject_word() {
-        // (text, [(cursor position, textobject, final range), ...])
+        // (text, [(char position, textobject, final range), ...])
         let tests = &[
             (
                 "cursor at beginning of doc",
@@ -269,7 +269,9 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range) = case;
-                let result = textobject_word(slice, Range::point(pos), objtype, 1, false);
+                // cursor is a single width selection
+                let range = Range::new(pos, pos + 1);
+                let result = textobject_word(slice, range, objtype, 1, false);
                 assert_eq!(
                     result,
                     expected_range.into(),
@@ -283,7 +285,7 @@ mod test {
 
     #[test]
     fn test_textobject_surround() {
-        // (text, [(cursor position, textobject, final range, count), ...])
+        // (text, [(cursor position, textobject, final range, surround char, count), ...])
         let tests = &[
             (
                 "simple (single) surround pairs",

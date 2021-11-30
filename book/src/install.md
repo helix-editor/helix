@@ -25,9 +25,7 @@ shell for working on Helix.
 
 Releases are available in the `community` repository.
 
-Packages are also available on AUR:
-- [helix-bin](https://aur.archlinux.org/packages/helix-bin/) contains the pre-built release
-- [helix-git](https://aur.archlinux.org/packages/helix-git/) builds the master branch
+A [helix-git](https://aur.archlinux.org/packages/helix-git/) package is also available on the AUR, which builds the master branch.
 
 ## Build from source
 

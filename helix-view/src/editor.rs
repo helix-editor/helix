@@ -14,6 +14,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::{
     collections::{BTreeMap, HashMap},
     io::stdin,
+    num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -21,7 +22,7 @@ use std::{
 
 use tokio::time::{sleep, Duration, Instant, Sleep};
 
-use anyhow::Error;
+use anyhow::{bail, Context, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -37,6 +38,46 @@ where
 {
     let millis = u64::deserialize(deserializer)?;
     Ok(Duration::from_millis(millis))
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FilePickerConfig {
+    /// IgnoreOptions
+    /// Enables ignoring hidden files.
+    /// Whether to hide hidden files in file picker and global search results. Defaults to true.
+    pub hidden: bool,
+    /// Enables reading ignore files from parent directories. Defaults to true.
+    pub parents: bool,
+    /// Enables reading `.ignore` files.
+    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
+    pub ignore: bool,
+    /// Enables reading `.gitignore` files.
+    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to true.
+    pub git_ignore: bool,
+    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to true.
+    pub git_global: bool,
+    /// Enables reading `.git/info/exclude` files.
+    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
+    pub git_exclude: bool,
+    /// WalkBuilder options
+    /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
+    pub max_depth: Option<usize>,
+}
+
+impl Default for FilePickerConfig {
+    fn default() -> Self {
+        Self {
+            hidden: true,
+            parents: true,
+            ignore: true,
+            git_ignore: true,
+            git_global: true,
+            git_exclude: true,
+            max_depth: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -66,9 +107,10 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    pub file_picker: FilePickerConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
@@ -97,6 +139,7 @@ impl Default for Config {
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
+            file_picker: FilePickerConfig::default(),
         }
     }
 }
@@ -116,7 +159,7 @@ impl std::fmt::Debug for Motion {
 #[derive(Debug)]
 pub struct Editor {
     pub tree: Tree,
-    pub next_document_id: usize,
+    pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
@@ -154,8 +197,8 @@ pub enum Action {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        themes: Arc<theme::Loader>,
-        config_loader: Arc<syntax::Loader>,
+        theme_loader: Arc<theme::Loader>,
+        syn_loader: Arc<syntax::Loader>,
         config: Config,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
@@ -165,17 +208,17 @@ impl Editor {
 
         Self {
             tree: Tree::new(area),
-            next_document_id: 0,
+            next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             count: None,
             selected_register: None,
-            theme: themes.default(),
+            theme: theme_loader.default(),
             language_servers,
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
-            syn_loader: config_loader,
-            theme_loader: themes,
+            syn_loader,
+            theme_loader,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -232,13 +275,59 @@ impl Editor {
     }
 
     pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
-        use anyhow::Context;
         let theme = self
             .theme_loader
             .load(theme.as_ref())
             .with_context(|| format!("failed setting theme `{}`", theme))?;
         self.set_theme(theme);
         Ok(())
+    }
+
+    /// Refreshes the language server for a given document
+    pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+        let doc = self.documents.get_mut(&doc_id)?;
+        doc.detect_language(Some(&self.theme), &self.syn_loader);
+        Self::launch_language_server(&mut self.language_servers, doc)
+    }
+
+    /// Launch a language server for a given document
+    fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+        // try to find a language server based on the language name
+        let language_server = doc.language.as_ref().and_then(|language| {
+            ls.get(language)
+                .map_err(|e| {
+                    log::error!(
+                        "Failed to initialize the LSP for `{}` {{ {} }}",
+                        language.scope(),
+                        e
+                    )
+                })
+                .ok()
+        });
+        if let Some(language_server) = language_server {
+            // only spawn a new lang server if the servers aren't the same
+            if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
+                if let Some(language_server) = doc.language_server() {
+                    tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+                }
+                let language_id = doc
+                    .language()
+                    .and_then(|s| s.split('.').last()) // source.rust
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_default();
+
+                // TODO: this now races with on_init code if the init happens too quickly
+                tokio::spawn(language_server.text_document_did_open(
+                    doc.url().unwrap(),
+                    doc.version(),
+                    doc.text(),
+                    language_id,
+                ));
+
+                doc.set_language_server(Some(language_server));
+            }
+        }
+        Some(())
     }
 
     fn _refresh(&mut self) {
@@ -311,23 +400,22 @@ impl Editor {
             }
             Action::Load => {
                 let view_id = view!(self).id;
-                if let Some(doc) = self.document_mut(id) {
-                    if doc.selections().is_empty() {
-                        doc.selections.insert(view_id, Selection::point(0));
-                    }
+                let doc = self.documents.get_mut(&id).unwrap();
+                if doc.selections().is_empty() {
+                    doc.selections.insert(view_id, Selection::point(0));
                 }
                 return;
             }
-            Action::HorizontalSplit => {
+            Action::HorizontalSplit | Action::VerticalSplit => {
                 let view = View::new(id);
-                let view_id = self.tree.split(view, Layout::Horizontal);
-                // initialize selection for view
-                let doc = self.documents.get_mut(&id).unwrap();
-                doc.selections.insert(view_id, Selection::point(0));
-            }
-            Action::VerticalSplit => {
-                let view = View::new(id);
-                let view_id = self.tree.split(view, Layout::Vertical);
+                let view_id = self.tree.split(
+                    view,
+                    match action {
+                        Action::HorizontalSplit => Layout::Horizontal,
+                        Action::VerticalSplit => Layout::Vertical,
+                        _ => unreachable!(),
+                    },
+                );
                 // initialize selection for view
                 let doc = self.documents.get_mut(&id).unwrap();
                 doc.selections.insert(view_id, Selection::point(0));
@@ -337,16 +425,19 @@ impl Editor {
         self._refresh();
     }
 
-    fn new_document(&mut self, mut document: Document) -> DocumentId {
-        let id = DocumentId(self.next_document_id);
-        self.next_document_id += 1;
-        document.id = id;
-        self.documents.insert(id, document);
+    /// Generate an id for a new document and register it.
+    fn new_document(&mut self, mut doc: Document) -> DocumentId {
+        let id = self.next_document_id;
+        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
+        self.next_document_id =
+            DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
+        doc.id = id;
+        self.documents.insert(id, doc);
         id
     }
 
-    fn new_file_from_document(&mut self, action: Action, document: Document) -> DocumentId {
-        let id = self.new_document(document);
+    fn new_file_from_document(&mut self, action: Action, doc: Document) -> DocumentId {
+        let id = self.new_document(doc);
         self.switch(id, action);
         id
     }
@@ -362,54 +453,16 @@ impl Editor {
 
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
         let path = helix_core::path::get_canonicalized_path(&path)?;
-
-        let id = self
-            .documents()
-            .find(|doc| doc.path() == Some(&path))
-            .map(|doc| doc.id);
+        let id = self.document_by_path(&path).map(|doc| doc.id);
 
         let id = if let Some(id) = id {
             id
         } else {
             let mut doc = Document::open(&path, None, Some(&self.theme), Some(&self.syn_loader))?;
 
-            // try to find a language server based on the language name
-            let language_server = doc.language.as_ref().and_then(|language| {
-                self.language_servers
-                    .get(language)
-                    .map_err(|e| {
-                        log::error!(
-                            "Failed to initialize the LSP for `{}` {{ {} }}",
-                            language.scope(),
-                            e
-                        )
-                    })
-                    .ok()
-            });
+            let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 
-            if let Some(language_server) = language_server {
-                let language_id = doc
-                    .language()
-                    .and_then(|s| s.split('.').last()) // source.rust
-                    .map(ToOwned::to_owned)
-                    .unwrap_or_default();
-
-                // TODO: this now races with on_init code if the init happens too quickly
-                tokio::spawn(language_server.text_document_did_open(
-                    doc.url().unwrap(),
-                    doc.version(),
-                    doc.text(),
-                    language_id,
-                ));
-
-                doc.set_language_server(Some(language_server));
-            }
-
-            let id = DocumentId(self.next_document_id);
-            self.next_document_id += 1;
-            doc.id = id;
-            self.documents.insert(id, doc);
-            id
+            self.new_document(doc)
         };
 
         self.switch(id, action);
@@ -432,11 +485,11 @@ impl Editor {
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> anyhow::Result<()> {
         let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,
-            None => anyhow::bail!("document does not exist"),
+            None => bail!("document does not exist"),
         };
 
         if !force && doc.is_modified() {
-            anyhow::bail!(
+            bail!(
                 "buffer {:?} is modified",
                 doc.relative_path()
                     .map(|path| path.to_string_lossy().to_string())
@@ -469,7 +522,7 @@ impl Editor {
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
         // containing either an existing document, or a brand new document.
-        if self.tree.views().peekable().peek().is_none() {
+        if self.tree.views().next().is_none() {
             let doc_id = self
                 .documents
                 .iter()
@@ -554,8 +607,7 @@ impl Editor {
     }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
-        let view = view!(self);
-        let doc = &self.documents[&view.doc];
+        let (view, doc) = current_ref!(self);
         let cursor = doc
             .selection(view.id)
             .primary()

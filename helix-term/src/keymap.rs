@@ -512,6 +512,7 @@ impl Default for Keymaps {
             "g" => { "Goto"
                 "g" => goto_file_start,
                 "e" => goto_last_line,
+                "f" => goto_file,
                 "h" => goto_line_start,
                 "l" => goto_line_end,
                 "s" => goto_first_nonwhitespace,
@@ -537,9 +538,9 @@ impl Default for Keymaps {
             "O" => open_above,
 
             "d" => delete_selection,
-            // TODO: also delete without yanking
+            "A-d" => delete_selection_noyank,
             "c" => change_selection,
-            // TODO: also change delete without yanking
+            "A-c" => change_selection_noyank,
 
             "C" => copy_selection_on_next_line,
             "A-C" => copy_selection_on_prev_line,
@@ -604,7 +605,7 @@ impl Default for Keymaps {
             // "q" => record_macro,
             // "Q" => replay_macro,
 
-            // & align selections
+            "&" => align_selections,
             "_" => trim_selections,
 
             "(" => rotate_selections_backward,
@@ -622,6 +623,8 @@ impl Default for Keymaps {
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
+                "f" => goto_file_hsplit,
+                "F" => goto_file_vsplit,
                 "C-q" | "q" => wclose,
                 "C-o" | "o" => wonly,
                 "C-h" | "h" | "left" => jump_view_left,
@@ -670,6 +673,8 @@ impl Default for Keymaps {
                     "C-w" | "w" => rotate_view,
                     "C-s" | "s" => hsplit,
                     "C-v" | "v" => vsplit,
+                    "f" => goto_file_hsplit,
+                    "F" => goto_file_vsplit,
                     "C-q" | "q" => wclose,
                     "C-o" | "o" => wonly,
                     "C-h" | "h" | "left" => jump_view_left,

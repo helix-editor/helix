@@ -18,7 +18,6 @@ use helix_core::{
 use helix_dap::{Breakpoint, SourceBreakpoint, StackFrame};
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::LineNumber,
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -392,7 +391,7 @@ impl EditorView {
             use helix_core::match_brackets;
             let pos = doc.selection(view.id).primary().cursor(text);
 
-            let pos = match_brackets::find(syntax, doc.text(), pos)
+            let pos = match_brackets::find_matching_bracket(syntax, doc.text(), pos)
                 .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
             if let Some(pos) = pos {
@@ -430,22 +429,6 @@ impl EditorView {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
-        let linenr = theme.get("ui.linenr");
-        let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
-
-        let warning = theme.get("warning");
-        let error = theme.get("error");
-        let info = theme.get("info");
-        let hint = theme.get("hint");
-
-        // Whether to draw the line number for the last line of the
-        // document or not.  We only draw it if it's not an empty line.
-        let draw_last = text.line_to_byte(last_line) < text.len_bytes();
-
-        let current_line = doc
-            .text()
-            .char_to_line(doc.selection(view.id).primary().cursor(text));
-
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
         #[allow(clippy::needless_collect)]
@@ -455,146 +438,137 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        let mut breakpoints: Option<&Vec<SourceBreakpoint>> = None;
-        let mut stack_frame: Option<&StackFrame> = None;
-        if let Some(path) = doc.path() {
-            breakpoints = all_breakpoints.get(path);
-            if let Some(debugger) = debugger {
-                // if we have a frame, and the frame path matches document
-                if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
-                {
-                    let frame = debugger
-                        .stack_frames
-                        .get(&thread_id)
-                        .and_then(|bt| bt.get(frame)); // TODO: drop the clone..
-                    if let Some(StackFrame {
-                        source: Some(source),
-                        ..
-                    }) = &frame
-                    {
-                        if source.path.as_ref() == Some(path) {
-                            stack_frame = frame;
-                        }
-                    };
-                };
-            }
+        use helix_view::gutter::GutterFn;
+        fn breakpoints<'doc>(
+            doc: &'doc Document,
+            _view: &View,
+            theme: &Theme,
+            _config: &Config,
+            _is_focused: bool,
+            _width: usize,
+        ) -> GutterFn<'doc> {
+            Box::new(move |line: usize, _selected: bool, out: &mut String| {
+                //
+            })
         }
+        // let mut breakpoints: Option<&Vec<SourceBreakpoint>> = None;
+        // let mut stack_frame: Option<&StackFrame> = None;
+        // if let Some(path) = doc.path() {
+        //     breakpoints = all_breakpoints.get(path);
+        //     if let Some(debugger) = debugger {
+        //         // if we have a frame, and the frame path matches document
+        //         if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
+        //         {
+        //             let frame = debugger
+        //                 .stack_frames
+        //                 .get(&thread_id)
+        //                 .and_then(|bt| bt.get(frame)); // TODO: drop the clone..
+        //             if let Some(StackFrame {
+        //                 source: Some(source),
+        //                 ..
+        //             }) = &frame
+        //             {
+        //                 if source.path.as_ref() == Some(path) {
+        //                     stack_frame = frame;
+        //                 }
+        //             };
+        //         };
+        //     }
+        // }
 
-        for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
-            use helix_core::diagnostic::Severity;
-            if let Ok(diagnostic) = doc.diagnostics().binary_search_by_key(&line, |d| d.line) {
-                let diagnostic = &doc.diagnostics()[diagnostic];
-                surface.set_stringn(
-                    viewport.x,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    },
-                );
-            }
+        // TODO: debugger should translate received breakpoints to 0-indexing
 
-            let selected = cursors.contains(&line);
+        // if let Some(user) = breakpoints.as_ref() {
+        //     let debugger_breakpoint = if let Some(debugger) = dbg_breakpoints.as_ref() {
+        //         debugger.iter().find(|breakpoint| {
+        //             if breakpoint.source.is_some()
+        //                 && doc.path().is_some()
+        //                 && breakpoint.source.as_ref().unwrap().path == doc.path().cloned()
+        //             {
+        //                 match (breakpoint.line, breakpoint.end_line) {
+        //                     #[allow(clippy::int_plus_one)]
+        //                     (Some(l), Some(el)) => l - 1 <= line && line <= el - 1,
+        //                     (Some(l), None) => l - 1 == line,
+        //                     _ => false,
+        //                 }
+        //             } else {
+        //                 false
+        //             }
+        //         })
+        //     } else {
+        //         None
+        //     };
 
-            // TODO: debugger should translate received breakpoints to 0-indexing
+        //     if let Some(breakpoint) = user.iter().find(|breakpoint| breakpoint.line - 1 == line)
+        //     {
+        //         let verified = debugger_breakpoint.map(|b| b.verified).unwrap_or(false);
+        //         let mut style =
+        //             if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+        //                 error.add_modifier(Modifier::UNDERLINED)
+        //             } else if breakpoint.condition.is_some() {
+        //                 error
+        //             } else if breakpoint.log_message.is_some() {
+        //                 info
+        //             } else {
+        //                 warning
+        //             };
+        //         if !verified {
+        //             // Faded colors
+        //             style = if let Some(Color::Rgb(r, g, b)) = style.fg {
+        //                 style.fg(Color::Rgb(
+        //                     ((r as f32) * 0.4).floor() as u8,
+        //                     ((g as f32) * 0.4).floor() as u8,
+        //                     ((b as f32) * 0.4).floor() as u8,
+        //                 ))
+        //             } else {
+        //                 style.fg(Color::Gray)
+        //             }
+        //         };
+        //         surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, style);
+        //     } else if let Some(breakpoint) = debugger_breakpoint {
+        //         let style = if breakpoint.verified {
+        //             info
+        //         } else {
+        //             info.fg(Color::Gray)
+        //         };
+        //         surface.set_stringn(viewport.x, viewport.y + i as u16, "⊚", 1, style);
+        //     }
+        // }
 
-            if let Some(user) = breakpoints.as_ref() {
-                let debugger_breakpoint = if let Some(debugger) = dbg_breakpoints.as_ref() {
-                    debugger.iter().find(|breakpoint| {
-                        if breakpoint.source.is_some()
-                            && doc.path().is_some()
-                            && breakpoint.source.as_ref().unwrap().path == doc.path().cloned()
-                        {
-                            match (breakpoint.line, breakpoint.end_line) {
-                                #[allow(clippy::int_plus_one)]
-                                (Some(l), Some(el)) => l - 1 <= line && line <= el - 1,
-                                (Some(l), None) => l - 1 == line,
-                                _ => false,
-                            }
-                        } else {
-                            false
-                        }
-                    })
-                } else {
-                    None
-                };
+        // if let Some(frame) = stack_frame {
+        //     if frame.line - 1 == line {
+        //         surface.set_style(
+        //             Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
+        //             helix_view::graphics::Style::default()
+        //                 .bg(helix_view::graphics::Color::LightYellow),
+        //         );
+        //     }
+        // }
 
-                if let Some(breakpoint) = user.iter().find(|breakpoint| breakpoint.line - 1 == line)
-                {
-                    let verified = debugger_breakpoint.map(|b| b.verified).unwrap_or(false);
-                    let mut style =
-                        if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
-                            error.add_modifier(Modifier::UNDERLINED)
-                        } else if breakpoint.condition.is_some() {
-                            error
-                        } else if breakpoint.log_message.is_some() {
-                            info
-                        } else {
-                            warning
-                        };
-                    if !verified {
-                        // Faded colors
-                        style = if let Some(Color::Rgb(r, g, b)) = style.fg {
-                            style.fg(Color::Rgb(
-                                ((r as f32) * 0.4).floor() as u8,
-                                ((g as f32) * 0.4).floor() as u8,
-                                ((b as f32) * 0.4).floor() as u8,
-                            ))
-                        } else {
-                            style.fg(Color::Gray)
-                        }
-                    };
-                    surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, style);
-                } else if let Some(breakpoint) = debugger_breakpoint {
-                    let style = if breakpoint.verified {
-                        info
-                    } else {
-                        info.fg(Color::Gray)
-                    };
-                    surface.set_stringn(viewport.x, viewport.y + i as u16, "⊚", 1, style);
-                }
-            }
+        let mut offset = 0;
 
-            if let Some(frame) = stack_frame {
-                if frame.line - 1 == line {
-                    surface.set_style(
-                        Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
-                        helix_view::graphics::Style::default()
-                            .bg(helix_view::graphics::Color::LightYellow),
+        // avoid lots of small allocations by reusing a text buffer for each line
+        let mut text = String::with_capacity(8);
+
+        for (constructor, width) in view.gutters() {
+            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            text.reserve(*width); // ensure there's enough space for the gutter
+            for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
+                let selected = cursors.contains(&line);
+
+                if let Some(style) = gutter(line, selected, &mut text) {
+                    surface.set_stringn(
+                        viewport.x + offset,
+                        viewport.y + i as u16,
+                        &text,
+                        *width,
+                        style,
                     );
                 }
+                text.clear();
             }
 
-            let text = if line == last_line && !draw_last {
-                "    ~".into()
-            } else {
-                let line = match config.line_number {
-                    LineNumber::Absolute => line + 1,
-                    LineNumber::Relative => {
-                        if current_line == line {
-                            line + 1
-                        } else {
-                            abs_diff(current_line, line)
-                        }
-                    }
-                };
-                format!("{:>5}", line)
-            };
-            surface.set_stringn(
-                viewport.x + 1,
-                viewport.y + i as u16,
-                text,
-                5,
-                if selected && is_focused {
-                    linenr_select
-                } else {
-                    linenr
-                },
-            );
+            offset += *width as u16;
         }
     }
 
@@ -1362,14 +1336,5 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
-    }
-}
-
-#[inline]
-const fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
     }
 }

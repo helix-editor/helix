@@ -13,7 +13,6 @@ use helix_core::{
     numbers::NumberIncrementor,
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
-    register::Register,
     search, selection, surround, textobject,
     unicode::width::UnicodeWidthChar,
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
@@ -236,7 +235,9 @@ impl Command {
         extend_line, "Select current line, if already selected, extend to next line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
+        delete_selection_noyank, "Delete selection, without yanking",
         change_selection, "Change selection (delete and enter insert mode)",
+        change_selection_noyank, "Change selection (delete and enter insert mode, without yanking)",
         collapse_selection, "Collapse selection onto a single cursor",
         flip_selections, "Flip selection cursor and anchor",
         insert_mode, "Insert before selection",
@@ -262,6 +263,9 @@ impl Command {
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
         goto_file_end, "Goto file end",
+        goto_file, "Goto files in the selection",
+        goto_file_hsplit, "Goto files in the selection in horizontal splits",
+        goto_file_vsplit, "Goto files in the selection in vertical splits",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_middle, "Goto window middle",
@@ -318,6 +322,7 @@ impl Command {
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
         remove_selections, "Remove selections matching regex",
+        align_selections, "Align selections in column",
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
@@ -676,11 +681,83 @@ fn trim_selections(cx: &mut Context) {
     };
 }
 
+// align text in selection
+fn align_selections(cx: &mut Context) {
+    let align_style = cx.count();
+    if align_style > 3 {
+        cx.editor.set_error(
+            "align only accept 1,2,3 as count to set left/center/right align".to_string(),
+        );
+        return;
+    }
+
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+    let mut column_widths = vec![];
+    let mut last_line = text.len_lines();
+    let mut column = 0;
+    // first of all, we need compute all column's width, let use max width of the selections in a column
+    for sel in selection {
+        let (l1, l2) = sel.line_range(text);
+        if l1 != l2 {
+            cx.editor
+                .set_error("align cannot work with multi line selections".to_string());
+            return;
+        }
+        // if the selection is not in the same line with last selection, we set the column to 0
+        column = if l1 != last_line { 0 } else { column + 1 };
+        last_line = l1;
+
+        if column < column_widths.len() {
+            if sel.to() - sel.from() > column_widths[column] {
+                column_widths[column] = sel.to() - sel.from();
+            }
+        } else {
+            // a new column, current selection width is the temp width of the column
+            column_widths.push(sel.to() - sel.from());
+        }
+    }
+    last_line = text.len_lines();
+    // once we get the with of each column, we transform each selection with to it's column width based on the align style
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        let l = range.cursor_line(text);
+        column = if l != last_line { 0 } else { column + 1 };
+        last_line = l;
+
+        (
+            range.from(),
+            range.to(),
+            Some(
+                align_fragment_to_width(&range.fragment(text), column_widths[column], align_style)
+                    .into(),
+            ),
+        )
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> String {
+    let trimed = fragment.trim_matches(|c| c == ' ');
+    let mut s = " ".repeat(width - trimed.chars().count());
+    match align_style {
+        1 => s.insert_str(0, trimed),           // left align
+        2 => s.insert_str(s.len() / 2, trimed), // center align
+        3 => s.push_str(trimed),                // right align
+        n => unimplemented!("{}", n),
+    }
+    s
+}
+
 fn goto_window(cx: &mut Context, align: Align) {
+    let count = cx.count() - 1;
     let (view, doc) = current!(cx.editor);
 
     let height = view.inner_area().height as usize;
 
+    // respect user given count if any
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
@@ -689,11 +766,12 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.offset.row + scrolloff),
-        Align::Center => (view.offset.row + (height / 2)),
-        Align::Bottom => last_line.saturating_sub(scrolloff),
+        Align::Top => (view.offset.row + scrolloff + count),
+        Align::Center => (view.offset.row + ((last_line - view.offset.row) / 2)),
+        Align::Bottom => last_line.saturating_sub(scrolloff + count),
     }
-    .min(last_line.saturating_sub(scrolloff));
+    .min(last_line.saturating_sub(scrolloff))
+    .max(view.offset.row + scrolloff);
 
     let pos = doc.text().line_to_char(line);
 
@@ -780,6 +858,49 @@ fn goto_file_end(cx: &mut Context) {
         .clone()
         .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
     doc.set_selection(view.id, selection);
+}
+
+fn goto_file(cx: &mut Context) {
+    goto_file_impl(cx, Action::Replace);
+}
+
+fn goto_file_hsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::HorizontalSplit);
+}
+
+fn goto_file_vsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_file_impl(cx: &mut Context, action: Action) {
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text();
+    let selections = doc.selection(view.id);
+    let mut paths: Vec<_> = selections
+        .iter()
+        .map(|r| text.slice(r.from()..r.to()).to_string())
+        .collect();
+    let primary = selections.primary();
+    if selections.len() == 1 && primary.to() - primary.from() == 1 {
+        let current_word = movement::move_next_long_word_start(
+            text.slice(..),
+            movement::move_prev_long_word_start(text.slice(..), primary, 1),
+            1,
+        );
+        paths.clear();
+        paths.push(
+            text.slice(current_word.from()..current_word.to())
+                .to_string(),
+        );
+    }
+    for sel in paths {
+        let p = sel.trim();
+        if !p.is_empty() {
+            if let Err(e) = cx.editor.open(PathBuf::from(p), action) {
+                cx.editor.set_error(format!("Open file failed: {:?}", e));
+            }
+        }
+    }
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
@@ -1459,6 +1580,7 @@ fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let smart_case = cx.editor.config.smart_case;
+    let file_picker_config = cx.editor.config.file_picker.clone();
 
     let completions = search_completions(cx, None);
     let prompt = ui::regex_prompt(
@@ -1487,41 +1609,55 @@ fn global_search(cx: &mut Context) {
 
                 let search_root = std::env::current_dir()
                     .expect("Global search error: Failed to get current dir");
-                WalkBuilder::new(search_root).build_parallel().run(|| {
-                    let mut searcher_cl = searcher.clone();
-                    let matcher_cl = matcher.clone();
-                    let all_matches_sx_cl = all_matches_sx.clone();
-                    Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
-                        let dent = match dent {
-                            Ok(dent) => dent,
-                            Err(_) => return WalkState::Continue,
-                        };
+                WalkBuilder::new(search_root)
+                    .hidden(file_picker_config.hidden)
+                    .parents(file_picker_config.parents)
+                    .ignore(file_picker_config.ignore)
+                    .git_ignore(file_picker_config.git_ignore)
+                    .git_global(file_picker_config.git_global)
+                    .git_exclude(file_picker_config.git_exclude)
+                    .max_depth(file_picker_config.max_depth)
+                    .build_parallel()
+                    .run(|| {
+                        let mut searcher_cl = searcher.clone();
+                        let matcher_cl = matcher.clone();
+                        let all_matches_sx_cl = all_matches_sx.clone();
+                        Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
+                            let dent = match dent {
+                                Ok(dent) => dent,
+                                Err(_) => return WalkState::Continue,
+                            };
 
-                        match dent.file_type() {
-                            Some(fi) => {
-                                if !fi.is_file() {
-                                    return WalkState::Continue;
+                            match dent.file_type() {
+                                Some(fi) => {
+                                    if !fi.is_file() {
+                                        return WalkState::Continue;
+                                    }
                                 }
+                                None => return WalkState::Continue,
                             }
-                            None => return WalkState::Continue,
-                        }
 
-                        let result_sink = sinks::UTF8(|line_num, _| {
-                            match all_matches_sx_cl
-                                .send((line_num as usize - 1, dent.path().to_path_buf()))
-                            {
-                                Ok(_) => Ok(true),
-                                Err(_) => Ok(false),
+                            let result_sink = sinks::UTF8(|line_num, _| {
+                                match all_matches_sx_cl
+                                    .send((line_num as usize - 1, dent.path().to_path_buf()))
+                                {
+                                    Ok(_) => Ok(true),
+                                    Err(_) => Ok(false),
+                                }
+                            });
+                            let result =
+                                searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
+
+                            if let Err(err) = result {
+                                log::error!(
+                                    "Global search error: {}, {}",
+                                    dent.path().display(),
+                                    err
+                                );
                             }
-                        });
-                        let result = searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
-
-                        if let Err(err) = result {
-                            log::error!("Global search error: {}, {}", dent.path().display(), err);
-                        }
-                        WalkState::Continue
-                    })
-                });
+                            WalkState::Continue
+                        })
+                    });
             } else {
                 // Otherwise do nothing
                 // log::warn!("Global Search Invalid Pattern")
@@ -1626,19 +1762,42 @@ fn extend_to_line_bounds(cx: &mut Context) {
     );
 }
 
-fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
-    let text = doc.text().slice(..);
-    let selection = doc.selection(view_id);
+enum Operation {
+    Delete,
+    Change,
+}
 
-    // first yank the selection
-    let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-    reg.write(values);
+fn delete_selection_impl(cx: &mut Context, op: Operation) {
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+
+    if cx.register != Some('_') {
+        // first yank the selection
+        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+        let reg_name = cx.register.unwrap_or('"');
+        let registers = &mut cx.editor.registers;
+        let reg = registers.get_mut(reg_name);
+        reg.write(values);
+    };
 
     // then delete
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         (range.from(), range.to(), None)
     });
-    doc.apply(&transaction, view_id);
+    doc.apply(&transaction, view.id);
+
+    match op {
+        Operation::Delete => {
+            doc.append_changes_to_history(view.id);
+            // exit select mode, if currently in select mode
+            exit_select_mode(cx);
+        }
+        Operation::Change => {
+            enter_insert_mode(doc);
+        }
+    }
 }
 
 #[inline]
@@ -1653,25 +1812,21 @@ fn delete_selection_insert_mode(doc: &mut Document, view: &View, selection: &Sel
 }
 
 fn delete_selection(cx: &mut Context) {
-    let reg_name = cx.register.unwrap_or('"');
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
-    let reg = registers.get_mut(reg_name);
-    delete_selection_impl(reg, doc, view.id);
+    delete_selection_impl(cx, Operation::Delete);
+}
 
-    doc.append_changes_to_history(view.id);
-
-    // exit select mode, if currently in select mode
-    exit_select_mode(cx);
+fn delete_selection_noyank(cx: &mut Context) {
+    cx.register = Some('_');
+    delete_selection_impl(cx, Operation::Delete);
 }
 
 fn change_selection(cx: &mut Context) {
-    let reg_name = cx.register.unwrap_or('"');
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
-    let reg = registers.get_mut(reg_name);
-    delete_selection_impl(reg, doc, view.id);
-    enter_insert_mode(doc);
+    delete_selection_impl(cx, Operation::Change);
+}
+
+fn change_selection_noyank(cx: &mut Context) {
+    cx.register = Some('_');
+    delete_selection_impl(cx, Operation::Change);
 }
 
 fn collapse_selection(cx: &mut Context) {
@@ -1820,7 +1975,7 @@ mod cmd {
         let jobs = &mut cx.jobs;
         let (_, doc) = current!(cx.editor);
 
-        if let Some(path) = path {
+        if let Some(ref path) = path {
             doc.set_path(Some(path.as_ref()))
                 .context("invalid filepath")?;
         }
@@ -1840,6 +1995,11 @@ mod cmd {
         });
         let future = doc.format_and_save(fmt);
         cx.jobs.add(Job::new(future).wait_before_exiting());
+
+        if path.is_some() {
+            let id = doc.id();
+            let _ = cx.editor.refresh_language_server(id);
+        }
         Ok(())
     }
 
@@ -2466,6 +2626,26 @@ mod cmd {
         Ok(())
     }
 
+    pub(super) fn goto_line_number(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        if args.is_empty() {
+            bail!("Line number required");
+        }
+
+        let line = args[0].parse::<usize>()?;
+
+        goto_line_impl(&mut cx.editor, NonZeroUsize::new(line));
+
+        let (view, doc) = current!(cx.editor);
+
+        view.ensure_cursor_in_view(doc, line);
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2768,6 +2948,13 @@ mod cmd {
             fun: tutor,
             completer: None,
         },
+        TypableCommand {
+            name: "goto",
+            aliases: &["g"],
+            doc: "Go to line number.",
+            fun: goto_line_number,
+            completer: None,
+        }
     ];
 
     pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
@@ -2830,6 +3017,15 @@ fn command_mode(cx: &mut Context) {
                 return;
             }
 
+            // If command is numeric, interpret as line number and go there.
+            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
+                if let Err(e) = cmd::goto_line_number(cx, &parts[0..], event) {
+                    cx.editor.set_error(format!("{}", e));
+                }
+                return;
+            }
+
+            // Handle typable commands
             if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
                 if let Err(e) = (cmd.fun)(cx, &parts[1..], event) {
                     cx.editor.set_error(format!("{}", e));
@@ -2855,7 +3051,7 @@ fn command_mode(cx: &mut Context) {
 
 fn file_picker(cx: &mut Context) {
     let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
-    let picker = ui::file_picker(root);
+    let picker = ui::file_picker(root, &cx.editor.config);
     cx.push_layer(Box::new(picker));
 }
 
@@ -3463,10 +3659,14 @@ fn push_jump(editor: &mut Editor) {
 }
 
 fn goto_line(cx: &mut Context) {
-    if let Some(count) = cx.count {
-        push_jump(cx.editor);
+    goto_line_impl(&mut cx.editor, cx.count)
+}
 
-        let (view, doc) = current!(cx.editor);
+fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
+    if let Some(count) = count {
+        push_jump(editor);
+
+        let (view, doc) = current!(editor);
         let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
             // If the last line is blank, don't jump to it.
             doc.text().len_lines().saturating_sub(2)
@@ -5065,7 +5265,9 @@ fn match_brackets(cx: &mut Context) {
     if let Some(syntax) = doc.syntax() {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id).clone().transform(|range| {
-            if let Some(pos) = match_brackets::find(syntax, doc.text(), range.anchor) {
+            if let Some(pos) =
+                match_brackets::find_matching_bracket_fuzzy(syntax, doc.text(), range.anchor)
+            {
                 range.put_cursor(text, pos, doc.mode == Mode::Select)
             } else {
                 range

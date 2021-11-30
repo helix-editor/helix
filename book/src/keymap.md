@@ -45,44 +45,46 @@
 
 ### Changes
 
-| Key         | Description                                     | Command               |
-| -----       | -----------                                     | -------               |
-| `r`         | Replace with a character                        | `replace`             |
-| `R`         | Replace with yanked text                        | `replace_with_yanked` |
-| `~`         | Switch case of the selected text                | `switch_case`         |
-| `` ` ``     | Set the selected text to lower case             | `switch_to_lowercase` |
-| `` Alt-` `` | Set the selected text to upper case             | `switch_to_uppercase` |
-| `i`         | Insert before selection                         | `insert_mode`         |
-| `a`         | Insert after selection (append)                 | `append_mode`         |
-| `I`         | Insert at the start of the line                 | `prepend_to_line`     |
-| `A`         | Insert at the end of the line                   | `append_to_line`      |
-| `o`         | Open new line below selection                   | `open_below`          |
-| `O`         | Open new line above selection                   | `open_above`          |
-| `.`         | Repeat last change                              | N/A                   |
-| `u`         | Undo change                                     | `undo`                |
-| `U`         | Redo change                                     | `redo`                |
-| `Alt-u`     | Move backward in history                        | `earlier`             |
-| `Alt-U`     | Move forward in history                         | `later`               |
-| `y`         | Yank selection                                  | `yank`                |
-| `p`         | Paste after selection                           | `paste_after`         |
-| `P`         | Paste before selection                          | `paste_before`        |
-| `"` `<reg>` | Select a register to yank to or paste from      | `select_register`     |
-| `>`         | Indent selection                                | `indent`              |
-| `<`         | Unindent selection                              | `unindent`            |
-| `=`         | Format selection (**LSP**)                      | `format_selections`   |
-| `d`         | Delete selection                                | `delete_selection`    |
-| `c`         | Change selection (delete and enter insert mode) | `change_selection`    |
-| `Ctrl-a`    | Increment object (number) under cursor          | `increment`           |
-| `Ctrl-x`    | Decrement object (number) under cursor          | `decrement`           |
+| Key         | Description                                                      | Command                   |
+| -----       | -----------                                                      | -------                   |
+| `r`         | Replace with a character                                         | `replace`                 |
+| `R`         | Replace with yanked text                                         | `replace_with_yanked`     |
+| `~`         | Switch case of the selected text                                 | `switch_case`             |
+| `` ` ``     | Set the selected text to lower case                              | `switch_to_lowercase`     |
+| `` Alt-` `` | Set the selected text to upper case                              | `switch_to_uppercase`     |
+| `i`         | Insert before selection                                          | `insert_mode`             |
+| `a`         | Insert after selection (append)                                  | `append_mode`             |
+| `I`         | Insert at the start of the line                                  | `prepend_to_line`         |
+| `A`         | Insert at the end of the line                                    | `append_to_line`          |
+| `o`         | Open new line below selection                                    | `open_below`              |
+| `O`         | Open new line above selection                                    | `open_above`              |
+| `.`         | Repeat last change                                               | N/A                       |
+| `u`         | Undo change                                                      | `undo`                    |
+| `U`         | Redo change                                                      | `redo`                    |
+| `Alt-u`     | Move backward in history                                         | `earlier`                 |
+| `Alt-U`     | Move forward in history                                          | `later`                   |
+| `y`         | Yank selection                                                   | `yank`                    |
+| `p`         | Paste after selection                                            | `paste_after`             |
+| `P`         | Paste before selection                                           | `paste_before`            |
+| `"` `<reg>` | Select a register to yank to or paste from                       | `select_register`         |
+| `>`         | Indent selection                                                 | `indent`                  |
+| `<`         | Unindent selection                                               | `unindent`                |
+| `=`         | Format selection (**LSP**)                                       | `format_selections`       |
+| `d`         | Delete selection                                                 | `delete_selection`        |
+| `Alt-d`     | Delete selection, without yanking                                | `delete_selection_noyank` |
+| `c`         | Change selection (delete and enter insert mode)                  | `change_selection`        |
+| `Alt-c`     | Change selection (delete and enter insert mode, without yanking) | `change_selection_noyank` |
+| `Ctrl-a`    | Increment object (number) under cursor                           | `increment`               |
+| `Ctrl-x`    | Decrement object (number) under cursor                           | `decrement`               |
 
 #### Shell
 
-| Key                   | Description                                                                      | Command               |
-| ------                | -----------                                                                      | -------               |
-| <code>&#124;</code>   | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
-| <code>A-&#124;</code> | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
-| `!`                   | Run shell command, inserting output before each selection                        | `shell_insert_output` |
-| `A-!`                 | Run shell command, appending output after each selection                         | `shell_append_output` |
+| Key                     | Description                                                      | Command               |
+| ------                  | -----------                                                      | -------               |
+| <code>&#124;</code>     | Pipe each selection through shell command, replacing with output | `shell_pipe`          |
+| <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output          | `shell_pipe_to`       |
+| `!`                     | Run shell command, inserting output before each selection        | `shell_insert_output` |
+| `Alt-!`                 | Run shell command, appending output after each selection         | `shell_append_output` |
 
 
 ### Selection manipulation
@@ -92,6 +94,7 @@
 | `s`      | Select all regex matches inside selections                        | `select_regex`                       |
 | `S`      | Split selection into subselections on regex matches               | `split_selection`                    |
 | `Alt-s`  | Split selection on newlines                                       | `split_selection_on_newline`         |
+| `&`      | Align selection in columns                                        | `align_selections`                   |
 | `_`      | Trim whitespace from the selection                                | `trim_selections`                    |
 | `;`      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
 | `Alt-;`  | Flip selection cursor and anchor                                  | `flip_selections`                    |
@@ -157,6 +160,7 @@ Jumps to various locations.
 | ----- | -----------                                      | -------                    |
 | `g`   | Go to the start of the file                      | `goto_file_start`          |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
+| `f`   | Go to files in the selection                     | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
 | `l`   | Go to the end of the line                        | `goto_line_end`            |
 | `s`   | Go to first non-whitespace character of the line | `goto_first_nonwhitespace` |
@@ -199,6 +203,8 @@ This layer is similar to vim keybindings as kakoune does not support window.
 | `v`, `Ctrl-v`          | Vertical right split           | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split        | `hsplit`          |
 | `h`, `Ctrl-h`, `left`  | Move to left split             | `jump_view_left`  |
+| `f`                    | Go to files in the selection in horizontal splits  | `goto_file`                |
+| `F`                    | Go to files in the selection in vertical splits    | `goto_file`                |
 | `j`, `Ctrl-j`, `down`  | Move to split below            | `jump_view_down`  |
 | `k`, `Ctrl-k`, `up`    | Move to split above            | `jump_view_up`    |
 | `l`, `Ctrl-l`, `right` | Move to right split            | `jump_view_right` |
@@ -314,7 +320,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-u`                | Delete to start of line                                                 |
 | `Ctrl-k`                | Delete to end of line                                                   |
 | `backspace`, `Ctrl-h`   | Delete previous char                                                    |
-| `delete`, `Ctrl-d`      | Delete previous char                                                    |
+| `delete`, `Ctrl-d`      | Delete next char                                                        |
 | `Ctrl-s`                | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`          | Select previous history                                                 |
 | `Ctrl-n`, `Down`        | Select next history                                                     |

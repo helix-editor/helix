@@ -122,7 +122,7 @@ impl Application {
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                compositor.push(Box::new(ui::file_picker(".".into())));
+                compositor.push(Box::new(ui::file_picker(".".into(), &config.editor)));
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
@@ -270,7 +270,7 @@ impl Application {
         use crate::commands::{insert::idle_completion, Context};
         use helix_view::document::Mode;
 
-        if doc_mut!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
+        if doc!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
             return;
         }
         let editor_view = self
