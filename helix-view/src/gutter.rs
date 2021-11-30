@@ -109,10 +109,12 @@ pub fn breakpoints<'doc>(
     let error = theme.get("error");
     let info = theme.get("info");
 
-    let breakpoints = doc
-        .path()
-        .and_then(|path| editor.breakpoints.get(path))
-        .unwrap();
+    let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
+
+    let breakpoints = match breakpoints {
+        Some(breakpoints) => breakpoints,
+        None => return Box::new(move |_, _, _| None),
+    };
 
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         let breakpoint = breakpoints
