@@ -340,7 +340,7 @@ fn ndays_in_month(year: i32, month: u32) -> u32 {
 }
 
 fn add_months(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
-    let month = date_time.month0() as i64 + amount;
+    let month = (date_time.month0() as i64).checked_add(amount)?;
     let year = date_time.year() + i32::try_from(month / 12).ok()?;
     let year = if month.is_negative() { year - 1 } else { year };
 
@@ -359,7 +359,7 @@ fn add_months(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
 }
 
 fn add_years(date_time: NaiveDateTime, amount: i64) -> Option<NaiveDateTime> {
-    let year = i32::try_from(date_time.year() as i64 + amount).ok()?;
+    let year = i32::try_from((date_time.year() as i64).checked_add(amount)?).ok()?;
     let ndays = ndays_in_month(year, date_time.month());
 
     if date_time.day() > ndays {
