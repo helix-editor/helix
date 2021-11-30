@@ -158,7 +158,7 @@ mod merge_toml_tests {
         ";
 
         let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Couldn't parse built-in langauges config");
+            .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
         let merged = merge_toml_values(base, user);
