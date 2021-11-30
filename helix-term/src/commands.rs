@@ -41,7 +41,7 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, StreamExt};
-use std::num::NonZeroUsize;
+use std::{collections::HashSet, num::NonZeroUsize};
 use std::{fmt, future::Future};
 
 use std::{
@@ -5480,19 +5480,45 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     let selection = doc.selection(view.id);
     let text = doc.text();
 
-    let changes = selection.ranges().iter().filter_map(|range| {
-        let incrementor: Box<dyn Increment> = if let Some(incrementor) =
-            DateTimeIncrementor::from_range(text.slice(..), *range)
-        {
-            Box::new(incrementor)
-        } else if let Some(incrementor) = NumberIncrementor::from_range(text.slice(..), *range) {
-            Box::new(incrementor)
-        } else {
-            return None;
-        };
+    let changes = selection
+        .ranges()
+        .iter()
+        .filter_map(|range| {
+            let incrementor: Box<dyn Increment> = if let Some(incrementor) =
+                DateTimeIncrementor::from_range(text.slice(..), *range)
+            {
+                Box::new(incrementor)
+            } else if let Some(incrementor) = NumberIncrementor::from_range(text.slice(..), *range)
+            {
+                Box::new(incrementor)
+            } else {
+                return None;
+            };
 
-        let (range, new_text) = incrementor.increment(amount);
-        Some((range.from(), range.to(), Some(new_text)))
+            let (range, new_text) = incrementor.increment(amount);
+
+            Some((range.from(), range.to(), Some(new_text)))
+        })
+        .collect::<Vec<_>>();
+
+    // Overlapping changes in a transaction will panic, so we need to find and remove them.
+    // For example, if there are cursors on each of the year, month, and day of `2021-11-29`,
+    // incrementing will give overlapping changes, with each change incrementing a different part of
+    // the date. Since these conflict with each other we remove these changes from the transaction
+    // so nothing happens.
+    let mut overlapping_indexes = HashSet::new();
+    for (i, changes) in changes.windows(2).enumerate() {
+        if changes[0].1 > changes[1].0 {
+            overlapping_indexes.insert(i);
+            overlapping_indexes.insert(i + 1);
+        }
+    }
+    let changes = changes.into_iter().enumerate().filter_map(|(i, change)| {
+        if overlapping_indexes.contains(&i) {
+            None
+        } else {
+            Some(change)
+        }
     });
 
     if changes.clone().count() > 0 {
