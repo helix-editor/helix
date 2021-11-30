@@ -24,7 +24,7 @@ use helix_view::{
     Document, DocumentId, Editor, ViewId,
 };
 
-use anyhow::{anyhow, bail, Context as _};
+use anyhow::{anyhow, bail, ensure, Context as _};
 use helix_lsp::{
     block_on, lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
@@ -2550,9 +2550,7 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        if args.is_empty() {
-            bail!("Line number required");
-        }
+        ensure!(!args.is_empty(), "Line number required");
 
         let line = args[0].parse::<usize>()?;
 
@@ -5553,9 +5551,7 @@ fn shell_impl(
 ) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
-    if shell.is_empty() {
-        bail!("No shell set");
-    }
+    ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = match Command::new(&shell[0])
         .args(&shell[1..])
