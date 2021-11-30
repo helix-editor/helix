@@ -1023,6 +1023,19 @@ impl Component for EditorView {
                     (Mode::Insert, Mode::Normal) => {
                         // if exiting insert mode, remove completion
                         self.completion = None;
+
+                        let last_cmd = self.last_insert.0.fun();
+                        const OPEN_BELOW_FUN: fn(&mut commands::Context) = commands::open_below;
+                        const OPEN_ABOVE_FUN: fn(&mut commands::Context) = commands::open_above;
+                        // For user friendly,
+                        // Remove whitespaces if we go from insert mode(through open below/above) to normal mode without any keys in between.
+                        // Example: `o<esc>`.
+                        if matches!(last_cmd, OPEN_BELOW_FUN | OPEN_ABOVE_FUN)
+                            && self.last_insert.1.len() == 1
+                        {
+                            commands::Command::goto_line_start.execute(&mut cxt);
+                            commands::Command::kill_to_line_end.execute(&mut cxt);
+                        }
                     }
                     _ => (),
                 }
