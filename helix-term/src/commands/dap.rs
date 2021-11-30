@@ -429,7 +429,7 @@ pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: std::path::PathBuf, li
         Some(debugger) => debugger,
         None => return,
     };
-    let request = debugger.set_breakpoints(path.clone(), breakpoints);
+    let request = debugger.set_breakpoints(path, breakpoints);
     match block_on(request) {
         Ok(Some(breakpoints)) => {
             // TODO: handle breakpoint.message

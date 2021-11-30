@@ -1,16 +1,16 @@
 use std::fmt::Write;
 
-use crate::{editor::Config, graphics::Style, Document, Theme, View};
+use crate::{graphics::Style, Document, Editor, Theme, View};
 
 pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
-    for<'doc> fn(&'doc Document, &View, &Theme, &Config, bool, usize) -> GutterFn<'doc>;
+    for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
 
 pub fn diagnostic<'doc>(
+    _editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
-    _config: &Config,
     _is_focused: bool,
     _width: usize,
 ) -> GutterFn<'doc> {
@@ -36,10 +36,10 @@ pub fn diagnostic<'doc>(
 }
 
 pub fn line_number<'doc>(
+    editor: &'doc Editor,
     doc: &'doc Document,
     view: &View,
     theme: &Theme,
-    config: &Config,
     is_focused: bool,
     width: usize,
 ) -> GutterFn<'doc> {
@@ -56,7 +56,7 @@ pub fn line_number<'doc>(
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let config = config.line_number;
+    let config = editor.config.line_number;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
         if line == last_line && !draw_last {

@@ -63,20 +63,18 @@ impl EditorView {
     #[allow(clippy::too_many_arguments)]
     pub fn render_view(
         &self,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
-        theme: &Theme,
         is_focused: bool,
         loader: &syntax::Loader,
-        config: &helix_view::editor::Config,
-        debugger: &Option<helix_dap::Client>,
-        all_breakpoints: &HashMap<PathBuf, Vec<SourceBreakpoint>>,
-        dbg_breakpoints: &Option<Vec<Breakpoint>>,
     ) {
         let inner = view.inner_area();
         let area = view.area;
+        let theme = &editor.theme;
+        let all_breakpoints = HashMap::new();
 
         let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, loader);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
@@ -90,18 +88,7 @@ impl EditorView {
         };
 
         Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
-        Self::render_gutter(
-            doc,
-            view,
-            view.area,
-            surface,
-            theme,
-            is_focused,
-            config,
-            debugger,
-            all_breakpoints,
-            dbg_breakpoints,
-        );
+        Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
 
         if is_focused {
             Self::render_focused_view_elements(view, doc, inner, theme, surface);
@@ -120,7 +107,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme, all_breakpoints);
+        self.render_diagnostics(doc, view, inner, surface, theme, &all_breakpoints);
 
         let statusline_area = view
             .area
@@ -413,18 +400,14 @@ impl EditorView {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_gutter(
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        config: &helix_view::editor::Config,
-        debugger: &Option<helix_dap::Client>,
-        all_breakpoints: &HashMap<PathBuf, Vec<SourceBreakpoint>>,
-        dbg_breakpoints: &Option<Vec<Breakpoint>>,
     ) {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
@@ -438,8 +421,10 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
+        use helix_view::editor::Config;
         use helix_view::gutter::GutterFn;
         fn breakpoints<'doc>(
+            editor: &'doc Editor,
             doc: &'doc Document,
             _view: &View,
             theme: &Theme,
@@ -447,14 +432,77 @@ impl EditorView {
             _is_focused: bool,
             _width: usize,
         ) -> GutterFn<'doc> {
+            let warning = theme.get("warning");
+            let error = theme.get("error");
+            let info = theme.get("info");
+
+            let all_breakpoints = &editor.breakpoints;
+
+            // TODO: debugger breakpoints should keep editor level breakpoints in sync
+
+            let breakpoints = doc
+                .path()
+                .and_then(|path| all_breakpoints.get(path))
+                .unwrap();
+
             Box::new(move |line: usize, _selected: bool, out: &mut String| {
-                //
+                // TODO: debugger should translate received breakpoints to 0-indexing
+                let breakpoint = breakpoints.iter().find(|breakpoint| {
+                    false
+                    // if breakpoint.source == doc.path() {
+                    //     match (breakpoint.line, breakpoint.end_line) {
+                    //         #[allow(clippy::int_plus_one)]
+                    //         (Some(l), Some(el)) => l - 1 <= line && line <= el - 1,
+                    //         (Some(l), None) => l - 1 == line,
+                    //         _ => false,
+                    //     }
+                    // } else {
+                    //     false
+                    // }
+                });
+
+                let breakpoint = match breakpoint {
+                    Some(b) => b,
+                    None => return None,
+                };
+
+                // let verified = breakpoint.verified;
+                let verified = false;
+
+                let mut style =
+                    if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+                        error.add_modifier(Modifier::UNDERLINED)
+                    } else if breakpoint.condition.is_some() {
+                        error
+                    } else if breakpoint.log_message.is_some() {
+                        info
+                    } else {
+                        warning
+                    };
+
+                if !verified {
+                    // Faded colors
+                    style = if let Some(Color::Rgb(r, g, b)) = style.fg {
+                        style.fg(Color::Rgb(
+                            ((r as f32) * 0.4).floor() as u8,
+                            ((g as f32) * 0.4).floor() as u8,
+                            ((b as f32) * 0.4).floor() as u8,
+                        ))
+                    } else {
+                        style.fg(Color::Gray)
+                    }
+                };
+
+                // TODO: also handle breakpoints only present in the user struct
+                use std::fmt::Write;
+                let sym = if verified { "▲" } else { "⊚" };
+                write!(out, "{}", sym).unwrap();
+                Some(style)
             })
         }
-        // let mut breakpoints: Option<&Vec<SourceBreakpoint>> = None;
+
         // let mut stack_frame: Option<&StackFrame> = None;
         // if let Some(path) = doc.path() {
-        //     breakpoints = all_breakpoints.get(path);
         //     if let Some(debugger) = debugger {
         //         // if we have a frame, and the frame path matches document
         //         if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
@@ -475,66 +523,6 @@ impl EditorView {
         //         };
         //     }
         // }
-
-        // TODO: debugger should translate received breakpoints to 0-indexing
-
-        // if let Some(user) = breakpoints.as_ref() {
-        //     let debugger_breakpoint = if let Some(debugger) = dbg_breakpoints.as_ref() {
-        //         debugger.iter().find(|breakpoint| {
-        //             if breakpoint.source.is_some()
-        //                 && doc.path().is_some()
-        //                 && breakpoint.source.as_ref().unwrap().path == doc.path().cloned()
-        //             {
-        //                 match (breakpoint.line, breakpoint.end_line) {
-        //                     #[allow(clippy::int_plus_one)]
-        //                     (Some(l), Some(el)) => l - 1 <= line && line <= el - 1,
-        //                     (Some(l), None) => l - 1 == line,
-        //                     _ => false,
-        //                 }
-        //             } else {
-        //                 false
-        //             }
-        //         })
-        //     } else {
-        //         None
-        //     };
-
-        //     if let Some(breakpoint) = user.iter().find(|breakpoint| breakpoint.line - 1 == line)
-        //     {
-        //         let verified = debugger_breakpoint.map(|b| b.verified).unwrap_or(false);
-        //         let mut style =
-        //             if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
-        //                 error.add_modifier(Modifier::UNDERLINED)
-        //             } else if breakpoint.condition.is_some() {
-        //                 error
-        //             } else if breakpoint.log_message.is_some() {
-        //                 info
-        //             } else {
-        //                 warning
-        //             };
-        //         if !verified {
-        //             // Faded colors
-        //             style = if let Some(Color::Rgb(r, g, b)) = style.fg {
-        //                 style.fg(Color::Rgb(
-        //                     ((r as f32) * 0.4).floor() as u8,
-        //                     ((g as f32) * 0.4).floor() as u8,
-        //                     ((b as f32) * 0.4).floor() as u8,
-        //                 ))
-        //             } else {
-        //                 style.fg(Color::Gray)
-        //             }
-        //         };
-        //         surface.set_stringn(viewport.x, viewport.y + i as u16, "▲", 1, style);
-        //     } else if let Some(breakpoint) = debugger_breakpoint {
-        //         let style = if breakpoint.verified {
-        //             info
-        //         } else {
-        //             info.fg(Color::Gray)
-        //         };
-        //         surface.set_stringn(viewport.x, viewport.y + i as u16, "⊚", 1, style);
-        //     }
-        // }
-
         // if let Some(frame) = stack_frame {
         //     if frame.line - 1 == line {
         //         surface.set_style(
@@ -551,7 +539,7 @@ impl EditorView {
         let mut text = String::with_capacity(8);
 
         for (constructor, width) in view.gutters() {
-            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            let gutter = constructor(editor, doc, view, theme, is_focused, *width);
             text.reserve(*width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
                 let selected = cursors.contains(&line);
@@ -1250,20 +1238,7 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             let loader = &cx.editor.syn_loader;
-            let dbg_breakpoints = cx.editor.debugger.as_ref().map(|d| d.breakpoints.clone());
-            self.render_view(
-                doc,
-                view,
-                area,
-                surface,
-                &cx.editor.theme,
-                is_focused,
-                loader,
-                &cx.editor.config,
-                &cx.editor.debugger,
-                &cx.editor.breakpoints,
-                &dbg_breakpoints,
-            );
+            self.render_view(cx.editor, doc, view, area, surface, is_focused, loader);
         }
 
         if cx.editor.config.auto_info {
