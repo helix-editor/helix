@@ -1,6 +1,9 @@
 use std::fmt::Write;
 
-use crate::{graphics::Style, Document, Editor, Theme, View};
+use crate::{
+    graphics::{Color, Modifier, Style},
+    Document, Editor, Theme, View,
+};
 
 pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
@@ -92,4 +95,61 @@ const fn abs_diff(a: usize, b: usize) -> usize {
     } else {
         b - a
     }
+}
+
+pub fn breakpoints<'doc>(
+    editor: &'doc Editor,
+    doc: &'doc Document,
+    _view: &View,
+    theme: &Theme,
+    _is_focused: bool,
+    _width: usize,
+) -> GutterFn<'doc> {
+    let warning = theme.get("warning");
+    let error = theme.get("error");
+    let info = theme.get("info");
+
+    let breakpoints = doc
+        .path()
+        .and_then(|path| editor.breakpoints.get(path))
+        .unwrap();
+
+    Box::new(move |line: usize, _selected: bool, out: &mut String| {
+        let breakpoint = breakpoints
+            .iter()
+            .find(|breakpoint| breakpoint.line == line);
+
+        let breakpoint = match breakpoint {
+            Some(b) => b,
+            None => return None,
+        };
+
+        let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+            error.add_modifier(Modifier::UNDERLINED)
+        } else if breakpoint.condition.is_some() {
+            error
+        } else if breakpoint.log_message.is_some() {
+            info
+        } else {
+            warning
+        };
+
+        if !breakpoint.verified {
+            // Faded colors
+            style = if let Some(Color::Rgb(r, g, b)) = style.fg {
+                style.fg(Color::Rgb(
+                    ((r as f32) * 0.4).floor() as u8,
+                    ((g as f32) * 0.4).floor() as u8,
+                    ((b as f32) * 0.4).floor() as u8,
+                ))
+            } else {
+                style.fg(Color::Gray)
+            }
+        };
+
+        // TODO: also handle breakpoints only present in the user struct
+        let sym = if breakpoint.verified { "▲" } else { "⊚" };
+        write!(out, "{}", sym).unwrap();
+        Some(style)
+    })
 }

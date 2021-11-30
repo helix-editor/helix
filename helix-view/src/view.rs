@@ -64,7 +64,11 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[(gutter::diagnostic, 1), (gutter::line_number, 5)];
+const GUTTERS: &[(Gutter, usize)] = &[
+    (gutter::breakpoints, 1),
+    (gutter::diagnostic, 1),
+    (gutter::line_number, 5),
+];
 
 #[derive(Debug)]
 pub struct View {
