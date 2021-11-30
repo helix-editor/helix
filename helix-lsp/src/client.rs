@@ -283,6 +283,52 @@ impl Client {
                         }),
                         ..Default::default()
                     }),
+                    semantic_tokens: Some(lsp::SemanticTokensClientCapabilities {
+                        dynamic_registration: Some(true),
+                        requests: lsp::SemanticTokensClientCapabilitiesRequests {
+                            range: Some(true),
+                            full: Some(lsp::SemanticTokensFullOptions::Delta { delta: Some(true) }),
+                        },
+                        token_types: vec![
+                            lsp::SemanticTokenType::NAMESPACE,
+                            lsp::SemanticTokenType::TYPE,
+                            lsp::SemanticTokenType::CLASS,
+                            lsp::SemanticTokenType::ENUM,
+                            lsp::SemanticTokenType::INTERFACE,
+                            lsp::SemanticTokenType::STRUCT,
+                            lsp::SemanticTokenType::TYPE_PARAMETER,
+                            lsp::SemanticTokenType::PARAMETER,
+                            lsp::SemanticTokenType::VARIABLE,
+                            lsp::SemanticTokenType::PROPERTY,
+                            lsp::SemanticTokenType::ENUM_MEMBER,
+                            lsp::SemanticTokenType::EVENT,
+                            lsp::SemanticTokenType::FUNCTION,
+                            lsp::SemanticTokenType::METHOD,
+                            lsp::SemanticTokenType::MACRO,
+                            lsp::SemanticTokenType::KEYWORD,
+                            lsp::SemanticTokenType::MODIFIER,
+                            lsp::SemanticTokenType::COMMENT,
+                            lsp::SemanticTokenType::STRING,
+                            lsp::SemanticTokenType::NUMBER,
+                            lsp::SemanticTokenType::REGEXP,
+                            lsp::SemanticTokenType::OPERATOR,
+                        ],
+                        token_modifiers: vec![
+                            lsp::SemanticTokenModifier::DECLARATION,
+                            lsp::SemanticTokenModifier::DEFINITION,
+                            lsp::SemanticTokenModifier::READONLY,
+                            lsp::SemanticTokenModifier::STATIC,
+                            lsp::SemanticTokenModifier::DEPRECATED,
+                            lsp::SemanticTokenModifier::ABSTRACT,
+                            lsp::SemanticTokenModifier::ASYNC,
+                            lsp::SemanticTokenModifier::MODIFICATION,
+                            lsp::SemanticTokenModifier::DOCUMENTATION,
+                            lsp::SemanticTokenModifier::DEFAULT_LIBRARY,
+                        ],
+                        formats: vec![lsp::TokenFormat::RELATIVE],
+                        overlapping_token_support: Some(true),
+                        multiline_token_support: Some(true),
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
@@ -799,5 +845,19 @@ impl Client {
 
         let response = self.request::<lsp::request::Rename>(params).await?;
         Ok(response.unwrap_or_default())
+    }
+
+    pub async fn semantic_tokens_refresh(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Result<lsp::SemanticTokensResult> {
+        let params = lsp::SemanticTokensParams {
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams::default(),
+            text_document,
+        };
+        // Typo from lsp_types
+        self.request::<lsp::request::SemanticTokensRefesh>(params).await
     }
 }
