@@ -78,8 +78,11 @@ impl Loader {
 
 #[derive(Clone, Debug)]
 pub struct Theme {
-    scopes: Vec<String>,
+    // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,
+    // tree-sitter highlight styles are stored in a Vec to optimize lookups
+    scopes: Vec<String>,
+    highlights: Vec<Style>,
 }
 
 impl<'de> Deserialize<'de> for Theme {
@@ -88,6 +91,8 @@ impl<'de> Deserialize<'de> for Theme {
         D: Deserializer<'de>,
     {
         let mut styles = HashMap::new();
+        let mut scopes = Vec::new();
+        let mut highlights = Vec::new();
 
         if let Ok(mut colors) = HashMap::<String, Value>::deserialize(deserializer) {
             // TODO: alert user of parsing failures in editor
@@ -102,21 +107,35 @@ impl<'de> Deserialize<'de> for Theme {
                 .unwrap_or_default();
 
             styles.reserve(colors.len());
+            scopes.reserve(colors.len());
+            highlights.reserve(colors.len());
+
             for (name, style_value) in colors {
                 let mut style = Style::default();
                 if let Err(err) = palette.parse_style(&mut style, style_value) {
                     warn!("{}", err);
                 }
-                styles.insert(name, style);
+
+                // these are used both as UI and as highlights
+                styles.insert(name.clone(), style);
+                scopes.push(name);
+                highlights.push(style);
             }
         }
 
-        let scopes = styles.keys().map(ToString::to_string).collect();
-        Ok(Self { scopes, styles })
+        Ok(Self {
+            scopes,
+            styles,
+            highlights,
+        })
     }
 }
 
 impl Theme {
+    pub fn highlight(&self, index: usize) -> Style {
+        self.highlights[index]
+    }
+
     pub fn get(&self, scope: &str) -> Style {
         self.try_get(scope)
             .unwrap_or_else(|| Style::default().fg(Color::Rgb(0, 0, 255)))

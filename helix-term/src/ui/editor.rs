@@ -311,8 +311,7 @@ impl EditorView {
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
                                 let style = spans.iter().fold(text_style, |acc, span| {
-                                    let style = theme.get(theme.scopes()[span.0].as_str());
-                                    acc.patch(style)
+                                    acc.patch(theme.highlight(span.0))
                                 });
 
                                 // we still want to render an empty cell with the style
@@ -346,8 +345,7 @@ impl EditorView {
 
                             if !out_of_bounds {
                                 let style = spans.iter().fold(text_style, |acc, span| {
-                                    let style = theme.get(theme.scopes()[span.0].as_str());
-                                    acc.patch(style)
+                                    acc.patch(theme.highlight(span.0))
                                 });
 
                                 // if we're offscreen just keep going until we hit a new line
