@@ -677,7 +677,6 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 }
 
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
-// we also might be editing a breakpoint in a document that's no longer focused
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, breakpoint)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
         let path = match doc!(cx.editor).path() {

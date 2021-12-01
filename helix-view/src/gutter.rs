@@ -149,7 +149,6 @@ pub fn breakpoints<'doc>(
             }
         };
 
-        // TODO: also handle breakpoints only present in the user struct
         let sym = if breakpoint.verified { "▲" } else { "⊚" };
         write!(out, "{}", sym).unwrap();
         Some(style)
