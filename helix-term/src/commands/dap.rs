@@ -392,7 +392,6 @@ fn debug_parameter_prompt(
 }
 
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
-    // TODO: accept line instead of current selection
     let (view, doc) = current!(cx.editor);
     let path = match doc.path() {
         Some(path) => path.clone(),

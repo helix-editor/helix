@@ -1472,7 +1472,6 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
     items.into_iter().cloned().collect()
 }
 
-// TODO: use one function for search vs extend
 fn search(cx: &mut Context) {
     searcher(cx, Direction::Forward)
 }
@@ -1480,7 +1479,7 @@ fn search(cx: &mut Context) {
 fn rsearch(cx: &mut Context) {
     searcher(cx, Direction::Backward)
 }
-// TODO: use one function for search vs extend
+
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let scrolloff = cx.editor.config.scrolloff;
