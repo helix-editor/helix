@@ -173,10 +173,6 @@ impl Command {
         self.doc
     }
 
-    pub fn fun(&self) -> fn(&mut Context) {
-        self.fun
-    }
-
     #[rustfmt::skip]
     commands!(
         no_op, "Do nothing",
@@ -607,15 +603,8 @@ fn kill_to_line_end(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
-        let line_end_pos = line_end_char_index(&text, line);
-        let pos = range.cursor(text);
-
-        let mut new_range = range.put_cursor(text, line_end_pos, true);
-        // don't want to remove the line separator itself if the cursor doesn't reach the end of line.
-        if pos != line_end_pos {
-            new_range.head = line_end_pos;
-        }
-        new_range
+        let pos = line_end_char_index(&text, line);
+        range.put_cursor(text, pos, true)
     });
     delete_selection_insert_mode(doc, view, &selection);
 }
@@ -3512,12 +3501,12 @@ fn open(cx: &mut Context, open: Open) {
 }
 
 // o inserts a new line after each line with a selection
-pub(crate) fn open_below(cx: &mut Context) {
+fn open_below(cx: &mut Context) {
     open(cx, Open::Below)
 }
 
 // O inserts a new line before each line with a selection
-pub(crate) fn open_above(cx: &mut Context) {
+fn open_above(cx: &mut Context) {
     open(cx, Open::Above)
 }
 
