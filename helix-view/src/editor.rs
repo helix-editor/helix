@@ -104,6 +104,7 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    pub render_whitespace: Whitespace,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
@@ -114,6 +115,52 @@ pub enum LineNumber {
 
     /// Show relative line number to the primary cursor
     Relative,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged, rename_all = "kebab-case")]
+pub enum Whitespace {
+    Basic(WhitespaceValue),
+    Specific {
+        default: Option<WhitespaceValue>,
+        space: Option<WhitespaceValue>,
+        tab: Option<WhitespaceValue>,
+        newline: Option<WhitespaceValue>,
+    },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WhitespaceValue {
+    None,
+    // TODO
+    // Selection,
+    All,
+}
+
+impl Whitespace {
+    pub fn space(&self) -> WhitespaceValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, space, .. } => {
+                space.or(default).unwrap_or(WhitespaceValue::None)
+            }
+        }
+    }
+    pub fn tab(&self) -> WhitespaceValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific { default, tab, .. } => tab.or(default).unwrap_or(WhitespaceValue::None),
+        }
+    }
+    pub fn newline(&self) -> WhitespaceValue {
+        match *self {
+            Self::Basic(val) => val,
+            Self::Specific {
+                default, newline, ..
+            } => newline.or(default).unwrap_or(WhitespaceValue::None),
+        }
+    }
 }
 
 impl Default for Config {
@@ -136,6 +183,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            render_whitespace: Whitespace::Basic(WhitespaceValue::All),
         }
     }
 }

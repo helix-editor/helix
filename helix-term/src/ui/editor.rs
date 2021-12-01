@@ -85,7 +85,15 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights);
+        Self::render_text_highlights(
+            doc,
+            view.offset,
+            inner,
+            surface,
+            theme,
+            highlights,
+            config.render_whitespace,
+        );
         Self::render_gutter(doc, view, view.area, surface, theme, is_focused, config);
 
         if is_focused {
@@ -277,16 +285,24 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         highlights: H,
+        whitespace: helix_view::editor::Whitespace,
     ) {
+        use helix_view::editor::WhitespaceValue;
+
         let text = doc.text().slice(..);
 
         let mut spans = Vec::new();
         let mut visual_x = 0u16;
         let mut line = 0u16;
         let tab_width = doc.tab_width();
-        let tab = " ".repeat(tab_width);
+        let tab = if whitespace.tab() == WhitespaceValue::All {
+            (1..tab_width).fold("→".to_owned(), |s, _| s + " ")
+        } else {
+            " ".repeat(tab_width)
+        };
 
         let text_style = theme.get("ui.text");
+        let whitespace_style = theme.get("ui.text.whitespace");
 
         'outer: for event in highlights {
             match event {
@@ -318,8 +334,12 @@ impl EditorView {
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
-                                    " ",
-                                    style,
+                                    if whitespace.newline() == WhitespaceValue::All {
+                                        "⏎"
+                                    } else {
+                                        " "
+                                    },
+                                    style.patch(whitespace_style),
                                 );
                             }
 
@@ -332,11 +352,18 @@ impl EditorView {
                             }
                         } else {
                             let grapheme = Cow::from(grapheme);
+                            let is_whitespace;
 
                             let (grapheme, width) = if grapheme == "\t" {
                                 // make sure we display tab as appropriate amount of spaces
+                                is_whitespace = true;
                                 (tab.as_str(), tab_width)
+                            } else if whitespace.space() == WhitespaceValue::All && grapheme == " "
+                            {
+                                is_whitespace = true;
+                                ("•", 1)
                             } else {
+                                is_whitespace = false;
                                 // Cow will prevent allocations if span contained in a single slice
                                 // which should really be the majority case
                                 let width = grapheme_width(&grapheme);
@@ -353,7 +380,11 @@ impl EditorView {
                                     viewport.x + visual_x - offset.col as u16,
                                     viewport.y + line,
                                     grapheme,
-                                    style,
+                                    if is_whitespace {
+                                        style.patch(whitespace_style)
+                                    } else {
+                                        style
+                                    },
                                 );
                             }
 

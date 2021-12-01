@@ -234,6 +234,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 surface,
                 &cx.editor.theme,
                 highlights,
+                cx.editor.config.render_whitespace,
             );
 
             // highlight the line
