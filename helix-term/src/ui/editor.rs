@@ -72,6 +72,40 @@ impl EditorView {
         let area = view.area;
         let theme = &editor.theme;
 
+        // DAP: Highlight current stack frame position
+        let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
+            if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) {
+                debugger
+                    .stack_frames
+                    .get(&thread_id)
+                    .and_then(|bt| bt.get(frame))
+            } else {
+                None
+            }
+        });
+        if let Some(frame) = stack_frame {
+            if doc.path().is_some()
+                && frame
+                    .source
+                    .as_ref()
+                    .and_then(|source| source.path.as_ref())
+                    == doc.path()
+            {
+                let line = frame.line - 1; // convert to 0-indexing
+                if line >= view.offset.row && line < view.offset.row + area.height as usize {
+                    surface.set_style(
+                        Rect::new(
+                            area.x,
+                            area.y + (line - view.offset.row) as u16,
+                            area.width,
+                            1,
+                        ),
+                        theme.get("ui.highlight"),
+                    );
+                }
+            }
+        }
+
         let highlights =
             Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, &editor.syn_loader);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
@@ -417,38 +451,6 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        // let mut stack_frame: Option<&StackFrame> = None;
-        // if let Some(path) = doc.path() {
-        //     if let Some(debugger) = debugger {
-        //         // if we have a frame, and the frame path matches document
-        //         if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id)
-        //         {
-        //             let frame = debugger
-        //                 .stack_frames
-        //                 .get(&thread_id)
-        //                 .and_then(|bt| bt.get(frame)); // TODO: drop the clone..
-        //             if let Some(StackFrame {
-        //                 source: Some(source),
-        //                 ..
-        //             }) = &frame
-        //             {
-        //                 if source.path.as_ref() == Some(path) {
-        //                     stack_frame = frame;
-        //                 }
-        //             };
-        //         };
-        //     }
-        // }
-        // if let Some(frame) = stack_frame {
-        //     if frame.line - 1 == line {
-        //         surface.set_style(
-        //             Rect::new(viewport.x, viewport.y + i as u16, 6, 1),
-        //             helix_view::graphics::Style::default()
-        //                 .bg(helix_view::graphics::Color::LightYellow),
-        //         );
-        //     }
-        // }
-
         let mut offset = 0;
 
         // avoid lots of small allocations by reusing a text buffer for each line
@@ -519,29 +521,6 @@ impl EditorView {
             );
             lines.extend(text.lines);
         }
-
-        // let line = doc.text().char_to_line(cursor);
-        // let breakpoint = doc
-        //     .path()
-        //     .and_then(|path| all_breakpoints.get(path))
-        //     .and_then(|breakpoints| {
-        //         breakpoints
-        //             .iter()
-        //             .find(|breakpoint| breakpoint.line == line)
-        //     });
-
-        // if let Some(breakpoint) = breakpoint {
-        //     if let Some(condition) = &breakpoint.condition {
-        //         lines.extend(
-        //             Text::styled(condition, warning.add_modifier(Modifier::UNDERLINED)).lines,
-        //         );
-        //     }
-        //     if let Some(log_message) = &breakpoint.log_message {
-        //         lines.extend(
-        //             Text::styled(log_message, info.add_modifier(Modifier::UNDERLINED)).lines,
-        //         );
-        //     }
-        // }
 
         let paragraph = Paragraph::new(lines)
             .alignment(Alignment::Right)
