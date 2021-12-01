@@ -304,17 +304,17 @@ impl EditorView {
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    let style = spans.iter().fold(text_style, |acc, span| {
-                        let style = theme.get(theme.scopes()[span.0].as_str());
-                        acc.patch(style)
-                    });
-
                     for grapheme in RopeGraphemes::new(text) {
                         let out_of_bounds = visual_x < offset.col as u16
                             || visual_x >= viewport.width + offset.col as u16;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
+                                let style = spans.iter().fold(text_style, |acc, span| {
+                                    let style = theme.get(theme.scopes()[span.0].as_str());
+                                    acc.patch(style)
+                                });
+
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -345,6 +345,11 @@ impl EditorView {
                             };
 
                             if !out_of_bounds {
+                                let style = spans.iter().fold(text_style, |acc, span| {
+                                    let style = theme.get(theme.scopes()[span.0].as_str());
+                                    acc.patch(style)
+                                });
+
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
