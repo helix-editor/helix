@@ -137,3 +137,29 @@ Search specific options.
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
+
+### `[editor.whitespace]` Section
+
+Options for rendering whitespace with visible characters. Use `:set whitespace.render all` to temporarily enable visible whitespace.
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `tab`, and `newline`. | `"none"` |
+| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space` or `newline` | See example below |
+
+Example
+
+```toml
+[editor.whitespace]
+render = "all"
+# or control each character
+[editor.whitespace.render]
+space = "all"
+tab = "all"
+newline = "none"
+
+[editor.whitespace.characters]
+space = "·"
+tab = "→"
+newline = "⏎"
+```
