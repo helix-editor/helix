@@ -132,6 +132,7 @@ impl<'de> Deserialize<'de> for Theme {
 }
 
 impl Theme {
+    #[inline]
     pub fn highlight(&self, index: usize) -> Style {
         self.highlights[index]
     }
