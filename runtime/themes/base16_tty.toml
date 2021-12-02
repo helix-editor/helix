@@ -1,20 +1,17 @@
 # Author: NNB <nnbnh@protonmail.com>
 
 "ui.menu" = "black"
-"ui.menu.selected" = { fg = "white", bg = "black" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.linenr" = { fg = "gray", bg = "black" }
-"ui.popup" = { bg = "black" }
-"ui.window" = { bg = "black" }
+"ui.popup" = { modifiers = ["reversed"] }
 "ui.linenr.selected" = { fg = "white", bg = "black", modifiers = ["bold"] }
 "ui.selection" = { fg = "black", bg = "blue" }
 "ui.selection.primary" = { fg = "white", bg = "blue" }
 "comment" = { fg = "gray" }
-"ui.statusline" = { fg = "white", bg = "black" }
-"ui.help" = { fg = "white", bg = "black" }
-"ui.cursor" = { fg = "white", modifiers = ["reversed"] } #FIXME
-"ui.text" = "white" #FIXME
-"operator" = "white" #FIXME
-"ui.text.focus" = "white" #FIXME
+"ui.statusline" = { fg = "black", bg = "white" }
+"ui.statusline.inactive" = { fg = "gray", bg = "white" }
+"ui.help" = { modifiers = ["reversed"] }
+"ui.cursor" = { modifiers = ["reversed"] }
 "variable" = "red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
@@ -30,8 +27,6 @@
 "keyword" = "magenta"
 "label" = "magenta"
 "namespace" = "magenta"
-"ui.popup" = { bg = "black" }
-"ui.window" = { bg = "base00" }
 "ui.help" = { fg = "white", bg = "black" }
 
 "info" = "gray"

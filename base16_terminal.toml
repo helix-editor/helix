@@ -1,7 +1,7 @@
 # Author: NNB <nnbnh@protonmail.com>
 
 "ui.menu" = "black"
-"ui.menu.selected" = { fg = "white", bg = "black" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.linenr" = { fg = "light-gray", bg = "black" }
 "ui.popup" = { bg = "black" }
 "ui.window" = { bg = "black" }
@@ -9,12 +9,10 @@
 "ui.selection" = { fg = "gray", modifiers = ["reversed"] }
 "comment" = { fg = "light-gray", modifiers = ["italic"] }
 "ui.statusline" = { fg = "white", bg = "black" }
+"ui.statusline.inactive" = { fg = "gray", bg = "black" }
 "ui.help" = { fg = "white", bg = "black" }
 "ui.cursor" = { fg = "light-gray", modifiers = ["reversed"] }
-"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] } #FIXME
-"ui.text" = "white" #FIXME
-"operator" = "white" #FIXME
-"ui.text.focus" = "white" #FIXME
+"ui.cursor.primary" = { modifiers = ["reversed"] }
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
@@ -30,8 +28,6 @@
 "keyword" = "light-magenta"
 "label" = "light-magenta"
 "namespace" = "light-magenta"
-"ui.popup" = { bg = "black" }
-"ui.window" = { bg = "base00" }
 "ui.help" = { fg = "white", bg = "black" }
 
 "info" = "light-gray"

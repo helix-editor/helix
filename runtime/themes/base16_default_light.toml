@@ -2,7 +2,7 @@
 
 "ui.background" = { bg = "base00" }
 "ui.menu" = "base01"
-"ui.menu.selected" = { fg = "base04", bg = "base01" }
+"ui.menu.selected" = { fg = "base01", bg = "base04" }
 "ui.linenr" = { fg = "base03", bg = "base01" }
 "ui.popup" = { bg = "base01" }
 "ui.window" = { bg = "base01" }
@@ -31,8 +31,6 @@
 "keyword" = "base0E"
 "label" = "base0E"
 "namespace" = "base0E"
-"ui.popup" = { bg = "base01" }
-"ui.window" = { bg = "base00" }
 "ui.help" = { fg = "base06", bg = "base01" }
 
 "info" = "base03"

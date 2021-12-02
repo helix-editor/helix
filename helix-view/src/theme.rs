@@ -151,7 +151,7 @@ impl Theme {
 
     pub fn get(&self, scope: &str) -> Style {
         self.try_get(scope)
-            .unwrap_or_else(|| Style::default().fg(Color::Rgb(0, 0, 255)))
+            .unwrap_or_default()
     }
 
     pub fn try_get(&self, scope: &str) -> Option<Style> {
