@@ -751,8 +751,8 @@ fn goto_window(cx: &mut Context, align: Align) {
         Align::Center => (view.offset.row + ((last_line - view.offset.row) / 2)),
         Align::Bottom => last_line.saturating_sub(scrolloff + count),
     }
-    .min(last_line.saturating_sub(scrolloff))
-    .max(view.offset.row + scrolloff);
+    .max(view.offset.row + scrolloff)
+    .min(last_line.saturating_sub(scrolloff));
 
     let pos = doc.text().line_to_char(line);
 
