@@ -165,10 +165,7 @@ fn get_breakpoint_at_current_line(editor: &mut Editor) -> Option<(usize, Breakpo
     let text = doc.text().slice(..);
 
     let line = doc.selection(view.id).primary().cursor_line(text);
-    let path = match doc.path() {
-        Some(path) => path,
-        None => return None,
-    };
+    let path = doc.path()?;
     editor.breakpoints.get(path).and_then(|breakpoints| {
         let i = breakpoints.iter().position(|b| b.line == line);
         i.map(|i| (i, breakpoints[i].clone()))

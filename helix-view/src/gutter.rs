@@ -119,12 +119,7 @@ pub fn breakpoints<'doc>(
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         let breakpoint = breakpoints
             .iter()
-            .find(|breakpoint| breakpoint.line == line);
-
-        let breakpoint = match breakpoint {
-            Some(b) => b,
-            None => return None,
-        };
+            .find(|breakpoint| breakpoint.line == line)?;
 
         let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
             error.add_modifier(Modifier::UNDERLINED)
