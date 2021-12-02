@@ -164,8 +164,7 @@ fn get_breakpoint_at_current_line(editor: &mut Editor) -> Option<(usize, Breakpo
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
-    let pos = doc.selection(view.id).primary().cursor(text);
-    let line = text.char_to_line(pos);
+    let line = doc.selection(view.id).primary().cursor_line(text);
     let path = match doc.path() {
         Some(path) => path,
         None => return None,
@@ -418,8 +417,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
         }
     };
     let text = doc.text().slice(..);
-    let pos = doc.selection(view.id).primary().cursor(text);
-    let line = text.char_to_line(pos);
+    let line = doc.selection(view.id).primary().cursor_line(text);
     dap_toggle_breakpoint_impl(cx, path, line);
 }
 
