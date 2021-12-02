@@ -264,9 +264,10 @@ impl Command {
         goto_file_vsplit, "Goto files in the selection in vertical splits",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
-        goto_window_middle, "Goto window middle",
+        goto_window_center, "Goto window center",
         goto_window_bottom, "Goto window bottom",
         goto_last_accessed_file, "Goto last accessed file",
+        goto_last_modified_file, "Goto last modified file",
         goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
@@ -763,7 +764,7 @@ fn goto_window_top(cx: &mut Context) {
     goto_window(cx, Align::Top)
 }
 
-fn goto_window_middle(cx: &mut Context) {
+fn goto_window_center(cx: &mut Context) {
     goto_window(cx, Align::Center)
 }
 
@@ -3607,6 +3608,20 @@ fn goto_last_modification(cx: &mut Context) {
             .clone()
             .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
         doc.set_selection(view.id, selection);
+    }
+}
+
+fn goto_last_modified_file(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let alternate_file = view
+        .last_modified_docs
+        .into_iter()
+        .flatten()
+        .find(|&id| id != view.doc);
+    if let Some(alt) = alternate_file {
+        cx.editor.switch(alt, Action::Replace);
+    } else {
+        cx.editor.set_error("no last modified buffer".to_owned())
     }
 }
 

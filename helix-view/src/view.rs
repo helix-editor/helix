@@ -75,6 +75,11 @@ pub struct View {
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
+    /// the last modified files before the current one
+    /// ordered from most frequent to least frequent
+    // uses two docs because we want to be able to swap between the
+    // two last modified docs which we need to manually keep track of
+    pub last_modified_docs: [Option<DocumentId>; 2],
 }
 
 impl View {
@@ -86,6 +91,7 @@ impl View {
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
+            last_modified_docs: [None, None],
         }
     }
 
