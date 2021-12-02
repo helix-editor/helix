@@ -1897,7 +1897,6 @@ mod cmd {
     use super::*;
 
     use helix_view::editor::Action;
-    use helix_view::editor::Breakpoint;
     use ui::completers::{self, Completer};
 
     #[derive(Clone)]
@@ -2560,22 +2559,6 @@ mod cmd {
             cx.editor.set_status(response.result);
         }
         Ok(())
-    }
-
-    pub fn get_breakpoint_at_current_line(editor: &mut Editor) -> Option<(usize, Breakpoint)> {
-        let (view, doc) = current!(editor);
-        let text = doc.text().slice(..);
-
-        let pos = doc.selection(view.id).primary().cursor(text);
-        let line = text.char_to_line(pos) + 1; // 1-indexing in DAP, 0-indexing in Helix
-        let path = match doc.path() {
-            Some(path) => path,
-            None => return None,
-        };
-        editor.breakpoints.get(path).and_then(|breakpoints| {
-            let i = breakpoints.iter().position(|b| b.line == line);
-            i.map(|i| (i, breakpoints[i].clone()))
-        })
     }
 
     fn debug_start(

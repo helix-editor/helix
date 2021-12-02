@@ -1,6 +1,5 @@
 use super::{align_view, Align, Context, Editor};
 use crate::{
-    commands,
     compositor::Compositor,
     job::Callback,
     ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
@@ -159,6 +158,22 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
         },
     );
     cx.push_layer(Box::new(picker))
+}
+
+fn get_breakpoint_at_current_line(editor: &mut Editor) -> Option<(usize, Breakpoint)> {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let pos = doc.selection(view.id).primary().cursor(text);
+    let line = text.char_to_line(pos);
+    let path = match doc.path() {
+        Some(path) => path,
+        None => return None,
+    };
+    editor.breakpoints.get(path).and_then(|breakpoints| {
+        let i = breakpoints.iter().position(|b| b.line == line);
+        i.map(|i| (i, breakpoints[i].clone()))
+    })
 }
 
 // -- DAP
@@ -381,7 +396,7 @@ fn debug_parameter_prompt(
                 });
                 cx.jobs.callback(callback);
             } else {
-                commands::dap_start_impl(
+                dap_start_impl(
                     cx.editor,
                     Some(&config_name),
                     None,
@@ -679,7 +694,7 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
 pub fn dap_edit_condition(cx: &mut Context) {
-    if let Some((pos, breakpoint)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
+    if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
         let path = match doc!(cx.editor).path() {
             Some(path) => path.clone(),
             None => return,
@@ -726,7 +741,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
 }
 
 pub fn dap_edit_log(cx: &mut Context) {
-    if let Some((pos, breakpoint)) = commands::cmd::get_breakpoint_at_current_line(cx.editor) {
+    if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
         let path = match doc!(cx.editor).path() {
             Some(path) => path.clone(),
             None => return,
