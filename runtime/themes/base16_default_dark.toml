@@ -39,7 +39,7 @@
 "hint" = "base03"
 "debug" = "base03"
 "diagnostic" = "base03"
-"error" = "base0E"
+"error" = "base08"
 
 [palette]
 base00 = "#181818" # Default Background

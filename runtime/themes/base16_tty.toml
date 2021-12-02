@@ -1,0 +1,41 @@
+# Author: NNB <nnbnh@protonmail.com>
+
+"ui.menu" = "black"
+"ui.menu.selected" = { fg = "white", bg = "black" }
+"ui.linenr" = { fg = "gray", bg = "black" }
+"ui.popup" = { bg = "black" }
+"ui.window" = { bg = "black" }
+"ui.linenr.selected" = { fg = "white", bg = "black", modifiers = ["bold"] }
+"ui.selection" = { fg = "black", bg = "blue" }
+"ui.selection.primary" = { fg = "white", bg = "blue" }
+"comment" = { fg = "gray" }
+"ui.statusline" = { fg = "white", bg = "black" }
+"ui.help" = { fg = "white", bg = "black" }
+"ui.cursor" = { fg = "white", modifiers = ["reversed"] } #FIXME
+"ui.text" = "white" #FIXME
+"operator" = "white" #FIXME
+"ui.text.focus" = "white" #FIXME
+"variable" = "red"
+"constant.numeric" = "yellow"
+"constant" = "yellow"
+"attributes" = "yellow"
+"type" = "yellow"
+"ui.cursor.match" = { fg = "yellow", modifiers = ["underlined"] }
+"string"  = "green"
+"variable.other.member" = "green"
+"constant.character.escape" = "cyan"
+"function" = "blue"
+"constructor" = "blue"
+"special" = "blue"
+"keyword" = "magenta"
+"label" = "magenta"
+"namespace" = "magenta"
+"ui.popup" = { bg = "black" }
+"ui.window" = { bg = "base00" }
+"ui.help" = { fg = "white", bg = "black" }
+
+"info" = "gray"
+"hint" = "gray"
+"debug" = "gray"
+"diagnostic" = "gray"
+"error" = "red"

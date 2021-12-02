@@ -38,4 +38,4 @@
 "hint" = "light-gray"
 "debug" = "light-gray"
 "diagnostic" = "light-gray"
-"error" = "light-magenta"
+"error" = "light-red"
