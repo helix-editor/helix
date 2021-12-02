@@ -388,18 +388,20 @@ impl Application {
                 }
                 Event::Breakpoint(events::Breakpoint { reason, breakpoint }) => match &reason[..] {
                     "new" => {
-                        self.editor
-                            .breakpoints
-                            .entry(breakpoint.source.unwrap().path.unwrap()) // TODO: no unwraps
-                            .or_default()
-                            .push(Breakpoint {
-                                id: breakpoint.id,
-                                verified: breakpoint.verified,
-                                message: breakpoint.message,
-                                line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
-                                column: breakpoint.column,
-                                ..Default::default()
-                            });
+                        if let Some(source) = breakpoint.source {
+                            self.editor
+                                .breakpoints
+                                .entry(source.path.unwrap()) // TODO: no unwraps
+                                .or_default()
+                                .push(Breakpoint {
+                                    id: breakpoint.id,
+                                    verified: breakpoint.verified,
+                                    message: breakpoint.message,
+                                    line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
+                                    column: breakpoint.column,
+                                    ..Default::default()
+                                });
+                        }
                     }
                     "changed" => {
                         for breakpoints in self.editor.breakpoints.values_mut() {

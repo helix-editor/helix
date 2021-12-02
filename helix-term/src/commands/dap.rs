@@ -78,9 +78,10 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
         return;
     };
 
-    editor
-        .open(path, helix_view::editor::Action::Replace)
-        .unwrap(); // TODO: there should be no unwrapping!
+    if let Err(e) = editor.open(path, helix_view::editor::Action::Replace) {
+        editor.set_error(format!("Unable to jump to stack frame: {}", e));
+        return;
+    }
 
     let (view, doc) = current!(editor);
 
