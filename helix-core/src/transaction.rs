@@ -330,7 +330,7 @@ impl ChangeSet {
     /// `true` when the set is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.changes.is_empty()
+        self.changes.is_empty() || self.changes == [Operation::Retain(self.len)]
     }
 
     /// Map a position through the changes.
