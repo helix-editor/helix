@@ -144,14 +144,19 @@ impl History {
             .selection()
             .expect("inversion always contains a selection")
             .primary();
-        let (_from, to, _fragment) = current_revision
+        let (_from, to, _fragment) = if let Some(v) = current_revision
             .transaction
             .changes_iter()
             // find a change that matches the primary selection
             .find(|(from, to, _fragment)| Range::new(*from, *to).overlaps(&primary_selection))
             // or use the first change
             .or_else(|| current_revision.transaction.changes_iter().next())
-            .unwrap();
+        {
+            v
+        } else {
+            return None;
+        };
+
         let pos = current_revision
             .transaction
             .changes()
