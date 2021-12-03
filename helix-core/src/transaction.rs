@@ -22,22 +22,12 @@ pub enum Assoc {
 }
 
 // ChangeSpec = Change | ChangeSet | Vec<Change>
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ChangeSet {
     pub(crate) changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
     len: usize,
     len_after: usize,
-}
-
-impl Default for ChangeSet {
-    fn default() -> Self {
-        Self {
-            changes: Vec::new(),
-            len: 0,
-            len_after: 0,
-        }
-    }
 }
 
 impl ChangeSet {
