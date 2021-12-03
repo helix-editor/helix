@@ -79,6 +79,9 @@ pub struct Document {
     /// Current editing mode.
     pub mode: Mode,
     pub restore_cursor: bool,
+    /// Control if helix can remove whitespaces if we go from insert mode to normal mode without any keys in between.
+    /// Example: `o<esc>`.
+    pub normal_mode_restore_indent: bool,
 
     /// Current indent style.
     pub indent_style: IndentStyle,
@@ -337,6 +340,7 @@ impl Document {
             line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
             restore_cursor: false,
+            normal_mode_restore_indent: false,
             syntax: None,
             language: None,
             changes,

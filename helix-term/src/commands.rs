@@ -3574,6 +3574,7 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+    doc.normal_mode_restore_indent = true;
 }
 
 // o inserts a new line after each line with a selection
@@ -3595,6 +3596,10 @@ fn normal_mode(cx: &mut Context) {
 
     doc.mode = Mode::Normal;
 
+    if doc.normal_mode_restore_indent {
+        doc.normal_mode_restore_indent = false;
+        kill_to_line_start(cx);
+    }
     doc.append_changes_to_history(view.id);
 
     // if leaving append mode, move cursor back by 1
@@ -5866,4 +5871,9 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
+}
+
+pub(crate) fn cancel_restore_indent(cx: &mut Context) {
+    let (_, doc) = current!(cx.editor);
+    doc.normal_mode_restore_indent = false;
 }

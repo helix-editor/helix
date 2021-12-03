@@ -661,6 +661,15 @@ impl EditorView {
         self.autoinfo = key_result.sticky.map(|node| node.infobox());
 
         match &key_result.kind {
+            KeymapResultKind::Matched(command) => {
+                if command.name() != "normal_mode" {
+                    commands::cancel_restore_indent(cxt);
+                }
+            }
+            _ => commands::cancel_restore_indent(cxt),
+        }
+
+        match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
             KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
             KeymapResultKind::MatchedSequence(commands) => {
