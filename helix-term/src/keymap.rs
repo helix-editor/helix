@@ -120,7 +120,7 @@ macro_rules! keymap {
                         _key,
                         keymap!(@trie $value)
                     );
-                    debug_assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
+                    assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
                     _order.push(_key);
                 )+
             )*
