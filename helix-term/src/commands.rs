@@ -4444,11 +4444,8 @@ fn yank_joined_to_clipboard_impl(
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let _ = yank_joined_to_clipboard_impl(
-        cx.editor,
-        line_ending.as_str(),
-        ClipboardType::Clipboard,
-    );
+    let _ =
+        yank_joined_to_clipboard_impl(cx.editor, line_ending.as_str(), ClipboardType::Clipboard);
     exit_select_mode(cx);
 }
 
@@ -4478,11 +4475,8 @@ fn yank_main_selection_to_clipboard(cx: &mut Context) {
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let _ = yank_joined_to_clipboard_impl(
-        cx.editor,
-        line_ending.as_str(),
-        ClipboardType::Selection,
-    );
+    let _ =
+        yank_joined_to_clipboard_impl(cx.editor, line_ending.as_str(), ClipboardType::Selection);
 }
 
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
