@@ -421,19 +421,19 @@ impl<T: 'static> Component for Picker<T> {
             }
             key!(Enter) => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::Replace);
+                    (self.callback_fn)(cx.editor, option, Action::Replace);
                 }
                 return close_fn;
             }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::HorizontalSplit);
+                    (self.callback_fn)(cx.editor, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
             ctrl!('v') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
+                    (self.callback_fn)(cx.editor, option, Action::VerticalSplit);
                 }
                 return close_fn;
             }

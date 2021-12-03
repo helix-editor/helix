@@ -922,7 +922,7 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let mut cxt = commands::Context {
-            editor: &mut cx.editor,
+            editor: cx.editor,
             count: None,
             register: None,
             callback: None,
