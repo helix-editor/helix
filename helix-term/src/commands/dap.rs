@@ -1,7 +1,7 @@
 use super::{align_view, Align, Context, Editor};
 use crate::{
-    compositor::Compositor,
-    job::Callback,
+    compositor::{self, Compositor},
+    job::{Callback, Jobs},
     ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use helix_core::{
@@ -16,7 +16,10 @@ use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::PathBuf;
+
+use anyhow::bail;
 
 // general utils:
 pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
@@ -174,23 +177,39 @@ fn get_breakpoint_at_current_line(editor: &mut Editor) -> Option<(usize, Breakpo
 
 // -- DAP
 
+fn dap_callback<T, F>(
+    jobs: &mut Jobs,
+    call: impl Future<Output = helix_dap::Result<serde_json::Value>> + 'static + Send,
+    callback: F,
+) where
+    T: for<'de> serde::Deserialize<'de> + Send + 'static,
+    F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
+{
+    let callback = Box::pin(async move {
+        let json = call.await?;
+        let response = serde_json::from_value(json)?;
+        let call: Callback = Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+            callback(editor, compositor, response)
+        });
+        Ok(call)
+    });
+    jobs.callback(callback);
+}
+
 pub fn dap_start_impl(
-    editor: &mut Editor,
+    cx: &mut compositor::Context,
     name: Option<&str>,
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<&str>>,
-) {
-    let doc = doc!(editor);
+) -> Result<(), anyhow::Error> {
+    let doc = doc!(cx.editor);
 
     let config = match doc
         .language_config()
         .and_then(|config| config.debugger.as_ref())
     {
         Some(c) => c,
-        None => {
-            editor.set_error("No debug adapter available for language".to_string());
-            return;
-        }
+        None => bail!("No debug adapter available for language"),
     };
 
     let result = match socket {
@@ -206,16 +225,12 @@ pub fn dap_start_impl(
 
     let (mut debugger, events) = match result {
         Ok(r) => r,
-        Err(e) => {
-            editor.set_error(format!("Failed to start debug session: {}", e));
-            return;
-        }
+        Err(e) => bail!("Failed to start debug session: {}", e),
     };
 
     let request = debugger.initialize(config.name.clone());
     if let Err(e) = block_on(request) {
-        editor.set_error(format!("Failed to initialize debug adapter: {}", e));
-        return;
+        bail!("Failed to initialize debug adapter: {}", e);
     }
 
     debugger.quirks = config.quirks.clone();
@@ -227,10 +242,7 @@ pub fn dap_start_impl(
     };
     let template = match template {
         Some(template) => template,
-        None => {
-            editor.set_error("No debug config with given name".to_string());
-            return;
-        }
+        None => bail!("No debug config with given name"),
     };
 
     let mut args: HashMap<&str, Value> = HashMap::new();
@@ -282,28 +294,29 @@ pub fn dap_start_impl(
 
     let args = to_value(args).unwrap();
 
-    // problem: this blocks for too long while we get back the startInTerminal REQ
-
-    log::error!("pre start");
-    let result = match &template.request[..] {
-        "launch" => block_on(debugger.launch(args)),
-        "attach" => block_on(debugger.attach(args)),
-        _ => {
-            editor.set_error("Unsupported request".to_string());
-            return;
-        }
+    let callback = |_editor: &mut Editor, _compositor: &mut Compositor, _response: Value| {
+        // if let Err(e) = result {
+        //     editor.set_error(format!("Failed {} target: {}", template.request, e));
+        // }
     };
-    log::error!("post start");
-    if let Err(e) = result {
-        let msg = format!("Failed {} target: {}", template.request, e);
-        editor.set_error(msg);
-        return;
-    }
+
+    match &template.request[..] {
+        "launch" => {
+            let call = debugger.launch(args);
+            dap_callback(cx.jobs, call, callback);
+        }
+        "attach" => {
+            let call = debugger.attach(args);
+            dap_callback(cx.jobs, call, callback);
+        }
+        request => bail!("Unsupported request '{}'", request),
+    };
 
     // TODO: either await "initialized" or buffer commands until event is received
-    editor.debugger = Some(debugger);
+    cx.editor.debugger = Some(debugger);
     let stream = UnboundedReceiverStream::new(events);
-    editor.debugger_events.push(stream);
+    cx.editor.debugger_events.push(stream);
+    Ok(())
 }
 
 pub fn dap_launch(cx: &mut Context) {
@@ -404,12 +417,14 @@ fn debug_parameter_prompt(
                 });
                 cx.jobs.callback(callback);
             } else {
-                dap_start_impl(
-                    cx.editor,
+                if let Err(e) = dap_start_impl(
+                    cx,
                     Some(&config_name),
                     None,
                     Some(params.iter().map(|x| x.as_str()).collect()),
-                );
+                ) {
+                    cx.editor.set_error(e.to_string());
+                }
             }
         },
     )

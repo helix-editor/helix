@@ -288,16 +288,12 @@ impl Client {
         self.request::<requests::Disconnect>(()).await
     }
 
-    pub async fn launch(&mut self, args: serde_json::Value) -> Result<Value> {
-        let response = self.request::<requests::Launch>(args).await?;
-        log::error!("launch response {}", response);
-        Ok(response)
+    pub fn launch(&self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+        self.call::<requests::Launch>(args)
     }
 
-    pub async fn attach(&mut self, args: serde_json::Value) -> Result<Value> {
-        let response = self.request::<requests::Attach>(args).await?;
-        log::error!("attach response {}", response);
-        Ok(response)
+    pub fn attach(&self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+        self.call::<requests::Attach>(args)
     }
 
     pub async fn set_breakpoints(

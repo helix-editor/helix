@@ -2571,8 +2571,7 @@ mod cmd {
             0 => None,
             _ => Some(args.remove(0)),
         };
-        dap_start_impl(&mut cx.editor, name, None, Some(args));
-        Ok(())
+        dap_start_impl(cx, name, None, Some(args))
     }
 
     fn debug_remote(
@@ -2589,9 +2588,7 @@ mod cmd {
             0 => None,
             _ => Some(args.remove(0)),
         };
-        dap_start_impl(&mut cx.editor, name, address, Some(args));
-
-        Ok(())
+        dap_start_impl(cx, name, address, Some(args))
     }
 
     fn tutor(
