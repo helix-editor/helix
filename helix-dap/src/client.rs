@@ -244,7 +244,7 @@ impl Client {
             path_format: Some("path".to_owned()),
             supports_variable_type: Some(true),
             supports_variable_paging: Some(false),
-            supports_run_in_terminal_request: Some(false),
+            supports_run_in_terminal_request: Some(true),
             supports_memory_references: Some(false),
             supports_progress_reporting: Some(false),
             supports_invalidated_event: Some(false),

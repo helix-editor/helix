@@ -321,147 +321,154 @@ impl Application {
     pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) {
         use crate::commands::dap::{breakpoints_changed, resume_application, select_thread_id};
         use helix_dap::{events, Event};
-        let debugger = match self.editor.debugger.as_mut() {
-            Some(debugger) => debugger,
-            None => return,
-        };
 
         match payload {
-            Payload::Event(ev) => match ev {
-                Event::Stopped(events::Stopped {
-                    thread_id,
-                    description,
-                    text,
-                    reason,
-                    all_threads_stopped,
-                    ..
-                }) => {
-                    let all_threads_stopped = all_threads_stopped.unwrap_or_default();
+            Payload::Event(ev) => {
+                let debugger = match self.editor.debugger.as_mut() {
+                    Some(debugger) => debugger,
+                    None => return,
+                };
+                match ev {
+                    Event::Stopped(events::Stopped {
+                        thread_id,
+                        description,
+                        text,
+                        reason,
+                        all_threads_stopped,
+                        ..
+                    }) => {
+                        let all_threads_stopped = all_threads_stopped.unwrap_or_default();
 
-                    if all_threads_stopped {
-                        if let Ok(threads) = debugger.threads().await {
-                            for thread in threads {
-                                fetch_stack_trace(debugger, thread.id).await;
+                        if all_threads_stopped {
+                            if let Ok(threads) = debugger.threads().await {
+                                for thread in threads {
+                                    fetch_stack_trace(debugger, thread.id).await;
+                                }
+                                select_thread_id(
+                                    &mut self.editor,
+                                    thread_id.unwrap_or_default(),
+                                    false,
+                                )
+                                .await;
                             }
-                            select_thread_id(
-                                &mut self.editor,
-                                thread_id.unwrap_or_default(),
-                                false,
-                            )
-                            .await;
+                        } else if let Some(thread_id) = thread_id {
+                            debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
+
+                            // whichever thread stops is made "current" (if no previously selected thread).
+                            select_thread_id(&mut self.editor, thread_id, false).await;
                         }
-                    } else if let Some(thread_id) = thread_id {
-                        debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
 
-                        // whichever thread stops is made "current" (if no previously selected thread).
-                        select_thread_id(&mut self.editor, thread_id, false).await;
-                    }
+                        let scope = match thread_id {
+                            Some(id) => format!("Thread {}", id),
+                            None => "Target".to_owned(),
+                        };
 
-                    let scope = match thread_id {
-                        Some(id) => format!("Thread {}", id),
-                        None => "Target".to_owned(),
-                    };
+                        let mut status = format!("{} stopped because of {}", scope, reason);
+                        if let Some(desc) = description {
+                            status.push_str(&format!(" {}", desc));
+                        }
+                        if let Some(text) = text {
+                            status.push_str(&format!(" {}", text));
+                        }
+                        if all_threads_stopped {
+                            status.push_str(" (all threads stopped)");
+                        }
 
-                    let mut status = format!("{} stopped because of {}", scope, reason);
-                    if let Some(desc) = description {
-                        status.push_str(&format!(" {}", desc));
+                        self.editor.set_status(status);
                     }
-                    if let Some(text) = text {
-                        status.push_str(&format!(" {}", text));
+                    Event::Continued(events::Continued { thread_id, .. }) => {
+                        debugger
+                            .thread_states
+                            .insert(thread_id, "running".to_owned());
+                        if debugger.thread_id == Some(thread_id) {
+                            resume_application(debugger)
+                        }
                     }
-                    if all_threads_stopped {
-                        status.push_str(" (all threads stopped)");
+                    Event::Thread(_) => {
+                        // TODO: update thread_states, make threads request
                     }
+                    Event::Breakpoint(events::Breakpoint { reason, breakpoint }) => {
+                        match &reason[..] {
+                            "new" => {
+                                if let Some(source) = breakpoint.source {
+                                    self.editor
+                                        .breakpoints
+                                        .entry(source.path.unwrap()) // TODO: no unwraps
+                                        .or_default()
+                                        .push(Breakpoint {
+                                            id: breakpoint.id,
+                                            verified: breakpoint.verified,
+                                            message: breakpoint.message,
+                                            line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
+                                            column: breakpoint.column,
+                                            ..Default::default()
+                                        });
+                                }
+                            }
+                            "changed" => {
+                                for breakpoints in self.editor.breakpoints.values_mut() {
+                                    if let Some(i) =
+                                        breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                    {
+                                        breakpoints[i].verified = breakpoint.verified;
+                                        breakpoints[i].message = breakpoint.message.clone();
+                                        breakpoints[i].line =
+                                            breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
+                                        breakpoints[i].column = breakpoint.column;
+                                    }
+                                }
+                            }
+                            "removed" => {
+                                for breakpoints in self.editor.breakpoints.values_mut() {
+                                    if let Some(i) =
+                                        breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                    {
+                                        breakpoints.remove(i);
+                                    }
+                                }
+                            }
+                            reason => {
+                                warn!("Unknown breakpoint event: {}", reason);
+                            }
+                        }
+                    }
+                    Event::Output(events::Output {
+                        category, output, ..
+                    }) => {
+                        let prefix = match category {
+                            Some(category) => {
+                                if &category == "telemetry" {
+                                    return;
+                                }
+                                format!("Debug ({}):", category)
+                            }
+                            None => "Debug:".to_owned(),
+                        };
 
-                    self.editor.set_status(status);
-                }
-                Event::Continued(events::Continued { thread_id, .. }) => {
-                    debugger
-                        .thread_states
-                        .insert(thread_id, "running".to_owned());
-                    if debugger.thread_id == Some(thread_id) {
-                        resume_application(debugger)
+                        log::info!("{}", output);
+                        self.editor.set_status(format!("{} {}", prefix, output));
                     }
-                }
-                Event::Thread(_) => {
-                    // TODO: update thread_states, make threads request
-                }
-                Event::Breakpoint(events::Breakpoint { reason, breakpoint }) => match &reason[..] {
-                    "new" => {
-                        if let Some(source) = breakpoint.source {
+                    Event::Initialized => {
+                        // send existing breakpoints
+                        for (path, breakpoints) in &mut self.editor.breakpoints {
+                            // TODO: call futures in parallel, await all
+                            let _ = breakpoints_changed(debugger, path.clone(), breakpoints);
+                        }
+                        // TODO: fetch breakpoints (in case we're attaching)
+
+                        if debugger.configuration_done().await.is_ok() {
                             self.editor
-                                .breakpoints
-                                .entry(source.path.unwrap()) // TODO: no unwraps
-                                .or_default()
-                                .push(Breakpoint {
-                                    id: breakpoint.id,
-                                    verified: breakpoint.verified,
-                                    message: breakpoint.message,
-                                    line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
-                                    column: breakpoint.column,
-                                    ..Default::default()
-                                });
-                        }
+                                .set_status("Debugged application started".to_owned());
+                        }; // TODO: do we need to handle error?
                     }
-                    "changed" => {
-                        for breakpoints in self.editor.breakpoints.values_mut() {
-                            if let Some(i) = breakpoints.iter().position(|b| b.id == breakpoint.id)
-                            {
-                                breakpoints[i].verified = breakpoint.verified;
-                                breakpoints[i].message = breakpoint.message.clone();
-                                breakpoints[i].line = breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
-                                breakpoints[i].column = breakpoint.column;
-                            }
-                        }
+                    ev => {
+                        log::warn!("Unhandled event {:?}", ev);
+                        return; // return early to skip render
                     }
-                    "removed" => {
-                        for breakpoints in self.editor.breakpoints.values_mut() {
-                            if let Some(i) = breakpoints.iter().position(|b| b.id == breakpoint.id)
-                            {
-                                breakpoints.remove(i);
-                            }
-                        }
-                    }
-                    reason => {
-                        warn!("Unknown breakpoint event: {}", reason);
-                    }
-                },
-                Event::Output(events::Output {
-                    category, output, ..
-                }) => {
-                    let prefix = match category {
-                        Some(category) => {
-                            if &category == "telemetry" {
-                                return;
-                            }
-                            format!("Debug ({}):", category)
-                        }
-                        None => "Debug:".to_owned(),
-                    };
-
-                    log::info!("{}", output);
-                    self.editor.set_status(format!("{} {}", prefix, output));
                 }
-                Event::Initialized => {
-                    // send existing breakpoints
-                    for (path, breakpoints) in &mut self.editor.breakpoints {
-                        // TODO: call futures in parallel, await all
-                        let _ = breakpoints_changed(debugger, path.clone(), breakpoints);
-                    }
-                    // TODO: fetch breakpoints (in case we're attaching)
-
-                    if debugger.configuration_done().await.is_ok() {
-                        self.editor
-                            .set_status("Debugged application started".to_owned());
-                    }; // TODO: do we need to handle error?
-                }
-                ev => {
-                    log::warn!("Unhandled event {:?}", ev);
-                    return; // return early to skip render
-                }
-            },
+            }
             Payload::Response(_) => unreachable!(),
-            Payload::Request(_) => todo!(),
+            Payload::Request(request) => unimplemented!("{:?}", request),
         }
         self.render();
     }

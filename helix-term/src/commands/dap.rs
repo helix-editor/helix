@@ -251,29 +251,40 @@ pub fn dap_start_impl(
                 // For param #0 replace {0} in args
                 let pattern = format!("{{{}}}", i);
                 value = match value {
+                    // TODO: just use toml::Value -> json::Value
                     DebugArgumentValue::String(v) => {
                         DebugArgumentValue::String(v.replace(&pattern, &param))
                     }
                     DebugArgumentValue::Array(arr) => DebugArgumentValue::Array(
                         arr.iter().map(|v| v.replace(&pattern, &param)).collect(),
                     ),
+                    DebugArgumentValue::Boolean(_) => value,
                 };
             }
 
-            if let DebugArgumentValue::String(string) = value {
-                if let Ok(integer) = string.parse::<usize>() {
-                    args.insert(k, to_value(integer).unwrap());
-                } else {
-                    args.insert(k, to_value(string).unwrap());
+            match value {
+                DebugArgumentValue::String(string) => {
+                    if let Ok(integer) = string.parse::<usize>() {
+                        args.insert(k, to_value(integer).unwrap());
+                    } else {
+                        args.insert(k, to_value(string).unwrap());
+                    }
                 }
-            } else if let DebugArgumentValue::Array(arr) = value {
-                args.insert(k, to_value(arr).unwrap());
+                DebugArgumentValue::Array(arr) => {
+                    args.insert(k, to_value(arr).unwrap());
+                }
+                DebugArgumentValue::Boolean(bool) => {
+                    args.insert(k, to_value(bool).unwrap());
+                }
             }
         }
     }
 
     let args = to_value(args).unwrap();
 
+    // problem: this blocks for too long while we get back the startInTerminal REQ
+
+    log::error!("pre start");
     let result = match &template.request[..] {
         "launch" => block_on(debugger.launch(args)),
         "attach" => block_on(debugger.attach(args)),
@@ -282,6 +293,7 @@ pub fn dap_start_impl(
             return;
         }
     };
+    log::error!("post start");
     if let Err(e) = result {
         let msg = format!("Failed {} target: {}", template.request, e);
         editor.set_error(msg);

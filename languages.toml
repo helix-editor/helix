@@ -24,6 +24,12 @@ completion = [ { name = "binary", completion = "filename" } ]
 args = { program = "{0}" }
 
 [[language.debugger.templates]]
+name = "binary (terminal)"
+request = "launch"
+completion = [ { name = "binary", completion = "filename" } ]
+args = { program = "{0}", runInTerminal = true }
+
+[[language.debugger.templates]]
 name = "attach"
 request = "attach"
 completion = [ "pid" ]

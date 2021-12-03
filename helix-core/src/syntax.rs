@@ -114,6 +114,7 @@ pub enum DebugConfigCompletion {
 pub enum DebugArgumentValue {
     String(String),
     Array(Vec<String>),
+    Boolean(bool),
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
