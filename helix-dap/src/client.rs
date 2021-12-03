@@ -5,10 +5,13 @@ use crate::{
 };
 use helix_core::syntax::DebuggerQuirks;
 
+use serde_json::Value;
+
 use anyhow::anyhow;
 pub use log::{error, info};
 use std::{
     collections::HashMap,
+    future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
     process::Stdio,
@@ -205,27 +208,52 @@ impl Client {
         self.request_counter.fetch_add(1, Ordering::Relaxed)
     }
 
-    async fn request<R: crate::types::Request>(
+    /// Execute a RPC request on the debugger.
+    fn call<R: crate::types::Request>(
         &self,
         arguments: R::Arguments,
-    ) -> Result<R::Result> {
-        let (callback_tx, mut callback_rx) = channel(1);
+    ) -> impl Future<Output = Result<Value>>
+    where
+        R::Arguments: serde::Serialize,
+    {
+        let server_tx = self.server_tx.clone();
+        let id = self.next_request_id();
 
-        let arguments = Some(serde_json::to_value(arguments)?);
+        async move {
+            use std::time::Duration;
+            use tokio::time::timeout;
 
-        let req = Request {
-            back_ch: Some(callback_tx),
-            seq: self.next_request_id(),
-            command: R::COMMAND.to_string(),
-            arguments,
-        };
+            let arguments = Some(serde_json::to_value(arguments)?);
 
-        self.server_tx
-            .send(req)
-            .expect("Failed to send request to debugger");
+            let (callback_tx, mut callback_rx) = channel(1);
 
-        let response = callback_rx.recv().await.unwrap()?;
-        let response = serde_json::from_value(response.body.unwrap_or_default())?;
+            let req = Request {
+                back_ch: Some(callback_tx),
+                seq: id,
+                command: R::COMMAND.to_string(),
+                arguments,
+            };
+
+            server_tx.send(req).map_err(|e| Error::Other(e.into()))?;
+
+            // TODO: specifiable timeout, delay other calls until initialize success
+            timeout(Duration::from_secs(20), callback_rx.recv())
+                .await
+                .map_err(|_| Error::Timeout)? // return Timeout
+                .ok_or(Error::StreamClosed)?
+                .map(|response| response.body.unwrap_or_default())
+            // TODO: check response.success
+        }
+    }
+
+    async fn request<R: crate::types::Request>(&self, params: R::Arguments) -> Result<R::Result>
+    where
+        R::Arguments: serde::Serialize,
+        R::Result: core::fmt::Debug, // TODO: temporary
+    {
+        // a future that resolves into the response
+        let json = self.call::<R>(params).await?;
+        let response = serde_json::from_value(json)?;
         Ok(response)
     }
 
@@ -260,18 +288,16 @@ impl Client {
         self.request::<requests::Disconnect>(()).await
     }
 
-    pub async fn launch(&mut self, args: serde_json::Value) -> Result<()> {
+    pub async fn launch(&mut self, args: serde_json::Value) -> Result<Value> {
         let response = self.request::<requests::Launch>(args).await?;
         log::error!("launch response {}", response);
-
-        Ok(())
+        Ok(response)
     }
 
-    pub async fn attach(&mut self, args: serde_json::Value) -> Result<()> {
+    pub async fn attach(&mut self, args: serde_json::Value) -> Result<Value> {
         let response = self.request::<requests::Attach>(args).await?;
         log::error!("attach response {}", response);
-
-        Ok(())
+        Ok(response)
     }
 
     pub async fn set_breakpoints(
