@@ -46,7 +46,7 @@ pub struct FilePicker<T> {
 }
 
 pub enum CachedPreview {
-    Document(Document),
+    Document(Box<Document>),
     Binary,
     LargeFile,
     NotFound,
@@ -140,7 +140,7 @@ impl<T> FilePicker<T> {
                     _ => {
                         // TODO: enable syntax highlighting; blocked by async rendering
                         Document::open(path, None, Some(&editor.theme), None)
-                            .map(CachedPreview::Document)
+                            .map(|d| CachedPreview::Document(Box::new(d)))
                             .unwrap_or(CachedPreview::NotFound)
                     }
                 },
