@@ -55,7 +55,7 @@ impl Transport {
         server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
         server_stderr: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
         id: usize,
-    ) -> (UnboundedReceiver<Payload>, UnboundedSender<Request>) {
+    ) -> (UnboundedReceiver<Payload>, UnboundedSender<Payload>) {
         let (client_tx, rx) = unbounded_channel();
         let (tx, client_rx) = unbounded_channel();
 
@@ -140,14 +140,14 @@ impl Transport {
     async fn send_payload_to_server(
         &self,
         server_stdin: &mut Box<dyn AsyncWrite + Unpin + Send>,
-        mut req: Request,
+        mut payload: Payload,
     ) -> Result<()> {
-        let back_ch = req.back_ch.take();
-        let seq = req.seq;
-        let json = serde_json::to_string(&Payload::Request(req))?;
-        if let Some(back) = back_ch {
-            self.pending_requests.lock().await.insert(seq, back);
+        if let Payload::Request(request) = &mut payload {
+            if let Some(back) = request.back_ch.take() {
+                self.pending_requests.lock().await.insert(request.seq, back);
+            }
         }
+        let json = serde_json::to_string(&payload)?;
         self.send_string_to_server(server_stdin, json).await
     }
 
@@ -254,11 +254,11 @@ impl Transport {
     async fn send(
         transport: Arc<Self>,
         mut server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
-        mut client_rx: UnboundedReceiver<Request>,
+        mut client_rx: UnboundedReceiver<Payload>,
     ) {
-        while let Some(req) = client_rx.recv().await {
+        while let Some(payload) = client_rx.recv().await {
             transport
-                .send_payload_to_server(&mut server_stdin, req)
+                .send_payload_to_server(&mut server_stdin, payload)
                 .await
                 .unwrap()
         }

@@ -1,5 +1,5 @@
 use helix_core::{merge_toml_values, syntax};
-use helix_dap::Payload;
+use helix_dap::{self as dap, Payload, Request};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{editor::Breakpoint, theme, Editor};
 
@@ -468,7 +468,16 @@ impl Application {
                 }
             }
             Payload::Response(_) => unreachable!(),
-            Payload::Request(request) => unimplemented!("{:?}", request),
+            Payload::Request(request) => match request.command.as_str() {
+                dap::requests::RunInTerminal::COMMAND => {
+                    let arguments: dap::requests::RunInTerminalArguments =
+                        serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
+                    // TODO: no unwrap
+
+                    // TODO: dap reply
+                }
+                _ => log::error!("DAP reverse request not implemented: {:?}", request),
+            },
         }
         self.render();
     }

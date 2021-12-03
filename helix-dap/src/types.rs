@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(
@@ -540,6 +541,34 @@ pub mod requests {
         type Arguments = SetExceptionBreakpointsArguments;
         type Result = SetExceptionBreakpointsResponse;
         const COMMAND: &'static str = "setExceptionBreakpoints";
+    }
+
+    // Reverse Requests
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct RunInTerminalResponse {
+        pub process_id: Option<usize>,
+        pub shell_process_id: Option<usize>,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct RunInTerminalArguments {
+        pub kind: Option<String>,
+        pub title: Option<String>,
+        pub cwd: String,
+        pub args: Vec<String>,
+        pub env: Option<HashMap<String, Option<String>>>,
+    }
+
+    #[derive(Debug)]
+    pub enum RunInTerminal {}
+
+    impl Request for RunInTerminal {
+        type Arguments = RunInTerminalArguments;
+        type Result = RunInTerminalResponse;
+        const COMMAND: &'static str = "runInTerminal";
     }
 }
 

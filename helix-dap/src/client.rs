@@ -1,5 +1,5 @@
 use crate::{
-    transport::{Payload, Request, Transport},
+    transport::{Payload, Request, Response, Transport},
     types::*,
     Error, Result, ThreadId,
 };
@@ -29,7 +29,7 @@ use tokio::{
 pub struct Client {
     id: usize,
     _process: Option<Child>,
-    server_tx: UnboundedSender<Request>,
+    server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
@@ -234,7 +234,9 @@ impl Client {
                 arguments,
             };
 
-            server_tx.send(req).map_err(|e| Error::Other(e.into()))?;
+            server_tx
+                .send(Payload::Request(req))
+                .map_err(|e| Error::Other(e.into()))?;
 
             // TODO: specifiable timeout, delay other calls until initialize success
             timeout(Duration::from_secs(20), callback_rx.recv())
@@ -255,6 +257,40 @@ impl Client {
         let json = self.call::<R>(params).await?;
         let response = serde_json::from_value(json)?;
         Ok(response)
+    }
+
+    pub fn reply(
+        &self,
+        request_seq: u64,
+        command: String,
+        result: core::result::Result<Value, Error>,
+    ) -> impl Future<Output = Result<()>> {
+        let server_tx = self.server_tx.clone();
+
+        async move {
+            let response = match result {
+                Ok(result) => Response {
+                    request_seq,
+                    command,
+                    success: true,
+                    message: None,
+                    body: Some(result),
+                },
+                Err(error) => Response {
+                    request_seq,
+                    command,
+                    success: false,
+                    message: Some(error.to_string()),
+                    body: None,
+                },
+            };
+
+            server_tx
+                .send(Payload::Response(response))
+                .map_err(|e| Error::Other(e.into()))?;
+
+            Ok(())
+        }
     }
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
