@@ -284,7 +284,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn disconnect(&mut self) -> Result<()> {
+    pub async fn disconnect(&self) -> Result<()> {
         self.request::<requests::Disconnect>(()).await
     }
 
@@ -297,7 +297,7 @@ impl Client {
     }
 
     pub async fn set_breakpoints(
-        &mut self,
+        &self,
         file: PathBuf,
         breakpoints: Vec<SourceBreakpoint>,
     ) -> Result<Option<Vec<Breakpoint>>> {
@@ -321,11 +321,11 @@ impl Client {
         Ok(response.breakpoints)
     }
 
-    pub async fn configuration_done(&mut self) -> Result<()> {
+    pub async fn configuration_done(&self) -> Result<()> {
         self.request::<requests::ConfigurationDone>(()).await
     }
 
-    pub async fn continue_thread(&mut self, thread_id: ThreadId) -> Result<Option<bool>> {
+    pub async fn continue_thread(&self, thread_id: ThreadId) -> Result<Option<bool>> {
         let args = requests::ContinueArguments { thread_id };
 
         let response = self.request::<requests::Continue>(args).await?;
@@ -333,7 +333,7 @@ impl Client {
     }
 
     pub async fn stack_trace(
-        &mut self,
+        &self,
         thread_id: ThreadId,
     ) -> Result<(Vec<StackFrame>, Option<usize>)> {
         let args = requests::StackTraceArguments {
@@ -347,19 +347,19 @@ impl Client {
         Ok((response.stack_frames, response.total_frames))
     }
 
-    pub async fn threads(&mut self) -> Result<Vec<Thread>> {
+    pub async fn threads(&self) -> Result<Vec<Thread>> {
         let response = self.request::<requests::Threads>(()).await?;
         Ok(response.threads)
     }
 
-    pub async fn scopes(&mut self, frame_id: usize) -> Result<Vec<Scope>> {
+    pub async fn scopes(&self, frame_id: usize) -> Result<Vec<Scope>> {
         let args = requests::ScopesArguments { frame_id };
 
         let response = self.request::<requests::Scopes>(args).await?;
         Ok(response.scopes)
     }
 
-    pub async fn variables(&mut self, variables_reference: usize) -> Result<Vec<Variable>> {
+    pub async fn variables(&self, variables_reference: usize) -> Result<Vec<Variable>> {
         let args = requests::VariablesArguments {
             variables_reference,
             filter: None,
@@ -372,7 +372,7 @@ impl Client {
         Ok(response.variables)
     }
 
-    pub async fn step_in(&mut self, thread_id: ThreadId) -> Result<()> {
+    pub async fn step_in(&self, thread_id: ThreadId) -> Result<()> {
         let args = requests::StepInArguments {
             thread_id,
             target_id: None,
@@ -382,7 +382,7 @@ impl Client {
         self.request::<requests::StepIn>(args).await
     }
 
-    pub async fn step_out(&mut self, thread_id: ThreadId) -> Result<()> {
+    pub async fn step_out(&self, thread_id: ThreadId) -> Result<()> {
         let args = requests::StepOutArguments {
             thread_id,
             granularity: None,
@@ -391,7 +391,7 @@ impl Client {
         self.request::<requests::StepOut>(args).await
     }
 
-    pub async fn next(&mut self, thread_id: ThreadId) -> Result<()> {
+    pub async fn next(&self, thread_id: ThreadId) -> Result<()> {
         let args = requests::NextArguments {
             thread_id,
             granularity: None,
@@ -400,14 +400,14 @@ impl Client {
         self.request::<requests::Next>(args).await
     }
 
-    pub async fn pause(&mut self, thread_id: ThreadId) -> Result<()> {
+    pub async fn pause(&self, thread_id: ThreadId) -> Result<()> {
         let args = requests::PauseArguments { thread_id };
 
         self.request::<requests::Pause>(args).await
     }
 
     pub async fn eval(
-        &mut self,
+        &self,
         expression: String,
         frame_id: Option<usize>,
     ) -> Result<requests::EvaluateResponse> {
@@ -422,7 +422,7 @@ impl Client {
     }
 
     pub async fn set_exception_breakpoints(
-        &mut self,
+        &self,
         filters: Vec<String>,
     ) -> Result<Option<Vec<Breakpoint>>> {
         let args = requests::SetExceptionBreakpointsArguments { filters };
