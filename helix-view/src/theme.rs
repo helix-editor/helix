@@ -16,7 +16,7 @@ pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
     toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
 });
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../base16_tty.toml"))
+    toml::from_slice(include_bytes!("../../base16_theme.toml"))
         .expect("Failed to parse base 16 default theme")
 });
 
@@ -150,8 +150,7 @@ impl Theme {
     }
 
     pub fn get(&self, scope: &str) -> Style {
-        self.try_get(scope)
-            .unwrap_or_default()
+        self.try_get(scope).unwrap_or_default()
     }
 
     pub fn try_get(&self, scope: &str) -> Option<Style> {
