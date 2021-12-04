@@ -3597,8 +3597,16 @@ fn normal_mode(cx: &mut Context) {
     doc.mode = Mode::Normal;
 
     if doc.normal_mode_restore_indent {
+        // remove whitespaces added by `open_below` or `open_above` command.
         doc.normal_mode_restore_indent = false;
-        kill_to_line_start(cx);
+        let text = doc.text().slice(..);
+        let transaction =
+            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+                let pos = range.cursor(text);
+                let line_start_pos = text.line_to_char(range.cursor_line(text));
+                (line_start_pos, pos, None)
+            });
+        doc.apply(&transaction, view.id);
     }
     doc.append_changes_to_history(view.id);
 
