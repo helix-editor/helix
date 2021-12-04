@@ -112,22 +112,22 @@ impl Increment for DateTimeIncrementor {
 
 static FORMATS: Lazy<Vec<Format>> = Lazy::new(|| {
     vec![
-        Format::new("%Y-%m-%d %H:%M:%S").unwrap(), // 2021-11-24 07:12:23
-        Format::new("%Y/%m/%d %H:%M:%S").unwrap(), // 2021/11/24 07:12:23
-        Format::new("%Y-%m-%d %H:%M").unwrap(),    // 2021-11-24 07:12
-        Format::new("%Y/%m/%d %H:%M").unwrap(),    // 2021/11/24 07:12
-        Format::new("%Y-%m-%d").unwrap(),          // 2021-11-24
-        Format::new("%Y/%m/%d").unwrap(),          // 2021/11/24
-        Format::new("%a %b %d %Y").unwrap(),       // Wed Nov 24 2021
-        Format::new("%d-%b-%Y").unwrap(),          // 24-Nov-2021
-        Format::new("%Y %b %d").unwrap(),          // 2021 Nov 24
-        Format::new("%b %d, %Y").unwrap(),         // Nov 24, 2021
-        Format::new("%-I:%M:%S %P").unwrap(),      // 7:21:53 am
-        Format::new("%-I:%M %P").unwrap(),         // 7:21 am
-        Format::new("%-I:%M:%S %p").unwrap(),      // 7:21:53 AM
-        Format::new("%-I:%M %p").unwrap(),         // 7:21 AM
-        Format::new("%H:%M:%S").unwrap(),          // 23:24:23
-        Format::new("%H:%M").unwrap(),             // 23:24
+        Format::new("%Y-%m-%d %H:%M:%S"), // 2021-11-24 07:12:23
+        Format::new("%Y/%m/%d %H:%M:%S"), // 2021/11/24 07:12:23
+        Format::new("%Y-%m-%d %H:%M"),    // 2021-11-24 07:12
+        Format::new("%Y/%m/%d %H:%M"),    // 2021/11/24 07:12
+        Format::new("%Y-%m-%d"),          // 2021-11-24
+        Format::new("%Y/%m/%d"),          // 2021/11/24
+        Format::new("%a %b %d %Y"),       // Wed Nov 24 2021
+        Format::new("%d-%b-%Y"),          // 24-Nov-2021
+        Format::new("%Y %b %d"),          // 2021 Nov 24
+        Format::new("%b %d, %Y"),         // Nov 24, 2021
+        Format::new("%-I:%M:%S %P"),      // 7:21:53 am
+        Format::new("%-I:%M %P"),         // 7:21 am
+        Format::new("%-I:%M:%S %p"),      // 7:21:53 AM
+        Format::new("%-I:%M %p"),         // 7:21 AM
+        Format::new("%H:%M:%S"),          // 23:24:23
+        Format::new("%H:%M"),             // 23:24
     ]
 });
 
@@ -140,7 +140,7 @@ struct Format {
 }
 
 impl Format {
-    fn new(fmt: &'static str) -> Result<Self, FormatError> {
+    fn new(fmt: &'static str) -> Self {
         let mut remaining = fmt;
         let mut fields = Vec::new();
         let mut regex = String::new();
@@ -149,54 +149,32 @@ impl Format {
         while let Some(i) = remaining.find('%') {
             let after = &remaining[i + 1..];
             let mut chars = after.chars();
-            let c = chars
-                .next()
-                .ok_or(FormatError::UnexpectedEndOfFormatString)?;
+            let c = chars.next().unwrap();
 
             let spec_len = if c == '-' {
-                if let Some(c) = chars.next() {
-                    1 + c.len_utf8()
-                } else {
-                    return Err(FormatError::UnexpectedEndOfFormatString);
-                }
+                1 + chars.next().unwrap().len_utf8()
             } else {
                 c.len_utf8()
             };
 
-            if i < remaining.len() - spec_len {
-                let specifier = &after[..spec_len];
-                if let Some(field) = DateField::from_specifier(specifier) {
-                    fields.push(field);
-                    max_len += field.max_len + remaining[..i].len();
-                    regex += &remaining[..i];
-                    regex += &format!("({})", field.regex);
-                    remaining = &after[spec_len..];
-                } else {
-                    return Err(FormatError::UnsupportedSpecifier(
-                        &remaining[i..i + 1 + spec_len],
-                    ));
-                }
-            } else {
-                return Err(FormatError::UnexpectedEndOfFormatString);
-            }
+            let specifier = &after[..spec_len];
+            let field = DateField::from_specifier(specifier).unwrap();
+            fields.push(field);
+            max_len += field.max_len + remaining[..i].len();
+            regex += &remaining[..i];
+            regex += &format!("({})", field.regex);
+            remaining = &after[spec_len..];
         }
 
-        let regex = Regex::new(&regex).map_err(FormatError::Regex)?;
+        let regex = Regex::new(&regex).unwrap();
 
-        Ok(Self {
+        Self {
             fmt,
             fields,
             regex,
             max_len,
-        })
+        }
     }
-}
-
-#[derive(Clone, Debug)]
-enum FormatError {
-    UnexpectedEndOfFormatString,
-    UnsupportedSpecifier(&'static str),
-    Regex(regex::Error),
 }
 
 impl PartialEq for Format {
