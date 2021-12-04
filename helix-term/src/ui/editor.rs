@@ -664,7 +664,7 @@ impl EditorView {
         match &key_result.kind {
             KeymapResultKind::Matched(command) => {
                 const NORMAL_MODE_FUNC: fn(&mut commands::Context) = commands::normal_mode;
-                if !matches!(command.fun(), NORMAL_MODE_FUNC) {
+                if !matches!(command.get_static_fun(), NORMAL_MODE_FUNC) {
                     commands::cancel_restore_indent(cxt);
                 }
             }

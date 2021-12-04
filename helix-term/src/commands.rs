@@ -203,8 +203,11 @@ impl MappableCommand {
         }
     }
 
-    pub fn fun(&self) -> fn(&mut Context) {
-        self.fun
+    pub fn get_static_fun(&self) -> fn(&mut Context) {
+        match &self {
+            MappableCommand::Static { fun, .. } => *fun,
+            _ => panic!("please ensure that the command is static command"),
+        }
     }
 
     #[rustfmt::skip]
