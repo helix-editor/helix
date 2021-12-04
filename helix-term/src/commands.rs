@@ -134,47 +134,76 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
     view.offset.row = line.saturating_sub(relative);
 }
 
-/// A command is composed of a static name, and a function that takes the current state plus a count,
-/// and does a side-effect on the state (usually by creating and applying a transaction).
-#[derive(Copy, Clone)]
-pub struct Command {
-    name: &'static str,
-    fun: fn(cx: &mut Context),
-    doc: &'static str,
+/// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
+/// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
+/// Both of these types of commands can be mapped with keybindings in the config.toml.
+#[derive(Clone)]
+pub enum MappableCommand {
+    Typable {
+        name: String,
+        args: Vec<String>,
+        doc: String,
+    },
+    Static {
+        name: &'static str,
+        fun: fn(cx: &mut Context),
+        doc: &'static str,
+    },
 }
 
-macro_rules! commands {
+macro_rules! static_commands {
     ( $($name:ident, $doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
-            pub const $name: Self = Self {
+            pub const $name: Self = Self::Static {
                 name: stringify!($name),
                 fun: $name,
                 doc: $doc
             };
         )*
 
-        pub const COMMAND_LIST: &'static [Self] = &[
+        pub const STATIC_COMMAND_LIST: &'static [Self] = &[
             $( Self::$name, )*
         ];
     }
 }
 
-impl Command {
+impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
-        (self.fun)(cx);
+        match &self {
+            MappableCommand::Typable { name, args, doc: _ } => {
+                let args: Vec<&str> = args.iter().map(|arg| arg.as_str()).collect();
+                if let Some(command) = cmd::TYPABLE_COMMAND_MAP.get(name.as_str()) {
+                    let mut cx = compositor::Context {
+                        editor: cx.editor,
+                        jobs: cx.jobs,
+                        scroll: None,
+                    };
+                    if let Err(e) = (command.fun)(&mut cx, &args, PromptEvent::Validate) {
+                        cx.editor.set_error(format!("{}", e));
+                    }
+                }
+            }
+            MappableCommand::Static { fun, .. } => (fun)(cx),
+        }
     }
 
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &str {
+        match &self {
+            MappableCommand::Typable { name, .. } => name,
+            MappableCommand::Static { name, .. } => name,
+        }
     }
 
-    pub fn doc(&self) -> &'static str {
-        self.doc
+    pub fn doc(&self) -> &str {
+        match &self {
+            MappableCommand::Typable { doc, .. } => doc,
+            MappableCommand::Static { doc, .. } => doc,
+        }
     }
 
     #[rustfmt::skip]
-    commands!(
+    static_commands!(
         no_op, "Do nothing",
         move_char_left, "Move left",
         move_char_right, "Move right",
@@ -367,33 +396,51 @@ impl Command {
     );
 }
 
-impl fmt::Debug for Command {
+impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command { name, .. } = self;
-        f.debug_tuple("Command").field(name).finish()
+        f.debug_tuple("MappableCommand")
+            .field(&self.name())
+            .finish()
     }
 }
 
-impl fmt::Display for Command {
+impl fmt::Display for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command { name, .. } = self;
-        f.write_str(name)
+        f.write_str(self.name())
     }
 }
 
-impl std::str::FromStr for Command {
+impl std::str::FromStr for MappableCommand {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Command::COMMAND_LIST
-            .iter()
-            .copied()
-            .find(|cmd| cmd.name == s)
-            .ok_or_else(|| anyhow!("No command named '{}'", s))
+        if let Some(suffix) = s.strip_prefix(':') {
+            let mut typable_command = suffix.split(' ').into_iter().map(|arg| arg.trim());
+            let name = typable_command
+                .next()
+                .ok_or_else(|| anyhow!("Expected typable command name"))?;
+            let args = typable_command
+                .map(|s| s.to_owned())
+                .collect::<Vec<String>>();
+            cmd::TYPABLE_COMMAND_MAP
+                .get(name)
+                .map(|cmd| MappableCommand::Typable {
+                    name: cmd.name.to_owned(),
+                    doc: format!(":{} {:?}", cmd.name, args),
+                    args,
+                })
+                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+        } else {
+            MappableCommand::STATIC_COMMAND_LIST
+                .iter()
+                .cloned()
+                .find(|cmd| cmd.name() == s)
+                .ok_or_else(|| anyhow!("No command named '{}'", s))
+        }
     }
 }
 
-impl<'de> Deserialize<'de> for Command {
+impl<'de> Deserialize<'de> for MappableCommand {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -403,9 +450,27 @@ impl<'de> Deserialize<'de> for Command {
     }
 }
 
-impl PartialEq for Command {
+impl PartialEq for MappableCommand {
     fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name()
+        match (self, other) {
+            (
+                MappableCommand::Typable {
+                    name: first_name, ..
+                },
+                MappableCommand::Typable {
+                    name: second_name, ..
+                },
+            ) => first_name == second_name,
+            (
+                MappableCommand::Static {
+                    name: first_name, ..
+                },
+                MappableCommand::Static {
+                    name: second_name, ..
+                },
+            ) => first_name == second_name,
+            _ => false,
+        }
     }
 }
 
@@ -2843,15 +2908,16 @@ mod cmd {
         }
     ];
 
-    pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
-        TYPABLE_COMMAND_LIST
-            .iter()
-            .flat_map(|cmd| {
-                std::iter::once((cmd.name, cmd))
-                    .chain(cmd.aliases.iter().map(move |&alias| (alias, cmd)))
-            })
-            .collect()
-    });
+    pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
+        Lazy::new(|| {
+            TYPABLE_COMMAND_LIST
+                .iter()
+                .flat_map(|cmd| {
+                    std::iter::once((cmd.name, cmd))
+                        .chain(cmd.aliases.iter().map(move |&alias| (alias, cmd)))
+                })
+                .collect()
+        });
 }
 
 fn command_mode(cx: &mut Context) {
@@ -2877,7 +2943,7 @@ fn command_mode(cx: &mut Context) {
                 if let Some(cmd::TypableCommand {
                     completer: Some(completer),
                     ..
-                }) = cmd::COMMANDS.get(parts[0])
+                }) = cmd::TYPABLE_COMMAND_MAP.get(parts[0])
                 {
                     completer(part)
                         .into_iter()
@@ -2912,7 +2978,7 @@ fn command_mode(cx: &mut Context) {
             }
 
             // Handle typable commands
-            if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
+            if let Some(cmd) = cmd::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 if let Err(e) = (cmd.fun)(cx, &parts[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
@@ -2925,7 +2991,7 @@ fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let part = input.split(' ').next().unwrap_or_default();
 
-        if let Some(cmd::TypableCommand { doc, .. }) = cmd::COMMANDS.get(part) {
+        if let Some(cmd::TypableCommand { doc, .. }) = cmd::TYPABLE_COMMAND_MAP.get(part) {
             return Some(doc);
         }
 
