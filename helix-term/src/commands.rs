@@ -203,6 +203,10 @@ impl MappableCommand {
         }
     }
 
+    pub fn fun(&self) -> fn(&mut Context) {
+        self.fun
+    }
+
     #[rustfmt::skip]
     static_commands!(
         no_op, "Do nothing",
@@ -3587,7 +3591,7 @@ fn open_above(cx: &mut Context) {
     open(cx, Open::Above)
 }
 
-fn normal_mode(cx: &mut Context) {
+pub(crate) fn normal_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     if doc.mode == Mode::Normal {
