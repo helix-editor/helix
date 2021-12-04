@@ -5478,28 +5478,26 @@ fn decrement(cx: &mut Context) {
 fn increment_impl(cx: &mut Context, amount: i64) {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
-    let text = doc.text();
+    let text = doc.text().slice(..);
 
-    let changes = selection
+    let changes: Vec<_> = selection
         .ranges()
         .iter()
         .filter_map(|range| {
-            let incrementor: Box<dyn Increment> = if let Some(incrementor) =
-                DateTimeIncrementor::from_range(text.slice(..), *range)
-            {
-                Box::new(incrementor)
-            } else if let Some(incrementor) = NumberIncrementor::from_range(text.slice(..), *range)
-            {
-                Box::new(incrementor)
-            } else {
-                return None;
-            };
+            let incrementor: Box<dyn Increment> =
+                if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
+                    Box::new(incrementor)
+                } else if let Some(incrementor) = NumberIncrementor::from_range(text, *range) {
+                    Box::new(incrementor)
+                } else {
+                    return None;
+                };
 
             let (range, new_text) = incrementor.increment(amount);
 
             Some((range.from(), range.to(), Some(new_text)))
         })
-        .collect::<Vec<_>>();
+        .collect();
 
     // Overlapping changes in a transaction will panic, so we need to find and remove them.
     // For example, if there are cursors on each of the year, month, and day of `2021-11-29`,
