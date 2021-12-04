@@ -131,7 +131,7 @@ static FORMATS: Lazy<Vec<Format>> = Lazy::new(|| {
     ]
 });
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct Format {
     fmt: &'static str,
     fields: Vec<DateField>,
