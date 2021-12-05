@@ -70,7 +70,7 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Push a new component onto the compositor.
     pub fn push_layer(&mut self, component: Box<dyn Component>) {
-        self.callback = Some(Box::new(|compositor: &mut Compositor| {
+        self.callback = Some(Box::new(|compositor: &mut Compositor, _| {
             compositor.push(component)
         }));
     }
@@ -394,6 +394,8 @@ impl MappableCommand {
         rename_symbol, "Rename symbol",
         increment, "Increment",
         decrement, "Decrement",
+        record_macro, "Toggle macro recording",
+        play_macro, "Play back a recorded macro",
     );
 }
 
@@ -3437,7 +3439,7 @@ fn apply_workspace_edit(
 
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
-    cx.callback = Some(Box::new(|compositor: &mut Compositor| {
+    cx.callback = Some(Box::new(|compositor: &mut Compositor, _| {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);
         }
@@ -5859,4 +5861,57 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
+}
+
+fn record_macro(cx: &mut Context) {
+    if let Some((reg, mut keys)) = cx.editor.macro_recording.take() {
+        // Remove the keypress which ends the recording
+        keys.pop();
+        let s = keys
+            .into_iter()
+            .map(|key| format!("{}", key))
+            .collect::<Vec<_>>()
+            .join(" ");
+        cx.editor.registers.get_mut(reg).write(vec![s]);
+        cx.editor
+            .set_status(format!("Recorded to register {}", reg));
+    } else {
+        let reg = cx.register.take().unwrap_or('"');
+        cx.editor.macro_recording = Some((reg, Vec::new()));
+        cx.editor
+            .set_status(format!("Recording to register {}", reg));
+    }
+}
+
+fn play_macro(cx: &mut Context) {
+    let reg = cx.register.unwrap_or('"');
+    let keys = match cx
+        .editor
+        .registers
+        .get(reg)
+        .and_then(|reg| reg.read().get(0))
+        .context("Register empty")
+        .and_then(|s| {
+            s.split_whitespace()
+                .map(str::parse::<KeyEvent>)
+                .collect::<Result<Vec<_>, _>>()
+                .context("Failed to parse macro")
+        }) {
+        Ok(keys) => keys,
+        Err(e) => {
+            cx.editor.set_error(format!("{}", e));
+            return;
+        }
+    };
+    let count = cx.count();
+
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+            for _ in 0..count {
+                for &key in keys.iter() {
+                    compositor.handle_event(crossterm::event::Event::Key(key.into()), cx);
+                }
+            }
+        },
+    ));
 }

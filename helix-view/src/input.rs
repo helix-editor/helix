@@ -234,6 +234,16 @@ impl From<crossterm::event::KeyEvent> for KeyEvent {
     }
 }
 
+#[cfg(feature = "term")]
+impl From<KeyEvent> for crossterm::event::KeyEvent {
+    fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
+        crossterm::event::KeyEvent {
+            code: code.into(),
+            modifiers: modifiers.into(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

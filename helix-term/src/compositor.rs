@@ -7,7 +7,7 @@ use helix_view::graphics::{CursorKind, Rect};
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
 
-pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
+pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
 // --> EventResult should have a callback that takes a context with methods like .popup(),
 // .prompt() etc. That way we can abstract it from the renderer.
@@ -135,7 +135,7 @@ impl Compositor {
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
-                    callback(self);
+                    callback(self, cx);
                     return true;
                 }
                 EventResult::Consumed(None) => return true,
