@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 
 // general utils:
 pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
@@ -99,53 +99,61 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
     align_view(doc, view, Align::Center);
 }
 
-fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Thread) + 'static) {
+fn thread_picker(
+    cx: &mut Context,
+    callback_fn: impl Fn(&mut Editor, &dap::Thread) + Send + 'static,
+) {
     let debugger = match &mut cx.editor.debugger {
         Some(debugger) => debugger,
         None => return,
     };
 
-    let threads = match block_on(debugger.threads()) {
-        Ok(threads) => threads,
-        Err(e) => {
-            cx.editor
-                .set_error(format!("Failed to retrieve threads: {}", e));
-            return;
-        }
-    };
+    let future = debugger.threads();
+    dap_callback(
+        cx.jobs,
+        future,
+        move |editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: dap::requests::ThreadsResponse| {
+            let threads = response.threads;
+            if threads.len() == 1 {
+                callback_fn(editor, &threads[0]);
+                return;
+            }
+            let debugger = match &mut editor.debugger {
+                Some(debugger) => debugger,
+                None => return,
+            };
 
-    if threads.len() == 1 {
-        callback_fn(cx.editor, &threads[0]);
-        return;
-    }
-
-    let thread_states = debugger.thread_states.clone();
-    let picker = FilePicker::new(
-        threads,
-        move |thread| {
-            format!(
-                "{} ({})",
-                thread.name,
-                thread_states
-                    .get(&thread.id)
-                    .map(|state| state.as_str())
-                    .unwrap_or("unknown")
-            )
-            .into()
-        },
-        move |cx, thread, _action| callback_fn(cx.editor, thread),
-        move |editor, thread| {
-            let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
-            let frame = frames.get(0)?;
-            let path = frame.source.as_ref()?.path.clone()?;
-            let pos = Some((
-                frame.line.saturating_sub(1),
-                frame.end_line.unwrap_or(frame.line).saturating_sub(1),
-            ));
-            Some((path, pos))
+            let thread_states = debugger.thread_states.clone();
+            let picker = FilePicker::new(
+                threads,
+                move |thread| {
+                    format!(
+                        "{} ({})",
+                        thread.name,
+                        thread_states
+                            .get(&thread.id)
+                            .map(|state| state.as_str())
+                            .unwrap_or("unknown")
+                    )
+                    .into()
+                },
+                move |cx, thread, _action| callback_fn(cx.editor, thread),
+                move |editor, thread| {
+                    let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
+                    let frame = frames.get(0)?;
+                    let path = frame.source.as_ref()?.path.clone()?;
+                    let pos = Some((
+                        frame.line.saturating_sub(1),
+                        frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+                    ));
+                    Some((path, pos))
+                },
+            );
+            compositor.push(Box::new(picker));
         },
     );
-    cx.push_layer(Box::new(picker))
 }
 
 fn get_breakpoint_at_current_line(editor: &mut Editor) -> Option<(usize, Breakpoint)> {

@@ -209,7 +209,7 @@ impl Client {
     }
 
     /// Execute a RPC request on the debugger.
-    fn call<R: crate::types::Request>(
+    pub fn call<R: crate::types::Request>(
         &self,
         arguments: R::Arguments,
     ) -> impl Future<Output = Result<Value>>
@@ -248,7 +248,7 @@ impl Client {
         }
     }
 
-    async fn request<R: crate::types::Request>(&self, params: R::Arguments) -> Result<R::Result>
+    pub async fn request<R: crate::types::Request>(&self, params: R::Arguments) -> Result<R::Result>
     where
         R::Arguments: serde::Serialize,
         R::Result: core::fmt::Debug, // TODO: temporary
@@ -384,9 +384,8 @@ impl Client {
         Ok((response.stack_frames, response.total_frames))
     }
 
-    pub async fn threads(&self) -> Result<Vec<Thread>> {
-        let response = self.request::<requests::Threads>(()).await?;
-        Ok(response.threads)
+    pub fn threads(&self) -> impl Future<Output = Result<Value>> {
+        self.call::<requests::Threads>(())
     }
 
     pub async fn scopes(&self, frame_id: usize) -> Result<Vec<Scope>> {

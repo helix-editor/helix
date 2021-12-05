@@ -340,8 +340,8 @@ impl Application {
                     let all_threads_stopped = all_threads_stopped.unwrap_or_default();
 
                     if all_threads_stopped {
-                        if let Ok(threads) = debugger.threads().await {
-                            for thread in threads {
+                        if let Ok(response) = debugger.request::<dap::requests::Threads>(()).await {
+                            for thread in response.threads {
                                 fetch_stack_trace(debugger, thread.id).await;
                             }
                             select_thread_id(
