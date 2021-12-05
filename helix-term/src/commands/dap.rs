@@ -403,15 +403,13 @@ fn debug_parameter_prompt(
                     Ok(call)
                 });
                 cx.jobs.callback(callback);
-            } else {
-                if let Err(e) = dap_start_impl(
-                    cx,
-                    Some(&config_name),
-                    None,
-                    Some(params.iter().map(|x| x.as_str()).collect()),
-                ) {
-                    cx.editor.set_error(e.to_string());
-                }
+            } else if let Err(e) = dap_start_impl(
+                cx,
+                Some(&config_name),
+                None,
+                Some(params.iter().map(|x| x.as_str()).collect()),
+            ) {
+                cx.editor.set_error(e.to_string());
             }
         },
     )
