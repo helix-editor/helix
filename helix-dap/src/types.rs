@@ -545,11 +545,11 @@ pub mod requests {
 
     // Reverse Requests
 
-    #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct RunInTerminalResponse {
-        pub process_id: Option<usize>,
-        pub shell_process_id: Option<usize>,
+        pub process_id: Option<u32>,
+        pub shell_process_id: Option<u32>,
     }
 
     #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -557,7 +557,7 @@ pub mod requests {
     pub struct RunInTerminalArguments {
         pub kind: Option<String>,
         pub title: Option<String>,
-        pub cwd: String,
+        pub cwd: Option<String>,
         pub args: Vec<String>,
         pub env: Option<HashMap<String, Option<String>>>,
     }

@@ -262,10 +262,11 @@ impl Client {
     pub fn reply(
         &self,
         request_seq: u64,
-        command: String,
+        command: &str,
         result: core::result::Result<Value, Error>,
     ) -> impl Future<Output = Result<()>> {
         let server_tx = self.server_tx.clone();
+        let command = command.to_string();
 
         async move {
             let response = match result {
