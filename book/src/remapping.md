@@ -42,10 +42,9 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 | Down         | `"down"`       |
 | Home         | `"home"`       |
 | End          | `"end"`        |
-| Page         | `"pageup"`     |
-| Page         | `"pagedown"`   |
+| Page Up      | `"pageup"`     |
+| Page Down    | `"pagedown"`   |
 | Tab          | `"tab"`        |
-| Back         | `"backtab"`    |
 | Delete       | `"del"`        |
 | Insert       | `"ins"`        |
 | Null         | `"null"`       |

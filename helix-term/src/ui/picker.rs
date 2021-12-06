@@ -410,7 +410,7 @@ impl<T: 'static> Component for Picker<T> {
         })));
 
         match key_event.into() {
-            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
