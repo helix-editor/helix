@@ -2649,9 +2649,7 @@ mod cmd {
         path.push("help");
         path.push(format!("{}.txt", command));
 
-        if !path.is_file() {
-            bail!("No help available for '{}'", args.join(" "));
-        }
+        ensure!(path.is_file(), "No help available for '{}'", args.join(" "));
         let id = cx.editor.open(path, Action::HorizontalSplit)?;
         cx.editor.document_mut(id).unwrap().set_path(None)?;
 
