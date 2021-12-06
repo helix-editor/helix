@@ -37,10 +37,23 @@ name = "elixir"
 scope = "source.elixir"
 injection-regex = "elixir"
 file-types = ["ex", "exs"]
+shebangs = ["elixir"]
 roots = []
 comment-token = "#"
 
 language-server = { command = "elixir-ls" }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "mint"
+scope = "source.mint"
+injection-regex = "mint"
+file-types = ["mint"]
+shebangs = []
+roots = []
+comment-token = "//"
+
+language-server = { command = "mint", args = ["ls"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -102,6 +115,7 @@ name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
 file-types = ["js", "mjs"]
+shebangs = ["node"]
 roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
@@ -113,6 +127,7 @@ name = "typescript"
 scope = "source.ts"
 injection-regex = "^(ts|typescript)$"
 file-types = ["ts"]
+shebangs = []
 roots = []
 # TODO: highlights-jsx, highlights-params
 
@@ -153,6 +168,7 @@ name = "python"
 scope = "source.python"
 injection-regex = "python"
 file-types = ["py"]
+shebangs = ["python"]
 roots = []
 comment-token = "#"
 
@@ -165,6 +181,7 @@ name = "nix"
 scope = "source.nix"
 injection-regex = "nix"
 file-types = ["nix"]
+shebangs = []
 roots = []
 comment-token = "#"
 
@@ -176,6 +193,7 @@ name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
 file-types = ["rb"]
+shebangs = ["ruby"]
 roots = []
 comment-token = "#"
 
@@ -187,6 +205,7 @@ name = "bash"
 scope = "source.bash"
 injection-regex = "bash"
 file-types = ["sh", "bash"]
+shebangs = ["sh", "bash", "dash"]
 roots = []
 comment-token = "#"
 
@@ -198,6 +217,7 @@ name = "php"
 scope = "source.php"
 injection-regex = "php"
 file-types = ["php"]
+shebangs = ["php"]
 roots = []
 
 indent = { tab-width = 4, unit = "    " }
@@ -259,6 +279,7 @@ name = "ocaml"
 scope = "source.ocaml"
 injection-regex = "ocaml"
 file-types = ["ml"]
+shebangs = []
 roots = []
 comment-token = "(**)"
 indent = { tab-width = 2, unit = "  " }
@@ -267,6 +288,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "ocaml-interface"
 scope = "source.ocaml.interface"
 file-types = ["mli"]
+shebangs = []
 roots = []
 comment-token = "(**)"
 indent = { tab-width = 2, unit = "  "}
@@ -275,6 +297,7 @@ indent = { tab-width = 2, unit = "  "}
 name = "lua"
 scope = "source.lua"
 file-types = ["lua"]
+shebangs = ["lua"]
 roots = []
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
@@ -332,6 +355,7 @@ name = "prolog"
 scope = "source.prolog"
 roots = []
 file-types = ["pl", "prolog"]
+shebangs = ["swipl"]
 comment-token = "%"
 
 language-server = { command = "swipl", args = [
@@ -355,3 +379,45 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cmake-language-server" }
+
+[[language]]
+name = "glsl"
+scope = "source.glsl"
+file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "perl"
+scope = "source.perl"
+file-types = ["pl", "pm"]
+shebangs = ["perl"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "racket"
+scope = "source.rkt"
+roots = []
+file-types = ["rkt"]
+shebangs = ["racket"]
+comment-token = ";"
+language-server = { command = "racket", args = ["-l", "racket-langserver"] }
+
+[[language]]
+name = "wgsl"
+scope = "source.wgsl"
+file-types = ["wgsl"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "llvm"
+scope = "source.llvm"
+roots = []
+file-types = ["ll"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }

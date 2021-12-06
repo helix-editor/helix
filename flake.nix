@@ -9,10 +9,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rustOverlay.follows = "rust-overlay";
     };
-    flakeCompat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
-    };
   };
 
   outputs = inputs@{ self, nixCargoIntegration, ... }:
@@ -63,7 +59,7 @@
             '';
           };
         shell = common: prev: {
-          packages = prev.packages ++ (with common.pkgs; [ lld_12 lldb cargo-tarpaulin ]);
+          packages = prev.packages ++ (with common.pkgs; [ lld_13 lldb cargo-tarpaulin ]);
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }

@@ -16,8 +16,7 @@ use helix_core::{
     LineEnding, Position, Range, Selection,
 };
 use helix_view::{
-    document::Mode,
-    editor::LineNumber,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -32,7 +31,7 @@ use tui::buffer::Buffer as Surface;
 pub struct EditorView {
     keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    last_insert: (commands::Command, Vec<KeyEvent>),
+    last_insert: (commands::MappableCommand, Vec<KeyEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
     autoinfo: Option<Info>,
@@ -49,7 +48,7 @@ impl EditorView {
         Self {
             keymaps,
             on_next_key: None,
-            last_insert: (commands::Command::normal_mode, Vec::new()),
+            last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
             autoinfo: None,
@@ -305,17 +304,16 @@ impl EditorView {
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    let style = spans.iter().fold(text_style, |acc, span| {
-                        let style = theme.get(theme.scopes()[span.0].as_str());
-                        acc.patch(style)
-                    });
-
                     for grapheme in RopeGraphemes::new(text) {
                         let out_of_bounds = visual_x < offset.col as u16
                             || visual_x >= viewport.width + offset.col as u16;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
+                                let style = spans.iter().fold(text_style, |acc, span| {
+                                    acc.patch(theme.highlight(span.0))
+                                });
+
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -346,6 +344,10 @@ impl EditorView {
                             };
 
                             if !out_of_bounds {
+                                let style = spans.iter().fold(text_style, |acc, span| {
+                                    acc.patch(theme.highlight(span.0))
+                                });
+
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -377,7 +379,7 @@ impl EditorView {
             use helix_core::match_brackets;
             let pos = doc.selection(view.id).primary().cursor(text);
 
-            let pos = match_brackets::find(syntax, doc.text(), pos)
+            let pos = match_brackets::find_matching_bracket(syntax, doc.text(), pos)
                 .and_then(|pos| view.screen_coords_at_pos(doc, text, pos));
 
             if let Some(pos) = pos {
@@ -412,22 +414,6 @@ impl EditorView {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
-        let linenr = theme.get("ui.linenr");
-        let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
-
-        let warning = theme.get("warning");
-        let error = theme.get("error");
-        let info = theme.get("info");
-        let hint = theme.get("hint");
-
-        // Whether to draw the line number for the last line of the
-        // document or not.  We only draw it if it's not an empty line.
-        let draw_last = text.line_to_byte(last_line) < text.len_bytes();
-
-        let current_line = doc
-            .text()
-            .char_to_line(doc.selection(view.id).primary().cursor(text));
-
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
         #[allow(clippy::needless_collect)]
@@ -437,51 +423,29 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
-            use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
-                surface.set_stringn(
-                    viewport.x,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    },
-                );
+        let mut offset = 0;
+
+        // avoid lots of small allocations by reusing a text buffer for each line
+        let mut text = String::with_capacity(8);
+
+        for (constructor, width) in view.gutters() {
+            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            text.reserve(*width); // ensure there's enough space for the gutter
+            for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
+                let selected = cursors.contains(&line);
+
+                if let Some(style) = gutter(line, selected, &mut text) {
+                    surface.set_stringn(
+                        viewport.x + offset,
+                        viewport.y + i as u16,
+                        &text,
+                        *width,
+                        style,
+                    );
+                }
+                text.clear();
             }
-
-            let selected = cursors.contains(&line);
-
-            let text = if line == last_line && !draw_last {
-                "    ~".into()
-            } else {
-                let line = match config.line_number {
-                    LineNumber::Absolute => line + 1,
-                    LineNumber::Relative => {
-                        if current_line == line {
-                            line + 1
-                        } else {
-                            abs_diff(current_line, line)
-                        }
-                    }
-                };
-                format!("{:>5}", line)
-            };
-            surface.set_stringn(
-                viewport.x + 1,
-                viewport.y + i as u16,
-                text,
-                5,
-                if selected && is_focused {
-                    linenr_select
-                } else {
-                    linenr
-                },
-            );
+            offset += *width as u16;
         }
     }
 
@@ -497,7 +461,7 @@ impl EditorView {
         use tui::{
             layout::Alignment,
             text::Text,
-            widgets::{Paragraph, Widget},
+            widgets::{Paragraph, Widget, Wrap},
         };
 
         let cursor = doc
@@ -529,8 +493,10 @@ impl EditorView {
             lines.extend(text.lines);
         }
 
-        let paragraph = Paragraph::new(lines).alignment(Alignment::Right);
-        let width = 80.min(viewport.width);
+        let paragraph = Paragraph::new(lines)
+            .alignment(Alignment::Right)
+            .wrap(Wrap { trim: true });
+        let width = 100.min(viewport.width);
         let height = 15.min(viewport.height);
         paragraph.render(
             Rect::new(viewport.right() - width, viewport.y + 1, width, height),
@@ -580,18 +546,20 @@ impl EditorView {
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
-        if let Some(path) = doc.relative_path() {
-            let path = path.to_string_lossy();
+        let rel_path = doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
 
-            let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
-            surface.set_stringn(
-                viewport.x + 8,
-                viewport.y,
-                title,
-                viewport.width.saturating_sub(6) as usize,
-                base_style,
-            );
-        }
+        let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
+        surface.set_stringn(
+            viewport.x + 8,
+            viewport.y,
+            title,
+            viewport.width.saturating_sub(6) as usize,
+            base_style,
+        );
 
         //-------------------------------
         // Right side of the status line.
@@ -695,6 +663,11 @@ impl EditorView {
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
             KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
+            KeymapResultKind::MatchedSequence(commands) => {
+                for command in commands {
+                    command.execute(cxt);
+                }
+            }
             KeymapResultKind::NotFound | KeymapResultKind::Cancelled(_) => return Some(key_result),
         }
         None
@@ -736,7 +709,7 @@ impl EditorView {
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
-            key!('.') => {
+            key!('.') if self.keymaps.pending().is_empty() => {
                 // first execute whatever put us into insert mode
                 self.last_insert.0.execute(cxt);
                 // then replay the inputs
@@ -902,7 +875,7 @@ impl EditorView {
                     return EventResult::Ignored;
                 }
 
-                commands::Command::yank_main_selection_to_primary_clipboard.execute(cxt);
+                commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
 
                 EventResult::Consumed(None)
             }
@@ -920,7 +893,8 @@ impl EditorView {
                 }
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {
-                    commands::Command::replace_selections_with_primary_clipboard.execute(cxt);
+                    commands::MappableCommand::replace_selections_with_primary_clipboard
+                        .execute(cxt);
 
                     return EventResult::Consumed(None);
                 }
@@ -934,7 +908,7 @@ impl EditorView {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
-                    commands::Command::paste_primary_clipboard_before.execute(cxt);
+                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
                     return EventResult::Consumed(None);
                 }
 
@@ -949,7 +923,7 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let mut cxt = commands::Context {
-            editor: &mut cx.editor,
+            editor: cx.editor,
             count: None,
             register: None,
             callback: None,
@@ -1156,14 +1130,5 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
-    }
-}
-
-#[inline]
-const fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
     }
 }

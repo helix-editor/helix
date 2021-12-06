@@ -134,3 +134,19 @@
 	path = helix-syntax/languages/tree-sitter-cmake
 	url = https://github.com/uyha/tree-sitter-cmake
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-glsl"]
+	path = helix-syntax/languages/tree-sitter-glsl
+	url = https://github.com/theHamsta/tree-sitter-glsl.git
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-perl"]
+	path = helix-syntax/languages/tree-sitter-perl
+	url = https://github.com/ganezdragon/tree-sitter-perl
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-wgsl"]
+	path = helix-syntax/languages/tree-sitter-wgsl
+	url = https://github.com/szebniok/tree-sitter-wgsl
+	shallow = true
+[submodule "helix-syntax/tree-sitter-llvm"]
+	path = helix-syntax/languages/tree-sitter-llvm
+	url = https://github.com/benwilliamgraham/tree-sitter-llvm
+	shallow = true

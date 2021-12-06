@@ -13,7 +13,7 @@ use helix_core::{
     Rope,
 };
 use helix_view::{
-    graphics::{Color, Margin, Rect, Style},
+    graphics::{Margin, Rect},
     Theme,
 };
 
@@ -55,15 +55,21 @@ fn parse<'a>(
     fn to_span(text: pulldown_cmark::CowStr) -> Span {
         use std::ops::Deref;
         Span::raw::<std::borrow::Cow<_>>(match text {
-            CowStr::Borrowed(s) => s.to_string().into(), // could retain borrow
+            CowStr::Borrowed(s) => s.into(),
             CowStr::Boxed(s) => s.to_string().into(),
             CowStr::Inlined(s) => s.deref().to_owned().into(),
         })
     }
 
-    let text_style = Style::default().fg(Color::Rgb(164, 160, 232)); // lavender
-    let code_style = Style::default().fg(Color::Rgb(255, 255, 255)); // white
-    let heading_style = Style::default().fg(Color::Rgb(219, 191, 239)); // lilac
+    let text_style = theme.map(|theme| theme.get("ui.text")).unwrap_or_default();
+
+    // TODO: use better scopes for these, `markup.raw.block`, `markup.heading`
+    let code_style = theme
+        .map(|theme| theme.get("ui.text.focus"))
+        .unwrap_or_default(); // white
+    let heading_style = theme
+        .map(|theme| theme.get("ui.linenr.selected"))
+        .unwrap_or_default(); // lilac
 
     for event in parser {
         match event {
@@ -173,7 +179,9 @@ fn parse<'a>(
                 spans.push(Span::raw(" "));
             }
             Event::Rule => {
-                lines.push(Spans::from("---"));
+                let mut span = Span::raw("---");
+                span.style = code_style;
+                lines.push(Spans::from(span));
                 lines.push(Spans::default());
             }
             // TaskListMarker(bool) true if checked
@@ -220,6 +228,7 @@ impl Component for Markdown {
             return None;
         }
         let contents = parse(&self.contents, None, &self.config_loader);
+        // TODO: account for tab width
         let max_text_width = (viewport.0 - padding).min(120);
         let mut text_width = 0;
         let mut height = padding;

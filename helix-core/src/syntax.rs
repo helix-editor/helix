@@ -40,18 +40,21 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
     pub language_id: String,
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+    #[serde(default)]
+    pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
 
@@ -254,6 +257,7 @@ pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_shebang: HashMap<String, usize>,
 }
 
 impl Loader {
@@ -261,6 +265,7 @@ impl Loader {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
+            language_config_ids_by_shebang: HashMap::new(),
         };
 
         for config in config.language {
@@ -272,6 +277,11 @@ impl Loader {
                 loader
                     .language_config_ids_by_file_type
                     .insert(file_type.clone(), language_id);
+            }
+            for shebang in &config.shebangs {
+                loader
+                    .language_config_ids_by_shebang
+                    .insert(shebang.clone(), language_id);
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -296,6 +306,18 @@ impl Loader {
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
 
         // TODO: content_regex handling conflict resolution
+    }
+
+    pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
+        let line = Cow::from(source.line(0));
+        static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)").unwrap()
+        });
+        let configuration_id = SHEBANG_REGEX
+            .captures(&line)
+            .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
+
+        configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
     }
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {

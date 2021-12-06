@@ -23,8 +23,8 @@ comment = "sirocco"
 constant = "white"
 "constant.builtin" = "white"
 string = "silver"
-number = "chamois"
-escape = "honey"
+"constant.numeric" = "chamois"
+"constant.character.escape" = "honey"
 # used for lifetimes
 label = "honey"
 

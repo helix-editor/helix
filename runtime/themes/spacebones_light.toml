@@ -1,0 +1,65 @@
+# Author : Koen Van der Auwera <atog@hey.com>
+# Based on SpaceBones Light https://github.com/chipotle/spacebones
+# https://github.com/chipotle/spacebones/blob/main/SpaceBones%20Light.bbColorScheme
+
+"attribute" = "#b1951d"
+"keyword" = { fg = "#3a81c3" }
+"keyword.directive" = "#3a81c3"
+"namespace" = "#b1951d"
+"punctuation" = "#6c3163"
+"punctuation.delimiter" = "#6c3163"
+"operator" = "#ba2f59"
+"special" = "#ba2f59"
+"property" = "#7590db"
+"variable.property" = "#7590db"
+"variable" = "#715ab1"
+"variable.builtin" = "#715ab1"
+"variable.parameter" = "#7590db"
+"type" = "#6c3163"
+"type.builtin" = "#6c3163"
+"constructor" = { fg = "#4e3163", modifiers = ["bold"] }
+"function" = { fg = "#715ab1", modifiers = ["bold"] }
+"function.macro" = "#b1951d"
+"function.builtin" = "#b1951d"
+"comment" = { fg = "#a49da5", modifiers = ["italic"]  }
+"constant" = { fg = "#6c3163" }
+"constant.builtin" = { fg = "#6c3163", modifiers = ["bold"] }
+"string" = "#2d9574"
+"number" = "#6c3163"
+"escape" = { fg = "fg2", modifiers = ["bold"] }
+"label" = "#b1951d"
+"module" = "#b1951d"
+
+"warning" = { fg = "#da8b55" }
+"error" = { fg = "#e0211d" }
+"info" = { fg = "#b1951d" }
+"hint" = { fg = "#d1dcdf" }
+
+"ui.background" = { bg = "bg0" }
+"ui.linenr" = { fg = "bg3" }
+"ui.linenr.selected" = { fg = "#b1951d" }
+"ui.statusline" = { fg = "fg1", bg = "bg2" }
+"ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
+"ui.popup" = { bg = "bg1" }
+"ui.window" = { bg = "bg1" }
+"ui.help" = { bg = "bg1", fg = "fg1" }
+"ui.text" = { fg = "fg1" }
+"ui.text.focus" = { fg = "fg1" }
+"ui.selection" = { bg = "bg3", modifiers = ["reversed"] }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { modifiers = ["reversed"] }
+"ui.menu" = { fg = "fg1", bg = "bg2" }
+"ui.menu.selected" = { fg = "#655370", bg = "#d1dcdf", modifiers = ["bold"] }
+
+"diagnostic" = { modifiers = ["underlined"] }
+
+[palette]
+bg0 = "#fbf8ef"
+bg1 = "#efeae9"
+bg2 = "#d1dcdf"
+bg3 = "#b4c6cb"
+
+fg1 = "#655370"
+fg2 = "#5f3bc4"
+fg3 = "#bdae93"
+fg4 = "#a89984"

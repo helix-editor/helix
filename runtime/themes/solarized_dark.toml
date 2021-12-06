@@ -1,0 +1,97 @@
+"attribute" = { fg = "violet" }
+"keyword" = { fg = "green" }
+"keyword.directive" = { fg = "orange" }
+"namespace" = { fg = "violet" }
+"operator" = { fg = "green" }
+"special" = { fg = "orange" }
+"variable.builtin" = { fg = "cyan", modifiers = ["bold"] }
+"variable.function" = { fg = "blue" }
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "yellow", modifiers = ["bold"] }
+"constructor" = { fg = "blue" }
+"function" = { fg = "blue" }
+"function.macro" = { fg = "magenta" }
+"function.builtin" = { fg = "blue", modifiers = ["bold"] }
+"function.special" = { fg = "magenta" }
+"comment" = { fg = "base01" }
+"string" = { fg = "cyan" }
+"constant" = { fg = "cyan" }
+"constant.builtin" = { fg = "cyan", modifiers = ["bold"] }
+"constant.character.escape" = { fg = "red", modifiers = ["bold"] }
+"label" = { fg = "green" }
+"module" = { fg = "violet" }
+"tag" = { fg = "magenta" }
+
+# 背景
+"ui.background" = { bg = "base03" }
+
+# 行号栏
+"ui.linenr" = { fg = "base0", bg = "base02" }
+# 当前行号栏
+"ui.linenr.selected" = { fg = "blue", modifiers = ["bold"] }
+
+# 状态栏
+"ui.statusline" = { fg = "base03", bg = "base0" }
+# 非活动状态栏
+"ui.statusline.inactive" = { fg = "base1", bg = "base01" }
+
+# 补全窗口, preview窗口
+"ui.popup" = { bg = "base02" }
+# 影响 补全选中 cmd弹出信息选中
+"ui.menu.selected" = { fg = "base02", bg = "base2"}
+"ui.menu" = { fg = "base1" }
+# ??
+"ui.window" = { fg = "base3" }
+# 命令行 补全的帮助信息
+"ui.help" = { modifiers = ["reversed"] }
+
+# 快捷键窗口 
+"ui.info" = { bg = "base1" }
+# 快捷键字体
+"ui.info.text" = {fg = "base02", modifiers = ["bold"]}
+
+# 普通ui的字体样式
+"ui.text" = { fg = "base1" }
+# 影响 picker列表选中, 快捷键帮助窗口文本
+"ui.text.focus" = { fg = "blue", modifiers = ["bold"]}
+# file picker中， 预览的当前选中项
+"ui.highlight" = { fg = "red", modifiers = ["bold", "italic", "underlined"] }
+
+# 主光标/selectio
+"ui.cursor.primary" = {fg = "base03", bg = "base1"}
+"ui.selection.primary" = { fg = "base03", bg = "base01" }
+"ui.cursor.select" = {fg = "base02", bg = "green"}
+"ui.selection" = { fg = "base02", bg = "yellow" }
+
+# normal模式的光标
+"ui.cursor" = {fg = "base03", bg = "green"}
+"ui.cursor.insert" = {fg = "base03", bg = "base3"}
+# 当前光标匹配的标点符号
+"ui.cursor.match" = {modifiers = ["reversed"]}
+
+"warning" =  { fg = "orange", modifiers= ["bold", "underlined"] }
+"error" = { fg = "red", modifiers= ["bold", "underlined"] }
+"info" = { fg = "blue", modifiers= ["bold", "underlined"] }
+"hint" = { fg = "base01", modifiers= ["bold", "underlined"] }
+"diagnostic" = { mdifiers = ["underlined"] }
+
+[palette]
+# 深色 越来越深
+base03  = "#002b36"
+base02  = "#073642"
+base01  = "#586e75"
+base00  = "#657b83"
+base0   = "#839496"
+base1   = "#93a1a1"
+base2   = "#eee8d5"
+base3   = "#fdf6e3"
+
+# 浅色 越來越浅
+yellow  = "#b58900"
+orange  = "#cb4b16"
+red     = "#dc322f"
+magenta = "#d33682"
+violet  = "#6c71c4"
+blue    = "#268bd2"
+cyan    = "#2aa198"
+green   = "#859900"

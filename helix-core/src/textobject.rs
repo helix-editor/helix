@@ -10,7 +10,7 @@ use crate::surround;
 use crate::syntax::LanguageConfiguration;
 use crate::Range;
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) -> usize {
+fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -33,7 +33,7 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction) ->
         match categorize_char(ch) {
             Eol | Whitespace => return pos,
             category => {
-                if category != prev_category && pos != 0 && pos != slice.len_chars() {
+                if !long && category != prev_category && pos != 0 && pos != slice.len_chars() {
                     return pos;
                 } else {
                     match direction {
@@ -70,13 +70,14 @@ pub fn textobject_word(
     range: Range,
     textobject: TextObject,
     _count: usize,
+    long: bool,
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward);
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
     let word_end = match slice.get_char(pos).map(categorize_char) {
         None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward),
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
     };
 
     // Special case.
@@ -113,7 +114,7 @@ pub fn textobject_surround(
     ch: char,
     count: usize,
 ) -> Range {
-    surround::find_nth_pairs_pos(slice, ch, range.head, count)
+    surround::find_nth_pairs_pos(slice, ch, range, count)
         .map(|(anchor, head)| match textobject {
             TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
             TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
@@ -169,7 +170,7 @@ mod test {
 
     #[test]
     fn test_textobject_word() {
-        // (text, [(cursor position, textobject, final range), ...])
+        // (text, [(char position, textobject, final range), ...])
         let tests = &[
             (
                 "cursor at beginning of doc",
@@ -268,7 +269,9 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range) = case;
-                let result = textobject_word(slice, Range::point(pos), objtype, 1);
+                // cursor is a single width selection
+                let range = Range::new(pos, pos + 1);
+                let result = textobject_word(slice, range, objtype, 1, false);
                 assert_eq!(
                     result,
                     expected_range.into(),
@@ -282,7 +285,7 @@ mod test {
 
     #[test]
     fn test_textobject_surround() {
-        // (text, [(cursor position, textobject, final range, count), ...])
+        // (text, [(cursor position, textobject, final range, surround char, count), ...])
         let tests = &[
             (
                 "simple (single) surround pairs",

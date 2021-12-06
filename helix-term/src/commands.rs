@@ -1,19 +1,23 @@
 use helix_core::{
-    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes, indent,
+    comment, coords_at_pos, find_first_non_whitespace_char, find_root, graphemes,
+    history::UndoKind,
+    increment::date_time::DateTimeIncrementor,
+    increment::{number::NumberIncrementor, Increment},
+    indent,
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, Direction},
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
-    register::Register,
-    search, selection, surround, textobject, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeSlice, Selection, SmallVec, Tendril, Transaction,
+    search, selection, surround, textobject,
+    unicode::width::UnicodeWidthChar,
+    LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
+    Transaction,
 };
-
 use helix_view::{
     clipboard::ClipboardType,
-    document::Mode,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     input::KeyEvent,
     keyboard::KeyCode,
@@ -21,9 +25,9 @@ use helix_view::{
     Document, DocumentId, Editor, ViewId,
 };
 
-use anyhow::{anyhow, bail, Context as _};
+use anyhow::{anyhow, bail, ensure, Context as _};
 use helix_lsp::{
-    lsp,
+    block_on, lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -37,7 +41,7 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, StreamExt};
-use std::num::NonZeroUsize;
+use std::{collections::HashSet, num::NonZeroUsize};
 use std::{fmt, future::Future};
 
 use std::{
@@ -131,47 +135,76 @@ fn align_view(doc: &Document, view: &mut View, align: Align) {
     view.offset.row = line.saturating_sub(relative);
 }
 
-/// A command is composed of a static name, and a function that takes the current state plus a count,
-/// and does a side-effect on the state (usually by creating and applying a transaction).
-#[derive(Copy, Clone)]
-pub struct Command {
-    name: &'static str,
-    fun: fn(cx: &mut Context),
-    doc: &'static str,
+/// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
+/// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
+/// Both of these types of commands can be mapped with keybindings in the config.toml.
+#[derive(Clone)]
+pub enum MappableCommand {
+    Typable {
+        name: String,
+        args: Vec<String>,
+        doc: String,
+    },
+    Static {
+        name: &'static str,
+        fun: fn(cx: &mut Context),
+        doc: &'static str,
+    },
 }
 
-macro_rules! commands {
+macro_rules! static_commands {
     ( $($name:ident, $doc:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
-            pub const $name: Self = Self {
+            pub const $name: Self = Self::Static {
                 name: stringify!($name),
                 fun: $name,
                 doc: $doc
             };
         )*
 
-        pub const COMMAND_LIST: &'static [Self] = &[
+        pub const STATIC_COMMAND_LIST: &'static [Self] = &[
             $( Self::$name, )*
         ];
     }
 }
 
-impl Command {
+impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
-        (self.fun)(cx);
+        match &self {
+            MappableCommand::Typable { name, args, doc: _ } => {
+                let args: Vec<&str> = args.iter().map(|arg| arg.as_str()).collect();
+                if let Some(command) = cmd::TYPABLE_COMMAND_MAP.get(name.as_str()) {
+                    let mut cx = compositor::Context {
+                        editor: cx.editor,
+                        jobs: cx.jobs,
+                        scroll: None,
+                    };
+                    if let Err(e) = (command.fun)(&mut cx, &args, PromptEvent::Validate) {
+                        cx.editor.set_error(format!("{}", e));
+                    }
+                }
+            }
+            MappableCommand::Static { fun, .. } => (fun)(cx),
+        }
     }
 
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &str {
+        match &self {
+            MappableCommand::Typable { name, .. } => name,
+            MappableCommand::Static { name, .. } => name,
+        }
     }
 
-    pub fn doc(&self) -> &'static str {
-        self.doc
+    pub fn doc(&self) -> &str {
+        match &self {
+            MappableCommand::Typable { doc, .. } => doc,
+            MappableCommand::Static { doc, .. } => doc,
+        }
     }
 
     #[rustfmt::skip]
-    commands!(
+    static_commands!(
         no_op, "Do nothing",
         move_char_left, "Move left",
         move_char_right, "Move right",
@@ -185,6 +218,7 @@ impl Command {
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to beginning of next word",
         move_prev_word_start, "Move to beginning of previous word",
+        move_prev_word_end, "Move to end of previous word",
         move_next_word_end, "Move to end of next word",
         move_next_long_word_start, "Move to beginning of next long word",
         move_prev_long_word_start, "Move to beginning of previous long word",
@@ -227,7 +261,9 @@ impl Command {
         extend_line, "Select current line, if already selected, extend to next line",
         extend_to_line_bounds, "Extend selection to line bounds (line-wise selection)",
         delete_selection, "Delete selection",
+        delete_selection_noyank, "Delete selection, without yanking",
         change_selection, "Change selection (delete and enter insert mode)",
+        change_selection_noyank, "Change selection (delete and enter insert mode, without yanking)",
         collapse_selection, "Collapse selection onto a single cursor",
         flip_selections, "Flip selection cursor and anchor",
         insert_mode, "Insert before selection",
@@ -237,6 +273,7 @@ impl Command {
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
+        workspace_symbol_picker, "Open workspace symbol picker",
         last_picker, "Open last picker",
         prepend_to_line, "Insert at start of line",
         append_to_line, "Insert at end of line",
@@ -252,11 +289,16 @@ impl Command {
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto file start/line",
         goto_file_end, "Goto file end",
+        goto_file, "Goto files in the selection",
+        goto_file_hsplit, "Goto files in the selection in horizontal splits",
+        goto_file_vsplit, "Goto files in the selection in vertical splits",
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
-        goto_window_middle, "Goto window middle",
+        goto_window_center, "Goto window center",
         goto_window_bottom, "Goto window bottom",
         goto_last_accessed_file, "Goto last accessed file",
+        goto_last_modified_file, "Goto last modified file",
+        goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
         goto_first_diag, "Goto first diagnostic",
@@ -270,6 +312,7 @@ impl Command {
         // TODO: different description ?
         goto_line_end_newline, "Goto line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
@@ -279,8 +322,13 @@ impl Command {
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
+        delete_word_forward, "Delete next word",
+        kill_to_line_start, "Delete content till the start of the line",
+        kill_to_line_end, "Delete content till the end of the line",
         undo, "Undo change",
         redo, "Redo change",
+        earlier, "Move backward in history",
+        later, "Move forward in history",
         yank, "Yank selection",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -300,6 +348,8 @@ impl Command {
         format_selections, "Format selection",
         join_selections, "Join lines inside selection",
         keep_selections, "Keep selections matching regex",
+        remove_selections, "Remove selections matching regex",
+        align_selections, "Align selections in column",
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
@@ -320,7 +370,9 @@ impl Command {
         hsplit, "Horizontal bottom split",
         vsplit, "Vertical right split",
         wclose, "Close window",
+        wonly, "Current window only",
         select_register, "Select register",
+        insert_register, "Insert register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
@@ -339,36 +391,57 @@ impl Command {
         shell_append_output, "Append output of shell command after each selection",
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend",
+        rename_symbol, "Rename symbol",
+        increment, "Increment",
+        decrement, "Decrement",
     );
 }
 
-impl fmt::Debug for Command {
+impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command { name, .. } = self;
-        f.debug_tuple("Command").field(name).finish()
+        f.debug_tuple("MappableCommand")
+            .field(&self.name())
+            .finish()
     }
 }
 
-impl fmt::Display for Command {
+impl fmt::Display for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Command { name, .. } = self;
-        f.write_str(name)
+        f.write_str(self.name())
     }
 }
 
-impl std::str::FromStr for Command {
+impl std::str::FromStr for MappableCommand {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Command::COMMAND_LIST
-            .iter()
-            .copied()
-            .find(|cmd| cmd.name == s)
-            .ok_or_else(|| anyhow!("No command named '{}'", s))
+        if let Some(suffix) = s.strip_prefix(':') {
+            let mut typable_command = suffix.split(' ').into_iter().map(|arg| arg.trim());
+            let name = typable_command
+                .next()
+                .ok_or_else(|| anyhow!("Expected typable command name"))?;
+            let args = typable_command
+                .map(|s| s.to_owned())
+                .collect::<Vec<String>>();
+            cmd::TYPABLE_COMMAND_MAP
+                .get(name)
+                .map(|cmd| MappableCommand::Typable {
+                    name: cmd.name.to_owned(),
+                    doc: format!(":{} {:?}", cmd.name, args),
+                    args,
+                })
+                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+        } else {
+            MappableCommand::STATIC_COMMAND_LIST
+                .iter()
+                .cloned()
+                .find(|cmd| cmd.name() == s)
+                .ok_or_else(|| anyhow!("No command named '{}'", s))
+        }
     }
 }
 
-impl<'de> Deserialize<'de> for Command {
+impl<'de> Deserialize<'de> for MappableCommand {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -378,9 +451,27 @@ impl<'de> Deserialize<'de> for Command {
     }
 }
 
-impl PartialEq for Command {
+impl PartialEq for MappableCommand {
     fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name()
+        match (self, other) {
+            (
+                MappableCommand::Typable {
+                    name: first_name, ..
+                },
+                MappableCommand::Typable {
+                    name: second_name, ..
+                },
+            ) => first_name == second_name,
+            (
+                MappableCommand::Static {
+                    name: first_name, ..
+                },
+                MappableCommand::Static {
+                    name: second_name, ..
+                },
+            ) => first_name == second_name,
+            _ => false,
+        }
     }
 }
 
@@ -562,6 +653,29 @@ fn extend_to_line_start(cx: &mut Context) {
     goto_line_start_impl(view, doc, Movement::Extend)
 }
 
+fn kill_to_line_start(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.cursor_line(text);
+        range.put_cursor(text, text.line_to_char(line), true)
+    });
+    delete_selection_insert_mode(doc, view, &selection);
+}
+
+fn kill_to_line_end(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.cursor_line(text);
+        let pos = line_end_char_index(&text, line);
+        range.put_cursor(text, pos, true)
+    });
+    delete_selection_insert_mode(doc, view, &selection);
+}
+
 fn goto_first_nonwhitespace(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -579,11 +693,119 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+fn trim_selections(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let ranges: SmallVec<[Range; 1]> = doc
+        .selection(view.id)
+        .iter()
+        .filter_map(|range| {
+            if range.is_empty() || range.fragment(text).chars().all(|ch| ch.is_whitespace()) {
+                return None;
+            }
+            let mut start = range.from();
+            let mut end = range.to();
+            start = movement::skip_while(text, start, |x| x.is_whitespace()).unwrap_or(start);
+            end = movement::backwards_skip_while(text, end, |x| x.is_whitespace()).unwrap_or(end);
+            if range.anchor < range.head {
+                Some(Range::new(start, end))
+            } else {
+                Some(Range::new(end, start))
+            }
+        })
+        .collect();
+
+    if !ranges.is_empty() {
+        let primary = doc.selection(view.id).primary();
+        let idx = ranges
+            .iter()
+            .position(|range| range.overlaps(&primary))
+            .unwrap_or(ranges.len() - 1);
+        doc.set_selection(view.id, Selection::new(ranges, idx));
+    } else {
+        collapse_selection(cx);
+        keep_primary_selection(cx);
+    };
+}
+
+// align text in selection
+fn align_selections(cx: &mut Context) {
+    let align_style = cx.count();
+    if align_style > 3 {
+        cx.editor.set_error(
+            "align only accept 1,2,3 as count to set left/center/right align".to_string(),
+        );
+        return;
+    }
+
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+    let mut column_widths = vec![];
+    let mut last_line = text.len_lines();
+    let mut column = 0;
+    // first of all, we need compute all column's width, let use max width of the selections in a column
+    for sel in selection {
+        let (l1, l2) = sel.line_range(text);
+        if l1 != l2 {
+            cx.editor
+                .set_error("align cannot work with multi line selections".to_string());
+            return;
+        }
+        // if the selection is not in the same line with last selection, we set the column to 0
+        column = if l1 != last_line { 0 } else { column + 1 };
+        last_line = l1;
+
+        if column < column_widths.len() {
+            if sel.to() - sel.from() > column_widths[column] {
+                column_widths[column] = sel.to() - sel.from();
+            }
+        } else {
+            // a new column, current selection width is the temp width of the column
+            column_widths.push(sel.to() - sel.from());
+        }
+    }
+    last_line = text.len_lines();
+    // once we get the with of each column, we transform each selection with to it's column width based on the align style
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        let l = range.cursor_line(text);
+        column = if l != last_line { 0 } else { column + 1 };
+        last_line = l;
+
+        (
+            range.from(),
+            range.to(),
+            Some(
+                align_fragment_to_width(&range.fragment(text), column_widths[column], align_style)
+                    .into(),
+            ),
+        )
+    });
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view.id);
+}
+
+fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> String {
+    let trimed = fragment.trim_matches(|c| c == ' ');
+    let mut s = " ".repeat(width - trimed.chars().count());
+    match align_style {
+        1 => s.insert_str(0, trimed),           // left align
+        2 => s.insert_str(s.len() / 2, trimed), // center align
+        3 => s.push_str(trimed),                // right align
+        n => unimplemented!("{}", n),
+    }
+    s
+}
+
 fn goto_window(cx: &mut Context, align: Align) {
+    let count = cx.count() - 1;
     let (view, doc) = current!(cx.editor);
 
     let height = view.inner_area().height as usize;
 
+    // respect user given count if any
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
@@ -592,10 +814,11 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_line = view.last_line(doc);
 
     let line = match align {
-        Align::Top => (view.offset.row + scrolloff),
-        Align::Center => (view.offset.row + (height / 2)),
-        Align::Bottom => last_line.saturating_sub(scrolloff),
+        Align::Top => (view.offset.row + scrolloff + count),
+        Align::Center => (view.offset.row + ((last_line - view.offset.row) / 2)),
+        Align::Bottom => last_line.saturating_sub(scrolloff + count),
     }
+    .max(view.offset.row + scrolloff)
     .min(last_line.saturating_sub(scrolloff));
 
     let pos = doc.text().line_to_char(line);
@@ -607,7 +830,7 @@ fn goto_window_top(cx: &mut Context) {
     goto_window(cx, Align::Top)
 }
 
-fn goto_window_middle(cx: &mut Context) {
+fn goto_window_center(cx: &mut Context) {
     goto_window(cx, Align::Center)
 }
 
@@ -636,6 +859,10 @@ fn move_next_word_start(cx: &mut Context) {
 
 fn move_prev_word_start(cx: &mut Context) {
     move_word_impl(cx, movement::move_prev_word_start)
+}
+
+fn move_prev_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_word_end)
 }
 
 fn move_next_word_end(cx: &mut Context) {
@@ -679,6 +906,49 @@ fn goto_file_end(cx: &mut Context) {
         .clone()
         .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
     doc.set_selection(view.id, selection);
+}
+
+fn goto_file(cx: &mut Context) {
+    goto_file_impl(cx, Action::Replace);
+}
+
+fn goto_file_hsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::HorizontalSplit);
+}
+
+fn goto_file_vsplit(cx: &mut Context) {
+    goto_file_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_file_impl(cx: &mut Context, action: Action) {
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text();
+    let selections = doc.selection(view.id);
+    let mut paths: Vec<_> = selections
+        .iter()
+        .map(|r| text.slice(r.from()..r.to()).to_string())
+        .collect();
+    let primary = selections.primary();
+    if selections.len() == 1 && primary.to() - primary.from() == 1 {
+        let current_word = movement::move_next_long_word_start(
+            text.slice(..),
+            movement::move_prev_long_word_start(text.slice(..), primary, 1),
+            1,
+        );
+        paths.clear();
+        paths.push(
+            text.slice(current_word.from()..current_word.to())
+                .to_string(),
+        );
+    }
+    for sel in paths {
+        let p = sel.trim();
+        if !p.is_empty() {
+            if let Err(e) = cx.editor.open(PathBuf::from(p), action) {
+                cx.editor.set_error(format!("Open file failed: {:?}", e));
+            }
+        }
+    }
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
@@ -1174,6 +1444,7 @@ fn search_impl(
     regex: &Regex,
     movement: Movement,
     direction: Direction,
+    scrolloff: usize,
 ) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
@@ -1232,7 +1503,11 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        align_view(doc, view, Align::Center);
+        if view.is_cursor_in_view(doc, 0) {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        } else {
+            align_view(doc, view, Align::Center)
+        }
     };
 }
 
@@ -1256,6 +1531,8 @@ fn rsearch(cx: &mut Context) {
 // TODO: use one function for search vs extend
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
+    let scrolloff = cx.editor.config.scrolloff;
+
     let (_, doc) = current!(cx.editor);
 
     // TODO: could probably share with select_on_matches?
@@ -1280,7 +1557,15 @@ fn searcher(cx: &mut Context, direction: Direction) {
             if event != PromptEvent::Update {
                 return;
             }
-            search_impl(doc, view, &contents, &regex, Movement::Move, direction);
+            search_impl(
+                doc,
+                view,
+                &contents,
+                &regex,
+                Movement::Move,
+                direction,
+                scrolloff,
+            );
         },
     );
 
@@ -1288,6 +1573,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
+    let scrolloff = cx.editor.config.scrolloff;
     let (view, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
     if let Some(query) = registers.read('/') {
@@ -1302,7 +1588,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, movement, direction);
+            search_impl(doc, view, &contents, &regex, movement, direction, scrolloff);
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
@@ -1342,11 +1628,12 @@ fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
     let smart_case = cx.editor.config.smart_case;
+    let file_picker_config = cx.editor.config.file_picker.clone();
 
     let completions = search_completions(cx, None);
     let prompt = ui::regex_prompt(
         cx,
-        "global search:".into(),
+        "global-search:".into(),
         None,
         move |input: &str| {
             completions
@@ -1370,41 +1657,55 @@ fn global_search(cx: &mut Context) {
 
                 let search_root = std::env::current_dir()
                     .expect("Global search error: Failed to get current dir");
-                WalkBuilder::new(search_root).build_parallel().run(|| {
-                    let mut searcher_cl = searcher.clone();
-                    let matcher_cl = matcher.clone();
-                    let all_matches_sx_cl = all_matches_sx.clone();
-                    Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
-                        let dent = match dent {
-                            Ok(dent) => dent,
-                            Err(_) => return WalkState::Continue,
-                        };
+                WalkBuilder::new(search_root)
+                    .hidden(file_picker_config.hidden)
+                    .parents(file_picker_config.parents)
+                    .ignore(file_picker_config.ignore)
+                    .git_ignore(file_picker_config.git_ignore)
+                    .git_global(file_picker_config.git_global)
+                    .git_exclude(file_picker_config.git_exclude)
+                    .max_depth(file_picker_config.max_depth)
+                    .build_parallel()
+                    .run(|| {
+                        let mut searcher_cl = searcher.clone();
+                        let matcher_cl = matcher.clone();
+                        let all_matches_sx_cl = all_matches_sx.clone();
+                        Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
+                            let dent = match dent {
+                                Ok(dent) => dent,
+                                Err(_) => return WalkState::Continue,
+                            };
 
-                        match dent.file_type() {
-                            Some(fi) => {
-                                if !fi.is_file() {
-                                    return WalkState::Continue;
+                            match dent.file_type() {
+                                Some(fi) => {
+                                    if !fi.is_file() {
+                                        return WalkState::Continue;
+                                    }
                                 }
+                                None => return WalkState::Continue,
                             }
-                            None => return WalkState::Continue,
-                        }
 
-                        let result_sink = sinks::UTF8(|line_num, _| {
-                            match all_matches_sx_cl
-                                .send((line_num as usize - 1, dent.path().to_path_buf()))
-                            {
-                                Ok(_) => Ok(true),
-                                Err(_) => Ok(false),
+                            let result_sink = sinks::UTF8(|line_num, _| {
+                                match all_matches_sx_cl
+                                    .send((line_num as usize - 1, dent.path().to_path_buf()))
+                                {
+                                    Ok(_) => Ok(true),
+                                    Err(_) => Ok(false),
+                                }
+                            });
+                            let result =
+                                searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
+
+                            if let Err(err) = result {
+                                log::error!(
+                                    "Global search error: {}, {}",
+                                    dent.path().display(),
+                                    err
+                                );
                             }
-                        });
-                        let result = searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
-
-                        if let Err(err) = result {
-                            log::error!("Global search error: {}, {}", dent.path().display(), err);
-                        }
-                        WalkState::Continue
-                    })
-                });
+                            WalkState::Continue
+                        })
+                    });
             } else {
                 // Otherwise do nothing
                 // log::warn!("Global Search Invalid Pattern")
@@ -1509,13 +1810,47 @@ fn extend_to_line_bounds(cx: &mut Context) {
     );
 }
 
-fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId) {
-    let text = doc.text().slice(..);
-    let selection = doc.selection(view_id);
+enum Operation {
+    Delete,
+    Change,
+}
 
-    // first yank the selection
-    let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-    reg.write(values);
+fn delete_selection_impl(cx: &mut Context, op: Operation) {
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id);
+
+    if cx.register != Some('_') {
+        // first yank the selection
+        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+        let reg_name = cx.register.unwrap_or('"');
+        let registers = &mut cx.editor.registers;
+        let reg = registers.get_mut(reg_name);
+        reg.write(values);
+    };
+
+    // then delete
+    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        (range.from(), range.to(), None)
+    });
+    doc.apply(&transaction, view.id);
+
+    match op {
+        Operation::Delete => {
+            doc.append_changes_to_history(view.id);
+            // exit select mode, if currently in select mode
+            exit_select_mode(cx);
+        }
+        Operation::Change => {
+            enter_insert_mode(doc);
+        }
+    }
+}
+
+#[inline]
+fn delete_selection_insert_mode(doc: &mut Document, view: &View, selection: &Selection) {
+    let view_id = view.id;
 
     // then delete
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -1525,25 +1860,21 @@ fn delete_selection_impl(reg: &mut Register, doc: &mut Document, view_id: ViewId
 }
 
 fn delete_selection(cx: &mut Context) {
-    let reg_name = cx.register.unwrap_or('"');
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
-    let reg = registers.get_mut(reg_name);
-    delete_selection_impl(reg, doc, view.id);
+    delete_selection_impl(cx, Operation::Delete);
+}
 
-    doc.append_changes_to_history(view.id);
-
-    // exit select mode, if currently in select mode
-    exit_select_mode(cx);
+fn delete_selection_noyank(cx: &mut Context) {
+    cx.register = Some('_');
+    delete_selection_impl(cx, Operation::Delete);
 }
 
 fn change_selection(cx: &mut Context) {
-    let reg_name = cx.register.unwrap_or('"');
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
-    let reg = registers.get_mut(reg_name);
-    delete_selection_impl(reg, doc, view.id);
-    enter_insert_mode(doc);
+    delete_selection_impl(cx, Operation::Change);
+}
+
+fn change_selection_noyank(cx: &mut Context) {
+    cx.register = Some('_');
+    delete_selection_impl(cx, Operation::Change);
 }
 
 fn collapse_selection(cx: &mut Context) {
@@ -1638,8 +1969,7 @@ mod cmd {
             buffers_remaining_impl(cx.editor)?
         }
 
-        cx.editor
-            .close(view!(cx.editor).id, /* close_buffer */ false);
+        cx.editor.close(view!(cx.editor).id);
 
         Ok(())
     }
@@ -1649,8 +1979,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        cx.editor
-            .close(view!(cx.editor).id, /* close_buffer */ false);
+        cx.editor.close(view!(cx.editor).id);
 
         Ok(())
     }
@@ -1660,11 +1989,30 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        use helix_core::path::expand_tilde;
         let path = args.get(0).context("wrong argument count")?;
-        let _ = cx
-            .editor
-            .open(expand_tilde(Path::new(path)), Action::Replace)?;
+        let _ = cx.editor.open(path.into(), Action::Replace)?;
+        Ok(())
+    }
+
+    fn buffer_close(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let view = view!(cx.editor);
+        let doc_id = view.doc;
+        cx.editor.close_document(doc_id, false)?;
+        Ok(())
+    }
+
+    fn force_buffer_close(
+        cx: &mut compositor::Context,
+        _args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let view = view!(cx.editor);
+        let doc_id = view.doc;
+        cx.editor.close_document(doc_id, true)?;
         Ok(())
     }
 
@@ -1675,7 +2023,7 @@ mod cmd {
         let jobs = &mut cx.jobs;
         let (_, doc) = current!(cx.editor);
 
-        if let Some(path) = path {
+        if let Some(ref path) = path {
             doc.set_path(Some(path.as_ref()))
                 .context("invalid filepath")?;
         }
@@ -1695,6 +2043,11 @@ mod cmd {
         });
         let future = doc.format_and_save(fmt);
         cx.jobs.add(Job::new(future).wait_before_exiting());
+
+        if path.is_some() {
+            let id = doc.id();
+            let _ = cx.editor.refresh_language_server(id);
+        }
         Ok(())
     }
 
@@ -1819,13 +2172,13 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let uk = args
-            .join(" ")
-            .parse::<helix_core::history::UndoKind>()
-            .map_err(|s| anyhow!(s))?;
+        let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
         let (view, doc) = current!(cx.editor);
-        doc.earlier(view.id, uk);
+        let success = doc.earlier(view.id, uk);
+        if !success {
+            cx.editor.set_status("Already at oldest change".to_owned());
+        }
 
         Ok(())
     }
@@ -1835,12 +2188,12 @@ mod cmd {
         args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let uk = args
-            .join(" ")
-            .parse::<helix_core::history::UndoKind>()
-            .map_err(|s| anyhow!(s))?;
+        let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
         let (view, doc) = current!(cx.editor);
-        doc.later(view.id, uk);
+        let success = doc.later(view.id, uk);
+        if !success {
+            cx.editor.set_status("Already at newest change".to_owned());
+        }
 
         Ok(())
     }
@@ -1872,7 +2225,7 @@ mod cmd {
             .map(|doc| {
                 doc.relative_path()
                     .map(|path| path.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "[scratch]".into())
+                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
             })
             .collect();
         if !modified.is_empty() {
@@ -1914,7 +2267,7 @@ mod cmd {
             // close all views
             let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
             for view_id in views {
-                cx.editor.close(view_id, false);
+                cx.editor.close(view_id);
             }
         }
 
@@ -1958,7 +2311,7 @@ mod cmd {
         // close all views
         let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
         for view_id in views {
-            editor.close(view_id, false);
+            editor.close(view_id);
         }
 
         Ok(())
@@ -1969,7 +2322,7 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(&mut cx.editor, args, event, false)
+        quit_all_impl(cx.editor, args, event, false)
     }
 
     fn force_quit_all(
@@ -1977,7 +2330,26 @@ mod cmd {
         args: &[&str],
         event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(&mut cx.editor, args, event, true)
+        quit_all_impl(cx.editor, args, event, true)
+    }
+
+    fn cquit(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let exit_code = args
+            .first()
+            .and_then(|code| code.parse::<i32>().ok())
+            .unwrap_or(1);
+        cx.editor.exit_code = exit_code;
+
+        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
+        for view_id in views {
+            cx.editor.close(view_id);
+        }
+
+        Ok(())
     }
 
     fn theme(
@@ -1994,7 +2366,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Clipboard)
+        yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
     }
 
     fn yank_joined_to_clipboard(
@@ -2007,7 +2379,7 @@ mod cmd {
             .first()
             .copied()
             .unwrap_or_else(|| doc.line_ending.as_str());
-        yank_joined_to_clipboard_impl(&mut cx.editor, separator, ClipboardType::Clipboard)
+        yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Clipboard)
     }
 
     fn yank_main_selection_to_primary_clipboard(
@@ -2015,7 +2387,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Selection)
+        yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Selection)
     }
 
     fn yank_joined_to_primary_clipboard(
@@ -2028,7 +2400,7 @@ mod cmd {
             .first()
             .copied()
             .unwrap_or_else(|| doc.line_ending.as_str());
-        yank_joined_to_clipboard_impl(&mut cx.editor, separator, ClipboardType::Selection)
+        yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Selection)
     }
 
     fn paste_clipboard_after(
@@ -2036,7 +2408,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard)
     }
 
     fn paste_clipboard_before(
@@ -2044,7 +2416,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard)
     }
 
     fn paste_primary_clipboard_after(
@@ -2052,7 +2424,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection)
     }
 
     fn paste_primary_clipboard_before(
@@ -2060,7 +2432,7 @@ mod cmd {
         _args: &[&str],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection)
     }
 
     fn replace_selections_with_clipboard_impl(
@@ -2229,6 +2601,24 @@ mod cmd {
         Ok(())
     }
 
+    pub(super) fn goto_line_number(
+        cx: &mut compositor::Context,
+        args: &[&str],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        ensure!(!args.is_empty(), "Line number required");
+
+        let line = args[0].parse::<usize>()?;
+
+        goto_line_impl(cx.editor, NonZeroUsize::new(line));
+
+        let (view, doc) = current!(cx.editor);
+
+        view.ensure_cursor_in_view(doc, line);
+
+        Ok(())
+    }
+
     fn help(
         cx: &mut compositor::Context,
         args: &[&str],
@@ -2240,7 +2630,7 @@ mod cmd {
         }
 
         let command = {
-            if Command::COMMAND_LIST
+            if MappableCommand::STATIC_COMMAND_LIST
                 .iter()
                 .any(|command| command.name() == args[0])
             {
@@ -2289,6 +2679,20 @@ mod cmd {
             doc: "Open a file from disk into the current view.",
             fun: open,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+          name: "buffer-close",
+          aliases: &["bc", "bclose"],
+          doc: "Close the current buffer.",
+          fun: buffer_close,
+          completer: None, // FIXME: buffer completer
+        },
+        TypableCommand {
+          name: "buffer-close!",
+          aliases: &["bc!", "bclose!"],
+          doc: "Close the current buffer forcefully (ignoring unsaved changes).",
+          fun: force_buffer_close,
+          completer: None, // FIXME: buffer completer
         },
         TypableCommand {
             name: "write",
@@ -2386,6 +2790,13 @@ mod cmd {
             aliases: &["qa!"],
             doc: "Close all views forcefully (ignoring unsaved changes).",
             fun: force_quit_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "cquit",
+            aliases: &["cq"],
+            doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
+            fun: cquit,
             completer: None,
         },
         TypableCommand {
@@ -2529,6 +2940,13 @@ mod cmd {
             completer: None,
         },
         TypableCommand {
+            name: "goto",
+            aliases: &["g"],
+            doc: "Go to line number.",
+            fun: goto_line_number,
+            completer: None,
+        },
+        TypableCommand {
             name: "help",
             aliases: &["h"],
             doc: "Open documentation for a command or keybind.",
@@ -2537,15 +2955,16 @@ mod cmd {
         },
     ];
 
-    pub static COMMANDS: Lazy<HashMap<&'static str, &'static TypableCommand>> = Lazy::new(|| {
-        TYPABLE_COMMAND_LIST
-            .iter()
-            .flat_map(|cmd| {
-                std::iter::once((cmd.name, cmd))
-                    .chain(cmd.aliases.iter().map(move |&alias| (alias, cmd)))
-            })
-            .collect()
-    });
+    pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
+        Lazy::new(|| {
+            TYPABLE_COMMAND_LIST
+                .iter()
+                .flat_map(|cmd| {
+                    std::iter::once((cmd.name, cmd))
+                        .chain(cmd.aliases.iter().map(move |&alias| (alias, cmd)))
+                })
+                .collect()
+        });
 }
 
 fn command_mode(cx: &mut Context) {
@@ -2571,7 +2990,7 @@ fn command_mode(cx: &mut Context) {
                 if let Some(cmd::TypableCommand {
                     completer: Some(completer),
                     ..
-                }) = cmd::COMMANDS.get(parts[0])
+                }) = cmd::TYPABLE_COMMAND_MAP.get(parts[0])
                 {
                     completer(part)
                         .into_iter()
@@ -2597,7 +3016,16 @@ fn command_mode(cx: &mut Context) {
                 return;
             }
 
-            if let Some(cmd) = cmd::COMMANDS.get(parts[0]) {
+            // If command is numeric, interpret as line number and go there.
+            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
+                if let Err(e) = cmd::goto_line_number(cx, &parts[0..], event) {
+                    cx.editor.set_error(format!("{}", e));
+                }
+                return;
+            }
+
+            // Handle typable commands
+            if let Some(cmd) = cmd::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 if let Err(e) = (cmd.fun)(cx, &parts[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
@@ -2610,7 +3038,7 @@ fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let part = input.split(' ').next().unwrap_or_default();
 
-        if let Some(cmd::TypableCommand { doc, .. }) = cmd::COMMANDS.get(part) {
+        if let Some(cmd::TypableCommand { doc, .. }) = cmd::TYPABLE_COMMAND_MAP.get(part) {
             return Some(doc);
         }
 
@@ -2622,43 +3050,73 @@ fn command_mode(cx: &mut Context) {
 
 fn file_picker(cx: &mut Context) {
     let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
-    let picker = ui::file_picker(root);
+    let picker = ui::file_picker(root, &cx.editor.config);
     cx.push_layer(Box::new(picker));
 }
 
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
+    struct BufferMeta {
+        id: DocumentId,
+        path: Option<PathBuf>,
+        is_modified: bool,
+        is_current: bool,
+    }
+
+    impl BufferMeta {
+        fn format(&self) -> Cow<str> {
+            let path = self
+                .path
+                .as_deref()
+                .map(helix_core::path::get_relative_path);
+            let path = match path.as_deref().and_then(Path::to_str) {
+                Some(path) => path,
+                None => return Cow::Borrowed(SCRATCH_BUFFER_NAME),
+            };
+
+            let mut flags = Vec::new();
+            if self.is_modified {
+                flags.push("+");
+            }
+            if self.is_current {
+                flags.push("*");
+            }
+
+            let flag = if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join(""))
+            };
+            Cow::Owned(format!("{}{}", path, flag))
+        }
+    }
+
+    let new_meta = |doc: &Document| BufferMeta {
+        id: doc.id(),
+        path: doc.path().cloned(),
+        is_modified: doc.is_modified(),
+        is_current: doc.id() == current,
+    };
+
     let picker = FilePicker::new(
         cx.editor
             .documents
             .iter()
-            .map(|(id, doc)| (*id, doc.path().cloned()))
+            .map(|(_, doc)| new_meta(doc))
             .collect(),
-        move |(id, path): &(DocumentId, Option<PathBuf>)| {
-            let path = path.as_deref().map(helix_core::path::get_relative_path);
-            match path.as_ref().and_then(|path| path.to_str()) {
-                Some(path) => {
-                    if *id == current {
-                        format!("{} (*)", &path).into()
-                    } else {
-                        path.to_owned().into()
-                    }
-                }
-                None => "[scratch buffer]".into(),
-            }
+        BufferMeta::format,
+        |editor: &mut Editor, meta, _action| {
+            editor.switch(meta.id, Action::Replace);
         },
-        |editor: &mut Editor, (id, _path): &(DocumentId, Option<PathBuf>), _action| {
-            editor.switch(*id, Action::Replace);
-        },
-        |editor, (id, path)| {
-            let doc = &editor.documents.get(id)?;
+        |editor, meta| {
+            let doc = &editor.documents.get(&meta.id)?;
             let &view_id = doc.selections().keys().next()?;
             let line = doc
                 .selection(view_id)
                 .primary()
                 .cursor_line(doc.text().slice(..));
-            Some((path.clone()?, Some((line, line))))
+            Some((meta.path.clone()?, Some((line, line))))
         },
     );
     cx.push_layer(Box::new(picker));
@@ -2713,7 +3171,7 @@ fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let picker = FilePicker::new(
+                let mut picker = FilePicker::new(
                     symbols,
                     |symbol| (&symbol.name).into(),
                     move |editor: &mut Editor, symbol, _action| {
@@ -2738,6 +3196,69 @@ fn symbol_picker(cx: &mut Context) {
                         Some((path, line))
                     },
                 );
+                picker.truncate_start = false;
+                compositor.push(Box::new(picker))
+            }
+        },
+    )
+}
+
+fn workspace_symbol_picker(cx: &mut Context) {
+    let (_, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+    let offset_encoding = language_server.offset_encoding();
+
+    let future = language_server.workspace_symbols("".to_string());
+
+    let current_path = doc_mut!(cx.editor).path().cloned();
+    cx.callback(
+        future,
+        move |_editor: &mut Editor,
+              compositor: &mut Compositor,
+              response: Option<Vec<lsp::SymbolInformation>>| {
+            if let Some(symbols) = response {
+                let mut picker = FilePicker::new(
+                    symbols,
+                    move |symbol| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
+                        if current_path.as_ref().map(|p| p == &path).unwrap_or(false) {
+                            (&symbol.name).into()
+                        } else {
+                            let relative_path = helix_core::path::get_relative_path(path.as_path())
+                                .to_str()
+                                .unwrap()
+                                .to_owned();
+                            format!("{} ({})", &symbol.name, relative_path).into()
+                        }
+                    },
+                    move |editor: &mut Editor, symbol, action| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
+                        editor.open(path, action).expect("editor.open failed");
+                        let (view, doc) = current!(editor);
+
+                        if let Some(range) =
+                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
+                        {
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+                            align_view(doc, view, Align::Center);
+                        }
+                    },
+                    move |_editor, symbol| {
+                        let path = symbol.location.uri.to_file_path().unwrap();
+                        let line = Some((
+                            symbol.location.range.start.line as usize,
+                            symbol.location.range.end.line as usize,
+                        ));
+                        Some((path, line))
+                    },
+                );
+                picker.truncate_start = false;
                 compositor.push(Box::new(picker))
             }
         },
@@ -2795,14 +3316,104 @@ pub fn code_action(cx: &mut Context) {
     )
 }
 
+pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
+    use lsp::ResourceOp;
+    use std::fs;
+    match op {
+        ResourceOp::Create(op) => {
+            let path = op.uri.to_file_path().unwrap();
+            let ignore_if_exists = if let Some(options) = &op.options {
+                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
+            } else {
+                false
+            };
+            if ignore_if_exists && path.exists() {
+                Ok(())
+            } else {
+                fs::write(&path, [])
+            }
+        }
+        ResourceOp::Delete(op) => {
+            let path = op.uri.to_file_path().unwrap();
+            if path.is_dir() {
+                let recursive = if let Some(options) = &op.options {
+                    options.recursive.unwrap_or(false)
+                } else {
+                    false
+                };
+                if recursive {
+                    fs::remove_dir_all(&path)
+                } else {
+                    fs::remove_dir(&path)
+                }
+            } else if path.is_file() {
+                fs::remove_file(&path)
+            } else {
+                Ok(())
+            }
+        }
+        ResourceOp::Rename(op) => {
+            let from = op.old_uri.to_file_path().unwrap();
+            let to = op.new_uri.to_file_path().unwrap();
+            let ignore_if_exists = if let Some(options) = &op.options {
+                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
+            } else {
+                false
+            };
+            if ignore_if_exists && to.exists() {
+                Ok(())
+            } else {
+                fs::rename(&from, &to)
+            }
+        }
+    }
+}
+
 fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
 ) {
+    let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
+        let path = uri
+            .to_file_path()
+            .expect("unable to convert URI to filepath");
+
+        let current_view_id = view!(editor).id;
+        let doc_id = editor.open(path, Action::Load).unwrap();
+        let doc = editor
+            .document_mut(doc_id)
+            .expect("Document for document_changes not found");
+
+        // Need to determine a view for apply/append_changes_to_history
+        let selections = doc.selections();
+        let view_id = if selections.contains_key(&current_view_id) {
+            // use current if possible
+            current_view_id
+        } else {
+            // Hack: we take the first available view_id
+            selections
+                .keys()
+                .next()
+                .copied()
+                .expect("No view_id available")
+        };
+
+        let transaction = helix_lsp::util::generate_transaction_from_edits(
+            doc.text(),
+            text_edits,
+            offset_encoding,
+        );
+        doc.apply(&transaction, view_id);
+        doc.append_changes_to_history(view_id);
+    };
+
     if let Some(ref changes) = workspace_edit.changes {
         log::debug!("workspace changes: {:?}", changes);
-        editor.set_error(String::from("Handling workspace_edit.changes is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+        for (uri, text_edits) in changes {
+            let text_edits = text_edits.to_vec();
+            apply_edits(uri, text_edits);
+        }
         return;
         // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
         // TODO: find some example that uses workspace changes, and test it
@@ -2820,30 +3431,6 @@ fn apply_workspace_edit(
         match document_changes {
             lsp::DocumentChanges::Edits(document_edits) => {
                 for document_edit in document_edits {
-                    let path = document_edit
-                        .text_document
-                        .uri
-                        .to_file_path()
-                        .expect("unable to convert URI to filepath");
-                    let current_view_id = view!(editor).id;
-                    let doc = editor
-                        .document_by_path_mut(path)
-                        .expect("Document for document_changes not found");
-
-                    // Need to determine a view for apply/append_changes_to_history
-                    let selections = doc.selections();
-                    let view_id = if selections.contains_key(&current_view_id) {
-                        // use current if possible
-                        current_view_id
-                    } else {
-                        // Hack: we take the first available view_id
-                        selections
-                            .keys()
-                            .next()
-                            .copied()
-                            .expect("No view_id available")
-                    };
-
                     let edits = document_edit
                         .edits
                         .iter()
@@ -2855,19 +3442,33 @@ fn apply_workspace_edit(
                         })
                         .cloned()
                         .collect();
-
-                    let transaction = helix_lsp::util::generate_transaction_from_edits(
-                        doc.text(),
-                        edits,
-                        offset_encoding,
-                    );
-                    doc.apply(&transaction, view_id);
-                    doc.append_changes_to_history(view_id);
+                    apply_edits(&document_edit.text_document.uri, edits);
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                editor.set_error(String::from("Handling document operations is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+                for operateion in operations {
+                    match operateion {
+                        lsp::DocumentChangeOperation::Op(op) => {
+                            apply_document_resource_op(op).unwrap();
+                        }
+
+                        lsp::DocumentChangeOperation::Edit(document_edit) => {
+                            let edits = document_edit
+                                .edits
+                                .iter()
+                                .map(|edit| match edit {
+                                    lsp::OneOf::Left(text_edit) => text_edit,
+                                    lsp::OneOf::Right(annotated_text_edit) => {
+                                        &annotated_text_edit.text_edit
+                                    }
+                                })
+                                .cloned()
+                                .collect();
+                            apply_edits(&document_edit.text_document.uri, edits);
+                        }
+                    }
+                }
             }
         }
     }
@@ -3057,10 +3658,14 @@ fn push_jump(editor: &mut Editor) {
 }
 
 fn goto_line(cx: &mut Context) {
-    if let Some(count) = cx.count {
-        push_jump(cx.editor);
+    goto_line_impl(cx.editor, cx.count)
+}
 
-        let (view, doc) = current!(cx.editor);
+fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
+    if let Some(count) = count {
+        push_jump(editor);
+
+        let (view, doc) = current!(editor);
         let max_line = if doc.text().line(doc.text().len_lines() - 1).len_chars() == 0 {
             // If the last line is blank, don't jump to it.
             doc.text().len_lines().saturating_sub(2)
@@ -3103,6 +3708,33 @@ fn goto_last_accessed_file(cx: &mut Context) {
         cx.editor.switch(alt, Action::Replace);
     } else {
         cx.editor.set_error("no last accessed buffer".to_owned())
+    }
+}
+
+fn goto_last_modification(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let pos = doc.history.get_mut().last_edit_pos();
+    let text = doc.text().slice(..);
+    if let Some(pos) = pos {
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| range.put_cursor(text, pos, doc.mode == Mode::Select));
+        doc.set_selection(view.id, selection);
+    }
+}
+
+fn goto_last_modified_file(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let alternate_file = view
+        .last_modified_docs
+        .into_iter()
+        .flatten()
+        .find(|&id| id != view.doc);
+    if let Some(alt) = alternate_file {
+        cx.editor.switch(alt, Action::Replace);
+    } else {
+        cx.editor.set_error("no last modified buffer".to_owned())
     }
 }
 
@@ -3706,19 +4338,70 @@ pub mod insert {
         doc.apply(&transaction, view.id);
     }
 
-    // TODO: handle indent-aware delete
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
+        let indent_unit = doc.indent_unit();
+        let tab_size = doc.tab_width();
+
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
-                (
-                    graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                    pos,
-                    None,
-                )
+                let line_start_pos = text.line_to_char(range.cursor_line(text));
+                // considier to delete by indent level if all characters before `pos` are indent units.
+                let fragment = Cow::from(text.slice(line_start_pos..pos));
+                if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
+                    if text.get_char(pos.saturating_sub(1)) == Some('\t') {
+                        // fast path, delete one char
+                        (
+                            graphemes::nth_prev_grapheme_boundary(text, pos, 1),
+                            pos,
+                            None,
+                        )
+                    } else {
+                        let unit_len = indent_unit.chars().count();
+                        // NOTE: indent_unit always contains 'only spaces' or 'only tab' according to `IndentStyle` definition.
+                        let unit_size = if indent_unit.starts_with('\t') {
+                            tab_size * unit_len
+                        } else {
+                            unit_len
+                        };
+                        let width: usize = fragment
+                            .chars()
+                            .map(|ch| {
+                                if ch == '\t' {
+                                    tab_size
+                                } else {
+                                    // it can be none if it still meet control characters other than '\t'
+                                    // here just set the width to 1 (or some value better?).
+                                    ch.width().unwrap_or(1)
+                                }
+                            })
+                            .sum();
+                        let mut drop = width % unit_size; // round down to nearest unit
+                        if drop == 0 {
+                            drop = unit_size
+                        }; // if it's already at a unit, consume a whole unit
+                        let mut chars = fragment.chars().rev();
+                        let mut start = pos;
+                        for _ in 0..drop {
+                            // delete up to `drop` spaces
+                            match chars.next() {
+                                Some(' ') => start -= 1,
+                                _ => break,
+                            }
+                        }
+                        (start, pos, None) // delete!
+                    }
+                } else {
+                    // delete char
+                    (
+                        graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                        pos,
+                        None,
+                    )
+                }
             });
         doc.apply(&transaction, view.id);
     }
@@ -3748,8 +4431,19 @@ pub mod insert {
             .selection(view.id)
             .clone()
             .transform(|range| movement::move_prev_word_start(text, range, count));
-        doc.set_selection(view.id, selection);
-        delete_selection(cx)
+        delete_selection_insert_mode(doc, view, &selection);
+    }
+
+    pub fn delete_word_forward(cx: &mut Context) {
+        let count = cx.count();
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| movement::move_next_word_start(text, range, count));
+        delete_selection_insert_mode(doc, view, &selection);
     }
 }
 
@@ -3759,20 +4453,48 @@ pub mod insert {
 // storing it?
 
 fn undo(cx: &mut Context) {
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let success = doc.undo(view_id);
-    if !success {
-        cx.editor.set_status("Already at oldest change".to_owned());
+    for _ in 0..count {
+        if !doc.undo(view.id) {
+            cx.editor.set_status("Already at oldest change".to_owned());
+            break;
+        }
     }
 }
 
 fn redo(cx: &mut Context) {
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
-    let view_id = view.id;
-    let success = doc.redo(view_id);
-    if !success {
-        cx.editor.set_status("Already at newest change".to_owned());
+    for _ in 0..count {
+        if !doc.redo(view.id) {
+            cx.editor.set_status("Already at newest change".to_owned());
+            break;
+        }
+    }
+}
+
+fn earlier(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        // rather than doing in batch we do this so get error halfway
+        if !doc.earlier(view.id, UndoKind::Steps(1)) {
+            cx.editor.set_status("Already at oldest change".to_owned());
+            break;
+        }
+    }
+}
+
+fn later(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        // rather than doing in batch we do this so get error halfway
+        if !doc.later(view.id, UndoKind::Steps(1)) {
+            cx.editor.set_status("Already at newest change".to_owned());
+            break;
+        }
     }
 }
 
@@ -3835,11 +4557,8 @@ fn yank_joined_to_clipboard_impl(
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let _ = yank_joined_to_clipboard_impl(
-        &mut cx.editor,
-        line_ending.as_str(),
-        ClipboardType::Clipboard,
-    );
+    let _ =
+        yank_joined_to_clipboard_impl(cx.editor, line_ending.as_str(), ClipboardType::Clipboard);
     exit_select_mode(cx);
 }
 
@@ -3864,20 +4583,17 @@ fn yank_main_selection_to_clipboard_impl(
 }
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
-    let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Clipboard);
+    let _ = yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard);
 }
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let _ = yank_joined_to_clipboard_impl(
-        &mut cx.editor,
-        line_ending.as_str(),
-        ClipboardType::Selection,
-    );
+    let _ =
+        yank_joined_to_clipboard_impl(cx.editor, line_ending.as_str(), ClipboardType::Selection);
 }
 
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
-    let _ = yank_main_selection_to_clipboard_impl(&mut cx.editor, ClipboardType::Selection);
+    let _ = yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Selection);
     exit_select_mode(cx);
 }
 
@@ -3960,19 +4676,19 @@ fn paste_clipboard_impl(
 }
 
 fn paste_clipboard_after(cx: &mut Context) {
-    let _ = paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Clipboard);
+    let _ = paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard);
 }
 
 fn paste_clipboard_before(cx: &mut Context) {
-    let _ = paste_clipboard_impl(&mut cx.editor, Paste::Before, ClipboardType::Clipboard);
+    let _ = paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard);
 }
 
 fn paste_primary_clipboard_after(cx: &mut Context) {
-    let _ = paste_clipboard_impl(&mut cx.editor, Paste::After, ClipboardType::Selection);
+    let _ = paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection);
 }
 
 fn paste_primary_clipboard_before(cx: &mut Context) {
-    let _ = paste_clipboard_impl(&mut cx.editor, Paste::Before, ClipboardType::Selection);
+    let _ = paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection);
 }
 
 fn replace_with_yanked(cx: &mut Context) {
@@ -4029,11 +4745,11 @@ fn replace_selections_with_clipboard_impl(
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(&mut cx.editor, ClipboardType::Clipboard);
+    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Clipboard);
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(&mut cx.editor, ClipboardType::Selection);
+    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection);
 }
 
 fn paste_after(cx: &mut Context) {
@@ -4230,12 +4946,12 @@ fn join_selections(cx: &mut Context) {
     doc.append_changes_to_history(view.id);
 }
 
-fn keep_selections(cx: &mut Context) {
-    // keep selections matching regex
+fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
+    // keep or remove selections matching regex
     let reg = cx.register.unwrap_or('/');
     let prompt = ui::regex_prompt(
         cx,
-        "keep:".into(),
+        if !remove { "keep:" } else { "remove:" }.into(),
         Some(reg),
         |_input: &str| Vec::new(),
         move |view, doc, regex, event| {
@@ -4244,13 +4960,23 @@ fn keep_selections(cx: &mut Context) {
             }
             let text = doc.text().slice(..);
 
-            if let Some(selection) = selection::keep_matches(text, doc.selection(view.id), &regex) {
+            if let Some(selection) =
+                selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
+            {
                 doc.set_selection(view.id, selection);
             }
         },
     );
 
     cx.push_layer(Box::new(prompt));
+}
+
+fn keep_selections(cx: &mut Context) {
+    keep_or_remove_selections_impl(cx, false)
+}
+
+fn remove_selections(cx: &mut Context) {
+    keep_or_remove_selections_impl(cx, true)
 }
 
 fn keep_primary_selection(cx: &mut Context) {
@@ -4378,19 +5104,15 @@ pub fn completion(cx: &mut Context) {
                 return;
             }
             let size = compositor.size();
-            let ui = compositor
-                .find(std::any::type_name::<ui::EditorView>())
-                .unwrap();
-            if let Some(ui) = ui.as_any_mut().downcast_mut::<ui::EditorView>() {
-                ui.set_completion(
-                    editor,
-                    items,
-                    offset_encoding,
-                    start_offset,
-                    trigger_offset,
-                    size,
-                );
-            };
+            let ui = compositor.find::<ui::EditorView>().unwrap();
+            ui.set_completion(
+                editor,
+                items,
+                offset_encoding,
+                start_offset,
+                trigger_offset,
+                size,
+            );
         },
     );
 }
@@ -4420,18 +5142,27 @@ fn hover(cx: &mut Context) {
         move |editor: &mut Editor, compositor: &mut Compositor, response: Option<lsp::Hover>| {
             if let Some(hover) = response {
                 // hover.contents / .range <- used for visualizing
+
+                fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
+                    match contents {
+                        lsp::MarkedString::String(contents) => contents,
+                        lsp::MarkedString::LanguageString(string) => {
+                            if string.language == "markdown" {
+                                string.value
+                            } else {
+                                format!("```{}\n{}\n```", string.language, string.value)
+                            }
+                        }
+                    }
+                }
+
                 let contents = match hover.contents {
-                    lsp::HoverContents::Scalar(contents) => {
-                        // markedstring(string/languagestring to be highlighted)
-                        // TODO
-                        log::error!("hover contents {:?}", contents);
-                        return;
-                    }
-                    lsp::HoverContents::Array(contents) => {
-                        log::error!("hover contents {:?}", contents);
-                        return;
-                    }
-                    // TODO: render markdown
+                    lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
+                    lsp::HoverContents::Array(contents) => contents
+                        .into_iter()
+                        .map(marked_string_to_markdown)
+                        .collect::<Vec<_>>()
+                        .join("\n\n"),
                     lsp::HoverContents::Markup(contents) => contents.value,
                 };
 
@@ -4533,7 +5264,7 @@ fn expand_selection(cx: &mut Context) {
             doc.set_selection(view.id, selection);
         }
     };
-    motion(&mut cx.editor);
+    motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
@@ -4543,7 +5274,9 @@ fn match_brackets(cx: &mut Context) {
     if let Some(syntax) = doc.syntax() {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id).clone().transform(|range| {
-            if let Some(pos) = match_brackets::find(syntax, doc.text(), range.anchor) {
+            if let Some(pos) =
+                match_brackets::find_matching_bracket_fuzzy(syntax, doc.text(), range.anchor)
+            {
                 range.put_cursor(text, pos, doc.mode == Mode::Select)
             } else {
                 range
@@ -4639,13 +5372,36 @@ fn wclose(cx: &mut Context) {
     }
     let view_id = view!(cx.editor).id;
     // close current split
-    cx.editor.close(view_id, /* close_buffer */ false);
+    cx.editor.close(view_id);
+}
+
+fn wonly(cx: &mut Context) {
+    let views = cx
+        .editor
+        .tree
+        .views()
+        .map(|(v, focus)| (v.id, focus))
+        .collect::<Vec<_>>();
+    for (view_id, focus) in views {
+        if !focus {
+            cx.editor.close(view_id);
+        }
+    }
 }
 
 fn select_register(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
             cx.editor.selected_register = Some(ch);
+        }
+    })
+}
+
+fn insert_register(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        if let Some(ch) = event.char() {
+            cx.editor.selected_register = Some(ch);
+            paste_before(cx);
         }
     })
 }
@@ -4718,10 +5474,19 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count),
+                        'w' => textobject::textobject_word(text, range, objtype, count, false),
+                        'W' => textobject::textobject_word(text, range, objtype, count, true),
                         'c' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'p' => textobject_treesitter("parameter", range),
+                        'm' => {
+                            let ch = text.char(range.cursor(text));
+                            if !ch.is_ascii_alphanumeric() {
+                                textobject::textobject_surround(text, range, objtype, ch, count)
+                            } else {
+                                range
+                            }
+                        }
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
                             textobject::textobject_surround(text, range, objtype, ch, count)
@@ -4731,7 +5496,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 });
                 doc.set_selection(view.id, selection);
             };
-            textobject(&mut cx.editor);
+            textobject(cx.editor);
             cx.editor.last_motion = Some(Motion(Box::new(textobject)));
         }
     })
@@ -4897,9 +5662,7 @@ fn shell_impl(
 ) -> anyhow::Result<(Tendril, bool)> {
     use std::io::Write;
     use std::process::{Command, Stdio};
-    if shell.is_empty() {
-        bail!("No shell set");
-    }
+    ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = match Command::new(&shell[0])
         .args(&shell[1..])
@@ -4983,6 +5746,10 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
                 doc.apply(&transaction, view.id);
                 doc.append_changes_to_history(view.id);
             }
+
+            // after replace cursor may be out of bounds, do this to
+            // make sure cursor is in view and update scroll as well
+            view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
         },
     );
 
@@ -5026,4 +5793,105 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     let transaction = Transaction::change(text, changes);
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
+}
+
+fn rename_symbol(cx: &mut Context) {
+    let prompt = Prompt::new(
+        "rename-to:".into(),
+        None,
+        |_input: &str| Vec::new(),
+        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+
+            log::debug!("renaming to: {:?}", input);
+
+            let (view, doc) = current!(cx.editor);
+            let language_server = match doc.language_server() {
+                Some(language_server) => language_server,
+                None => return,
+            };
+
+            let offset_encoding = language_server.offset_encoding();
+
+            let pos = pos_to_lsp_pos(
+                doc.text(),
+                doc.selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..)),
+                offset_encoding,
+            );
+
+            let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
+            let edits = block_on(task).unwrap_or_default();
+            log::debug!("Edits from LSP: {:?}", edits);
+            apply_workspace_edit(cx.editor, offset_encoding, &edits);
+        },
+    );
+    cx.push_layer(Box::new(prompt));
+}
+
+/// Increment object under cursor by count.
+fn increment(cx: &mut Context) {
+    increment_impl(cx, cx.count() as i64);
+}
+
+/// Decrement object under cursor by count.
+fn decrement(cx: &mut Context) {
+    increment_impl(cx, -(cx.count() as i64));
+}
+
+/// Decrement object under cursor by `amount`.
+fn increment_impl(cx: &mut Context, amount: i64) {
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text().slice(..);
+
+    let changes: Vec<_> = selection
+        .ranges()
+        .iter()
+        .filter_map(|range| {
+            let incrementor: Box<dyn Increment> =
+                if let Some(incrementor) = DateTimeIncrementor::from_range(text, *range) {
+                    Box::new(incrementor)
+                } else if let Some(incrementor) = NumberIncrementor::from_range(text, *range) {
+                    Box::new(incrementor)
+                } else {
+                    return None;
+                };
+
+            let (range, new_text) = incrementor.increment(amount);
+
+            Some((range.from(), range.to(), Some(new_text)))
+        })
+        .collect();
+
+    // Overlapping changes in a transaction will panic, so we need to find and remove them.
+    // For example, if there are cursors on each of the year, month, and day of `2021-11-29`,
+    // incrementing will give overlapping changes, with each change incrementing a different part of
+    // the date. Since these conflict with each other we remove these changes from the transaction
+    // so nothing happens.
+    let mut overlapping_indexes = HashSet::new();
+    for (i, changes) in changes.windows(2).enumerate() {
+        if changes[0].1 > changes[1].0 {
+            overlapping_indexes.insert(i);
+            overlapping_indexes.insert(i + 1);
+        }
+    }
+    let changes = changes.into_iter().enumerate().filter_map(|(i, change)| {
+        if overlapping_indexes.contains(&i) {
+            None
+        } else {
+            Some(change)
+        }
+    });
+
+    if changes.clone().count() > 0 {
+        let transaction = Transaction::change(doc.text(), changes);
+        let transaction = transaction.with_selection(selection.clone());
+
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
+    }
 }

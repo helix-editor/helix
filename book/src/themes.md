@@ -145,11 +145,12 @@ We use a similar set of scopes as
     - `conditional` - `if`, `else`
     - `repeat` - `for`, `while`, `loop`
     - `import` - `import`, `export`
-    - (TODO: return?)
+    - `return`
+  - `operator` - `or`, `in`
   - `directive` - Preprocessor directives (`#if` in C) 
   - `function` - `fn`, `func`
 
-- `operator` - `||`, `+=`, `>`, `or`
+- `operator` - `||`, `+=`, `>`
 
 - `function`
   - `builtin`

@@ -16,11 +16,6 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     };
 
     // Separate file config so we can include year, month and day in file logs
-    let file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(logpath)?;
     let file_config = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -31,15 +26,20 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(file);
+        .chain(fern::log_file(logpath)?);
 
     base_config.chain(file_config).apply()?;
 
     Ok(())
 }
 
+fn main() -> Result<()> {
+    let exit_code = main_impl()?;
+    std::process::exit(exit_code);
+}
+
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main_impl() -> Result<i32> {
     let cache_dir = helix_core::cache_dir();
     if !cache_dir.exists() {
         std::fs::create_dir_all(&cache_dir).ok();
@@ -66,7 +66,7 @@ FLAGS:
     -V, --version    Prints version information
 ",
         env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION"),
+        env!("VERSION_AND_GIT_HASH"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
         logpath.display(),
@@ -81,7 +81,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("helix {}", env!("CARGO_PKG_VERSION"));
+        println!("helix {}", env!("VERSION_AND_GIT_HASH"));
         std::process::exit(0);
     }
 
@@ -109,7 +109,8 @@ FLAGS:
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;
-    app.run().await.unwrap();
 
-    Ok(())
+    let exit_code = app.run().await?;
+
+    Ok(exit_code)
 }

@@ -7,7 +7,7 @@ use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
 use log::{error, warn};
 
 use std::{
-    io::{stdout, Write},
+    io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -17,6 +17,7 @@ use anyhow::Error;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute, terminal,
+    tty::IsTty,
 };
 #[cfg(not(windows))]
 use {
@@ -60,14 +61,19 @@ impl Application {
             std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
 
         // load default and user config, and merge both
-        let def_lang_conf: toml::Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Could not parse built-in languages.toml, something must be very wrong");
-        let user_lang_conf: Option<toml::Value> = std::fs::read(conf_dir.join("languages.toml"))
+        let builtin_err_msg =
+            "Could not parse built-in languages.toml, something must be very wrong";
+        let def_lang_conf: toml::Value =
+            toml::from_slice(include_bytes!("../../languages.toml")).expect(builtin_err_msg);
+        let def_syn_loader_conf: helix_core::syntax::Configuration =
+            def_lang_conf.clone().try_into().expect(builtin_err_msg);
+        let user_lang_conf = std::fs::read(conf_dir.join("languages.toml"))
             .ok()
-            .map(|raw| toml::from_slice(&raw).expect("Could not parse user languages.toml"));
+            .map(|raw| toml::from_slice(&raw));
         let lang_conf = match user_lang_conf {
-            Some(value) => merge_toml_values(def_lang_conf, value),
-            None => def_lang_conf,
+            Some(Ok(value)) => Ok(merge_toml_values(def_lang_conf, value)),
+            Some(err @ Err(_)) => err,
+            None => Ok(def_lang_conf),
         };
 
         let theme = if let Some(theme) = &config.theme {
@@ -83,8 +89,15 @@ impl Application {
         };
 
         let syn_loader_conf: helix_core::syntax::Configuration = lang_conf
-            .try_into()
-            .expect("Could not parse merged (built-in + user) languages.toml");
+            .and_then(|conf| conf.try_into())
+            .unwrap_or_else(|err| {
+                eprintln!("Bad language config: {}", err);
+                eprintln!("Press <ENTER> to continue with default language config");
+                use std::io::Read;
+                // This waits for an enter press.
+                let _ = std::io::stdin().read(&mut []);
+                def_syn_loader_conf
+            });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut editor = Editor::new(
@@ -107,7 +120,7 @@ impl Application {
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                compositor.push(Box::new(ui::file_picker(".".into())));
+                compositor.push(Box::new(ui::file_picker(".".into(), &config.editor)));
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
@@ -122,8 +135,17 @@ impl Application {
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
             }
-        } else {
+        } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
+        } else if cfg!(target_os = "macos") {
+            // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
+            // This doesn't currently work on macOS because of the following issue:
+            //   https://github.com/crossterm-rs/crossterm/issues/500
+            anyhow::bail!("Piping into helix-term is currently not supported on macOS");
+        } else {
+            editor
+                .new_file_from_stdin(Action::VerticalSplit)
+                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
         editor.set_theme(theme);
@@ -243,17 +265,13 @@ impl Application {
         use crate::commands::{insert::idle_completion, Context};
         use helix_view::document::Mode;
 
-        if doc_mut!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
+        if doc!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
             return;
         }
         let editor_view = self
             .compositor
-            .find(std::any::type_name::<ui::EditorView>())
+            .find::<ui::EditorView>()
             .expect("expected at least one EditorView");
-        let editor_view = editor_view
-            .as_any_mut()
-            .downcast_mut::<ui::EditorView>()
-            .unwrap();
 
         if editor_view.completion.is_some() {
             return;
@@ -418,12 +436,8 @@ impl Application {
                     {
                         let editor_view = self
                             .compositor
-                            .find(std::any::type_name::<ui::EditorView>())
+                            .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let editor_view = editor_view
-                            .as_any_mut()
-                            .downcast_mut::<ui::EditorView>()
-                            .unwrap();
                         let lsp::ProgressParams { token, value } = params;
 
                         let lsp::ProgressParamsValue::WorkDone(work) = value;
@@ -537,12 +551,8 @@ impl Application {
 
                         let editor_view = self
                             .compositor
-                            .find(std::any::type_name::<ui::EditorView>())
+                            .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let editor_view = editor_view
-                            .as_any_mut()
-                            .downcast_mut::<ui::EditorView>()
-                            .unwrap();
                         let spinner = editor_view.spinners_mut().get_or_create(server_id);
                         if spinner.is_stopped() {
                             spinner.start();
@@ -577,7 +587,7 @@ impl Application {
         Ok(())
     }
 
-    pub async fn run(&mut self) -> Result<(), Error> {
+    pub async fn run(&mut self) -> Result<i32, Error> {
         self.claim_term().await?;
 
         // Exit the alternate screen and disable raw mode before panicking
@@ -600,6 +610,6 @@ impl Application {
 
         self.restore_term()?;
 
-        Ok(())
+        Ok(self.editor.exit_code)
     }
 }

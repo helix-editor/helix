@@ -15,6 +15,7 @@ a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
 "C-S-esc" = "extend_line" # Maps Control-Shift-Escape to extend_line
 g = { a = "code_action" } # Maps `ga` to show possible code actions
+"ret" = ["open_below", "normal_mode"] # Maps the enter key to open_below then re-enter normal mode
 
 [keys.insert]
 "A-x" = "normal_mode" # Maps Alt-X to enter normal mode
@@ -38,6 +39,7 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 | Left         | `"left"`       |
 | Right        | `"right"`      |
 | Up           | `"up"`         |
+| Down         | `"down"`       |
 | Home         | `"home"`       |
 | End          | `"end"`        |
 | Page         | `"pageup"`     |
@@ -51,4 +53,5 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 
 Keys can be disabled by binding them to the `no_op` command.
 
-Commands can be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
+Commands can be found at [Keymap](https://docs.helix-editor.com/keymap.html) Commands.
+> Commands can also be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs) at the invocation of `commands!` macro.

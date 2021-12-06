@@ -1,5 +1,8 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::{
+    compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key,
+};
+use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
@@ -95,27 +98,14 @@ impl<T: Component> Component for Popup<T> {
             compositor.pop();
         })));
 
-        match key {
+        match key.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => close_fn,
-
-            KeyEvent {
-                code: KeyCode::Char('d'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => close_fn,
+            ctrl!('d') => {
                 self.scroll(self.size.1 as usize / 2, true);
                 EventResult::Consumed(None)
             }
-            KeyEvent {
-                code: KeyCode::Char('u'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('u') => {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
             }

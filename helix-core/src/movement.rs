@@ -168,7 +168,7 @@ pub fn backwards_skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<u
 where
     F: Fn(char) -> bool,
 {
-    let mut chars_starting_from_next = slice.chars_at(pos + 1);
+    let mut chars_starting_from_next = slice.chars_at(pos);
     let mut backwards = iter::from_fn(|| chars_starting_from_next.prev()).enumerate();
     backwards.find_map(|(i, c)| {
         if !fun(c) {
