@@ -22,7 +22,7 @@ pub fn diagnostic<'doc>(
 
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         use helix_core::diagnostic::Severity;
-        if let Some(diagnostic) = diagnostics.iter().find(|d| d.line == line) {
+        if let Some(diagnostic) = diagnostics.binary_search_by_key(&line, |d| d.line) {
             write!(out, "●").unwrap();
             return Some(match diagnostic.severity {
                 Some(Severity::Error) => error,
