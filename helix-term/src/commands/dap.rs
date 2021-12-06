@@ -135,29 +135,14 @@ fn thread_picker(cx: &mut Context, callback_fn: impl Fn(&mut Editor, &dap::Threa
         },
         move |cx, thread, _action| callback_fn(cx.editor, thread),
         move |editor, thread| {
-            let frame = editor
-                .debugger
-                .as_ref()
-                .and_then(|debugger| debugger.stack_frames.get(&thread.id))
-                .and_then(|bt| bt.get(0));
-
-            if let Some(frame) = frame {
-                frame
-                    .source
-                    .as_ref()
-                    .and_then(|source| source.path.clone())
-                    .map(|path| {
-                        (
-                            path,
-                            Some((
-                                frame.line.saturating_sub(1),
-                                frame.end_line.unwrap_or(frame.line).saturating_sub(1),
-                            )),
-                        )
-                    })
-            } else {
-                None
-            }
+            let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
+            let frame = frames.get(0)?;
+            let path = frame.source.as_ref()?.path.clone()?;
+            let pos = Some((
+                frame.line.saturating_sub(1),
+                frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+            ));
+            Some((path, pos))
         },
     );
     cx.push_layer(Box::new(picker))
@@ -204,13 +189,10 @@ pub fn dap_start_impl(
 ) -> Result<(), anyhow::Error> {
     let doc = doc!(cx.editor);
 
-    let config = match doc
+    let config = doc
         .language_config()
         .and_then(|config| config.debugger.as_ref())
-    {
-        Some(c) => c,
-        None => bail!("No debug adapter available for language"),
-    };
+        .ok_or(anyhow!("No debug adapter available for language"))?;
 
     let result = match socket {
         Some(socket) => block_on(Client::tcp(socket, 0)),
@@ -239,11 +221,8 @@ pub fn dap_start_impl(
     let template = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
         None => config.templates.get(0),
-    };
-    let template = match template {
-        Some(template) => template,
-        None => bail!("No debug config with given name"),
-    };
+    }
+    .ok_or(anyhow!("No debug config with given name"))?;
 
     let mut args: HashMap<&str, Value> = HashMap::new();
 
