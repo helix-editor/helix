@@ -69,7 +69,7 @@
 | `"` `<reg>` | Select a register to yank to or paste from                       | `select_register`         |
 | `>`         | Indent selection                                                 | `indent`                  |
 | `<`         | Unindent selection                                               | `unindent`                |
-| `=`         | Format selection (**LSP**)                                       | `format_selections`       |
+| `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)    | `format_selections`       |
 | `d`         | Delete selection                                                 | `delete_selection`        |
 | `Alt-d`     | Delete selection, without yanking                                | `delete_selection_noyank` |
 | `c`         | Change selection (delete and enter insert mode)                  | `change_selection`        |
