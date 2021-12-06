@@ -82,6 +82,13 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
+    /// Total length of the range.
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.to() - self.from()
+    }
+
     /// The (inclusive) range of lines that the range overlaps.
     #[inline]
     #[must_use]
@@ -100,6 +107,20 @@ impl Range {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.anchor == self.head
+    }
+
+    /// `true` when head > anchor.
+    #[inline]
+    #[must_use]
+    pub fn is_forward(&self) -> bool {
+        self.head > self.anchor
+    }
+
+    /// `true` when head < anchor.
+    #[inline]
+    #[must_use]
+    pub fn is_backward(&self) -> bool {
+        self.head < self.anchor
     }
 
     /// Check two ranges for overlap.
