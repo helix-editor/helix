@@ -25,7 +25,7 @@ use anyhow::{anyhow, bail};
 pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
     // 1-indexing to 0 indexing
     let line = doc.try_line_to_char(line - 1).ok()?;
-    let pos = line + column;
+    let pos = line + column.saturating_sub(1);
     // TODO: this is probably utf-16 offsets
     Some(pos)
 }
