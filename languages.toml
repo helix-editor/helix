@@ -1,6 +1,5 @@
 [[language]]
 name = "rust"
-display-name = "Rust"
 scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
@@ -15,7 +14,6 @@ procMacro = { enable = false }
 
 [[language]]
 name = "toml"
-display-name = "TOML"
 scope = "source.toml"
 injection-regex = "toml"
 file-types = ["toml"]
@@ -26,7 +24,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "protobuf"
-display-name = "Protobuf"
 scope = "source.proto"
 injection-regex = "protobuf"
 file-types = ["proto"]
@@ -37,7 +34,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "elixir"
-display-name = "Elixir"
 scope = "source.elixir"
 injection-regex = "elixir"
 file-types = ["ex", "exs"]
@@ -50,7 +46,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "mint"
-display-name = "Mint"
 scope = "source.mint"
 injection-regex = "mint"
 file-types = ["mint"]
@@ -63,7 +58,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "json"
-display-name = "JSON"
 scope = "source.json"
 injection-regex = "json"
 file-types = ["json"]
@@ -73,7 +67,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "c"
-display-name = "C"
 scope = "source.c"
 injection-regex = "c"
 file-types = ["c"] # TODO: ["h"]
@@ -85,7 +78,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "cpp"
-display-name = "C++"
 scope = "source.cpp"
 injection-regex = "cpp"
 file-types = ["cc", "hh", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino"]
@@ -97,7 +89,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "c-sharp"
-display-name = "C#"
 scope = "source.csharp"
 injection-regex = "c-?sharp"
 file-types = ["cs"]
@@ -108,7 +99,6 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
 name = "go"
-display-name = "Go"
 scope = "source.go"
 injection-regex = "go"
 file-types = ["go"]
@@ -122,7 +112,6 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
 name = "javascript"
-display-name = "JavaScript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
 file-types = ["js", "mjs"]
@@ -135,7 +124,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "typescript"
-display-name = "TypeScript"
 scope = "source.ts"
 injection-regex = "^(ts|typescript)$"
 file-types = ["ts"]
@@ -148,7 +136,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "tsx"
-display-name = "TSX"
 scope = "source.tsx"
 injection-regex = "^(tsx)$" # |typescript
 file-types = ["tsx"]
@@ -160,7 +147,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "css"
-display-name = "CSS"
 scope = "source.css"
 injection-regex = "css"
 file-types = ["css"]
@@ -170,7 +156,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "html"
-display-name = "HTML"
 scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html"]
@@ -180,7 +165,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "python"
-display-name = "Python"
 scope = "source.python"
 injection-regex = "python"
 file-types = ["py"]
@@ -194,7 +178,6 @@ indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "nix"
-display-name = "Nix"
 scope = "source.nix"
 injection-regex = "nix"
 file-types = ["nix"]
@@ -207,7 +190,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "ruby"
-display-name = "Ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
 file-types = ["rb"]
@@ -220,7 +202,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "bash"
-display-name = "Bash"
 scope = "source.bash"
 injection-regex = "bash"
 file-types = ["sh", "bash"]
@@ -233,7 +214,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "php"
-display-name = "PHP"
 scope = "source.php"
 injection-regex = "php"
 file-types = ["php"]
@@ -244,7 +224,6 @@ indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "latex"
-display-name = "LaTeX"
 scope = "source.tex"
 injection-regex = "tex"
 file-types = ["tex"]
@@ -255,7 +234,6 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
 name = "julia"
-display-name = "Julia"
 scope = "source.julia"
 injection-regex = "julia"
 file-types = ["jl"]
@@ -271,7 +249,6 @@ language-server = { command = "julia", args = [
                 using Pkg;
                 import StaticLint;
                 env_path = dirname(Pkg.Types.Context().env.project_file);
-
                 server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, "");
                 server.runlinter = true;
                 run(server);
@@ -281,7 +258,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "java"
-display-name = "Java"
 scope = "source.java"
 injection-regex = "java"
 file-types = ["java"]
@@ -290,7 +266,6 @@ indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "ledger"
-display-name = "Ledger"
 scope = "source.ledger"
 injection-regex = "ledger"
 file-types = ["ldg", "ledger", "journal"]
@@ -300,7 +275,6 @@ indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "ocaml"
-display-name = "OCaml"
 scope = "source.ocaml"
 injection-regex = "ocaml"
 file-types = ["ml"]
@@ -311,7 +285,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "ocaml-interface"
-display-name = "OCaml-Interface"
 scope = "source.ocaml.interface"
 file-types = ["mli"]
 shebangs = []
@@ -321,7 +294,6 @@ indent = { tab-width = 2, unit = "  "}
 
 [[language]]
 name = "lua"
-display-name = "Lua"
 scope = "source.lua"
 file-types = ["lua"]
 shebangs = ["lua"]
@@ -331,7 +303,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "svelte"
-display-name = "Svelte"
 scope = "source.svelte"
 injection-regex = "svelte"
 file-types = ["svelte"]
@@ -342,7 +313,6 @@ language-server = { command = "svelteserver", args = ["--stdio"] }
 
 [[language]]
 name = "vue"
-display-name = "Vue"
 scope = "source.vue"
 injection-regex = "vue"
 file-types = ["vue"]
@@ -351,7 +321,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "yaml"
-display-name = "YAML"
 scope = "source.yaml"
 file-types = ["yml", "yaml"]
 roots = []
@@ -360,7 +329,6 @@ indent = { tab-width = 2, unit = "  " }
 
 # [[language]]
 # name = "haskell"
-# display-name = "Haskell"
 # scope = "source.haskell"
 # injection-regex = "haskell"
 # file-types = ["hs"]
@@ -371,7 +339,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "zig"
-display-name = "Zig"
 scope = "source.zig"
 injection-regex = "zig"
 file-types = ["zig"]
@@ -384,7 +351,6 @@ indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "prolog"
-display-name = "Prolog"
 scope = "source.prolog"
 roots = []
 file-types = ["pl", "prolog"]
@@ -398,7 +364,6 @@ language-server = { command = "swipl", args = [
 
 [[language]]
 name = "tsq"
-display-name = "TSQ"
 scope = "source.tsq"
 file-types = ["scm"]
 roots = []
@@ -407,7 +372,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "cmake"
-display-name = "CMake"
 scope = "source.cmake"
 file-types = ["cmake", "CMakeLists.txt"]
 roots = []
@@ -417,7 +381,6 @@ language-server = { command = "cmake-language-server" }
 
 [[language]]
 name = "glsl"
-display-name = "GLSL"
 scope = "source.glsl"
 file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
 roots = []
@@ -426,7 +389,6 @@ indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "perl"
-display-name = "Perl"
 scope = "source.perl"
 file-types = ["pl", "pm"]
 shebangs = ["perl"]
@@ -436,7 +398,6 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "racket"
-display-name = "Racket"
 scope = "source.rkt"
 roots = []
 file-types = ["rkt"]
@@ -446,7 +407,6 @@ language-server = { command = "racket", args = ["-l", "racket-langserver"] }
 
 [[language]]
 name = "wgsl"
-display-name = "WGSL"
 scope = "source.wgsl"
 file-types = ["wgsl"]
 roots = []
@@ -455,7 +415,6 @@ indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "llvm"
-display-name = "LLVM"
 scope = "source.llvm"
 roots = []
 file-types = ["ll"]

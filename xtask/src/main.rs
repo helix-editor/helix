@@ -184,7 +184,7 @@ pub mod md_gen {
                 .iter()
                 .find(|l| l.language_id == lang)
                 .unwrap(); // lang comes from config
-            row.push(lc.display_name.clone());
+            row.push(lc.language_id.clone());
 
             for (_feat, support_list) in &ts_features_to_langs {
                 row.push(

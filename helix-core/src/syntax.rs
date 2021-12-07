@@ -51,7 +51,6 @@ pub struct Configuration {
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
     pub language_id: String, // c-sharp, rust
-    pub display_name: String,    // C#, Rust
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     #[serde(default)]

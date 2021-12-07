@@ -1,41 +1,41 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
-| Bash | ✓ |  |  | `bash-language-server` |
-| C | ✓ |  |  | `clangd` |
-| C# | ✓ |  |  |  |
-| CMake | ✓ |  |  | `cmake-language-server` |
-| C++ | ✓ |  |  | `clangd` |
-| CSS | ✓ |  |  |  |
-| Elixir | ✓ |  |  | `elixir-ls` |
-| GLSL | ✓ |  | ✓ |  |
-| Go | ✓ | ✓ | ✓ | `gopls` |
-| HTML | ✓ |  |  |  |
-| Java | ✓ |  |  |  |
-| JavaScript | ✓ |  | ✓ |  |
-| JSON | ✓ |  | ✓ |  |
-| Julia | ✓ |  |  | `julia` |
-| LaTeX | ✓ |  |  |  |
-| Ledger | ✓ |  |  |  |
-| LLVM | ✓ |  |  |  |
-| Lua | ✓ |  | ✓ |  |
-| Mint |  |  |  | `mint` |
-| Nix | ✓ |  | ✓ | `rnix-lsp` |
-| OCaml | ✓ |  | ✓ |  |
-| OCaml-Interface | ✓ |  |  |  |
-| Perl | ✓ | ✓ |  |  |
-| PHP | ✓ |  | ✓ |  |
-| Prolog |  |  |  | `swipl` |
-| Protobuf | ✓ |  | ✓ |  |
-| Python | ✓ | ✓ | ✓ | `pylsp` |
-| Racket |  |  |  | `racket` |
-| Ruby | ✓ |  |  | `solargraph` |
-| Rust | ✓ | ✓ | ✓ | `rust-analyzer` |
-| Svelte | ✓ |  | ✓ | `svelteserver` |
-| TOML | ✓ |  |  |  |
-| TSQ | ✓ |  |  |  |
-| TSX | ✓ |  |  | `typescript-language-server` |
-| TypeScript | ✓ |  | ✓ | `typescript-language-server` |
-| Vue | ✓ |  |  |  |
-| WGSL | ✓ |  |  |  |
-| YAML | ✓ |  | ✓ |  |
-| Zig | ✓ |  | ✓ | `zls` |
+| bash | ✓ |  |  | `bash-language-server` |
+| c | ✓ |  |  | `clangd` |
+| c-sharp | ✓ |  |  |  |
+| cmake | ✓ |  |  | `cmake-language-server` |
+| cpp | ✓ |  |  | `clangd` |
+| css | ✓ |  |  |  |
+| elixir | ✓ |  |  | `elixir-ls` |
+| glsl | ✓ |  | ✓ |  |
+| go | ✓ | ✓ | ✓ | `gopls` |
+| html | ✓ |  |  |  |
+| java | ✓ |  |  |  |
+| javascript | ✓ |  | ✓ |  |
+| json | ✓ |  | ✓ |  |
+| julia | ✓ |  |  | `julia` |
+| latex | ✓ |  |  |  |
+| ledger | ✓ |  |  |  |
+| llvm | ✓ |  |  |  |
+| lua | ✓ |  | ✓ |  |
+| mint |  |  |  | `mint` |
+| nix | ✓ |  | ✓ | `rnix-lsp` |
+| ocaml | ✓ |  | ✓ |  |
+| ocaml-interface | ✓ |  |  |  |
+| perl | ✓ | ✓ |  |  |
+| php | ✓ |  | ✓ |  |
+| prolog |  |  |  | `swipl` |
+| protobuf | ✓ |  | ✓ |  |
+| python | ✓ | ✓ | ✓ | `pylsp` |
+| racket |  |  |  | `racket` |
+| ruby | ✓ |  |  | `solargraph` |
+| rust | ✓ | ✓ | ✓ | `rust-analyzer` |
+| svelte | ✓ |  | ✓ | `svelteserver` |
+| toml | ✓ |  |  |  |
+| tsq | ✓ |  |  |  |
+| tsx | ✓ |  |  | `typescript-language-server` |
+| typescript | ✓ |  | ✓ | `typescript-language-server` |
+| vue | ✓ |  |  |  |
+| wgsl | ✓ |  |  |  |
+| yaml | ✓ |  | ✓ |  |
+| zig | ✓ |  | ✓ | `zls` |
