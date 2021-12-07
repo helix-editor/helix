@@ -16,15 +16,17 @@ pub struct Popup<T: Component> {
     position: Option<Position>,
     size: (u16, u16),
     scroll: usize,
+    id: &'static str,
 }
 
 impl<T: Component> Popup<T> {
-    pub fn new(contents: T) -> Self {
+    pub fn new(id: &'static str, contents: T) -> Self {
         Self {
             contents,
             position: None,
             size: (0, 0),
             scroll: 0,
+            id,
         }
     }
 
@@ -142,5 +144,9 @@ impl<T: Component> Component for Popup<T> {
         surface.clear_with(area, background);
 
         self.contents.render(area, surface, cx);
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        Some(self.id)
     }
 }
