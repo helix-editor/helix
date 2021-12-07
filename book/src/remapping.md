@@ -11,6 +11,7 @@ this:
 ```toml
 # At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
+C-s = ":w" # Maps the Control-s to the typable command :w which is an alias for :write (save file)
 a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
 "C-S-esc" = "extend_line" # Maps Control-Shift-Escape to extend_line
@@ -21,6 +22,7 @@ g = { a = "code_action" } # Maps `ga` to show possible code actions
 "A-x" = "normal_mode" # Maps Alt-X to enter normal mode
 j = { k = "normal_mode" } # Maps `jk` to exit insert mode
 ```
+> NOTE: Typable commands can also be remapped, remember to keep the `:` prefix to indicate it's a typable command.
 
 Control, Shift and Alt modifiers are encoded respectively with the prefixes
 `C-`, `S-` and `A-`. Special keys are encoded as follows:
@@ -53,4 +55,4 @@ Control, Shift and Alt modifiers are encoded respectively with the prefixes
 Keys can be disabled by binding them to the `no_op` command.
 
 Commands can be found at [Keymap](https://docs.helix-editor.com/keymap.html) Commands.
-> Commands can also be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs) at the invocation of `commands!` macro.
+> Commands can also be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs) at the invocation of `static_commands!` macro and the `TypableCommandList`.
