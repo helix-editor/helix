@@ -30,8 +30,10 @@
 "namespace" = "light-magenta"
 "ui.help" = { fg = "white", bg = "black" }
 
-"info" = "light-gray"
-"hint" = "light-gray"
-"debug" = "light-gray"
-"diagnostic" = "light-gray"
+"diagnostic" = { modifiers = ["underlined"] }
+"ui.gutter" = { bg = "black" }
+"info" = "light-blue"
+"hint" = "gray"
+"debug" = "gray"
+"warning" = "yellow"
 "error" = "light-red"

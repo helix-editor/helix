@@ -29,8 +29,10 @@
 "namespace" = "magenta"
 "ui.help" = { fg = "white", bg = "black" }
 
-"info" = "gray"
+"diagnostic" = { modifiers = ["underlined"] }
+"ui.gutter" = { bg = "black" }
+"info" = "blue"
 "hint" = "gray"
 "debug" = "gray"
-"diagnostic" = "gray"
+"warning" = "yellow"
 "error" = "red"
