@@ -169,6 +169,8 @@ macro_rules! static_commands {
     }
 }
 
+use cmd::write_command as write;
+
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
@@ -394,6 +396,7 @@ impl MappableCommand {
         rename_symbol, "Rename symbol",
         increment, "Increment",
         decrement, "Decrement",
+        write, "Write current file",
     );
 }
 
@@ -2065,6 +2068,18 @@ mod cmd {
     ) -> anyhow::Result<()> {
         write_impl(cx, args.first())
     }
+
+    pub fn write_command(cx: &mut Context) {
+        let mut cx = compositor::Context {
+            editor: cx.editor,
+            scroll: None,
+            jobs: &mut Jobs::new(),
+        };
+
+        let path: Option<Box<Path>> = None;
+        write_impl(&mut cx, path).unwrap();
+    }
+
 
     fn new_file(
         cx: &mut compositor::Context,
