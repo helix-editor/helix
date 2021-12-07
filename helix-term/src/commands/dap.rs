@@ -21,6 +21,16 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
 
+#[macro_export]
+macro_rules! debugger {
+    ($editor:expr) => {{
+        match &mut $editor.debugger {
+            Some(debugger) => debugger,
+            None => return,
+        }
+    }};
+}
+
 // general utils:
 pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
     // 1-indexing to 0 indexing
@@ -42,10 +52,7 @@ pub fn resume_application(debugger: &mut Client) {
 }
 
 pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
-    let debugger = match &mut editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(editor);
 
     if !force && debugger.thread_id.is_some() {
         return;
@@ -103,10 +110,7 @@ fn thread_picker(
     cx: &mut Context,
     callback_fn: impl Fn(&mut Editor, &dap::Thread) + Send + 'static,
 ) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     let future = debugger.threads();
     dap_callback(
@@ -505,10 +509,7 @@ pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) 
         });
     }
 
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     if let Err(e) = breakpoints_changed(debugger, path, breakpoints) {
         cx.editor
@@ -517,10 +518,7 @@ pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) 
 }
 
 pub fn dap_continue(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.continue_thread(thread_id);
@@ -550,10 +548,7 @@ pub fn dap_pause(cx: &mut Context) {
 }
 
 pub fn dap_step_in(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.step_in(thread_id);
@@ -569,10 +564,7 @@ pub fn dap_step_in(cx: &mut Context) {
 }
 
 pub fn dap_step_out(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.step_out(thread_id);
@@ -588,10 +580,7 @@ pub fn dap_step_out(cx: &mut Context) {
 }
 
 pub fn dap_next(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
         let request = debugger.next(thread_id);
@@ -607,10 +596,7 @@ pub fn dap_next(cx: &mut Context) {
 }
 
 pub fn dap_variables(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     if debugger.thread_id.is_none() {
         cx.editor
@@ -657,10 +643,7 @@ pub fn dap_variables(cx: &mut Context) {
 }
 
 pub fn dap_terminate(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     let request = debugger.disconnect();
     if let Err(e) = block_on(request) {
@@ -671,10 +654,7 @@ pub fn dap_terminate(cx: &mut Context) {
 }
 
 pub fn dap_enable_exceptions(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     let filters = match &debugger.capabilities().exception_breakpoint_filters {
         Some(filters) => filters.iter().map(|f| f.filter.clone()).collect(),
@@ -688,10 +668,7 @@ pub fn dap_enable_exceptions(cx: &mut Context) {
 }
 
 pub fn dap_disable_exceptions(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     if let Err(e) = block_on(debugger.set_exception_breakpoints(vec![])) {
         cx.editor
@@ -724,10 +701,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                                 input => Some(input.to_owned()),
                             };
 
-                            let debugger = match &mut cx.editor.debugger {
-                                Some(debugger) => debugger,
-                                None => return,
-                            };
+                            let debugger = debugger!(cx.editor);
 
                             if let Err(e) = breakpoints_changed(debugger, path.clone(), breakpoints)
                             {
@@ -771,10 +745,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                                 input => Some(input.to_owned()),
                             };
 
-                            let debugger = match &mut cx.editor.debugger {
-                                Some(debugger) => debugger,
-                                None => return,
-                            };
+                            let debugger = debugger!(cx.editor);
                             if let Err(e) = breakpoints_changed(debugger, path.clone(), breakpoints)
                             {
                                 cx.editor
@@ -799,10 +770,7 @@ pub fn dap_switch_thread(cx: &mut Context) {
     })
 }
 pub fn dap_switch_stack_frame(cx: &mut Context) {
-    let debugger = match &mut cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => return,
-    };
+    let debugger = debugger!(cx.editor);
 
     let thread_id = match debugger.thread_id {
         Some(thread_id) => thread_id,
