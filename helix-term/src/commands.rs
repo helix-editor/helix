@@ -203,13 +203,6 @@ impl MappableCommand {
         }
     }
 
-    pub fn get_static_fun(&self) -> fn(&mut Context) {
-        match &self {
-            MappableCommand::Static { fun, .. } => *fun,
-            _ => panic!("please ensure that the command is static command"),
-        }
-    }
-
     #[rustfmt::skip]
     static_commands!(
         no_op, "Do nothing",
@@ -3581,7 +3574,6 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
-    doc.normal_mode_restore_indent = true;
 }
 
 // o inserts a new line after each line with a selection
@@ -3594,7 +3586,7 @@ fn open_above(cx: &mut Context) {
     open(cx, Open::Above)
 }
 
-pub(crate) fn normal_mode(cx: &mut Context) {
+fn normal_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     if doc.mode == Mode::Normal {
@@ -3603,18 +3595,39 @@ pub(crate) fn normal_mode(cx: &mut Context) {
 
     doc.mode = Mode::Normal;
 
-    if doc.normal_mode_restore_indent {
-        // remove whitespaces added by `open_below` or `open_above` command.
-        doc.normal_mode_restore_indent = false;
-        let text = doc.text().slice(..);
+    let doc_changes = doc.changes().changes();
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view.id).primary().cursor(text);
+    let mut can_restore_indent = false;
+
+    // Will remove whitespaces when user opens a new line(may additional insert only tabs or spaces)
+    // and goto normal mode.
+    //
+    // NOTE: when open a new line, changes will only contains 3 elements:
+    // retain(pos) -> insert(something) -> retain(remaining_length), the last retain is useless, we
+    // only concerned about the first two changes.
+    if doc_changes.len() == 3 {
+        if let helix_core::Operation::Retain(move_pos) = doc_changes[0] {
+            if let helix_core::Operation::Insert(ref inserted_str) = doc_changes[1] {
+                if move_pos + inserted_str.len32() as usize == pos
+                    && inserted_str.starts_with('\n')
+                    && inserted_str.chars().all(|ch| ch.is_whitespace())
+                {
+                    can_restore_indent = true;
+                }
+            }
+        }
+    };
+
+    if can_restore_indent {
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let pos = range.cursor(text);
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 (line_start_pos, pos, None)
             });
         doc.apply(&transaction, view.id);
     }
+
     doc.append_changes_to_history(view.id);
 
     // if leaving append mode, move cursor back by 1
@@ -5886,9 +5899,4 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
     }
-}
-
-pub(crate) fn cancel_restore_indent(cx: &mut Context) {
-    let (_, doc) = current!(cx.editor);
-    doc.normal_mode_restore_indent = false;
 }

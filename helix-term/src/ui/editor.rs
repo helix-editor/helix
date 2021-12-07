@@ -660,17 +660,6 @@ impl EditorView {
         let key_result = self.keymaps.get_mut(&mode).unwrap().get(event);
         self.autoinfo = key_result.sticky.map(|node| node.infobox());
 
-        // may cancel restore indent.
-        match &key_result.kind {
-            KeymapResultKind::Matched(command) => {
-                const NORMAL_MODE_FUNC: fn(&mut commands::Context) = commands::normal_mode;
-                if !matches!(command.get_static_fun(), NORMAL_MODE_FUNC) {
-                    commands::cancel_restore_indent(cxt);
-                }
-            }
-            _ => commands::cancel_restore_indent(cxt),
-        }
-
         match &key_result.kind {
             KeymapResultKind::Matched(command) => command.execute(cxt),
             KeymapResultKind::Pending(node) => self.autoinfo = Some(node.infobox()),
