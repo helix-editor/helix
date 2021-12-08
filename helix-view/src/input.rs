@@ -237,9 +237,19 @@ impl From<crossterm::event::KeyEvent> for KeyEvent {
 #[cfg(feature = "term")]
 impl From<KeyEvent> for crossterm::event::KeyEvent {
     fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
-        crossterm::event::KeyEvent {
-            code: code.into(),
-            modifiers: modifiers.into(),
+        if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
+            // special case for Shift-Tab -> BackTab
+            let mut modifiers = modifiers;
+            modifiers.remove(KeyModifiers::SHIFT);
+            crossterm::event::KeyEvent {
+                code: crossterm::event::KeyCode::BackTab,
+                modifiers: modifiers.into(),
+            }
+        } else {
+            crossterm::event::KeyEvent {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
         }
     }
 }
