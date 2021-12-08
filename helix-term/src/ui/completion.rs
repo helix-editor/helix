@@ -168,7 +168,7 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new(menu);
+        let popup = Popup::new("completion", menu);
         let mut completion = Self {
             popup,
             start_offset,

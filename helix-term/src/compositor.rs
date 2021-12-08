@@ -64,6 +64,10 @@ pub trait Component: Any + AnyComponent {
     fn type_name(&self) -> &'static str {
         std::any::type_name::<Self>()
     }
+
+    fn id(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 use anyhow::Error;
@@ -182,6 +186,14 @@ impl Compositor {
         self.layers
             .iter_mut()
             .find(|component| component.type_name() == type_name)
+            .and_then(|component| component.as_any_mut().downcast_mut())
+    }
+
+    pub fn find_id<T: 'static>(&mut self, id: &'static str) -> Option<&mut T> {
+        let type_name = std::any::type_name::<T>();
+        self.layers
+            .iter_mut()
+            .find(|component| component.type_name() == type_name && component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
 }
