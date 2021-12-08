@@ -124,10 +124,7 @@ fn thread_picker(
                 callback_fn(editor, &threads[0]);
                 return;
             }
-            let debugger = match &mut editor.debugger {
-                Some(debugger) => debugger,
-                None => return,
-            };
+            let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
             let picker = FilePicker::new(
@@ -535,10 +532,7 @@ pub fn dap_continue(cx: &mut Context) {
 
 pub fn dap_pause(cx: &mut Context) {
     thread_picker(cx, |editor, thread| {
-        let debugger = match &mut editor.debugger {
-            Some(debugger) => debugger,
-            None => return,
-        };
+        let debugger = debugger!(editor);
         let request = debugger.pause(thread.id);
         // NOTE: we don't need to set active thread id here because DAP will emit a "stopped" event
         if let Err(e) = block_on(request) {
@@ -670,7 +664,7 @@ pub fn dap_enable_exceptions(cx: &mut Context) {
 pub fn dap_disable_exceptions(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    if let Err(e) = block_on(debugger.set_exception_breakpoints(vec![])) {
+    if let Err(e) = block_on(debugger.set_exception_breakpoints(Vec::new())) {
         cx.editor
             .set_error(format!("Failed to set up exception breakpoints: {}", e));
     }
@@ -787,10 +781,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         frames,
         |frame| frame.name.clone().into(), // TODO: include thread_states in the label
         move |cx, frame, _action| {
-            let debugger = match &mut cx.editor.debugger {
-                Some(debugger) => debugger,
-                None => return,
-            };
+            let debugger = debugger!(cx.editor);
             // TODO: this should be simpler to find
             let pos = debugger.stack_frames[&thread_id]
                 .iter()
