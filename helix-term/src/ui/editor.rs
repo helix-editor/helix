@@ -947,10 +947,6 @@ impl Component for EditorView {
                 let (_, doc) = current!(cxt.editor);
                 let mode = doc.mode();
 
-                if let Some((_, keys)) = &mut cxt.editor.macro_recording {
-                    keys.push(key);
-                }
-
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
                     on_next_key(&mut cxt, key);

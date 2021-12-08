@@ -130,6 +130,10 @@ impl Compositor {
     }
 
     pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
+        if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
+            keys.push(key.into());
+        }
+
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
         for layer in self.layers.iter_mut().rev() {
