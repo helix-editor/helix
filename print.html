@@ -872,6 +872,8 @@ directory (default <code>~/.config/helix</code> in Linux systems) with a structu
 this:</p>
 <pre><code class="language-toml"># At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
+C-s = &quot;:w&quot; # Maps the Control-s to the typable command :w which is an alias for :write (save file)
+C-o = &quot;:open ~/.config/helix/config.toml&quot; # Maps the Control-o to opening of the helix config file
 a = &quot;move_char_left&quot; # Maps the 'a' key to the move_char_left command
 w = &quot;move_line_up&quot; # Maps the 'w' key move_line_up
 &quot;C-S-esc&quot; = &quot;extend_line&quot; # Maps Control-Shift-Escape to extend_line
@@ -882,6 +884,9 @@ g = { a = &quot;code_action&quot; } # Maps `ga` to show possible code actions
 &quot;A-x&quot; = &quot;normal_mode&quot; # Maps Alt-X to enter normal mode
 j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
 </code></pre>
+<blockquote>
+<p>NOTE: Typable commands can also be remapped, remember to keep the <code>:</code> prefix to indicate it's a typable command.</p>
+</blockquote>
 <p>Control, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
 <table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>
@@ -911,7 +916,7 @@ j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
 <p>Keys can be disabled by binding them to the <code>no_op</code> command.</p>
 <p>Commands can be found at <a href="https://docs.helix-editor.com/keymap.html">Keymap</a> Commands.</p>
 <blockquote>
-<p>Commands can also be found in the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a> at the invocation of <code>commands!</code> macro.</p>
+<p>Commands can also be found in the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a> at the invocation of <code>static_commands!</code> macro and the <code>TypableCommandList</code>.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="hooks"><a class="header" href="#hooks">Hooks</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="languages"><a class="header" href="#languages">Languages</a></h1>
