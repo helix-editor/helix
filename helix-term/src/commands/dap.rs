@@ -616,6 +616,9 @@ pub fn dap_variables(cx: &mut Context) {
     };
     let mut variables = Vec::new();
 
+    // TODO: group by scope
+    // TODO: ui::Text to use tui::text + styled builder
+
     for scope in scopes.iter() {
         let response = block_on(debugger.variables(scope.variables_reference));
 
