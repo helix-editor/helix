@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Hooks</title>
+        <title>Commands</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html" class="active"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html" class="active"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="hooks.html"><strong aria-hidden="true">4.3.</strong> Hooks</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -137,16 +137,60 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="hooks"><a class="header" href="#hooks">Hooks</a></h1>
+                        <h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<p>Command mode can be activated by pressing <code>:</code>, similar to vim. Built-in commands:</p>
+<table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>:quit</code>, <code>:q</code></td><td>Close the current view.</td></tr>
+<tr><td><code>:quit!</code>, <code>:q!</code></td><td>Close the current view forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:open</code>, <code>:o</code></td><td>Open a file from disk into the current view.</td></tr>
+<tr><td><code>:buffer-close</code>, <code>:bc</code>, <code>:bclose</code></td><td>Close the current buffer.</td></tr>
+<tr><td><code>:buffer-close!</code>, <code>:bc!</code>, <code>:bclose!</code></td><td>Close the current buffer forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:write</code>, <code>:w</code></td><td>Write changes to disk. Accepts an optional path (:write some/path.txt)</td></tr>
+<tr><td><code>:new</code>, <code>:n</code></td><td>Create a new scratch buffer.</td></tr>
+<tr><td><code>:format</code>, <code>:fmt</code></td><td>Format the file using the LSP formatter.</td></tr>
+<tr><td><code>:indent-style</code></td><td>Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)</td></tr>
+<tr><td><code>:line-ending</code></td><td>Set the document's default line ending. Options: crlf, lf, cr, ff, nel.</td></tr>
+<tr><td><code>:earlier</code>, <code>:ear</code></td><td>Jump back to an earlier point in edit history. Accepts a number of steps or a time span.</td></tr>
+<tr><td><code>:later</code>, <code>:lat</code></td><td>Jump to a later point in edit history. Accepts a number of steps or a time span.</td></tr>
+<tr><td><code>:write-quit</code>, <code>:wq</code>, <code>:x</code></td><td>Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)</td></tr>
+<tr><td><code>:write-quit!</code>, <code>:wq!</code>, <code>:x!</code></td><td>Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)</td></tr>
+<tr><td><code>:write-all</code>, <code>:wa</code></td><td>Write changes from all views to disk.</td></tr>
+<tr><td><code>:write-quit-all</code>, <code>:wqa</code>, <code>:xa</code></td><td>Write changes from all views to disk and close all views.</td></tr>
+<tr><td><code>:write-quit-all!</code>, <code>:wqa!</code>, <code>:xa!</code></td><td>Write changes from all views to disk and close all views forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:quit-all</code>, <code>:qa</code></td><td>Close all views.</td></tr>
+<tr><td><code>:quit-all!</code>, <code>:qa!</code></td><td>Close all views forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:cquit</code>, <code>:cq</code></td><td>Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).</td></tr>
+<tr><td><code>:theme</code></td><td>Change the editor theme.</td></tr>
+<tr><td><code>:clipboard-yank</code></td><td>Yank main selection into system clipboard.</td></tr>
+<tr><td><code>:clipboard-yank-join</code></td><td>Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.</td></tr>
+<tr><td><code>:primary-clipboard-yank</code></td><td>Yank main selection into system primary clipboard.</td></tr>
+<tr><td><code>:primary-clipboard-yank-join</code></td><td>Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.</td></tr>
+<tr><td><code>:clipboard-paste-after</code></td><td>Paste system clipboard after selections.</td></tr>
+<tr><td><code>:clipboard-paste-before</code></td><td>Paste system clipboard before selections.</td></tr>
+<tr><td><code>:clipboard-paste-replace</code></td><td>Replace selections with content of system clipboard.</td></tr>
+<tr><td><code>:primary-clipboard-paste-after</code></td><td>Paste primary clipboard after selections.</td></tr>
+<tr><td><code>:primary-clipboard-paste-before</code></td><td>Paste primary clipboard before selections.</td></tr>
+<tr><td><code>:primary-clipboard-paste-replace</code></td><td>Replace selections with content of system primary clipboard.</td></tr>
+<tr><td><code>:show-clipboard-provider</code></td><td>Show clipboard provider name in status bar.</td></tr>
+<tr><td><code>:change-current-directory</code>, <code>:cd</code></td><td>Change the current working directory.</td></tr>
+<tr><td><code>:show-directory</code>, <code>:pwd</code></td><td>Show the current working directory.</td></tr>
+<tr><td><code>:encoding</code></td><td>Set encoding based on <code>https://encoding.spec.whatwg.org</code></td></tr>
+<tr><td><code>:reload</code></td><td>Discard changes and reload from the source file.</td></tr>
+<tr><td><code>:tree-sitter-scopes</code></td><td>Display tree sitter scopes, primarily for theming and development.</td></tr>
+<tr><td><code>:vsplit</code>, <code>:vs</code></td><td>Open the file in a vertical split.</td></tr>
+<tr><td><code>:hsplit</code>, <code>:hs</code>, <code>:sp</code></td><td>Open the file in a horizontal split.</td></tr>
+<tr><td><code>:tutor</code></td><td>Open the tutorial.</td></tr>
+<tr><td><code>:goto</code>, <code>:g</code></td><td>Go to line number.</td></tr>
+</tbody></table>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="remapping.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="keymap.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
-                            <a rel="next" href="languages.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="lang-support.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         <div style="clear: both"></div>
@@ -155,10 +199,10 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="remapping.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="keymap.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
-                    <a rel="next" href="languages.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="lang-support.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
