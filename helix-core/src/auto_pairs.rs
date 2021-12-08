@@ -189,7 +189,7 @@ fn handle_same(
             //  return transaction that moves past close
             (start_head, start_head, None) // no-op
         } else {
-            let mut pair = Tendril::with_capacity(2);
+            let mut pair = Tendril::with_capacity(2 * token.len_utf8() as u32);
             pair.push_char(token);
 
             // for equal pairs, don't insert both open and close if either
