@@ -5876,7 +5876,7 @@ fn record_macro(cx: &mut Context) {
         cx.editor
             .set_status(format!("Recorded to register {}", reg));
     } else {
-        let reg = cx.register.take().unwrap_or('"');
+        let reg = cx.register.take().unwrap_or('@');
         cx.editor.macro_recording = Some((reg, Vec::new()));
         cx.editor
             .set_status(format!("Recording to register {}", reg));
@@ -5884,7 +5884,7 @@ fn record_macro(cx: &mut Context) {
 }
 
 fn play_macro(cx: &mut Context) {
-    let reg = cx.register.unwrap_or('"');
+    let reg = cx.register.unwrap_or('@');
     let keys = match cx
         .editor
         .registers
