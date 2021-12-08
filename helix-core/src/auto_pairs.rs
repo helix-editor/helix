@@ -58,13 +58,6 @@ pub fn hook(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> 
     None
 }
 
-fn next_char(doc: &Rope, pos: usize) -> Option<char> {
-    if pos >= doc.len_chars() {
-        return None;
-    }
-    Some(doc.char(pos))
-}
-
 fn prev_char(doc: &Rope, mut pos: usize) -> Option<char> {
     if pos == 0 {
         return None;
@@ -72,7 +65,7 @@ fn prev_char(doc: &Rope, mut pos: usize) -> Option<char> {
 
     pos -= 1;
 
-    next_char(doc, pos)
+    doc.get_char(pos)
 }
 
 fn handle_open(
@@ -89,7 +82,7 @@ fn handle_open(
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
         let start_head = start_range.head;
 
-        let next = next_char(doc, start_head);
+        let next = doc.get_char(start_head);
         let end_head = start_head + offs + open.len_utf8();
 
         let end_anchor = if start_range.is_empty() {
@@ -132,7 +125,7 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
 
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
         let start_head = start_range.head;
-        let next = next_char(doc, start_head);
+        let next = doc.get_char(start_head);
         let end_head = start_head + offs + close.len_utf8();
 
         let end_anchor = if start_range.is_empty() {
@@ -182,7 +175,7 @@ fn handle_same(
 
         end_ranges.push(Range::new(end_anchor, end_head));
 
-        let next = next_char(doc, start_head);
+        let next = doc.get_char(start_head);
         let prev = prev_char(doc, start_head);
 
         if next == Some(token) {
