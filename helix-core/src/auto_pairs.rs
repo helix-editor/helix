@@ -173,13 +173,13 @@ fn handle_same(
         let start_head = start_range.head;
         let end_head = start_head + offs + token.len_utf8();
 
+        // if selection, retain anchor, if cursor, move over
         let end_anchor = if start_range.is_empty() {
             end_head
         } else {
             start_range.anchor + offs
         };
 
-        // if selection, retain anchor, if cursor, move over
         end_ranges.push(Range::new(end_anchor, end_head));
 
         let next = next_char(doc, start_head);
