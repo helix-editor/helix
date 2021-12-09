@@ -3606,18 +3606,15 @@ fn normal_mode(cx: &mut Context) {
     // NOTE: when open a new line, changes will only contains 3 elements:
     // retain(pos) -> insert(something) -> retain(remaining_length), the last retain is useless, we
     // only concerned about the first two changes.
-    if doc_changes.len() == 3 {
-        if let helix_core::Operation::Retain(move_pos) = doc_changes[0] {
-            if let helix_core::Operation::Insert(ref inserted_str) = doc_changes[1] {
-                if move_pos + inserted_str.len32() as usize == pos
-                    && inserted_str.starts_with('\n')
-                    && inserted_str.chars().all(|ch| ch.is_whitespace())
-                {
-                    can_restore_indent = true;
-                }
-            }
+    use helix_core::Operation;
+    if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), _] = doc_changes {
+        if move_pos + inserted_str.len32() as usize == pos
+            && inserted_str.starts_with('\n')
+            && inserted_str.chars().all(|ch| ch.is_whitespace())
+        {
+            can_restore_indent = true;
         }
-    };
+    }
 
     if can_restore_indent {
         let transaction =
