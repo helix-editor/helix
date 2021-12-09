@@ -619,22 +619,41 @@ pub fn dap_variables(cx: &mut Context) {
     // TODO: group by scope
     // TODO: ui::Text to use tui::text + styled builder
 
+    // let contents = tui::text::Text::new();
+
+    let theme = &cx.editor.theme;
+    let scope_style = theme.get("ui.linenr.selected");
+    let type_style = theme.get("ui.text");
+    let text_style = theme.get("ui.text.focus");
+
     for scope in scopes.iter() {
+        // use helix_view::graphics::Style;
+        use tui::text::{Span, Spans};
         let response = block_on(debugger.variables(scope.variables_reference));
+
+        variables.push(Spans::from(Span::styled(
+            format!("▸ {}", scope.name),
+            scope_style,
+        )));
 
         if let Ok(vars) = response {
             variables.reserve(vars.len());
             for var in vars {
-                let prefix = match var.ty {
-                    Some(data_type) => format!("{} ", data_type),
-                    None => "".to_owned(),
-                };
-                variables.push(format!("{}{} = {}", prefix, var.name, var.value));
+                let mut spans = Vec::with_capacity(5);
+
+                spans.push(Span::styled(var.name.to_owned(), text_style));
+                if let Some(ty) = var.ty {
+                    spans.push(Span::raw(": "));
+                    spans.push(Span::styled(ty.to_owned(), type_style));
+                }
+                spans.push(Span::raw(" = "));
+                spans.push(Span::styled(var.value.to_owned(), text_style));
+                variables.push(Spans::from(spans));
             }
         }
     }
 
-    let contents = Text::new(variables.join("\n"));
+    let contents = Text::from(tui::text::Text::from(variables));
     let popup = Popup::new(contents);
     cx.push_layer(Box::new(popup));
 }
