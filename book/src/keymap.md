@@ -34,6 +34,7 @@
 | `Ctrl-d`    | Move half page down                                | `half_page_down`            |
 | `Ctrl-i`    | Jump forward on the jumplist                       | `jump_forward`              |
 | `Ctrl-o`    | Jump backward on the jumplist                      | `jump_backward`             |
+| `Ctrl-s`    | Save the current selection to the jumplist         | `save_selection`            |
 | `v`         | Enter [select (extend) mode](#select--extend-mode) | `select_mode`               |
 | `g`         | Enter [goto mode](#goto-mode)                      | N/A                         |
 | `m`         | Enter [match mode](#match-mode)                    | N/A                         |
