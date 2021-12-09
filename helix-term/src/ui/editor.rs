@@ -336,7 +336,7 @@ impl EditorView {
                             let (grapheme, width) = if grapheme == "\t" {
                                 // make sure we display tab as appropriate amount of spaces
                                 let dynamic_tab_width = tab_width - (visual_x as usize % tab_width);
-                                (&tab[0..dynamic_tab_width], dynamic_tab_width)
+                                (&tab[..dynamic_tab_width], dynamic_tab_width)
                             } else {
                                 // Cow will prevent allocations if span contained in a single slice
                                 // which should really be the majority case
