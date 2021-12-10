@@ -241,11 +241,6 @@ impl Component for Markdown {
             } else if content_width > text_width {
                 text_width = content_width;
             }
-
-            if height >= viewport.1 {
-                height = viewport.1;
-                break;
-            }
         }
 
         Some((text_width + padding, height))

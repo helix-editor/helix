@@ -55,9 +55,10 @@ pub trait Component: Any + AnyComponent {
 
     /// May be used by the parent component to compute the child area.
     /// viewport is the maximum allowed area, and the child should stay within those bounds.
+    ///
+    /// The returned size might be larger than the viewport if the child is too big to fit.
+    /// In this case the parent can use the values to calculate scroll.
     fn required_size(&mut self, _viewport: (u16, u16)) -> Option<(u16, u16)> {
-        // TODO: for scrolling, the scroll wrapper should place a size + offset on the Context
-        // that way render can use it
         None
     }
 
