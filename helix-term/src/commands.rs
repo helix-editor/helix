@@ -394,8 +394,8 @@ impl MappableCommand {
         rename_symbol, "Rename symbol",
         increment, "Increment",
         decrement, "Decrement",
-        record_macro, "Toggle macro recording",
-        play_macro, "Play back a recorded macro",
+        record_macro, "Record macro",
+        play_macro, "Play macro",
     );
 }
 
