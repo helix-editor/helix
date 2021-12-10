@@ -362,6 +362,7 @@ impl MappableCommand {
         expand_selection, "Expand selection to parent syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
+        save_selection, "Save the current selection to the jumplist",
         jump_view_right, "Jump to the split to the right",
         jump_view_left, "Jump to the split to the left",
         jump_view_up, "Jump to the split above",
@@ -5283,6 +5284,12 @@ fn jump_backward(cx: &mut Context) {
 
         align_view(doc, view, Align::Center);
     };
+}
+
+fn save_selection(cx: &mut Context) {
+    push_jump(cx.editor);
+    cx.editor
+        .set_status("Selection saved to jumplist".to_owned());
 }
 
 fn rotate_view(cx: &mut Context) {
