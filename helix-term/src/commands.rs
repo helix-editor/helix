@@ -3613,10 +3613,7 @@ fn normal_mode(cx: &mut Context) {
     {
         if move_pos + inserted_str.len32() as usize == pos
             && inserted_str.starts_with('\n')
-            && inserted_str
-                .chars()
-                .skip(1)
-                .all(|ch| char_is_whitespace(ch))
+            && inserted_str.chars().skip(1).all(char_is_whitespace)
         {
             can_restore_indent = true;
         }
