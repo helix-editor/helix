@@ -154,3 +154,7 @@
 	path = helix-syntax/languages/tree-sitter-markdown
 	url = https://github.com/MDeiml/tree-sitter-markdown
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-dart"]
+	path = helix-syntax/languages/tree-sitter-dart
+	url = https://github.com/UserNobody14/tree-sitter-dart.git
+	shallow = true

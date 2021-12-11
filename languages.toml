@@ -430,3 +430,12 @@ file-types = ["md"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
+
+name = "dart"
+scope = "source.dart"
+file-types = ["dart"]
+roots = ["pubspec.yaml"]
+auto-format = true
+comment-token = "//"
+language-server = { command = "dart", args = ["language-server", "--client-id=helix"] }
+indent = { tab-width = 2, unit = "  " }
