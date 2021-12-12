@@ -1,8 +1,20 @@
+; Scopes
+;-------
+
+[
+ (block)
+ (try_statement)
+ (catch_clause)
+ (finally_clause)
+] @local.scope
+
+; Definitions
+;------------
+
 (class_definition
- body: (_) @scope)
+ body: (_) @local.definition)
 
- (block) @scope
+; References
+;------------
 
- (try_statement) @scope
- (catch_clause) @scope
- (finally_clause) @scope
+(identifier) @local.reference

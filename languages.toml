@@ -431,6 +431,7 @@ roots = []
 
 indent = { tab-width = 2, unit = "  " }
 
+[[language]]
 name = "dart"
 scope = "source.dart"
 file-types = ["dart"]
