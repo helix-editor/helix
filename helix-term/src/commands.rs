@@ -6020,12 +6020,12 @@ fn record_macro(cx: &mut Context) {
             .join(" ");
         cx.editor.registers.get_mut(reg).write(vec![s]);
         cx.editor
-            .set_status(format!("Recorded to register {}", reg));
+            .set_status(format!("Recorded to register [{}]", reg));
     } else {
         let reg = cx.register.take().unwrap_or('@');
         cx.editor.macro_recording = Some((reg, Vec::new()));
         cx.editor
-            .set_status(format!("Recording to register {}", reg));
+            .set_status(format!("Recording to register [{}]", reg));
     }
 }
 
