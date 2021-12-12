@@ -78,7 +78,7 @@
 | `Ctrl-a`    | Increment object (number) under cursor                           | `increment`               |
 | `Ctrl-x`    | Decrement object (number) under cursor                           | `decrement`               |
 | `Q`         | Start/stop macro recording to the selected register              | `record_macro`            |
-| `q`         | Play back a recorded macro from the selected register            | `play_macro`              |
+| `q`         | Play back a recorded macro from the selected register            | `replay_macro`            |
 
 #### Shell
 

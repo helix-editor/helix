@@ -594,7 +594,7 @@ impl Default for Keymaps {
             "P" => paste_before,
 
             "Q" => record_macro,
-            "q" => play_macro,
+            "q" => replay_macro,
 
             ">" => indent,
             "<" => unindent,

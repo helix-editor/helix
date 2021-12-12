@@ -396,7 +396,7 @@ impl MappableCommand {
         increment, "Increment",
         decrement, "Decrement",
         record_macro, "Record macro",
-        play_macro, "Play macro",
+        replay_macro, "Replay macro",
     );
 }
 
@@ -6015,7 +6015,7 @@ fn record_macro(cx: &mut Context) {
         keys.pop();
         let s = keys
             .into_iter()
-            .map(|key| format!("{}", key))
+            .map(|key| key.to_string())
             .collect::<Vec<_>>()
             .join(" ");
         cx.editor.registers.get_mut(reg).write(vec![s]);
@@ -6029,7 +6029,7 @@ fn record_macro(cx: &mut Context) {
     }
 }
 
-fn play_macro(cx: &mut Context) {
+fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
     let keys: Vec<KeyEvent> = if let Some([keys]) = cx.editor.registers.read(reg) {
         match keys.split_whitespace().map(str::parse).collect() {
