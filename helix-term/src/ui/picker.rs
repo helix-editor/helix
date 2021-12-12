@@ -404,7 +404,7 @@ impl<T: 'static> Component for Picker<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
