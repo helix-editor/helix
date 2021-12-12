@@ -5994,23 +5994,17 @@ fn record_macro(cx: &mut Context) {
 
 fn play_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
-    let keys = match cx
-        .editor
-        .registers
-        .get(reg)
-        .and_then(|reg| reg.read().get(0))
-        .context("Register empty")
-        .and_then(|s| {
-            s.split_whitespace()
-                .map(str::parse::<KeyEvent>)
-                .collect::<Result<Vec<_>, _>>()
-                .context("Failed to parse macro")
-        }) {
-        Ok(keys) => keys,
-        Err(e) => {
-            cx.editor.set_error(format!("{}", e));
-            return;
+    let keys: Vec<KeyEvent> = if let Some([keys]) = cx.editor.registers.read(reg) {
+        match keys.split_whitespace().map(str::parse).collect() {
+            Ok(keys) => keys,
+            Err(err) => {
+                cx.editor.set_error(format!("Invalid macro: {}", err));
+                return;
+            }
         }
+    } else {
+        cx.editor.set_error(format!("Register [{}] empty", reg));
+        return;
     };
     let count = cx.count();
 
