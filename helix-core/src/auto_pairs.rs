@@ -93,19 +93,14 @@ fn handle_open(
 
         match next {
             Some(ch) if !close_before.contains(ch) => {
-                offs += 1;
-                // TODO: else return (use default handler that inserts open)
+                offs += open.len_utf8();
                 (start_head, start_head, Some(Tendril::from_char(open)))
             }
             // None | Some(ch) if close_before.contains(ch) => {}
             _ => {
                 // insert open & close
-                let mut pair = Tendril::with_capacity(2);
-                pair.push_char(open);
-                pair.push_char(close);
-
-                offs += 2;
-
+                let pair = Tendril::from_iter([open, close]);
+                offs += open.len_utf8() + close.len_utf8();
                 (start_head, start_head, Some(pair))
             }
         }
@@ -139,8 +134,6 @@ fn handle_close(doc: &Rope, selection: &Selection, _open: char, close: char) -> 
             (start_head, start_head, None) // no-op
         } else {
             offs += close.len_utf8();
-
-            // TODO: else return (use default handler that inserts close)
             (start_head, start_head, Some(Tendril::from_char(close)))
         }
     });
@@ -192,7 +185,6 @@ fn handle_same(
             }
 
             offs += pair.len();
-
             (start_head, start_head, Some(pair))
         }
     });
