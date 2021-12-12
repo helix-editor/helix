@@ -58,14 +58,12 @@ pub fn hook(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> 
     None
 }
 
-fn prev_char(doc: &Rope, mut pos: usize) -> Option<char> {
+fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
     if pos == 0 {
         return None;
     }
 
-    pos -= 1;
-
-    doc.get_char(pos)
+    doc.get_char(pos - 1)
 }
 
 fn handle_open(
