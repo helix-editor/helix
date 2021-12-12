@@ -6031,6 +6031,7 @@ fn record_macro(cx: &mut Context) {
 
 fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
+    // TODO: macro keys should be parsed one by one and not space delimited (see kak)
     let keys: Vec<KeyEvent> = if let Some([keys]) = cx.editor.registers.read(reg) {
         match keys.split_whitespace().map(str::parse).collect() {
             Ok(keys) => keys,
