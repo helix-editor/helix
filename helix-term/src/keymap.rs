@@ -593,8 +593,8 @@ impl Default for Keymaps {
             // paste_all
             "P" => paste_before,
 
-            "q" => record_macro,
-            "Q" => play_macro,
+            "Q" => record_macro,
+            "q" => play_macro,
 
             ">" => indent,
             "<" => unindent,
