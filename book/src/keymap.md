@@ -77,8 +77,8 @@
 | `Alt-c`     | Change selection (delete and enter insert mode, without yanking) | `change_selection_noyank` |
 | `Ctrl-a`    | Increment object (number) under cursor                           | `increment`               |
 | `Ctrl-x`    | Decrement object (number) under cursor                           | `decrement`               |
-| `q`         | Start/stop macro recording to the selected register              | `record_macro`            |
-| `Q`         | Play back a recorded macro from the selected register            | `play_macro`              |
+| `Q`         | Start/stop macro recording to the selected register              | `record_macro`            |
+| `q`         | Play back a recorded macro from the selected register            | `play_macro`              |
 
 #### Shell
 
