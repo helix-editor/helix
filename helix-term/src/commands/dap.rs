@@ -614,12 +614,9 @@ pub fn dap_variables(cx: &mut Context) {
             return;
         }
     };
+
+    // TODO: allow expanding variables into sub-fields
     let mut variables = Vec::new();
-
-    // TODO: group by scope
-    // TODO: ui::Text to use tui::text + styled builder
-
-    // let contents = tui::text::Text::new();
 
     let theme = &cx.editor.theme;
     let scope_style = theme.get("ui.linenr.selected");
