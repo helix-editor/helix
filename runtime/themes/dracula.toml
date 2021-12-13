@@ -1,0 +1,57 @@
+# Author : Sebastian Zivota <loewenheim@mailbox.org>
+
+"escape" = { fg = "pink" }
+"type" = { fg = "cyan", modifiers = ["italic"] }
+"constant" = { fg = "purple" }
+"string" = { fg = "yellow" }
+"string.regexp" = { fg = "red" }
+"comment" = { fg = "comment" }
+"variable" = { fg = "foreground" }
+"variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
+"variable.parameter" = { fg ="orange", modifiers = ["italic"] }
+"punctuation" = { fg = "foreground" }
+"keyword" = { fg = "pink" }
+"operator" = { fg = "pink" }
+"function" = { fg = "green" }
+"tag" = { fg = "pink" }
+
+"ui.background" = { fg = "foreground", bg = "background" }
+"ui.cursor" =  { fg = "black", bg = "orange", modifiers = ["dim"] }
+"ui.cursor.primary" = { fg = "black", bg = "cyan", modifier = ["dim"] }
+"ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
+"ui.linenr" = { fg = "comment" }
+"ui.linenr.selected" = { fg = "foreground" }
+"ui.statusline" = { fg = "foreground", bg = "background_dark" }
+"ui.selection" = { fg = "black", bg = "purple", modifiers = ["dim"] }
+"ui.selection.primary" = { fg = "black", bg = "pink" }
+"ui.text" = { fg = "foreground" }
+"error" = { fg = "red" }
+"warning" = { fg = "cyan" }
+
+[palette]
+background = "#282a36"
+background_dark = "#21222c"
+foreground = "#f8f8f2"
+selection = "#44475a"
+comment = "#6272a4"
+red = "#ff5555"
+orange = "#ffb86c"
+yellow = "#f1fa8c"
+green = "#50fa7b"
+purple = "#bd93f9"
+cyan = "#8be9fd"
+pink = "#ff79c6"
+
+#ANSI
+black = "#21222c"
+blue = "#bd93f9"
+magenta = "#ff79c6"
+white = "#f8f8f2"
+bright_black = "#6272a4"
+bright_red = "#ff6e6e"
+bright_green = "#69ff94"
+bright_yellow = "#ffffa5"
+bright_blue = "#d6acff"
+bright_magenta = "#ff92df"
+bright_cyan = "#a4ffff"
+bright_white = "#ffffff"
