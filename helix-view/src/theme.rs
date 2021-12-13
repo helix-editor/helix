@@ -15,6 +15,10 @@ pub use crate::graphics::{Color, Modifier, Style};
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
     toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
 });
+pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| {
+    toml::from_slice(include_bytes!("../../base16_theme.toml"))
+        .expect("Failed to parse base 16 default theme")
+});
 
 #[derive(Clone, Debug)]
 pub struct Loader {
@@ -34,6 +38,9 @@ impl Loader {
     pub fn load(&self, name: &str) -> Result<Theme, anyhow::Error> {
         if name == "default" {
             return Ok(self.default());
+        }
+        if name == "base16_default" {
+            return Ok(self.base16_default());
         }
         let filename = format!("{}.toml", name);
 
@@ -73,6 +80,11 @@ impl Loader {
     /// Returns the default theme
     pub fn default(&self) -> Theme {
         DEFAULT_THEME.clone()
+    }
+
+    /// Returns the alternative 16-color default theme
+    pub fn base16_default(&self) -> Theme {
+        BASE16_DEFAULT_THEME.clone()
     }
 }
 
@@ -138,8 +150,7 @@ impl Theme {
     }
 
     pub fn get(&self, scope: &str) -> Style {
-        self.try_get(scope)
-            .unwrap_or_else(|| Style::default().fg(Color::Rgb(0, 0, 255)))
+        self.try_get(scope).unwrap_or_default()
     }
 
     pub fn try_get(&self, scope: &str) -> Option<Style> {
@@ -153,6 +164,14 @@ impl Theme {
 
     pub fn find_scope_index(&self, scope: &str) -> Option<usize> {
         self.scopes().iter().position(|s| s == scope)
+    }
+
+    pub fn is_16_color(&self) -> bool {
+        self.styles.iter().all(|(_, style)| {
+            [style.fg, style.bg]
+                .into_iter()
+                .all(|color| !matches!(color, Some(Color::Rgb(..))))
+        })
     }
 }
 

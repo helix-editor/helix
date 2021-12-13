@@ -2366,8 +2366,18 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let theme = args.first().context("theme not provided")?;
-        cx.editor.set_theme_from_name(theme)
+        let theme = args.first().context("Theme not provided")?;
+        let theme = cx
+            .editor
+            .theme_loader
+            .load(theme)
+            .with_context(|| format!("Failed setting theme {}", theme))?;
+        let true_color = cx.editor.config.true_color || crate::true_color();
+        if !(true_color || theme.is_16_color()) {
+            bail!("Unsupported theme: theme requires true color support");
+        }
+        cx.editor.set_theme(theme);
+        Ok(())
     }
 
     fn yank_main_selection_to_clipboard(
@@ -4189,8 +4199,9 @@ pub mod insert {
     // The default insert hook: simply insert the character
     #[allow(clippy::unnecessary_wraps)] // need to use Option<> because of the Hook signature
     fn insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
+        let cursors = selection.clone().cursors(doc.slice(..));
         let t = Tendril::from_char(ch);
-        let transaction = Transaction::insert(doc, selection, t);
+        let transaction = Transaction::insert(doc, &cursors, t);
         Some(transaction)
     }
 
@@ -4205,11 +4216,11 @@ pub mod insert {
         };
 
         let text = doc.text();
-        let selection = doc.selection(view.id).clone().cursors(text.slice(..));
+        let selection = doc.selection(view.id);
 
         // run through insert hooks, stopping on the first one that returns Some(t)
         for hook in hooks {
-            if let Some(transaction) = hook(text, &selection, c) {
+            if let Some(transaction) = hook(text, selection, c) {
                 doc.apply(&transaction, view.id);
                 break;
             }

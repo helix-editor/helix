@@ -20,7 +20,7 @@ use std::{
 
 use tokio::time::{sleep, Duration, Instant, Sleep};
 
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -105,6 +105,8 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
+    pub true_color: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
@@ -137,6 +139,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            true_color: false,
         }
     }
 }
@@ -263,15 +266,6 @@ impl Editor {
 
         self.theme = theme;
         self._refresh();
-    }
-
-    pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
-        let theme = self
-            .theme_loader
-            .load(theme.as_ref())
-            .with_context(|| format!("failed setting theme `{}`", theme))?;
-        self.set_theme(theme);
-        Ok(())
     }
 
     /// Refreshes the language server for a given document
