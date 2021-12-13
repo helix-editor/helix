@@ -425,6 +425,8 @@ impl EditorView {
 
         let mut offset = 0;
 
+        let gutter_style = theme.get("ui.gutter");
+
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
@@ -440,7 +442,7 @@ impl EditorView {
                         viewport.y + i as u16,
                         &text,
                         *width,
-                        style,
+                        gutter_style.patch(style),
                     );
                 }
                 text.clear();
