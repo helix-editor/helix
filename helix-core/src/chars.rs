@@ -1,3 +1,5 @@
+//! Utility functions to categorize a `char`.
+
 use crate::LineEnding;
 
 #[derive(Debug, Eq, PartialEq)]

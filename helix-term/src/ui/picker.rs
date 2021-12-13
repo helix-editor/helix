@@ -1,8 +1,9 @@
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key, shift,
     ui::EditorView,
 };
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::Event;
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, BorderType, Borders},
@@ -12,7 +13,12 @@ use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
-use std::{borrow::Cow, collections::HashMap, path::PathBuf};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::Position;
@@ -23,16 +29,57 @@ use helix_view::{
 };
 
 pub const MIN_SCREEN_WIDTH_FOR_PREVIEW: u16 = 80;
+/// Biggest file size to preview in bytes
+pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
-/// File path and line number (used to align and highlight a line)
+/// File path and range of lines (used to align and highlight lines)
 type FileLocation = (PathBuf, Option<(usize, usize)>);
 
 pub struct FilePicker<T> {
     picker: Picker<T>,
+    pub truncate_start: bool,
     /// Caches paths to documents
-    preview_cache: HashMap<PathBuf, Document>,
+    preview_cache: HashMap<PathBuf, CachedPreview>,
+    read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+}
+
+pub enum CachedPreview {
+    Document(Box<Document>),
+    Binary,
+    LargeFile,
+    NotFound,
+}
+
+// We don't store this enum in the cache so as to avoid lifetime constraints
+// from borrowing a document already opened in the editor.
+pub enum Preview<'picker, 'editor> {
+    Cached(&'picker CachedPreview),
+    EditorDocument(&'editor Document),
+}
+
+impl Preview<'_, '_> {
+    fn document(&self) -> Option<&Document> {
+        match self {
+            Preview::EditorDocument(doc) => Some(doc),
+            Preview::Cached(CachedPreview::Document(doc)) => Some(doc),
+            _ => None,
+        }
+    }
+
+    /// Alternate text to show for the preview.
+    fn placeholder(&self) -> &str {
+        match *self {
+            Self::EditorDocument(_) => "<File preview>",
+            Self::Cached(preview) => match preview {
+                CachedPreview::Document(_) => "<File preview>",
+                CachedPreview::Binary => "<Binary file>",
+                CachedPreview::LargeFile => "<File too large to preview>",
+                CachedPreview::NotFound => "<File not found>",
+            },
+        }
+    }
 }
 
 impl<T> FilePicker<T> {
@@ -44,7 +91,9 @@ impl<T> FilePicker<T> {
     ) -> Self {
         Self {
             picker: Picker::new(false, options, format_fn, callback_fn),
+            truncate_start: true,
             preview_cache: HashMap::new(),
+            read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
         }
     }
@@ -60,14 +109,45 @@ impl<T> FilePicker<T> {
             })
     }
 
-    fn calculate_preview(&mut self, editor: &Editor) {
-        if let Some((path, _line)) = self.current_file(editor) {
-            if !self.preview_cache.contains_key(&path) && editor.document_by_path(&path).is_none() {
-                // TODO: enable syntax highlighting; blocked by async rendering
-                let doc = Document::open(&path, None, Some(&editor.theme), None).unwrap();
-                self.preview_cache.insert(path, doc);
-            }
+    /// Get (cached) preview for a given path. If a document corresponding
+    /// to the path is already open in the editor, it is used instead.
+    fn get_preview<'picker, 'editor>(
+        &'picker mut self,
+        path: &Path,
+        editor: &'editor Editor,
+    ) -> Preview<'picker, 'editor> {
+        if let Some(doc) = editor.document_by_path(path) {
+            return Preview::EditorDocument(doc);
         }
+
+        if self.preview_cache.contains_key(path) {
+            return Preview::Cached(&self.preview_cache[path]);
+        }
+
+        let data = std::fs::File::open(path).and_then(|file| {
+            let metadata = file.metadata()?;
+            // Read up to 1kb to detect the content type
+            let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+            let content_type = content_inspector::inspect(&self.read_buffer[..n]);
+            self.read_buffer.clear();
+            Ok((metadata, content_type))
+        });
+        let preview = data
+            .map(
+                |(metadata, content_type)| match (metadata.len(), content_type) {
+                    (_, content_inspector::ContentType::BINARY) => CachedPreview::Binary,
+                    (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => CachedPreview::LargeFile,
+                    _ => {
+                        // TODO: enable syntax highlighting; blocked by async rendering
+                        Document::open(path, None, Some(&editor.theme), None)
+                            .map(|doc| CachedPreview::Document(Box::new(doc)))
+                            .unwrap_or(CachedPreview::NotFound)
+                    }
+                },
+            )
+            .unwrap_or(CachedPreview::NotFound);
+        self.preview_cache.insert(path.to_owned(), preview);
+        Preview::Cached(&self.preview_cache[path])
     }
 }
 
@@ -79,12 +159,12 @@ impl<T: 'static> Component for FilePicker<T> {
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
-        self.calculate_preview(cx.editor);
         let render_preview = area.width > MIN_SCREEN_WIDTH_FOR_PREVIEW;
         let area = inner_rect(area);
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
+        let text = cx.editor.theme.get("ui.text");
         surface.clear_with(area, background);
 
         let picker_width = if render_preview {
@@ -94,6 +174,7 @@ impl<T: 'static> Component for FilePicker<T> {
         };
 
         let picker_area = area.with_width(picker_width);
+        self.picker.truncate_start = self.truncate_start;
         self.picker.render(picker_area, surface, cx);
 
         if !render_preview {
@@ -113,17 +194,23 @@ impl<T: 'static> Component for FilePicker<T> {
             horizontal: 1,
         };
         let inner = inner.inner(&margin);
-
         block.render(preview_area, surface);
 
-        if let Some((doc, line)) = self.current_file(cx.editor).and_then(|(path, range)| {
-            cx.editor
-                .document_by_path(&path)
-                .or_else(|| self.preview_cache.get(&path))
-                .zip(Some(range))
-        }) {
+        if let Some((path, range)) = self.current_file(cx.editor) {
+            let preview = self.get_preview(&path, cx.editor);
+            let doc = match preview.document() {
+                Some(doc) => doc,
+                None => {
+                    let alt_text = preview.placeholder();
+                    let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
+                    let y = inner.y + inner.height / 2;
+                    surface.set_stringn(x, y, alt_text, inner.width as usize, text);
+                    return;
+                }
+            };
+
             // align to middle
-            let first_line = line
+            let first_line = range
                 .map(|(start, end)| {
                     let height = end.saturating_sub(start) + 1;
                     let middle = start + (height.saturating_sub(1) / 2);
@@ -150,7 +237,7 @@ impl<T: 'static> Component for FilePicker<T> {
             );
 
             // highlight the line
-            if let Some((start, end)) = line {
+            if let Some((start, end)) = range {
                 let offset = start.saturating_sub(first_line) as u16;
                 surface.set_style(
                     Rect::new(
@@ -193,6 +280,8 @@ pub struct Picker<T> {
     prompt: Prompt,
     /// Whether to render in the middle of the area
     render_centered: bool,
+    /// Wheather to truncate the start (default true)
+    pub truncate_start: bool,
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
@@ -222,6 +311,7 @@ impl<T> Picker<T> {
             cursor: 0,
             prompt,
             render_centered,
+            truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
         };
@@ -233,37 +323,28 @@ impl<T> Picker<T> {
     }
 
     pub fn score(&mut self) {
-        // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self {
-            ref mut matcher,
-            ref mut matches,
-            ref filters,
-            ref format_fn,
-            ..
-        } = *self;
-
         let pattern = &self.prompt.line;
 
         // reuse the matches allocation
-        matches.clear();
-        matches.extend(
+        self.matches.clear();
+        self.matches.extend(
             self.options
                 .iter()
                 .enumerate()
                 .filter_map(|(index, option)| {
                     // filter options first before matching
-                    if !filters.is_empty() {
-                        filters.binary_search(&index).ok()?;
+                    if !self.filters.is_empty() {
+                        self.filters.binary_search(&index).ok()?;
                     }
                     // TODO: maybe using format_fn isn't the best idea here
-                    let text = (format_fn)(option);
+                    let text = (self.format_fn)(option);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    matcher
+                    self.matcher
                         .fuzzy_match(&text, pattern)
                         .map(|score| (index, score))
                 }),
         );
-        matches.sort_unstable_by_key(|(_, score)| -score);
+        self.matches.sort_unstable_by_key(|(_, score)| -score);
 
         // reset cursor position
         self.cursor = 0;
@@ -323,78 +404,40 @@ impl<T: 'static> Component for Picker<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
 
-        match key_event {
-            KeyEvent {
-                code: KeyCode::Up, ..
-            }
-            | KeyEvent {
-                code: KeyCode::BackTab,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+        match key_event.into() {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
             }
-            KeyEvent {
-                code: KeyCode::Down,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Tab, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
                 self.move_down();
             }
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => {
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
+            key!(Enter) => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::Replace);
+                    (self.callback_fn)(cx.editor, option, Action::Replace);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char('h'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('s') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::HorizontalSplit);
+                    (self.callback_fn)(cx.editor, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char('v'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('v') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
+                    (self.callback_fn)(cx.editor, option, Action::VerticalSplit);
                 }
                 return close_fn;
             }
-            KeyEvent {
-                code: KeyCode::Char(' '),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!(' ') => {
                 self.save_filter();
             }
             _ => {
@@ -484,6 +527,7 @@ impl<T: 'static> Component for Picker<T> {
                     text_style
                 },
                 true,
+                self.truncate_start,
             );
         }
     }

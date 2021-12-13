@@ -60,8 +60,8 @@
 (system_lib_string) @string
 
 (null) @constant
-(number_literal) @number
-(char_literal) @string
+(number_literal) @constant.numeric.integer
+(char_literal) @constant.character
 
 (call_expression
   function: (identifier) @function)
@@ -73,7 +73,7 @@
 (preproc_function_def
   name: (identifier) @function.special)
 
-(field_identifier) @property
+(field_identifier) @variable.other.member
 (statement_identifier) @label
 (type_identifier) @type
 (primitive_type) @type

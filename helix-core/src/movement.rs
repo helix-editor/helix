@@ -53,6 +53,10 @@ pub fn move_vertically(
     let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
+    // TODO: switch this to use `visual_coords_at_pos` rather than
+    // `coords_at_pos` as this will cause a jerky movement when the visual
+    // position does not match, like moving from a line with tabs/CJK to
+    // a line without
     let Position { row, col } = coords_at_pos(slice, pos);
     let horiz = range.horiz.unwrap_or(col as u32);
 
@@ -164,7 +168,7 @@ pub fn backwards_skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<u
 where
     F: Fn(char) -> bool,
 {
-    let mut chars_starting_from_next = slice.chars_at(pos + 1);
+    let mut chars_starting_from_next = slice.chars_at(pos);
     let mut backwards = iter::from_fn(|| chars_starting_from_next.prev()).enumerate();
     backwards.find_map(|(i, c)| {
         if !fun(c) {

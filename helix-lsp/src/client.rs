@@ -257,6 +257,12 @@ impl Client {
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
+                    rename: Some(lsp::RenameClientCapabilities {
+                        dynamic_registration: Some(false),
+                        prepare_support: Some(false),
+                        prepare_support_default_behavior: None,
+                        honors_change_annotations: Some(false),
+                    }),
                     code_action: Some(lsp::CodeActionClientCapabilities {
                         code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
                             code_action_kind: lsp::CodeActionKindLiteralSupport {
@@ -461,7 +467,7 @@ impl Client {
         };
 
         let changes = match sync_capabilities {
-            lsp::TextDocumentSyncKind::Full => {
+            lsp::TextDocumentSyncKind::FULL => {
                 vec![lsp::TextDocumentContentChangeEvent {
                     // range = None -> whole document
                     range: None,        //Some(Range)
@@ -469,10 +475,11 @@ impl Client {
                     text: new_text.to_string(),
                 }]
             }
-            lsp::TextDocumentSyncKind::Incremental => {
+            lsp::TextDocumentSyncKind::INCREMENTAL => {
                 Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding)
             }
-            lsp::TextDocumentSyncKind::None => return None,
+            lsp::TextDocumentSyncKind::NONE => return None,
+            kind => unimplemented!("{:?}", kind),
         };
 
         Some(self.notify::<lsp::notification::DidChangeTextDocument>(
@@ -771,5 +778,26 @@ impl Client {
         };
 
         self.call::<lsp::request::CodeActionRequest>(params)
+    }
+
+    pub async fn rename_symbol(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        new_name: String,
+    ) -> anyhow::Result<lsp::WorkspaceEdit> {
+        let params = lsp::RenameParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            new_name,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::Rename>(params).await?;
+        Ok(response.unwrap_or_default())
     }
 }

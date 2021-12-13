@@ -1,11 +1,14 @@
 use std::borrow::Cow;
 
-use crate::{graphics::Rect, Document, DocumentId, ViewId};
+use crate::{
+    graphics::Rect,
+    gutter::{self, Gutter},
+    Document, DocumentId, ViewId,
+};
 use helix_core::{
-    coords_at_pos,
     graphemes::{grapheme_width, RopeGraphemes},
     line_ending::line_end_char_index,
-    Position, RopeSlice, Selection,
+    visual_coords_at_pos, Position, RopeSlice, Selection,
 };
 
 type Jump = (DocumentId, Selection);
@@ -55,7 +58,13 @@ impl JumpList {
             None
         }
     }
+
+    pub fn remove(&mut self, doc_id: &DocumentId) {
+        self.jumps.retain(|(other_id, _)| other_id != doc_id);
+    }
 }
+
+const GUTTERS: &[(Gutter, usize)] = &[(gutter::diagnostic, 1), (gutter::line_number, 5)];
 
 #[derive(Debug)]
 pub struct View {
@@ -66,6 +75,11 @@ pub struct View {
     pub jumps: JumpList,
     /// the last accessed file before the current one
     pub last_accessed_doc: Option<DocumentId>,
+    /// the last modified files before the current one
+    /// ordered from most frequent to least frequent
+    // uses two docs because we want to be able to swap between the
+    // two last modified docs which we need to manually keep track of
+    pub last_modified_docs: [Option<DocumentId>; 2],
 }
 
 impl View {
@@ -77,21 +91,39 @@ impl View {
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
+            last_modified_docs: [None, None],
         }
     }
 
-    pub fn inner_area(&self) -> Rect {
-        // TODO: not ideal
-        const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-        self.area.clip_left(OFFSET).clip_bottom(1) // -1 for statusline
+    pub fn gutters(&self) -> &[(Gutter, usize)] {
+        GUTTERS
     }
 
-    pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
+    pub fn inner_area(&self) -> Rect {
+        // TODO: cache this
+        let offset = self
+            .gutters()
+            .iter()
+            .map(|(_, width)| *width as u16)
+            .sum::<u16>()
+            + 1; // +1 for some space between gutters and line
+        self.area.clip_left(offset).clip_bottom(1) // -1 for statusline
+    }
+
+    //
+    pub fn offset_coords_to_in_view(
+        &self,
+        doc: &Document,
+        scrolloff: usize,
+    ) -> Option<(usize, usize)> {
         let cursor = doc
             .selection(self.id)
             .primary()
             .cursor(doc.text().slice(..));
-        let Position { col, row: line } = coords_at_pos(doc.text().slice(..), cursor);
+
+        let Position { col, row: line } =
+            visual_coords_at_pos(doc.text().slice(..), cursor, doc.tab_width());
+
         let inner_area = self.inner_area();
         let last_line = (self.offset.row + inner_area.height as usize).saturating_sub(1);
 
@@ -102,21 +134,41 @@ impl View {
 
         let last_col = self.offset.col + inner_area.width.saturating_sub(1) as usize;
 
-        if line > last_line.saturating_sub(scrolloff) {
+        let row = if line > last_line.saturating_sub(scrolloff) {
             // scroll down
-            self.offset.row += line - (last_line.saturating_sub(scrolloff));
+            self.offset.row + line - (last_line.saturating_sub(scrolloff))
         } else if line < self.offset.row + scrolloff {
             // scroll up
-            self.offset.row = line.saturating_sub(scrolloff);
-        }
+            line.saturating_sub(scrolloff)
+        } else {
+            self.offset.row
+        };
 
-        if col > last_col.saturating_sub(scrolloff) {
+        let col = if col > last_col.saturating_sub(scrolloff) {
             // scroll right
-            self.offset.col += col - (last_col.saturating_sub(scrolloff));
+            self.offset.col + col - (last_col.saturating_sub(scrolloff))
         } else if col < self.offset.col + scrolloff {
             // scroll left
-            self.offset.col = col.saturating_sub(scrolloff);
+            col.saturating_sub(scrolloff)
+        } else {
+            self.offset.col
+        };
+        if row == self.offset.row && col == self.offset.col {
+            None
+        } else {
+            Some((row, col))
         }
+    }
+
+    pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
+        if let Some((row, col)) = self.offset_coords_to_in_view(doc, scrolloff) {
+            self.offset.row = row;
+            self.offset.col = col;
+        }
+    }
+
+    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) -> bool {
+        self.offset_coords_to_in_view(doc, scrolloff).is_none()
     }
 
     /// Calculates the last visible line on screen
@@ -245,6 +297,7 @@ mod tests {
     use super::*;
     use helix_core::Rope;
     const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
+                           // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
 
     #[test]
     fn test_text_pos_at_screen_coords() {

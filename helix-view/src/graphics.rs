@@ -25,23 +25,12 @@ pub struct Margin {
 
 /// A simple rectangle used in the computation of the layout and to give widgets an hint about the
 /// area they are supposed to render to. (x, y) = (0, 0) is at the top left corner of the screen.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Rect {
     pub x: u16,
     pub y: u16,
     pub width: u16,
     pub height: u16,
-}
-
-impl Default for Rect {
-    fn default() -> Rect {
-        Rect {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-        }
-    }
 }
 
 impl Rect {

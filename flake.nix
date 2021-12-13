@@ -3,13 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
     nixCargoIntegration = {
       url = "github:yusdacra/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    flakeCompat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
+      inputs.rustOverlay.follows = "rust-overlay";
     };
   };
 
@@ -61,7 +59,7 @@
             '';
           };
         shell = common: prev: {
-          packages = prev.packages ++ (with common.pkgs; [ lld_10 lldb cargo-tarpaulin ]);
+          packages = prev.packages ++ (with common.pkgs; [ lld_13 lldb cargo-tarpaulin ]);
           env = prev.env ++ [
             { name = "HELIX_RUNTIME"; eval = "$PWD/runtime"; }
             { name = "RUST_BACKTRACE"; value = "1"; }

@@ -23,6 +23,10 @@ use crate::{DocumentId, Theme, ViewId};
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
+const DEFAULT_INDENT: IndentStyle = IndentStyle::Spaces(4);
+
+pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
     Normal,
@@ -94,9 +98,13 @@ pub struct Document {
     // It can be used as a cell where we will take it out to get some parts of the history and put
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
-    history: Cell<History>,
+    pub history: Cell<History>,
+
+    pub savepoint: Option<Transaction>,
+
     last_saved_revision: usize,
     version: i32, // should be usize?
+    pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
@@ -120,6 +128,7 @@ impl fmt::Debug for Document {
             // .field("history", &self.history)
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
+            .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
             .finish()
@@ -306,8 +315,7 @@ where
     T: Default,
     F: FnOnce(T) -> T,
 {
-    let t = mem::take(mut_ref);
-    let _ = mem::replace(mut_ref, f(t));
+    *mut_ref = f(mem::take(mut_ref));
 }
 
 use helix_lsp::lsp;
@@ -325,7 +333,8 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
-            indent_style: IndentStyle::Spaces(4),
+            indent_style: DEFAULT_INDENT,
+            line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
             restore_cursor: false,
             syntax: None,
@@ -335,9 +344,10 @@ impl Document {
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
+            savepoint: None,
             last_saved_revision: 0,
+            modified_since_accessed: false,
             language_server: None,
-            line_ending: DEFAULT_LINE_ENDING,
         }
     }
 
@@ -363,7 +373,7 @@ impl Document {
         let mut doc = Self::from(rope, Some(encoding));
 
         // set the path and try detecting the language
-        doc.set_path(path)?;
+        doc.set_path(Some(path))?;
         if let Some(loader) = config_loader {
             doc.detect_language(theme, loader);
         }
@@ -489,23 +499,23 @@ impl Document {
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: &syntax::Loader) {
         if let Some(path) = &self.path {
-            let language_config = config_loader.language_config_for_file_name(path);
+            let language_config = config_loader
+                .language_config_for_file_name(path)
+                .or_else(|| config_loader.language_config_for_shebang(self.text()));
             self.set_language(theme, language_config);
         }
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback  back to 2 space indentation if it isn't
+    /// configured in `languages.toml`, with a fallback to 4 space indentation if it isn't
     /// specified. Line ending is likewise auto-detected, and will fallback to the default OS
     /// line ending.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            IndentStyle::from_str(
-                self.language
-                    .as_ref()
-                    .and_then(|config| config.indent.as_ref())
-                    .map_or("  ", |config| config.unit.as_str()), // Fallback to 2 spaces.
-            )
+            self.language
+                .as_ref()
+                .and_then(|config| config.indent.as_ref())
+                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
         self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
     }
@@ -550,12 +560,14 @@ impl Document {
         self.encoding
     }
 
-    pub fn set_path(&mut self, path: &Path) -> Result<(), std::io::Error> {
-        let path = helix_core::path::get_canonicalized_path(path)?;
+    pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
+        let path = path
+            .map(helix_core::path::get_canonicalized_path)
+            .transpose()?;
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
-        self.path = Some(path);
+        self.path = path;
 
         Ok(())
     }
@@ -630,10 +642,21 @@ impl Document {
                     selection.clone().ensure_invariants(self.text.slice(..)),
                 );
             }
+
+            // set modified since accessed
+            self.modified_since_accessed = true;
         }
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+
+            // generate revert to savepoint
+            if self.savepoint.is_some() {
+                take_with(&mut self.savepoint, |prev_revert| {
+                    let revert = transaction.invert(&old_doc);
+                    Some(revert.compose(prev_revert.unwrap()))
+                });
+            }
 
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
@@ -644,14 +667,13 @@ impl Document {
             }
 
             // map state.diagnostics over changes::map_pos too
-            // NOTE: seems to do nothing since the language server resends diagnostics on each edit
-            // for diagnostic in &mut self.diagnostics {
-            //     use helix_core::Assoc;
-            //     let changes = transaction.changes();
-            //     diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
-            //     diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
-            //     diagnostic.line = self.text.char_to_line(diagnostic.range.start);
-            // }
+            for diagnostic in &mut self.diagnostics {
+                use helix_core::Assoc;
+                let changes = transaction.changes();
+                diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
+                diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
+                diagnostic.line = self.text.char_to_line(diagnostic.range.start);
+            }
 
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
@@ -692,8 +714,8 @@ impl Document {
         success
     }
 
-    /// Undo the last modification to the [`Document`].
-    pub fn undo(&mut self, view_id: ViewId) {
+    /// Undo the last modification to the [`Document`]. Returns whether the undo was successful.
+    pub fn undo(&mut self, view_id: ViewId) -> bool {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.undo() {
             self.apply_impl(transaction, view_id)
@@ -706,10 +728,11 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
+        success
     }
 
-    /// Redo the last modification to the [`Document`].
-    pub fn redo(&mut self, view_id: ViewId) {
+    /// Redo the last modification to the [`Document`]. Returns whether the redo was sucessful.
+    pub fn redo(&mut self, view_id: ViewId) -> bool {
         let mut history = self.history.take();
         let success = if let Some(transaction) = history.redo() {
             self.apply_impl(transaction, view_id)
@@ -722,22 +745,49 @@ impl Document {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
         }
+        success
+    }
+
+    pub fn savepoint(&mut self) {
+        self.savepoint = Some(Transaction::new(self.text()));
+    }
+
+    pub fn restore(&mut self, view_id: ViewId) {
+        if let Some(revert) = self.savepoint.take() {
+            self.apply(&revert, view_id);
+        }
     }
 
     /// Undo modifications to the [`Document`] according to `uk`.
-    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+    pub fn earlier(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
         let txns = self.history.get_mut().earlier(uk);
+        let mut success = false;
         for txn in txns {
-            self.apply_impl(&txn, view_id);
+            if self.apply_impl(&txn, view_id) {
+                success = true;
+            }
         }
+        if success {
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+        }
+        success
     }
 
     /// Redo modifications to the [`Document`] according to `uk`.
-    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) {
+    pub fn later(&mut self, view_id: ViewId, uk: helix_core::history::UndoKind) -> bool {
         let txns = self.history.get_mut().later(uk);
+        let mut success = false;
         for txn in txns {
-            self.apply_impl(&txn, view_id);
+            if self.apply_impl(&txn, view_id) {
+                success = true;
+            }
         }
+        if success {
+            // reset changeset to fix len
+            self.changes = ChangeSet::new(self.text());
+        }
+        success
     }
 
     /// Commit pending changes to history
@@ -894,6 +944,9 @@ impl Document {
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
+        // sort by range
+        self.diagnostics
+            .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
 }
 
