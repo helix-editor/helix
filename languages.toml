@@ -11,6 +11,7 @@ indent = { tab-width = 4, unit = "    " }
 [language.config]
 cargo = { loadOutDirsFromCheck = true }
 procMacro = { enable = false }
+diagnostics = { disabled = ["unresolved-proc-macro"] }
 
 [[language]]
 name = "toml"
