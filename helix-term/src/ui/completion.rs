@@ -328,8 +328,8 @@ impl Component for Completion {
                 let y = popup_y;
 
                 if let Some((rel_width, rel_height)) = markdown_doc.required_size((width, height)) {
-                    width = rel_width.clamp(0, width);
-                    height = rel_height.clamp(0, height);
+                    width = rel_width.min(width);
+                    height = rel_height.min(height);
                 }
                 Rect::new(x, y, width, height)
             } else {
