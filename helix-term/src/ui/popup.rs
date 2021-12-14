@@ -100,7 +100,7 @@ impl<T: Component> Component for Popup<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));

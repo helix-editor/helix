@@ -425,6 +425,8 @@ impl EditorView {
 
         let mut offset = 0;
 
+        let gutter_style = theme.get("ui.gutter");
+
         // avoid lots of small allocations by reusing a text buffer for each line
         let mut text = String::with_capacity(8);
 
@@ -440,7 +442,7 @@ impl EditorView {
                         viewport.y + i as u16,
                         &text,
                         *width,
-                        style,
+                        gutter_style.patch(style),
                     );
                 }
                 text.clear();
@@ -1100,13 +1102,31 @@ impl Component for EditorView {
                     disp.push_str(&s);
                 }
             }
+            let style = cx.editor.theme.get("ui.text");
+            let macro_width = if cx.editor.macro_recording.is_some() {
+                3
+            } else {
+                0
+            };
             surface.set_string(
-                area.x + area.width.saturating_sub(key_width),
+                area.x + area.width.saturating_sub(key_width + macro_width),
                 area.y + area.height.saturating_sub(1),
                 disp.get(disp.len().saturating_sub(key_width as usize)..)
                     .unwrap_or(&disp),
-                cx.editor.theme.get("ui.text"),
+                style,
             );
+            if let Some((reg, _)) = cx.editor.macro_recording {
+                let disp = format!("[{}]", reg);
+                let style = style
+                    .fg(helix_view::graphics::Color::Yellow)
+                    .add_modifier(Modifier::BOLD);
+                surface.set_string(
+                    area.x + area.width.saturating_sub(3),
+                    area.y + area.height.saturating_sub(1),
+                    &disp,
+                    style,
+                );
+            }
         }
 
         if let Some(completion) = self.completion.as_mut() {

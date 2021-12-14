@@ -2,6 +2,7 @@ use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::SCRATCH_BUFFER_NAME,
     graphics::{CursorKind, Rect},
+    input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
@@ -19,7 +20,7 @@ use std::{
 
 use tokio::time::{sleep, Duration, Instant, Sleep};
 
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -104,6 +105,8 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
+    pub true_color: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
@@ -136,6 +139,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            true_color: false,
         }
     }
 }
@@ -160,6 +164,7 @@ pub struct Editor {
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
     pub registers: Registers,
+    pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
@@ -203,6 +208,7 @@ impl Editor {
             documents: BTreeMap::new(),
             count: None,
             selected_register: None,
+            macro_recording: None,
             theme: theme_loader.default(),
             language_servers,
             syn_loader,
@@ -260,15 +266,6 @@ impl Editor {
 
         self.theme = theme;
         self._refresh();
-    }
-
-    pub fn set_theme_from_name(&mut self, theme: &str) -> anyhow::Result<()> {
-        let theme = self
-            .theme_loader
-            .load(theme.as_ref())
-            .with_context(|| format!("failed setting theme `{}`", theme))?;
-        self.set_theme(theme);
-        Ok(())
     }
 
     /// Refreshes the language server for a given document
