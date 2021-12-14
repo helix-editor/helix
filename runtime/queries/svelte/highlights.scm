@@ -25,7 +25,7 @@
 
 ((attribute
    (attribute_name) @_attr
-   (quoted_attribute_value (attribute_value) @markup.undeline.link))
+   (quoted_attribute_value (attribute_value) @markup.underline.link))
  (#match? @_attr "^(href|src)$"))
 
 (tag_name) @tag

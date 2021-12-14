@@ -150,3 +150,7 @@
 	path = helix-syntax/languages/tree-sitter-llvm
 	url = https://github.com/benwilliamgraham/tree-sitter-llvm
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-markdown"]
+	path = helix-syntax/languages/tree-sitter-markdown
+	url = https://github.com/MDeiml/tree-sitter-markdown
+	shallow = true
