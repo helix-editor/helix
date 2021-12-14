@@ -4681,6 +4681,7 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 }
 
 fn replace_with_yanked(cx: &mut Context) {
+    let count = cx.count();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
@@ -4690,12 +4691,12 @@ fn replace_with_yanked(cx: &mut Context) {
             let repeat = std::iter::repeat(
                 values
                     .last()
-                    .map(|value| Tendril::from_slice(value))
+                    .map(|value| Tendril::from_slice(&value.repeat(count)))
                     .unwrap(),
             );
             let mut values = values
                 .iter()
-                .map(|value| Tendril::from_slice(value))
+                .map(|value| Tendril::from_slice(&value.repeat(count)))
                 .chain(repeat);
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -4715,6 +4716,7 @@ fn replace_with_yanked(cx: &mut Context) {
 fn replace_selections_with_clipboard_impl(
     editor: &mut Editor,
     clipboard_type: ClipboardType,
+    count: usize,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
 
@@ -4722,7 +4724,11 @@ fn replace_selections_with_clipboard_impl(
         Ok(contents) => {
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                (range.from(), range.to(), Some(contents.as_str().into()))
+                (
+                    range.from(),
+                    range.to(),
+                    Some(contents.repeat(count).as_str().into()),
+                )
             });
 
             doc.apply(&transaction, view.id);
@@ -4734,11 +4740,11 @@ fn replace_selections_with_clipboard_impl(
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Clipboard);
+    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Clipboard, cx.count());
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection);
+    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection, cx.count());
 }
 
 fn paste_after(cx: &mut Context) {
