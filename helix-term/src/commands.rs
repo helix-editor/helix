@@ -4577,7 +4577,12 @@ fn paste_impl(
     action: Paste,
     count: usize,
 ) -> Option<Transaction> {
-    let repeat = std::iter::repeat(values.last().map(Cow::from).unwrap());
+    let repeat = std::iter::repeat(
+        values
+            .last()
+            .map(|value| Tendril::from(value.repeat(count)))
+            .unwrap(),
+    );
 
     // if any of values ends with a line ending, it's linewise paste
     let linewise = values
@@ -4590,6 +4595,7 @@ fn paste_impl(
     let mut values = values
         .iter()
         .map(|value| REGEX.replace_all(value, doc.line_ending.as_str()))
+        .map(|value| Tendril::from(value.as_ref().repeat(count)))
         .chain(repeat);
 
     let text = doc.text();
@@ -4609,8 +4615,7 @@ fn paste_impl(
             // paste append
             (Paste::After, false) => range.to(),
         };
-        let value = values.next().unwrap().repeat(count).into();
-        (pos, pos, Some(value))
+        (pos, pos, values.next())
     });
 
     Some(transaction)
