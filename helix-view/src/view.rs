@@ -64,7 +64,14 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[(gutter::diagnostic, 1), (gutter::line_number, 5)];
+const GUTTERS: &[(Gutter, usize)] = &[
+    // TODO: adaptive?
+    // only create if width > 0?
+    // width three for now to demonstrate.
+    (gutter::utility, 3),
+    (gutter::diagnostic, 1),
+    (gutter::line_number, 5),
+];
 
 #[derive(Debug)]
 pub struct View {
@@ -296,8 +303,9 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
-    const OFFSET: u16 = 7; // 1 diagnostic + 5 linenr + 1 gutter
-                           // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+    // if gutter sizes are variable OFFSET must be variable and inherit the value from widths of gutter.
+    const OFFSET: u16 = 10; // 3 utility + 1 diagnostic + 5 linenr + 1 gutter
+                            //let OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
 
     #[test]
     fn test_text_pos_at_screen_coords() {

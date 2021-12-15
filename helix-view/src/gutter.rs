@@ -6,6 +6,36 @@ pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> 
 pub type Gutter =
     for<'doc> fn(&'doc Document, &View, &Theme, &Config, bool, usize) -> GutterFn<'doc>;
 
+pub fn utility<'doc>(
+    _doc: &'doc Document,
+    _view: &View,
+    theme: &Theme,
+    _config: &Config,
+    is_focused: bool,
+    width: usize,
+) -> GutterFn<'doc> {
+    // matches line number styling.
+    let linenr: Style = theme.get("ui.linenr");
+    let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
+
+    Box::new(move |_line: usize, selected: bool, out: &mut String| {
+        let utility_style: Style = if selected && is_focused {
+            linenr_select
+        } else {
+            linenr
+        };
+        //write! may have to be replaced for highly variable messages or signs?
+        write!(out, "µµµ").unwrap();
+        if out.len() > width {
+            // TODO: status message warning - via editor?
+            // width already limits number of `out` chars to display.
+            return Some(utility_style);
+        } else {
+            return Some(utility_style);
+        }
+    })
+}
+
 pub fn diagnostic<'doc>(
     doc: &'doc Document,
     _view: &View,
@@ -49,7 +79,7 @@ pub fn line_number<'doc>(
     // document or not.  We only draw it if it's not an empty line.
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
 
-    let linenr = theme.get("ui.linenr");
+    let linenr: Style = theme.get("ui.linenr");
     let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
 
     let current_line = doc
