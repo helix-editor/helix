@@ -162,6 +162,20 @@ We use a similar set of scopes as
 
 - `namespace`
 
+- `markup`
+  - `heading`
+  - `list`
+    - `unnumbered`
+    - `numbered`
+  - `bold`
+  - `italic`
+  - `underline`
+    - `link`
+  - `quote`
+  - `raw`
+    - `inline`
+    - `block`
+
 #### Interface
 
 These scopes are used for theming the editor interface.
