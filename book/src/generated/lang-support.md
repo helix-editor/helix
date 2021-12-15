@@ -18,6 +18,7 @@
 | ledger | ✓ |  |  |  |
 | llvm | ✓ |  |  |  |
 | lua | ✓ |  | ✓ |  |
+| markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | ocaml | ✓ |  | ✓ |  |
