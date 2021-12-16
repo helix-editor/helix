@@ -104,10 +104,12 @@
 (infix_type operator: (operator_identifier) @operator)
 
 ; literals
-
 (boolean_literal) @constant.builtin.boolean
-; (integer_literal) @constant.numeric.integer
-; (floating_point_literal) @constant.builtin.boolean
+
+; [
+;   (decimal_integer_literal) 
+;   (decimal_floating_point_literal) 
+; ] @constant.numeric.integer
 
 [
 (symbol_literal)
@@ -144,7 +146,7 @@
   "with"
 ] @keyword
 
-; (null_literal) @keyword
+; (null_literal) @constant.builtin
 (wildcard) @keyword
 
 ;; special keywords
@@ -172,29 +174,29 @@
 ] @punctuation.delimiter
 
 ; [
- ; "do"
- ; "for"
- ; "while"
- ; "yield"
-; ] @repeat
+;  "do"
+;  "for"
+;  "while"
+;  "yield"
+; ] @keyword.control.repeat
 
 "def" @keyword.function
 
-;[
-; "=>"
-; "<-"
-; "@"
-;] @operator
+; [
+;   "=>"
+;   "<-"
+;   "@"
+; ] @keyword.operator
 
 "import" @include
 
-;[
+; [
 ;  "try"
 ;  "catch"
 ;  "throw"
-;] @exception
+; ] @keyword.control.exception
 
-;"return" @keyword.return
+; "return" @keyword.control.return
 
 (comment) @comment
 
