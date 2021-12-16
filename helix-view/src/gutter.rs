@@ -15,8 +15,10 @@ pub fn utility<'doc>(
     width: usize,
 ) -> GutterFn<'doc> {
     // matches line number styling.
+    // default style usage. Styling could be configurable also.
     let linenr: Style = theme.get("ui.linenr");
     let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
+    let warn_style: Style = theme.try_get("warning").unwrap_or(linenr);
 
     Box::new(move |_line: usize, selected: bool, out: &mut String| {
         let utility_style: Style = if selected && is_focused {
@@ -26,12 +28,13 @@ pub fn utility<'doc>(
         };
         //write! may have to be replaced for highly variable messages or signs?
         write!(out, "µµµ").unwrap();
-        if out.len() > width {
-            // TODO: status message warning - via editor?
+        if out.chars().count() > width {
+            // TODO: stronger warning: if possible
+            // status message warning - via editor? document?
             // width already limits number of `out` chars to display.
-            return Some(utility_style);
+            Some(warn_style)
         } else {
-            return Some(utility_style);
+            Some(utility_style)
         }
     })
 }
@@ -86,7 +89,7 @@ pub fn line_number<'doc>(
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let config = config.line_number;
+    let linenumber_config = config.line_number;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
         if line == last_line && !draw_last {
@@ -94,7 +97,7 @@ pub fn line_number<'doc>(
             Some(linenr)
         } else {
             use crate::editor::LineNumber;
-            let line = match config {
+            let line = match linenumber_config {
                 LineNumber::Absolute => line + 1,
                 LineNumber::Relative => {
                     if current_line == line {
