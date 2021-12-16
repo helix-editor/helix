@@ -430,3 +430,13 @@ file-types = ["md"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "scala"
+scope = "source.scala"
+injection-regex = "scala"
+file-types = ["scala"]
+roots = []
+comment-token = "//"
+language-server = { command = "metals" }
+indent = { tab-width = 2, unit = "  " }
