@@ -430,3 +430,12 @@ file-types = ["md"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "scala"
+scope = "source.scala"
+roots = ["build.sbt"]
+file-types = ["scala", "sbt"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "metals" }
