@@ -69,7 +69,7 @@
 
 (call_expression
   function: (field_expression
-    field: (identifier) @method))
+    field: (identifier) @function.method))
 
 ((call_expression
    function: (identifier) @variable.other.member)
@@ -89,12 +89,12 @@
   name: (identifier) @function)
 
 (parameter
-  name: (identifier) @parameter)
+  name: (identifier) @variable.parameter)
 
 ; expressions
 
 
-(field_expression field: (identifier) @property)
+(field_expression field: (identifier) @variable.other.member)
 (field_expression value: (identifier) @type
  (#match? @type "^[A-Z]"))
 
@@ -108,8 +108,10 @@
 (integer_literal) @constant.numeric.integer
 (floating_point_literal) @constant.numeric.float
 
+
+(symbol_literal) @string_special_symbol
+ 
 [
-(symbol_literal)
 (string)
 (character_literal)
 (interpolated_string_expression)
@@ -151,9 +153,9 @@
 "new" @keyword.operator
 
 [
-  "else"
-  "if"
-  "match"
+ "else"
+ "if"
+ "match"
  "try"
  "catch"
  "throw"
@@ -166,7 +168,7 @@
  "]"
  "{"
  "}"
-]  @punctuation.bracket
+] @punctuation.bracket
 
 [
  "."
@@ -188,7 +190,7 @@
   "@"
 ] @keyword.operator
 
-"import" @include
+"import" @keyword.control.import
 
 "return" @keyword.control.return
 
@@ -197,4 +199,4 @@
 ;; `case` is a conditional keyword in case_block
 
 (case_block
-  (case_clause ("case") @keyword.conditional))
+  (case_clause ("case") @keyword.control.conditional))
