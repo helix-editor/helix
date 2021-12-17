@@ -39,15 +39,15 @@
 (class_definition
   body: (template_body
     (function_definition
-      name: (identifier) @method)))
+      name: (identifier) @function.method)))
 (object_definition
   body: (template_body
     (function_definition
-      name: (identifier) @method)))
+      name: (identifier) @function.method)))
 (trait_definition
   body: (template_body
     (function_definition
-      name: (identifier) @method)))
+      name: (identifier) @function.method)))
 
 ; imports
 
@@ -72,8 +72,8 @@
     field: (identifier) @method))
 
 ((call_expression
-   function: (identifier) @constructor)
- (#match? @constructor "^[A-Z]"))
+   function: (identifier) @variable.other.member)
+ (#match? @variable.other.member "^[A-Z]"))
 
 (generic_function
   function: (identifier) @function)
@@ -105,11 +105,8 @@
 
 ; literals
 (boolean_literal) @constant.builtin.boolean
-
-; [
-;   (decimal_integer_literal) 
-;   (decimal_floating_point_literal) 
-; ] @constant.numeric.integer
+(integer_literal) @constant.numeric.integer
+(floating_point_literal) @constant.numeric.float
 
 [
 (symbol_literal)
@@ -146,7 +143,7 @@
   "with"
 ] @keyword
 
-; (null_literal) @constant.builtin
+(null_literal) @constant.builtin
 (wildcard) @keyword
 
 ;; special keywords
@@ -157,7 +154,10 @@
   "else"
   "if"
   "match"
-] @conditional
+ "try"
+ "catch"
+ "throw"
+] @keyword.control.conditional
 
 [
  "("
@@ -173,34 +173,28 @@
  ","
 ] @punctuation.delimiter
 
-; [
-;  "do"
-;  "for"
-;  "while"
-;  "yield"
-; ] @keyword.control.repeat
+[
+ "do"
+ "for"
+ "while"
+ "yield"
+] @keyword.control.repeat
 
 "def" @keyword.function
 
-; [
-;   "=>"
-;   "<-"
-;   "@"
-; ] @keyword.operator
+[
+  "=>"
+  "<-"
+  "@"
+] @keyword.operator
 
 "import" @include
 
-; [
-;  "try"
-;  "catch"
-;  "throw"
-; ] @keyword.control.exception
-
-; "return" @keyword.control.return
+"return" @keyword.control.return
 
 (comment) @comment
 
 ;; `case` is a conditional keyword in case_block
 
 (case_block
-  (case_clause ("case") @conditional))
+  (case_clause ("case") @keyword.conditional))
