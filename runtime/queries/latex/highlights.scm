@@ -278,7 +278,7 @@
   "\\includeinkscape"
   "\\usepgflibrary"
   "\\usetikzlibrary"
-] @include
+] @keyword.control.import
 
 [
   "\\part"
