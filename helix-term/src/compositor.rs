@@ -21,6 +21,7 @@ pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 pub enum EventResult {
     Ignored,
     Consumed(Option<Callback>),
+    Used(Callback),
 }
 
 use helix_view::Editor;
@@ -138,16 +139,22 @@ impl Compositor {
 
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
-        for layer in self.layers.iter_mut().rev() {
+        for i in (0..self.layers.len()).rev() {
+            let layer = self.layers[i].as_mut();
+
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
                     callback(self, cx);
                     return true;
                 }
                 EventResult::Consumed(None) => return true,
-                EventResult::Ignored => false,
+                EventResult::Used(callback) => {
+                    callback(self, cx);
+                }
+                EventResult::Ignored => {}
             };
         }
+
         false
     }
 
