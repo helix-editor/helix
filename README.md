@@ -55,16 +55,6 @@ that sets the variable to the install dir.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
-
-## Fedora Linux
-
-You can install the COPR package for Helix via
-
-```
-sudo dnf copr enable varlad/helix
-sudo dnf install helix
-```
-
 ## MacOS
 Helix can be installed on MacOS through homebrew via:
 
