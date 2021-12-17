@@ -2,7 +2,6 @@
 
 ;; variables
 
-(identifier) @variable
 
 ((identifier) @variable.builtin
  (#match? @variable.builtin "^this$"))
@@ -109,7 +108,7 @@
 (floating_point_literal) @constant.numeric.float
 
 
-(symbol_literal) @string_special_symbol
+(symbol_literal) @string.special.symbol
  
 [
 (string)
@@ -200,3 +199,5 @@
 
 (case_block
   (case_clause ("case") @keyword.control.conditional))
+
+(identifier) @variable
