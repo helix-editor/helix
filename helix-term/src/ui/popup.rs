@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Compositor, Context, EventResult},
     ctrl, key,
 };
 use crossterm::event::Event;
@@ -100,14 +100,14 @@ impl<T: Component> Component for Popup<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_fn: Callback = Box::new(|compositor, _| {
             // remove the layer
             compositor.pop();
-        })));
+        });
 
         match key.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            key!(Esc) | ctrl!('c') => close_fn,
+            key!(Esc) | ctrl!('c') => EventResult::Consumed(Some(close_fn)),
             ctrl!('d') => {
                 self.scroll(self.size.1 as usize / 2, true);
                 EventResult::Consumed(None)
@@ -116,7 +116,15 @@ impl<T: Component> Component for Popup<T> {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
             }
-            _ => self.contents.handle_event(event, cx),
+            _ => {
+                let contents_event_result = self.contents.handle_event(event, cx);
+
+                if let EventResult::Ignored = contents_event_result {
+                    EventResult::Used(close_fn)
+                } else {
+                    contents_event_result
+                }
+            }
         }
         // for some events, we want to process them but send ignore, specifically all input except
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
