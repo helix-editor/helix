@@ -46,7 +46,7 @@ pub struct FilePicker<T> {
 }
 
 pub enum CachedPreview {
-    Document(Document),
+    Document(Box<Document>),
     Binary,
     LargeFile,
     NotFound,
@@ -140,7 +140,7 @@ impl<T> FilePicker<T> {
                     _ => {
                         // TODO: enable syntax highlighting; blocked by async rendering
                         Document::open(path, None, Some(&editor.theme), None)
-                            .map(CachedPreview::Document)
+                            .map(|doc| CachedPreview::Document(Box::new(doc)))
                             .unwrap_or(CachedPreview::NotFound)
                     }
                 },
@@ -404,13 +404,13 @@ impl<T: 'static> Component for Picker<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
 
         match key_event.into() {
-            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
@@ -421,19 +421,19 @@ impl<T: 'static> Component for Picker<T> {
             }
             key!(Enter) => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::Replace);
+                    (self.callback_fn)(cx.editor, option, Action::Replace);
                 }
                 return close_fn;
             }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::HorizontalSplit);
+                    (self.callback_fn)(cx.editor, option, Action::HorizontalSplit);
                 }
                 return close_fn;
             }
             ctrl!('v') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(&mut cx.editor, option, Action::VerticalSplit);
+                    (self.callback_fn)(cx.editor, option, Action::VerticalSplit);
                 }
                 return close_fn;
             }

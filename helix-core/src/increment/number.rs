@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use ropey::RopeSlice;
 
+use super::Increment;
+
 use crate::{
     textobject::{textobject_word, TextObject},
     Range, Tendril,
@@ -9,9 +11,9 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct NumberIncrementor<'a> {
-    pub range: Range,
-    pub value: i64,
-    pub radix: u32,
+    value: i64,
+    radix: u32,
+    range: Range,
 
     text: RopeSlice<'a>,
 }
@@ -71,9 +73,10 @@ impl<'a> NumberIncrementor<'a> {
             text,
         })
     }
+}
 
-    /// Add `amount` to the number and return the formatted text.
-    pub fn incremented_text(&self, amount: i64) -> Tendril {
+impl<'a> Increment for NumberIncrementor<'a> {
+    fn increment(&self, amount: i64) -> (Range, Tendril) {
         let old_text: Cow<str> = self.text.slice(self.range.from()..self.range.to()).into();
         let old_length = old_text.len();
         let new_value = self.value.wrapping_add(amount);
@@ -144,7 +147,7 @@ impl<'a> NumberIncrementor<'a> {
             }
         }
 
-        new_text.into()
+        (self.range, new_text.into())
     }
 }
 
@@ -366,7 +369,8 @@ mod test {
             assert_eq!(
                 NumberIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
-                    .incremented_text(amount),
+                    .increment(amount)
+                    .1,
                 expected.into()
             );
         }
@@ -392,7 +396,8 @@ mod test {
             assert_eq!(
                 NumberIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
-                    .incremented_text(amount),
+                    .increment(amount)
+                    .1,
                 expected.into()
             );
         }
@@ -419,7 +424,8 @@ mod test {
             assert_eq!(
                 NumberIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
-                    .incremented_text(amount),
+                    .increment(amount)
+                    .1,
                 expected.into()
             );
         }
@@ -464,7 +470,8 @@ mod test {
             assert_eq!(
                 NumberIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
-                    .incremented_text(amount),
+                    .increment(amount)
+                    .1,
                 expected.into()
             );
         }
@@ -491,7 +498,8 @@ mod test {
             assert_eq!(
                 NumberIncrementor::from_range(rope.slice(..), range)
                     .unwrap()
-                    .incremented_text(amount),
+                    .increment(amount)
+                    .1,
                 expected.into()
             );
         }

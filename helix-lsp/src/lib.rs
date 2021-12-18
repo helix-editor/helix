@@ -337,7 +337,10 @@ impl Registry {
                         })
                         .await;
 
-                    value.expect("failed to initialize capabilities");
+                    if let Err(e) = value {
+                        log::error!("failed to initialize language server: {}", e);
+                        return;
+                    }
 
                     // next up, notify<initialized>
                     _client

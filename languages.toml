@@ -11,6 +11,7 @@ indent = { tab-width = 4, unit = "    " }
 [language.config]
 cargo = { loadOutDirsFromCheck = true }
 procMacro = { enable = false }
+diagnostics = { disabled = ["unresolved-proc-macro"] }
 
 [[language]]
 name = "toml"
@@ -249,7 +250,6 @@ language-server = { command = "julia", args = [
                 using Pkg;
                 import StaticLint;
                 env_path = dirname(Pkg.Types.Context().env.project_file);
-
                 server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, "");
                 server.runlinter = true;
                 run(server);
@@ -395,4 +395,38 @@ file-types = ["pl", "pm"]
 shebangs = ["perl"]
 roots = []
 comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "racket"
+scope = "source.rkt"
+roots = []
+file-types = ["rkt"]
+shebangs = ["racket"]
+comment-token = ";"
+language-server = { command = "racket", args = ["-l", "racket-langserver"] }
+
+[[language]]
+name = "wgsl"
+scope = "source.wgsl"
+file-types = ["wgsl"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "llvm"
+scope = "source.llvm"
+roots = []
+file-types = ["ll"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "markdown"
+scope = "source.md"
+injection-regex = "md|markdown"
+file-types = ["md"]
+roots = []
+
 indent = { tab-width = 2, unit = "  " }

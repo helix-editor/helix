@@ -9,3 +9,14 @@ pub mod config;
 pub mod job;
 pub mod keymap;
 pub mod ui;
+
+#[cfg(not(windows))]
+fn true_color() -> bool {
+    std::env::var("COLORTERM")
+        .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
+        .unwrap_or(false)
+}
+#[cfg(windows)]
+fn true_color() -> bool {
+    true
+}

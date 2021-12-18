@@ -1,4 +1,4 @@
-pub use crate::commands::Command;
+pub use crate::commands::MappableCommand;
 use crate::config::Config;
 use helix_core::hashmap;
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
@@ -92,7 +92,7 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! keymap {
     (@trie $cmd:ident) => {
-        $crate::keymap::KeyTrie::Leaf($crate::commands::Command::$cmd)
+        $crate::keymap::KeyTrie::Leaf($crate::commands::MappableCommand::$cmd)
     };
 
     (@trie
@@ -120,7 +120,7 @@ macro_rules! keymap {
                         _key,
                         keymap!(@trie $value)
                     );
-                    debug_assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
+                    assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
                     _order.push(_key);
                 )+
             )*
@@ -260,8 +260,8 @@ impl DerefMut for KeyTrieNode {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
 pub enum KeyTrie {
-    Leaf(Command),
-    Sequence(Vec<Command>),
+    Leaf(MappableCommand),
+    Sequence(Vec<MappableCommand>),
     Node(KeyTrieNode),
 }
 
@@ -304,9 +304,9 @@ impl KeyTrie {
 pub enum KeymapResultKind {
     /// Needs more keys to execute a command. Contains valid keys for next keystroke.
     Pending(KeyTrieNode),
-    Matched(Command),
+    Matched(MappableCommand),
     /// Matched a sequence of commands to execute.
-    MatchedSequence(Vec<Command>),
+    MatchedSequence(Vec<MappableCommand>),
     /// Key was not found in the root keymap
     NotFound,
     /// Key is invalid in combination with previous keys. Contains keys leading upto
@@ -386,10 +386,10 @@ impl Keymap {
         };
 
         let trie = match trie_node.search(&[*first]) {
-            Some(&KeyTrie::Leaf(cmd)) => {
-                return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky())
+            Some(KeyTrie::Leaf(ref cmd)) => {
+                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky())
             }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(ref cmds)) => {
                 return KeymapResult::new(
                     KeymapResultKind::MatchedSequence(cmds.clone()),
                     self.sticky(),
@@ -408,9 +408,9 @@ impl Keymap {
                 }
                 KeymapResult::new(KeymapResultKind::Pending(map.clone()), self.sticky())
             }
-            Some(&KeyTrie::Leaf(cmd)) => {
+            Some(&KeyTrie::Leaf(ref cmd)) => {
                 self.state.clear();
-                return KeymapResult::new(KeymapResultKind::Matched(cmd), self.sticky());
+                return KeymapResult::new(KeymapResultKind::Matched(cmd.clone()), self.sticky());
             }
             Some(&KeyTrie::Sequence(ref cmds)) => {
                 self.state.clear();
@@ -512,6 +512,7 @@ impl Default for Keymaps {
             "g" => { "Goto"
                 "g" => goto_file_start,
                 "e" => goto_last_line,
+                "f" => goto_file,
                 "h" => goto_line_start,
                 "l" => goto_line_end,
                 "s" => goto_first_nonwhitespace,
@@ -520,9 +521,10 @@ impl Default for Keymaps {
                 "r" => goto_reference,
                 "i" => goto_implementation,
                 "t" => goto_window_top,
-                "m" => goto_window_middle,
+                "c" => goto_window_center,
                 "b" => goto_window_bottom,
                 "a" => goto_last_accessed_file,
+                "m" => goto_last_modified_file,
                 "n" => goto_next_buffer,
                 "p" => goto_previous_buffer,
                 "." => goto_last_modification,
@@ -537,9 +539,9 @@ impl Default for Keymaps {
             "O" => open_above,
 
             "d" => delete_selection,
-            // TODO: also delete without yanking
+            "A-d" => delete_selection_noyank,
             "c" => change_selection,
-            // TODO: also change delete without yanking
+            "A-c" => change_selection_noyank,
 
             "C" => copy_selection_on_next_line,
             "A-C" => copy_selection_on_prev_line,
@@ -591,6 +593,9 @@ impl Default for Keymaps {
             // paste_all
             "P" => paste_before,
 
+            "q" => record_macro,
+            "Q" => play_macro,
+
             ">" => indent,
             "<" => unindent,
             "=" => format_selections,
@@ -622,6 +627,8 @@ impl Default for Keymaps {
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
+                "f" => goto_file_hsplit,
+                "F" => goto_file_vsplit,
                 "C-q" | "q" => wclose,
                 "C-o" | "o" => wonly,
                 "C-h" | "h" | "left" => jump_view_left,
@@ -637,7 +644,7 @@ impl Default for Keymaps {
 
             "tab" => jump_forward, // tab == <C-i>
             "C-o" => jump_backward,
-            // "C-s" => save_selection,
+            "C-s" => save_selection,
 
             "space" => { "Space"
                 "f" => file_picker,
@@ -650,6 +657,8 @@ impl Default for Keymaps {
                     "C-w" | "w" => rotate_view,
                     "C-s" | "s" => hsplit,
                     "C-v" | "v" => vsplit,
+                    "f" => goto_file_hsplit,
+                    "F" => goto_file_vsplit,
                     "C-q" | "q" => wclose,
                     "C-o" | "o" => wonly,
                     "C-h" | "h" | "left" => jump_view_left,
@@ -827,36 +836,36 @@ mod tests {
         let keymap = merged_config.keys.0.get_mut(&Mode::Normal).unwrap();
         assert_eq!(
             keymap.get(key!('i')).kind,
-            KeymapResultKind::Matched(Command::normal_mode),
+            KeymapResultKind::Matched(MappableCommand::normal_mode),
             "Leaf should replace leaf"
         );
         assert_eq!(
             keymap.get(key!('无')).kind,
-            KeymapResultKind::Matched(Command::insert_mode),
+            KeymapResultKind::Matched(MappableCommand::insert_mode),
             "New leaf should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
             keymap.get(key!('z')).kind,
-            KeymapResultKind::Matched(Command::jump_backward),
+            KeymapResultKind::Matched(MappableCommand::jump_backward),
             "Leaf should replace node"
         );
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
-            &KeyTrie::Leaf(Command::goto_line_end),
+            &KeyTrie::Leaf(MappableCommand::goto_line_end),
             "Leaf should be present in merged subnode"
         );
         // Assumes that `gg` is in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
-            &KeyTrie::Leaf(Command::delete_char_forward),
+            &KeyTrie::Leaf(MappableCommand::delete_char_forward),
             "Leaf should replace old leaf in merged subnode"
         );
         // Assumes that `ge` is in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
-            &KeyTrie::Leaf(Command::goto_last_line),
+            &KeyTrie::Leaf(MappableCommand::goto_last_line),
             "Old leaves in subnode should be present in merged node"
         );
 
@@ -890,7 +899,7 @@ mod tests {
                 .root()
                 .search(&[key!(' '), key!('s'), key!('v')])
                 .unwrap(),
-            &KeyTrie::Leaf(Command::vsplit),
+            &KeyTrie::Leaf(MappableCommand::vsplit),
             "Leaf should be present in merged subnode"
         );
         // Make sure an order was set during merge

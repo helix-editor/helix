@@ -104,6 +104,7 @@ pub struct Document {
 
     last_saved_revision: usize,
     version: i32, // should be usize?
+    pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
@@ -127,6 +128,7 @@ impl fmt::Debug for Document {
             // .field("history", &self.history)
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
+            .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
             .finish()
@@ -344,6 +346,7 @@ impl Document {
             history: Cell::new(History::default()),
             savepoint: None,
             last_saved_revision: 0,
+            modified_since_accessed: false,
             language_server: None,
         }
     }
@@ -639,6 +642,9 @@ impl Document {
                     selection.clone().ensure_invariants(self.text.slice(..)),
                 );
             }
+
+            // set modified since accessed
+            self.modified_since_accessed = true;
         }
 
         if !transaction.changes().is_empty() {

@@ -50,7 +50,7 @@ pub struct Configuration {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub language_id: String,
+    pub language_id: String, // c-sharp, rust
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
     #[serde(default)]
@@ -310,8 +310,9 @@ impl Loader {
 
     pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
-        static SHEBANG_REGEX: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+)?)?([^\s\.\d]+)").unwrap());
+        static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)").unwrap()
+        });
         let configuration_id = SHEBANG_REGEX
             .captures(&line)
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));

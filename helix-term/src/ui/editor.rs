@@ -17,7 +17,6 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::LineNumber,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -32,7 +31,7 @@ use tui::buffer::Buffer as Surface;
 pub struct EditorView {
     keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
-    last_insert: (commands::Command, Vec<KeyEvent>),
+    last_insert: (commands::MappableCommand, Vec<KeyEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
     autoinfo: Option<Info>,
@@ -49,7 +48,7 @@ impl EditorView {
         Self {
             keymaps,
             on_next_key: None,
-            last_insert: (commands::Command::normal_mode, Vec::new()),
+            last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
             autoinfo: None,
@@ -310,17 +309,16 @@ impl EditorView {
 
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
-                    let style = spans.iter().fold(text_style, |acc, span| {
-                        let style = theme.get(theme.scopes()[span.0].as_str());
-                        acc.patch(style)
-                    });
-
                     for grapheme in RopeGraphemes::new(text) {
                         let out_of_bounds = visual_x < offset.col as u16
                             || visual_x >= viewport.width + offset.col as u16;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
+                                let style = spans.iter().fold(text_style, |acc, span| {
+                                    acc.patch(theme.highlight(span.0))
+                                });
+
                                 // we still want to render an empty cell with the style
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -351,6 +349,10 @@ impl EditorView {
                             };
 
                             if !out_of_bounds {
+                                let style = spans.iter().fold(text_style, |acc, span| {
+                                    acc.patch(theme.highlight(span.0))
+                                });
+
                                 // if we're offscreen just keep going until we hit a new line
                                 surface.set_string(
                                     viewport.x + visual_x - offset.col as u16,
@@ -417,22 +419,6 @@ impl EditorView {
         let text = doc.text().slice(..);
         let last_line = view.last_line(doc);
 
-        let linenr = theme.get("ui.linenr");
-        let linenr_select: Style = theme.try_get("ui.linenr.selected").unwrap_or(linenr);
-
-        let warning = theme.get("warning");
-        let error = theme.get("error");
-        let info = theme.get("info");
-        let hint = theme.get("hint");
-
-        // Whether to draw the line number for the last line of the
-        // document or not.  We only draw it if it's not an empty line.
-        let draw_last = text.line_to_byte(last_line) < text.len_bytes();
-
-        let current_line = doc
-            .text()
-            .char_to_line(doc.selection(view.id).primary().cursor(text));
-
         // it's used inside an iterator so the collect isn't needless:
         // https://github.com/rust-lang/rust-clippy/issues/6164
         #[allow(clippy::needless_collect)]
@@ -442,51 +428,31 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
-            use helix_core::diagnostic::Severity;
-            if let Some(diagnostic) = doc.diagnostics().iter().find(|d| d.line == line) {
-                surface.set_stringn(
-                    viewport.x,
-                    viewport.y + i as u16,
-                    "●",
-                    1,
-                    match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    },
-                );
+        let mut offset = 0;
+
+        let gutter_style = theme.get("ui.gutter");
+
+        // avoid lots of small allocations by reusing a text buffer for each line
+        let mut text = String::with_capacity(8);
+
+        for (constructor, width) in view.gutters() {
+            let gutter = constructor(doc, view, theme, config, is_focused, *width);
+            text.reserve(*width); // ensure there's enough space for the gutter
+            for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
+                let selected = cursors.contains(&line);
+
+                if let Some(style) = gutter(line, selected, &mut text) {
+                    surface.set_stringn(
+                        viewport.x + offset,
+                        viewport.y + i as u16,
+                        &text,
+                        *width,
+                        gutter_style.patch(style),
+                    );
+                }
+                text.clear();
             }
-
-            let selected = cursors.contains(&line);
-
-            let text = if line == last_line && !draw_last {
-                "    ~".into()
-            } else {
-                let line = match config.line_number {
-                    LineNumber::Absolute => line + 1,
-                    LineNumber::Relative => {
-                        if current_line == line {
-                            line + 1
-                        } else {
-                            abs_diff(current_line, line)
-                        }
-                    }
-                };
-                format!("{:>5}", line)
-            };
-            surface.set_stringn(
-                viewport.x + 1,
-                viewport.y + i as u16,
-                text,
-                5,
-                if selected && is_focused {
-                    linenr_select
-                } else {
-                    linenr
-                },
-            );
+            offset += *width as u16;
         }
     }
 
@@ -916,7 +882,7 @@ impl EditorView {
                     return EventResult::Ignored;
                 }
 
-                commands::Command::yank_main_selection_to_primary_clipboard.execute(cxt);
+                commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
 
                 EventResult::Consumed(None)
             }
@@ -934,7 +900,8 @@ impl EditorView {
                 }
 
                 if modifiers == crossterm::event::KeyModifiers::ALT {
-                    commands::Command::replace_selections_with_primary_clipboard.execute(cxt);
+                    commands::MappableCommand::replace_selections_with_primary_clipboard
+                        .execute(cxt);
 
                     return EventResult::Consumed(None);
                 }
@@ -948,7 +915,7 @@ impl EditorView {
                     let doc = editor.document_mut(editor.tree.get(view_id).doc).unwrap();
                     doc.set_selection(view_id, Selection::point(pos));
                     editor.tree.focus = view_id;
-                    commands::Command::paste_primary_clipboard_before.execute(cxt);
+                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
                     return EventResult::Consumed(None);
                 }
 
@@ -963,7 +930,7 @@ impl EditorView {
 impl Component for EditorView {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let mut cxt = commands::Context {
-            editor: &mut cx.editor,
+            editor: cx.editor,
             count: None,
             register: None,
             callback: None,
@@ -1140,13 +1107,31 @@ impl Component for EditorView {
                     disp.push_str(&s);
                 }
             }
+            let style = cx.editor.theme.get("ui.text");
+            let macro_width = if cx.editor.macro_recording.is_some() {
+                3
+            } else {
+                0
+            };
             surface.set_string(
-                area.x + area.width.saturating_sub(key_width),
+                area.x + area.width.saturating_sub(key_width + macro_width),
                 area.y + area.height.saturating_sub(1),
                 disp.get(disp.len().saturating_sub(key_width as usize)..)
                     .unwrap_or(&disp),
-                cx.editor.theme.get("ui.text"),
+                style,
             );
+            if let Some((reg, _)) = cx.editor.macro_recording {
+                let disp = format!("[{}]", reg);
+                let style = style
+                    .fg(helix_view::graphics::Color::Yellow)
+                    .add_modifier(Modifier::BOLD);
+                surface.set_string(
+                    area.x + area.width.saturating_sub(3),
+                    area.y + area.height.saturating_sub(1),
+                    &disp,
+                    style,
+                );
+            }
         }
 
         if let Some(completion) = self.completion.as_mut() {
@@ -1170,14 +1155,5 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
-    }
-}
-
-#[inline]
-const fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
     }
 }

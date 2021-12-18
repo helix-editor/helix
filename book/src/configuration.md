@@ -41,6 +41,7 @@ hidden = false
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
+| `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 
 ### `[editor.cursor-shape]` Section
 

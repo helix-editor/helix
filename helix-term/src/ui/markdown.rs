@@ -228,6 +228,7 @@ impl Component for Markdown {
             return None;
         }
         let contents = parse(&self.contents, None, &self.config_loader);
+        // TODO: account for tab width
         let max_text_width = (viewport.0 - padding).min(120);
         let mut text_width = 0;
         let mut height = padding;
@@ -239,11 +240,6 @@ impl Component for Markdown {
                 height += content_width / max_text_width;
             } else if content_width > text_width {
                 text_width = content_width;
-            }
-
-            if height >= viewport.1 {
-                height = viewport.1;
-                break;
             }
         }
 

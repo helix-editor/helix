@@ -5,18 +5,19 @@ pub mod diagnostic;
 pub mod diff;
 pub mod graphemes;
 pub mod history;
+pub mod increment;
 pub mod indent;
 pub mod line_ending;
 pub mod macros;
 pub mod match_brackets;
 pub mod movement;
-pub mod numbers;
 pub mod object;
 pub mod path;
 mod position;
 pub mod register;
 pub mod search;
 pub mod selection;
+pub mod shellwords;
 mod state;
 pub mod surround;
 pub mod syntax;
@@ -158,7 +159,7 @@ mod merge_toml_tests {
         ";
 
         let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Couldn't parse built-in langauges config");
+            .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
         let merged = merge_toml_values(base, user);
