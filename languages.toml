@@ -411,3 +411,4 @@ name = "comment"
 scope = "scope.comment"
 roots = []
 file-types = ["comment"]
+injection-regex = "comment"
