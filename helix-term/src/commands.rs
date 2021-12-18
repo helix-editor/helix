@@ -2671,6 +2671,39 @@ pub mod cmd {
         Ok(())
     }
 
+    fn sort(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+        let lines = get_lines(doc, view.id);
+
+        let mut sorted_lines = lines
+            .clone()
+            .into_iter()
+            .filter_map(|line| doc.text().get_line(line))
+            .collect::<Vec<RopeSlice>>();
+
+        sorted_lines.sort();
+
+        let transaction = Transaction::change(
+            doc.text(),
+            lines
+                .into_iter()
+                .zip(sorted_lines)
+                .map(|(old_line, new_line)| {
+                    let pos = doc.text().line_to_char(old_line);
+                    let pos_end = doc.text().line_to_char(old_line + 1);
+                    (pos, pos_end, Some(Tendril::from(new_line.to_string())))
+                }),
+        );
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2965,7 +2998,14 @@ pub mod cmd {
             doc: "Set a config option at runtime",
             fun: setting,
             completer: Some(completers::setting),
-        }
+        },
+        TypableCommand {
+            name: "sort",
+            aliases: &["sort!"],
+            doc: "Sort lines in selection.",
+            fun: sort,
+            completer: Some(completers::filename),
+        },
     ];
 
     pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
