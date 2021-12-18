@@ -254,7 +254,7 @@ impl Client {
                     hover: Some(lsp::HoverClientCapabilities {
                         // if not specified, rust-analyzer returns plaintext marked as markdown but
                         // badly formatted.
-                        content_format: Some(vec![lsp::MarkupKind::Markdown]),
+                        content_format: Some(vec![lsp::MarkupKind::PlainText]),
                         ..Default::default()
                     }),
                     rename: Some(lsp::RenameClientCapabilities {

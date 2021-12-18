@@ -111,7 +111,15 @@ impl EditorView {
             .area
             .clip_top(view.area.height.saturating_sub(1))
             .clip_bottom(1); // -1 from bottom to remove commandline
-        self.render_statusline(doc, view, statusline_area, surface, theme, is_focused);
+        self.render_statusline(
+            doc,
+            view,
+            statusline_area,
+            surface,
+            theme,
+            is_focused,
+            config,
+        );
     }
 
     /// Get syntax highlights for a document in a view represented by the first line
@@ -515,6 +523,7 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
+        config: &helix_view::editor::Config,
     ) {
         use tui::text::{Span, Spans};
 
@@ -594,7 +603,9 @@ impl EditorView {
                 continue;
             }
             let style = base_style.patch(style);
-            right_side_text.0.push(Span::styled("●", style));
+            right_side_text
+                .0
+                .push(Span::styled(config.diagnostic.sign.to_string(), style));
             right_side_text
                 .0
                 .push(Span::styled(format!(" {} ", count), base_style));

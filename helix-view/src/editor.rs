@@ -39,6 +39,21 @@ where
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct DiagnosticConfig {
+    // Sign to present in the gutter. Defaults to "●".
+    pub sign: String,
+}
+
+impl Default for DiagnosticConfig {
+    fn default() -> Self {
+        Self {
+            sign: String::from("●"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
@@ -107,6 +122,7 @@ pub struct Config {
     pub file_picker: FilePickerConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
+    pub diagnostic: DiagnosticConfig,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
@@ -140,6 +156,7 @@ impl Default for Config {
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             true_color: false,
+            diagnostic: DiagnosticConfig::default(),
         }
     }
 }

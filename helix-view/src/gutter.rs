@@ -10,7 +10,7 @@ pub fn diagnostic<'doc>(
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
-    _config: &Config,
+    config: &Config,
     _is_focused: bool,
     _width: usize,
 ) -> GutterFn<'doc> {
@@ -20,11 +20,13 @@ pub fn diagnostic<'doc>(
     let hint = theme.get("hint");
     let diagnostics = doc.diagnostics();
 
+    let config = config.diagnostic.sign.to_string();
+
     Box::new(move |line: usize, _selected: bool, out: &mut String| {
         use helix_core::diagnostic::Severity;
         if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
             let diagnostic = &diagnostics[index];
-            write!(out, "●").unwrap();
+            write!(out, "{}", config).unwrap();
             return Some(match diagnostic.severity {
                 Some(Severity::Error) => error,
                 Some(Severity::Warning) | None => warning,
