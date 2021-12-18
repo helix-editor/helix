@@ -127,7 +127,7 @@ impl Prompt {
                 let mut char_position = char_indices
                     .iter()
                     .position(|(idx, _)| *idx == self.cursor)
-                    .unwrap_or_else(|| char_indices.len());
+                    .unwrap_or(char_indices.len());
 
                 for _ in 0..rep {
                     // Skip any non-whitespace characters
