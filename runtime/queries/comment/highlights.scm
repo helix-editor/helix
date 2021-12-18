@@ -5,21 +5,26 @@
 
 ":" @punctuation.delimiter
 
-(tag (name) @ui.text (user)? @constant)
-
-((tag ((name) @warning))
- (#any-of? @warning "TODO" "HACK" "WARNING"))
+((tag (name) @warning)
+ (#match? @warning "^(TODO|HACK|WARNING)$"))
 
 ("text" @warning
- (#any-of? @warning "TODO" "HACK" "WARNING"))
+ (#match? @warning "^(TODO|HACK|WARNING)$"))
 
-((tag ((name) @error))
- (#any-of? @error "FIXME" "XXX" "BUG"))
+((tag (name) @error)
+ (match? @error "^(FIXME|XXX|BUG)$"))
 
 ("text" @error
- (#any-of? @error "FIXME" "XXX" "BUG"))
+ (match? @error "^(FIXME|XXX|BUG)$"))
+
+(tag
+ (name) @ui.text
+ (user)? @constant)
 
 ; Issue number (#123)
-; ("text" @number (#lua-match? @number "^#[0-9]+$"))
+("text" @constant.numeric
+ (#match? @constant.numeric "^#[0-9]+$"))
+
 ; User mention (@user)
-; ("text" @constant-numeric (#lua-match? @constant-numeric "^[@][a-zA-Z0-9_-]+$"))
+("text" @tag
+ (#match? @tag "^[@][a-zA-Z0-9_-]+$"))
