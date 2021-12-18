@@ -139,10 +139,15 @@ impl Compositor {
 
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
-        for i in (0..self.layers.len()).rev() {
-            let layer = self.layers[i].as_mut();
+        let event_results: Vec<_> = self
+            .layers
+            .iter_mut()
+            .rev()
+            .map(|layer| layer.handle_event(event, cx))
+            .collect();
 
-            match layer.handle_event(event, cx) {
+        for event_result in event_results {
+            match event_result {
                 EventResult::Consumed(Some(callback)) => {
                     callback(self, cx);
                     return true;
@@ -152,7 +157,7 @@ impl Compositor {
                     callback(self, cx);
                 }
                 EventResult::Ignored => {}
-            };
+            }
         }
 
         false
