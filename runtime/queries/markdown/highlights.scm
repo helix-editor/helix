@@ -10,15 +10,16 @@
   (fenced_code_block)
 ] @markup.raw.block
 
+(block_quote) @markup.quote
+
 (code_span) @markup.raw.inline
 
 (emphasis) @markup.italic
 
 (strong_emphasis) @markup.bold
 
-(link_destination) @markup.underline.link
-
-; (link_label) @markup.label ; TODO: rename
+(link_destination) @markup.link.url
+(link_label) @markup.link.label
 
 [
   (list_marker_plus)
