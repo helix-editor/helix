@@ -2673,31 +2673,48 @@ pub mod cmd {
 
     fn sort(
         cx: &mut compositor::Context,
-        _args: &[Cow<str>],
+        args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
+        sort_impl(cx, args, false)
+    }
+
+    fn sort_reverse(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        sort_impl(cx, args, true)
+    }
+
+    fn sort_impl(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        reverse: bool,
+    ) -> anyhow::Result<()> {
         let (view, doc) = current!(cx.editor);
-        let lines = get_lines(doc, view.id);
+        let text = doc.text().slice(..);
 
-        let mut sorted_lines = lines
-            .clone()
-            .into_iter()
-            .filter_map(|line| doc.text().get_line(line))
-            .collect::<Vec<RopeSlice>>();
+        let selection = doc.selection(view.id);
 
-        sorted_lines.sort();
+        let mut fragments: Vec<_> = selection
+            .fragments(text)
+            .map(|fragment| Tendril::from_slice(&fragment))
+            .collect();
+
+        fragments.sort_by(match reverse {
+            true => |a: &Tendril, b: &Tendril| b.cmp(a),
+            false => |a: &Tendril, b: &Tendril| a.cmp(b),
+        });
 
         let transaction = Transaction::change(
             doc.text(),
-            lines
+            selection
                 .into_iter()
-                .zip(sorted_lines)
-                .map(|(old_line, new_line)| {
-                    let pos = doc.text().line_to_char(old_line);
-                    let pos_end = doc.text().line_to_char(old_line + 1);
-                    (pos, pos_end, Some(Tendril::from(new_line.to_string())))
-                }),
+                .zip(fragments)
+                .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
         );
+
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
 
@@ -3001,10 +3018,17 @@ pub mod cmd {
         },
         TypableCommand {
             name: "sort",
-            aliases: &["sort!"],
+            aliases: &[],
             doc: "Sort lines in selection.",
             fun: sort,
-            completer: Some(completers::filename),
+            completer: None,
+        },
+        TypableCommand {
+            name: "sort!",
+            aliases: &[],
+            doc: "Sort lines in selection in reverse order.",
+            fun: sort_reverse,
+            completer: None,
         },
     ];
 
