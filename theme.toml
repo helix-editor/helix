@@ -31,7 +31,7 @@ label = "honey"
 "markup.heading" = "lilac"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
-"markup.underline.link" = { fg = "silver", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "silver", modifiers = ["underlined"] }
 "markup.raw" = "almond"
 
 # TODO: diferentiate doc comment
