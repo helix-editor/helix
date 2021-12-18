@@ -22,10 +22,10 @@ use anyhow::Error;
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::{hashmap, syntax};
+use helix_core::syntax;
 use helix_core::{Position, Selection};
 
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -107,12 +107,28 @@ pub struct Config {
     pub cursor_shape: CursorShapeConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(transparent)]
-pub struct CursorShapeConfig(HashMap<Mode, CursorKind>);
+// Cursor shape is read and used on every rendered frame and so needs
+// to be fast. Therefore we avoid a hashmap and use an enum indexed array.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CursorShapeConfig([CursorKind; 3]);
+
+impl<'de> Deserialize<'de> for CursorShapeConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let m = HashMap::<Mode, CursorKind>::deserialize(deserializer)?;
+        let into_cursor = |mode: Mode| m.get(&mode).copied().unwrap_or_default();
+        Ok(CursorShapeConfig([
+            into_cursor(Mode::Normal),
+            into_cursor(Mode::Select),
+            into_cursor(Mode::Insert),
+        ]))
+    }
+}
 
 impl std::ops::Deref for CursorShapeConfig {
-    type Target = HashMap<Mode, CursorKind>;
+    type Target = [CursorKind; 3];
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -121,11 +137,7 @@ impl std::ops::Deref for CursorShapeConfig {
 
 impl Default for CursorShapeConfig {
     fn default() -> Self {
-        Self(hashmap!(
-            Mode::Insert => CursorKind::Block,
-            Mode::Normal => CursorKind::Block,
-            Mode::Select => CursorKind::Block,
-        ))
+        Self([CursorKind::Block; 3])
     }
 }
 
@@ -621,7 +633,7 @@ impl Editor {
             let cursorkind = self
                 .config
                 .cursor_shape
-                .get(&doc.mode())
+                .get(doc.mode() as usize)
                 .copied()
                 .unwrap_or_default();
             (Some(pos), cursorkind)

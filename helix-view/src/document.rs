@@ -29,9 +29,9 @@ pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
-    Normal,
-    Select,
-    Insert,
+    Normal = 0,
+    Select = 1,
+    Insert = 2,
 }
 
 impl Display for Mode {

@@ -233,24 +233,23 @@ impl EditorView {
         }
         .unwrap_or(base_cursor_scope);
 
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
         let primary_selection_scope = theme
             .find_scope_index("ui.selection.primary")
             .unwrap_or(selection_scope);
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
-            let (cursor_scope, selection_scope) = if i == primary_idx {
-                (primary_cursor_scope, primary_selection_scope)
+            let selection_is_primary = i == primary_idx;
+            let selection_scope = if selection_is_primary {
+                primary_selection_scope
             } else {
-                (cursor_scope, selection_scope)
+                selection_scope
             };
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if i != primary_idx {
+                if !selection_is_primary {
+                    // Terminal cursor acts as the primary cursor
                     spans.push((cursor_scope, range.head..range.head + 1));
                 }
                 continue;
@@ -261,13 +260,13 @@ impl EditorView {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
                 spans.push((selection_scope, range.anchor..cursor_start));
-                if i != primary_idx {
+                if !selection_is_primary {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                if i != primary_idx {
+                if !selection_is_primary {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 spans.push((selection_scope, cursor_end..range.anchor));
