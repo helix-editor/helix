@@ -440,3 +440,12 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "dart", args = ["language-server", "--client-id=helix"] }
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "scala"
+scope = "source.scala"
+roots = ["build.sbt"]
+file-types = ["scala", "sbt"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "metals" }

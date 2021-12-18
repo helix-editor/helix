@@ -23,7 +23,7 @@
 | nix | ✓ |  | ✓ | `rnix-lsp` |
 | ocaml | ✓ |  | ✓ |  |
 | ocaml-interface | ✓ |  |  |  |
-| perl | ✓ | ✓ |  |  |
+| perl | ✓ | ✓ | ✓ |  |
 | php | ✓ |  | ✓ |  |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
@@ -31,6 +31,7 @@
 | racket |  |  |  | `racket` |
 | ruby | ✓ |  |  | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
+| scala | ✓ |  |  | `metals` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
