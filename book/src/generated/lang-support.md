@@ -6,6 +6,7 @@
 | cmake | ✓ |  |  | `cmake-language-server` |
 | cpp | ✓ |  |  | `clangd` |
 | css | ✓ |  |  |  |
+| dart | ✓ |  | ✓ | `dart` |
 | elixir | ✓ |  |  | `elixir-ls` |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
@@ -31,7 +32,7 @@
 | racket |  |  |  | `racket` |
 | ruby | ✓ |  |  | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
-| scala | ✓ |  |  | `metals` |
+| scala | ✓ |  | ✓ | `metals` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
