@@ -287,7 +287,7 @@ impl MappableCommand {
         add_newline_below, "Add newline below",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
-        goto_file_start, "Goto file start/line",
+        goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
         goto_file, "Goto files in selection",
         goto_file_hsplit, "Goto files in selection (hsplit)",

@@ -161,7 +161,7 @@ Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
-| `g`   | Go to the start of the file                      | `goto_file_start`          |
+| `g`   | Go to line number `<n>` else start of file       | `goto_file_start`          |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
 | `f`   | Go to files in the selection                     | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
