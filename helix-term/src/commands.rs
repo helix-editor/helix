@@ -1938,7 +1938,7 @@ fn append_mode(cx: &mut Context) {
     if !last_range.is_empty() && last_range.head == end {
         let transaction = Transaction::change(
             doc.text(),
-            std::array::IntoIter::new([(end, end, Some(doc.line_ending.as_str().into()))]),
+            [(end, end, Some(doc.line_ending.as_str().into()))].into_iter(),
         );
         doc.apply(&transaction, view.id);
     }
