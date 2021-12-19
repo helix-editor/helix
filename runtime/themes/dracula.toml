@@ -1,19 +1,19 @@
 # Author : Sebastian Zivota <loewenheim@mailbox.org>
-"type" = { fg = "cyan", modifiers = ["italic"] }
-"type.enum.variant" = { fg = "foreground", modifiers = ["italic"] }
+"comment" = { fg = "comment" }
 "constant" = { fg = "purple" }
 "constant.character.escape" = { fg = "pink" }
+"function" = { fg = "green" }
+"keyword" = { fg = "pink" }
+"operator" = { fg = "pink" }
+"punctuation" = { fg = "foreground" }
 "string" = { fg = "yellow" }
 "string.regexp" = { fg = "red" }
-"comment" = { fg = "comment" }
+"tag" = { fg = "pink" }
+"type" = { fg = "cyan", modifiers = ["italic"] }
+"type.enum.variant" = { fg = "foreground", modifiers = ["italic"] }
 "variable" = { fg = "foreground" }
 "variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
 "variable.parameter" = { fg ="orange", modifiers = ["italic"] }
-"punctuation" = { fg = "foreground" }
-"keyword" = { fg = "pink" }
-"operator" = { fg = "pink" }
-"function" = { fg = "green" }
-"tag" = { fg = "pink" }
 
 "ui.background" = { fg = "foreground", bg = "background" }
 "ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
