@@ -454,6 +454,7 @@ language-server = { command = "metals" }
 [[language]]
 name = "dockerfile"
 scope = "source.dockerfile"
+injection-regex = "docker|dockerfile"
 roots = ["Dockerfile"]
 file-types = ["Dockerfile"]
 comment-token = "#"
