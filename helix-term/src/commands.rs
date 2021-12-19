@@ -41,7 +41,7 @@ use crate::{
 
 use crate::job::{self, Job, Jobs};
 use futures_util::{FutureExt, StreamExt};
-use std::{collections::HashSet, num::NonZeroUsize};
+use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 use std::{fmt, future::Future};
 
 use std::{
@@ -3287,26 +3287,12 @@ pub fn code_action(cx: &mut Context) {
                             }
                             // if code action provides both edit and command first the edit
                             // should be applied and then the command
-                            if let Some(ref command) = code_action.command {
+                            if let Some(command) = code_action.command {
                                 log::debug!("command: {:?}", command);
-                                let (_, doc) = current!(editor);
 
-                                let language_server = match doc.language_server() {
-                                    Some(language_server) => language_server,
-                                    None => return,
-                                };
-
-                                // command is executed on the server, in most cases the server
-                                // creates workspace edit so we just block here and wait
-                                // for the outbound workspace edit to resolve
-                                match block_on(language_server.command(command.clone())) {
-                                    Ok(ref edit) => {
-                                        log::debug!("command edit: {:?}", edit);
-                                    },
-                                    Err(e) => {
-                                        log::error!("call LSP command: {:?}", e);
-                                    },
-                                }
+                                tokio::spawn(async move {
+                                    language_server.command(command).await
+                                });
                             }
                         }
                     },
@@ -3370,7 +3356,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     }
 }
 
-fn apply_workspace_edit(
+pub fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,

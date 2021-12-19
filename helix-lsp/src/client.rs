@@ -801,7 +801,7 @@ impl Client {
         Ok(response.unwrap_or_default())
     }
 
-    pub async fn command(&self, command: lsp::Command) -> anyhow::Result<Option<Value>> {
+    pub fn command(&self, command: lsp::Command) -> impl Future<Output = Result<Value>> {
         let params = lsp::ExecuteCommandParams {
             command: command.command,
             arguments: command.arguments.unwrap_or_default(),
@@ -810,7 +810,6 @@ impl Client {
             },
         };
 
-        let response = self.call::<lsp::request::ExecuteCommand>(params).await?;
-        Ok(Some(response))
+        self.call::<lsp::request::ExecuteCommand>(params)
     }
 }
