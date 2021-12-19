@@ -4263,7 +4263,7 @@ pub mod insert {
         Some(transaction)
     }
 
-    use helix_core::auto_pairs;
+    use helix_core::{auto_pairs, Change};
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current!(cx.editor);
@@ -4369,77 +4369,86 @@ pub mod insert {
         });
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
-        //
-
         doc.apply(&transaction, view.id);
     }
 
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-        let indent_unit = doc.indent_unit();
-        let tab_size = doc.tab_width();
 
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let pos = range.cursor(text);
-                let line_start_pos = text.line_to_char(range.cursor_line(text));
-                // considier to delete by indent level if all characters before `pos` are indent units.
-                let fragment = Cow::from(text.slice(line_start_pos..pos));
-                if !fragment.is_empty() && fragment.chars().all(|ch| ch.is_whitespace()) {
-                    if text.get_char(pos.saturating_sub(1)) == Some('\t') {
-                        // fast path, delete one char
-                        (
-                            graphemes::nth_prev_grapheme_boundary(text, pos, 1),
-                            pos,
-                            None,
-                        )
-                    } else {
-                        let unit_len = indent_unit.chars().count();
-                        // NOTE: indent_unit always contains 'only spaces' or 'only tab' according to `IndentStyle` definition.
-                        let unit_size = if indent_unit.starts_with('\t') {
-                            tab_size * unit_len
-                        } else {
-                            unit_len
-                        };
-                        let width: usize = fragment
-                            .chars()
-                            .map(|ch| {
-                                if ch == '\t' {
-                                    tab_size
-                                } else {
-                                    // it can be none if it still meet control characters other than '\t'
-                                    // here just set the width to 1 (or some value better?).
-                                    ch.width().unwrap_or(1)
-                                }
-                            })
-                            .sum();
-                        let mut drop = width % unit_size; // round down to nearest unit
-                        if drop == 0 {
-                            drop = unit_size
-                        }; // if it's already at a unit, consume a whole unit
-                        let mut chars = fragment.chars().rev();
-                        let mut start = pos;
-                        for _ in 0..drop {
-                            // delete up to `drop` spaces
-                            match chars.next() {
-                                Some(' ') => start -= 1,
-                                _ => break,
-                            }
-                        }
-                        (start, pos, None) // delete!
-                    }
-                } else {
-                    // delete char
+                handle_backspace_dedent(doc, range).unwrap_or_else(|| {
+                    let text = doc.text().slice(..);
+                    let pos = range.cursor(text);
+
                     (
                         graphemes::nth_prev_grapheme_boundary(text, pos, count),
                         pos,
                         None,
                     )
-                }
+                })
             });
+
         doc.apply(&transaction, view.id);
+    }
+
+    fn handle_backspace_dedent(doc: &Document, range: &Range) -> Option<Change> {
+        let text = doc.text().slice(..);
+        let indent_unit = doc.indent_unit();
+        let tab_size = doc.tab_width();
+        let pos = range.cursor(text);
+
+        let line_start_pos = text.line_to_char(range.cursor_line(text));
+        // considier to delete by indent level if all characters before `pos` are indent units.
+        let fragment = Cow::from(text.slice(line_start_pos..pos));
+
+        if fragment.is_empty() || !fragment.chars().all(|ch| ch.is_whitespace()) {
+            return None;
+        }
+
+        // fast path, return None to delete one char with default handling
+        if text.get_char(pos.saturating_sub(1)) == Some('\t') {
+            return None;
+        }
+
+        let unit_len = indent_unit.chars().count();
+
+        // NOTE: indent_unit always contains 'only spaces' or 'only tab' according to `IndentStyle` definition.
+        let unit_size = if indent_unit.starts_with('\t') {
+            tab_size * unit_len
+        } else {
+            unit_len
+        };
+
+        let width: usize = fragment
+            .chars()
+            .map(|ch| {
+                if ch == '\t' {
+                    tab_size
+                } else {
+                    // it can be none if it still meet control characters other than '\t'
+                    // here just set the width to 1 (or some value better?).
+                    ch.width().unwrap_or(1)
+                }
+            })
+            .sum();
+
+        let mut drop = width % unit_size; // round down to nearest unit
+        if drop == 0 {
+            drop = unit_size
+        }; // if it's already at a unit, consume a whole unit
+        let mut chars = fragment.chars().rev();
+        let mut start = pos;
+        for _ in 0..drop {
+            // delete up to `drop` spaces
+            match chars.next() {
+                Some(' ') => start -= 1,
+                _ => break,
+            }
+        }
+
+        Some((start, pos, None)) // delete!
     }
 
     pub fn delete_char_forward(cx: &mut Context) {
