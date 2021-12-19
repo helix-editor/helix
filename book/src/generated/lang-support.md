@@ -7,6 +7,7 @@
 | cpp | ✓ |  |  | `clangd` |
 | css | ✓ |  |  |  |
 | dart | ✓ |  | ✓ | `dart` |
+| dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
