@@ -449,3 +449,15 @@ file-types = ["scala", "sbt"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
+
+
+[[language]]
+name = "dockerfile"
+scope = "source.dockerfile"
+roots = ["Dockerfile"]
+file-types = ["Dockerfile"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "docker-langserver", args = ["--stdio"] }
+
+

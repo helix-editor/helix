@@ -158,3 +158,7 @@
 	path = helix-syntax/languages/tree-sitter-dart
 	url = https://github.com/UserNobody14/tree-sitter-dart.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-dockerfile"]
+	path = helix-syntax/languages/tree-sitter-dockerfile
+	url = https://github.com/camdencheek/tree-sitter-dockerfile.git
+	shallow = true
