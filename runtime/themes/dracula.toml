@@ -1,5 +1,6 @@
 # Author : Sebastian Zivota <loewenheim@mailbox.org>
 "type" = { fg = "cyan", modifiers = ["italic"] }
+"type.enum.variant" = { fg = "foreground", modifiers = ["italic"] }
 "constant" = { fg = "purple" }
 "constant.character.escape" = { fg = "pink" }
 "string" = { fg = "yellow" }
@@ -18,12 +19,20 @@
 "ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
 "ui.cursor.primary" = { fg = "background", bg = "cyan", modifier = ["dim"] }
+"ui.help" = { fg = "foreground", bg = "background_dark" }
 "ui.linenr" = { fg = "comment" }
 "ui.linenr.selected" = { fg = "foreground" }
+"ui.menu" = { fg = "foreground", bg = "background_dark" }
+"ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
+"ui.popup" = { fg = "foreground" }
 "ui.selection" = { fg = "background", bg = "purple", modifiers = ["dim"] }
 "ui.selection.primary" = { fg = "background", bg = "pink" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
+"ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
 "ui.text" = { fg = "foreground" }
+"ui.text.focus" = { fg = "cyan" }
+"ui.window" = { fg = "foreground" }
+
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
 
