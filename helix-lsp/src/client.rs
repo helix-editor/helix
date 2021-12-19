@@ -188,11 +188,11 @@ impl Client {
     }
 
     /// Reply to a language server RPC call.
-    pub fn reply(
+    pub fn reply<R>(
         &self,
         id: jsonrpc::Id,
-        result: core::result::Result<Value, jsonrpc::Error>,
-    ) -> impl Future<Output = Result<()>> {
+        result: core::result::Result<R, jsonrpc::Error>,
+    ) -> impl Future<Output = Result<()>> where R: serde::Serialize {
         use jsonrpc::{Failure, Output, Success, Version};
 
         let server_tx = self.server_tx.clone();
@@ -202,7 +202,7 @@ impl Client {
                 Ok(result) => Output::Success(Success {
                     jsonrpc: Some(Version::V2),
                     id,
-                    result,
+                    result: serde_json::to_value(result)?,
                 }),
                 Err(error) => Output::Failure(Failure {
                     jsonrpc: Some(Version::V2),
@@ -799,5 +799,18 @@ impl Client {
 
         let response = self.request::<lsp::request::Rename>(params).await?;
         Ok(response.unwrap_or_default())
+    }
+
+    pub async fn command(&self, command: lsp::Command) -> anyhow::Result<Option<Value>> {
+        let params = lsp::ExecuteCommandParams {
+            command: command.command,
+            arguments: command.arguments.unwrap_or_default(),
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self.call::<lsp::request::ExecuteCommand>(params).await?;
+        Ok(Some(response))
     }
 }

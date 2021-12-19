@@ -569,6 +569,16 @@ impl Application {
                         }
                         tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
                     }
+                    MethodCall::ApplyWorkspaceEdit(params) => {
+                        log::debug!("Received workspace/applyEdit from LSP: {:?}", params);
+                        // TODO: handle the edits
+                        let resp = lsp::ApplyWorkspaceEditResponse {
+                            applied: true,
+                            failure_reason: None,
+                            failed_change: None,
+                        };
+                        tokio::spawn(language_server.reply(id, Ok(resp)));
+                    }
                 }
             }
             e => unreachable!("{:?}", e),

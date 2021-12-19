@@ -3282,7 +3282,31 @@ pub fn code_action(cx: &mut Context) {
                         lsp::CodeActionOrCommand::CodeAction(code_action) => {
                             log::debug!("code action: {:?}", code_action);
                             if let Some(ref workspace_edit) = code_action.edit {
-                                apply_workspace_edit(editor, offset_encoding, workspace_edit)
+                                log::debug!("edit: {:?}", workspace_edit);
+                                apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            }
+                            // if code action provides both edit and command first the edit
+                            // should be applied and then the command
+                            if let Some(ref command) = code_action.command {
+                                log::debug!("command: {:?}", command);
+                                let (_, doc) = current!(editor);
+
+                                let language_server = match doc.language_server() {
+                                    Some(language_server) => language_server,
+                                    None => return,
+                                };
+
+                                // command is executed on the server, in most cases the server
+                                // creates workspace edit so we just block here and wait
+                                // for the outbound workspace edit to resolve
+                                match block_on(language_server.command(command.clone())) {
+                                    Ok(ref edit) => {
+                                        log::debug!("command edit: {:?}", edit);
+                                    },
+                                    Err(e) => {
+                                        log::error!("call LSP command: {:?}", e);
+                                    },
+                                }
                             }
                         }
                     },
