@@ -410,5 +410,5 @@ language-server = { command = "racket", args = ["-l", "racket-langserver"] }
 name = "comment"
 scope = "scope.comment"
 roots = []
-file-types = ["comment"]
+file-types = []
 injection-regex = "comment"
