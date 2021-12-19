@@ -15,14 +15,14 @@
 "tag" = { fg = "pink" }
 
 "ui.background" = { fg = "foreground", bg = "background" }
-"ui.cursor" =  { fg = "black", bg = "orange", modifiers = ["dim"] }
-"ui.cursor.primary" = { fg = "black", bg = "cyan", modifier = ["dim"] }
+"ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
+"ui.cursor.primary" = { fg = "background", bg = "cyan", modifier = ["dim"] }
 "ui.linenr" = { fg = "comment" }
 "ui.linenr.selected" = { fg = "foreground" }
+"ui.selection" = { fg = "background", bg = "purple", modifiers = ["dim"] }
+"ui.selection.primary" = { fg = "background", bg = "pink" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
-"ui.selection" = { fg = "black", bg = "purple", modifiers = ["dim"] }
-"ui.selection.primary" = { fg = "black", bg = "pink" }
 "ui.text" = { fg = "foreground" }
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
