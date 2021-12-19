@@ -90,7 +90,7 @@
 
 ["exception" "try"] @keyword.control.exception
 
-["include" "open"] @include
+["include" "open"] @keyword.control.import
 
 ["for" "to" "downto" "while" "do" "done"] @keyword.control.repeat
 
