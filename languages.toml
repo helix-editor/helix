@@ -407,6 +407,13 @@ comment-token = ";"
 language-server = { command = "racket", args = ["-l", "racket-langserver"] }
 
 [[language]]
+name = "comment"
+scope = "scope.comment"
+roots = []
+file-types = []
+injection-regex = "comment"
+
+[[language]]
 name = "wgsl"
 scope = "source.wgsl"
 file-types = ["wgsl"]
