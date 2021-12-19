@@ -190,7 +190,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
@@ -202,7 +202,7 @@ impl<T: Item + 'static> Component for Menu<T> {
                 return close_fn;
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);

@@ -1,0 +1,39 @@
+# Author: NNB <nnbnh@protonmail.com>
+
+"ui.menu" = "black"
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.linenr" = { fg = "light-gray", bg = "black" }
+"ui.popup" = { bg = "black" }
+"ui.window" = { bg = "black" }
+"ui.linenr.selected" = { fg = "white", bg = "black", modifiers = ["bold"] }
+"ui.selection" = { fg = "gray", modifiers = ["reversed"] }
+"comment" = { fg = "light-gray", modifiers = ["italic"] }
+"ui.statusline" = { fg = "white", bg = "black" }
+"ui.statusline.inactive" = { fg = "gray", bg = "black" }
+"ui.help" = { fg = "white", bg = "black" }
+"ui.cursor" = { fg = "light-gray", modifiers = ["reversed"] }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+"variable" = "light-red"
+"constant.numeric" = "yellow"
+"constant" = "yellow"
+"attributes" = "yellow"
+"type" = "light-yellow"
+"ui.cursor.match" = { fg = "light-yellow", modifiers = ["underlined"] }
+"string"  = "light-green"
+"variable.other.member" = "light-green"
+"constant.character.escape" = "light-cyan"
+"function" = "light-blue"
+"constructor" = "light-blue"
+"special" = "light-blue"
+"keyword" = "light-magenta"
+"label" = "light-magenta"
+"namespace" = "light-magenta"
+"ui.help" = { fg = "white", bg = "black" }
+
+"diagnostic" = { modifiers = ["underlined"] }
+"ui.gutter" = { bg = "black" }
+"info" = "light-blue"
+"hint" = "gray"
+"debug" = "gray"
+"warning" = "yellow"
+"error" = "light-red"
