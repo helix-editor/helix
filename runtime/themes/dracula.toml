@@ -1,8 +1,7 @@
 # Author : Sebastian Zivota <loewenheim@mailbox.org>
-
-"escape" = { fg = "pink" }
 "type" = { fg = "cyan", modifiers = ["italic"] }
 "constant" = { fg = "purple" }
+"constant.character.escape" = { fg = "pink" }
 "string" = { fg = "yellow" }
 "string.regexp" = { fg = "red" }
 "comment" = { fg = "comment" }
