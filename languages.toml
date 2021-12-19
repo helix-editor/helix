@@ -407,6 +407,13 @@ comment-token = ";"
 language-server = { command = "racket", args = ["-l", "racket-langserver"] }
 
 [[language]]
+name = "comment"
+scope = "scope.comment"
+roots = []
+file-types = []
+injection-regex = "comment"
+
+[[language]]
 name = "wgsl"
 scope = "source.wgsl"
 file-types = ["wgsl"]
@@ -450,7 +457,6 @@ comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
 
-
 [[language]]
 name = "dockerfile"
 scope = "source.dockerfile"
@@ -460,5 +466,4 @@ file-types = ["Dockerfile"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "docker-langserver", args = ["--stdio"] }
-
 

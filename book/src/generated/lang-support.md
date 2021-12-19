@@ -4,6 +4,7 @@
 | c | ✓ |  |  | `clangd` |
 | c-sharp | ✓ |  |  |  |
 | cmake | ✓ |  |  | `cmake-language-server` |
+| comment | ✓ |  |  |  |
 | cpp | ✓ |  |  | `clangd` |
 | css | ✓ |  |  |  |
 | dart | ✓ |  | ✓ | `dart` |
