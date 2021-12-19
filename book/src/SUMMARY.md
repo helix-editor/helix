@@ -2,10 +2,12 @@
 
 - [Installation](./install.md)
 - [Usage](./usage.md)
+  - [Keymap](./keymap.md)
+  - [Commands](./commands.md)
+  - [Language Support](./lang-support.md)
 - [Migrating from Vim](./from-vim.md)
 - [Configuration](./configuration.md)
   - [Themes](./themes.md)
-  - [Keymap](./keymap.md)
   - [Key Remapping](./remapping.md)
   - [Hooks](./hooks.md)
   - [Languages](./languages.md)

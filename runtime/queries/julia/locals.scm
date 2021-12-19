@@ -2,24 +2,24 @@
 (import_statement
  (identifier) @definition.import)
 (variable_declaration
- (identifier) @definition.var)
+ (identifier) @local.definition)
 (variable_declaration
  (tuple_expression
-  (identifier) @definition.var))
+  (identifier) @local.definition))
 (for_binding
- (identifier) @definition.var)
+ (identifier) @local.definition)
 (for_binding
  (tuple_expression
-  (identifier) @definition.var))
+  (identifier) @local.definition))
 
 (assignment_expression
  (tuple_expression
-  (identifier) @definition.var))
+  (identifier) @local.definition))
 (assignment_expression
  (bare_tuple_expression
-  (identifier) @definition.var))
+  (identifier) @local.definition))
 (assignment_expression
- (identifier) @definition.var)
+ (identifier) @local.definition)
 
 (type_parameter_list
   (identifier) @definition.type)
@@ -43,11 +43,11 @@
  (identifier) @definition.parameter)
 
 (function_definition
- name: (identifier) @definition.function) @scope
+ name: (identifier) @definition.function) @local.scope
 (macro_definition 
- name: (identifier) @definition.macro) @scope
+ name: (identifier) @definition.macro) @local.scope
 
-(identifier) @reference
+(identifier) @local.reference
 
 [
   (try_statement)
@@ -56,4 +56,4 @@
   (let_statement)
   (compound_expression)
   (for_statement)
-] @scope
+] @local.scope

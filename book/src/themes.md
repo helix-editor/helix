@@ -145,11 +145,12 @@ We use a similar set of scopes as
     - `conditional` - `if`, `else`
     - `repeat` - `for`, `while`, `loop`
     - `import` - `import`, `export`
-    - (TODO: return?)
+    - `return`
+  - `operator` - `or`, `in`
   - `directive` - Preprocessor directives (`#if` in C) 
   - `function` - `fn`, `func`
 
-- `operator` - `||`, `+=`, `>`, `or`
+- `operator` - `||`, `+=`, `>`
 
 - `function`
   - `builtin`
@@ -160,6 +161,20 @@ We use a similar set of scopes as
 - `tag` - Tags (e.g. `<body>` in HTML)
 
 - `namespace`
+
+- `markup`
+  - `heading`
+  - `list`
+    - `unnumbered`
+    - `numbered`
+  - `bold`
+  - `italic`
+  - `underline`
+    - `link`
+  - `quote`
+  - `raw`
+    - `inline`
+    - `block`
 
 #### Interface
 

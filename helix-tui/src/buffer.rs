@@ -102,22 +102,13 @@ impl Default for Cell {
 /// buf.get_mut(5, 0).set_char('x');
 /// assert_eq!(buf.get(5, 0).symbol, "x");
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Buffer {
     /// The area represented by this buffer
     pub area: Rect,
     /// The content of the buffer. The length of this Vec should always be equal to area.width *
     /// area.height
     pub content: Vec<Cell>,
-}
-
-impl Default for Buffer {
-    fn default() -> Buffer {
-        Buffer {
-            area: Default::default(),
-            content: Vec::new(),
-        }
-    }
 }
 
 impl Buffer {

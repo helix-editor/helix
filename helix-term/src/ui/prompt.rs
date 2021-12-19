@@ -127,7 +127,7 @@ impl Prompt {
                 let mut char_position = char_indices
                     .iter()
                     .position(|(idx, _)| *idx == self.cursor)
-                    .unwrap_or_else(|| char_indices.len());
+                    .unwrap_or(char_indices.len());
 
                 for _ in 0..rep {
                     // Skip any non-whitespace characters
@@ -426,7 +426,7 @@ impl Component for Prompt {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
@@ -505,7 +505,7 @@ impl Component for Prompt {
                 self.change_completion_selection(CompletionDirection::Forward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
-            shift!(BackTab) => {
+            shift!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Backward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }

@@ -76,17 +76,27 @@ impl Application {
             None => Ok(def_lang_conf),
         };
 
-        let theme = if let Some(theme) = &config.theme {
-            match theme_loader.load(theme) {
-                Ok(theme) => theme,
-                Err(e) => {
-                    log::warn!("failed to load theme `{}` - {}", theme, e);
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| {
+                if true_color {
                     theme_loader.default()
+                } else {
+                    theme_loader.base16_default()
                 }
-            }
-        } else {
-            theme_loader.default()
-        };
+            });
 
         let syn_loader_conf: helix_core::syntax::Configuration = lang_conf
             .and_then(|conf| conf.try_into())
@@ -265,7 +275,7 @@ impl Application {
         use crate::commands::{insert::idle_completion, Context};
         use helix_view::document::Mode;
 
-        if doc_mut!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
+        if doc!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
             return;
         }
         let editor_view = self

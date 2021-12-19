@@ -9,6 +9,7 @@ categories = ["editor", "command-line-utilities"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
+default-run = "hx"
 
 [package.metadata.nix]
 build = true

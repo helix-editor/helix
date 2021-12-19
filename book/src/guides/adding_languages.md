@@ -2,7 +2,7 @@
 
 ## Submodules
 
-To add a new langauge, you should first add a tree-sitter submodule. To do this,
+To add a new language, you should first add a tree-sitter submodule. To do this,
 you can run the command
 ```sh
 git submodule add -f <repository> helix-syntax/languages/tree-sitter-<name>
