@@ -188,11 +188,11 @@ impl Client {
     }
 
     /// Reply to a language server RPC call.
-    pub fn reply<R>(
+    pub fn reply(
         &self,
         id: jsonrpc::Id,
-        result: core::result::Result<R, jsonrpc::Error>,
-    ) -> impl Future<Output = Result<()>> where R: serde::Serialize {
+        result: core::result::Result<Value, jsonrpc::Error>,
+    ) -> impl Future<Output = Result<()>> {
         use jsonrpc::{Failure, Output, Success, Version};
 
         let server_tx = self.server_tx.clone();
