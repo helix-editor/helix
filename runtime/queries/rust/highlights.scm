@@ -242,10 +242,9 @@
 ; ---
 ; Macros
 ; ---
-
 (meta_item
-  (identifier) @attribute)
-(attribute_item) @attribute
+  (identifier) @function.macro)
+
 (inner_attribute_item) @attribute
 
 (macro_definition
@@ -259,7 +258,7 @@
   "!" @function.macro)
 
 (metavariable) @variable.parameter
-(fragment_specifier) @variable.parameter
+(fragment_specifier) @type
 
 
 
