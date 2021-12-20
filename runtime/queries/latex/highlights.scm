@@ -371,7 +371,7 @@
 ((generic_command
   name:(generic_command_name) @_name
   .
-  arg: (_) @markup.underline.link)
+  arg: (_) @markup.link.url)
  (#match? @_name "^(\\\\url|\\\\href)$"))
 
 (ERROR) @error
