@@ -142,11 +142,23 @@
 	path = helix-syntax/languages/tree-sitter-perl
 	url = https://github.com/ganezdragon/tree-sitter-perl
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-comment"]
+	path = helix-syntax/languages/tree-sitter-comment
+	url = https://github.com/stsewd/tree-sitter-comment
+	shallow = true
 [submodule "helix-syntax/languages/tree-sitter-wgsl"]
 	path = helix-syntax/languages/tree-sitter-wgsl
 	url = https://github.com/szebniok/tree-sitter-wgsl
 	shallow = true
-[submodule "helix-syntax/tree-sitter-llvm"]
+[submodule "helix-syntax/languages/tree-sitter-llvm"]
 	path = helix-syntax/languages/tree-sitter-llvm
 	url = https://github.com/benwilliamgraham/tree-sitter-llvm
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-markdown"]
+	path = helix-syntax/languages/tree-sitter-markdown
+	url = https://github.com/MDeiml/tree-sitter-markdown
+	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-dart"]
+	path = helix-syntax/languages/tree-sitter-dart
+	url = https://github.com/UserNobody14/tree-sitter-dart.git
 	shallow = true

@@ -287,7 +287,7 @@ impl MappableCommand {
         add_newline_below, "Add newline below",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
-        goto_file_start, "Goto file start/line",
+        goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
         goto_file, "Goto files in selection",
         goto_file_hsplit, "Goto files in selection (hsplit)",
@@ -1938,7 +1938,7 @@ fn append_mode(cx: &mut Context) {
     if !last_range.is_empty() && last_range.head == end {
         let transaction = Transaction::change(
             doc.text(),
-            std::array::IntoIter::new([(end, end, Some(doc.line_ending.as_str().into()))]),
+            [(end, end, Some(doc.line_ending.as_str().into()))].into_iter(),
         );
         doc.apply(&transaction, view.id);
     }
@@ -2423,7 +2423,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
     }
 
     fn paste_clipboard_before(
@@ -2431,7 +2431,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
     }
 
     fn paste_primary_clipboard_after(
@@ -2439,7 +2439,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
     }
 
     fn paste_primary_clipboard_before(
@@ -2447,7 +2447,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection)
+        paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
     }
 
     fn replace_selections_with_clipboard_impl(
@@ -4619,11 +4619,12 @@ fn paste_impl(
     doc: &mut Document,
     view: &View,
     action: Paste,
+    count: usize,
 ) -> Option<Transaction> {
     let repeat = std::iter::repeat(
         values
             .last()
-            .map(|value| Tendril::from_slice(value))
+            .map(|value| Tendril::from(value.repeat(count)))
             .unwrap(),
     );
 
@@ -4638,7 +4639,7 @@ fn paste_impl(
     let mut values = values
         .iter()
         .map(|value| REGEX.replace_all(value, doc.line_ending.as_str()))
-        .map(|value| Tendril::from(value.as_ref()))
+        .map(|value| Tendril::from(value.as_ref().repeat(count)))
         .chain(repeat);
 
     let text = doc.text();
@@ -4658,7 +4659,7 @@ fn paste_impl(
             // paste append
             (Paste::After, false) => range.to(),
         };
-        (pos, pos, Some(values.next().unwrap()))
+        (pos, pos, values.next())
     });
 
     Some(transaction)
@@ -4668,13 +4669,14 @@ fn paste_clipboard_impl(
     editor: &mut Editor,
     action: Paste,
     clipboard_type: ClipboardType,
+    count: usize,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
 
     match editor
         .clipboard_provider
         .get_contents(clipboard_type)
-        .map(|contents| paste_impl(&[contents], doc, view, action))
+        .map(|contents| paste_impl(&[contents], doc, view, action, count))
     {
         Ok(Some(transaction)) => {
             doc.apply(&transaction, view.id);
@@ -4687,22 +4689,43 @@ fn paste_clipboard_impl(
 }
 
 fn paste_clipboard_after(cx: &mut Context) {
-    let _ = paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard);
+    let _ = paste_clipboard_impl(
+        cx.editor,
+        Paste::After,
+        ClipboardType::Clipboard,
+        cx.count(),
+    );
 }
 
 fn paste_clipboard_before(cx: &mut Context) {
-    let _ = paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard);
+    let _ = paste_clipboard_impl(
+        cx.editor,
+        Paste::Before,
+        ClipboardType::Clipboard,
+        cx.count(),
+    );
 }
 
 fn paste_primary_clipboard_after(cx: &mut Context) {
-    let _ = paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection);
+    let _ = paste_clipboard_impl(
+        cx.editor,
+        Paste::After,
+        ClipboardType::Selection,
+        cx.count(),
+    );
 }
 
 fn paste_primary_clipboard_before(cx: &mut Context) {
-    let _ = paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection);
+    let _ = paste_clipboard_impl(
+        cx.editor,
+        Paste::Before,
+        ClipboardType::Selection,
+        cx.count(),
+    );
 }
 
 fn replace_with_yanked(cx: &mut Context) {
+    let count = cx.count();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
@@ -4712,12 +4735,12 @@ fn replace_with_yanked(cx: &mut Context) {
             let repeat = std::iter::repeat(
                 values
                     .last()
-                    .map(|value| Tendril::from_slice(value))
+                    .map(|value| Tendril::from_slice(&value.repeat(count)))
                     .unwrap(),
             );
             let mut values = values
                 .iter()
-                .map(|value| Tendril::from_slice(value))
+                .map(|value| Tendril::from_slice(&value.repeat(count)))
                 .chain(repeat);
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -4737,6 +4760,7 @@ fn replace_with_yanked(cx: &mut Context) {
 fn replace_selections_with_clipboard_impl(
     editor: &mut Editor,
     clipboard_type: ClipboardType,
+    count: usize,
 ) -> anyhow::Result<()> {
     let (view, doc) = current!(editor);
 
@@ -4744,7 +4768,11 @@ fn replace_selections_with_clipboard_impl(
         Ok(contents) => {
             let selection = doc.selection(view.id);
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                (range.from(), range.to(), Some(contents.as_str().into()))
+                (
+                    range.from(),
+                    range.to(),
+                    Some(contents.repeat(count).as_str().into()),
+                )
             });
 
             doc.apply(&transaction, view.id);
@@ -4756,21 +4784,22 @@ fn replace_selections_with_clipboard_impl(
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Clipboard);
+    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Clipboard, cx.count());
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection);
+    let _ = replace_selections_with_clipboard_impl(cx.editor, ClipboardType::Selection, cx.count());
 }
 
 fn paste_after(cx: &mut Context) {
+    let count = cx.count();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
     if let Some(transaction) = registers
         .read(reg_name)
-        .and_then(|values| paste_impl(values, doc, view, Paste::After))
+        .and_then(|values| paste_impl(values, doc, view, Paste::After, count))
     {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);
@@ -4778,13 +4807,14 @@ fn paste_after(cx: &mut Context) {
 }
 
 fn paste_before(cx: &mut Context) {
+    let count = cx.count();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
     if let Some(transaction) = registers
         .read(reg_name)
-        .and_then(|values| paste_impl(values, doc, view, Paste::Before))
+        .and_then(|values| paste_impl(values, doc, view, Paste::Before, count))
     {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view.id);

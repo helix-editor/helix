@@ -11,6 +11,7 @@ indent = { tab-width = 4, unit = "    " }
 [language.config]
 cargo = { loadOutDirsFromCheck = true }
 procMacro = { enable = false }
+diagnostics = { disabled = ["unresolved-proc-macro"] }
 
 [[language]]
 name = "toml"
@@ -406,6 +407,13 @@ comment-token = ";"
 language-server = { command = "racket", args = ["-l", "racket-langserver"] }
 
 [[language]]
+name = "comment"
+scope = "scope.comment"
+roots = []
+file-types = []
+injection-regex = "comment"
+
+[[language]]
 name = "wgsl"
 scope = "source.wgsl"
 file-types = ["wgsl"]
@@ -420,3 +428,31 @@ roots = []
 file-types = ["ll"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "markdown"
+scope = "source.md"
+injection-regex = "md|markdown"
+file-types = ["md"]
+roots = []
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "dart"
+scope = "source.dart"
+file-types = ["dart"]
+roots = ["pubspec.yaml"]
+auto-format = true
+comment-token = "//"
+language-server = { command = "dart", args = ["language-server", "--client-id=helix"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "scala"
+scope = "source.scala"
+roots = ["build.sbt"]
+file-types = ["scala", "sbt"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "metals" }

@@ -8,7 +8,7 @@
 (constructor) @constructor
 (pragma) @pragma
 (comment) @comment
-(signature name: (variable) @fun_type_name)
+(signature name: (variable) @type)
 (function name: (variable) @function)
 (constraint class: (class_name (type)) @class)
 (class (class_head class: (class_name (type)) @class))
