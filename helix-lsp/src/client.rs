@@ -556,6 +556,14 @@ impl Client {
         self.call::<lsp::request::Completion>(params)
     }
 
+    pub async fn resolve_completion_item(
+        &self,
+        completion_item: lsp::CompletionItem,
+    ) -> Result<lsp::CompletionItem> {
+        self.request::<lsp::request::ResolveCompletionItem>(completion_item)
+            .await
+    }
+
     pub fn text_document_signature_help(
         &self,
         text_document: lsp::TextDocumentIdentifier,
