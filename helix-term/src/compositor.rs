@@ -19,9 +19,8 @@ pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
 // Cursive-inspired
 pub enum EventResult {
-    Ignored,
+    Ignored(Option<Callback>),
     Consumed(Option<Callback>),
-    Used(Callback),
 }
 
 use helix_view::Editor;
@@ -37,7 +36,7 @@ pub struct Context<'a> {
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
     fn handle_event(&mut self, _event: Event, _ctx: &mut Context) -> EventResult {
-        EventResult::Ignored
+        EventResult::Ignored(None)
     }
     // , args: ()
 
@@ -137,30 +136,35 @@ impl Compositor {
             keys.push(key.into());
         }
 
+        let mut callbacks = Vec::new();
+        let mut consumed = false;
+
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
-        let event_results: Vec<_> = self
-            .layers
-            .iter_mut()
-            .rev()
-            .map(|layer| layer.handle_event(event, cx))
-            .collect();
-
-        for event_result in event_results {
-            match event_result {
+        for layer in self.layers.iter_mut().rev() {
+            consumed = match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
-                    callback(self, cx);
-                    return true;
+                    callbacks.push(callback);
+                    true
                 }
-                EventResult::Consumed(None) => return true,
-                EventResult::Used(callback) => {
-                    callback(self, cx);
+                EventResult::Consumed(None) => true,
+                EventResult::Ignored(Some(callback)) => {
+                    callbacks.push(callback);
+                    false
                 }
-                EventResult::Ignored => {}
+                EventResult::Ignored(None) => false,
+            };
+
+            if consumed {
+                break;
             }
         }
 
-        false
+        for callback in callbacks {
+            callback(self, cx)
+        }
+
+        consumed
     }
 
     pub fn render(&mut self, cx: &mut Context) {

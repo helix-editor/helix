@@ -1,5 +1,5 @@
 use crate::{
-    compositor::{Callback, Component, Compositor, Context, EventResult},
+    compositor::{Callback, Component, Context, EventResult},
     ctrl, key,
 };
 use crossterm::event::Event;
@@ -95,9 +95,9 @@ impl<T: Component> Component for Popup<T> {
             Event::Key(event) => event,
             Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
-                return EventResult::Ignored;
+                return EventResult::Ignored(None);
             }
-            _ => return EventResult::Ignored,
+            _ => return EventResult::Ignored(None),
         };
 
         let close_fn: Callback = Box::new(|compositor, _| {
@@ -119,8 +119,8 @@ impl<T: Component> Component for Popup<T> {
             _ => {
                 let contents_event_result = self.contents.handle_event(event, cx);
 
-                if let EventResult::Ignored = contents_event_result {
-                    EventResult::Used(close_fn)
+                if let EventResult::Ignored(None) = contents_event_result {
+                    EventResult::Ignored(Some(close_fn))
                 } else {
                     contents_event_result
                 }
