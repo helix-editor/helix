@@ -142,22 +142,21 @@ impl Compositor {
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
         for layer in self.layers.iter_mut().rev() {
-            consumed = match layer.handle_event(event, cx) {
+            match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
                     callbacks.push(callback);
-                    true
+                    consumed = true;
+                    break;
                 }
-                EventResult::Consumed(None) => true,
+                EventResult::Consumed(None) => {
+                    consumed = true;
+                    break;
+                }
                 EventResult::Ignored(Some(callback)) => {
                     callbacks.push(callback);
-                    false
                 }
-                EventResult::Ignored(None) => false,
+                EventResult::Ignored(None) => {}
             };
-
-            if consumed {
-                break;
-            }
         }
 
         for callback in callbacks {
