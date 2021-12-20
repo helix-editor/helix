@@ -9,6 +9,7 @@
 | css | ✓ |  |  |  |
 | dart | ✓ |  | ✓ | `dart` |
 | elixir | ✓ |  |  | `elixir-ls` |
+| fish | ✓ | ✓ | ✓ |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |
