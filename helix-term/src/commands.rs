@@ -3316,7 +3316,6 @@ pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
 
         if let Err(e) = res {
             log::error!("execute LSP command: {}", e);
-            return;
         }
     });
 }
