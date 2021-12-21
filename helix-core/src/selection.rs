@@ -110,18 +110,15 @@ impl Range {
         self.anchor == self.head
     }
 
-    /// `Some(Direction::Forward)` when head > anchor.
-    /// `Some(Direction::Backward)` when head < anchor.
-    /// None otherwise.
+    /// `Direction::Backward` when head < anchor.
+    /// `Direction::Backward` otherwise.
     #[inline]
     #[must_use]
-    pub fn direction(&self) -> Option<Direction> {
+    pub fn direction(&self) -> Direction {
         if self.head < self.anchor {
-            Some(Direction::Backward)
-        } else if self.head > self.anchor {
-            Some(Direction::Forward)
+            Direction::Backward
         } else {
-            None
+            Direction::Forward
         }
     }
 

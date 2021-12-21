@@ -78,19 +78,16 @@ fn get_next_range(
 
         // if we are inserting for a regular one-width cursor, the anchor
         // moves with the head
-        (1, Some(Direction::Forward)) => end_head - 1,
-        (1, Some(Direction::Backward)) => end_head + 1,
+        (1, Direction::Forward) => end_head - 1,
+        (1, Direction::Backward) => end_head + 1,
 
         // if we are appending, the anchor stays where it is; only offset
         // for multiple range insertions
-        (_, Some(Direction::Forward)) => start_range.anchor + offset,
+        (_, Direction::Forward) => start_range.anchor + offset,
 
         // when we are inserting in front of a selection, we need to move
         // the anchor over by however many characters were inserted overall
-        (_, Some(Direction::Backward)) => start_range.anchor + offset + len_inserted,
-
-        // None means 0 width
-        _ => unreachable!(),
+        (_, Direction::Backward) => start_range.anchor + offset + len_inserted,
     };
 
     Range::new(end_anchor, end_head)
