@@ -46,6 +46,17 @@ language-server = { command = "elixir-ls" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "fish"
+scope = "source.fish"
+injection-regex = "fish"
+file-types = ["fish"]
+shebangs = ["fish"]
+roots = []
+comment-token = "#"
+
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
 name = "mint"
 scope = "source.mint"
 injection-regex = "mint"

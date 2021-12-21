@@ -162,3 +162,7 @@
 	path = helix-syntax/languages/tree-sitter-dart
 	url = https://github.com/UserNobody14/tree-sitter-dart.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-fish"]
+	path = helix-syntax/languages/tree-sitter-fish
+	url = https://github.com/ram02z/tree-sitter-fish
+	shallow = true
