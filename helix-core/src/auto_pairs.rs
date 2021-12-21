@@ -1,7 +1,7 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{Range, Rope, Selection, Tendril, Transaction};
+use crate::{movement::Direction, Range, Rope, Selection, Tendril, Transaction};
 use log::debug;
 use smallvec::SmallVec;
 
@@ -72,22 +72,25 @@ fn get_next_range(
 ) -> Range {
     let end_head = start_range.head + offset + typed_char.len_utf8();
 
-    let end_anchor = match (start_range.len(), start_range.is_forward()) {
+    let end_anchor = match (start_range.len(), start_range.direction()) {
         // if we have a zero width cursor, it shifts to the same number
         (0, _) => end_head,
 
         // if we are inserting for a regular one-width cursor, the anchor
         // moves with the head
-        (1, true) => end_head - 1,
-        (1, false) => end_head + 1,
+        (1, Some(Direction::Forward)) => end_head - 1,
+        (1, Some(Direction::Backward)) => end_head + 1,
 
         // if we are appending, the anchor stays where it is; only offset
         // for multiple range insertions
-        (_, true) => start_range.anchor + offset,
+        (_, Some(Direction::Forward)) => start_range.anchor + offset,
 
         // when we are inserting in front of a selection, we need to move
         // the anchor over by however many characters were inserted overall
-        (_, false) => start_range.anchor + offset + len_inserted,
+        (_, Some(Direction::Backward)) => start_range.anchor + offset + len_inserted,
+
+        // None means 0 width
+        _ => unreachable!(),
     };
 
     Range::new(end_anchor, end_head)

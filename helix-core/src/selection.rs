@@ -7,6 +7,7 @@ use crate::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
     },
+    movement::Direction,
     Assoc, ChangeSet, RopeSlice,
 };
 use smallvec::{smallvec, SmallVec};
@@ -109,18 +110,19 @@ impl Range {
         self.anchor == self.head
     }
 
-    /// `true` when head > anchor.
+    /// `Some(Direction::Forward)` when head > anchor.
+    /// `Some(Direction::Backward)` when head < anchor.
+    /// None otherwise.
     #[inline]
     #[must_use]
-    pub fn is_forward(&self) -> bool {
-        self.head > self.anchor
-    }
-
-    /// `true` when head < anchor.
-    #[inline]
-    #[must_use]
-    pub fn is_backward(&self) -> bool {
-        self.head < self.anchor
+    pub fn direction(&self) -> Option<Direction> {
+        if self.head < self.anchor {
+            Some(Direction::Backward)
+        } else if self.head > self.anchor {
+            Some(Direction::Forward)
+        } else {
+            None
+        }
     }
 
     /// Check two ranges for overlap.
