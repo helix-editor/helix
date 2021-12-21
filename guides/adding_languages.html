@@ -169,7 +169,17 @@ directory</a>.</p>
 <tr><td>config</td><td>Language server configuration</td></tr>
 </tbody></table>
 <h2 id="queries"><a class="header" href="#queries">Queries</a></h2>
-<p>For a language to have syntax-highlighting and indentation among other things, you have to add queries. Add a directory for your language with the path <code>runtime/queries/&lt;name&gt;/</code>. The tree-sitter <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries">website</a> gives more info on how to write queries.</p>
+<p>For a language to have syntax-highlighting and indentation among
+other things, you have to add queries. Add a directory for your
+language with the path <code>runtime/queries/&lt;name&gt;/</code>. The tree-sitter
+<a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries">website</a>
+gives more info on how to write queries.</p>
+<blockquote>
+<p>NOTE: When evaluating queries, the first matching query takes
+precedence, which is different from other editors like neovim where
+the last matching query supercedes the ones before it. See
+<a href="https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090">this issue</a> for an example.</p>
+</blockquote>
 <h2 id="common-issues"><a class="header" href="#common-issues">Common Issues</a></h2>
 <ul>
 <li>
