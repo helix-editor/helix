@@ -42,3 +42,5 @@
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
 | `:set-option`, `:set` | Set a config option at runtime |
+| `:sort` | Sort lines in selection. |
+| `:sort!` | Sort lines in selection in reverse order. |
