@@ -378,6 +378,7 @@ impl Application {
                         let doc = self.editor.document_by_path_mut(&path);
 
                         if let Some(doc) = doc {
+                            let lang_conf = &doc.language;
                             let text = doc.text();
 
                             let diagnostics = params
@@ -415,19 +416,28 @@ impl Application {
                                         return None;
                                     };
 
+                                    let severity =
+                                        diagnostic.severity.map(|severity| match severity {
+                                            DiagnosticSeverity::ERROR => Error,
+                                            DiagnosticSeverity::WARNING => Warning,
+                                            DiagnosticSeverity::INFORMATION => Info,
+                                            DiagnosticSeverity::HINT => Hint,
+                                            severity => unimplemented!("{:?}", severity),
+                                        });
+
+                                    if let Some(lang_conf) = lang_conf {
+                                        if let Some(severity) = severity {
+                                            if severity < lang_conf.diagnostic_severity {
+                                                return None;
+                                            }
+                                        }
+                                    };
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message,
-                                        severity: diagnostic.severity.map(
-                                            |severity| match severity {
-                                                DiagnosticSeverity::ERROR => Error,
-                                                DiagnosticSeverity::WARNING => Warning,
-                                                DiagnosticSeverity::INFORMATION => Info,
-                                                DiagnosticSeverity::HINT => Hint,
-                                                severity => unimplemented!("{:?}", severity),
-                                            },
-                                        ),
+                                        severity,
                                         // code
                                         // source
                                     })

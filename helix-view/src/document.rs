@@ -88,7 +88,7 @@ pub struct Document {
 
     syntax: Option<Syntax>,
     // /// Corresponding language scope name. Usually `source.<lang>`.
-    pub(crate) language: Option<Arc<LanguageConfiguration>>,
+    pub language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
