@@ -3610,17 +3610,31 @@ fn normal_mode(cx: &mut Context) {
 
     doc.mode = Mode::Normal;
 
+    try_restore_indent(doc, view.id);
+    doc.append_changes_to_history(view.id);
+
+    // if leaving append mode, move cursor back by 1
+    if doc.restore_cursor {
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            Range::new(
+                range.from(),
+                graphemes::prev_grapheme_boundary(text, range.to()),
+            )
+        });
+        doc.set_selection(view.id, selection);
+
+        doc.restore_cursor = false;
+    }
+}
+
+fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
     let doc_changes = doc.changes().changes();
     let text = doc.text().slice(..);
-    let pos = doc.selection(view.id).primary().cursor(text);
+    let pos = doc.selection(view_id).primary().cursor(text);
     let mut can_restore_indent = false;
 
-    // Will remove whitespaces when user opens a new line(may additional insert only tabs or spaces)
-    // and goto normal mode.
-    //
-    // NOTE: when open a new line, changes will only contains 3 elements:
-    // retain(pos) -> insert(something) -> retain(remaining_length), the last retain is useless, we
-    // only concerned about the first two changes.
+    // Removes trailing whitespace if insert mode is exited after starting a blank new line.
     use helix_core::chars::char_is_whitespace;
     use helix_core::Operation;
     if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
@@ -3636,27 +3650,11 @@ fn normal_mode(cx: &mut Context) {
 
     if can_restore_indent {
         let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 (line_start_pos, pos, None)
             });
-        doc.apply(&transaction, view.id);
-    }
-
-    doc.append_changes_to_history(view.id);
-
-    // if leaving append mode, move cursor back by 1
-    if doc.restore_cursor {
-        let text = doc.text().slice(..);
-        let selection = doc.selection(view.id).clone().transform(|range| {
-            Range::new(
-                range.from(),
-                graphemes::prev_grapheme_boundary(text, range.to()),
-            )
-        });
-        doc.set_selection(view.id, selection);
-
-        doc.restore_cursor = false;
+        doc.apply(&transaction, view_id);
     }
 }
 
