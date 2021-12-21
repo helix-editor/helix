@@ -378,7 +378,7 @@ impl Application {
                         let doc = self.editor.document_by_path_mut(&path);
 
                         if let Some(doc) = doc {
-                            let lang_conf = &doc.language;
+                            let lang_conf = doc.language_config();
                             let text = doc.text();
 
                             let diagnostics = params
