@@ -10,6 +10,7 @@
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
+| fish | ✓ | ✓ | ✓ |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |

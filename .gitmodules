@@ -165,4 +165,8 @@
 [submodule "helix-syntax/languages/tree-sitter-dockerfile"]
 	path = helix-syntax/languages/tree-sitter-dockerfile
 	url = https://github.com/camdencheek/tree-sitter-dockerfile.git
+  shallow = true
+[submodule "helix-syntax/languages/tree-sitter-fish"]
+	path = helix-syntax/languages/tree-sitter-fish
+	url = https://github.com/ram02z/tree-sitter-fish
 	shallow = true
