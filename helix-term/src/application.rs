@@ -1,8 +1,12 @@
 use helix_core::{merge_toml_values, syntax};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
+use serde_json::json;
 
-use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
+use crate::{
+    args::Args, commands::apply_workspace_edit, compositor::Compositor, config::Config, job::Jobs,
+    ui,
+};
 
 use log::{error, warn};
 
@@ -530,14 +534,6 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
-                    }
-                };
-
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
                     None => {
@@ -567,7 +563,41 @@ impl Application {
                         if spinner.is_stopped() {
                             spinner.start();
                         }
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
                         tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
+                    }
+                    MethodCall::ApplyWorkspaceEdit(params) => {
+                        apply_workspace_edit(
+                            &mut self.editor,
+                            helix_lsp::OffsetEncoding::Utf8,
+                            &params.edit,
+                        );
+
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
+                        tokio::spawn(language_server.reply(
+                            id,
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: true,
+                                failure_reason: None,
+                                failed_change: None,
+                            })),
+                        ));
                     }
                 }
             }

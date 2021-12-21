@@ -3277,12 +3277,19 @@ pub fn code_action(cx: &mut Context) {
                     move |editor, code_action, _action| match code_action {
                         lsp::CodeActionOrCommand::Command(command) => {
                             log::debug!("code action command: {:?}", command);
-                            editor.set_error(String::from("Handling code action command is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+                            execute_lsp_command(editor, command.clone());
                         }
                         lsp::CodeActionOrCommand::CodeAction(code_action) => {
                             log::debug!("code action: {:?}", code_action);
                             if let Some(ref workspace_edit) = code_action.edit {
-                                apply_workspace_edit(editor, offset_encoding, workspace_edit)
+                                log::debug!("edit: {:?}", workspace_edit);
+                                apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            }
+
+                            // if code action provides both edit and command first the edit
+                            // should be applied and then the command
+                            if let Some(command) = &code_action.command {
+                                execute_lsp_command(editor, command.clone());
                             }
                         }
                     },
@@ -3291,6 +3298,26 @@ pub fn code_action(cx: &mut Context) {
             }
         },
     )
+}
+
+pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
+    let (_view, doc) = current!(editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // the command is executed on the server and communicated back
+    // to the client asynchronously using workspace edits
+    let command_future = language_server.command(cmd);
+    tokio::spawn(async move {
+        let res = command_future.await;
+
+        if let Err(e) = res {
+            log::error!("execute LSP command: {}", e);
+        }
+    });
 }
 
 pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
@@ -3346,7 +3373,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     }
 }
 
-fn apply_workspace_edit(
+pub fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
