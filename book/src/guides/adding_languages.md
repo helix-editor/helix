@@ -42,7 +42,16 @@ These are the available keys and descriptions for the file.
 
 ## Queries
 
-For a language to have syntax-highlighting and indentation among other things, you have to add queries. Add a directory for your language with the path `runtime/queries/<name>/`. The tree-sitter [website](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries) gives more info on how to write queries.
+For a language to have syntax-highlighting and indentation among
+other things, you have to add queries. Add a directory for your
+language with the path `runtime/queries/<name>/`. The tree-sitter
+[website](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries)
+gives more info on how to write queries.
+
+> NOTE: When evaluating queries, the first matching query takes
+precedence, which is different from other editors like neovim where
+the last matching query supercedes the ones before it. See
+[this issue][neovim-query-precedence] for an example.
 
 ## Common Issues
 
@@ -58,3 +67,4 @@ For a language to have syntax-highlighting and indentation among other things, y
 
 [treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
 [languages.toml]: https://github.com/helix-editor/helix/blob/master/languages.toml
+[neovim-query-precedence]: https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090
