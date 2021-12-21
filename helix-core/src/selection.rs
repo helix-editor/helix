@@ -7,6 +7,7 @@ use crate::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
     },
+    movement::Direction,
     Assoc, ChangeSet, RopeSlice,
 };
 use smallvec::{smallvec, SmallVec};
@@ -82,6 +83,13 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
+    /// Total length of the range.
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.to() - self.from()
+    }
+
     /// The (inclusive) range of lines that the range overlaps.
     #[inline]
     #[must_use]
@@ -100,6 +108,18 @@ impl Range {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.anchor == self.head
+    }
+
+    /// `Direction::Backward` when head < anchor.
+    /// `Direction::Backward` otherwise.
+    #[inline]
+    #[must_use]
+    pub fn direction(&self) -> Direction {
+        if self.head < self.anchor {
+            Direction::Backward
+        } else {
+            Direction::Forward
+        }
     }
 
     /// Check two ranges for overlap.

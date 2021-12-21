@@ -889,6 +889,10 @@ impl Document {
         self.indent_style.as_str()
     }
 
+    pub fn changes(&self) -> &ChangeSet {
+        &self.changes
+    }
+
     #[inline]
     /// File path on disk.
     pub fn path(&self) -> Option<&PathBuf> {

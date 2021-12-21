@@ -202,7 +202,7 @@ impl Client {
                 Ok(result) => Output::Success(Success {
                     jsonrpc: Some(Version::V2),
                     id,
-                    result,
+                    result: serde_json::to_value(result)?,
                 }),
                 Err(error) => Output::Failure(Failure {
                     jsonrpc: Some(Version::V2),
@@ -799,5 +799,17 @@ impl Client {
 
         let response = self.request::<lsp::request::Rename>(params).await?;
         Ok(response.unwrap_or_default())
+    }
+
+    pub fn command(&self, command: lsp::Command) -> impl Future<Output = Result<Value>> {
+        let params = lsp::ExecuteCommandParams {
+            command: command.command,
+            arguments: command.arguments.unwrap_or_default(),
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        self.call::<lsp::request::ExecuteCommand>(params)
     }
 }

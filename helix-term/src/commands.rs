@@ -3277,12 +3277,19 @@ pub fn code_action(cx: &mut Context) {
                     move |editor, code_action, _action| match code_action {
                         lsp::CodeActionOrCommand::Command(command) => {
                             log::debug!("code action command: {:?}", command);
-                            editor.set_error(String::from("Handling code action command is not implemented yet, see https://github.com/helix-editor/helix/issues/183"));
+                            execute_lsp_command(editor, command.clone());
                         }
                         lsp::CodeActionOrCommand::CodeAction(code_action) => {
                             log::debug!("code action: {:?}", code_action);
                             if let Some(ref workspace_edit) = code_action.edit {
-                                apply_workspace_edit(editor, offset_encoding, workspace_edit)
+                                log::debug!("edit: {:?}", workspace_edit);
+                                apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            }
+
+                            // if code action provides both edit and command first the edit
+                            // should be applied and then the command
+                            if let Some(command) = &code_action.command {
+                                execute_lsp_command(editor, command.clone());
                             }
                         }
                     },
@@ -3291,6 +3298,26 @@ pub fn code_action(cx: &mut Context) {
             }
         },
     )
+}
+
+pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
+    let (_view, doc) = current!(editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => return,
+    };
+
+    // the command is executed on the server and communicated back
+    // to the client asynchronously using workspace edits
+    let command_future = language_server.command(cmd);
+    tokio::spawn(async move {
+        let res = command_future.await;
+
+        if let Err(e) = res {
+            log::error!("execute LSP command: {}", e);
+        }
+    });
 }
 
 pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
@@ -3346,7 +3373,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     }
 }
 
-fn apply_workspace_edit(
+pub fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
@@ -3610,6 +3637,7 @@ fn normal_mode(cx: &mut Context) {
 
     doc.mode = Mode::Normal;
 
+    try_restore_indent(doc, view.id);
     doc.append_changes_to_history(view.id);
 
     // if leaving append mode, move cursor back by 1
@@ -3624,6 +3652,36 @@ fn normal_mode(cx: &mut Context) {
         doc.set_selection(view.id, selection);
 
         doc.restore_cursor = false;
+    }
+}
+
+fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
+    let doc_changes = doc.changes().changes();
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view_id).primary().cursor(text);
+    let mut can_restore_indent = false;
+
+    // Removes trailing whitespace if insert mode is exited after starting a blank new line.
+    use helix_core::chars::char_is_whitespace;
+    use helix_core::Operation;
+    if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
+        doc_changes
+    {
+        if move_pos + inserted_str.len32() as usize == pos
+            && inserted_str.starts_with('\n')
+            && inserted_str.chars().skip(1).all(char_is_whitespace)
+        {
+            can_restore_indent = true;
+        }
+    }
+
+    if can_restore_indent {
+        let transaction =
+            Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
+                let line_start_pos = text.line_to_char(range.cursor_line(text));
+                (line_start_pos, pos, None)
+            });
+        doc.apply(&transaction, view_id);
     }
 }
 
