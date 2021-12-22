@@ -312,6 +312,7 @@ impl MappableCommand {
         // TODO: different description ?
         goto_line_end_newline, "Goto line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        goto_last_char_of_file, "Goto last char of the file",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_line_end, "Extend to line end",
@@ -904,6 +905,11 @@ fn goto_file_start(cx: &mut Context) {
             .transform(|range| range.put_cursor(text, 0, doc.mode == Mode::Select));
         doc.set_selection(view.id, selection);
     }
+}
+
+fn goto_last_char_of_file(cx: &mut Context) {
+    goto_last_line(cx);
+    goto_line_end(cx);
 }
 
 fn goto_file_end(cx: &mut Context) {

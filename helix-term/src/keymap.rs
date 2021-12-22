@@ -528,6 +528,7 @@ impl Default for Keymaps {
                 "n" => goto_next_buffer,
                 "p" => goto_previous_buffer,
                 "." => goto_last_modification,
+                "E" => goto_last_char_of_file,
             },
             ":" => command_mode,
 
