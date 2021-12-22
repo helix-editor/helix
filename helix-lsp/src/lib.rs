@@ -203,6 +203,7 @@ pub mod util {
 #[derive(Debug, PartialEq, Clone)]
 pub enum MethodCall {
     WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
+    ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
 }
 
 impl MethodCall {
@@ -214,6 +215,12 @@ impl MethodCall {
                     .parse()
                     .expect("Failed to parse WorkDoneCreate params");
                 Self::WorkDoneProgressCreate(params)
+            }
+            lsp::request::ApplyWorkspaceEdit::METHOD => {
+                let params: lsp::ApplyWorkspaceEditParams = params
+                    .parse()
+                    .expect("Failed to parse ApplyWorkspaceEdit params");
+                Self::ApplyWorkspaceEdit(params)
             }
             _ => {
                 log::warn!("unhandled lsp request: {}", method);
@@ -337,7 +344,10 @@ impl Registry {
                         })
                         .await;
 
-                    value.expect("failed to initialize capabilities");
+                    if let Err(e) = value {
+                        log::error!("failed to initialize language server: {}", e);
+                        return;
+                    }
 
                     // next up, notify<initialized>
                     _client

@@ -54,7 +54,7 @@ impl From<crossterm::event::KeyModifiers> for KeyModifiers {
 }
 
 /// Represents a key.
-#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum KeyCode {
     /// Backspace key.
@@ -79,8 +79,6 @@ pub enum KeyCode {
     PageDown,
     /// Tab key.
     Tab,
-    /// Shift + Tab key.
-    BackTab,
     /// Delete key.
     Delete,
     /// Insert key.
@@ -116,7 +114,6 @@ impl From<KeyCode> for crossterm::event::KeyCode {
             KeyCode::PageUp => CKeyCode::PageUp,
             KeyCode::PageDown => CKeyCode::PageDown,
             KeyCode::Tab => CKeyCode::Tab,
-            KeyCode::BackTab => CKeyCode::BackTab,
             KeyCode::Delete => CKeyCode::Delete,
             KeyCode::Insert => CKeyCode::Insert,
             KeyCode::F(f_number) => CKeyCode::F(f_number),
@@ -144,7 +141,7 @@ impl From<crossterm::event::KeyCode> for KeyCode {
             CKeyCode::PageUp => KeyCode::PageUp,
             CKeyCode::PageDown => KeyCode::PageDown,
             CKeyCode::Tab => KeyCode::Tab,
-            CKeyCode::BackTab => KeyCode::BackTab,
+            CKeyCode::BackTab => unreachable!("BackTab should have been handled on KeyEvent level"),
             CKeyCode::Delete => KeyCode::Delete,
             CKeyCode::Insert => KeyCode::Insert,
             CKeyCode::F(f_number) => KeyCode::F(f_number),

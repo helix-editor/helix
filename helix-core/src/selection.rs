@@ -7,6 +7,7 @@ use crate::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
     },
+    movement::Direction,
     Assoc, ChangeSet, RopeSlice,
 };
 use smallvec::{smallvec, SmallVec};
@@ -82,6 +83,13 @@ impl Range {
         std::cmp::max(self.anchor, self.head)
     }
 
+    /// Total length of the range.
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.to() - self.from()
+    }
+
     /// The (inclusive) range of lines that the range overlaps.
     #[inline]
     #[must_use]
@@ -100,6 +108,18 @@ impl Range {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.anchor == self.head
+    }
+
+    /// `Direction::Backward` when head < anchor.
+    /// `Direction::Backward` otherwise.
+    #[inline]
+    #[must_use]
+    pub fn direction(&self) -> Direction {
+        if self.head < self.anchor {
+            Direction::Backward
+        } else {
+            Direction::Forward
+        }
     }
 
     /// Check two ranges for overlap.
@@ -308,10 +328,10 @@ impl Range {
 }
 
 impl From<(usize, usize)> for Range {
-    fn from(tuple: (usize, usize)) -> Self {
+    fn from((anchor, head): (usize, usize)) -> Self {
         Self {
-            anchor: tuple.0,
-            head: tuple.1,
+            anchor,
+            head,
             horiz: None,
         }
     }
@@ -360,13 +380,24 @@ impl Selection {
         self.normalize()
     }
 
-    /// Adds a new range to the selection and makes it the primary range.
+    /// Removes a range from the selection.
     pub fn remove(mut self, index: usize) -> Self {
+        assert!(
+            self.ranges.len() > 1,
+            "can't remove the last range from a selection!"
+        );
+
         self.ranges.remove(index);
         if index < self.primary_index || self.primary_index == self.ranges.len() {
             self.primary_index -= 1;
         }
         self
+    }
+
+    /// Replace a range in the selection with a new range.
+    pub fn replace(mut self, index: usize, range: Range) -> Self {
+        self.ranges[index] = range;
+        self.normalize()
     }
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after
@@ -517,14 +548,15 @@ impl<'a> IntoIterator for &'a Selection {
 
 // TODO: checkSelection -> check if valid for doc length && sorted
 
-pub fn keep_matches(
+pub fn keep_or_remove_matches(
     text: RopeSlice,
     selection: &Selection,
     regex: &crate::regex::Regex,
+    remove: bool,
 ) -> Option<Selection> {
     let result: SmallVec<_> = selection
         .iter()
-        .filter(|range| regex.is_match(&range.fragment(text)))
+        .filter(|range| regex.is_match(&range.fragment(text)) ^ remove)
         .copied()
         .collect();
 

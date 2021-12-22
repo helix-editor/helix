@@ -5,6 +5,7 @@ pub mod diagnostic;
 pub mod diff;
 pub mod graphemes;
 pub mod history;
+pub mod increment;
 pub mod indent;
 pub mod line_ending;
 pub mod macros;
@@ -16,6 +17,7 @@ mod position;
 pub mod register;
 pub mod search;
 pub mod selection;
+pub mod shellwords;
 mod state;
 pub mod surround;
 pub mod syntax;
@@ -35,6 +37,7 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
     line.chars().position(|ch| !ch.is_whitespace())
 }
 
+/// Find `.git` root.
 pub fn find_root(root: Option<&str>) -> Option<std::path::PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
 
@@ -156,7 +159,7 @@ mod merge_toml_tests {
         ";
 
         let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Couldn't parse built-in langauges config");
+            .expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
         let merged = merge_toml_values(base, user);
@@ -193,7 +196,7 @@ pub use tendril::StrTendril as Tendril;
 pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
-pub use position::{coords_at_pos, pos_at_coords, Position};
+pub use position::{coords_at_pos, pos_at_coords, visual_coords_at_pos, Position};
 pub use selection::{Range, Selection};
 pub use smallvec::SmallVec;
 pub use syntax::Syntax;

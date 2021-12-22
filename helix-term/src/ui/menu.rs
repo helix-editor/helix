@@ -1,5 +1,8 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::{
+    compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key, shift,
+};
+use crossterm::event::Event;
 use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -64,25 +67,23 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn score(&mut self, pattern: &str) {
-        // need to borrow via pattern match otherwise it complains about simultaneous borrow
-        let Self {
-            ref mut matcher,
-            ref mut matches,
-            ref options,
-            ..
-        } = *self;
-
         // reuse the matches allocation
-        matches.clear();
-        matches.extend(options.iter().enumerate().filter_map(|(index, option)| {
-            let text = option.filter_text();
-            // TODO: using fuzzy_indices could give us the char idx for match highlighting
-            matcher
-                .fuzzy_match(text, pattern)
-                .map(|score| (index, score))
-        }));
+        self.matches.clear();
+        self.matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    let text = option.filter_text();
+                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
+                    self.matcher
+                        .fuzzy_match(text, pattern)
+                        .map(|score| (index, score))
+                }),
+        );
         // matches.sort_unstable_by_key(|(_, score)| -score);
-        matches.sort_unstable_by_key(|(index, _score)| options[*index].sort_text());
+        self.matches
+            .sort_unstable_by_key(|(index, _score)| self.options[*index].sort_text());
 
         // reset cursor position
         self.cursor = None;
@@ -90,9 +91,18 @@ impl<T: Item> Menu<T> {
         self.recalculate = true;
     }
 
+    pub fn clear(&mut self) {
+        self.matches.clear();
+
+        // reset cursor position
+        self.cursor = None;
+        self.scroll = 0;
+    }
+
     pub fn move_up(&mut self) {
         let len = self.matches.len();
-        let pos = self.cursor.map_or(0, |i| (i + len.saturating_sub(1)) % len) % len;
+        let max_index = len.saturating_sub(1);
+        let pos = self.cursor.map_or(max_index, |i| (i + max_index) % len) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
     }
@@ -180,60 +190,30 @@ impl<T: Item + 'static> Component for Menu<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
 
-        match event {
+        match event.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
                 return close_fn;
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::BackTab,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Up, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('p'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
-            KeyEvent {
-                code: KeyCode::Tab,
-                modifiers: KeyModifiers::NONE,
-            }
-            | KeyEvent {
-                code: KeyCode::Down,
-                ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('n'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+                // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
                 self.move_down();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
+            key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
                 }

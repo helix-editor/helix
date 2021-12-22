@@ -22,22 +22,12 @@ pub enum Assoc {
 }
 
 // ChangeSpec = Change | ChangeSet | Vec<Change>
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ChangeSet {
     pub(crate) changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
     len: usize,
     len_after: usize,
-}
-
-impl Default for ChangeSet {
-    fn default() -> Self {
-        Self {
-            changes: Vec::new(),
-            len: 0,
-            len_after: 0,
-        }
-    }
 }
 
 impl ChangeSet {
@@ -131,6 +121,9 @@ impl ChangeSet {
         // a: [] len: 0 len_after: 1 | b: [Insert(Tendril<UTF8>(inline: "\n")), Retain(1)] len 1
         if self.changes.is_empty() {
             return other;
+        }
+        if other.changes.is_empty() {
+            return self;
         }
 
         let len = self.changes.len();
@@ -327,7 +320,7 @@ impl ChangeSet {
     /// `true` when the set is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.changes.is_empty()
+        self.changes.is_empty() || self.changes == [Operation::Retain(self.len)]
     }
 
     /// Map a position through the changes.
@@ -416,7 +409,7 @@ impl ChangeSet {
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
 /// a single transaction.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Transaction {
     changes: ChangeSet,
     selection: Option<Selection>,
@@ -463,6 +456,13 @@ impl Transaction {
             changes,
             selection: None,
         }
+    }
+
+    pub fn compose(mut self, other: Self) -> Self {
+        self.changes = self.changes.compose(other.changes);
+        // Other selection takes precedence
+        self.selection = other.selection;
+        self
     }
 
     pub fn with_selection(mut self, selection: Selection) -> Self {

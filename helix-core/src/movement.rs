@@ -53,6 +53,10 @@ pub fn move_vertically(
     let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
+    // TODO: switch this to use `visual_coords_at_pos` rather than
+    // `coords_at_pos` as this will cause a jerky movement when the visual
+    // position does not match, like moving from a line with tabs/CJK to
+    // a line without
     let Position { row, col } = coords_at_pos(slice, pos);
     let horiz = range.horiz.unwrap_or(col as u32);
 
@@ -164,7 +168,7 @@ pub fn backwards_skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<u
 where
     F: Fn(char) -> bool,
 {
-    let mut chars_starting_from_next = slice.chars_at(pos + 1);
+    let mut chars_starting_from_next = slice.chars_at(pos);
     let mut backwards = iter::from_fn(|| chars_starting_from_next.prev()).enumerate();
     backwards.find_map(|(i, c)| {
         if !fun(c) {
@@ -303,8 +307,6 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
 
 #[cfg(test)]
 mod test {
-    use std::array::{self, IntoIter};
-
     use ropey::Rope;
 
     use super::*;
@@ -356,7 +358,7 @@ mod test {
             ((Direction::Backward, 999usize), (0, 0)), // |This is a simple alphabetic line
         ];
 
-        for ((direction, amount), coordinates) in IntoIter::new(moves_and_expected_coordinates) {
+        for ((direction, amount), coordinates) in moves_and_expected_coordinates {
             range = move_horizontally(slice, range, direction, amount, Movement::Move);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
         }
@@ -370,7 +372,7 @@ mod test {
 
         let mut range = Range::point(position);
 
-        let moves_and_expected_coordinates = IntoIter::new([
+        let moves_and_expected_coordinates = [
             ((Direction::Forward, 11usize), (1, 1)), // Multiline\nt|ext sample\n...
             ((Direction::Backward, 1usize), (1, 0)), // Multiline\n|text sample\n...
             ((Direction::Backward, 5usize), (0, 5)), // Multi|line\ntext sample\n...
@@ -380,7 +382,7 @@ mod test {
             ((Direction::Backward, 0usize), (0, 3)), // Mul|tiline\ntext sample\n...
             ((Direction::Forward, 999usize), (5, 0)), // ...and whitespaced\n|
             ((Direction::Forward, 999usize), (5, 0)), // ...and whitespaced\n|
-        ]);
+        ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
             range = move_horizontally(slice, range, direction, amount, Movement::Move);
@@ -398,11 +400,11 @@ mod test {
         let mut range = Range::point(position);
         let original_anchor = range.anchor;
 
-        let moves = IntoIter::new([
+        let moves = [
             (Direction::Forward, 1usize),
             (Direction::Forward, 5usize),
             (Direction::Backward, 3usize),
-        ]);
+        ];
 
         for (direction, amount) in moves {
             range = move_horizontally(slice, range, direction, amount, Movement::Extend);
@@ -416,7 +418,7 @@ mod test {
         let slice = text.slice(..);
         let position = pos_at_coords(slice, (0, 0).into(), true);
         let mut range = Range::point(position);
-        let moves_and_expected_coordinates = IntoIter::new([
+        let moves_and_expected_coordinates = [
             ((Direction::Forward, 1usize), (1, 0)),
             ((Direction::Forward, 2usize), (3, 0)),
             ((Direction::Forward, 1usize), (4, 0)),
@@ -426,7 +428,7 @@ mod test {
             ((Direction::Backward, 0usize), (4, 0)),
             ((Direction::Forward, 5), (5, 0)),
             ((Direction::Forward, 999usize), (5, 0)),
-        ]);
+        ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
             range = move_vertically(slice, range, direction, amount, Movement::Move);
@@ -446,7 +448,7 @@ mod test {
             H,
             V,
         }
-        let moves_and_expected_coordinates = IntoIter::new([
+        let moves_and_expected_coordinates = [
             // Places cursor at the end of line
             ((Axis::H, Direction::Forward, 8usize), (0, 8)),
             // First descent preserves column as the target line is wider
@@ -459,7 +461,7 @@ mod test {
             ((Axis::V, Direction::Backward, 999usize), (0, 8)),
             ((Axis::V, Direction::Forward, 4usize), (4, 8)),
             ((Axis::V, Direction::Forward, 999usize), (5, 0)),
-        ]);
+        ];
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
@@ -485,7 +487,7 @@ mod test {
             H,
             V,
         }
-        let moves_and_expected_coordinates = IntoIter::new([
+        let moves_and_expected_coordinates = [
             // Places cursor at the fourth kana.
             ((Axis::H, Direction::Forward, 4), (0, 4)),
             // Descent places cursor at the 4th character.
@@ -494,7 +496,7 @@ mod test {
             ((Axis::H, Direction::Backward, 1usize), (1, 3)),
             // Jumping back up 1 line.
             ((Axis::V, Direction::Backward, 1usize), (0, 3)),
-        ]);
+        ];
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
@@ -526,7 +528,7 @@ mod test {
 
     #[test]
     fn test_behaviour_when_moving_to_start_of_next_words() {
-        let tests = array::IntoIter::new([
+        let tests = [
             ("Basic forward motion stops at the first space",
                 vec![(1, Range::new(0, 0), Range::new(0, 6))]),
             (" Starting from a boundary advances the anchor",
@@ -600,7 +602,7 @@ mod test {
                 vec![
                     (1, Range::new(0, 0), Range::new(0, 6)),
                 ]),
-        ]);
+        ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
@@ -612,7 +614,7 @@ mod test {
 
     #[test]
     fn test_behaviour_when_moving_to_start_of_next_long_words() {
-        let tests = array::IntoIter::new([
+        let tests = [
             ("Basic forward motion stops at the first space",
                 vec![(1, Range::new(0, 0), Range::new(0, 6))]),
             (" Starting from a boundary advances the anchor",
@@ -684,7 +686,7 @@ mod test {
                 vec![
                     (1, Range::new(0, 0), Range::new(0, 8)),
                 ]),
-        ]);
+        ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
@@ -696,7 +698,7 @@ mod test {
 
     #[test]
     fn test_behaviour_when_moving_to_start_of_previous_words() {
-        let tests = array::IntoIter::new([
+        let tests = [
             ("Basic backward motion from the middle of a word",
                 vec![(1, Range::new(3, 3), Range::new(4, 0))]),
 
@@ -769,7 +771,7 @@ mod test {
                 vec![
                     (1, Range::new(0, 6), Range::new(6, 0)),
                 ]),
-        ]);
+        ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
@@ -781,7 +783,7 @@ mod test {
 
     #[test]
     fn test_behaviour_when_moving_to_start_of_previous_long_words() {
-        let tests = array::IntoIter::new([
+        let tests = [
             (
                 "Basic backward motion from the middle of a word",
                 vec![(1, Range::new(3, 3), Range::new(4, 0))],
@@ -866,7 +868,7 @@ mod test {
                 vec![
                     (1, Range::new(0, 8), Range::new(8, 0)),
                 ]),
-        ]);
+        ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
@@ -878,7 +880,7 @@ mod test {
 
     #[test]
     fn test_behaviour_when_moving_to_end_of_next_words() {
-        let tests = array::IntoIter::new([
+        let tests = [
             ("Basic forward motion from the start of a word to the end of it",
                 vec![(1, Range::new(0, 0), Range::new(0, 5))]),
             ("Basic forward motion from the end of a word to the end of the next",
@@ -950,7 +952,7 @@ mod test {
                 vec![
                     (1, Range::new(0, 0), Range::new(0, 5)),
                 ]),
-        ]);
+        ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
@@ -962,7 +964,7 @@ mod test {
 
     #[test]
     fn test_behaviour_when_moving_to_end_of_previous_words() {
-        let tests = array::IntoIter::new([
+        let tests = [
             ("Basic backward motion from the middle of a word",
                 vec![(1, Range::new(9, 9), Range::new(10, 5))]),
             ("Starting from after boundary retreats the anchor",
@@ -1032,7 +1034,7 @@ mod test {
                 vec![
                     (1, Range::new(0, 10), Range::new(10, 4)),
                 ]),
-        ]);
+        ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
@@ -1044,7 +1046,7 @@ mod test {
 
     #[test]
     fn test_behaviour_when_moving_to_end_of_next_long_words() {
-        let tests = array::IntoIter::new([
+        let tests = [
             ("Basic forward motion from the start of a word to the end of it",
                 vec![(1, Range::new(0, 0), Range::new(0, 5))]),
             ("Basic forward motion from the end of a word to the end of the next",
@@ -1114,7 +1116,7 @@ mod test {
                 vec![
                     (1, Range::new(0, 0), Range::new(0, 7)),
                 ]),
-        ]);
+        ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {

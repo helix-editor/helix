@@ -202,7 +202,7 @@ impl Client {
                 Ok(result) => Output::Success(Success {
                     jsonrpc: Some(Version::V2),
                     id,
-                    result,
+                    result: serde_json::to_value(result)?,
                 }),
                 Err(error) => Output::Failure(Failure {
                     jsonrpc: Some(Version::V2),
@@ -256,6 +256,12 @@ impl Client {
                         // badly formatted.
                         content_format: Some(vec![lsp::MarkupKind::Markdown]),
                         ..Default::default()
+                    }),
+                    rename: Some(lsp::RenameClientCapabilities {
+                        dynamic_registration: Some(false),
+                        prepare_support: Some(false),
+                        prepare_support_default_behavior: None,
+                        honors_change_annotations: Some(false),
                     }),
                     code_action: Some(lsp::CodeActionClientCapabilities {
                         code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
@@ -461,7 +467,7 @@ impl Client {
         };
 
         let changes = match sync_capabilities {
-            lsp::TextDocumentSyncKind::Full => {
+            lsp::TextDocumentSyncKind::FULL => {
                 vec![lsp::TextDocumentContentChangeEvent {
                     // range = None -> whole document
                     range: None,        //Some(Range)
@@ -469,10 +475,11 @@ impl Client {
                     text: new_text.to_string(),
                 }]
             }
-            lsp::TextDocumentSyncKind::Incremental => {
+            lsp::TextDocumentSyncKind::INCREMENTAL => {
                 Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding)
             }
-            lsp::TextDocumentSyncKind::None => return None,
+            lsp::TextDocumentSyncKind::NONE => return None,
+            kind => unimplemented!("{:?}", kind),
         };
 
         Some(self.notify::<lsp::notification::DidChangeTextDocument>(
@@ -771,5 +778,38 @@ impl Client {
         };
 
         self.call::<lsp::request::CodeActionRequest>(params)
+    }
+
+    pub async fn rename_symbol(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        new_name: String,
+    ) -> anyhow::Result<lsp::WorkspaceEdit> {
+        let params = lsp::RenameParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            new_name,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self.request::<lsp::request::Rename>(params).await?;
+        Ok(response.unwrap_or_default())
+    }
+
+    pub fn command(&self, command: lsp::Command) -> impl Future<Output = Result<Value>> {
+        let params = lsp::ExecuteCommandParams {
+            command: command.command,
+            arguments: command.arguments.unwrap_or_default(),
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        self.call::<lsp::request::ExecuteCommand>(params)
     }
 }

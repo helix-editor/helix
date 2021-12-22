@@ -150,14 +150,14 @@
 (table ["{" "}"] @constructor)
 (comment) @comment
 (string) @string
-(number) @number
+(number) @constant.numeric.integer
 (label_statement) @label
 ; A bit of a tricky one, this will only match field names
-(field . (identifier) @property (_))
+(field . (identifier) @variable.other.member (_))
 (shebang) @comment
 
 ;; Property
-(property_identifier) @property
+(property_identifier) @variable.other.member
 
 ;; Variable
 (identifier) @variable

@@ -450,6 +450,7 @@ where
             language: vec![LanguageConfiguration {
                 scope: "source.rust".to_string(),
                 file_types: vec!["rs".to_string()],
+                shebangs: vec![],
                 language_id: "Rust".to_string(),
                 highlight_config: OnceCell::new(),
                 config: None,
@@ -464,6 +465,7 @@ where
                     unit: String::from("    "),
                 }),
                 indent_query: OnceCell::new(),
+                textobject_query: OnceCell::new(),
             }],
         });
 

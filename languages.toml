@@ -11,6 +11,7 @@ indent = { tab-width = 4, unit = "    " }
 [language.config]
 cargo = { loadOutDirsFromCheck = true }
 procMacro = { enable = false }
+diagnostics = { disabled = ["unresolved-proc-macro"] }
 
 [[language]]
 name = "toml"
@@ -37,10 +38,34 @@ name = "elixir"
 scope = "source.elixir"
 injection-regex = "elixir"
 file-types = ["ex", "exs"]
+shebangs = ["elixir"]
 roots = []
 comment-token = "#"
 
 language-server = { command = "elixir-ls" }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "fish"
+scope = "source.fish"
+injection-regex = "fish"
+file-types = ["fish"]
+shebangs = ["fish"]
+roots = []
+comment-token = "#"
+
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "mint"
+scope = "source.mint"
+injection-regex = "mint"
+file-types = ["mint"]
+shebangs = []
+roots = []
+comment-token = "//"
+
+language-server = { command = "mint", args = ["ls"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -75,6 +100,16 @@ language-server = { command = "clangd" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "c-sharp"
+scope = "source.csharp"
+injection-regex = "c-?sharp"
+file-types = ["cs"]
+roots = []
+comment-token = "//"
+
+indent = { tab-width = 4, unit = "\t" }
+
+[[language]]
 name = "go"
 scope = "source.go"
 injection-regex = "go"
@@ -92,6 +127,7 @@ name = "javascript"
 scope = "source.js"
 injection-regex = "^(js|javascript)$"
 file-types = ["js", "mjs"]
+shebangs = ["node"]
 roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
@@ -103,6 +139,7 @@ name = "typescript"
 scope = "source.ts"
 injection-regex = "^(ts|typescript)$"
 file-types = ["ts"]
+shebangs = []
 roots = []
 # TODO: highlights-jsx, highlights-params
 
@@ -143,10 +180,11 @@ name = "python"
 scope = "source.python"
 injection-regex = "python"
 file-types = ["py"]
+shebangs = ["python"]
 roots = []
 comment-token = "#"
 
-language-server = { command = "pyls" }
+language-server = { command = "pylsp" }
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
@@ -155,6 +193,7 @@ name = "nix"
 scope = "source.nix"
 injection-regex = "nix"
 file-types = ["nix"]
+shebangs = []
 roots = []
 comment-token = "#"
 
@@ -166,6 +205,7 @@ name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
 file-types = ["rb"]
+shebangs = ["ruby"]
 roots = []
 comment-token = "#"
 
@@ -177,6 +217,7 @@ name = "bash"
 scope = "source.bash"
 injection-regex = "bash"
 file-types = ["sh", "bash"]
+shebangs = ["sh", "bash", "dash"]
 roots = []
 comment-token = "#"
 
@@ -188,9 +229,10 @@ name = "php"
 scope = "source.php"
 injection-regex = "php"
 file-types = ["php"]
+shebangs = ["php"]
 roots = []
 
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "latex"
@@ -219,7 +261,6 @@ language-server = { command = "julia", args = [
                 using Pkg;
                 import StaticLint;
                 env_path = dirname(Pkg.Types.Context().env.project_file);
-
                 server = LanguageServer.LanguageServerInstance(stdin, stdout, env_path, "");
                 server.runlinter = true;
                 run(server);
@@ -249,6 +290,7 @@ name = "ocaml"
 scope = "source.ocaml"
 injection-regex = "ocaml"
 file-types = ["ml"]
+shebangs = []
 roots = []
 comment-token = "(**)"
 indent = { tab-width = 2, unit = "  " }
@@ -257,6 +299,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "ocaml-interface"
 scope = "source.ocaml.interface"
 file-types = ["mli"]
+shebangs = []
 roots = []
 comment-token = "(**)"
 indent = { tab-width = 2, unit = "  "}
@@ -265,6 +308,7 @@ indent = { tab-width = 2, unit = "  "}
 name = "lua"
 scope = "source.lua"
 file-types = ["lua"]
+shebangs = ["lua"]
 roots = []
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
@@ -322,9 +366,115 @@ name = "prolog"
 scope = "source.prolog"
 roots = []
 file-types = ["pl", "prolog"]
+shebangs = ["swipl"]
 comment-token = "%"
 
 language-server = { command = "swipl", args = [
     "-g", "use_module(library(lsp_server))",
     "-g", "lsp_server:main",
     "-t", "halt", "--", "stdio"] }
+
+[[language]]
+name = "tsq"
+scope = "source.tsq"
+file-types = ["scm"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "cmake"
+scope = "source.cmake"
+file-types = ["cmake", "CMakeLists.txt"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "cmake-language-server" }
+
+[[language]]
+name = "glsl"
+scope = "source.glsl"
+file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "perl"
+scope = "source.perl"
+file-types = ["pl", "pm"]
+shebangs = ["perl"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "racket"
+scope = "source.rkt"
+roots = []
+file-types = ["rkt"]
+shebangs = ["racket"]
+comment-token = ";"
+language-server = { command = "racket", args = ["-l", "racket-langserver"] }
+
+[[language]]
+name = "comment"
+scope = "scope.comment"
+roots = []
+file-types = []
+injection-regex = "comment"
+
+[[language]]
+name = "wgsl"
+scope = "source.wgsl"
+file-types = ["wgsl"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "llvm"
+scope = "source.llvm"
+roots = []
+file-types = ["ll"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "markdown"
+scope = "source.md"
+injection-regex = "md|markdown"
+file-types = ["md"]
+roots = []
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "dart"
+scope = "source.dart"
+file-types = ["dart"]
+roots = ["pubspec.yaml"]
+auto-format = true
+comment-token = "//"
+language-server = { command = "dart", args = ["language-server", "--client-id=helix"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "scala"
+scope = "source.scala"
+roots = ["build.sbt"]
+file-types = ["scala", "sbt"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "metals" }
+
+[[language]]
+name = "dockerfile"
+scope = "source.dockerfile"
+injection-regex = "docker|dockerfile"
+roots = ["Dockerfile"]
+file-types = ["Dockerfile", "dockerfile"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "docker-langserver", args = ["--stdio"] }
+

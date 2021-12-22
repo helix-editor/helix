@@ -40,18 +40,21 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub(crate) language_id: String,
+    pub language_id: String, // c-sharp, rust
     pub scope: String,           // source.rust
     pub file_types: Vec<String>, // filename ends_with? <Gemfile, rb, etc>
+    #[serde(default)]
+    pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,      // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
 
@@ -76,6 +79,8 @@ pub struct LanguageConfiguration {
 
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<IndentQuery>>,
+    #[serde(skip)]
+    pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -103,6 +108,32 @@ pub struct IndentQuery {
     #[serde(default)]
     #[serde(skip_serializing_if = "HashSet::is_empty")]
     pub outdent: HashSet<String>,
+}
+
+#[derive(Debug)]
+pub struct TextObjectQuery {
+    pub query: Query,
+}
+
+impl TextObjectQuery {
+    /// Run the query on the given node and return sub nodes which match given
+    /// capture ("function.inside", "class.around", etc).
+    pub fn capture_nodes<'a>(
+        &'a self,
+        capture_name: &str,
+        node: Node<'a>,
+        slice: RopeSlice<'a>,
+        cursor: &'a mut QueryCursor,
+    ) -> Option<impl Iterator<Item = Node<'a>>> {
+        let capture_idx = self.query.capture_index_for_name(capture_name)?;
+        let captures = cursor.captures(&self.query, node, RopeProvider(slice));
+
+        captures
+            .filter_map(move |(mat, idx)| {
+                (mat.captures[idx].index == capture_idx).then(|| mat.captures[idx].node)
+            })
+            .into()
+    }
 }
 
 fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
@@ -153,13 +184,14 @@ impl LanguageConfiguration {
         // highlights_query += "\n(ERROR) @error";
 
         let injections_query = read_query(&language, "injections.scm");
-
         let locals_query = read_query(&language, "locals.scm");
 
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(&crate::RUNTIME_DIR, &self.language_id).ok()?;
+            let language = get_language(&crate::RUNTIME_DIR, &self.language_id)
+                .map_err(|e| log::info!("{}", e))
+                .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,
@@ -203,6 +235,18 @@ impl LanguageConfiguration {
             .as_ref()
     }
 
+    pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
+        self.textobject_query
+            .get_or_init(|| -> Option<TextObjectQuery> {
+                let lang_name = self.language_id.to_ascii_lowercase();
+                let query_text = read_query(&lang_name, "textobjects.scm");
+                let lang = self.highlight_config.get()?.as_ref()?.language;
+                let query = Query::new(lang, &query_text).ok()?;
+                Some(TextObjectQuery { query })
+            })
+            .as_ref()
+    }
+
     pub fn scope(&self) -> &str {
         &self.scope
     }
@@ -213,6 +257,7 @@ pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_shebang: HashMap<String, usize>,
 }
 
 impl Loader {
@@ -220,6 +265,7 @@ impl Loader {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
+            language_config_ids_by_shebang: HashMap::new(),
         };
 
         for config in config.language {
@@ -231,6 +277,11 @@ impl Loader {
                 loader
                     .language_config_ids_by_file_type
                     .insert(file_type.clone(), language_id);
+            }
+            for shebang in &config.shebangs {
+                loader
+                    .language_config_ids_by_shebang
+                    .insert(shebang.clone(), language_id);
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -255,6 +306,18 @@ impl Loader {
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
 
         // TODO: content_regex handling conflict resolution
+    }
+
+    pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
+        let line = Cow::from(source.line(0));
+        static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)").unwrap()
+        });
+        let configuration_id = SHEBANG_REGEX
+            .captures(&line)
+            .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
+
+        configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
     }
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
@@ -396,7 +459,7 @@ impl Syntax {
 
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
-        &self,
+        &'a self,
         source: RopeSlice<'a>,
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
@@ -411,11 +474,10 @@ impl Syntax {
             let highlighter = &mut ts_parser.borrow_mut();
             highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
         });
-        let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(self.tree()) };
+        let tree_ref = self.tree();
         let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-        let query_ref = unsafe { mem::transmute::<_, &'static Query>(&self.config.query) };
-        let config_ref =
-            unsafe { mem::transmute::<_, &'static HighlightConfiguration>(self.config.as_ref()) };
+        let query_ref = &self.config.query;
+        let config_ref = self.config.as_ref();
 
         // if reusing cursors & no range this resets to whole range
         cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
@@ -527,39 +589,7 @@ impl LanguageLayer {
                     self.tree.as_ref(),
                 )
                 .ok_or(Error::Cancelled)?;
-            // unsafe { syntax.parser.set_cancellation_flag(None) };
-            // let mut cursor = syntax.cursors.pop().unwrap_or_else(QueryCursor::new);
 
-            // Process combined injections. (ERB, EJS, etc https://github.com/tree-sitter/tree-sitter/pull/526)
-            // if let Some(combined_injections_query) = &config.combined_injections_query {
-            //     let mut injections_by_pattern_index =
-            //         vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
-            //     let matches =
-            //         cursor.matches(combined_injections_query, tree.root_node(), RopeProvider(source));
-            //     for mat in matches {
-            //         let entry = &mut injections_by_pattern_index[mat.pattern_index];
-            //         let (language_name, content_node, include_children) =
-            //             injection_for_match(config, combined_injections_query, &mat, source);
-            //         if language_name.is_some() {
-            //             entry.0 = language_name;
-            //         }
-            //         if let Some(content_node) = content_node {
-            //             entry.1.push(content_node);
-            //         }
-            //         entry.2 = include_children;
-            //     }
-            //     for (lang_name, content_nodes, includes_children) in injections_by_pattern_index {
-            //         if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
-            //             if let Some(next_config) = (injection_callback)(lang_name) {
-            //                 let ranges =
-            //                     Self::intersect_ranges(&ranges, &content_nodes, includes_children);
-            //                 if !ranges.is_empty() {
-            //                     queue.push((next_config, depth + 1, ranges));
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
             self.tree = Some(tree)
         }
         Ok(())

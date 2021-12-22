@@ -7,12 +7,12 @@
     (date)
     (interval)
     (quantity)
-] @number
+] @constant.numeric.integer
 
-((account) @field)
+((account) @variable.other.member)
 ((commodity) @text.literal)
 
-"include" @include
+"include" @keyword.local.import
 
 [
     "account"

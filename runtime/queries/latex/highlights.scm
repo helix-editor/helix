@@ -278,7 +278,7 @@
   "\\includeinkscape"
   "\\usepgflibrary"
   "\\usetikzlibrary"
-] @include
+] @keyword.control.import
 
 [
   "\\part"
@@ -318,60 +318,60 @@
 ["[" "]" "{" "}"] @punctuation.bracket ;"(" ")" is has no special meaning in LaTeX
 
 (chapter
-  text: (brace_group) @text.title)
+  text: (brace_group) @markup.heading)
 
 (part
-  text: (brace_group) @text.title)
+  text: (brace_group) @markup.heading)
 
 (section
-  text: (brace_group) @text.title)
+  text: (brace_group) @markup.heading)
 
 (subsection
-  text: (brace_group) @text.title)
+  text: (brace_group) @markup.heading)
 
 (subsubsection
-  text: (brace_group) @text.title)
+  text: (brace_group) @markup.heading)
 
 (paragraph
-  text: (brace_group) @text.title)
+  text: (brace_group) @markup.heading)
 
 (subparagraph
-  text: (brace_group) @text.title)
+  text: (brace_group) @markup.heading)
 
 ((environment
   (begin
    name: (word) @_frame)
    (brace_group
-        child: (text) @text.title))
+        child: (text) @markup.heading))
  (#eq? @_frame "frame"))
 
 ((generic_command
   name:(generic_command_name) @_name
   arg: (brace_group
-          (text) @text.title))
+          (text) @markup.heading))
  (#eq? @_name "\\frametitle"))
 
 ;; Formatting
 
 ((generic_command
   name:(generic_command_name) @_name
-  arg: (_) @text.emphasis)
+  arg: (_) @markup.italic)
  (#eq? @_name "\\emph"))
 
 ((generic_command
   name:(generic_command_name) @_name
-  arg: (_) @text.emphasis)
+  arg: (_) @markup.italic)
  (#match? @_name "^(\\\\textit|\\\\mathit)$"))
 
 ((generic_command
   name:(generic_command_name) @_name
-  arg: (_) @text.strong)
+  arg: (_) @markup.bold)
  (#match? @_name "^(\\\\textbf|\\\\mathbf)$"))
 
 ((generic_command
   name:(generic_command_name) @_name
   .
-  arg: (_) @text.uri)
+  arg: (_) @markup.link.url)
  (#match? @_name "^(\\\\url|\\\\href)$"))
 
 (ERROR) @error

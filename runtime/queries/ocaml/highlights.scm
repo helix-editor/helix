@@ -51,14 +51,14 @@
 ; Properties
 ;-----------
 
-[(label_name) (field_name) (instance_variable_name)] @property
+[(label_name) (field_name) (instance_variable_name)] @variable.other.member
 
 ; Constants
 ;----------
 
 [(boolean) (unit)] @constant
 
-[(number) (signed_number)] @number
+[(number) (signed_number)] @constant.numeric.integer
 
 (character) @constant.character
 
@@ -66,7 +66,7 @@
 
 (quoted_string "{" @string "}" @string) @string
 
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 [
   (conversion_specification)
@@ -90,7 +90,7 @@
 
 ["exception" "try"] @keyword.control.exception
 
-["include" "open"] @include
+["include" "open"] @keyword.control.import
 
 ["for" "to" "downto" "while" "do" "done"] @keyword.control.repeat
 
@@ -145,7 +145,7 @@
 ; Attributes
 ;-----------
 
-(attribute_id) @property
+(attribute_id) @variable.other.member
 
 ; Comments
 ;---------

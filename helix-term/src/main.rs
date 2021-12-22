@@ -33,8 +33,13 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
     Ok(())
 }
 
+fn main() -> Result<()> {
+    let exit_code = main_impl()?;
+    std::process::exit(exit_code);
+}
+
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main_impl() -> Result<i32> {
     let cache_dir = helix_core::cache_dir();
     if !cache_dir.exists() {
         std::fs::create_dir_all(&cache_dir).ok();
@@ -55,12 +60,13 @@ ARGS:
 
 FLAGS:
     -h, --help       Prints help information
+    --tutor          Loads the tutorial
     -v               Increases logging verbosity each use for up to 3 times
                      (default file: {})
     -V, --version    Prints version information
 ",
         env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION"),
+        env!("VERSION_AND_GIT_HASH"),
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
         logpath.display(),
@@ -75,7 +81,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("helix {}", env!("CARGO_PKG_VERSION"));
+        println!("helix {}", env!("VERSION_AND_GIT_HASH"));
         std::process::exit(0);
     }
 
@@ -85,7 +91,16 @@ FLAGS:
     }
 
     let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
-        Ok(config) => merge_keys(toml::from_str(&config)?),
+        Ok(config) => toml::from_str(&config)
+            .map(merge_keys)
+            .unwrap_or_else(|err| {
+                eprintln!("Bad config: {}", err);
+                eprintln!("Press <ENTER> to continue with default config");
+                use std::io::Read;
+                // This waits for an enter press.
+                let _ = std::io::stdin().read(&mut []);
+                Config::default()
+            }),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
         Err(err) => return Err(Error::new(err)),
     };
@@ -94,7 +109,8 @@ FLAGS:
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config).context("unable to create new application")?;
-    app.run().await.unwrap();
 
-    Ok(())
+    let exit_code = app.run().await?;
+
+    Ok(exit_code)
 }

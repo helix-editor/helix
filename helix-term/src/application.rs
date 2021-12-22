@@ -1,13 +1,17 @@
 use helix_core::{merge_toml_values, syntax};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
+use serde_json::json;
 
-use crate::{args::Args, compositor::Compositor, config::Config, job::Jobs, ui};
+use crate::{
+    args::Args, commands::apply_workspace_edit, compositor::Compositor, config::Config, job::Jobs,
+    ui,
+};
 
 use log::{error, warn};
 
 use std::{
-    io::{stdout, Write},
+    io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -17,6 +21,7 @@ use anyhow::Error;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute, terminal,
+    tty::IsTty,
 };
 #[cfg(not(windows))]
 use {
@@ -60,31 +65,53 @@ impl Application {
             std::sync::Arc::new(theme::Loader::new(&conf_dir, &helix_core::runtime_dir()));
 
         // load default and user config, and merge both
-        let def_lang_conf: toml::Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Could not parse built-in languages.toml, something must be very wrong");
-        let user_lang_conf: Option<toml::Value> = std::fs::read(conf_dir.join("languages.toml"))
+        let builtin_err_msg =
+            "Could not parse built-in languages.toml, something must be very wrong";
+        let def_lang_conf: toml::Value =
+            toml::from_slice(include_bytes!("../../languages.toml")).expect(builtin_err_msg);
+        let def_syn_loader_conf: helix_core::syntax::Configuration =
+            def_lang_conf.clone().try_into().expect(builtin_err_msg);
+        let user_lang_conf = std::fs::read(conf_dir.join("languages.toml"))
             .ok()
-            .map(|raw| toml::from_slice(&raw).expect("Could not parse user languages.toml"));
+            .map(|raw| toml::from_slice(&raw));
         let lang_conf = match user_lang_conf {
-            Some(value) => merge_toml_values(def_lang_conf, value),
-            None => def_lang_conf,
+            Some(Ok(value)) => Ok(merge_toml_values(def_lang_conf, value)),
+            Some(err @ Err(_)) => err,
+            None => Ok(def_lang_conf),
         };
 
-        let theme = if let Some(theme) = &config.theme {
-            match theme_loader.load(theme) {
-                Ok(theme) => theme,
-                Err(e) => {
-                    log::warn!("failed to load theme `{}` - {}", theme, e);
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| {
+                if true_color {
                     theme_loader.default()
+                } else {
+                    theme_loader.base16_default()
                 }
-            }
-        } else {
-            theme_loader.default()
-        };
+            });
 
         let syn_loader_conf: helix_core::syntax::Configuration = lang_conf
-            .try_into()
-            .expect("Could not parse merged (built-in + user) languages.toml");
+            .and_then(|conf| conf.try_into())
+            .unwrap_or_else(|err| {
+                eprintln!("Bad language config: {}", err);
+                eprintln!("Press <ENTER> to continue with default language config");
+                use std::io::Read;
+                // This waits for an enter press.
+                let _ = std::io::stdin().read(&mut []);
+                def_syn_loader_conf
+            });
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         let mut editor = Editor::new(
@@ -97,11 +124,17 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
-        if !args.files.is_empty() {
+        if args.load_tutor {
+            let path = helix_core::runtime_dir().join("tutor.txt");
+            editor.open(path, Action::VerticalSplit)?;
+            // Unset path to prevent accidentally saving to the original tutor file.
+            doc_mut!(editor).set_path(None)?;
+        } else if !args.files.is_empty() {
             let first = &args.files[0]; // we know it's not empty
             if first.is_dir() {
+                std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
-                compositor.push(Box::new(ui::file_picker(first.clone())));
+                compositor.push(Box::new(ui::file_picker(".".into(), &config.editor)));
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
@@ -116,8 +149,17 @@ impl Application {
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
             }
-        } else {
+        } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
+        } else if cfg!(target_os = "macos") {
+            // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
+            // This doesn't currently work on macOS because of the following issue:
+            //   https://github.com/crossterm-rs/crossterm/issues/500
+            anyhow::bail!("Piping into helix-term is currently not supported on macOS");
+        } else {
+            editor
+                .new_file_from_stdin(Action::VerticalSplit)
+                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
         editor.set_theme(theme);
@@ -234,20 +276,16 @@ impl Application {
     }
 
     pub fn handle_idle_timeout(&mut self) {
-        use crate::commands::{completion, Context};
+        use crate::commands::{insert::idle_completion, Context};
         use helix_view::document::Mode;
 
-        if doc_mut!(self.editor).mode != Mode::Insert {
+        if doc!(self.editor).mode != Mode::Insert || !self.config.editor.auto_completion {
             return;
         }
         let editor_view = self
             .compositor
-            .find(std::any::type_name::<ui::EditorView>())
+            .find::<ui::EditorView>()
             .expect("expected at least one EditorView");
-        let editor_view = editor_view
-            .as_any_mut()
-            .downcast_mut::<ui::EditorView>()
-            .unwrap();
 
         if editor_view.completion.is_some() {
             return;
@@ -261,7 +299,7 @@ impl Application {
             callback: None,
             on_next_key_callback: None,
         };
-        completion(&mut cx);
+        idle_completion(&mut cx);
         self.render();
     }
 
@@ -295,14 +333,6 @@ impl Application {
         server_id: usize,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
-        let editor_view = self
-            .compositor
-            .find(std::any::type_name::<ui::EditorView>())
-            .expect("expected at least one EditorView");
-        let editor_view = editor_view
-            .as_any_mut()
-            .downcast_mut::<ui::EditorView>()
-            .unwrap();
 
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
@@ -391,10 +421,11 @@ impl Application {
                                         message: diagnostic.message,
                                         severity: diagnostic.severity.map(
                                             |severity| match severity {
-                                                DiagnosticSeverity::Error => Error,
-                                                DiagnosticSeverity::Warning => Warning,
-                                                DiagnosticSeverity::Information => Info,
-                                                DiagnosticSeverity::Hint => Hint,
+                                                DiagnosticSeverity::ERROR => Error,
+                                                DiagnosticSeverity::WARNING => Warning,
+                                                DiagnosticSeverity::INFORMATION => Info,
+                                                DiagnosticSeverity::HINT => Hint,
+                                                severity => unimplemented!("{:?}", severity),
                                             },
                                         ),
                                         // code
@@ -412,7 +443,15 @@ impl Application {
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
                     }
-                    Notification::ProgressMessage(params) => {
+                    Notification::ProgressMessage(params)
+                        if !self
+                            .compositor
+                            .has_component(std::any::type_name::<ui::Prompt>()) =>
+                    {
+                        let editor_view = self
+                            .compositor
+                            .find::<ui::EditorView>()
+                            .expect("expected at least one EditorView");
                         let lsp::ProgressParams { token, value } = params;
 
                         let lsp::ProgressParamsValue::WorkDone(work) = value;
@@ -487,19 +526,14 @@ impl Application {
                             self.editor.set_status(status);
                         }
                     }
+                    Notification::ProgressMessage(_params) => {
+                        // do nothing
+                    }
                 }
             }
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
-                    }
-                };
-
                 let call = match MethodCall::parse(&method, params) {
                     Some(call) => call,
                     None => {
@@ -521,11 +555,49 @@ impl Application {
                     MethodCall::WorkDoneProgressCreate(params) => {
                         self.lsp_progress.create(server_id, params.token);
 
+                        let editor_view = self
+                            .compositor
+                            .find::<ui::EditorView>()
+                            .expect("expected at least one EditorView");
                         let spinner = editor_view.spinners_mut().get_or_create(server_id);
                         if spinner.is_stopped() {
                             spinner.start();
                         }
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
                         tokio::spawn(language_server.reply(id, Ok(serde_json::Value::Null)));
+                    }
+                    MethodCall::ApplyWorkspaceEdit(params) => {
+                        apply_workspace_edit(
+                            &mut self.editor,
+                            helix_lsp::OffsetEncoding::Utf8,
+                            &params.edit,
+                        );
+
+                        let language_server =
+                            match self.editor.language_servers.get_by_id(server_id) {
+                                Some(language_server) => language_server,
+                                None => {
+                                    warn!("can't find language server with id `{}`", server_id);
+                                    return;
+                                }
+                            };
+
+                        tokio::spawn(language_server.reply(
+                            id,
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: true,
+                                failure_reason: None,
+                                failed_change: None,
+                            })),
+                        ));
                     }
                 }
             }
@@ -547,13 +619,15 @@ impl Application {
         let mut stdout = stdout();
         // reset cursor shape
         write!(stdout, "\x1B[2 q")?;
-        execute!(stdout, DisableMouseCapture)?;
+        // Ignore errors on disabling, this might trigger on windows if we call
+        // disable without calling enable previously
+        let _ = execute!(stdout, DisableMouseCapture);
         execute!(stdout, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()?;
         Ok(())
     }
 
-    pub async fn run(&mut self) -> Result<(), Error> {
+    pub async fn run(&mut self) -> Result<i32, Error> {
         self.claim_term().await?;
 
         // Exit the alternate screen and disable raw mode before panicking
@@ -576,6 +650,6 @@ impl Application {
 
         self.restore_term()?;
 
-        Ok(())
+        Ok(self.editor.exit_code)
     }
 }

@@ -1,5 +1,8 @@
-use crate::compositor::{Component, Compositor, Context, EventResult};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crate::{
+    compositor::{Component, Compositor, Context, EventResult},
+    ctrl, key,
+};
+use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
@@ -12,16 +15,20 @@ pub struct Popup<T: Component> {
     contents: T,
     position: Option<Position>,
     size: (u16, u16),
+    child_size: (u16, u16),
     scroll: usize,
+    id: &'static str,
 }
 
 impl<T: Component> Popup<T> {
-    pub fn new(contents: T) -> Self {
+    pub fn new(id: &'static str, contents: T) -> Self {
         Self {
             contents,
             position: None,
             size: (0, 0),
+            child_size: (0, 0),
             scroll: 0,
+            id,
         }
     }
 
@@ -65,6 +72,9 @@ impl<T: Component> Popup<T> {
     pub fn scroll(&mut self, offset: usize, direction: bool) {
         if direction {
             self.scroll += offset;
+
+            let max_offset = self.child_size.1.saturating_sub(self.size.1);
+            self.scroll = (self.scroll + offset).min(max_offset as usize);
         } else {
             self.scroll = self.scroll.saturating_sub(offset);
         }
@@ -90,32 +100,19 @@ impl<T: Component> Component for Popup<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.pop();
         })));
 
-        match key {
+        match key.into() {
             // esc or ctrl-c aborts the completion and closes the menu
-            KeyEvent {
-                code: KeyCode::Esc, ..
-            }
-            | KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-            } => close_fn,
-
-            KeyEvent {
-                code: KeyCode::Char('d'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            key!(Esc) | ctrl!('c') => close_fn,
+            ctrl!('d') => {
                 self.scroll(self.size.1 as usize / 2, true);
                 EventResult::Consumed(None)
             }
-            KeyEvent {
-                code: KeyCode::Char('u'),
-                modifiers: KeyModifiers::CONTROL,
-            } => {
+            ctrl!('u') => {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
             }
@@ -125,13 +122,21 @@ impl<T: Component> Component for Popup<T> {
         // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
     }
 
-    fn required_size(&mut self, _viewport: (u16, u16)) -> Option<(u16, u16)> {
+    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
+        let max_width = 120.min(viewport.0);
+        let max_height = 26.min(viewport.1.saturating_sub(2)); // add some spacing in the viewport
+
         let (width, height) = self
             .contents
-            .required_size((120, 26)) // max width, max height
+            .required_size((max_width, max_height))
             .expect("Component needs required_size implemented in order to be embedded in a popup");
 
-        self.size = (width, height);
+        self.child_size = (width, height);
+        self.size = (width.min(max_width), height.min(max_height));
+
+        // re-clamp scroll offset
+        let max_offset = self.child_size.1.saturating_sub(self.size.1);
+        self.scroll = self.scroll.min(max_offset as usize);
 
         Some(self.size)
     }
@@ -152,5 +157,9 @@ impl<T: Component> Component for Popup<T> {
         surface.clear_with(area, background);
 
         self.contents.render(area, surface, cx);
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        Some(self.id)
     }
 }

@@ -34,16 +34,14 @@
 [
   (fieldName)
   (optionName)
-] @property
+] @variable.other.member
 (enumVariantName) @type.enum.variant
 
 (fullIdent) @namespace
 
-[
-  (intLit)
-  (floatLit)
-] @number
-(boolLit) @constant.builtin
+(intLit) @constant.numeric.integer
+(floatLit) @constant.numeric.float
+(boolLit) @constant.builtin.boolean
 (strLit) @string
 
 (constant) @constant

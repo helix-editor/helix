@@ -103,22 +103,25 @@ We use a similar set of scopes as
 [SublimeText](https://www.sublimetext.com/docs/scope_naming.html). See also
 [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
 
-- `escape` (TODO: rename to (constant).character.escape)
-
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+- `constructor`
 
 - `constant` (TODO: constant.other.placeholder for %v)
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
     - `boolean`
   - `character`
+    - `escape`
+  - `numeric` (numbers)
+    - `integer`
+    - `float`
 
-- `number` (TODO: rename to constant.number/.numeric.{integer, float, complex})
 - `string` (TODO: string.quoted.{single, double}, string.raw/.unquoted)?
   - `regexp` - Regular expressions
   - `special`
     - `path`
     - `url`
+    - `symbol` - Erlang/Elixir atoms, Ruby symbols, Clojure keywords
 
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
@@ -128,7 +131,8 @@ We use a similar set of scopes as
 - `variable` - Variables
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc)
   - `parameter` - Function parameters
-  - `property`
+  - `other`
+    - `member` - Fields of composite data types (e.g. structs, unions)
   - `function` (TODO: ?)
 
 - `label`
@@ -142,11 +146,12 @@ We use a similar set of scopes as
     - `conditional` - `if`, `else`
     - `repeat` - `for`, `while`, `loop`
     - `import` - `import`, `export`
-    - (TODO: return?)
+    - `return`
+  - `operator` - `or`, `in`
   - `directive` - Preprocessor directives (`#if` in C) 
   - `function` - `fn`, `func`
 
-- `operator` - `||`, `+=`, `>`, `or`
+- `operator` - `||`, `+=`, `>`
 
 - `function`
   - `builtin`
@@ -157,6 +162,21 @@ We use a similar set of scopes as
 - `tag` - Tags (e.g. `<body>` in HTML)
 
 - `namespace`
+
+- `markup`
+  - `heading`
+  - `list`
+    - `unnumbered`
+    - `numbered`
+  - `bold`
+  - `italic`
+  - `link`
+    - `url`
+    - `label`
+  - `quote`
+  - `raw`
+    - `inline`
+    - `block`
 
 #### Interface
 

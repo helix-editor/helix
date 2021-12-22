@@ -6,7 +6,7 @@ punctuation = "lavender"
 "punctuation.delimiter" = "lavender"
 operator = "lilac"
 special = "honey"
-property = "white"
+variable.other.member = "white"
 variable = "lavender"
 # variable = "almond" # TODO: metavariables only
 # "variable.parameter" = { fg = "lavender", modifiers = ["underlined"] }
@@ -23,10 +23,16 @@ comment = "sirocco"
 constant = "white"
 "constant.builtin" = "white"
 string = "silver"
-number = "chamois"
-escape = "honey"
+"constant.numeric" = "chamois"
+"constant.character.escape" = "honey"
 # used for lifetimes
 label = "honey"
+
+"markup.heading" = "lilac"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "silver", modifiers = ["underlined"] }
+"markup.raw" = "almond"
 
 # TODO: diferentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
