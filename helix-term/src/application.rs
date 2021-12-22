@@ -422,7 +422,10 @@ impl Application {
                                             DiagnosticSeverity::WARNING => Warning,
                                             DiagnosticSeverity::INFORMATION => Info,
                                             DiagnosticSeverity::HINT => Hint,
-                                            severity => unimplemented!("{:?}", severity),
+                                            severity => unreachable!(
+                                                "unrecognized diagnostic severity: {:?}",
+                                                severity
+                                            ),
                                         });
 
                                     if let Some(lang_conf) = lang_conf {
