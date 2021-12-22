@@ -34,6 +34,10 @@ label = "honey"
 "markup.link.url" = { fg = "silver", modifiers = ["underlined"] }
 "markup.raw" = "almond"
 
+"diff.plus" = "#35bf86"
+"diff.minus" = "#f22c86"
+"diff.delta" = "#6f44f0"
+
 # TODO: diferentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
