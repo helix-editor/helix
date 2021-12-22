@@ -36,7 +36,7 @@ These are the available keys and descriptions for the file.
 | shebangs            | The interpreters from the shebang line, for example `["sh", "bash"]` |
 | roots               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | auto-format         | Whether to autoformat this language when saving               |
-| diagnostic_severity | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
+| diagnostic-severity | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
 | comment-token       | The token to use as a comment-token                           |
 | indent              | The indent to use. Has sub keys `tab-width` and `unit`        |
 | config              | Language server configuration                                 |
