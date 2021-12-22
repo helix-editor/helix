@@ -28,6 +28,10 @@
 
 "module" = "#839A53"
 
+"diff.plus" = "#839A53"
+"diff.delta" = "#D4A520"
+"diff.minus" = "#D74E50"
+
 "ui.background" = { bg = "#FFFCFD" }
 "ui.linenr" = { fg = "#bbbbbb" }
 "ui.linenr.selected" = { fg = "#F3EAE9" }  # TODO

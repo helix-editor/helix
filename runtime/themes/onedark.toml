@@ -36,6 +36,10 @@
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"]}
 "markup.link.label" = { fg = "purple" }
 
+"diff.plus" = "green"
+"diff.delta" = "gold"
+"diff.minus" = "red"
+
 diagnostic = { modifiers = ["underlined"] }
 "info" = { fg = "blue", modifiers = ["bold"] }
 "hint" = { fg = "green", modifiers = ["bold"] }

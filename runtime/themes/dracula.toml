@@ -15,6 +15,10 @@
 "variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
 "variable.parameter" = { fg ="orange", modifiers = ["italic"] }
 
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "orange" }
+"diff.minus" = { fg = "red" }
+
 "ui.background" = { fg = "foreground", bg = "background" }
 "ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }

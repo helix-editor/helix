@@ -29,6 +29,10 @@
 "namespace" = "magenta"
 "ui.help" = { fg = "white", bg = "black" }
 
+"diff.plus" = "green"
+"diff.delta" = "yellow"
+"diff.minus" = "red"
+
 "diagnostic" = { modifiers = ["underlined"] }
 "ui.gutter" = { bg = "black" }
 "info" = "blue"

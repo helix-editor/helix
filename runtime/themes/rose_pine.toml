@@ -37,6 +37,9 @@
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
 "text" = "text"
+"diff.plus" = "foam"
+"diff.delta" = "rose"
+"diff.minus" = "love"
 
 "info" = "gold"
 "hint" = "gold"

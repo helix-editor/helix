@@ -34,6 +34,10 @@
 "module" = "blue"
 "special" = "orange"
 
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "red"
+
 "ui.background" = { bg = "bg0" }
 "ui.cursor" = { fg = "bg0", bg = "fg" }
 "ui.cursor.match" = { fg = "orange", bg = "bg_yellow" }
