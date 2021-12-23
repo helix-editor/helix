@@ -55,6 +55,16 @@ that sets the variable to the install dir.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
+# No truecolor terminal support
+If have copied runtime, and find helix don't highlight properly, please check `$COLORTERM` environment variable, if it returns empty.  It
+says that your terminal doesn't support true color. For this scenario, you can update your config like this:
+```toml
+[editor]
+true-color = false
+```
+
+And restart helix, you can set theme with `theme-base16`.
+
 ## MacOS
 Helix can be installed on MacOS through homebrew via:
 
