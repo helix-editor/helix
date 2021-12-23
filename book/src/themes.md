@@ -188,6 +188,7 @@ These scopes are used for theming the editor interface.
 | `ui.cursor.insert`       |                                     |
 | `ui.cursor.select`       |                                     |
 | `ui.cursor.match`        | Matching bracket etc.               |
+| `ui.cursor.primary`      | Cursor with primary selection       |
 | `ui.linenr`              |                                     |
 | `ui.linenr.selected`     |                                     |
 | `ui.statusline`          | Statusline                          |

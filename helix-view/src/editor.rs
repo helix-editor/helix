@@ -116,6 +116,12 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CursorShapeConfig([CursorKind; 3]);
 
+impl CursorShapeConfig {
+    pub fn from_mode(&self, mode: Mode) -> CursorKind {
+        self.get(mode as usize).copied().unwrap_or_default()
+    }
+}
+
 impl<'de> Deserialize<'de> for CursorShapeConfig {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -647,12 +653,7 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = self
-                .config
-                .cursor_shape
-                .get(doc.mode() as usize)
-                .copied()
-                .unwrap_or_default();
+            let cursorkind = self.config.cursor_shape.from_mode(doc.mode());
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())
