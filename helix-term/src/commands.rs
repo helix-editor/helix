@@ -3019,14 +3019,14 @@ pub mod cmd {
         TypableCommand {
             name: "sort",
             aliases: &[],
-            doc: "Sort lines in selection.",
+            doc: "Sort ranges in selection.",
             fun: sort,
             completer: None,
         },
         TypableCommand {
-            name: "sort!",
+            name: "rsort",
             aliases: &[],
-            doc: "Sort lines in selection in reverse order.",
+            doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
             completer: None,
         },
