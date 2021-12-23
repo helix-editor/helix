@@ -212,14 +212,13 @@ pub mod completers {
 
     pub fn setting(input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<Completion>> = Lazy::new(|| {
-            use serde_json::{Map, Value};
-            serde_json::de::from_slice::<Map<String, Value>>(
-                &serde_json::ser::to_vec(&Config::default()).unwrap(),
-            )
-            .unwrap()
-            .keys()
-            .map(|key| ((0..), Cow::from(key.to_string())))
-            .collect()
+            serde_json::to_value(Config::default())
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(|key| ((0..), Cow::from(key.to_string())))
+                .collect()
         });
 
         let matcher = Matcher::default();
