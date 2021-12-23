@@ -2373,7 +2373,7 @@ pub mod cmd {
             .load(theme)
             .with_context(|| format!("Failed setting theme {}", theme))?;
         if !(cx.editor.config.true_color || theme.is_16_color()) {
-            bail!("Unsupported theme: theme requires true color support");
+            bail!("Unsupported theme: theme requires true color support, you can set through 'theme-base16'");
         }
         cx.editor.set_theme(theme);
         Ok(())
