@@ -73,7 +73,6 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
-    pub(crate) selections_history: HashMap<ViewId, Vec<Selection>>,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -335,7 +334,6 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
-            selections_history: HashMap::default(),
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
@@ -617,35 +615,9 @@ impl Document {
 
     /// Select text within the [`Document`].
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
-        // clear selection history created by [`push_selection`]
-        self.selections_history
-            .entry(view_id)
-            .and_modify(|hist| hist.clear());
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
-    }
-
-    /// Push selection selects text within the [`Document`] and persists the previous
-    /// selection on stack. Previous selection can be restored using [`pop_selection`].
-    /// If selection if modified using [`set_selection`] the history is cleared.
-    pub fn push_selection(&mut self, view_id: ViewId, selection: Selection) {
-        let prev_selection = self.selection(view_id).clone();
-        self.selections_history
-            .entry(view_id)
-            .or_insert_with(Vec::default)
-            .push(prev_selection);
-        self.selections
-            .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
-    }
-
-    // Restores previous [`Document`] selection from the stack.
-    pub fn pop_selection(&mut self, view_id: ViewId) {
-        if let Some(hist) = self.selections_history.get_mut(&view_id) {
-            if let Some(prev_selection) = hist.pop() {
-                self.selections.insert(view_id, prev_selection);
-            }
-        }
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.

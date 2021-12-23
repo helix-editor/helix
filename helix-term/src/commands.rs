@@ -5475,8 +5475,14 @@ fn expand_selection(cx: &mut Context) {
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::expand_selection(syntax, text, doc.selection(view.id));
-            doc.push_selection(view.id, selection);
+
+            let current_selection = doc.selection(view.id);
+
+            // save current selection so it can be restored using shrink_selection
+            view.object_selections.push(current_selection.clone());
+
+            let selection = object::expand_selection(syntax, text, current_selection);
+            doc.set_selection(view.id, selection);
         }
     };
     motion(cx.editor);
@@ -5486,7 +5492,18 @@ fn expand_selection(cx: &mut Context) {
 fn shrink_selection(cx: &mut Context) {
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-        doc.pop_selection(view.id);
+        let selection = doc.selection(view.id);
+        // try to restore previous selection
+        if let Some(prev_selection) = view.object_selections.pop() {
+            // allow shrinking the selection only if current selection contains
+            // the previous object selection
+            if selection.contains(&prev_selection) {
+                doc.set_selection(view.id, prev_selection);
+            } else {
+                // clear existing selection as they can't be shrinked to anyway
+                view.object_selections.clear()
+            }
+        }
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));

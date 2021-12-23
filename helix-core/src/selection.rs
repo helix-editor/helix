@@ -140,6 +140,12 @@ impl Range {
         self.from() == other.from() || (self.to() > other.from() && other.to() > self.from())
     }
 
+    /// Check that this range contains other range
+    #[inline]
+    pub fn contains_range(&self, other: &Self) -> bool {
+        self.from() <= other.from() && self.to() >= other.to()
+    }
+
     pub fn contains(&self, pos: usize) -> bool {
         self.from() <= pos && pos < self.to()
     }
@@ -543,6 +549,12 @@ impl Selection {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.ranges.len()
+    }
+
+    pub fn contains(&self, other: &Selection) -> bool {
+        self.iter()
+            .zip(other.iter())
+            .all(|(r1, r2)| r1.contains_range(r2))
     }
 }
 
