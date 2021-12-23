@@ -2647,22 +2647,24 @@ pub mod cmd {
     ) -> anyhow::Result<()> {
         let runtime_config = &mut cx.editor.config;
 
-        if args.len() != 3 || args.get(1).map(|s| s.as_ref()) != Some("=") {
-            anyhow::bail!("Bad arguments. Usage: `:set key = field`");
+        if args.len() != 2 {
+            anyhow::bail!("Bad arguments. Usage: `:set key field`");
         }
 
-        match args[0].to_lowercase().as_ref() {
-            "scrolloff" => runtime_config.scrolloff = args[2].parse()?,
-            "scroll-lines" => runtime_config.scroll_lines = args[2].parse()?,
-            "mouse" => runtime_config.mouse = args[2].parse()?,
-            "line-number" => runtime_config.line_number = args[2].parse()?,
-            "middle-click_paste" => runtime_config.middle_click_paste = args[2].parse()?,
-            "smart-case" => runtime_config.smart_case = args[2].parse()?,
-            "auto-pairs" => runtime_config.auto_pairs = args[2].parse()?,
-            "auto-completion" => runtime_config.auto_completion = args[2].parse()?,
-            "completion-trigger-len" => runtime_config.completion_trigger_len = args[2].parse()?,
-            "auto-info" => runtime_config.auto_info = args[2].parse()?,
-            "true-color" => runtime_config.true_color = args[2].parse()?,
+        let (key, arg) = (&args[0].to_lowercase(), &args[1]);
+
+        match key.as_ref() {
+            "scrolloff" => runtime_config.scrolloff = arg.parse()?,
+            "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
+            "mouse" => runtime_config.mouse = arg.parse()?,
+            "line-number" => runtime_config.line_number = arg.parse()?,
+            "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
+            "smart-case" => runtime_config.smart_case = arg.parse()?,
+            "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
+            "auto-completion" => runtime_config.auto_completion = arg.parse()?,
+            "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
+            "auto-info" => runtime_config.auto_info = arg.parse()?,
+            "true-color" => runtime_config.true_color = arg.parse()?,
             _ => anyhow::bail!("Unknown key `{}`.", args[0]),
         }
 
