@@ -1,7 +1,5 @@
 use crate::{Range, RopeSlice, Selection, Syntax};
 
-// TODO: to contract_selection we'd need to store the previous ranges before expand.
-// Maybe just contract to the first child node?
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
     let tree = syntax.tree();
 

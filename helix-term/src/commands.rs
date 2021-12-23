@@ -362,6 +362,7 @@ impl MappableCommand {
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
+        shrink_selection, "Shrink selection to previously expanded syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save the current selection to the jumplist",
@@ -5458,6 +5459,7 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
 }
+
 fn rotate_selection_contents_forward(cx: &mut Context) {
     rotate_selection_contents(cx, Direction::Forward)
 }
@@ -5474,8 +5476,17 @@ fn expand_selection(cx: &mut Context) {
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let selection = object::expand_selection(syntax, text, doc.selection(view.id));
-            doc.set_selection(view.id, selection);
+            doc.push_selection(view.id, selection);
         }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn shrink_selection(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        doc.pop_selection(view.id);
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
