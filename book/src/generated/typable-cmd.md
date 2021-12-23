@@ -21,6 +21,7 @@
 | `:quit-all!`, `:qa!` | Close all views forcefully (ignoring unsaved changes). |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
 | `:theme` | Change the editor theme. |
+| `:theme-base16` | Change the editor to non-truecolor theeme. |
 | `:clipboard-yank` | Yank main selection into system clipboard. |
 | `:clipboard-yank-join` | Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline. |
 | `:primary-clipboard-yank` | Yank main selection into system primary clipboard. |
