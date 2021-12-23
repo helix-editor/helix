@@ -140,7 +140,6 @@ impl Range {
         self.from() == other.from() || (self.to() > other.from() && other.to() > self.from())
     }
 
-    /// Check that this range contains other range
     #[inline]
     pub fn contains_range(&self, other: &Self) -> bool {
         self.from() <= other.from() && self.to() >= other.to()
