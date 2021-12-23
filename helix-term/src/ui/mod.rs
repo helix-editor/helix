@@ -211,13 +211,13 @@ pub mod completers {
     }
 
     pub fn setting(input: &str) -> Vec<Completion> {
-        static KEYS: Lazy<Vec<Completion>> = Lazy::new(|| {
+        static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             serde_json::to_value(Config::default())
                 .unwrap()
                 .as_object()
                 .unwrap()
                 .keys()
-                .map(|key| ((0..), Cow::from(key.to_string())))
+                .cloned()
                 .collect()
         });
 
@@ -225,15 +225,13 @@ pub mod completers {
 
         let mut matches: Vec<_> = KEYS
             .iter()
-            .filter_map(|(_range, name)| {
-                matcher.fuzzy_match(name, input).map(|score| (name, score))
-            })
+            .filter_map(|name| matcher.fuzzy_match(name, input).map(|score| (name, score)))
             .collect();
 
         matches.sort_unstable_by_key(|(_file, score)| Reverse(*score));
         matches
             .into_iter()
-            .map(|(name, _)| ((0..), name.clone()))
+            .map(|(name, _)| ((0..), name.into()))
             .collect()
     }
 
