@@ -179,15 +179,28 @@ pub mod completers {
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
+    use theme::LoadStrategy;
 
     pub type Completer = fn(&str) -> Vec<Completion>;
 
     pub fn theme(input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_core::runtime_dir().join("themes"));
+        theme_with_strategy(input, LoadStrategy::ALL)
+    }
+
+    pub fn theme_base16(input: &str) -> Vec<Completion> {
+        theme_with_strategy(input, LoadStrategy::BASE16)
+    }
+
+    fn theme_with_strategy(input: &str, load_strategy: LoadStrategy) -> Vec<Completion> {
+        let mut names =
+            theme::Loader::read_names(&helix_core::runtime_dir().join("themes"), load_strategy);
         names.extend(theme::Loader::read_names(
             &helix_core::config_dir().join("themes"),
+            load_strategy,
         ));
-        names.push("default".into());
+        if let LoadStrategy::ALL = load_strategy {
+            names.push("default".into());
+        }
         names.push("base16_default".into());
 
         let mut names: Vec<_> = names

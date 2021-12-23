@@ -25,6 +25,16 @@ pub struct Loader {
     user_dir: PathBuf,
     default_dir: PathBuf,
 }
+
+/// Controls how to load theme entries.
+#[derive(Clone, Copy)]
+pub enum LoadStrategy {
+    /// Only load non-truecolor, base16 themes.
+    BASE16,
+    /// Load all themes.
+    ALL,
+}
+
 impl Loader {
     /// Creates a new loader that can load themes from two directories.
     pub fn new<P: AsRef<Path>>(user_dir: P, default_dir: P) -> Self {
@@ -55,15 +65,23 @@ impl Loader {
         toml::from_slice(data.as_slice()).context("Failed to deserialize theme")
     }
 
-    pub fn read_names(path: &Path) -> Vec<String> {
+    pub fn read_names(path: &Path, load_strategy: LoadStrategy) -> Vec<String> {
         std::fs::read_dir(path)
             .map(|entries| {
                 entries
                     .filter_map(|entry| {
                         let entry = entry.ok()?;
                         let path = entry.path();
-                        (path.extension()? == "toml")
-                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+                        let file_name = path.file_name()?.to_str()?;
+
+                        match load_strategy {
+                            LoadStrategy::BASE16 => (path.extension()? == "toml"
+                                && file_name.starts_with("base16")
+                                && !file_name.ends_with("256.toml"))
+                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned()),
+                            LoadStrategy::ALL => (path.extension()? == "toml")
+                                .then(|| path.file_stem().unwrap().to_string_lossy().into_owned()),
+                        }
                     })
                     .collect()
             })
@@ -72,8 +90,8 @@ impl Loader {
 
     /// Lists all theme names available in default and user directory
     pub fn names(&self) -> Vec<String> {
-        let mut names = Self::read_names(&self.user_dir);
-        names.extend(Self::read_names(&self.default_dir));
+        let mut names = Self::read_names(&self.user_dir, LoadStrategy::ALL);
+        names.extend(Self::read_names(&self.default_dir, LoadStrategy::ALL));
         names
     }
 

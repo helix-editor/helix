@@ -2372,8 +2372,7 @@ pub mod cmd {
             .theme_loader
             .load(theme)
             .with_context(|| format!("Failed setting theme {}", theme))?;
-        let true_color = cx.editor.config.true_color || crate::true_color();
-        if !(true_color || theme.is_16_color()) {
+        if !(cx.editor.config.true_color || theme.is_16_color()) {
             bail!("Unsupported theme: theme requires true color support");
         }
         cx.editor.set_theme(theme);
@@ -2818,6 +2817,13 @@ pub mod cmd {
             doc: "Change the editor theme.",
             fun: theme,
             completer: Some(completers::theme),
+        },
+        TypableCommand {
+            name: "theme-base16",
+            aliases: &[],
+            doc: "Change the editor to non-truecolor theeme.",
+            fun: theme,
+            completer: Some(completers::theme_base16)
         },
         TypableCommand {
             name: "clipboard-yank",

@@ -105,7 +105,7 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
-    /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
+    /// Set to `false` to tell helix that the terminal doesn't support truecolor. Defaults to `true`.
     pub true_color: bool,
 }
 
@@ -151,7 +151,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
-            true_color: false,
+            true_color: true,
         }
     }
 }
