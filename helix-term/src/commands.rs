@@ -4269,7 +4269,7 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
 
         let hooks: &[Hook] = match cx.editor.config.auto_pairs {
-            true => &[auto_pairs::hook, insert],
+            true => &[auto_pairs::hook_insert, insert],
             false => &[insert],
         };
 
@@ -4375,19 +4375,28 @@ pub mod insert {
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current!(cx.editor);
+        let text = doc.text();
 
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                handle_backspace_dedent(doc, range).unwrap_or_else(|| {
-                    let text = doc.text().slice(..);
-                    let pos = range.cursor(text);
+                handle_backspace_dedent(doc, range)
+                    .or_else(|| {
+                        if !cx.editor.config.auto_pairs {
+                            None
+                        } else {
+                            auto_pairs::hook_delete(text, range)
+                        }
+                    })
+                    .unwrap_or_else(|| {
+                        let text = text.slice(..);
+                        let pos = range.cursor(text);
 
-                    (
-                        graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                        pos,
-                        None,
-                    )
-                })
+                        (
+                            graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                            pos,
+                            None,
+                        )
+                    })
             });
 
         doc.apply(&transaction, view.id);

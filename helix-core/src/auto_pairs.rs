@@ -1,7 +1,7 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{movement::Direction, Range, Rope, Selection, Tendril, Transaction};
+use crate::{movement::Direction, Change, Range, Rope, Selection, Tendril, Transaction};
 use log::debug;
 use smallvec::SmallVec;
 
@@ -34,9 +34,7 @@ const CLOSE_BEFORE: &str = ")]}'\":;,> \n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{20
 //   middle of triple quotes, and more exotic pairs like Jinja's {% %}
 
 #[must_use]
-pub fn hook(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
-    debug!("autopairs hook selection: {:#?}", selection);
-
+pub fn hook_insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
     for &(open, close) in PAIRS {
         if open == ch {
             if open == close {
@@ -214,6 +212,23 @@ fn handle_same(
     t
 }
 
+pub fn hook_delete(doc: &Rope, range: &Range) -> Option<Change> {
+    let cursor = range.cursor(doc.slice(..));
+    let next_char = doc.get_char(cursor)?;
+    let prev_char = prev_char(doc, cursor)?;
+    let mut change = None;
+
+    for (open, close) in PAIRS {
+        if prev_char == *open && next_char == *close {
+            change = Some((cursor - open.len_utf8(), cursor + close.len_utf8(), None));
+            break;
+        }
+    }
+
+    debug!("hook delete change: {:#?}", change);
+    change
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -234,7 +249,7 @@ mod test {
         expected_doc: &Rope,
         expected_sel: &Selection,
     ) {
-        let trans = hook(&in_doc, &in_sel, ch).unwrap();
+        let trans = hook_insert(&in_doc, &in_sel, ch).unwrap();
         let mut actual_doc = in_doc.clone();
         assert!(trans.apply(&mut actual_doc));
         assert_eq!(expected_doc, &actual_doc);
