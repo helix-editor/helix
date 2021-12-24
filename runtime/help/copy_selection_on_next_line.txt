@@ -1,4 +1,4 @@
-copy_selection_on_next_line
+`copy_selection_on_next_line`
 
 Copies the current primary selection to the next line long enough to accomodate it.
 

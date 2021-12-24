@@ -1,4 +1,4 @@
-move_prev_word_start
+`move_prev_word_start`
 
 Moves and selects backward, stopping at
 the first character of the previous word.

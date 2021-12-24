@@ -1,4 +1,4 @@
-move_line_down
+`move_line_down`
 
 Moves all cursors 1 line down, removing any selections.
 Repeating this will remember the vertical position of the cursors,
