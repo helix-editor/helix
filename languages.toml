@@ -475,7 +475,7 @@ indent = { tab-width = 2, unit = "  " }
 language-server = { command = "docker-langserver", args = ["--stdio"] }
 
 [[language]]
-name = "gitcommit"
+name = "git-commit"
 scope = "git.commitmsg"
 roots = []
 file-types = ["COMMIT_EDITMSG"]
