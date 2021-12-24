@@ -233,7 +233,7 @@ pub mod completers {
     }
 
     pub fn help(input: &str) -> Vec<Completion> {
-        let path = helix_core::runtime_dir().join("help");
+        let path = helix_core::runtime_dir().join("help/commands");
         let commands: Vec<String> = std::fs::read_dir(path)
             .map(|entries| {
                 entries

@@ -2667,8 +2667,7 @@ pub mod cmd {
             }
         };
 
-        let mut path = helix_core::runtime_dir();
-        path.push("help");
+        let mut path = helix_core::runtime_dir().join("help/commands");
         path.push(format!("{}.txt", command));
 
         ensure!(path.is_file(), "No help available for '{}'", args.join(" "));
