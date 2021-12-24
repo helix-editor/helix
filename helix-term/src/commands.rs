@@ -270,6 +270,7 @@ impl MappableCommand {
         append_mode, "Insert after selection (append)",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
+        file_picker_in_directory_of_active_buffer, "Open file picker in the directory of the active buffer",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         symbol_picker, "Open symbol picker",
@@ -3027,6 +3028,19 @@ fn command_mode(cx: &mut Context) {
 
 fn file_picker(cx: &mut Context) {
     let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
+    let picker = ui::file_picker(root, &cx.editor.config);
+    cx.push_layer(Box::new(picker));
+}
+
+fn file_picker_in_directory_of_active_buffer(cx: &mut Context) {
+    let (_view, doc) = current!(cx.editor);
+    let root = if let Some(current_path) = doc.path() {
+        let mut p = current_path.clone();
+        p.pop();
+        p
+    } else {
+        find_root(None).unwrap_or_else(|| PathBuf::from("./"))
+    };
     let picker = ui::file_picker(root, &cx.editor.config);
     cx.push_layer(Box::new(picker));
 }

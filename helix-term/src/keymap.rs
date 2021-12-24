@@ -648,6 +648,7 @@ impl Default for Keymaps {
 
             "space" => { "Space"
                 "f" => file_picker,
+                "F" => file_picker_in_directory_of_active_buffer,
                 "b" => buffer_picker,
                 "s" => symbol_picker,
                 "S" => workspace_symbol_picker,
