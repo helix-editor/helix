@@ -50,6 +50,8 @@ pulldown-cmark = { version = "0.8", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 
+encoding_rs = "0.8"
+
 # config
 toml = "0.5"
 

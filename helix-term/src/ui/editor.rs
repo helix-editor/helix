@@ -636,6 +636,13 @@ impl EditorView {
             base_style,
         ));
 
+        let encoding = doc.encoding();
+        if encoding != encoding_rs::UTF_8 {
+            right_side_text
+                .0
+                .push(Span::styled(format!(" {} ", encoding.name()), base_style));
+        }
+
         // Render to the statusline.
         surface.set_spans(
             viewport.x

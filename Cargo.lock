@@ -426,6 +426,7 @@ dependencies = [
  "chrono",
  "content_inspector",
  "crossterm",
+ "encoding_rs",
  "fern",
  "futures-util",
  "fuzzy-matcher",
