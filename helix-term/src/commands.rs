@@ -2643,7 +2643,7 @@ pub mod cmd {
 
     fn help(
         cx: &mut compositor::Context,
-        args: &[&str],
+        args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
         if args.is_empty() {
@@ -2656,7 +2656,7 @@ pub mod cmd {
                 .iter()
                 .any(|command| command.name() == args[0])
             {
-                args[0]
+                &args[0]
             } else {
                 let _keys = args
                     .iter()
