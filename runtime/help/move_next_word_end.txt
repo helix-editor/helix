@@ -1,4 +1,4 @@
-`move_next_word_end`
+move_next_word_end
 
 Moves and selects forward, stopping at
 the last character of the current word.

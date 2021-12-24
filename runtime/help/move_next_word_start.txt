@@ -1,4 +1,4 @@
-`move_next_word_start`
+move_next_word_start
 
 Moves and selects forward, stopping before
 the first character of the next word.
