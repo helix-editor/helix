@@ -41,3 +41,4 @@
 | `:hsplit`, `:hs`, `:sp` | Open the file in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
+| `:help`, `:h` | Open documentation for a command or keybind. |
