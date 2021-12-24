@@ -34,6 +34,7 @@
 | `Ctrl-d`    | Move half page down                                | `half_page_down`            |
 | `Ctrl-i`    | Jump forward on the jumplist                       | `jump_forward`              |
 | `Ctrl-o`    | Jump backward on the jumplist                      | `jump_backward`             |
+| `Ctrl-s`    | Save the current selection to the jumplist         | `save_selection`            |
 | `v`         | Enter [select (extend) mode](#select--extend-mode) | `select_mode`               |
 | `g`         | Enter [goto mode](#goto-mode)                      | N/A                         |
 | `m`         | Enter [match mode](#match-mode)                    | N/A                         |
@@ -69,13 +70,15 @@
 | `"` `<reg>` | Select a register to yank to or paste from                       | `select_register`         |
 | `>`         | Indent selection                                                 | `indent`                  |
 | `<`         | Unindent selection                                               | `unindent`                |
-| `=`         | Format selection (**LSP**)                                       | `format_selections`       |
+| `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)    | `format_selections`       |
 | `d`         | Delete selection                                                 | `delete_selection`        |
 | `Alt-d`     | Delete selection, without yanking                                | `delete_selection_noyank` |
 | `c`         | Change selection (delete and enter insert mode)                  | `change_selection`        |
 | `Alt-c`     | Change selection (delete and enter insert mode, without yanking) | `change_selection_noyank` |
 | `Ctrl-a`    | Increment object (number) under cursor                           | `increment`               |
 | `Ctrl-x`    | Decrement object (number) under cursor                           | `decrement`               |
+| `q`         | Start/stop macro recording to the selected register              | `record_macro`            |
+| `Q`         | Play back a recorded macro from the selected register            | `play_macro`              |
 
 #### Shell
 
@@ -158,7 +161,7 @@ Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
-| `g`   | Go to the start of the file                      | `goto_file_start`          |
+| `g`   | Go to line number `<n>` else start of file       | `goto_file_start`          |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
 | `f`   | Go to files in the selection                     | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |

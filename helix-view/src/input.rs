@@ -36,7 +36,6 @@ pub(crate) mod keys {
     pub(crate) const PAGEUP: &str = "pageup";
     pub(crate) const PAGEDOWN: &str = "pagedown";
     pub(crate) const TAB: &str = "tab";
-    pub(crate) const BACKTAB: &str = "backtab";
     pub(crate) const DELETE: &str = "del";
     pub(crate) const INSERT: &str = "ins";
     pub(crate) const NULL: &str = "null";
@@ -82,7 +81,6 @@ impl fmt::Display for KeyEvent {
             KeyCode::PageUp => f.write_str(keys::PAGEUP)?,
             KeyCode::PageDown => f.write_str(keys::PAGEDOWN)?,
             KeyCode::Tab => f.write_str(keys::TAB)?,
-            KeyCode::BackTab => f.write_str(keys::BACKTAB)?,
             KeyCode::Delete => f.write_str(keys::DELETE)?,
             KeyCode::Insert => f.write_str(keys::INSERT)?,
             KeyCode::Null => f.write_str(keys::NULL)?,
@@ -116,7 +114,6 @@ impl UnicodeWidthStr for KeyEvent {
             KeyCode::PageUp => keys::PAGEUP.len(),
             KeyCode::PageDown => keys::PAGEDOWN.len(),
             KeyCode::Tab => keys::TAB.len(),
-            KeyCode::BackTab => keys::BACKTAB.len(),
             KeyCode::Delete => keys::DELETE.len(),
             KeyCode::Insert => keys::INSERT.len(),
             KeyCode::Null => keys::NULL.len(),
@@ -166,7 +163,6 @@ impl std::str::FromStr for KeyEvent {
             keys::PAGEUP => KeyCode::PageUp,
             keys::PAGEDOWN => KeyCode::PageDown,
             keys::TAB => KeyCode::Tab,
-            keys::BACKTAB => KeyCode::BackTab,
             keys::DELETE => KeyCode::Delete,
             keys::INSERT => KeyCode::Insert,
             keys::NULL => KeyCode::Null,
@@ -220,12 +216,40 @@ impl<'de> Deserialize<'de> for KeyEvent {
 
 #[cfg(feature = "term")]
 impl From<crossterm::event::KeyEvent> for KeyEvent {
-    fn from(
-        crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent,
-    ) -> KeyEvent {
-        KeyEvent {
-            code: code.into(),
-            modifiers: modifiers.into(),
+    fn from(crossterm::event::KeyEvent { code, modifiers }: crossterm::event::KeyEvent) -> Self {
+        if code == crossterm::event::KeyCode::BackTab {
+            // special case for BackTab -> Shift-Tab
+            let mut modifiers: KeyModifiers = modifiers.into();
+            modifiers.insert(KeyModifiers::SHIFT);
+            Self {
+                code: KeyCode::Tab,
+                modifiers,
+            }
+        } else {
+            Self {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<KeyEvent> for crossterm::event::KeyEvent {
+    fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
+        if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
+            // special case for Shift-Tab -> BackTab
+            let mut modifiers = modifiers;
+            modifiers.remove(KeyModifiers::SHIFT);
+            crossterm::event::KeyEvent {
+                code: crossterm::event::KeyCode::BackTab,
+                modifiers: modifiers.into(),
+            }
+        } else {
+            crossterm::event::KeyEvent {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
         }
     }
 }

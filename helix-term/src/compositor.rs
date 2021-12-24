@@ -7,7 +7,7 @@ use helix_view::graphics::{CursorKind, Rect};
 use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
 
-pub type Callback = Box<dyn FnOnce(&mut Compositor)>;
+pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
 // --> EventResult should have a callback that takes a context with methods like .popup(),
 // .prompt() etc. That way we can abstract it from the renderer.
@@ -55,14 +55,19 @@ pub trait Component: Any + AnyComponent {
 
     /// May be used by the parent component to compute the child area.
     /// viewport is the maximum allowed area, and the child should stay within those bounds.
+    ///
+    /// The returned size might be larger than the viewport if the child is too big to fit.
+    /// In this case the parent can use the values to calculate scroll.
     fn required_size(&mut self, _viewport: (u16, u16)) -> Option<(u16, u16)> {
-        // TODO: for scrolling, the scroll wrapper should place a size + offset on the Context
-        // that way render can use it
         None
     }
 
     fn type_name(&self) -> &'static str {
         std::any::type_name::<Self>()
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        None
     }
 }
 
@@ -126,12 +131,17 @@ impl Compositor {
     }
 
     pub fn handle_event(&mut self, event: Event, cx: &mut Context) -> bool {
+        // If it is a key event and a macro is being recorded, push the key event to the recording.
+        if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
+            keys.push(key.into());
+        }
+
         // propagate events through the layers until we either find a layer that consumes it or we
         // run out of layers (event bubbling)
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
-                    callback(self);
+                    callback(self, cx);
                     return true;
                 }
                 EventResult::Consumed(None) => return true,
@@ -182,6 +192,14 @@ impl Compositor {
         self.layers
             .iter_mut()
             .find(|component| component.type_name() == type_name)
+            .and_then(|component| component.as_any_mut().downcast_mut())
+    }
+
+    pub fn find_id<T: 'static>(&mut self, id: &'static str) -> Option<&mut T> {
+        let type_name = std::any::type_name::<T>();
+        self.layers
+            .iter_mut()
+            .find(|component| component.type_name() == type_name && component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
 }

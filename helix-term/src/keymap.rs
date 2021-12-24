@@ -593,6 +593,9 @@ impl Default for Keymaps {
             // paste_all
             "P" => paste_before,
 
+            "q" => record_macro,
+            "Q" => play_macro,
+
             ">" => indent,
             "<" => unindent,
             "=" => format_selections,
@@ -641,7 +644,7 @@ impl Default for Keymaps {
 
             "tab" => jump_forward, // tab == <C-i>
             "C-o" => jump_backward,
-            // "C-s" => save_selection,
+            "C-s" => save_selection,
 
             "space" => { "Space"
                 "f" => file_picker,

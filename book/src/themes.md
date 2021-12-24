@@ -105,6 +105,7 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+- `constructor`
 
 - `constant` (TODO: constant.other.placeholder for %v)
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
@@ -161,6 +162,21 @@ We use a similar set of scopes as
 - `tag` - Tags (e.g. `<body>` in HTML)
 
 - `namespace`
+
+- `markup`
+  - `heading`
+  - `list`
+    - `unnumbered`
+    - `numbered`
+  - `bold`
+  - `italic`
+  - `link`
+    - `url`
+    - `label`
+  - `quote`
+  - `raw`
+    - `inline`
+    - `block`
 
 #### Interface
 

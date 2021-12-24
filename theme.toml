@@ -28,6 +28,12 @@ string = "silver"
 # used for lifetimes
 label = "honey"
 
+"markup.heading" = "lilac"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "silver", modifiers = ["underlined"] }
+"markup.raw" = "almond"
+
 # TODO: diferentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 

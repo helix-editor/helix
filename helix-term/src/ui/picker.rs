@@ -404,13 +404,13 @@ impl<T: 'static> Component for Picker<T> {
             _ => return EventResult::Ignored,
         };
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor| {
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
             // remove the layer
             compositor.last_picker = compositor.pop();
         })));
 
         match key_event.into() {
-            shift!(BackTab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_up();
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
