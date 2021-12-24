@@ -182,3 +182,7 @@
 	path = helix-syntax/languages/tree-sitter-git-rebase
 	url = https://github.com/the-mikedavis/tree-sitter-git-rebase.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-regex"]
+	path = helix-syntax/languages/tree-sitter-regex
+	url = https://github.com/tree-sitter/tree-sitter-regex.git
+	shallow = true
