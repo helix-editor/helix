@@ -3695,7 +3695,9 @@ fn normal_mode(cx: &mut Context) {
 fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
     let doc_changes = doc.changes().changes();
     let text = doc.text().slice(..);
-    let pos = doc.selection(view_id).primary().cursor(text);
+    let range = doc.selection(view_id).primary();
+    let pos = range.cursor(text);
+    let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
     let mut can_restore_indent = false;
 
     // Removes trailing whitespace if insert mode is exited after starting a blank new line.
@@ -3707,6 +3709,7 @@ fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
         if move_pos + inserted_str.len32() as usize == pos
             && inserted_str.starts_with('\n')
             && inserted_str.chars().skip(1).all(char_is_whitespace)
+            && pos == line_end_pos
         {
             can_restore_indent = true;
         }
