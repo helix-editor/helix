@@ -311,6 +311,15 @@ Keys to use within picker. Remapping currently not supported.
 | `Ctrl-v`                     | Open vertically   |
 | `Escape`, `Ctrl-c`           | Close picker      |
 
+## File Picker extra keymap
+
+Keys to use within picker. Remapping currently not supported.
+
+| Key           | Description                         |
+| -----         | -------------                       |
+| `Ctrl-f`      | Retain current doc dir's subpath    |
+| `Ctrl-a`      | Retain  cwd's subpath               |
+
 # Prompt
 
 Keys to use within prompt, Remapping currently not supported.
