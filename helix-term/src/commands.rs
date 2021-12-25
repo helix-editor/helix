@@ -6000,39 +6000,8 @@ fn record_macro(cx: &mut Context) {
 
 fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
-    // TODO: macro keys should be parsed one by one and not space delimited (see kak)
     let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
-        let mut keys_res: anyhow::Result<_> = Ok(Vec::new());
-        let mut i = 0;
-        while let Ok(keys) = &mut keys_res {
-            if i >= keys_str.len() {
-                break;
-            }
-            if !keys_str.is_char_boundary(i) {
-                i += 1;
-                continue;
-            }
-
-            let s = &keys_str[i..];
-            let mut end_i = 1;
-            while !s.is_char_boundary(end_i) {
-                end_i += 1;
-            }
-            let c = &s[..end_i];
-            if c != "<" {
-                keys.push(c);
-                i += end_i;
-            } else {
-                match s.find('>').context("'>' expected") {
-                    Ok(end_i) => {
-                        keys.push(&s[1..end_i]);
-                        i += end_i + 1;
-                    }
-                    Err(err) => keys_res = Err(err),
-                }
-            }
-        }
-        match keys_res.and_then(|keys| keys.into_iter().map(str::parse).collect()) {
+        match helix_view::input::parse_macro(keys_str) {
             Ok(keys) => keys,
             Err(err) => {
                 cx.editor.set_error(format!("Invalid macro: {}", err));
@@ -6043,8 +6012,8 @@ fn replay_macro(cx: &mut Context) {
         cx.editor.set_error(format!("Register [{}] empty", reg));
         return;
     };
-    let count = cx.count();
 
+    let count = cx.count();
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             for _ in 0..count {
