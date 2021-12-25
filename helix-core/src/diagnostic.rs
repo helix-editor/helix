@@ -1,12 +1,19 @@
 //! LSP diagnostic utility types.
+use serde::{Deserialize, Serialize};
 
 /// Describes the severity level of a [`Diagnostic`].
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum Severity {
-    Error,
-    Warning,
-    Info,
     Hint,
+    Info,
+    Warning,
+    Error,
+}
+
+impl Default for Severity {
+    fn default() -> Self {
+        Self::Hint
+    }
 }
 
 /// A range of `char`s within the text.

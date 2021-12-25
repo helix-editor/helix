@@ -84,6 +84,11 @@
 # nord15 - integer, floating point
 "constant.numeric" = "nord15"
 
+# vcs
+"diff.plus" = "nord14"
+"diff.delta" = "nord12"
+"diff.minus" = "nord11"
+
 [palette]
 nord0 = "#2e3440"
 nord1 = "#3b4252"

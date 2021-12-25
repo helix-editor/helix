@@ -28,6 +28,10 @@
 "label" = "aqua1"
 "module" = "aqua1"
 
+"diff.plus" = "green1"
+"diff.delta" = "orange1"
+"diff.minus" = "red1"
+
 "warning" = { fg = "orange1", bg = "bg1" }
 "error" = { fg = "red1", bg = "bg1" }
 "info" = { fg = "aqua1", bg = "bg1" }

@@ -39,6 +39,10 @@
 "constant.numeric" = { fg = "pale_green" }
 "constant.character.escape" = { fg = "gold" }
 
+"diff.plus" = { fg = "pale_green" }
+"diff.delta" = { fg = "gold" }
+"diff.minus" = { fg = "red" }
+
 "ui.background" = { fg = "light_gray", bg = "dark_gray2" }
 
 "ui.window" = { bg = "widget" }
