@@ -169,3 +169,23 @@ jobs:
           file_glob: true
           tag: ${{ steps.tagname.outputs.val }}
           overwrite: true
+
+  homebrew:
+    name: Bump Homebrew formula
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version
+        id: extract-version
+        run: |
+          printf "::set-output name=%s::%s\n" tag-name "${GITHUB_REF#refs/tags/}"
+      - uses: mislav/bump-homebrew-formula-action@v1
+        with:
+          formula-name: helix
+          formula-path: Formula/helix.rb
+          homebrew-tap: matoous/homebrew-helix
+          base-branch: master
+          download-url: https://github.com/helix-editor/helix/releases/download/{{ steps.extract-version.outputs.tag-name }}/helix-{{ steps.extract-version.outputs.tag-name }}-x86_64-macos.tar.xz
+          commit-message: |
+            {{formulaName}} {{version}}
+        env:
+          COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
