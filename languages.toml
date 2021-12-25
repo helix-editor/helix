@@ -3,7 +3,7 @@ name = "rust"
 scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
-roots = []
+roots = ["Cargo.toml", "Cargo.lock"]
 auto-format = true
 comment-token = "//"
 language-server = { command = "rust-analyzer" }
