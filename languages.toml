@@ -492,10 +492,10 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
-name = "rebase"
+name = "git-rebase"
 scope = "git.rebase"
 roots = []
 file-types = ["git-rebase-todo"]
-injection-regex = "rebase"
+injection-regex = "git-rebase"
 comment-token = "#"
 indent = { tab-width = 2, unit = " " }
