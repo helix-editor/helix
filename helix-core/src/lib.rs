@@ -1,3 +1,5 @@
+pub use encoding_rs as encoding;
+
 pub mod auto_pairs;
 pub mod chars;
 pub mod comment;

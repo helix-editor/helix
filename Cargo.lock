@@ -370,6 +370,7 @@ version = "0.5.0"
 dependencies = [
  "arc-swap",
  "chrono",
+ "encoding_rs",
  "etcetera",
  "helix-syntax",
  "log",
@@ -426,7 +427,6 @@ dependencies = [
  "chrono",
  "content_inspector",
  "crossterm",
- "encoding_rs",
  "fern",
  "futures-util",
  "fuzzy-matcher",
@@ -472,7 +472,6 @@ dependencies = [
  "chardetng",
  "clipboard-win",
  "crossterm",
- "encoding_rs",
  "futures-util",
  "helix-core",
  "helix-lsp",
