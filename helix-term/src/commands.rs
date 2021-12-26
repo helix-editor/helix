@@ -2637,6 +2637,36 @@ pub mod cmd {
         let (view, doc) = current!(cx.editor);
 
         view.ensure_cursor_in_view(doc, line);
+        Ok(())
+    }
+
+    fn setting(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let runtime_config = &mut cx.editor.config;
+
+        if args.len() != 2 {
+            anyhow::bail!("Bad arguments. Usage: `:set key field`");
+        }
+
+        let (key, arg) = (&args[0].to_lowercase(), &args[1]);
+
+        match key.as_ref() {
+            "scrolloff" => runtime_config.scrolloff = arg.parse()?,
+            "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
+            "mouse" => runtime_config.mouse = arg.parse()?,
+            "line-number" => runtime_config.line_number = arg.parse()?,
+            "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
+            "smart-case" => runtime_config.smart_case = arg.parse()?,
+            "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
+            "auto-completion" => runtime_config.auto_completion = arg.parse()?,
+            "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
+            "auto-info" => runtime_config.auto_info = arg.parse()?,
+            "true-color" => runtime_config.true_color = arg.parse()?,
+            _ => anyhow::bail!("Unknown key `{}`.", args[0]),
+        }
 
         Ok(())
     }
@@ -2928,6 +2958,13 @@ pub mod cmd {
             doc: "Go to line number.",
             fun: goto_line_number,
             completer: None,
+        },
+        TypableCommand {
+            name: "set-option",
+            aliases: &["set"],
+            doc: "Set a config option at runtime",
+            fun: setting,
+            completer: Some(completers::setting),
         }
     ];
 
