@@ -1,5 +1,6 @@
 ((comment (scissors))
  (message) @injection.content
+ (#set! injection.include-children)
  (#set! injection.language "diff"))
 
 ; once a rebase grammar is available, we can inject rebase highlighting into
