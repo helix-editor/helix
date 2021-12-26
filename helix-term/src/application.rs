@@ -124,6 +124,28 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(std::mem::take(&mut config.keys)));
         compositor.push(editor_view);
 
+        let notifications_view = Box::new(ui::NotificationsView::new());
+        compositor.push(notifications_view);
+        editor
+            .notifications
+            .add(helix_view::notification::Notification::new(
+                "LSP Status",
+                "lorem ipusumg;sldkflksjfsjd \n\
+            lasjdalkjdakslj \n\
+            aslkdjasldjal"
+                    .to_string(),
+                helix_core::diagnostic::Severity::Error,
+                Some(Duration::from_millis(12000)),
+            ));
+        editor
+            .notifications
+            .add(helix_view::notification::Notification::new(
+                "Some other message",
+                "other message".to_string(),
+                helix_core::diagnostic::Severity::Info,
+                None,
+            ));
+
         if args.load_tutor {
             let path = helix_core::runtime_dir().join("tutor.txt");
             editor.open(path, Action::VerticalSplit)?;
@@ -452,6 +474,30 @@ impl Application {
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);
+                        match params.typ {
+                            lsp::MessageType::ERROR => {
+                                self.editor.notifications.add(
+                                    helix_view::notification::Notification::new(
+                                        "LSP Status",
+                                        params.message.clone(),
+                                        helix_core::diagnostic::Severity::Error,
+                                        None,
+                                    ),
+                                );
+                                self.editor.notifications.add(
+                                    helix_view::notification::Notification::new(
+                                        "Some other message",
+                                        params.message.clone(),
+                                        helix_core::diagnostic::Severity::Info,
+                                        None,
+                                    ),
+                                );
+                                self.editor.set_error(params.message);
+                            }
+                            _ => {
+                                self.editor.set_status(params.message);
+                            }
+                        }
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -488,7 +534,7 @@ impl Application {
                                     if !self.lsp_progress.is_progressing(server_id) {
                                         editor_view.spinners_mut().get_or_create(server_id).stop();
                                     }
-                                    self.editor.clear_status();
+                                    // self.editor.clear_status();
 
                                     // we want to render to clear any leftover spinners or messages
                                     return;

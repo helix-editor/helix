@@ -3,6 +3,7 @@ use crate::{
     document::SCRATCH_BUFFER_NAME,
     graphics::{CursorKind, Rect},
     input::KeyEvent,
+    notification::Notifications,
     theme::{self, Theme},
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
@@ -180,6 +181,7 @@ pub struct Editor {
     pub theme: Theme,
     pub language_servers: helix_lsp::Registry,
     pub clipboard_provider: Box<dyn ClipboardProvider>,
+    pub notifications: Notifications,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -227,6 +229,7 @@ impl Editor {
             theme_loader,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
+            notifications: Notifications::new(),
             status_msg: None,
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,

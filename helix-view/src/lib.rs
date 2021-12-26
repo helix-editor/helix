@@ -9,6 +9,7 @@ pub mod gutter;
 pub mod info;
 pub mod input;
 pub mod keyboard;
+pub mod notification;
 pub mod theme;
 pub mod tree;
 pub mod view;
