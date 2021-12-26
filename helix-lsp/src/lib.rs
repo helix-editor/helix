@@ -11,8 +11,9 @@ pub use lsp_types as lsp;
 use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::LanguageConfiguration;
 
+use ahash::AHashMap;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::hash_map::Entry,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -283,7 +284,7 @@ impl Notification {
 
 #[derive(Debug)]
 pub struct Registry {
-    inner: HashMap<LanguageId, (usize, Arc<Client>)>,
+    inner: AHashMap<LanguageId, (usize, Arc<Client>)>,
 
     counter: AtomicUsize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
@@ -298,7 +299,7 @@ impl Default for Registry {
 impl Registry {
     pub fn new() -> Self {
         Self {
-            inner: HashMap::new(),
+            inner: AHashMap::new(),
             counter: AtomicUsize::new(0),
             incoming: SelectAll::new(),
         }
@@ -388,7 +389,7 @@ impl ProgressStatus {
 /// Acts as a container for progress reported by language servers. Each server
 /// has a unique id assigned at creation through [`Registry`]. This id is then used
 /// to store the progress in this map.
-pub struct LspProgressMap(HashMap<usize, HashMap<lsp::ProgressToken, ProgressStatus>>);
+pub struct LspProgressMap(AHashMap<usize, AHashMap<lsp::ProgressToken, ProgressStatus>>);
 
 impl LspProgressMap {
     pub fn new() -> Self {
@@ -396,7 +397,7 @@ impl LspProgressMap {
     }
 
     /// Returns a map of all tokens coresponding to the lanaguage server with `id`.
-    pub fn progress_map(&self, id: usize) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
+    pub fn progress_map(&self, id: usize) -> Option<&AHashMap<lsp::ProgressToken, ProgressStatus>> {
         self.0.get(&id)
     }
 

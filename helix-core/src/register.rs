@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use ahash::AHashMap;
 
 #[derive(Debug)]
 pub struct Register {
@@ -46,7 +46,7 @@ impl Register {
 /// Currently just wraps a `HashMap` of `Register`s
 #[derive(Debug, Default)]
 pub struct Registers {
-    inner: HashMap<char, Register>,
+    inner: AHashMap<char, Register>,
 }
 
 impl Registers {

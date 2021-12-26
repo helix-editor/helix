@@ -10,14 +10,8 @@ pub use helix_syntax::get_language;
 
 use arc_swap::ArcSwap;
 
-use std::{
-    borrow::Cow,
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-    fmt,
-    path::Path,
-    sync::Arc,
-};
+use ahash::{AHashMap, AHashSet};
+use std::{borrow::Cow, cell::RefCell, fmt, path::Path, sync::Arc};
 
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
@@ -106,11 +100,11 @@ pub struct IndentationConfiguration {
 #[serde(rename_all = "kebab-case")]
 pub struct IndentQuery {
     #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub indent: HashSet<String>,
+    #[serde(skip_serializing_if = "std::collections::HashSet::is_empty")]
+    pub indent: AHashSet<String>,
     #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub outdent: HashSet<String>,
+    #[serde(skip_serializing_if = "std::collections::HashSet::is_empty")]
+    pub outdent: AHashSet<String>,
 }
 
 #[derive(Debug)]
@@ -259,16 +253,16 @@ impl LanguageConfiguration {
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
-    language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
-    language_config_ids_by_shebang: HashMap<String, usize>,
+    language_config_ids_by_file_type: AHashMap<String, usize>, // Vec<usize>
+    language_config_ids_by_shebang: AHashMap<String, usize>,
 }
 
 impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
-            language_config_ids_by_file_type: HashMap::new(),
-            language_config_ids_by_shebang: HashMap::new(),
+            language_config_ids_by_file_type: AHashMap::new(),
+            language_config_ids_by_shebang: AHashMap::new(),
         };
 
         for config in config.language {

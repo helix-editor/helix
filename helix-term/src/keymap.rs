@@ -1,11 +1,12 @@
 pub use crate::commands::MappableCommand;
 use crate::config::Config;
+use ahash::AHashMap;
 use helix_core::hashmap;
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
     borrow::Cow,
-    collections::{BTreeSet, HashMap},
+    collections::BTreeSet,
     ops::{Deref, DerefMut},
 };
 
@@ -111,7 +112,7 @@ macro_rules! keymap {
         // modified from the hashmap! macro
         {
             let _cap = hashmap!(@count $($($key),+),*);
-            let mut _map = ::std::collections::HashMap::with_capacity(_cap);
+            let mut _map = ::ahash::AHashMap::with_capacity(_cap);
             let mut _order = ::std::vec::Vec::with_capacity(_cap);
             $(
                 $(
@@ -135,7 +136,7 @@ macro_rules! keymap {
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
     name: String,
-    map: HashMap<KeyEvent, KeyTrie>,
+    map: AHashMap<KeyEvent, KeyTrie>,
     order: Vec<KeyEvent>,
     pub is_sticky: bool,
 }
@@ -145,7 +146,7 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
     where
         D: serde::Deserializer<'de>,
     {
-        let map = HashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?;
+        let map = AHashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?;
         let order = map.keys().copied().collect::<Vec<_>>(); // NOTE: map.keys() has arbitrary order
         Ok(Self {
             map,
@@ -156,7 +157,7 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
 }
 
 impl KeyTrieNode {
-    pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>, order: Vec<KeyEvent>) -> Self {
+    pub fn new(name: &str, map: AHashMap<KeyEvent, KeyTrie>, order: Vec<KeyEvent>) -> Self {
         Self {
             name: name.to_string(),
             map,
@@ -233,7 +234,7 @@ impl KeyTrieNode {
 
 impl Default for KeyTrieNode {
     fn default() -> Self {
-        Self::new("", HashMap::new(), Vec::new())
+        Self::new("", AHashMap::new(), Vec::new())
     }
 }
 
@@ -244,7 +245,7 @@ impl PartialEq for KeyTrieNode {
 }
 
 impl Deref for KeyTrieNode {
-    type Target = HashMap<KeyEvent, KeyTrie>;
+    type Target = AHashMap<KeyEvent, KeyTrie>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
@@ -447,7 +448,7 @@ impl Default for Keymap {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct Keymaps(pub HashMap<Mode, Keymap>);
+pub struct Keymaps(pub AHashMap<Mode, Keymap>);
 
 impl Keymaps {
     /// Returns list of keys waiting to be disambiguated in current mode.
@@ -463,7 +464,7 @@ impl Keymaps {
 }
 
 impl Deref for Keymaps {
-    type Target = HashMap<Mode, Keymap>;
+    type Target = AHashMap<Mode, Keymap>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

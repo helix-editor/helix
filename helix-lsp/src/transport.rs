@@ -1,10 +1,10 @@
 use crate::{Error, Result};
+use ahash::AHashMap;
 use anyhow::Context;
 use jsonrpc_core as jsonrpc;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
@@ -39,7 +39,7 @@ enum ServerMessage {
 #[derive(Debug)]
 pub struct Transport {
     id: usize,
-    pending_requests: Mutex<HashMap<jsonrpc::Id, Sender<Result<Value>>>>,
+    pending_requests: Mutex<AHashMap<jsonrpc::Id, Sender<Result<Value>>>>,
 }
 
 impl Transport {
@@ -59,7 +59,7 @@ impl Transport {
 
         let transport = Self {
             id,
-            pending_requests: Mutex::new(HashMap::default()),
+            pending_requests: Mutex::new(AHashMap::default()),
         };
 
         let transport = Arc::new(transport);

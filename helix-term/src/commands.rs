@@ -40,8 +40,9 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
+use ahash::AHashSet;
 use futures_util::{FutureExt, StreamExt};
-use std::{collections::HashSet, num::NonZeroUsize};
+use std::num::NonZeroUsize;
 use std::{fmt, future::Future};
 
 use std::{
@@ -1954,7 +1955,7 @@ fn append_mode(cx: &mut Context) {
 
 pub mod cmd {
     use super::*;
-    use std::collections::HashMap;
+    use ahash::AHashMap;
 
     use helix_view::editor::Action;
     use ui::completers::{self, Completer};
@@ -2968,7 +2969,7 @@ pub mod cmd {
         }
     ];
 
-    pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
+    pub static TYPABLE_COMMAND_MAP: Lazy<AHashMap<&'static str, &'static TypableCommand>> =
         Lazy::new(|| {
             TYPABLE_COMMAND_LIST
                 .iter()
@@ -5985,7 +5986,7 @@ fn increment_impl(cx: &mut Context, amount: i64) {
     // incrementing will give overlapping changes, with each change incrementing a different part of
     // the date. Since these conflict with each other we remove these changes from the transaction
     // so nothing happens.
-    let mut overlapping_indexes = HashSet::new();
+    let mut overlapping_indexes = AHashSet::new();
     for (i, changes) in changes.windows(2).enumerate() {
         if changes[0].1 > changes[1].0 {
             overlapping_indexes.insert(i);

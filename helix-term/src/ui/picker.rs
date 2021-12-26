@@ -9,13 +9,13 @@ use tui::{
     widgets::{Block, BorderType, Borders},
 };
 
+use ahash::AHashMap;
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 use tui::widgets::Widget;
 
 use std::{
     borrow::Cow,
-    collections::HashMap,
     io::Read,
     path::{Path, PathBuf},
 };
@@ -39,7 +39,7 @@ pub struct FilePicker<T> {
     picker: Picker<T>,
     pub truncate_start: bool,
     /// Caches paths to documents
-    preview_cache: HashMap<PathBuf, CachedPreview>,
+    preview_cache: AHashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
@@ -92,7 +92,7 @@ impl<T> FilePicker<T> {
         Self {
             picker: Picker::new(false, options, format_fn, callback_fn),
             truncate_start: true,
-            preview_cache: HashMap::new(),
+            preview_cache: AHashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
         }

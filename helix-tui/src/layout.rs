@@ -1,9 +1,8 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-
+use ahash::AHashMap;
 use cassowary::strength::{REQUIRED, WEAK};
 use cassowary::WeightedRelation::*;
 use cassowary::{Constraint as CassowaryConstraint, Expression, Solver, Variable};
+use std::cell::RefCell;
 
 use helix_view::graphics::{Margin, Rect};
 
@@ -61,7 +60,7 @@ pub struct Layout {
 }
 
 thread_local! {
-    static LAYOUT_CACHE: RefCell<HashMap<(Rect, Layout), Vec<Rect>>> = RefCell::new(HashMap::new());
+    static LAYOUT_CACHE: RefCell<AHashMap<(Rect, Layout), Vec<Rect>>> = RefCell::new(AHashMap::new());
 }
 
 impl Default for Layout {
@@ -183,7 +182,7 @@ impl Layout {
 
 fn split(area: Rect, layout: &Layout) -> Vec<Rect> {
     let mut solver = Solver::new();
-    let mut vars: HashMap<Variable, (usize, usize)> = HashMap::new();
+    let mut vars: AHashMap<Variable, (usize, usize)> = AHashMap::new();
     let elements = layout
         .constraints
         .iter()

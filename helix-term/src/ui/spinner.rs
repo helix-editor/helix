@@ -1,8 +1,9 @@
-use std::{collections::HashMap, time::SystemTime};
+use ahash::AHashMap;
+use std::time::SystemTime;
 
 #[derive(Default, Debug)]
 pub struct ProgressSpinners {
-    inner: HashMap<usize, Spinner>,
+    inner: AHashMap<usize, Spinner>,
 }
 
 impl ProgressSpinners {

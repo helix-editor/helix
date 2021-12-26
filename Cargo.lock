@@ -3,6 +3,18 @@
 version = 3
 
 [[package]]
+name = "ahash"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
+dependencies = [
+ "getrandom",
+ "once_cell",
+ "serde",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -368,6 +380,7 @@ dependencies = [
 name = "helix-core"
 version = "0.5.0"
 dependencies = [
+ "ahash",
  "arc-swap",
  "chrono",
  "encoding_rs",
@@ -394,6 +407,7 @@ dependencies = [
 name = "helix-lsp"
 version = "0.5.0"
 dependencies = [
+ "ahash",
  "anyhow",
  "futures-executor",
  "futures-util",
@@ -423,6 +437,7 @@ dependencies = [
 name = "helix-term"
 version = "0.5.0"
 dependencies = [
+ "ahash",
  "anyhow",
  "chrono",
  "content_inspector",
@@ -454,6 +469,7 @@ dependencies = [
 name = "helix-tui"
 version = "0.5.0"
 dependencies = [
+ "ahash",
  "bitflags",
  "cassowary",
  "crossterm",
@@ -467,6 +483,7 @@ dependencies = [
 name = "helix-view"
 version = "0.5.0"
 dependencies = [
+ "ahash",
  "anyhow",
  "bitflags",
  "chardetng",

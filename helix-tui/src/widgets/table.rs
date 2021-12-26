@@ -4,6 +4,7 @@ use crate::{
     text::Text,
     widgets::{Block, Widget},
 };
+use ahash::AHashMap;
 use cassowary::{
     strength::{MEDIUM, REQUIRED, WEAK},
     WeightedRelation::*,
@@ -11,7 +12,6 @@ use cassowary::{
 };
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
-use std::collections::HashMap;
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
 ///
@@ -261,7 +261,7 @@ impl<'a> Table<'a> {
 
     fn get_columns_widths(&self, max_width: u16, has_selection: bool) -> Vec<u16> {
         let mut solver = Solver::new();
-        let mut var_indices = HashMap::new();
+        let mut var_indices = AHashMap::new();
         let mut ccs = Vec::new();
         let mut variables = Vec::new();
         for i in 0..self.widths.len() {

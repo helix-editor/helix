@@ -1,8 +1,6 @@
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
+use ahash::AHashMap;
 use anyhow::Context;
 use helix_core::hashmap;
 use log::warn;
@@ -91,7 +89,7 @@ impl Loader {
 #[derive(Clone, Debug)]
 pub struct Theme {
     // UI styles are stored in a HashMap
-    styles: HashMap<String, Style>,
+    styles: AHashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
@@ -102,11 +100,11 @@ impl<'de> Deserialize<'de> for Theme {
     where
         D: Deserializer<'de>,
     {
-        let mut styles = HashMap::new();
+        let mut styles = AHashMap::new();
         let mut scopes = Vec::new();
         let mut highlights = Vec::new();
 
-        if let Ok(mut colors) = HashMap::<String, Value>::deserialize(deserializer) {
+        if let Ok(mut colors) = AHashMap::<String, Value>::deserialize(deserializer) {
             // TODO: alert user of parsing failures in editor
             let palette = colors
                 .remove("palette")
@@ -176,7 +174,7 @@ impl Theme {
 }
 
 struct ThemePalette {
-    palette: HashMap<String, Color>,
+    palette: AHashMap<String, Color>,
 }
 
 impl Default for ThemePalette {
@@ -205,7 +203,7 @@ impl Default for ThemePalette {
 }
 
 impl ThemePalette {
-    pub fn new(palette: HashMap<String, Color>) -> Self {
+    pub fn new(palette: AHashMap<String, Color>) -> Self {
         let ThemePalette {
             palette: mut default,
         } = ThemePalette::default();
@@ -285,7 +283,7 @@ impl TryFrom<Value> for ThemePalette {
             _ => return Ok(Self::default()),
         };
 
-        let mut palette = HashMap::with_capacity(map.len());
+        let mut palette = AHashMap::with_capacity(map.len());
         for (name, value) in map {
             let value = Self::parse_value_as_str(&value)?;
             let color = Self::hex_string_to_rgb(value)?;

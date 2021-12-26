@@ -1,12 +1,13 @@
 use anyhow::{anyhow, Context, Error};
 use serde::de::{self, Deserialize, Deserializer};
 use std::cell::Cell;
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+
+use ahash::AHashMap;
 
 use helix_core::{
     encoding,
@@ -72,7 +73,7 @@ impl<'de> Deserialize<'de> for Mode {
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
-    pub(crate) selections: HashMap<ViewId, Selection>,
+    pub(crate) selections: AHashMap<ViewId, Selection>,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -333,7 +334,7 @@ impl Document {
             path: None,
             encoding,
             text,
-            selections: HashMap::default(),
+            selections: AHashMap::default(),
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             mode: Mode::Normal,
@@ -915,7 +916,7 @@ impl Document {
         &self.selections[&view_id]
     }
 
-    pub fn selections(&self) -> &HashMap<ViewId, Selection> {
+    pub fn selections(&self) -> &AHashMap<ViewId, Selection> {
         &self.selections
     }
 
