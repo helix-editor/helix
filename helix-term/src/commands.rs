@@ -3693,29 +3693,30 @@ fn normal_mode(cx: &mut Context) {
 }
 
 fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
+    use helix_core::chars::char_is_whitespace;
+    use helix_core::Operation;
+
+    fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
+        if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
+            changes
+        {
+            move_pos + inserted_str.len32() as usize == pos
+                && inserted_str.starts_with('\n')
+                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && pos == line_end_pos // ensure no characters exists after current position
+        } else {
+            false
+        }
+    }
+
     let doc_changes = doc.changes().changes();
     let text = doc.text().slice(..);
     let range = doc.selection(view_id).primary();
     let pos = range.cursor(text);
     let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
-    let mut can_restore_indent = false;
 
-    // Removes trailing whitespace if insert mode is exited after starting a blank new line.
-    use helix_core::chars::char_is_whitespace;
-    use helix_core::Operation;
-    if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
-        doc_changes
-    {
-        if move_pos + inserted_str.len32() as usize == pos
-            && inserted_str.starts_with('\n')
-            && inserted_str.chars().skip(1).all(char_is_whitespace)
-            && pos == line_end_pos
-        {
-            can_restore_indent = true;
-        }
-    }
-
-    if can_restore_indent {
+    if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
+        // Removes tailing whitespaces.
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
