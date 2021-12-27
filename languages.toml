@@ -484,7 +484,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "git-diff"
-scope = "git.diff"
+scope = "source.diff"
 roots = []
 file-types = ["diff"]
 injection-regex = "diff"
