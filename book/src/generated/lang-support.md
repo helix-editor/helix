@@ -3,7 +3,7 @@
 | bash | ✓ |  |  | `bash-language-server` |
 | c | ✓ |  |  | `clangd` |
 | c-sharp | ✓ |  |  |  |
-| cmake | ✓ |  |  | `cmake-language-server` |
+| cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
 | cpp | ✓ |  |  | `clangd` |
 | css | ✓ |  |  |  |
@@ -11,6 +11,7 @@
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
 | fish | ✓ | ✓ | ✓ |  |
+| git-commit | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |

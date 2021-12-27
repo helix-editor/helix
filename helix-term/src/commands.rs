@@ -396,7 +396,7 @@ impl MappableCommand {
         increment, "Increment",
         decrement, "Decrement",
         record_macro, "Record macro",
-        play_macro, "Play macro",
+        replay_macro, "Replay macro",
     );
 }
 
@@ -2637,6 +2637,36 @@ pub mod cmd {
         let (view, doc) = current!(cx.editor);
 
         view.ensure_cursor_in_view(doc, line);
+        Ok(())
+    }
+
+    fn setting(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let runtime_config = &mut cx.editor.config;
+
+        if args.len() != 2 {
+            anyhow::bail!("Bad arguments. Usage: `:set key field`");
+        }
+
+        let (key, arg) = (&args[0].to_lowercase(), &args[1]);
+
+        match key.as_ref() {
+            "scrolloff" => runtime_config.scrolloff = arg.parse()?,
+            "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
+            "mouse" => runtime_config.mouse = arg.parse()?,
+            "line-number" => runtime_config.line_number = arg.parse()?,
+            "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
+            "smart-case" => runtime_config.smart_case = arg.parse()?,
+            "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
+            "auto-completion" => runtime_config.auto_completion = arg.parse()?,
+            "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
+            "auto-info" => runtime_config.auto_info = arg.parse()?,
+            "true-color" => runtime_config.true_color = arg.parse()?,
+            _ => anyhow::bail!("Unknown key `{}`.", args[0]),
+        }
 
         Ok(())
     }
@@ -2964,6 +2994,13 @@ pub mod cmd {
             doc: "Go to line number.",
             fun: goto_line_number,
             completer: None,
+        },
+        TypableCommand {
+            name: "set-option",
+            aliases: &["set"],
+            doc: "Set a config option at runtime",
+            fun: setting,
+            completer: Some(completers::setting),
         },
         TypableCommand {
             name: "help",
@@ -6021,42 +6058,42 @@ fn record_macro(cx: &mut Context) {
         keys.pop();
         let s = keys
             .into_iter()
-            .map(|key| format!("{}", key))
-            .collect::<Vec<_>>()
-            .join(" ");
+            .map(|key| {
+                let s = key.to_string();
+                if s.chars().count() == 1 {
+                    s
+                } else {
+                    format!("<{}>", s)
+                }
+            })
+            .collect::<String>();
         cx.editor.registers.get_mut(reg).write(vec![s]);
         cx.editor
-            .set_status(format!("Recorded to register {}", reg));
+            .set_status(format!("Recorded to register [{}]", reg));
     } else {
         let reg = cx.register.take().unwrap_or('@');
         cx.editor.macro_recording = Some((reg, Vec::new()));
         cx.editor
-            .set_status(format!("Recording to register {}", reg));
+            .set_status(format!("Recording to register [{}]", reg));
     }
 }
 
-fn play_macro(cx: &mut Context) {
+fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
-    let keys = match cx
-        .editor
-        .registers
-        .get(reg)
-        .and_then(|reg| reg.read().get(0))
-        .context("Register empty")
-        .and_then(|s| {
-            s.split_whitespace()
-                .map(str::parse::<KeyEvent>)
-                .collect::<Result<Vec<_>, _>>()
-                .context("Failed to parse macro")
-        }) {
-        Ok(keys) => keys,
-        Err(e) => {
-            cx.editor.set_error(format!("{}", e));
-            return;
+    let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
+        match helix_view::input::parse_macro(keys_str) {
+            Ok(keys) => keys,
+            Err(err) => {
+                cx.editor.set_error(format!("Invalid macro: {}", err));
+                return;
+            }
         }
+    } else {
+        cx.editor.set_error(format!("Register [{}] empty", reg));
+        return;
     };
-    let count = cx.count();
 
+    let count = cx.count();
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             for _ in 0..count {
