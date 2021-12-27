@@ -2731,20 +2731,34 @@ pub mod cmd {
             todo!()
         }
 
+        let help_dir;
+
         let command = {
-            if MappableCommand::STATIC_COMMAND_LIST
+            let arg = &args[0];
+            if let Some(command) = arg.strip_prefix(':').and_then(|arg| {
+                TYPABLE_COMMAND_LIST.iter().find_map(|command| {
+                    (command.name == arg || command.aliases.iter().any(|alias| *alias == arg))
+                        .then(|| command.name)
+                })
+            }) {
+                help_dir = "typable-commands";
+                command
+            } else if MappableCommand::STATIC_COMMAND_LIST
                 .iter()
-                .any(|command| command.name() == args[0])
+                .any(|command| command.name() == arg)
             {
-                &args[0]
+                help_dir = "static-commands";
+                arg
             } else {
-                let _keys = helix_view::input::parse_macro(&args[0])?;
+                let _keys = helix_view::input::parse_macro(arg)?;
                 // TODO: Need to access the keymap here to find the corresponding command
                 todo!()
             }
         };
 
-        let mut path = helix_core::runtime_dir().join("help/static-commands");
+        let mut path = helix_core::runtime_dir();
+        path.push("help");
+        path.push(help_dir);
         path.push(format!("{}.txt", command));
 
         ensure!(path.is_file(), "No help available for '{}'", args.join(" "));

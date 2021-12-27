@@ -260,8 +260,9 @@ pub mod completers {
     }
 
     pub fn help(input: &str) -> Vec<Completion> {
-        let path = helix_core::runtime_dir().join("help/static-commands");
-        let commands: Vec<String> = std::fs::read_dir(path)
+        let static_cmds_path = helix_core::runtime_dir().join("help/static-commands");
+        let typable_cmds_path = helix_core::runtime_dir().join("help/typable-commands");
+        let commands: Vec<String> = std::fs::read_dir(static_cmds_path)
             .map(|entries| {
                 entries
                     .filter_map(|entry| {
@@ -270,6 +271,20 @@ pub mod completers {
                         (path.extension()? == "txt")
                             .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
                     })
+                    .chain(
+                        std::fs::read_dir(typable_cmds_path)
+                            .map(|entries| {
+                                entries.filter_map(|entry| {
+                                    let entry = entry.ok()?;
+                                    let path = entry.path();
+                                    (path.extension()? == "txt").then(|| {
+                                        format!(":{}", path.file_stem().unwrap().to_string_lossy())
+                                    })
+                                })
+                            })
+                            .into_iter()
+                            .flatten(),
+                    )
                     .collect()
             })
             .unwrap_or_default();
