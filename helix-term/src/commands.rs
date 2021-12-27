@@ -2688,10 +2688,7 @@ pub mod cmd {
             {
                 &args[0]
             } else {
-                let _keys = args
-                    .iter()
-                    .map(|key| key.parse::<KeyEvent>())
-                    .collect::<Result<Vec<KeyEvent>, _>>()?;
+                let _keys = helix_view::input::parse_macro(&args[0])?;
                 // TODO: Need to access the keymap here to find the corresponding command
                 todo!()
             }
