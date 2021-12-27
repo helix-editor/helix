@@ -26,6 +26,7 @@ use helix_view::{
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
+use fuzzy_matcher::FuzzyMatcher;
 use helix_lsp::{
     block_on, lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
@@ -3044,6 +3045,9 @@ pub mod cmd {
         });
 }
 
+static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
+    Lazy::new(|| fuzzy_matcher::skim::SkimMatcherV2::default());
+
 fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
@@ -3058,7 +3062,7 @@ fn command_mode(cx: &mut Context) {
                 let end = 0..;
                 cmd::TYPABLE_COMMAND_LIST
                     .iter()
-                    .filter(|command| command.name.contains(input))
+                    .filter(|command| FUZZY_MATCHER.fuzzy_match(command.name, input).is_some())
                     .map(|command| (end.clone(), Cow::Borrowed(command.name)))
                     .collect()
             } else {
