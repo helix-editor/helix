@@ -2744,18 +2744,18 @@ pub mod cmd {
             completer: Some(completers::filename),
         },
         TypableCommand {
-          name: "buffer-close",
-          aliases: &["bc", "bclose"],
-          doc: "Close the current buffer.",
-          fun: buffer_close,
-          completer: None, // FIXME: buffer completer
+            name: "buffer-close",
+            aliases: &["bc", "bclose"],
+            doc: "Close the current buffer.",
+            fun: buffer_close,
+            completer: None, // FIXME: buffer completer
         },
         TypableCommand {
-          name: "buffer-close!",
-          aliases: &["bc!", "bclose!"],
-          doc: "Close the current buffer forcefully (ignoring unsaved changes).",
-          fun: force_buffer_close,
-          completer: None, // FIXME: buffer completer
+            name: "buffer-close!",
+            aliases: &["bc!", "bclose!"],
+            doc: "Close the current buffer forcefully (ignoring unsaved changes).",
+            fun: force_buffer_close,
+            completer: None, // FIXME: buffer completer
         },
         TypableCommand {
             name: "write",
