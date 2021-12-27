@@ -3046,7 +3046,7 @@ pub mod cmd {
 }
 
 static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
-    Lazy::new(|| fuzzy_matcher::skim::SkimMatcherV2::default());
+    Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
 fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
