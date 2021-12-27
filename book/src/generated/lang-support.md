@@ -21,7 +21,7 @@
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
 | ledger | ✓ |  |  |  |
-| llvm | ✓ |  |  |  |
+| llvm | ✓ | ✓ | ✓ |  |
 | lua | ✓ |  | ✓ |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
