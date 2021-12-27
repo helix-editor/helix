@@ -2671,6 +2671,56 @@ pub mod cmd {
         Ok(())
     }
 
+    fn sort(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        sort_impl(cx, args, false)
+    }
+
+    fn sort_reverse(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        sort_impl(cx, args, true)
+    }
+
+    fn sort_impl(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        reverse: bool,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let selection = doc.selection(view.id);
+
+        let mut fragments: Vec<_> = selection
+            .fragments(text)
+            .map(|fragment| Tendril::from_slice(&fragment))
+            .collect();
+
+        fragments.sort_by(match reverse {
+            true => |a: &Tendril, b: &Tendril| b.cmp(a),
+            false => |a: &Tendril, b: &Tendril| a.cmp(b),
+        });
+
+        let transaction = Transaction::change(
+            doc.text(),
+            selection
+                .into_iter()
+                .zip(fragments)
+                .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
+        );
+
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2965,7 +3015,21 @@ pub mod cmd {
             doc: "Set a config option at runtime",
             fun: setting,
             completer: Some(completers::setting),
-        }
+        },
+        TypableCommand {
+            name: "sort",
+            aliases: &[],
+            doc: "Sort ranges in selection.",
+            fun: sort,
+            completer: None,
+        },
+        TypableCommand {
+            name: "rsort",
+            aliases: &[],
+            doc: "Sort ranges in selection in reverse order.",
+            fun: sort_reverse,
+            completer: None,
+        },
     ];
 
     pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
