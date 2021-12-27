@@ -266,6 +266,7 @@ impl MappableCommand {
         change_selection_noyank, "Change selection (delete and enter insert mode, without yanking)",
         collapse_selection, "Collapse selection onto a single cursor",
         flip_selections, "Flip selection cursor and anchor",
+        ensure_selections_forward, "Ensure the selection is in forward direction",
         insert_mode, "Insert before selection",
         append_mode, "Insert after selection (append)",
         command_mode, "Enter command mode",
@@ -1905,6 +1906,20 @@ fn flip_selections(cx: &mut Context) {
         .selection(view.id)
         .clone()
         .transform(|range| Range::new(range.head, range.anchor));
+    doc.set_selection(view.id, selection);
+}
+
+fn ensure_selections_forward(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|r| match r.direction() {
+            Direction::Forward => r,
+            Direction::Backward => r.flip(),
+        });
+
     doc.set_selection(view.id, selection);
 }
 
