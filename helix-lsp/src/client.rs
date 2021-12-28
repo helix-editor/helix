@@ -228,7 +228,7 @@ impl Client {
 
     pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
         // TODO: delay any requests that are triggered prior to initialize
-        let root = find_root(None, self.root_markers.clone())
+        let root = find_root(None, &self.root_markers)
             .and_then(|root| lsp::Url::from_file_path(root).ok());
 
         if self.config.is_some() {

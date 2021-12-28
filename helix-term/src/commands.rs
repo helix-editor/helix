@@ -3027,7 +3027,7 @@ fn command_mode(cx: &mut Context) {
 
 fn file_picker(cx: &mut Context) {
     // We don't specify language markers, root will be the root of the current git repo
-    let root = find_root(None, vec![]).unwrap_or_else(|| PathBuf::from("./"));
+    let root = find_root(None, &[]).unwrap_or_else(|| PathBuf::from("./"));
     let picker = ui::file_picker(root, &cx.editor.config);
     cx.push_layer(Box::new(picker));
 }

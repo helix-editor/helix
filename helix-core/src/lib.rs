@@ -46,7 +46,7 @@ pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
 /// * Git repostory root if no marker detected
 /// * Top-most folder containing a root marker if not git repository detected
 /// * Current working directory as fallback
-pub fn find_root(root: Option<&str>, root_markers: Vec<String>) -> Option<std::path::PathBuf> {
+pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::path::PathBuf> {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
 
     let root = match root {
@@ -63,7 +63,7 @@ pub fn find_root(root: Option<&str>, root_markers: Vec<String>) -> Option<std::p
 
     let mut top_marker = None;
     for ancestor in root.ancestors() {
-        for marker in &root_markers {
+        for marker in root_markers {
             if ancestor.join(marker).exists() {
                 top_marker = Some(ancestor);
                 break;
