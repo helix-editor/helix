@@ -11,7 +11,7 @@ const PAIRS: &[(char, char)] = &[
     ('\"', '\"'),
 ];
 
-// limit matching pairs to only ( ) { } [ ] < >
+// limit matching pairs to only ( ) { } [ ] < > ' ' " "
 
 // Returns the position of the matching bracket under cursor.
 //

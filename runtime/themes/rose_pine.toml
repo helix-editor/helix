@@ -1,4 +1,5 @@
 # Author: RayGervais<raygervais@hotmail.ca>
+# Author: ChrisHa<chunghha@users.noreply.github.com>
 
 "ui.background" = { bg = "base" }
 "ui.menu" = "surface"
@@ -37,12 +38,24 @@
 "ui.window" = { bg = "base" }
 "ui.help" = { bg = "overlay", fg = "foam" }
 "text" = "text"
+"diff.plus" = "foam"
+"diff.delta" = "rose"
+"diff.minus" = "love"
 
 "info" = "gold"
 "hint" = "gold"
 "debug" = "rose"
 "diagnostic" = "rose"
 "error" = "love"
+
+"markup.heading" = { fg = "rose" }
+"markup.raw.inline" = { fg = "foam" }
+"markup.bold" = { fg = "gold", modifiers = ["bold"] }
+"markup.italic" = { fg = "iris", modifiers = ["italic"] }
+"markup.list" = { fg = "love" }
+"markup.quote" = { fg = "rose" }
+"markup.link.url" = { fg = "pine", modifiers = ["underlined"]}
+"markup.link.label" = { fg = "foam" }
 
 [palette]
 base     = "#191724" 

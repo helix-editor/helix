@@ -1,5 +1,6 @@
 use crate::{
     chars::char_is_line_ending,
+    diagnostic::Severity,
     regex::Regex,
     transaction::{ChangeSet, Operation},
     Rope, RopeSlice, Tendril,
@@ -63,6 +64,8 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
+    #[serde(default)]
+    pub diagnostic_severity: Severity,
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]

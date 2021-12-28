@@ -442,6 +442,7 @@ where
         );
 
         let doc = Rope::from(doc);
+        use crate::diagnostic::Severity;
         use crate::syntax::{
             Configuration, IndentationConfiguration, LanguageConfiguration, Loader,
         };
@@ -459,6 +460,7 @@ where
                 roots: vec![],
                 comment_token: None,
                 auto_format: false,
+                diagnostic_severity: Severity::Warning,
                 language_server: None,
                 indent: Some(IndentationConfiguration {
                     tab_width: 4,

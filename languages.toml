@@ -8,10 +8,6 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
-[language.config]
-cargo = { loadOutDirsFromCheck = true }
-procMacro = { enable = false }
-diagnostics = { disabled = ["unresolved-proc-macro"] }
 
 [[language]]
 name = "toml"
@@ -478,3 +474,10 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "docker-langserver", args = ["--stdio"] }
 
+[[language]]
+name = "git-commit"
+scope = "git.commitmsg"
+roots = []
+file-types = ["COMMIT_EDITMSG"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }

@@ -7,7 +7,7 @@ use crate::{
 };
 
 use helix_core::{
-    coords_at_pos,
+    coords_at_pos, encoding,
     graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, HighlightEvent},
@@ -548,21 +548,6 @@ impl EditorView {
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
-        let rel_path = doc.relative_path();
-        let path = rel_path
-            .as_ref()
-            .map(|p| p.to_string_lossy())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-
-        let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
-        surface.set_stringn(
-            viewport.x + 8,
-            viewport.y,
-            title,
-            viewport.width.saturating_sub(6) as usize,
-            base_style,
-        );
-
         //-------------------------------
         // Right side of the status line.
         //-------------------------------
@@ -636,6 +621,13 @@ impl EditorView {
             base_style,
         ));
 
+        let enc = doc.encoding();
+        if enc != encoding::UTF_8 {
+            right_side_text
+                .0
+                .push(Span::styled(format!(" {} ", enc.name()), base_style));
+        }
+
         // Render to the statusline.
         surface.set_spans(
             viewport.x
@@ -645,6 +637,31 @@ impl EditorView {
             viewport.y,
             &right_side_text,
             right_side_text.width() as u16,
+        );
+
+        //-------------------------------
+        // Middle / File path / Title
+        //-------------------------------
+        let title = {
+            let rel_path = doc.relative_path();
+            let path = rel_path
+                .as_ref()
+                .map(|p| p.to_string_lossy())
+                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+        };
+
+        surface.set_string_truncated(
+            viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
+            viewport.y,
+            title,
+            viewport
+                .width
+                .saturating_sub(6)
+                .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
+            base_style,
+            true,
+            true,
         );
     }
 

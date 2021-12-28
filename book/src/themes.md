@@ -178,6 +178,12 @@ We use a similar set of scopes as
     - `inline`
     - `block`
 
+- `diff` - version control changes
+  - `plus` - additions
+  - `minus` - deletions
+  - `delta` - modifications
+    - `moved` - renamed or moved files/changes
+
 #### Interface
 
 These scopes are used for theming the editor interface.
