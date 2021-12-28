@@ -550,10 +550,37 @@ impl Selection {
         self.ranges.len()
     }
 
+    // returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
-        self.iter()
-            .zip(other.iter())
-            .all(|(r1, r2)| r1.contains_range(r2))
+        // can't contain other if it is larger
+        if other.len() > self.len() {
+            return false;
+        }
+
+        let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
+        let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
+
+        loop {
+            match (ele_self, ele_other) {
+                (Some(ra), Some(rb)) => {
+                    if !ra.contains_range(rb) {
+                        // `self` doesn't contain next element from `other`, advance `self`, we need to match all from `other`
+                        ele_self = iter_self.next();
+                    } else {
+                        // matched element from `other`, advance `other`
+                        ele_other = iter_other.next();
+                    };
+                }
+                (None, Some(_)) => {
+                    // exhausted `self`, we can't match the reminder of `other`
+                    return false;
+                }
+                (_, None) => {
+                    // no elements from `other` left to match, `self` contains `other`
+                    return true;
+                }
+            }
+        }
     }
 }
 
@@ -992,5 +1019,31 @@ mod test {
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
             &["", "abcd", "efg", "rs", "xyz"]
         );
+    }
+    #[test]
+    fn test_selection_contains() {
+        fn contains(a: Vec<(usize, usize)>, b: Vec<(usize, usize)>) -> bool {
+            let sela = Selection::new(a.iter().map(|a| Range::new(a.0, a.1)).collect(), 0);
+            let selb = Selection::new(b.iter().map(|b| Range::new(b.0, b.1)).collect(), 0);
+            sela.contains(&selb)
+        }
+
+        // exact match
+        assert!(contains(vec!((1, 1)), vec!((1, 1))));
+
+        // larger set contains smaller
+        assert!(contains(vec!((1, 1), (2, 2), (3, 3)), vec!((2, 2))));
+
+        // multiple matches
+        assert!(contains(vec!((1, 1), (2, 2)), vec!((1, 1), (2, 2))));
+
+        // smaller set can't contain bigger
+        assert!(!contains(vec!((1, 1)), vec!((1, 1), (2, 2))));
+
+        assert!(contains(
+            vec!((1, 1), (2, 4), (5, 6), (7, 9), (10, 13)),
+            vec!((3, 4), (7, 9))
+        ));
+        assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
     }
 }
