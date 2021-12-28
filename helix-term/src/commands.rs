@@ -1905,7 +1905,7 @@ fn flip_selections(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| Range::new(range.head, range.anchor));
+        .transform(|range| range.flip());
     doc.set_selection(view.id, selection);
 }
 
