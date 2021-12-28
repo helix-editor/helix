@@ -207,11 +207,15 @@ impl MappableCommand {
     static_commands!(
         no_op, "Do nothing",
         move_char_left, "Move left",
+        move_char_left_no_wrap, "Move left no wrap",
         move_char_right, "Move right",
+        move_char_right_no_wrap, "Move right no wrap",
         move_line_up, "Move up",
         move_line_down, "Move down",
         extend_char_left, "Extend left",
+        extend_char_left_no_wrap, "Extend left no wrap",
         extend_char_right, "Extend right",
+        extend_char_right_no_wrap, "Extend right no wrap",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
         copy_selection_on_next_line, "Copy selection on next line",
@@ -501,8 +505,26 @@ fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)
 }
 
+fn move_char_left_no_wrap(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally,
+        Direction::Backward,
+        Movement::MoveNoWrap,
+    )
+}
+
 fn move_char_right(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Forward, Movement::Move)
+}
+
+fn move_char_right_no_wrap(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally,
+        Direction::Forward,
+        Movement::MoveNoWrap,
+    )
 }
 
 fn move_line_up(cx: &mut Context) {
@@ -517,8 +539,26 @@ fn extend_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Extend)
 }
 
+fn extend_char_left_no_wrap(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally,
+        Direction::Backward,
+        Movement::ExtendNoWrap,
+    )
+}
+
 fn extend_char_right(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Forward, Movement::Extend)
+}
+
+fn extend_char_right_no_wrap(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally,
+        Direction::Forward,
+        Movement::ExtendNoWrap,
+    )
 }
 
 fn extend_line_up(cx: &mut Context) {
@@ -1510,6 +1550,10 @@ fn search_impl(
         let selection = match movement {
             Movement::Extend => selection.clone().push(range),
             Movement::Move => selection.clone().replace(selection.primary_index(), range),
+
+            Movement::ExtendNoWrap | Movement::MoveNoWrap => {
+                panic!("No wrapping movement not implemened for search")
+            }
         };
 
         doc.set_selection(view.id, selection);
