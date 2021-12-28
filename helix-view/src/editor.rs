@@ -15,6 +15,7 @@ use std::{
     num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
+    str::FromStr,
     sync::Arc,
 };
 
@@ -77,6 +78,40 @@ impl Default for FilePickerConfig {
     }
 }
 
+/// Configuration for auto pairs
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
+pub enum AutoPairConfig {
+    /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
+    Enable(bool),
+
+    /// The list of pairs.
+    Pairs(Vec<(char, char)>),
+}
+
+impl Default for AutoPairConfig {
+    fn default() -> Self {
+        AutoPairConfig::Pairs(helix_core::auto_pairs::PAIRS.into())
+    }
+}
+
+impl FromStr for AutoPairConfig {
+    type Err = std::str::ParseBoolError;
+
+    // only do bool parsing for runtime setting
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let enable: bool = s.parse()?;
+
+        let enable = if enable {
+            AutoPairConfig::Enable(true)
+        } else {
+            AutoPairConfig::Enable(false)
+        };
+
+        Ok(enable)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
@@ -95,7 +130,7 @@ pub struct Config {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
     pub smart_case: bool,
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
-    pub auto_pairs: bool,
+    pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
     /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
@@ -145,7 +180,7 @@ impl Default for Config {
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
             smart_case: true,
-            auto_pairs: true,
+            auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
