@@ -9,6 +9,13 @@ comment-token = "//"
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
 [language.debugger]
 name = "lldb-vscode"
 transport = "stdio"

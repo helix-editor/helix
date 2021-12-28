@@ -29,7 +29,10 @@ use anyhow::{bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::syntax;
+use helix_core::{
+    auto_pairs::AutoPairs,
+    syntax::{self, AutoPairConfig},
+};
 use helix_core::{Position, Selection};
 use helix_dap as dap;
 
@@ -98,8 +101,10 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
-    /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
-    pub auto_pairs: bool,
+    /// Automatic insertion of pairs to parentheses, brackets,
+    /// etc. Defaults to true. Optionally, this can be a list of 2-tuples
+    /// to specify a global list of characters to pair.
+    pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
     /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. Defaults to 400ms.
@@ -217,7 +222,7 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
-            auto_pairs: true,
+            auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
@@ -289,6 +294,7 @@ pub struct Editor {
     pub autoinfo: Option<Info>,
 
     pub config: Config,
+    pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
     pub last_motion: Option<Motion>,
@@ -312,6 +318,7 @@ impl Editor {
         config: Config,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new();
+        let auto_pairs = Option::<AutoPairs>::from(&config.auto_pairs);
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -337,6 +344,7 @@ impl Editor {
             idle_timer: Box::pin(sleep(config.idle_timeout)),
             last_motion: None,
             config,
+            auto_pairs,
             exit_code: 0,
         }
     }
@@ -710,6 +718,23 @@ impl Editor {
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+    }
+
+    /// Get the document's auto pairs. If the document has a recognized
+    /// language config with auto pairs configured, returns that;
+    /// otherwise, falls back to the global auto pairs config.
+    pub fn get_document_auto_pairs(&self, id: DocumentId) -> Option<&AutoPairs> {
+        if self.document(id).is_none() {
+            return None;
+        }
+
+        let global_config = (&self.auto_pairs).as_ref();
+        let doc = self.document(id).unwrap();
+
+        match &doc.language {
+            Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
+            None => global_config,
+        }
     }
 
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
