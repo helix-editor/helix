@@ -33,3 +33,17 @@
 ] @constant.character.escape
 
 (group_name) @property
+
+(count_quantifier
+  [
+    (decimal_digits) @constant.numeric
+    "," @punctuation.delimiter
+  ])
+
+(character_class
+  (class_range [
+    (class_character) @constant.character
+    "-" @operator
+  ]))
+
+(class_character) @string
