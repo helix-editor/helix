@@ -19,6 +19,7 @@
   "<="
   "!"
   "<!"
+  "?"
 ] @operator
 
 [
@@ -41,9 +42,8 @@
   ])
 
 (character_class
-  (class_range [
+  [
+    "^" @operator
+    (class_range "-" @operator)
     (class_character) @constant.character
-    "-" @operator
-  ]))
-
-(class_character) @string
+  ])
