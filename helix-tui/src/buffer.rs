@@ -90,17 +90,17 @@ impl Default for Cell {
 /// use helix_view::graphics::{Rect, Color, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
-/// buf.get_mut(0, 2).set_symbol("x");
-/// assert_eq!(buf.get(0, 2).symbol, "x");
+/// buf[(0, 2)].set_symbol("x");
+/// assert_eq!(buf[(0, 2)].symbol, "x");
 /// buf.set_string(3, 0, "string", Style::default().fg(Color::Red).bg(Color::White));
-/// assert_eq!(buf.get(5, 0), &Cell{
+/// assert_eq!(buf[(5, 0)], Cell{
 ///     symbol: String::from("r"),
 ///     fg: Color::Red,
 ///     bg: Color::White,
 ///     modifier: Modifier::empty()
 /// });
-/// buf.get_mut(5, 0).set_char('x');
-/// assert_eq!(buf.get(5, 0).symbol, "x");
+/// buf[(5, 0)].set_char('x');
+/// assert_eq!(buf[(5, 0)].symbol, "x");
 /// ```
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Buffer {
@@ -162,15 +162,15 @@ impl Buffer {
     }
 
     /// Returns a reference to Cell at the given coordinates
-    pub fn get(&self, x: u16, y: u16) -> &Cell {
-        let i = self.index_of(x, y);
-        &self.content[i]
+    pub fn get(&self, x: u16, y: u16) -> Option<&Cell> {
+        self.index_of_opt(x, y) 
+            .map(|i| &self.content[i])
     }
-
+    
     /// Returns a mutable reference to Cell at the given coordinates
-    pub fn get_mut(&mut self, x: u16, y: u16) -> &mut Cell {
-        let i = self.index_of(x, y);
-        &mut self.content[i]
+    pub fn get_mut(&mut self, x: u16, y: u16) -> Option<&mut Cell> {
+        self.index_of_opt(x, y) 
+            .map(|i| &mut self.content[i])
     }
 
     /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates.
@@ -203,6 +203,21 @@ impl Buffer {
             self.area
         );
         ((y - self.area.y) * self.area.width + (x - self.area.x)) as usize
+    }
+
+    /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates, 
+    /// or `None` if the coordinates are out of range.
+    fn index_of_opt(&self, x: u16, y: u16) -> Option<usize> {
+        if x >= self.area.left()
+            && x < self.area.right()
+            && y >= self.area.top()
+            && y < self.area.bottom() 
+        {       
+            Some(self.index_of(x, y))
+        }
+        else {
+            None
+        }
     }
 
     /// Returns the (global) coordinates of a cell given its index
@@ -372,7 +387,7 @@ impl Buffer {
     pub fn set_background(&mut self, area: Rect, color: Color) {
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
-                self.get_mut(x, y).set_bg(color);
+                self[(x, y)].set_bg(color);
             }
         }
     }
@@ -380,7 +395,7 @@ impl Buffer {
     pub fn set_style(&mut self, area: Rect, style: Style) {
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
-                self.get_mut(x, y).set_style(style);
+                self[(x, y)].set_style(style);
             }
         }
     }
@@ -408,7 +423,7 @@ impl Buffer {
     pub fn clear(&mut self, area: Rect) {
         for x in area.left()..area.right() {
             for y in area.top()..area.bottom() {
-                self.get_mut(x, y).reset();
+                self[(x, y)].reset();
             }
         }
     }
@@ -417,7 +432,7 @@ impl Buffer {
     pub fn clear_with(&mut self, area: Rect, style: Style) {
         for x in area.left()..area.right() {
             for y in area.top()..area.bottom() {
-                let cell = self.get_mut(x, y);
+                let cell = &mut self[(x, y)];
                 cell.reset();
                 cell.set_style(style);
             }
@@ -506,6 +521,23 @@ impl Buffer {
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
         }
         updates
+    }
+}
+
+
+impl std::ops::Index<(u16, u16)> for Buffer {
+    type Output = Cell;
+
+    fn index(&self, (x, y): (u16, u16)) -> &Self::Output {
+        let i = self.index_of(x, y);
+        &self.content[i]
+    }
+}
+
+impl std::ops::IndexMut<(u16, u16)> for Buffer {
+    fn index_mut(&mut self, (x, y): (u16, u16)) -> &mut Self::Output {
+        let i = self.index_of(x, y);
+        &mut self.content[i]
     }
 }
 

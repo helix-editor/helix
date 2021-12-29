@@ -301,7 +301,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
 
             if is_marked {
-                let cell = surface.get_mut(area.x + area.width - 2, area.y + i as u16);
+                let cell = &mut surface[(area.x + area.width - 2, area.y + i as u16)];
                 cell.set_symbol("▐ ");
                 // cell.set_style(selected);
                 // cell.set_style(if is_marked { selected } else { style });

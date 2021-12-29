@@ -492,8 +492,7 @@ impl<T: 'static> Component for Picker<T> {
         let sep_style = Style::default().fg(Color::Rgb(90, 89, 119));
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
-            surface
-                .get_mut(x, inner.y + 1)
+            surface[(x, inner.y + 1)]
                 .set_symbol(borders.horizontal)
                 .set_style(sep_style);
         }
