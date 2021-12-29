@@ -45,5 +45,6 @@
   [
     "^" @operator
     (class_range "-" @operator)
-    (class_character) @constant.character
   ])
+
+(class_character) @constant.character
