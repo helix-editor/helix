@@ -493,7 +493,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "git-rebase"
-scope = "git.rebase"
+scope = "source.gitrebase"
 roots = []
 file-types = ["git-rebase-todo"]
 injection-regex = "git-rebase"
