@@ -22,6 +22,8 @@
 | latex | ✓ |  |  |  |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
+| llvm-mir | ✓ | ✓ | ✓ |  |
+| llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ |  | ✓ |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |

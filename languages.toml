@@ -441,6 +441,24 @@ indent = { tab-width = 2, unit = "  " }
 injection-regex = "llvm"
 
 [[language]]
+name = "llvm-mir"
+scope = "source.llvm_mir"
+roots = []
+file-types = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "mir"
+
+[[language]]
+name = "llvm-mir-yaml"
+tree-sitter-library = "yaml"
+scope = "source.yaml"
+roots = []
+file-types = ["mir"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"
