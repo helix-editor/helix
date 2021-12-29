@@ -13,7 +13,3 @@
 
 [":" "->"] @punctuation.delimeter
 (comment) @comment
-
-; once we have diff injections, @comment should become @none
-((comment (scissors))
- (message)+ @comment)
