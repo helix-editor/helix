@@ -785,20 +785,41 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
-        let views_to_close = self
+        enum Action {
+            Close(ViewId),
+            ReplaceDoc(ViewId, DocumentId),
+        }
+
+        let actions: Vec<Action> = self
             .tree
             .views()
             .filter_map(|(view, _focus)| {
                 if view.doc == doc_id {
-                    Some(view.id)
+                    match view.last_accessed_doc {
+                        Some(doc_id) => {
+                            // something was previously o[en in the view, switch to previous doc
+                            Some(Action::ReplaceDoc(view.id, doc_id))
+                        }
+                        None => {
+                            // only the document that is being closed was in the view, close it
+                            Some(Action::Close(view.id))
+                        }
+                    }
                 } else {
                     None
                 }
             })
-            .collect::<Vec<_>>();
+            .collect();
 
-        for view_id in views_to_close {
-            self.close(view_id);
+        for action in actions {
+            match action {
+                Action::Close(view_id) => {
+                    self.close(view_id);
+                }
+                Action::ReplaceDoc(view_id, doc_id) => {
+                    self.replace_document_in_view(view_id, doc_id);
+                }
+            }
         }
 
         self.documents.remove(&doc_id);
