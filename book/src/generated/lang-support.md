@@ -12,6 +12,7 @@
 | elixir | ✓ |  |  | `elixir-ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
+| git-diff | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |
@@ -21,7 +22,7 @@
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
 | ledger | ✓ |  |  |  |
-| llvm | ✓ |  |  |  |
+| llvm | ✓ | ✓ | ✓ |  |
 | lua | ✓ |  | ✓ |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |

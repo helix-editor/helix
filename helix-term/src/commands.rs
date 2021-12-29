@@ -26,6 +26,7 @@ use helix_view::{
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
+use fuzzy_matcher::FuzzyMatcher;
 use helix_lsp::{
     block_on, lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
@@ -266,6 +267,7 @@ impl MappableCommand {
         change_selection_noyank, "Change selection (delete and enter insert mode, without yanking)",
         collapse_selection, "Collapse selection onto a single cursor",
         flip_selections, "Flip selection cursor and anchor",
+        ensure_selections_forward, "Ensure the selection is in forward direction",
         insert_mode, "Insert before selection",
         append_mode, "Insert after selection (append)",
         command_mode, "Enter command mode",
@@ -1904,7 +1906,21 @@ fn flip_selections(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| Range::new(range.head, range.anchor));
+        .transform(|range| range.flip());
+    doc.set_selection(view.id, selection);
+}
+
+fn ensure_selections_forward(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|r| match r.direction() {
+            Direction::Forward => r,
+            Direction::Backward => r.flip(),
+        });
+
     doc.set_selection(view.id, selection);
 }
 
@@ -2791,18 +2807,18 @@ pub mod cmd {
             completer: Some(completers::filename),
         },
         TypableCommand {
-          name: "buffer-close",
-          aliases: &["bc", "bclose"],
-          doc: "Close the current buffer.",
-          fun: buffer_close,
-          completer: None, // FIXME: buffer completer
+            name: "buffer-close",
+            aliases: &["bc", "bclose"],
+            doc: "Close the current buffer.",
+            fun: buffer_close,
+            completer: None, // FIXME: buffer completer
         },
         TypableCommand {
-          name: "buffer-close!",
-          aliases: &["bc!", "bclose!"],
-          doc: "Close the current buffer forcefully (ignoring unsaved changes).",
-          fun: force_buffer_close,
-          completer: None, // FIXME: buffer completer
+            name: "buffer-close!",
+            aliases: &["bc!", "bclose!"],
+            doc: "Close the current buffer forcefully (ignoring unsaved changes).",
+            fun: force_buffer_close,
+            completer: None, // FIXME: buffer completer
         },
         TypableCommand {
             name: "write",
@@ -3103,6 +3119,9 @@ fn command_mode(cx: &mut Context) {
         ":".into(),
         Some(':'),
         |input: &str| {
+            static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
+                Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
+
             // we use .this over split_whitespace() because we care about empty segments
             let parts = input.split(' ').collect::<Vec<&str>>();
 
@@ -3112,7 +3131,7 @@ fn command_mode(cx: &mut Context) {
                 let end = 0..;
                 cmd::TYPABLE_COMMAND_LIST
                     .iter()
-                    .filter(|command| command.name.contains(input))
+                    .filter(|command| FUZZY_MATCHER.fuzzy_match(command.name, input).is_some())
                     .map(|command| (end.clone(), Cow::Borrowed(command.name)))
                     .collect()
             } else {
@@ -3811,26 +3830,30 @@ fn normal_mode(cx: &mut Context) {
 }
 
 fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
-    let doc_changes = doc.changes().changes();
-    let text = doc.text().slice(..);
-    let pos = doc.selection(view_id).primary().cursor(text);
-    let mut can_restore_indent = false;
-
-    // Removes trailing whitespace if insert mode is exited after starting a blank new line.
     use helix_core::chars::char_is_whitespace;
     use helix_core::Operation;
-    if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
-        doc_changes
-    {
-        if move_pos + inserted_str.len32() as usize == pos
-            && inserted_str.starts_with('\n')
-            && inserted_str.chars().skip(1).all(char_is_whitespace)
+
+    fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
+        if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
+            changes
         {
-            can_restore_indent = true;
+            move_pos + inserted_str.len32() as usize == pos
+                && inserted_str.starts_with('\n')
+                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && pos == line_end_pos // ensure no characters exists after current position
+        } else {
+            false
         }
     }
 
-    if can_restore_indent {
+    let doc_changes = doc.changes().changes();
+    let text = doc.text().slice(..);
+    let range = doc.selection(view_id).primary();
+    let pos = range.cursor(text);
+    let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
+
+    if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
+        // Removes tailing whitespaces.
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));

@@ -122,6 +122,15 @@ impl Range {
         }
     }
 
+    // flips the direction of the selection
+    pub fn flip(&self) -> Self {
+        Self {
+            anchor: self.head,
+            head: self.anchor,
+            horiz: self.horiz,
+        }
+    }
+
     /// Check two ranges for overlap.
     #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {

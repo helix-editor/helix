@@ -174,3 +174,7 @@
 	path = helix-syntax/languages/tree-sitter-git-commit
 	url = https://github.com/the-mikedavis/tree-sitter-git-commit.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-git-diff"]
+	path = helix-syntax/languages/tree-sitter-git-diff
+	url = https://github.com/the-mikedavis/tree-sitter-git-diff.git
+	shallow = true

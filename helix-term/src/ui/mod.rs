@@ -356,7 +356,7 @@ pub mod completers {
                         return None;
                     }
 
-                    //let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+                    let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
@@ -374,7 +374,12 @@ pub mod completers {
                         path.push("");
                     }
 
-                    let path = path.to_str().unwrap().to_owned();
+                    let path = if cfg!(windows) && is_dir {
+                        // Convert Windows style path separator to Unix style
+                        path.to_str().unwrap().replace("\\", "/")
+                    } else {
+                        path.to_str().unwrap().to_owned()
+                    };
                     Some((end.clone(), Cow::from(path)))
                 })
             }) // TODO: unwrap or skip
