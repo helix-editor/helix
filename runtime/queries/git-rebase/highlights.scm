@@ -7,3 +7,5 @@
 (commit) @constant
 "#" @punctuation.delimiter
 (comment) @comment
+
+(ERROR) @error
