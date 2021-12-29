@@ -163,14 +163,12 @@ impl Buffer {
 
     /// Returns a reference to Cell at the given coordinates
     pub fn get(&self, x: u16, y: u16) -> Option<&Cell> {
-        self.index_of_opt(x, y) 
-            .map(|i| &self.content[i])
+        self.index_of_opt(x, y).map(|i| &self.content[i])
     }
-    
+
     /// Returns a mutable reference to Cell at the given coordinates
     pub fn get_mut(&mut self, x: u16, y: u16) -> Option<&mut Cell> {
-        self.index_of_opt(x, y) 
-            .map(|i| &mut self.content[i])
+        self.index_of_opt(x, y).map(|i| &mut self.content[i])
     }
 
     /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates.
@@ -205,17 +203,16 @@ impl Buffer {
         ((y - self.area.y) * self.area.width + (x - self.area.x)) as usize
     }
 
-    /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates, 
+    /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates,
     /// or `None` if the coordinates are out of range.
     fn index_of_opt(&self, x: u16, y: u16) -> Option<usize> {
         if x >= self.area.left()
             && x < self.area.right()
             && y >= self.area.top()
-            && y < self.area.bottom() 
-        {       
+            && y < self.area.bottom()
+        {
             Some(self.index_of(x, y))
-        }
-        else {
+        } else {
             None
         }
     }
@@ -293,6 +290,11 @@ impl Buffer {
     where
         S: AsRef<str>,
     {
+        // prevent panic if out of range
+        if self.index_of_opt(x, y).is_none() || width == 0 {
+            return (x, y);
+        }
+
         let mut index = self.index_of(x, y);
         let mut x_offset = x as usize;
         let width = if ellipsis { width - 1 } else { width };
@@ -523,7 +525,6 @@ impl Buffer {
         updates
     }
 }
-
 
 impl std::ops::Index<(u16, u16)> for Buffer {
     type Output = Cell;
