@@ -617,6 +617,8 @@ impl Default for Keymaps {
             "A-(" => rotate_selection_contents_backward,
             "A-)" => rotate_selection_contents_forward,
 
+            "A-:" => ensure_selections_forward,
+
             "esc" => normal_mode,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
