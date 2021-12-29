@@ -58,30 +58,24 @@ pub fn move_horizontally_no_wrap(
         Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
     };
 
-    new_pos = limit_to_line(slice, pos, new_pos, dir);
+    new_pos = clamp_to_line(slice, pos, new_pos);
 
     // Compute the final new range.
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
-fn limit_to_line(slice: RopeSlice, old_pos: usize, new_pos: usize, dir: Direction) -> usize {
-    match dir {
-        Direction::Forward => {
-            if let Some(next_new_line) =
-                find_next_in_range(slice, Range::new(old_pos, new_pos), char_is_line_ending)
-            {
-                return new_pos.min(next_new_line);
-            }
-        }
-        Direction::Backward => {
-            if let Some(prev_new_line) =
-                find_prev_in_range(slice, Range::new(new_pos, old_pos), char_is_line_ending)
-            {
-                return new_pos.max(prev_new_line + 1);
-            }
-        }
-    }
-    new_pos
+fn clamp_to_line(slice: RopeSlice, original_pos: usize, new_pos: usize) -> usize {
+    let line = slice.char_to_line(original_pos);
+    let start = slice.line_to_char(line);
+
+    // Compute end with special case for last line
+    let is_last_line = line == slice.len_lines().saturating_sub(1);
+    let end = match is_last_line {
+        true => slice.len_chars(),
+        false => slice.line_to_char(line + 1).saturating_sub(1),
+    };
+
+    new_pos.clamp(start, end)
 }
 
 pub fn move_vertically(
@@ -218,51 +212,6 @@ where
             None
         }
     })
-}
-
-#[inline]
-/// Returns next index in range that satisfies a given predicate
-///
-/// Returns none if not in range
-pub fn find_next_in_range<F>(slice: RopeSlice, range: Range, fun: F) -> Option<usize>
-where
-    F: Fn(char) -> bool,
-{
-    let low = range.from();
-    let high = range.to();
-
-    let chars = slice.chars_at(low);
-    for (i, c) in chars.enumerate() {
-        if i + low >= high {
-            return None;
-        } else if fun(c) {
-            return Some(low + i);
-        }
-    }
-    None
-}
-
-#[inline]
-/// Returns first index in range going backwards that satisfies a given predicate
-///
-/// Returns none if not in range
-pub fn find_prev_in_range<F>(slice: RopeSlice, range: Range, fun: F) -> Option<usize>
-where
-    F: Fn(char) -> bool,
-{
-    let low = range.from();
-    let high = range.to().min(slice.len_chars());
-
-    let mut chars = slice.chars_at(high);
-    let backwards_chars = iter::from_fn(|| chars.prev());
-    for (i, c) in backwards_chars.enumerate() {
-        if i >= high - low {
-            return None;
-        } else if fun(c) {
-            return Some(high.saturating_sub(i + 1));
-        }
-    }
-    None
 }
 
 /// Possible targets of a word motion
@@ -1277,90 +1226,6 @@ mod test {
                 let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
-        }
-    }
-
-    #[test]
-    fn test_find_next_in_range() {
-        let sample = "Find\nSample text is samplez";
-        let tests = [
-            (
-                Range::new(0, 999),
-                Box::new(|c| c == 'a') as Box<dyn Fn(char) -> bool>,
-                Some(6),
-            ),
-            (
-                Range::new(0, sample.len()),
-                Box::new(|c| c == 'E') as Box<dyn Fn(char) -> bool>,
-                None,
-            ),
-            (
-                Range::new(0, sample.len()),
-                Box::new(|c| c == 'i') as Box<dyn Fn(char) -> bool>,
-                Some(1),
-            ),
-            (
-                Range::new(0, 1),
-                Box::new(|c| c == 'i') as Box<dyn Fn(char) -> bool>,
-                None,
-            ),
-            (
-                Range::new(0, 2),
-                Box::new(|c| c == 'i') as Box<dyn Fn(char) -> bool>,
-                Some(1),
-            ),
-            (
-                Range::new(5, 10),
-                Box::new(|c| c == 't') as Box<dyn Fn(char) -> bool>,
-                None,
-            ),
-        ];
-
-        for (idx, (range, predicate, expected_pos)) in tests.into_iter().enumerate() {
-            let pos = find_next_in_range(Rope::from(sample).slice(..), range, predicate);
-            assert_eq!(pos, expected_pos, "Case failed: [idx: {}]", idx);
-        }
-    }
-
-    #[test]
-    fn test_find_prev_in_range() {
-        let sample = "Find\nSample text is samplez";
-        let tests = [
-            (
-                Range::new(0, sample.len()),
-                Box::new(|c| c == 'e') as Box<dyn Fn(char) -> bool>,
-                Some(sample.len() - 2),
-            ),
-            (
-                Range::new(0, sample.len()),
-                Box::new(|c| c == 'E') as Box<dyn Fn(char) -> bool>,
-                None,
-            ),
-            (
-                Range::new(0, sample.len()),
-                Box::new(|c| c == 'i') as Box<dyn Fn(char) -> bool>,
-                Some(17),
-            ),
-            (
-                Range::new(sample.len() - 1, sample.len()),
-                Box::new(|c| c == 'e') as Box<dyn Fn(char) -> bool>,
-                None,
-            ),
-            (
-                Range::new(sample.len() - 2, sample.len()),
-                Box::new(|c| c == 'e') as Box<dyn Fn(char) -> bool>,
-                Some(sample.len() - 2),
-            ),
-            (
-                Range::new(sample.len(), 0),
-                Box::new(|c| c == 'F') as Box<dyn Fn(char) -> bool>,
-                Some(0),
-            ),
-        ];
-
-        for (idx, (range, predicate, expected_pos)) in tests.into_iter().enumerate() {
-            let pos = find_prev_in_range(Rope::from(sample).slice(..), range, predicate);
-            assert_eq!(pos, expected_pos, "Case failed: [idx: {}]", idx);
         }
     }
 }
