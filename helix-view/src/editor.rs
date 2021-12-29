@@ -107,7 +107,7 @@ pub struct Config {
     pub file_picker: FilePickerConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
-    /// Whether to wrap the cursor at the end of the line. Defaults to true.
+    /// Whether to wrap the cursor when moving past the end of the line. Defaults to true.
     pub line_wrap: bool,
 }
 
