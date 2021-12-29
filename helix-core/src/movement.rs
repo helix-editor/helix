@@ -22,12 +22,28 @@ pub enum Direction {
 pub enum Movement {
     Extend,
     Move,
-
-    ExtendNoWrap,
-    MoveNoWrap,
 }
 
 pub fn move_horizontally(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+) -> Range {
+    let pos = range.cursor(slice);
+
+    // Compute the new position.
+    let new_pos = match dir {
+        Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
+        Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
+    };
+
+    // Compute the final new range.
+    range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
+}
+
+pub fn move_horizontally_no_wrap(
     slice: RopeSlice,
     range: Range,
     dir: Direction,
@@ -42,13 +58,10 @@ pub fn move_horizontally(
         Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
     };
 
-    if behaviour == Movement::ExtendNoWrap || behaviour == Movement::MoveNoWrap {
-        new_pos = limit_to_line(slice, pos, new_pos, dir);
-    }
+    new_pos = limit_to_line(slice, pos, new_pos, dir);
 
-    let is_extension = behaviour == Movement::Extend || behaviour == Movement::ExtendNoWrap;
-    // Compute the final range
-    range.put_cursor(slice, new_pos, is_extension)
+    // Compute the final new range.
+    range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
 fn limit_to_line(slice: RopeSlice, old_pos: usize, new_pos: usize, dir: Direction) -> usize {
@@ -503,7 +516,7 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(slice, range, direction, amount, Movement::MoveNoWrap);
+            range = move_horizontally_no_wrap(slice, range, direction, amount, Movement::Move);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
         }
     }
@@ -526,7 +539,7 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(slice, range, direction, amount, Movement::MoveNoWrap);
+            range = move_horizontally_no_wrap(slice, range, direction, amount, Movement::Move);
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -548,7 +561,7 @@ mod test {
         ];
 
         for (direction, amount) in moves {
-            range = move_horizontally(slice, range, direction, amount, Movement::ExtendNoWrap);
+            range = move_horizontally_no_wrap(slice, range, direction, amount, Movement::Extend);
             assert_eq!(range.anchor, original_anchor);
         }
     }
