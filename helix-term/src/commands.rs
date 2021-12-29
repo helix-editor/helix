@@ -430,6 +430,7 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        command_palette, "Open command pallete",
     );
 }
 
@@ -3652,6 +3653,30 @@ pub fn code_action(cx: &mut Context) {
             compositor.replace_or_push("code-action", Box::new(popup));
         },
     )
+}
+
+pub fn command_palette(cx: &mut Context) {
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, _cx: &mut compositor::Context| {
+            let commands = MappableCommand::STATIC_COMMAND_LIST.iter().collect();
+            let picker = Picker::new(
+                true,
+                commands,
+                |command| match command {
+                    MappableCommand::Typable { name, args, doc } => {
+                        format!("{}: {}", name, doc).into()
+                    }
+                    MappableCommand::Static { name, fun, doc } => {
+                        format!("{}: {}", name, doc).into()
+                    }
+                },
+                move |_editor, command, _action| {
+                    log::info!("would execute: {}", command.name());
+                },
+            );
+            compositor.push(Box::new(picker));
+        },
+    ));
 }
 
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
