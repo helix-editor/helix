@@ -334,6 +334,7 @@ file-types = ["yml", "yaml"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+injection-regex = "yml|yaml"
 
 # [[language]]
 # name = "haskell"
@@ -386,6 +387,7 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cmake-language-server" }
+injection-regex = "cmake"
 
 [[language]]
 name = "glsl"
@@ -394,6 +396,7 @@ file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
+injection-regex = "glsl"
 
 [[language]]
 name = "perl"
@@ -435,6 +438,7 @@ roots = []
 file-types = ["ll"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+injection-regex = "llvm"
 
 [[language]]
 name = "markdown"
