@@ -72,11 +72,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> Option<std::pat
         // don't go higher than repo
         if ancestor.join(".git").is_dir() {
             // Use workspace if detected from marker
-            if top_marker.is_some() {
-                return top_marker.map(|a| a.to_path_buf());
-            } else {
-                return Some(ancestor.to_path_buf());
-            }
+            return top_marker.unwrap_or(ancestor).to_path_buf();
         }
     }
 
