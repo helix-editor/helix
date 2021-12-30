@@ -3658,28 +3658,32 @@ pub fn code_action(cx: &mut Context) {
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, _cx: &mut compositor::Context| {
-            let commands = MappableCommand::STATIC_COMMAND_LIST.iter().collect();
+            let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
+            commands.extend(
+                cmd::TYPABLE_COMMAND_LIST
+                    .iter()
+                    .map(|cmd| MappableCommand::Typable {
+                        name: cmd.name.to_owned(),
+                        doc: cmd.doc.to_owned(),
+                        args: Vec::new(),
+                    }),
+            );
             let picker = Picker::new(
                 true,
                 commands,
                 |command| match command {
-                    MappableCommand::Typable { name, args, doc } => {
-                        format!("{}: {}", name, doc).into()
-                    }
-                    MappableCommand::Static { name, fun, doc } => {
-                        format!("{}: {}", name, doc).into()
-                    }
+                    MappableCommand::Typable { doc, .. } => doc.into(),
+                    MappableCommand::Static { doc, .. } => doc.to_owned().into(),
                 },
                 move |cx, command, _action| {
                     let mut ctx = Context {
                         register: None,
-                        count: std::num::NonZeroUsize::new(1 as usize),
+                        count: std::num::NonZeroUsize::new(1),
                         editor: cx.editor,
                         callback: None,
                         on_next_key_callback: None,
                         jobs: cx.jobs,
                     };
-                    log::info!("would execute: {}", command.name());
                     command.execute(&mut ctx);
                 },
             );
