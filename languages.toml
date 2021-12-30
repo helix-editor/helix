@@ -437,6 +437,15 @@ comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "tablegen"
+scope = "source.tablegen"
+roots = []
+file-types = ["td"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "tablegen"
+
+[[language]]
 name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"
