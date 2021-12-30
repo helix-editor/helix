@@ -706,6 +706,7 @@ impl Default for Keymaps {
                 "/" => global_search,
                 "k" => hover,
                 "r" => rename_symbol,
+                "?" => command_palette,
             },
             "z" => { "View"
                 "z" | "c" => align_view_center,
