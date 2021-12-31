@@ -262,7 +262,7 @@ pub mod completers {
     pub fn help(input: &str) -> Vec<Completion> {
         let static_cmds_path = helix_core::runtime_dir().join("help/static-commands");
         let typable_cmds_path = helix_core::runtime_dir().join("help/typable-commands");
-        let commands: Vec<String> = std::fs::read_dir(static_cmds_path)
+        let mut items: Vec<String> = std::fs::read_dir(static_cmds_path)
             .map(|entries| {
                 entries
                     .filter_map(|entry| {
@@ -288,10 +288,11 @@ pub mod completers {
                     .collect()
             })
             .unwrap_or_default();
+        items.push("topics".to_owned());
 
         let matcher = Matcher::default();
 
-        let mut matches: Vec<_> = commands
+        let mut matches: Vec<_> = items
             .into_iter()
             .map(Cow::from)
             .filter_map(|name| matcher.fuzzy_match(&name, input).map(|score| (name, score)))

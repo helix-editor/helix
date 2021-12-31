@@ -2747,6 +2747,53 @@ pub mod cmd {
             todo!()
         }
 
+        if args[0] == "topics" {
+            let dir_path = helix_core::runtime_dir().join("help/topics");
+            let entries: Vec<PathBuf> = std::fs::read_dir(dir_path)
+                .map(|entries| {
+                    entries
+                        .filter_map(|entry| {
+                            let entry = entry.ok()?;
+                            let path = entry.path();
+                            Some(path)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let callback = Box::pin(async move {
+                let call: job::Callback =
+                    Box::new(move |_editor: &mut Editor, compositor: &mut Compositor| {
+                        let picker = FilePicker::new(
+                            entries,
+                            |path| {
+                                path.file_stem()
+                                    .and_then(|s| s.to_str())
+                                    .map(From::from)
+                                    .unwrap_or_default()
+                            },
+                            |editor, path, action| {
+                                if let Err(e) = editor.open(path.clone(), action).and_then(|id| {
+                                    editor
+                                        .document_mut(id)
+                                        .unwrap()
+                                        .set_path(None)
+                                        .map_err(Into::into)
+                                }) {
+                                    editor.set_error(e.to_string());
+                                }
+                            },
+                            |_editor, path| Some((path.clone(), None)),
+                        );
+                        compositor.push(Box::new(picker));
+                    });
+                Ok(call)
+            });
+            cx.jobs.callback(callback);
+
+            return Ok(());
+        }
+
         let help_dir;
 
         let command = {
