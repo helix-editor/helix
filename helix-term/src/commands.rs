@@ -2772,14 +2772,17 @@ pub mod cmd {
                                     .map(From::from)
                                     .unwrap_or_default()
                             },
-                            |editor, path, action| {
-                                if let Err(e) = editor.open(path.clone(), action).and_then(|id| {
-                                    editor
-                                        .document_mut(id)
-                                        .unwrap()
-                                        .set_path(None)
-                                        .map_err(Into::into)
-                                }) {
+                            |editor, path, _action| {
+                                if let Err(e) = editor
+                                    .open(path.clone(), Action::HorizontalSplit)
+                                    .and_then(|id| {
+                                        editor
+                                            .document_mut(id)
+                                            .unwrap()
+                                            .set_path(None)
+                                            .map_err(Into::into)
+                                    })
+                                {
                                     editor.set_error(e.to_string());
                                 }
                             },
