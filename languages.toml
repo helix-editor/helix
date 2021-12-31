@@ -3,7 +3,7 @@ name = "rust"
 scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
-roots = []
+roots = ["Cargo.toml", "Cargo.lock"]
 auto-format = true
 comment-token = "//"
 language-server = { command = "rust-analyzer" }
@@ -490,3 +490,12 @@ file-types = ["diff"]
 injection-regex = "diff"
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "git-rebase"
+scope = "source.gitrebase"
+roots = []
+file-types = ["git-rebase-todo"]
+injection-regex = "git-rebase"
+comment-token = "#"
+indent = { tab-width = 2, unit = " " }

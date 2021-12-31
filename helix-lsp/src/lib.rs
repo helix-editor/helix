@@ -326,6 +326,7 @@ impl Registry {
                     &config.command,
                     &config.args,
                     language_config.config.clone(),
+                    language_config.roots.clone(),
                     id,
                 )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));

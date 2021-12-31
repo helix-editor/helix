@@ -3212,11 +3212,19 @@ fn command_mode(cx: &mut Context) {
             // simple heuristic: if there's no just one part, complete command name.
             // if there's a space, per command completion kicks in.
             if parts.len() <= 1 {
-                let end = 0..;
-                cmd::TYPABLE_COMMAND_LIST
+                let mut matches: Vec<_> = cmd::TYPABLE_COMMAND_LIST
                     .iter()
-                    .filter(|command| FUZZY_MATCHER.fuzzy_match(command.name, input).is_some())
-                    .map(|command| (end.clone(), Cow::Borrowed(command.name)))
+                    .filter_map(|command| {
+                        FUZZY_MATCHER
+                            .fuzzy_match(command.name, input)
+                            .map(|score| (command.name, score))
+                    })
+                    .collect();
+
+                matches.sort_unstable_by_key(|(_file, score)| std::cmp::Reverse(*score));
+                matches
+                    .into_iter()
+                    .map(|(name, _)| (0.., name.into()))
                     .collect()
             } else {
                 let part = parts.last().unwrap();
@@ -3284,7 +3292,8 @@ fn command_mode(cx: &mut Context) {
 }
 
 fn file_picker(cx: &mut Context) {
-    let root = find_root(None).unwrap_or_else(|| PathBuf::from("./"));
+    // We don't specify language markers, root will be the root of the current git repo
+    let root = find_root(None, &[]).unwrap_or_else(|| PathBuf::from("./"));
     let picker = ui::file_picker(root, &cx.editor.config);
     cx.push_layer(Box::new(picker));
 }
