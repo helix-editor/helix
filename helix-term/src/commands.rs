@@ -2841,7 +2841,7 @@ pub mod cmd {
                             let mode = doc!(editor).mode;
                             let keymap = editor_view.keymaps.get_mut(&mode).unwrap();
                             let (keys, last_key) = (&keys[..keys.len() - 1], keys.last().unwrap());
-                            keys.into_iter().for_each(|key| {
+                            keys.iter().for_each(|key| {
                                 keymap.get(*key);
                             });
                             let result = keymap.get(*last_key);
@@ -2865,7 +2865,7 @@ pub mod cmd {
             }
         };
 
-        open_help(help_dir, command, &mut cx.editor)
+        open_help(help_dir, command, cx.editor)
     }
 
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
