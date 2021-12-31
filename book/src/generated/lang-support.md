@@ -12,6 +12,8 @@
 | elixir | ✓ |  |  | `elixir-ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
+| git-diff | ✓ |  |  |  |
+| git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |
@@ -21,7 +23,7 @@
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
 | ledger | ✓ |  |  |  |
-| llvm | ✓ |  |  |  |
+| llvm | ✓ | ✓ | ✓ |  |
 | lua | ✓ |  | ✓ |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
@@ -34,7 +36,7 @@
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | racket |  |  |  | `racket` |
-| ruby | ✓ |  |  | `solargraph` |
+| ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
 | svelte | ✓ |  | ✓ | `svelteserver` |

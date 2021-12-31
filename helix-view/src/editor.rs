@@ -27,7 +27,7 @@ pub use helix_core::register::Registers;
 use helix_core::syntax;
 use helix_core::{Position, Selection};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -37,7 +37,7 @@ where
     Ok(Duration::from_millis(millis))
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct DiagnosticConfig {
     // Sign to present in the gutter. Defaults to "●".
@@ -92,7 +92,7 @@ impl Default for FilePickerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -125,7 +125,7 @@ pub struct Config {
     pub diagnostic: DiagnosticConfig,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
@@ -133,6 +133,18 @@ pub enum LineNumber {
 
     /// Show relative line number to the primary cursor
     Relative,
+}
+
+impl std::str::FromStr for LineNumber {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "absolute" | "abs" => Ok(Self::Absolute),
+            "relative" | "rel" => Ok(Self::Relative),
+            _ => anyhow::bail!("Line number can only be `absolute` or `relative`."),
+        }
+    }
 }
 
 impl Default for Config {

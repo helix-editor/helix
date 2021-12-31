@@ -593,8 +593,8 @@ impl Default for Keymaps {
             // paste_all
             "P" => paste_before,
 
-            "q" => record_macro,
-            "Q" => play_macro,
+            "Q" => record_macro,
+            "q" => replay_macro,
 
             ">" => indent,
             "<" => unindent,
@@ -616,6 +616,8 @@ impl Default for Keymaps {
             ")" => rotate_selections_forward,
             "A-(" => rotate_selection_contents_backward,
             "A-)" => rotate_selection_contents_forward,
+
+            "A-:" => ensure_selections_forward,
 
             "esc" => normal_mode,
             "C-b" | "pageup" => page_up,

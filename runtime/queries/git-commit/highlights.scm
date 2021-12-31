@@ -4,7 +4,6 @@
 (commit) @constant
 (item) @markup.link.url
 (header) @tag
-(rebase_command) @markup.raw
 
 (change kind: "new file" @diff.plus)
 (change kind: "deleted" @diff.minus)
@@ -13,7 +12,3 @@
 
 [":" "->"] @punctuation.delimeter
 (comment) @comment
-
-; once we have diff injections, @comment should become @none
-((comment (scissors))
- (message)+ @comment)

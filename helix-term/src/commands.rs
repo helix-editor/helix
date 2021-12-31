@@ -26,6 +26,7 @@ use helix_view::{
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
+use fuzzy_matcher::FuzzyMatcher;
 use helix_lsp::{
     block_on, lsp,
     util::{lsp_pos_to_pos, lsp_range_to_range, pos_to_lsp_pos, range_to_lsp_range},
@@ -266,6 +267,7 @@ impl MappableCommand {
         change_selection_noyank, "Change selection (delete and enter insert mode, without yanking)",
         collapse_selection, "Collapse selection onto a single cursor",
         flip_selections, "Flip selection cursor and anchor",
+        ensure_selections_forward, "Ensure the selection is in forward direction",
         insert_mode, "Insert before selection",
         append_mode, "Insert after selection (append)",
         command_mode, "Enter command mode",
@@ -396,7 +398,7 @@ impl MappableCommand {
         increment, "Increment",
         decrement, "Decrement",
         record_macro, "Record macro",
-        play_macro, "Play macro",
+        replay_macro, "Replay macro",
     );
 }
 
@@ -1904,7 +1906,21 @@ fn flip_selections(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| Range::new(range.head, range.anchor));
+        .transform(|range| range.flip());
+    doc.set_selection(view.id, selection);
+}
+
+fn ensure_selections_forward(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|r| match r.direction() {
+            Direction::Forward => r,
+            Direction::Backward => r.flip(),
+        });
+
     doc.set_selection(view.id, selection);
 }
 
@@ -2637,6 +2653,86 @@ pub mod cmd {
         let (view, doc) = current!(cx.editor);
 
         view.ensure_cursor_in_view(doc, line);
+        Ok(())
+    }
+
+    fn setting(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let runtime_config = &mut cx.editor.config;
+
+        if args.len() != 2 {
+            anyhow::bail!("Bad arguments. Usage: `:set key field`");
+        }
+
+        let (key, arg) = (&args[0].to_lowercase(), &args[1]);
+
+        match key.as_ref() {
+            "scrolloff" => runtime_config.scrolloff = arg.parse()?,
+            "scroll-lines" => runtime_config.scroll_lines = arg.parse()?,
+            "mouse" => runtime_config.mouse = arg.parse()?,
+            "line-number" => runtime_config.line_number = arg.parse()?,
+            "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
+            "smart-case" => runtime_config.smart_case = arg.parse()?,
+            "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
+            "auto-completion" => runtime_config.auto_completion = arg.parse()?,
+            "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
+            "auto-info" => runtime_config.auto_info = arg.parse()?,
+            "true-color" => runtime_config.true_color = arg.parse()?,
+            _ => anyhow::bail!("Unknown key `{}`.", args[0]),
+        }
+
+        Ok(())
+    }
+
+    fn sort(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        sort_impl(cx, args, false)
+    }
+
+    fn sort_reverse(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        sort_impl(cx, args, true)
+    }
+
+    fn sort_impl(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        reverse: bool,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+
+        let selection = doc.selection(view.id);
+
+        let mut fragments: Vec<_> = selection
+            .fragments(text)
+            .map(|fragment| Tendril::from_slice(&fragment))
+            .collect();
+
+        fragments.sort_by(match reverse {
+            true => |a: &Tendril, b: &Tendril| b.cmp(a),
+            false => |a: &Tendril, b: &Tendril| a.cmp(b),
+        });
+
+        let transaction = Transaction::change(
+            doc.text(),
+            selection
+                .into_iter()
+                .zip(fragments)
+                .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
+        );
+
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view.id);
 
         Ok(())
     }
@@ -2664,18 +2760,18 @@ pub mod cmd {
             completer: Some(completers::filename),
         },
         TypableCommand {
-          name: "buffer-close",
-          aliases: &["bc", "bclose"],
-          doc: "Close the current buffer.",
-          fun: buffer_close,
-          completer: None, // FIXME: buffer completer
+            name: "buffer-close",
+            aliases: &["bc", "bclose"],
+            doc: "Close the current buffer.",
+            fun: buffer_close,
+            completer: None, // FIXME: buffer completer
         },
         TypableCommand {
-          name: "buffer-close!",
-          aliases: &["bc!", "bclose!"],
-          doc: "Close the current buffer forcefully (ignoring unsaved changes).",
-          fun: force_buffer_close,
-          completer: None, // FIXME: buffer completer
+            name: "buffer-close!",
+            aliases: &["bc!", "bclose!"],
+            doc: "Close the current buffer forcefully (ignoring unsaved changes).",
+            fun: force_buffer_close,
+            completer: None, // FIXME: buffer completer
         },
         TypableCommand {
             name: "write",
@@ -2928,7 +3024,28 @@ pub mod cmd {
             doc: "Go to line number.",
             fun: goto_line_number,
             completer: None,
-        }
+        },
+        TypableCommand {
+            name: "set-option",
+            aliases: &["set"],
+            doc: "Set a config option at runtime",
+            fun: setting,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
+            name: "sort",
+            aliases: &[],
+            doc: "Sort ranges in selection.",
+            fun: sort,
+            completer: None,
+        },
+        TypableCommand {
+            name: "rsort",
+            aliases: &[],
+            doc: "Sort ranges in selection in reverse order.",
+            fun: sort_reverse,
+            completer: None,
+        },
     ];
 
     pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
@@ -2948,17 +3065,28 @@ fn command_mode(cx: &mut Context) {
         ":".into(),
         Some(':'),
         |input: &str| {
+            static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
+                Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
+
             // we use .this over split_whitespace() because we care about empty segments
             let parts = input.split(' ').collect::<Vec<&str>>();
 
             // simple heuristic: if there's no just one part, complete command name.
             // if there's a space, per command completion kicks in.
             if parts.len() <= 1 {
-                let end = 0..;
-                cmd::TYPABLE_COMMAND_LIST
+                let mut matches: Vec<_> = cmd::TYPABLE_COMMAND_LIST
                     .iter()
-                    .filter(|command| command.name.contains(input))
-                    .map(|command| (end.clone(), Cow::Borrowed(command.name)))
+                    .filter_map(|command| {
+                        FUZZY_MATCHER
+                            .fuzzy_match(command.name, input)
+                            .map(|score| (command.name, score))
+                    })
+                    .collect();
+
+                matches.sort_unstable_by_key(|(_file, score)| std::cmp::Reverse(*score));
+                matches
+                    .into_iter()
+                    .map(|(name, _)| (0.., name.into()))
                     .collect()
             } else {
                 let part = parts.last().unwrap();
@@ -3656,26 +3784,30 @@ fn normal_mode(cx: &mut Context) {
 }
 
 fn try_restore_indent(doc: &mut Document, view_id: ViewId) {
-    let doc_changes = doc.changes().changes();
-    let text = doc.text().slice(..);
-    let pos = doc.selection(view_id).primary().cursor(text);
-    let mut can_restore_indent = false;
-
-    // Removes trailing whitespace if insert mode is exited after starting a blank new line.
     use helix_core::chars::char_is_whitespace;
     use helix_core::Operation;
-    if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
-        doc_changes
-    {
-        if move_pos + inserted_str.len32() as usize == pos
-            && inserted_str.starts_with('\n')
-            && inserted_str.chars().skip(1).all(char_is_whitespace)
+
+    fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
+        if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
+            changes
         {
-            can_restore_indent = true;
+            move_pos + inserted_str.len32() as usize == pos
+                && inserted_str.starts_with('\n')
+                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && pos == line_end_pos // ensure no characters exists after current position
+        } else {
+            false
         }
     }
 
-    if can_restore_indent {
+    let doc_changes = doc.changes().changes();
+    let text = doc.text().slice(..);
+    let range = doc.selection(view_id).primary();
+    let pos = range.cursor(text);
+    let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
+
+    if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
+        // Removes tailing whitespaces.
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
@@ -5978,42 +6110,42 @@ fn record_macro(cx: &mut Context) {
         keys.pop();
         let s = keys
             .into_iter()
-            .map(|key| format!("{}", key))
-            .collect::<Vec<_>>()
-            .join(" ");
+            .map(|key| {
+                let s = key.to_string();
+                if s.chars().count() == 1 {
+                    s
+                } else {
+                    format!("<{}>", s)
+                }
+            })
+            .collect::<String>();
         cx.editor.registers.get_mut(reg).write(vec![s]);
         cx.editor
-            .set_status(format!("Recorded to register {}", reg));
+            .set_status(format!("Recorded to register [{}]", reg));
     } else {
         let reg = cx.register.take().unwrap_or('@');
         cx.editor.macro_recording = Some((reg, Vec::new()));
         cx.editor
-            .set_status(format!("Recording to register {}", reg));
+            .set_status(format!("Recording to register [{}]", reg));
     }
 }
 
-fn play_macro(cx: &mut Context) {
+fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
-    let keys = match cx
-        .editor
-        .registers
-        .get(reg)
-        .and_then(|reg| reg.read().get(0))
-        .context("Register empty")
-        .and_then(|s| {
-            s.split_whitespace()
-                .map(str::parse::<KeyEvent>)
-                .collect::<Result<Vec<_>, _>>()
-                .context("Failed to parse macro")
-        }) {
-        Ok(keys) => keys,
-        Err(e) => {
-            cx.editor.set_error(format!("{}", e));
-            return;
+    let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
+        match helix_view::input::parse_macro(keys_str) {
+            Ok(keys) => keys,
+            Err(err) => {
+                cx.editor.set_error(format!("Invalid macro: {}", err));
+                return;
+            }
         }
+    } else {
+        cx.editor.set_error(format!("Register [{}] empty", reg));
+        return;
     };
-    let count = cx.count();
 
+    let count = cx.count();
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             for _ in 0..count {
