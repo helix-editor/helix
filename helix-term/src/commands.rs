@@ -2829,10 +2829,11 @@ pub mod cmd {
             {
                 (STATIC_HELP_DIR, arg)
             } else {
+                let arg = arg.to_owned().into_owned();
                 let keys = arg
                     .parse::<KeyEvent>()
                     .map(|key| vec![key])
-                    .or_else(|_| helix_view::input::parse_macro(arg))?;
+                    .or_else(|_| helix_view::input::parse_macro(&arg))?;
                 let callback = Box::pin(async move {
                     let call: job::Callback =
                         Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -2845,16 +2846,23 @@ pub mod cmd {
                                 keymap.get(*key);
                             });
                             let result = keymap.get(*last_key);
-                            let (help_dir, command): (&str, &str) = match &result.kind {
+                            let res: anyhow::Result<(&str, &str)> = match &result.kind {
                                 KeymapResultKind::Matched(command) => match command {
-                                    MappableCommand::Static { name, .. } => (STATIC_HELP_DIR, name),
+                                    MappableCommand::Static { name, .. } => {
+                                        Ok((STATIC_HELP_DIR, name))
+                                    }
                                     MappableCommand::Typable { name, .. } => {
-                                        (TYPABLE_HELP_DIR, name)
+                                        Ok((TYPABLE_HELP_DIR, name))
                                     }
                                 },
+                                KeymapResultKind::NotFound | KeymapResultKind::Cancelled(_) => {
+                                    Err(anyhow!("No command found for '{}'", arg))
+                                }
                                 _ => todo!(),
                             };
-                            if let Err(e) = open_help(help_dir, command, editor) {
+                            if let Err(e) = res.and_then(|(help_dir, command)| {
+                                open_help(help_dir, command, editor)
+                            }) {
                                 editor.set_error(e.to_string());
                             }
                         });
