@@ -29,7 +29,7 @@ use crossterm::event::{Event, MouseButton, MouseEvent, MouseEventKind};
 use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
-    keymaps: Keymaps,
+    pub keymaps: Keymaps,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     last_insert: (commands::MappableCommand, Vec<KeyEvent>),
     pub(crate) completion: Option<Completion>,

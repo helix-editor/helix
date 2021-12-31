@@ -2797,9 +2797,24 @@ pub mod cmd {
             return Ok(());
         }
 
-        let help_dir;
+        let args_msg = args.join(" ");
+        let open_help =
+            move |help_dir: &str, command: &str, editor: &mut Editor| -> anyhow::Result<()> {
+                let mut path = helix_core::runtime_dir();
+                path.push("help");
+                path.push(help_dir);
+                path.push(format!("{}.txt", command));
 
-        let command = {
+                ensure!(path.is_file(), "No help available for '{}'", args_msg);
+                let id = editor.open(path, Action::HorizontalSplit)?;
+                editor.document_mut(id).unwrap().set_path(None)?;
+                Ok(())
+            };
+
+        const STATIC_HELP_DIR: &str = "static-commands";
+        const TYPABLE_HELP_DIR: &str = "typable-commands";
+
+        let (help_dir, command): (&str, &str) = {
             let arg = &args[0];
             if let Some(command) = arg.strip_prefix(':').and_then(|arg| {
                 TYPABLE_COMMAND_LIST.iter().find_map(|command| {
@@ -2807,31 +2822,50 @@ pub mod cmd {
                         .then(|| command.name)
                 })
             }) {
-                help_dir = "typable-commands";
-                command
+                (TYPABLE_HELP_DIR, command)
             } else if MappableCommand::STATIC_COMMAND_LIST
                 .iter()
                 .any(|command| command.name() == arg)
             {
-                help_dir = "static-commands";
-                arg
+                (STATIC_HELP_DIR, arg)
             } else {
-                let _keys = helix_view::input::parse_macro(arg)?;
-                // TODO: Need to access the keymap here to find the corresponding command
-                todo!()
+                let keys = arg
+                    .parse::<KeyEvent>()
+                    .map(|key| vec![key])
+                    .or_else(|_| helix_view::input::parse_macro(arg))?;
+                let callback = Box::pin(async move {
+                    let call: job::Callback =
+                        Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                            use crate::keymap::KeymapResultKind;
+                            let editor_view = compositor.find::<ui::EditorView>().unwrap();
+                            let mode = doc!(editor).mode;
+                            let keymap = editor_view.keymaps.get_mut(&mode).unwrap();
+                            let (keys, last_key) = (&keys[..keys.len() - 1], keys.last().unwrap());
+                            keys.into_iter().for_each(|key| {
+                                keymap.get(*key);
+                            });
+                            let result = keymap.get(*last_key);
+                            let (help_dir, command): (&str, &str) = match &result.kind {
+                                KeymapResultKind::Matched(command) => match command {
+                                    MappableCommand::Static { name, .. } => (STATIC_HELP_DIR, name),
+                                    MappableCommand::Typable { name, .. } => {
+                                        (TYPABLE_HELP_DIR, name)
+                                    }
+                                },
+                                _ => todo!(),
+                            };
+                            if let Err(e) = open_help(help_dir, command, editor) {
+                                editor.set_error(e.to_string());
+                            }
+                        });
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+                return Ok(());
             }
         };
 
-        let mut path = helix_core::runtime_dir();
-        path.push("help");
-        path.push(help_dir);
-        path.push(format!("{}.txt", command));
-
-        ensure!(path.is_file(), "No help available for '{}'", args.join(" "));
-        let id = cx.editor.open(path, Action::HorizontalSplit)?;
-        cx.editor.document_mut(id).unwrap().set_path(None)?;
-
-        Ok(())
+        open_help(help_dir, command, &mut cx.editor)
     }
 
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
