@@ -171,6 +171,31 @@ impl Buffer {
         self.index_of_opt(x, y).map(|i| &mut self.content[i])
     }
 
+    /// Tells whether the global (x, y) coordinates are inside the Buffer's area.
+    ///
+    /// Global coordinates are offset by the Buffer's area offset (`x`/`y`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use helix_tui::buffer::Buffer;
+    /// # use helix_view::graphics::Rect;
+    /// let rect = Rect::new(200, 100, 10, 10);
+    /// let buffer = Buffer::empty(rect);
+    /// // Global coordinates inside the Buffer's area
+    /// assert!(buffer.in_bounds(209, 100));
+    /// // Global coordinates outside the Buffer's area
+    /// assert!(!buffer.in_bounds(210, 100));
+    /// ```
+    ///
+    /// Global coordinates are offset by the Buffer's area offset (`x`/`y`).
+    pub fn in_bounds(&self, x: u16, y: u16) -> bool {
+        x >= self.area.left()
+            && x < self.area.right()
+            && y >= self.area.top()
+            && y < self.area.bottom()
+    }
+
     /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates.
     ///
     /// Global coordinates are offset by the Buffer's area offset (`x`/`y`).
@@ -182,7 +207,7 @@ impl Buffer {
     /// # use helix_view::graphics::Rect;
     /// let rect = Rect::new(200, 100, 10, 10);
     /// let buffer = Buffer::empty(rect);
-    /// // Global coordinates to the top corner of this buffer's area
+    /// // Global coordinates to the top corner of this Buffer's area
     /// assert_eq!(buffer.index_of(200, 100), 0);
     /// ```
     ///
@@ -191,10 +216,7 @@ impl Buffer {
     /// Panics when given an coordinate that is outside of this Buffer's area.
     pub fn index_of(&self, x: u16, y: u16) -> usize {
         debug_assert!(
-            x >= self.area.left()
-                && x < self.area.right()
-                && y >= self.area.top()
-                && y < self.area.bottom(),
+            self.in_bounds(x, y),
             "Trying to access position outside the buffer: x={}, y={}, area={:?}",
             x,
             y,
@@ -204,13 +226,9 @@ impl Buffer {
     }
 
     /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates,
-    /// or `None` if the coordinates are out of range.
+    /// or `None` if the coordinates are outside the buffer's area.
     fn index_of_opt(&self, x: u16, y: u16) -> Option<usize> {
-        if x >= self.area.left()
-            && x < self.area.right()
-            && y >= self.area.top()
-            && y < self.area.bottom()
-        {
+        if self.in_bounds(x, y) {
             Some(self.index_of(x, y))
         } else {
             None
@@ -291,7 +309,7 @@ impl Buffer {
         S: AsRef<str>,
     {
         // prevent panic if out of range
-        if self.index_of_opt(x, y).is_none() || width == 0 {
+        if !self.in_bounds(x, y) || width == 0 {
             return (x, y);
         }
 
