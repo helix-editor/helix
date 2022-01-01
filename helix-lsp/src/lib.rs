@@ -44,7 +44,7 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
     #[serde(rename = "utf-8")]
@@ -55,13 +55,72 @@ pub enum OffsetEncoding {
 }
 
 pub mod util {
+    use std::{cell::RefCell, hash::Hash, num::NonZeroUsize};
+
     use super::*;
     use helix_core::{Range, Rope, Transaction};
 
+    #[derive(Eq, Clone, Copy)]
+    struct CacheKey {
+        doc_id: NonZeroUsize,
+        pos: lsp::Position,
+        offset_encoding: OffsetEncoding,
+    }
+
+    impl PartialEq for CacheKey {
+        fn eq(&self, other: &Self) -> bool {
+            self.doc_id == other.doc_id
+                && self.pos.line == other.pos.line
+                && self.pos.character == other.pos.character
+                && self.offset_encoding == other.offset_encoding
+        }
+    }
+
+    impl Hash for CacheKey {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.doc_id.hash(state);
+            self.pos.line.hash(state);
+            self.pos.character.hash(state);
+            self.offset_encoding.hash(state);
+        }
+    }
+
+    thread_local! {
+        static LSP_POS_CACHE: RefCell<HashMap<CacheKey, Option<usize>>> = RefCell::new(HashMap::new());
+    }
+
     /// Converts [`lsp::Position`] to a position in the document.
+    /// If a `doc_id` is provided the results may be cached.
     ///
     /// Returns `None` if position exceeds document length or an operation overflows.
     pub fn lsp_pos_to_pos(
+        doc_id: Option<NonZeroUsize>,
+        doc: &Rope,
+        pos: lsp::Position,
+        offset_encoding: OffsetEncoding,
+    ) -> Option<usize> {
+        if let Some(doc_id) = doc_id {
+            let cache_key = CacheKey {
+                doc_id,
+                pos,
+                offset_encoding,
+            };
+            LSP_POS_CACHE.with(|cache| {
+                let mut cache = cache.borrow_mut();
+                if let Some(cached_pos) = cache.get(&cache_key) {
+                    *cached_pos
+                } else {
+                    let pos = lsp_pos_to_pos_impl(doc, pos, offset_encoding);
+                    cache.insert(cache_key, pos);
+                    pos
+                }
+            })
+        } else {
+            lsp_pos_to_pos_impl(doc, pos, offset_encoding)
+        }
+    }
+
+    fn lsp_pos_to_pos_impl(
         doc: &Rope,
         pos: lsp::Position,
         offset_encoding: OffsetEncoding,
@@ -142,17 +201,19 @@ pub mod util {
     }
 
     pub fn lsp_range_to_range(
+        doc_id: Option<NonZeroUsize>,
         doc: &Rope,
         range: lsp::Range,
         offset_encoding: OffsetEncoding,
     ) -> Option<Range> {
-        let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
-        let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
+        let start = lsp_pos_to_pos(doc_id, doc, range.start, offset_encoding)?;
+        let end = lsp_pos_to_pos(doc_id, doc, range.end, offset_encoding)?;
 
         Some(Range::new(start, end))
     }
 
     pub fn generate_transaction_from_edits(
+        doc_id: Option<NonZeroUsize>,
         doc: &Rope,
         edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
@@ -167,13 +228,16 @@ pub mod util {
                     None
                 };
 
-                let start =
-                    if let Some(start) = lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
-                        start
-                    } else {
-                        return (0, 0, None);
-                    };
-                let end = if let Some(end) = lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
+                let start = if let Some(start) =
+                    lsp_pos_to_pos(doc_id, doc, edit.range.start, offset_encoding)
+                {
+                    start
+                } else {
+                    return (0, 0, None);
+                };
+                let end = if let Some(end) =
+                    lsp_pos_to_pos(doc_id, doc, edit.range.end, offset_encoding)
+                {
                     end
                 } else {
                     return (0, 0, None);
@@ -195,7 +259,7 @@ pub mod util {
 
     impl From<LspFormatting> for Transaction {
         fn from(fmt: LspFormatting) -> Transaction {
-            generate_transaction_from_edits(&fmt.doc, fmt.edits, fmt.offset_encoding)
+            generate_transaction_from_edits(None, &fmt.doc, fmt.edits, fmt.offset_encoding)
         }
     }
 }
@@ -459,8 +523,11 @@ mod tests {
             ($doc:expr, ($x:expr, $y:expr) => $want:expr) => {
                 let doc = Rope::from($doc);
                 let pos = lsp::Position::new($x, $y);
-                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf16));
-                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf8))
+                assert_eq!(
+                    $want,
+                    lsp_pos_to_pos(None, &doc, pos, OffsetEncoding::Utf16)
+                );
+                assert_eq!($want, lsp_pos_to_pos(None, &doc, pos, OffsetEncoding::Utf8))
             };
         }
 

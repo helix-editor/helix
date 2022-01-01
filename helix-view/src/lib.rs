@@ -19,6 +19,12 @@ use std::num::NonZeroUsize;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DocumentId(NonZeroUsize);
 
+impl DocumentId {
+    pub fn into_inner(self) -> NonZeroUsize {
+        self.0
+    }
+}
+
 impl Default for DocumentId {
     fn default() -> DocumentId {
         // Safety: 1 is non-zero

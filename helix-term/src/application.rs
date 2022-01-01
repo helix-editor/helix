@@ -395,6 +395,7 @@ impl Application {
 
                                     // TODO: convert inside server
                                     let start = if let Some(start) = lsp_pos_to_pos(
+                                        Some(doc.id().into_inner()),
                                         text,
                                         diagnostic.range.start,
                                         language_server.offset_encoding(),
@@ -406,6 +407,7 @@ impl Application {
                                     };
 
                                     let end = if let Some(end) = lsp_pos_to_pos(
+                                        Some(doc.id().into_inner()),
                                         text,
                                         diagnostic.range.end,
                                         language_server.offset_encoding(),

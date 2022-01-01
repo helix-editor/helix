@@ -100,6 +100,7 @@ impl Completion {
                         }
                     };
                     util::generate_transaction_from_edits(
+                        Some(doc.id().into_inner()),
                         doc.text(),
                         vec![edit],
                         offset_encoding, // TODO: should probably transcode in Client
@@ -169,6 +170,7 @@ impl Completion {
                     {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(
+                                Some(doc.id().into_inner()),
                                 doc.text(),
                                 additional_edits.clone(),
                                 offset_encoding, // TODO: should probably transcode in Client

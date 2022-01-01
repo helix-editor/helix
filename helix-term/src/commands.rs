@@ -3284,9 +3284,12 @@ fn symbol_picker(cx: &mut Context) {
                         push_jump(editor);
                         let (view, doc) = current!(editor);
 
-                        if let Some(range) =
-                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
-                        {
+                        if let Some(range) = lsp_range_to_range(
+                            Some(doc.id().into_inner()),
+                            doc.text(),
+                            symbol.location.range,
+                            offset_encoding,
+                        ) {
                             // we flip the range so that the cursor sits on the start of the symbol
                             // (for example start of the function).
                             doc.set_selection(view.id, Selection::single(range.head, range.anchor));
@@ -3346,9 +3349,12 @@ fn workspace_symbol_picker(cx: &mut Context) {
                         editor.open(path, action).expect("editor.open failed");
                         let (view, doc) = current!(editor);
 
-                        if let Some(range) =
-                            lsp_range_to_range(doc.text(), symbol.location.range, offset_encoding)
-                        {
+                        if let Some(range) = lsp_range_to_range(
+                            Some(doc.id().into_inner()),
+                            doc.text(),
+                            symbol.location.range,
+                            offset_encoding,
+                        ) {
                             // we flip the range so that the cursor sits on the start of the symbol
                             // (for example start of the function).
                             doc.set_selection(view.id, Selection::single(range.head, range.anchor));
@@ -3533,6 +3539,7 @@ pub fn apply_workspace_edit(
         };
 
         let transaction = helix_lsp::util::generate_transaction_from_edits(
+            Some(doc.id().into_inner()),
             doc.text(),
             text_edits,
             offset_encoding,
@@ -3956,12 +3963,16 @@ fn goto_impl(
         let (view, doc) = current!(editor);
         let definition_pos = location.range.start;
         // TODO: convert inside server
-        let new_pos =
-            if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding) {
-                new_pos
-            } else {
-                return;
-            };
+        let new_pos = if let Some(new_pos) = lsp_pos_to_pos(
+            Some(doc.id().into_inner()),
+            doc.text(),
+            definition_pos,
+            offset_encoding,
+        ) {
+            new_pos
+        } else {
+            return;
+        };
         doc.set_selection(view.id, Selection::point(new_pos));
         align_view(doc, view, Align::Center);
     }
