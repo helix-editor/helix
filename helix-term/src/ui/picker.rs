@@ -505,7 +505,7 @@ impl<T: 'static> Component for Picker<T> {
         let selected = cx.editor.theme.get("ui.text.focus");
 
         let rows = inner.height;
-        let offset = self.cursor / std::cmp::max(1, rows as usize) * (rows as usize);
+        let offset = self.cursor / std::cmp::max(1, (rows as usize) * (rows as usize));
 
         let files = self.matches.iter().skip(offset).map(|(index, _score)| {
             (index, self.options.get(*index).unwrap()) // get_unchecked
