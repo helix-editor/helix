@@ -327,7 +327,7 @@ impl<'a> KeymapResult<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Keymap {
     /// Always a Node
     #[serde(flatten)]
@@ -339,14 +339,54 @@ pub struct Keymap {
     /// Stores the sticky node if one is activated.
     #[serde(skip)]
     sticky: Option<KeyTrieNode>,
+    /// Allows lookup of key binding for command.
+    /// Command can have multiple key bindings and each key binding can be composed
+    /// of multiple keys.
+    #[serde(skip)]
+    pub reverse_map: HashMap<String, Vec<Vec<KeyEvent>>>,
+}
+
+impl PartialEq for Keymap {
+    fn eq(&self, other: &Self) -> bool {
+        self.root == other.root && self.state == other.state && self.sticky == other.sticky
+    }
+}
+
+fn map_node(
+    cmd_map: &mut HashMap<String, Vec<Vec<KeyEvent>>>,
+    node: &KeyTrie,
+    keys: &mut Vec<KeyEvent>,
+) {
+    match node {
+        KeyTrie::Leaf(cmd) => match cmd {
+            MappableCommand::Typable { name, .. } => {
+                cmd_map.entry(name.into()).or_default().push(keys.clone())
+            }
+            MappableCommand::Static { name, .. } => cmd_map
+                .entry(name.to_string())
+                .or_default()
+                .push(keys.clone()),
+        },
+        KeyTrie::Sequence(_) => todo!(),
+        KeyTrie::Node(next) => {
+            for (key, trie) in &next.map {
+                keys.push(*key);
+                map_node(cmd_map, trie, keys);
+                keys.pop();
+            }
+        }
+    };
 }
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Self {
+        let mut res = HashMap::new();
+        map_node(&mut res, &root, &mut Vec::new());
+        Keymap {
             root,
             state: Vec::new(),
             sticky: None,
+            reverse_map: res,
         }
     }
 
@@ -958,5 +998,28 @@ mod tests {
             root.search(&[key!('Z')]).unwrap(),
             "Mismatch for view mode on `z` and `Z`"
         );
+    }
+
+    #[test]
+    fn reverse_map() {
+        let normal_mode = keymap!({ "Normal mode"
+            "i" => insert_mode,
+            "g" => { "Goto"
+                "g" => goto_file_start,
+                "e" => goto_file_end,
+            },
+            "j" | "down" => move_line_down,
+        });
+        let keymap = Keymap::new(normal_mode);
+        assert_eq!(
+            keymap.reverse_map,
+            HashMap::from([
+                ("insert_mode".to_string(), vec![key!('i')]),
+                ("goto_file_start".to_string(), vec![key!('g'), key!('g')]),
+                ("goto_file_end".to_string(), vec![key!('g'), key!('e')]),
+                ("move_line_down".to_string(), vec![key!('j')]),
+            ]),
+            "Mistmacht"
+        )
     }
 }

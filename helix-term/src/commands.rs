@@ -3657,8 +3657,12 @@ pub fn code_action(cx: &mut Context) {
 
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
-        move |compositor: &mut Compositor, _cx: &mut compositor::Context| {
+        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
+            let ui = compositor.find::<ui::EditorView>().unwrap();
+            let doc = doc_mut!(cx.editor);
+            let keymap = ui.keymaps.get(&doc.mode).unwrap();
+            let reverse_keymap = keymap.reverse_map.clone();
             commands.extend(
                 cmd::TYPABLE_COMMAND_LIST
                     .iter()
@@ -3668,12 +3672,32 @@ pub fn command_palette(cx: &mut Context) {
                         args: Vec::new(),
                     }),
             );
+            let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
+                bindings
+                    .iter()
+                    .map(|bind| {
+                        bind.iter()
+                            .map(|key| key.to_string())
+                            .collect::<Vec<String>>()
+                            .join("+")
+                    })
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            };
             let picker = Picker::new(
                 true,
                 commands,
-                |command| match command {
-                    MappableCommand::Typable { doc, .. } => doc.into(),
-                    MappableCommand::Static { doc, .. } => doc.to_owned().into(),
+                move |command| match command {
+                    MappableCommand::Typable { doc, name, .. } => {
+                        match reverse_keymap.get(name as &String) {
+                            Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                            None => doc.into(),
+                        }
+                    }
+                    MappableCommand::Static { doc, name, .. } => match reverse_keymap.get(*name) {
+                        Some(bindings) => format!("{} ({})", doc, fmt_binding(bindings)).into(),
+                        None => (*doc).into(),
+                    },
                 },
                 move |cx, command, _action| {
                     let mut ctx = Context {
