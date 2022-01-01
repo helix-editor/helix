@@ -327,7 +327,7 @@ impl<'a> KeymapResult<'a> {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Keymap {
     /// Always a Node
     #[serde(flatten)]
@@ -339,17 +339,6 @@ pub struct Keymap {
     /// Stores the sticky node if one is activated.
     #[serde(skip)]
     sticky: Option<KeyTrieNode>,
-    /// Allows lookup of key binding for command.
-    /// Command can have multiple key bindings and each key binding can be composed
-    /// of multiple keys.
-    #[serde(skip)]
-    pub reverse_map: HashMap<String, Vec<Vec<KeyEvent>>>,
-}
-
-impl PartialEq for Keymap {
-    fn eq(&self, other: &Self) -> bool {
-        self.root == other.root && self.state == other.state && self.sticky == other.sticky
-    }
 }
 
 fn map_node(
@@ -380,14 +369,17 @@ fn map_node(
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        let mut res = HashMap::new();
-        map_node(&mut res, &root, &mut Vec::new());
         Keymap {
             root,
             state: Vec::new(),
             sticky: None,
-            reverse_map: res,
         }
+    }
+
+    pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
+        let mut res = HashMap::new();
+        map_node(&mut res, &self.root, &mut Vec::new());
+        res
     }
 
     pub fn root(&self) -> &KeyTrie {
@@ -1008,18 +1000,36 @@ mod tests {
                 "g" => goto_file_start,
                 "e" => goto_file_end,
             },
-            "j" | "down" => move_line_down,
+            "j" | "k" => move_line_down,
         });
         let keymap = Keymap::new(normal_mode);
+        let mut reverse_map = keymap.reverse_map();
+
+        // sort keybindings in order to have consistent tests
+        // HashMaps can be compared but we can still get different ordering of bdingings
+        // for commands that have multiple bindings assigned
+        for (_k, v) in &mut reverse_map {
+            v.sort()
+        }
+
         assert_eq!(
-            keymap.reverse_map,
+            reverse_map,
             HashMap::from([
-                ("insert_mode".to_string(), vec![key!('i')]),
-                ("goto_file_start".to_string(), vec![key!('g'), key!('g')]),
-                ("goto_file_end".to_string(), vec![key!('g'), key!('e')]),
-                ("move_line_down".to_string(), vec![key!('j')]),
+                ("insert_mode".to_string(), vec![vec![key!('i')]]),
+                (
+                    "goto_file_start".to_string(),
+                    vec![vec![key!('g'), key!('g')]]
+                ),
+                (
+                    "goto_file_end".to_string(),
+                    vec![vec![key!('g'), key!('e')]]
+                ),
+                (
+                    "move_line_down".to_string(),
+                    vec![vec![key!('j')], vec![key!('k')]]
+                ),
             ]),
-            "Mistmacht"
+            "Mistmatch"
         )
     }
 }
