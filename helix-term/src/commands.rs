@@ -3033,7 +3033,7 @@ fn file_picker(cx: &mut Context) {
 }
 
 fn file_picker_in_directory_of_active_buffer(cx: &mut Context) {
-    let (_view, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
     let root = if let Some(current_path) = doc.path() {
         let mut p = current_path.clone();
         p.pop();
