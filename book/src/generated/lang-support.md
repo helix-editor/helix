@@ -12,6 +12,7 @@
 | elixir | ✓ |  |  | `elixir-ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
+| git-config | ✓ |  |  |  |
 | git-diff | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |

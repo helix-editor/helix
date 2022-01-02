@@ -545,3 +545,12 @@ scope = "source.regex"
 injection-regex = "regex"
 file-types = ["regex"]
 roots = []
+
+[[language]]
+name = "git-config"
+scope = "source.gitconfig"
+roots = []
+file-types = [".gitmodules", ".gitconfig"]
+injection-regex = "git-config"
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
