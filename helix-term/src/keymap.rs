@@ -341,32 +341,6 @@ pub struct Keymap {
     sticky: Option<KeyTrieNode>,
 }
 
-fn map_node(
-    cmd_map: &mut HashMap<String, Vec<Vec<KeyEvent>>>,
-    node: &KeyTrie,
-    keys: &mut Vec<KeyEvent>,
-) {
-    match node {
-        KeyTrie::Leaf(cmd) => match cmd {
-            MappableCommand::Typable { name, .. } => {
-                cmd_map.entry(name.into()).or_default().push(keys.clone())
-            }
-            MappableCommand::Static { name, .. } => cmd_map
-                .entry(name.to_string())
-                .or_default()
-                .push(keys.clone()),
-        },
-        KeyTrie::Sequence(_) => todo!(),
-        KeyTrie::Node(next) => {
-            for (key, trie) in &next.map {
-                keys.push(*key);
-                map_node(cmd_map, trie, keys);
-                keys.pop();
-            }
-        }
-    };
-}
-
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
         Keymap {
@@ -377,6 +351,33 @@ impl Keymap {
     }
 
     pub fn reverse_map(&self) -> HashMap<String, Vec<Vec<KeyEvent>>> {
+        // recursively visit all nodes in keymap
+        fn map_node(
+            cmd_map: &mut HashMap<String, Vec<Vec<KeyEvent>>>,
+            node: &KeyTrie,
+            keys: &mut Vec<KeyEvent>,
+        ) {
+            match node {
+                KeyTrie::Leaf(cmd) => match cmd {
+                    MappableCommand::Typable { name, .. } => {
+                        cmd_map.entry(name.into()).or_default().push(keys.clone())
+                    }
+                    MappableCommand::Static { name, .. } => cmd_map
+                        .entry(name.to_string())
+                        .or_default()
+                        .push(keys.clone()),
+                },
+                KeyTrie::Sequence(_) => todo!(),
+                KeyTrie::Node(next) => {
+                    for (key, trie) in &next.map {
+                        keys.push(*key);
+                        map_node(cmd_map, trie, keys);
+                        keys.pop();
+                    }
+                }
+            };
+        }
+
         let mut res = HashMap::new();
         map_node(&mut res, &self.root, &mut Vec::new());
         res
@@ -1006,7 +1007,7 @@ mod tests {
         let mut reverse_map = keymap.reverse_map();
 
         // sort keybindings in order to have consistent tests
-        // HashMaps can be compared but we can still get different ordering of bdingings
+        // HashMaps can be compared but we can still get different ordering of bindings
         // for commands that have multiple bindings assigned
         for (_k, v) in &mut reverse_map {
             v.sort()
