@@ -23,6 +23,7 @@
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
 | ledger | ✓ |  |  |  |
+| ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
 | lua | ✓ |  | ✓ |  |
 | markdown | ✓ |  |  |  |

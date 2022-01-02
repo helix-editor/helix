@@ -499,3 +499,13 @@ file-types = ["git-rebase-todo"]
 injection-regex = "git-rebase"
 comment-token = "#"
 indent = { tab-width = 2, unit = " " }
+
+[[language]]
+name = "ledger"
+scope = "source.ledger"
+injection-regex = "ledger"
+file-types = ["ldg"]
+roots = [ ]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
