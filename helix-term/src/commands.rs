@@ -1282,16 +1282,23 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         .max(view.offset.row + scrolloff)
         .min(last_line.saturating_sub(scrolloff));
 
-    let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+    // If cursor needs moving, replace primary selection
+    if line != cursor.row {
+        let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
 
-    let anchor = if doc.mode == Mode::Select {
-        range.anchor
-    } else {
-        head
-    };
+        let anchor = if doc.mode == Mode::Select {
+            range.anchor
+        } else {
+            head
+        };
 
-    // TODO: only manipulate main selection
-    doc.set_selection(view.id, Selection::single(anchor, head));
+        // replace primary selection with an empty selection at cursor pos
+        let prim_sel = Range::new(anchor, head);
+        let mut sel = doc.selection(view.id).clone();
+        let idx = sel.primary_index();
+        sel = sel.replace(idx, prim_sel);
+        doc.set_selection(view.id, sel);
+    }
 }
 
 fn page_up(cx: &mut Context) {
