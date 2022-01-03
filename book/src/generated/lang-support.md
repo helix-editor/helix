@@ -12,6 +12,8 @@
 | elixir | ✓ |  |  | `elixir-ls` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
+| git-diff | ✓ |  |  |  |
+| git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |
@@ -40,6 +42,7 @@
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
+| tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |

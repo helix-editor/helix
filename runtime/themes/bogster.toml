@@ -53,3 +53,6 @@
 "error" = "#dc597f"
 "info" = "#59dcb7"
 "hint" = "#59c0dc"
+
+# make diagnostic underlined, to distinguish with selection text.
+diagnostic = { modifiers = ["underlined"] }
