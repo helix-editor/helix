@@ -5492,17 +5492,23 @@ fn expand_selection(cx: &mut Context) {
 fn shrink_selection(cx: &mut Context) {
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-        let selection = doc.selection(view.id);
+        let current_selection = doc.selection(view.id);
         // try to restore previous selection
         if let Some(prev_selection) = view.object_selections.pop() {
-            // allow shrinking the selection only if current selection contains
-            // the previous object selection
-            if selection.contains(&prev_selection) {
+            if current_selection.contains(&prev_selection) {
+                // allow shrinking the selection only if current selection contains the previous object selection
                 doc.set_selection(view.id, prev_selection);
+                return;
             } else {
                 // clear existing selection as they can't be shrinked to anyway
-                view.object_selections.clear()
+                view.object_selections.clear();
             }
+        }
+        // if not previous selection, shrink to first child
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let selection = object::shrink_selection(syntax, text, current_selection);
+            doc.set_selection(view.id, selection);
         }
     };
     motion(cx.editor);

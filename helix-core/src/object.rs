@@ -32,3 +32,30 @@ pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection)
         }
     })
 }
+
+pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+    let tree = syntax.tree();
+
+    selection.clone().transform(|range| {
+        let from = text.char_to_byte(range.from());
+        let to = text.char_to_byte(range.to());
+
+        let descendant = match tree.root_node().descendant_for_byte_range(from, to) {
+            // find first child, if not possible, fallback to the node that contains selection
+            Some(descendant) => match descendant.child(0) {
+                Some(child) => child,
+                None => descendant,
+            },
+            None => return range,
+        };
+
+        let from = text.byte_to_char(descendant.start_byte());
+        let to = text.byte_to_char(descendant.end_byte());
+
+        if range.head < range.anchor {
+            Range::new(to, from)
+        } else {
+            Range::new(from, to)
+        }
+    })
+}
