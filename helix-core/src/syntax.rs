@@ -459,9 +459,10 @@ impl Syntax {
         source: &Rope,
         changeset: &ChangeSet,
     ) -> Result<(), Error> {
-        use std::collections::VecDeque;
+        use std::collections::{HashSet, VecDeque};
         let mut queue = VecDeque::new();
-        // let source = source.slice(..);
+        queue.push_back(self.root);
+
         let injection_callback = |language: &str| {
             self.loader
                 .language_configuration_for_injection_string(language)
@@ -470,21 +471,26 @@ impl Syntax {
                 })
         };
 
-        queue.push_back(self.root);
-
         // HAXX: for now, clear all layers except root so they get re-parsed
         self.layers.retain(|id, _| id == self.root);
 
-        // Workaround for Syntax::new() with empty changeset
-        if !changeset.is_empty() {
-            // TODO: do this in a recursive way
-            // Notify the tree about all the changes
-            let edits = generate_edits(old_source.slice(..), changeset);
-            let tree = self.layers[self.root].tree.as_mut().unwrap();
-            for edit in edits.iter().rev() {
-                // apply the edits in reverse. If we applied them in order then edit 1 would disrupt
-                // the positioning of edit 2
-                tree.edit(edit);
+        // Convert the changeset into tree sitter edits.
+        let edits = generate_edits(old_source, changeset);
+
+        // TODO: use the edits to update all layers markers
+        if !edits.is_empty() {
+            for layer in &mut self.layers.values_mut() {
+                for range in &mut layer.ranges {
+                    for edit in &edits {
+                        // if edit is after range, skip
+                        if edit.start_byte > range.end_byte {
+                            continue;
+                        }
+
+                        // if edit is before range, shift entire range by len
+                        if edit.old_end_byte < range.start_byte {}
+                    }
+                }
             }
         }
 
@@ -495,10 +501,26 @@ impl Syntax {
 
             let source_slice = source.slice(..);
 
-            while let Some(layer_id) = queue.pop_front() {
-                // Re-parse the tree.
-                self.layers[layer_id].parse(ts_parser, source)?;
+            let mut touched = HashSet::new();
 
+            // TODO: we should be able to avoid editing & parsing layers with ranges earlier in the document before the edit
+
+            while let Some(layer_id) = queue.pop_front() {
+                let layer = &mut self.layers[layer_id];
+
+                // If a tree already exists, notify it of changes.
+                if let Some(tree) = &mut layer.tree {
+                    for edit in edits.iter().rev() {
+                        // Apply the edits in reverse.
+                        // If we applied them in order then edit 1 would disrupt the positioning of edit 2.
+                        tree.edit(edit);
+                    }
+                }
+
+                // Re-parse the tree.
+                layer.parse(ts_parser, source)?;
+
+                // Switch to an immutable borrow.
                 let layer = &self.layers[layer_id];
 
                 // Process injections.
@@ -529,7 +551,6 @@ impl Syntax {
                                 intersect_ranges(&layer.ranges, &[content_node], include_children);
 
                             if !ranges.is_empty() {
-                                log::info!("{} {:?}", language_name, ranges);
                                 injections.push((config, ranges));
                             }
                         }
@@ -581,27 +602,45 @@ impl Syntax {
                 let depth = layer.depth + 1;
                 // TODO: can't inline this since matches borrows self.layers
                 for (config, ranges) in injections {
-                    let layer_id = self.layers.insert(LanguageLayer {
-                        tree: None,
-                        config,
-                        depth,
-                        ranges,
+                    // Find an existing layer
+                    let layer = self
+                        .layers
+                        .iter_mut()
+                        .find(|(_, layer)| {
+                            layer.depth == depth && // TODO: track parent id instead
+                            layer.config.language == config.language && layer.ranges == ranges
+                        })
+                        .map(|(id, _layer)| id);
+
+                    // ...or insert a new one.
+                    let layer_id = layer.unwrap_or_else(|| {
+                        self.layers.insert(LanguageLayer {
+                            tree: None,
+                            config,
+                            depth,
+                            ranges,
+                        })
                     });
+
                     queue.push_back(layer_id);
                 }
+
+                // Mark the layer as touched
+                touched.insert(layer_id);
+
+                // TODO: pre-process local scopes at this time, rather than highlight?
+                // would solve problems with locals not working across boundaries
             }
 
             // Return the cursor back in the pool.
             ts_parser.cursors.push(cursor);
 
-            Ok(()) // so we can use the try operator
-        })?;
+            // Remove all untouched layers
+            self.layers.retain(|id, _| touched.contains(&id));
 
-        Ok(())
+            Ok(())
+        })
     }
-
-    // fn buffer_changed -> call layer.update(range, new_text) on root layer and then all marker layers
-    // call this on transaction.apply() -> buffer_changed(changes)
 
     pub fn tree(&self) -> &Tree {
         self.layers[self.root].tree()
@@ -619,8 +658,6 @@ impl Syntax {
     //
     // layer update:
     // if range.len = 0 then remove the layer
-    // for change in changes { tree.edit(change) }
-    // tree = parser.parse(.., tree, ..)
     // calculate affected range and update injections
     // injection update:
     // look for existing injections
@@ -776,7 +813,7 @@ impl LanguageLayer {
 }
 
 pub(crate) fn generate_edits(
-    old_text: RopeSlice,
+    old_text: &Rope,
     changeset: &ChangeSet,
 ) -> Vec<tree_sitter::InputEdit> {
     use Operation::*;
@@ -784,11 +821,15 @@ pub(crate) fn generate_edits(
 
     let mut edits = Vec::new();
 
+    if changeset.changes.is_empty() {
+        return edits;
+    }
+
     let mut iter = changeset.changes.iter().peekable();
 
     // TODO; this is a lot easier with Change instead of Operation.
 
-    fn point_at_pos(text: RopeSlice, pos: usize) -> (usize, Point) {
+    fn point_at_pos(text: &Rope, pos: usize) -> (usize, Point) {
         let byte = text.char_to_byte(pos); // <- attempted to index past end
         let line = text.char_to_line(pos);
         let line_start_byte = text.line_to_byte(line);
@@ -1816,7 +1857,7 @@ mod test {
             &doc,
             vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
         );
-        let edits = generate_edits(doc.slice(..), transaction.changes());
+        let edits = generate_edits(&doc, transaction.changes());
         // transaction.apply(&mut state);
 
         assert_eq!(
@@ -1845,7 +1886,7 @@ mod test {
         let mut doc = Rope::from("fn test() {}");
         let transaction =
             Transaction::change(&doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-        let edits = generate_edits(doc.slice(..), transaction.changes());
+        let edits = generate_edits(&doc, transaction.changes());
         transaction.apply(&mut doc);
 
         assert_eq!(doc, "fn test(a: u32) {}");
