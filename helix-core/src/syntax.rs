@@ -493,18 +493,19 @@ impl Syntax {
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
 
+            let source_slice = source.slice(..);
+
             while let Some(layer_id) = queue.pop_front() {
                 // Re-parse the tree.
                 self.layers[layer_id].parse(ts_parser, source)?;
 
-                let source = source.slice(..);
                 let layer = &self.layers[layer_id];
 
                 // Process injections.
                 let matches = cursor.matches(
                     &layer.config.injections_query,
                     layer.tree().root_node(),
-                    RopeProvider(source),
+                    RopeProvider(source_slice),
                 );
                 let mut injections = Vec::new();
                 for mat in matches {
@@ -512,12 +513,12 @@ impl Syntax {
                         &layer.config,
                         &layer.config.injections_query,
                         &mat,
-                        source,
+                        source_slice,
                     );
 
                     // Explicitly remove this match so that none of its other captures will remain
                     // in the stream of captures.
-                    mat.remove(); // TODO: is this still necessary?
+                    mat.remove();
 
                     // If a language is found with the given name, then add a new language layer
                     // to the highlighted document.
@@ -542,7 +543,7 @@ impl Syntax {
                     let matches = cursor.matches(
                         combined_injections_query,
                         layer.tree().root_node(),
-                        RopeProvider(source),
+                        RopeProvider(source_slice),
                     );
                     for mat in matches {
                         let entry = &mut injections_by_pattern_index[mat.pattern_index];
@@ -550,7 +551,7 @@ impl Syntax {
                             &layer.config,
                             combined_injections_query,
                             &mat,
-                            source,
+                            source_slice,
                         );
                         if language_name.is_some() {
                             entry.0 = language_name;
