@@ -3689,22 +3689,22 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let line = range.cursor_line(text);
+        let cursor_line = range.cursor_line(text);
 
-        let line = match open {
+        let new_line = match open {
             // adjust position to the end of the line (next line - 1)
-            Open::Below => line + 1,
+            Open::Below => cursor_line + 1,
             // adjust position to the end of the previous line (current line - 1)
-            Open::Above => line,
+            Open::Above => cursor_line,
         };
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
-        let (line_end_index, line_end_offset_width) = if line == 0 {
+        let (line_end_index, line_end_offset_width) = if new_line == 0 {
             (0, 0)
         } else {
             (
-                line_end_char_index(&doc.text().slice(..), line.saturating_sub(1)),
+                line_end_char_index(&doc.text().slice(..), new_line.saturating_sub(1)),
                 doc.line_ending.len_chars(),
             )
         };
@@ -3715,8 +3715,10 @@ fn open(cx: &mut Context, open: Open) {
             doc.syntax(),
             text,
             line_end_index,
+            new_line.saturating_sub(1),
             true,
-        );
+        )
+        .unwrap_or_else(|| indent::indent_level_for_line(text.line(cursor_line), doc.tab_width()));
         let indent = doc.indent_unit().repeat(indent_level);
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
@@ -4451,48 +4453,48 @@ pub mod insert {
             };
             let curr = contents.get_char(pos).unwrap_or(' ');
 
-            // TODO: offset range.head by 1? when calculating?
+            let current_line = text.char_to_line(pos);
             let indent_level = indent::suggested_indent_for_pos(
                 doc.language_config(),
                 doc.syntax(),
                 text,
-                pos.saturating_sub(1),
+                pos,
+                current_line,
                 true,
-            );
-            let indent = doc.indent_unit().repeat(indent_level);
-            let mut text = String::with_capacity(1 + indent.len());
-            text.push_str(doc.line_ending.as_str());
-            text.push_str(&indent);
+            )
+            .unwrap_or_else(|| {
+                indent::indent_level_for_line(text.line(current_line), doc.tab_width())
+            });
 
-            let head = pos + offs + text.chars().count();
+            let indent = doc.indent_unit().repeat(indent_level);
+            let mut text = String::new();
+            // If we are between pairs (such as brackets), we want to insert an additional line which is indented one level more and place the cursor there
+            let new_head_pos = if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
+                let inner_indent = doc.indent_unit().repeat(indent_level + 1);
+                text.reserve_exact(2 + indent.len() + inner_indent.len());
+                text.push_str(doc.line_ending.as_str());
+                text.push_str(&inner_indent);
+                let new_head_pos = pos + offs + text.chars().count();
+                text.push_str(doc.line_ending.as_str());
+                text.push_str(&indent);
+                new_head_pos
+            } else {
+                text.reserve_exact(1 + indent.len());
+                text.push_str(doc.line_ending.as_str());
+                text.push_str(&indent);
+                pos + offs + text.chars().count()
+            };
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
-            ranges.push(Range::new(
-                if range.is_empty() {
-                    head
-                } else {
-                    range.anchor + offs
-                },
-                head,
-            ));
-
-            // if between a bracket pair
-            if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
-                // another newline, indent the end bracket one level less
-                let indent = doc.indent_unit().repeat(indent_level.saturating_sub(1));
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&indent);
-            }
-
+            ranges.push(Range::new(new_head_pos, new_head_pos));
             offs += text.chars().count();
 
             (pos, pos, Some(text.into()))
         });
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
-        //
 
         doc.apply(&transaction, view.id);
     }
