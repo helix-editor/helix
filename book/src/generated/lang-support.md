@@ -40,6 +40,7 @@
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
+| tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
