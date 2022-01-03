@@ -2322,12 +2322,7 @@ pub mod cmd {
         write_all_impl(cx, args, event, true, true)
     }
 
-    fn quit_all_impl(
-        editor: &mut Editor,
-        _args: &[Cow<str>],
-        _event: PromptEvent,
-        force: bool,
-    ) -> anyhow::Result<()> {
+    fn quit_all_impl(editor: &mut Editor, force: bool) -> anyhow::Result<()> {
         if !force {
             buffers_remaining_impl(editor)?;
         }
@@ -2343,18 +2338,18 @@ pub mod cmd {
 
     fn quit_all(
         cx: &mut compositor::Context,
-        args: &[Cow<str>],
-        event: PromptEvent,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(cx.editor, args, event, false)
+        quit_all_impl(cx.editor, false)
     }
 
     fn force_quit_all(
         cx: &mut compositor::Context,
-        args: &[Cow<str>],
-        event: PromptEvent,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(cx.editor, args, event, true)
+        quit_all_impl(cx.editor, true)
     }
 
     fn cquit(
@@ -2368,12 +2363,21 @@ pub mod cmd {
             .unwrap_or(1);
         cx.editor.exit_code = exit_code;
 
-        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
-        for view_id in views {
-            cx.editor.close(view_id);
-        }
+        quit_all_impl(cx.editor, false)
+    }
 
-        Ok(())
+    fn force_cquit(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let exit_code = args
+            .first()
+            .and_then(|code| code.parse::<i32>().ok())
+            .unwrap_or(1);
+        cx.editor.exit_code = exit_code;
+
+        quit_all_impl(cx.editor, true)
     }
 
     fn theme(
@@ -2875,6 +2879,13 @@ pub mod cmd {
             aliases: &["cq"],
             doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
             fun: cquit,
+            completer: None,
+        },
+        TypableCommand {
+            name: "cquit!",
+            aliases: &["cq!"],
+            doc: "Quit with exit code (default 1) forcefully (ignoring unsaved changes). Accepts an optional integer exit code (:cq! 2).",
+            fun: force_cquit,
             completer: None,
         },
         TypableCommand {
