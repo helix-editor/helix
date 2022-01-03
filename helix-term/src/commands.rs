@@ -1545,7 +1545,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let scrolloff = cx.editor.config.scrolloff;
 
-    let (_, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
 
     // TODO: could probably share with select_on_matches?
 
@@ -2046,7 +2046,7 @@ pub mod cmd {
 
     fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
         let jobs = &mut cx.jobs;
-        let (_, doc) = current!(cx.editor);
+        let doc = doc_mut!(cx.editor);
 
         if let Some(ref path) = path {
             doc.set_path(Some(path.as_ref().as_ref()))
@@ -2099,8 +2099,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-
+        let doc = doc!(cx.editor);
         if let Some(format) = doc.format() {
             let callback =
                 make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
@@ -2409,7 +2408,7 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let doc = doc!(cx.editor);
         let default_sep = Cow::Borrowed(doc.line_ending.as_str());
         let separator = args.first().unwrap_or(&default_sep);
         yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Clipboard)
@@ -2428,7 +2427,7 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let doc = doc!(cx.editor);
         let default_sep = Cow::Borrowed(doc.line_ending.as_str());
         let separator = args.first().unwrap_or(&default_sep);
         yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Selection)
@@ -2555,7 +2554,7 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let doc = doc_mut!(cx.editor);
         if let Some(label) = args.first() {
             doc.set_encoding(label)
         } else {
@@ -3247,7 +3246,7 @@ fn symbol_picker(cx: &mut Context) {
             nested_to_flat(list, file, child);
         }
     }
-    let (_, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
 
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
@@ -3268,7 +3267,7 @@ fn symbol_picker(cx: &mut Context) {
                 let symbols = match symbols {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
-                        let (_view, doc) = current!(editor);
+                        let doc = doc!(editor);
                         let mut flat_symbols = Vec::new();
                         for symbol in symbols {
                             nested_to_flat(&mut flat_symbols, &doc.identifier(), symbol)
@@ -3310,17 +3309,15 @@ fn symbol_picker(cx: &mut Context) {
 }
 
 fn workspace_symbol_picker(cx: &mut Context) {
-    let (_, doc) = current!(cx.editor);
-
+    let doc = doc!(cx.editor);
+    let current_path = doc.path().cloned();
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
     let offset_encoding = language_server.offset_encoding();
-
     let future = language_server.workspace_symbols("".to_string());
 
-    let current_path = doc_mut!(cx.editor).path().cloned();
     cx.callback(
         future,
         move |_editor: &mut Editor,
@@ -3430,8 +3427,7 @@ pub fn code_action(cx: &mut Context) {
 }
 
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
-    let (_view, doc) = current!(editor);
-
+    let doc = doc!(editor);
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
@@ -4185,27 +4181,21 @@ fn goto_pos(editor: &mut Editor, pos: usize) {
 }
 
 fn goto_first_diag(cx: &mut Context) {
-    let editor = &mut cx.editor;
-    let (_, doc) = current!(editor);
-
+    let doc = doc!(cx.editor);
     let pos = match doc.diagnostics().first() {
         Some(diag) => diag.range.start,
         None => return,
     };
-
-    goto_pos(editor, pos);
+    goto_pos(cx.editor, pos);
 }
 
 fn goto_last_diag(cx: &mut Context) {
-    let editor = &mut cx.editor;
-    let (_, doc) = current!(editor);
-
+    let doc = doc!(cx.editor);
     let pos = match doc.diagnostics().last() {
         Some(diag) => diag.range.start,
         None => return,
     };
-
-    goto_pos(editor, pos);
+    goto_pos(cx.editor, pos);
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -5270,7 +5260,7 @@ pub fn completion(cx: &mut Context) {
         move |editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CompletionResponse>| {
-            let (_, doc) = current!(editor);
+            let doc = doc!(editor);
             if doc.mode() != Mode::Insert {
                 // we're not in insert mode anymore
                 return;
