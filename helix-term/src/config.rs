@@ -12,12 +12,35 @@ pub struct Config {
     pub keys: Keymaps,
     #[serde(default)]
     pub editor: helix_view::editor::Config,
+    pub gutters: GuttersConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     pub display_messages: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GuttersConfig {
+    pub utility: usize,
+    pub line_number: usize,
+    pub lsp: usize,
+    //  pub gutter.diagnostic.width: usize
+    //  pub gutter.line_number.width: usize
+}
+
+impl Default for GuttersConfig {
+    fn default() -> Self {
+        Self {
+            utility: 13,
+            line_number: 11,
+            lsp: 3,
+            //hidden: true,
+            //max_depth: None,
+        }
+    }
 }
 
 #[test]

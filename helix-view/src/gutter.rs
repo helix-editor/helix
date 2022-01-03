@@ -6,6 +6,18 @@ pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> 
 pub type Gutter =
     for<'doc> fn(&'doc Document, &View, &Theme, &Config, bool, usize) -> GutterFn<'doc>;
 
+//pub fn build_gutters() -> [(Gutter, usize)] {
+//let ret = [
+// TODO: adaptive?
+// only create if width > 0?
+// width three for now to demonstrate.
+//  (utility(), 3),
+//  (diagnostic(), 1),
+//  (line_number(), 5),
+// ];
+//return ret;
+//}
+
 pub fn utility<'doc>(
     _doc: &'doc Document,
     _view: &View,

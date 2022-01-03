@@ -90,6 +90,8 @@ FLAGS:
         std::fs::create_dir_all(&conf_dir).ok();
     }
 
+    // once_cell ?
+    // use once_cell::sync::Lazy;
     let config = match std::fs::read_to_string(conf_dir.join("config.toml")) {
         Ok(config) => toml::from_str(&config)
             .map(merge_keys)

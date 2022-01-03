@@ -64,14 +64,18 @@ impl JumpList {
     }
 }
 
-const GUTTERS: &[(Gutter, usize)] = &[
-    // TODO: adaptive?
-    // only create if width > 0?
-    // width three for now to demonstrate.
-    (gutter::utility, 3),
-    (gutter::diagnostic, 1),
-    (gutter::line_number, 5),
-];
+//const GUTTERS: &[(Gutter, usize)] = gutter::build_gutters();
+
+pub fn gutter_build_demo() -> [(Gutter, usize)] {
+    &[
+        // TODO: adaptive?
+        // only create if width > 0?
+        // width three for now to demonstrate.
+        (gutter::utility, 3),
+        (gutter::diagnostic, 1),
+        (gutter::line_number, 5),
+    ];
+}
 
 #[derive(Debug)]
 pub struct View {
@@ -102,8 +106,9 @@ impl View {
         }
     }
 
-    pub fn gutters(&self) -> &[(Gutter, usize)] {
-        GUTTERS
+    pub fn gutters(&self) -> [(Gutter, usize)] {
+        //GUTTERS
+        gutter_build_demo()
     }
 
     pub fn inner_area(&self) -> Rect {
