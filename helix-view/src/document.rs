@@ -19,7 +19,7 @@ use helix_core::{
 };
 use helix_lsp::util::LspFormatting;
 
-use crate::{DocumentId, Theme, ViewId};
+use crate::{DocumentId, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -358,7 +358,6 @@ impl Document {
     pub fn open(
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
-        theme: Option<&Theme>,
         config_loader: Option<Arc<syntax::Loader>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
@@ -376,7 +375,7 @@ impl Document {
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
         if let Some(loader) = config_loader {
-            doc.detect_language(theme, loader);
+            doc.detect_language(loader);
         }
 
         doc.detect_indent_and_line_ending();
@@ -498,12 +497,12 @@ impl Document {
     }
 
     /// Detect the programming language based on the file type.
-    pub fn detect_language(&mut self, theme: Option<&Theme>, config_loader: Arc<syntax::Loader>) {
+    pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
         if let Some(path) = &self.path {
             let language_config = config_loader
                 .language_config_for_file_name(path)
                 .or_else(|| config_loader.language_config_for_shebang(self.text()));
-            self.set_language(theme, language_config, Some(config_loader));
+            self.set_language(language_config, Some(config_loader));
         }
     }
 
@@ -577,16 +576,13 @@ impl Document {
     /// if it exists.
     pub fn set_language(
         &mut self,
-        theme: Option<&Theme>,
         language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
         loader: Option<Arc<helix_core::syntax::Loader>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            let scopes = theme.map(|theme| theme.scopes()).unwrap_or(&[]);
-            if let Some(highlight_config) = language_config.highlight_config(scopes) {
+            if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
                 let syntax = Syntax::new(&self.text, highlight_config, loader);
                 self.syntax = Some(syntax);
-                // TODO: config.configure(scopes) is now delayed, is that ok?
             }
 
             self.language = Some(language_config);
@@ -601,12 +597,11 @@ impl Document {
     pub fn set_language2(
         &mut self,
         scope: &str,
-        theme: Option<&Theme>,
         config_loader: Arc<syntax::Loader>,
     ) {
         let language_config = config_loader.language_config_for_scope(scope);
 
-        self.set_language(theme, language_config, Some(config_loader));
+        self.set_language(language_config, Some(config_loader));
     }
 
     /// Set the LSP.

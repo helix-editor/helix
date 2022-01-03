@@ -8,7 +8,7 @@ use crate::{
 
 pub use helix_syntax::get_language;
 
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, Guard};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -264,12 +264,16 @@ impl LanguageConfiguration {
     }
 }
 
+// Expose loader as Lazy<> global since it's always static?
+
 #[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_file_type: HashMap<String, usize>, // Vec<usize>
     language_config_ids_by_shebang: HashMap<String, usize>,
+
+    scopes: ArcSwap<Vec<String>>,
 }
 
 impl Loader {
@@ -278,6 +282,7 @@ impl Loader {
             language_configs: Vec::new(),
             language_config_ids_by_file_type: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
+            scopes: ArcSwap::from_pointee(Vec::new()),
         };
 
         for config in config.language {
@@ -363,8 +368,22 @@ impl Loader {
         }
         None
     }
-    pub fn language_configs_iter(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
-        self.language_configs.iter()
+
+    pub fn set_scopes(&self, scopes: Vec<String>) {
+        self.scopes.store(Arc::new(scopes));
+
+        // Reconfigure existing grammars
+        for config in self
+            .language_configs
+            .iter()
+            .filter(|cfg| cfg.is_highlight_initialized())
+        {
+            config.reconfigure(&self.scopes());
+        }
+    }
+
+    pub fn scopes(&self) -> Guard<Arc<Vec<String>>> {
+        self.scopes.load()
     }
 }
 
@@ -447,33 +466,7 @@ impl Syntax {
             self.loader
                 .language_configuration_for_injection_string(language)
                 .and_then(|language_config| {
-                    // TODO: get these theme.scopes from somewhere, probably make them settable on Loader
-                    let scopes = &[
-                        "attribute",
-                        "constant",
-                        "function.builtin",
-                        "function",
-                        "keyword",
-                        "operator",
-                        "property",
-                        "punctuation",
-                        "punctuation.bracket",
-                        "punctuation.delimiter",
-                        "string",
-                        "string.special",
-                        "tag",
-                        "type",
-                        "type.builtin",
-                        "variable",
-                        "variable.builtin",
-                        "variable.parameter",
-                    ];
-                    language_config.highlight_config(
-                        &scopes
-                            .iter()
-                            .map(|scope| scope.to_string())
-                            .collect::<Vec<_>>(),
-                    )
+                    language_config.highlight_config(&self.loader.scopes.load())
                 })
         };
 

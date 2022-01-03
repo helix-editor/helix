@@ -268,13 +268,7 @@ impl Editor {
         }
 
         let scopes = theme.scopes();
-        for config in self
-            .syn_loader
-            .language_configs_iter()
-            .filter(|cfg| cfg.is_highlight_initialized())
-        {
-            config.reconfigure(scopes);
-        }
+        self.syn_loader.set_scopes(scopes.to_vec());
 
         self.theme = theme;
         self._refresh();
@@ -283,7 +277,7 @@ impl Editor {
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
         let doc = self.documents.get_mut(&doc_id)?;
-        doc.detect_language(Some(&self.theme), self.syn_loader.clone());
+        doc.detect_language(self.syn_loader.clone());
         Self::launch_language_server(&mut self.language_servers, doc)
     }
 
@@ -465,7 +459,6 @@ impl Editor {
             let mut doc = Document::open(
                 &path,
                 None,
-                Some(&self.theme),
                 Some(self.syn_loader.clone()),
             )?;
 
