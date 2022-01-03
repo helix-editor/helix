@@ -48,3 +48,4 @@
   ])
 
 (class_character) @constant.character
+(pattern_character) @string
