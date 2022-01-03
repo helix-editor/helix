@@ -638,7 +638,7 @@ impl Syntax {
         let mut layers = self
             .layers
             .iter()
-            .map(|(_, layer)| {
+            .flat_map(|(_, layer)| {
                 // Reuse a cursor from the pool if available.
                 let mut cursor = PARSER.with(|ts_parser| {
                     let highlighter = &mut ts_parser.borrow_mut();
@@ -656,7 +656,7 @@ impl Syntax {
                 // cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
                 cursor_ref.set_byte_range(0..usize::MAX);
 
-                let captures = cursor_ref
+                let mut captures = cursor_ref
                     .captures(
                         &layer.config.query,
                         layer.tree().root_node(),
@@ -664,7 +664,12 @@ impl Syntax {
                     )
                     .peekable();
 
-                HighlightIterLayer {
+                // If there's no captures, skip the layer
+                if captures.peek().is_none() {
+                    return None;
+                }
+
+                Some(HighlightIterLayer {
                     highlight_end_stack: Vec::new(),
                     scope_stack: vec![LocalScope {
                         inherits: false,
@@ -674,10 +679,10 @@ impl Syntax {
                     cursor,
                     _tree: None,
                     captures,
-                    config: layer.config.as_ref(), // TODO: just reuse
-                    depth: layer.depth,            // TODO: just reuse
-                    ranges: layer.ranges.clone(),
-                }
+                    config: layer.config.as_ref(), // TODO: just reuse `layer`
+                    depth: layer.depth,            // TODO: just reuse `layer`
+                    ranges: &layer.ranges,         // TODO: temp
+                })
             })
             .collect::<Vec<_>>();
 
@@ -701,9 +706,6 @@ impl Syntax {
             last_highlight_range: None,
         };
         result.sort_layers();
-        for layer in &result.layers {
-            log::info!("> {:?} {:?}", layer.depth, layer.ranges); // <- for some reason layers are reversed here
-        }
         result
     }
     // on_tokenize
@@ -987,7 +989,7 @@ struct HighlightIterLayer<'a> {
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
     depth: usize,
-    ranges: Vec<Range>, // TEMP
+    ranges: &'a [Range],
 }
 
 impl<'a> fmt::Debug for HighlightIterLayer<'a> {
