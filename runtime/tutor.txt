@@ -140,8 +140,9 @@ _________________________________________________________________
     terminal.
  2. Open a file in Helix by running: hx FILENAME
  3. Make some edits to the file.
- 4. Press the : key to enter command mode.
- 5. Type w or write, and press <ENTER> to save the file.
+ 4. Press <ESC> to enter Normal mode.
+ 5. Press the : key to enter command mode.
+ 6. Type w or write, and press <ENTER> to save the file.
 
  You can also use wq or write-quit to save and exit.
 
