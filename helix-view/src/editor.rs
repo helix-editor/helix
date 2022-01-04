@@ -667,7 +667,7 @@ impl Editor {
                     view.jumps.push(jump);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
-                        view.last_accessed_doc = Some(view.doc);
+                        view.add_to_history(view.doc);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
                             && view.last_modified_docs[0] != Some(view.doc)
@@ -792,18 +792,15 @@ impl Editor {
 
         let actions: Vec<Action> = self
             .tree
-            .views()
+            .views_mut()
             .filter_map(|(view, _focus)| {
                 if view.doc == doc_id {
-                    match view.last_accessed_doc {
-                        Some(doc_id) => {
-                            // something was previously o[en in the view, switch to previous doc
-                            Some(Action::ReplaceDoc(view.id, doc_id))
-                        }
-                        None => {
-                            // only the document that is being closed was in the view, close it
-                            Some(Action::Close(view.id))
-                        }
+                    // something was previously open in the view, switch to previous doc
+                    if let Some(prev_doc) = view.docs_access_history.pop() {
+                        Some(Action::ReplaceDoc(view.id, prev_doc))
+                    } else {
+                        // only the document that is being closed was in the view, close it
+                        Some(Action::Close(view.id))
                     }
                 } else {
                     None
