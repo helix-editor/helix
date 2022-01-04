@@ -28,7 +28,7 @@
 "ui.linenr.selected" = { fg = "foreground" }
 "ui.menu" = { fg = "foreground", bg = "background_dark" }
 "ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
-"ui.popup" = { fg = "foreground" }
+"ui.popup" = { fg = "foreground", bg = "background_dark" }
 "ui.selection" = { fg = "background", bg = "purple", modifiers = ["dim"] }
 "ui.selection.primary" = { fg = "background", bg = "pink" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
