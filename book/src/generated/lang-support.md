@@ -27,6 +27,7 @@
 | llvm-mir | ✓ | ✓ | ✓ |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ |  | ✓ |  |
+| make | ✓ |  |  |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
