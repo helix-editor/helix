@@ -436,6 +436,7 @@ where
                 comment_token: None,
                 auto_format: false,
                 diagnostic_severity: Severity::Warning,
+                tree_sitter_library: None,
                 language_server: None,
                 indent: Some(IndentationConfiguration {
                     tab_width: 4,
