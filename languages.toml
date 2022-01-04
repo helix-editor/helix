@@ -390,6 +390,13 @@ language-server = { command = "cmake-language-server" }
 injection-regex = "cmake"
 
 [[language]]
+name = "make"
+scope = "source.make"
+file-types = ["Makefile", "makefile", "justfile", ".justfile"]
+roots =[]
+comment-token = "#"
+
+[[language]]
 name = "glsl"
 scope = "source.glsl"
 file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
