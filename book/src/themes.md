@@ -147,6 +147,7 @@ We use a similar set of scopes as
     - `repeat` - `for`, `while`, `loop`
     - `import` - `import`, `export`
     - `return`
+    - `exception`
   - `operator` - `or`, `in`
   - `directive` - Preprocessor directives (`#if` in C) 
   - `function` - `fn`, `func`
