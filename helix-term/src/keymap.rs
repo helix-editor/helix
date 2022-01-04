@@ -753,6 +753,7 @@ impl Default for Keymaps {
             "ret" => insert_newline,
             "tab" => insert_tab,
             "C-w" => delete_word_backward,
+            "A-backspace" => delete_word_backward,
             "A-d" => delete_word_forward,
 
             "left" => move_char_left,
