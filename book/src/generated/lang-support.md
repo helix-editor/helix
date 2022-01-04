@@ -1,11 +1,11 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
 | bash | ✓ |  |  | `bash-language-server` |
-| c | ✓ |  |  | `clangd` |
+| c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  |  |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
-| cpp | ✓ |  |  | `clangd` |
+| cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  |  |
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
