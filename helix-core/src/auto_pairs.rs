@@ -47,27 +47,40 @@ impl AutoPairs {
     /// Make a new AutoPairs set with the given pairs and default conditions.
     pub fn new<'a, V: 'a>(pairs: V) -> Self
     where
-        V: IntoIterator<Item = &'a (char, char)>,
+        V: IntoIterator<Item = (char, char)>,
+    {
+        Self::new_with_conditions(pairs.into_iter().map(|(open, close)| (open, close, None)))
+    }
+
+    /// Make a new AutoPairs set with the given pairs and default conditions.
+    pub fn new_with_conditions<'a, V: 'a>(pairs: V) -> Self
+    where
+        V: IntoIterator<Item = (char, char, Option<Vec<PairPredicate>>)>,
     {
         let mut auto_pairs = HashMap::new();
 
-        for (open, close) in pairs.into_iter() {
-            let mut conditions: Vec<PairPredicate> = vec![Box::new(Self::next_is_not_alpha)];
+        for (open, close, mut conditions) in pairs.into_iter() {
+            if conditions.is_none() {
+                let mut default_conditions: Vec<PairPredicate> =
+                    vec![Box::new(Self::next_is_not_alpha)];
 
-            if open == close {
-                conditions.push(Box::new(Self::prev_is_not_alpha));
+                if open == close {
+                    default_conditions.push(Box::new(Self::prev_is_not_alpha));
+                }
+
+                conditions = Some(default_conditions)
             }
 
             let auto_pair = Rc::new(AutoPair {
-                open: *open,
-                close: *close,
-                conditions,
+                open,
+                close,
+                conditions: conditions.unwrap(),
             });
 
-            auto_pairs.insert(*open, auto_pair.clone());
+            auto_pairs.insert(open, auto_pair.clone());
 
             if open != close {
-                auto_pairs.insert(*close, auto_pair);
+                auto_pairs.insert(close, auto_pair);
             }
         }
 
@@ -112,7 +125,7 @@ pub fn hook(
     pairs: Option<AutoPairs>,
 ) -> Option<Transaction> {
     debug!("autopairs hook selection: {:#?}", selection);
-    let pairs = pairs.unwrap_or_else(|| AutoPairs::new(PAIRS));
+    let pairs = pairs.unwrap_or_else(|| AutoPairs::new(PAIRS.iter().cloned()));
 
     if let Some(pair) = pairs.get(ch) {
         if pair.same() {
@@ -292,8 +305,8 @@ mod test {
         expected_sel: &Selection,
     ) {
         let pairs = pairs
-            .map(|p| AutoPairs::new(p))
-            .or_else(|| Some(AutoPairs::new(PAIRS)));
+            .map(|p| AutoPairs::new(p.iter().cloned()))
+            .or_else(|| Some(AutoPairs::new(PAIRS.iter().cloned())));
         let trans = hook(&in_doc, &in_sel, ch, pairs).unwrap();
         let mut actual_doc = in_doc.clone();
         assert!(trans.apply(&mut actual_doc));

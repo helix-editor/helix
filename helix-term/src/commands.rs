@@ -4406,7 +4406,7 @@ pub mod insert {
 
         let transaction = match &cx.editor.config.auto_pairs {
             AutoPairConfig::Pairs(pairs) => {
-                auto_pairs::hook(text, selection, c, Some(AutoPairs::new(pairs)))
+                auto_pairs::hook(text, selection, c, Some(AutoPairs::new(pairs.clone())))
             }
             AutoPairConfig::Enable(true) => auto_pairs::hook(text, selection, c, None),
             AutoPairConfig::Enable(false) => None,
