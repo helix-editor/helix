@@ -768,6 +768,8 @@ impl Default for Keymaps {
             "A-left" => move_prev_word_end,
             "A-f" => move_next_word_start,
             "A-right" => move_next_word_start,
+            "A-<" => goto_file_start,
+            "A->" => goto_last_line,
             "pageup" => page_up,
             "pagedown" => page_down,
             "home" => goto_line_start,
