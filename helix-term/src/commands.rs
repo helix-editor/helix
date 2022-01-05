@@ -2277,7 +2277,7 @@ pub mod cmd {
         force: bool,
     ) -> anyhow::Result<()> {
         let mut errors = String::new();
-
+        let jobs = &mut cx.jobs;
         // save all documents
         for doc in &mut cx.editor.documents.values_mut() {
             if doc.path().is_none() {
@@ -2285,9 +2285,23 @@ pub mod cmd {
                 continue;
             }
 
-            // TODO: handle error.
-            let handle = doc.save();
-            cx.jobs.add(Job::new(handle).wait_before_exiting());
+            if !doc.is_modified() {
+                continue;
+            }
+
+            let fmt = doc.auto_format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            });
+            let future = doc.format_and_save(fmt);
+            jobs.add(Job::new(future).wait_before_exiting());
         }
 
         if quit {
