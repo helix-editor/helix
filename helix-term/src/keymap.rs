@@ -769,7 +769,7 @@ impl Default for Keymaps {
             "A-f" => move_next_word_start,
             "A-right" => move_next_word_start,
             "A-<" => goto_file_start,
-            "A->" => goto_last_line,
+            "A->" => goto_file_end,
             "pageup" => page_up,
             "pagedown" => page_down,
             "home" => goto_line_start,
