@@ -66,9 +66,9 @@
 (binders
   type: (identifier) @type)
 
-["if" "then" "else"] @conditional
+["if" "then" "else"] @keyword.control.conditional
 
-["for" "in" "do"] @repeat
+["for" "in" "do"] @keyword.control.repeat
 
 (import) @include
 
@@ -191,8 +191,8 @@
 
 [(true) (false)] @boolean
 
-(number) @number
-(float) @float
+(number) @constant.numeric.integer
+(float) @constant.numeric.float
 
 (comment) @comment
 (char) @character

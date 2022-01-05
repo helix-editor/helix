@@ -22,7 +22,7 @@
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
-| lean |  |  |  | `lean` |
+| lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
 | lua | ✓ |  | ✓ |  |
