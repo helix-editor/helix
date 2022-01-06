@@ -1639,7 +1639,7 @@ fn search_selection(cx: &mut Context) {
     let query = doc.selection(view.id).primary().fragment(contents);
     let regex = regex::escape(&query);
     cx.editor.registers.get_mut('/').push(regex);
-    let msg = format!("register '{}' set to '{}'", '\\', query);
+    let msg = format!("register '{}' set to '{}'", '/', query);
     cx.editor.set_status(msg);
 }
 
