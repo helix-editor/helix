@@ -377,6 +377,7 @@ scope = "source.tsq"
 file-types = ["scm"]
 roots = []
 comment-token = ";"
+injection-regex = "tsq"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
