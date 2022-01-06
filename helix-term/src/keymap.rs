@@ -569,11 +569,13 @@ impl Default for Keymaps {
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
                 "space" => add_newline_above,
+                "o" => shrink_selection,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
                 "space" => add_newline_below,
+                "o" => expand_selection,
             },
 
             "/" => search,
