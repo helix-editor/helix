@@ -94,6 +94,9 @@
   "rec"
   "forall"
   "∀"
+  "infix"
+  "infixl"
+  "infixr"
 ] @keyword
 
 
