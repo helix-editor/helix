@@ -569,11 +569,13 @@ impl Default for Keymaps {
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
                 "space" => add_newline_above,
+                "o" => shrink_selection,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
                 "space" => add_newline_below,
+                "o" => expand_selection,
             },
 
             "/" => search,
@@ -593,8 +595,8 @@ impl Default for Keymaps {
             // paste_all
             "P" => paste_before,
 
-            "q" => record_macro,
-            "Q" => play_macro,
+            "Q" => record_macro,
+            "q" => replay_macro,
 
             ">" => indent,
             "<" => unindent,
@@ -616,6 +618,8 @@ impl Default for Keymaps {
             ")" => rotate_selections_forward,
             "A-(" => rotate_selection_contents_backward,
             "A-)" => rotate_selection_contents_forward,
+
+            "A-:" => ensure_selections_forward,
 
             "esc" => normal_mode,
             "C-b" | "pageup" => page_up,

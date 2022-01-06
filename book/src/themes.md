@@ -105,6 +105,7 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+- `constructor`
 
 - `constant` (TODO: constant.other.placeholder for %v)
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
@@ -169,12 +170,19 @@ We use a similar set of scopes as
     - `numbered`
   - `bold`
   - `italic`
-  - `underline`
-    - `link`
+  - `link`
+    - `url`
+    - `label`
   - `quote`
   - `raw`
     - `inline`
     - `block`
+
+- `diff` - version control changes
+  - `plus` - additions
+  - `minus` - deletions
+  - `delta` - modifications
+    - `moved` - renamed or moved files/changes
 
 #### Interface
 

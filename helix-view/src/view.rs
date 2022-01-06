@@ -80,6 +80,8 @@ pub struct View {
     // uses two docs because we want to be able to swap between the
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
+    /// used to store previous selections of tree-sitter objecs
+    pub object_selections: Vec<Selection>,
 }
 
 impl View {
@@ -92,6 +94,7 @@ impl View {
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             last_accessed_doc: None,
             last_modified_docs: [None, None],
+            object_selections: Vec::new(),
         }
     }
 

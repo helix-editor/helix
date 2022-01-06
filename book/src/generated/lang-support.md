@@ -1,12 +1,19 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
 | bash | ✓ |  |  | `bash-language-server` |
-| c | ✓ |  |  | `clangd` |
+| c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ |  |  |  |
-| cmake | ✓ |  |  | `cmake-language-server` |
-| cpp | ✓ |  |  | `clangd` |
+| cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
+| comment | ✓ |  |  |  |
+| cpp | ✓ | ✓ | ✓ | `clangd` |
 | css | ✓ |  |  |  |
+| dart | ✓ |  | ✓ | `dart` |
+| dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
+| fish | ✓ | ✓ | ✓ |  |
+| git-commit | ✓ |  |  |  |
+| git-diff | ✓ |  |  |  |
+| git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |
@@ -16,7 +23,9 @@
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
 | ledger | ✓ |  |  |  |
-| llvm | ✓ |  |  |  |
+| llvm | ✓ | ✓ | ✓ |  |
+| llvm-mir | ✓ | ✓ | ✓ |  |
+| llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ |  | ✓ |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
@@ -29,9 +38,11 @@
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | racket |  |  |  | `racket` |
-| ruby | ✓ |  |  | `solargraph` |
+| ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
+| scala | ✓ |  | ✓ | `metals` |
 | svelte | ✓ |  | ✓ | `svelteserver` |
+| tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |

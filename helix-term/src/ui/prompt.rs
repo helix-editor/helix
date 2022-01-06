@@ -127,7 +127,7 @@ impl Prompt {
                 let mut char_position = char_indices
                     .iter()
                     .position(|(idx, _)| *idx == self.cursor)
-                    .unwrap_or_else(|| char_indices.len());
+                    .unwrap_or(char_indices.len());
 
                 for _ in 0..rep {
                     // Skip any non-whitespace characters
@@ -473,7 +473,7 @@ impl Component for Prompt {
                 }
             }
             key!(Enter) => {
-                if self.selection.is_some() && self.line.ends_with('/') {
+                if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.completion = (self.completion_fn)(&self.line);
                     self.exit_selection();
                 } else {

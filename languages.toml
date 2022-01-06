@@ -3,15 +3,11 @@ name = "rust"
 scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
-roots = []
+roots = ["Cargo.toml", "Cargo.lock"]
 auto-format = true
 comment-token = "//"
 language-server = { command = "rust-analyzer" }
 indent = { tab-width = 4, unit = "    " }
-[language.config]
-cargo = { loadOutDirsFromCheck = true }
-procMacro = { enable = false }
-diagnostics = { disabled = ["unresolved-proc-macro"] }
 
 [[language]]
 name = "toml"
@@ -44,6 +40,17 @@ comment-token = "#"
 
 language-server = { command = "elixir-ls" }
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "fish"
+scope = "source.fish"
+injection-regex = "fish"
+file-types = ["fish"]
+shebangs = ["fish"]
+roots = []
+comment-token = "#"
+
+indent = { tab-width = 4, unit = "    " }
 
 [[language]]
 name = "mint"
@@ -327,6 +334,7 @@ file-types = ["yml", "yaml"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+injection-regex = "yml|yaml"
 
 # [[language]]
 # name = "haskell"
@@ -379,6 +387,7 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cmake-language-server" }
+injection-regex = "cmake"
 
 [[language]]
 name = "glsl"
@@ -387,6 +396,7 @@ file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
+injection-regex = "glsl"
 
 [[language]]
 name = "perl"
@@ -407,6 +417,13 @@ comment-token = ";"
 language-server = { command = "racket", args = ["-l", "racket-langserver"] }
 
 [[language]]
+name = "comment"
+scope = "scope.comment"
+roots = []
+file-types = []
+injection-regex = "comment"
+
+[[language]]
 name = "wgsl"
 scope = "source.wgsl"
 file-types = ["wgsl"]
@@ -421,6 +438,34 @@ roots = []
 file-types = ["ll"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+injection-regex = "llvm"
+
+[[language]]
+name = "llvm-mir"
+scope = "source.llvm_mir"
+roots = []
+file-types = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "mir"
+
+[[language]]
+name = "llvm-mir-yaml"
+tree-sitter-library = "yaml"
+scope = "source.yaml"
+roots = []
+file-types = ["mir"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "tablegen"
+scope = "source.tablegen"
+roots = []
+file-types = ["td"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "tablegen"
 
 [[language]]
 name = "markdown"
@@ -430,3 +475,58 @@ file-types = ["md"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "dart"
+scope = "source.dart"
+file-types = ["dart"]
+roots = ["pubspec.yaml"]
+auto-format = true
+comment-token = "//"
+language-server = { command = "dart", args = ["language-server", "--client-id=helix"] }
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "scala"
+scope = "source.scala"
+roots = ["build.sbt"]
+file-types = ["scala", "sbt"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "metals" }
+
+[[language]]
+name = "dockerfile"
+scope = "source.dockerfile"
+injection-regex = "docker|dockerfile"
+roots = ["Dockerfile"]
+file-types = ["Dockerfile", "dockerfile"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "docker-langserver", args = ["--stdio"] }
+
+[[language]]
+name = "git-commit"
+scope = "git.commitmsg"
+roots = []
+file-types = ["COMMIT_EDITMSG"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "git-diff"
+scope = "source.diff"
+roots = []
+file-types = ["diff"]
+injection-regex = "diff"
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "git-rebase"
+scope = "source.gitrebase"
+roots = []
+file-types = ["git-rebase-todo"]
+injection-regex = "git-rebase"
+comment-token = "#"
+indent = { tab-width = 2, unit = " " }

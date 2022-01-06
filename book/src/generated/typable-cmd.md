@@ -20,6 +20,7 @@
 | `:quit-all`, `:qa` | Close all views. |
 | `:quit-all!`, `:qa!` | Close all views forcefully (ignoring unsaved changes). |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
+| `:cquit!`, `:cq!` | Quit with exit code (default 1) forcefully (ignoring unsaved changes). Accepts an optional integer exit code (:cq! 2). |
 | `:theme` | Change the editor theme. |
 | `:clipboard-yank` | Yank main selection into system clipboard. |
 | `:clipboard-yank-join` | Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline. |
@@ -41,3 +42,6 @@
 | `:hsplit`, `:hs`, `:sp` | Open the file in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Go to line number. |
+| `:set-option`, `:set` | Set a config option at runtime |
+| `:sort` | Sort ranges in selection. |
+| `:rsort` | Sort ranges in selection in reverse order. |

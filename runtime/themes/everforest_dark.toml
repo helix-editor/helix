@@ -12,7 +12,7 @@
 "type" = "yellow"
 "constant" = "purple"
 "constant.numeric" = "purple"
-"string" = "grey2"
+"string" = "green"
 "comment" = "grey0"
 "variable" = "fg"
 "variable.builtin" = "blue"
@@ -33,6 +33,10 @@
 "constructor" = "yellow"
 "module" = "blue"
 "special" = "orange"
+
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "red"
 
 "ui.background" = { bg = "bg0" }
 "ui.cursor" = { fg = "bg0", bg = "fg" }

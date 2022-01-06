@@ -7,7 +7,7 @@ use crate::{
 };
 
 use helix_core::{
-    coords_at_pos,
+    coords_at_pos, encoding,
     graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, HighlightEvent},
@@ -566,21 +566,6 @@ impl EditorView {
         }
         surface.set_string(viewport.x + 5, viewport.y, progress, base_style);
 
-        let rel_path = doc.relative_path();
-        let path = rel_path
-            .as_ref()
-            .map(|p| p.to_string_lossy())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-
-        let title = format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" });
-        surface.set_stringn(
-            viewport.x + 8,
-            viewport.y,
-            title,
-            viewport.width.saturating_sub(6) as usize,
-            base_style,
-        );
-
         //-------------------------------
         // Right side of the status line.
         //-------------------------------
@@ -654,6 +639,13 @@ impl EditorView {
             base_style,
         ));
 
+        let enc = doc.encoding();
+        if enc != encoding::UTF_8 {
+            right_side_text
+                .0
+                .push(Span::styled(format!(" {} ", enc.name()), base_style));
+        }
+
         // Render to the statusline.
         surface.set_spans(
             viewport.x
@@ -663,6 +655,31 @@ impl EditorView {
             viewport.y,
             &right_side_text,
             right_side_text.width() as u16,
+        );
+
+        //-------------------------------
+        // Middle / File path / Title
+        //-------------------------------
+        let title = {
+            let rel_path = doc.relative_path();
+            let path = rel_path
+                .as_ref()
+                .map(|p| p.to_string_lossy())
+                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+            format!("{}{}", path, if doc.is_modified() { "[+]" } else { "" })
+        };
+
+        surface.set_string_truncated(
+            viewport.x + 8, // 8: 1 space + 3 char mode string + 1 space + 1 spinner + 1 space
+            viewport.y,
+            title,
+            viewport
+                .width
+                .saturating_sub(6)
+                .saturating_sub(right_side_text.width() as u16 + 1) as usize, // "+ 1": a space between the title and the selection info
+            base_style,
+            true,
+            true,
         );
     }
 
@@ -782,8 +799,9 @@ impl EditorView {
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {
         self.completion = None;
+
         // Clear any savepoints
-        let (_, doc) = current!(editor);
+        let doc = doc_mut!(editor);
         doc.savepoint = None;
         editor.clear_idle_timer(); // don't retrigger
     }
@@ -941,14 +959,18 @@ impl EditorView {
 }
 
 impl Component for EditorView {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
-        let mut cxt = commands::Context {
-            editor: cx.editor,
+    fn handle_event(
+        &mut self,
+        event: Event,
+        context: &mut crate::compositor::Context,
+    ) -> EventResult {
+        let mut cx = commands::Context {
+            editor: context.editor,
             count: None,
             register: None,
             callback: None,
             on_next_key_callback: None,
-            jobs: cx.jobs,
+            jobs: context.jobs,
         };
 
         match event {
@@ -958,18 +980,19 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::Key(key) => {
-                cxt.editor.reset_idle_timer();
+                cx.editor.reset_idle_timer();
                 let mut key = KeyEvent::from(key);
                 canonicalize_key(&mut key);
-                // clear status
-                cxt.editor.status_msg = None;
 
-                let (_, doc) = current!(cxt.editor);
+                // clear status
+                cx.editor.status_msg = None;
+
+                let doc = doc!(cx.editor);
                 let mode = doc.mode();
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
-                    on_next_key(&mut cxt, key);
+                    on_next_key(&mut cx, key);
                 } else {
                     match mode {
                         Mode::Insert => {
@@ -981,8 +1004,8 @@ impl Component for EditorView {
                             if let Some(completion) = &mut self.completion {
                                 // use a fake context here
                                 let mut cx = Context {
-                                    editor: cxt.editor,
-                                    jobs: cxt.jobs,
+                                    editor: cx.editor,
+                                    jobs: cx.jobs,
                                     scroll: None,
                                 };
                                 let res = completion.handle_event(event, &mut cx);
@@ -992,40 +1015,40 @@ impl Component for EditorView {
 
                                     if callback.is_some() {
                                         // assume close_fn
-                                        self.clear_completion(cxt.editor);
+                                        self.clear_completion(cx.editor);
                                     }
                                 }
                             }
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                self.insert_mode(&mut cxt, key);
+                                self.insert_mode(&mut cx, key);
 
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
-                                    completion.update(&mut cxt);
+                                    completion.update(&mut cx);
                                     if completion.is_empty() {
-                                        self.clear_completion(cxt.editor);
+                                        self.clear_completion(cx.editor);
                                     }
                                 }
                             }
                         }
-                        mode => self.command_mode(mode, &mut cxt, key),
+                        mode => self.command_mode(mode, &mut cx, key),
                     }
                 }
 
-                self.on_next_key = cxt.on_next_key_callback.take();
+                self.on_next_key = cx.on_next_key_callback.take();
                 // appease borrowck
-                let callback = cxt.callback.take();
+                let callback = cx.callback.take();
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
-                if cxt.editor.should_close() {
+                if cx.editor.should_close() {
                     return EventResult::Ignored;
                 }
 
-                let (view, doc) = current!(cxt.editor);
-                view.ensure_cursor_in_view(doc, cxt.editor.config.scrolloff);
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
 
                 // mode transitions
                 match (mode, doc.mode()) {
@@ -1054,7 +1077,7 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(event) => self.handle_mouse_event(event, &mut cxt),
+            Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
         }
     }
 

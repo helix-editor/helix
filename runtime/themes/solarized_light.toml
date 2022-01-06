@@ -22,6 +22,10 @@
 "module" = { fg = "violet" }
 "tag" = { fg = "magenta" }
 
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "orange" }
+"diff.minus" = { fg = "red" }
+
 # 背景
 "ui.background" = { bg = "base03" }
 

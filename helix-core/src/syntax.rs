@@ -1,5 +1,6 @@
 use crate::{
     chars::char_is_line_ending,
+    diagnostic::Severity,
     regex::Regex,
     transaction::{ChangeSet, Operation},
     Rope, RopeSlice, Tendril,
@@ -63,6 +64,10 @@ pub struct LanguageConfiguration {
 
     #[serde(default)]
     pub auto_format: bool,
+    #[serde(default)]
+    pub diagnostic_severity: Severity,
+
+    pub tree_sitter_library: Option<String>, // tree-sitter library name, defaults to language_id
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
@@ -189,9 +194,14 @@ impl LanguageConfiguration {
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(&crate::RUNTIME_DIR, &self.language_id)
-                .map_err(|e| log::info!("{}", e))
-                .ok()?;
+            let language = get_language(
+                &crate::RUNTIME_DIR,
+                self.tree_sitter_library
+                    .as_deref()
+                    .unwrap_or(&self.language_id),
+            )
+            .map_err(|e| log::info!("{}", e))
+            .ok()?;
             let config = HighlightConfiguration::new(
                 language,
                 &highlights_query,

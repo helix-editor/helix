@@ -1,11 +1,11 @@
 [package]
 name = "xtask"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-term = { version = "0.5", path = "../helix-term" }
-helix-core = { version = "0.5", path = "../helix-core" }
+helix-term = { version = "0.6", path = "../helix-term" }
+helix-core = { version = "0.6", path = "../helix-core" }
 toml = "0.5"

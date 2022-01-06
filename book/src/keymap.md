@@ -46,39 +46,39 @@
 
 ### Changes
 
-| Key         | Description                                                      | Command                   |
-| -----       | -----------                                                      | -------                   |
-| `r`         | Replace with a character                                         | `replace`                 |
-| `R`         | Replace with yanked text                                         | `replace_with_yanked`     |
-| `~`         | Switch case of the selected text                                 | `switch_case`             |
-| `` ` ``     | Set the selected text to lower case                              | `switch_to_lowercase`     |
-| `` Alt-` `` | Set the selected text to upper case                              | `switch_to_uppercase`     |
-| `i`         | Insert before selection                                          | `insert_mode`             |
-| `a`         | Insert after selection (append)                                  | `append_mode`             |
-| `I`         | Insert at the start of the line                                  | `prepend_to_line`         |
-| `A`         | Insert at the end of the line                                    | `append_to_line`          |
-| `o`         | Open new line below selection                                    | `open_below`              |
-| `O`         | Open new line above selection                                    | `open_above`              |
-| `.`         | Repeat last change                                               | N/A                       |
-| `u`         | Undo change                                                      | `undo`                    |
-| `U`         | Redo change                                                      | `redo`                    |
-| `Alt-u`     | Move backward in history                                         | `earlier`                 |
-| `Alt-U`     | Move forward in history                                          | `later`                   |
-| `y`         | Yank selection                                                   | `yank`                    |
-| `p`         | Paste after selection                                            | `paste_after`             |
-| `P`         | Paste before selection                                           | `paste_before`            |
-| `"` `<reg>` | Select a register to yank to or paste from                       | `select_register`         |
-| `>`         | Indent selection                                                 | `indent`                  |
-| `<`         | Unindent selection                                               | `unindent`                |
-| `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)    | `format_selections`       |
-| `d`         | Delete selection                                                 | `delete_selection`        |
-| `Alt-d`     | Delete selection, without yanking                                | `delete_selection_noyank` |
-| `c`         | Change selection (delete and enter insert mode)                  | `change_selection`        |
-| `Alt-c`     | Change selection (delete and enter insert mode, without yanking) | `change_selection_noyank` |
-| `Ctrl-a`    | Increment object (number) under cursor                           | `increment`               |
-| `Ctrl-x`    | Decrement object (number) under cursor                           | `decrement`               |
-| `q`         | Start/stop macro recording to the selected register              | `record_macro`            |
-| `Q`         | Play back a recorded macro from the selected register            | `play_macro`              |
+| Key         | Description                                                          | Command                   |
+| -----       | -----------                                                          | -------                   |
+| `r`         | Replace with a character                                             | `replace`                 |
+| `R`         | Replace with yanked text                                             | `replace_with_yanked`     |
+| `~`         | Switch case of the selected text                                     | `switch_case`             |
+| `` ` ``     | Set the selected text to lower case                                  | `switch_to_lowercase`     |
+| `` Alt-` `` | Set the selected text to upper case                                  | `switch_to_uppercase`     |
+| `i`         | Insert before selection                                              | `insert_mode`             |
+| `a`         | Insert after selection (append)                                      | `append_mode`             |
+| `I`         | Insert at the start of the line                                      | `prepend_to_line`         |
+| `A`         | Insert at the end of the line                                        | `append_to_line`          |
+| `o`         | Open new line below selection                                        | `open_below`              |
+| `O`         | Open new line above selection                                        | `open_above`              |
+| `.`         | Repeat last change                                                   | N/A                       |
+| `u`         | Undo change                                                          | `undo`                    |
+| `U`         | Redo change                                                          | `redo`                    |
+| `Alt-u`     | Move backward in history                                             | `earlier`                 |
+| `Alt-U`     | Move forward in history                                              | `later`                   |
+| `y`         | Yank selection                                                       | `yank`                    |
+| `p`         | Paste after selection                                                | `paste_after`             |
+| `P`         | Paste before selection                                               | `paste_before`            |
+| `"` `<reg>` | Select a register to yank to or paste from                           | `select_register`         |
+| `>`         | Indent selection                                                     | `indent`                  |
+| `<`         | Unindent selection                                                   | `unindent`                |
+| `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)        | `format_selections`       |
+| `d`         | Delete selection                                                     | `delete_selection`        |
+| `Alt-d`     | Delete selection, without yanking                                    | `delete_selection_noyank` |
+| `c`         | Change selection (delete and enter insert mode)                      | `change_selection`        |
+| `Alt-c`     | Change selection (delete and enter insert mode, without yanking)     | `change_selection_noyank` |
+| `Ctrl-a`    | Increment object (number) under cursor                               | `increment`               |
+| `Ctrl-x`    | Decrement object (number) under cursor                               | `decrement`               |
+| `Q`         | Start/stop macro recording to the selected register (experimental)   | `record_macro`            |
+| `q`         | Play back a recorded macro from the selected register (experimental) | `replay_macro`            |
 
 #### Shell
 
@@ -161,7 +161,7 @@ Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
-| `g`   | Go to the start of the file                      | `goto_file_start`          |
+| `g`   | Go to line number `<n>` else start of file       | `goto_file_start`          |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
 | `f`   | Go to files in the selection                     | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
@@ -261,6 +261,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`    |
 | `[space` | Add newline above                            | `add_newline_above` |
 | `]space` | Add newline below                            | `add_newline_below` |
+| `]o`     | Expand syntax tree object selection.         | `expand_selection`  |
+| `[o`     | Shrink syntax tree object selection.         | `shrink_selection`  |
 
 ## Insert Mode
 

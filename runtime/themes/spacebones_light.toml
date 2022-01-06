@@ -30,6 +30,10 @@
 "label" = "#b1951d"
 "module" = "#b1951d"
 
+"diff.plus" = "#2d9574"
+"diff.delta" = "#715ab1"
+"diff.minus" = "#ba2f59"
+
 "warning" = { fg = "#da8b55" }
 "error" = { fg = "#e0211d" }
 "info" = { fg = "#b1951d" }

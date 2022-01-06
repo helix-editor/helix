@@ -77,6 +77,11 @@
 # integer, floating point
 "constant.numeric" = "purple"
 
+# vcs
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "red"
+
 # make diagnostic underlined, to distinguish with selection text.
 diagnostic = { modifiers = ["underlined"] }
 

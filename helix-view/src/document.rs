@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Error};
 use serde::de::{self, Deserialize, Deserializer};
+use serde::Serialize;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -9,6 +10,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use helix_core::{
+    encoding,
     history::History,
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
@@ -68,13 +70,22 @@ impl<'de> Deserialize<'de> for Mode {
     }
 }
 
+impl Serialize for Mode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     pub(crate) selections: HashMap<ViewId, Selection>,
 
     path: Option<PathBuf>,
-    encoding: &'static encoding_rs::Encoding,
+    encoding: &'static encoding::Encoding,
 
     /// Current editing mode.
     pub mode: Mode,
@@ -143,8 +154,8 @@ impl fmt::Debug for Document {
 /// be used to override encoding auto-detection.
 pub fn from_reader<R: std::io::Read + ?Sized>(
     reader: &mut R,
-    encoding: Option<&'static encoding_rs::Encoding>,
-) -> Result<(Rope, &'static encoding_rs::Encoding), Error> {
+    encoding: Option<&'static encoding::Encoding>,
+) -> Result<(Rope, &'static encoding::Encoding), Error> {
     // These two buffers are 8192 bytes in size each and are used as
     // intermediaries during the decoding process. Text read into `buf`
     // from `reader` is decoded into `buf_out` as UTF-8. Once either
@@ -212,11 +223,11 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
             total_read += read;
             total_written += written;
             match result {
-                encoding_rs::CoderResult::InputEmpty => {
+                encoding::CoderResult::InputEmpty => {
                     debug_assert_eq!(slice.len(), total_read);
                     break;
                 }
-                encoding_rs::CoderResult::OutputFull => {
+                encoding::CoderResult::OutputFull => {
                     debug_assert!(slice.len() > total_read);
                     builder.append(&buf_str[..total_written]);
                     total_written = 0;
@@ -251,7 +262,7 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
 /// replacement characters may appear in the encoded text.
 pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     writer: &'a mut W,
-    encoding: &'static encoding_rs::Encoding,
+    encoding: &'static encoding::Encoding,
     rope: &'a Rope,
 ) -> Result<(), Error> {
     // Text inside a `Rope` is stored as non-contiguous blocks of data called
@@ -286,12 +297,12 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
             total_read += read;
             total_written += written;
             match result {
-                encoding_rs::CoderResult::InputEmpty => {
+                encoding::CoderResult::InputEmpty => {
                     debug_assert_eq!(chunk.len(), total_read);
                     debug_assert!(buf.len() >= total_written);
                     break;
                 }
-                encoding_rs::CoderResult::OutputFull => {
+                encoding::CoderResult::OutputFull => {
                     debug_assert!(chunk.len() > total_read);
                     writer.write_all(&buf[..total_written]).await?;
                     total_written = 0;
@@ -322,8 +333,8 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn from(text: Rope, encoding: Option<&'static encoding_rs::Encoding>) -> Self {
-        let encoding = encoding.unwrap_or(encoding_rs::UTF_8);
+    pub fn from(text: Rope, encoding: Option<&'static encoding::Encoding>) -> Self {
+        let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
 
@@ -356,7 +367,7 @@ impl Document {
     /// overwritten with the `encoding` parameter.
     pub fn open(
         path: &Path,
-        encoding: Option<&'static encoding_rs::Encoding>,
+        encoding: Option<&'static encoding::Encoding>,
         theme: Option<&Theme>,
         config_loader: Option<&syntax::Loader>,
     ) -> Result<Self, Error> {
@@ -366,7 +377,7 @@ impl Document {
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
-            let encoding = encoding.unwrap_or(encoding_rs::UTF_8);
+            let encoding = encoding.unwrap_or(encoding::UTF_8);
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
@@ -548,7 +559,7 @@ impl Document {
 
     /// Sets the [`Document`]'s encoding with the encoding correspondent to `label`.
     pub fn set_encoding(&mut self, label: &str) -> Result<(), Error> {
-        match encoding_rs::Encoding::for_label(label.as_bytes()) {
+        match encoding::Encoding::for_label(label.as_bytes()) {
             Some(encoding) => self.encoding = encoding,
             None => return Err(anyhow::anyhow!("unknown encoding")),
         }
@@ -556,7 +567,7 @@ impl Document {
     }
 
     /// Returns the [`Document`]'s current encoding.
-    pub fn encoding(&self) -> &'static encoding_rs::Encoding {
+    pub fn encoding(&self) -> &'static encoding::Encoding {
         self.encoding
     }
 
@@ -889,6 +900,10 @@ impl Document {
         self.indent_style.as_str()
     }
 
+    pub fn changes(&self) -> &ChangeSet {
+        &self.changes
+    }
+
     #[inline]
     /// File path on disk.
     pub fn path(&self) -> Option<&PathBuf> {
@@ -1119,7 +1134,7 @@ mod test {
 
     macro_rules! test_decode {
         ($label:expr, $label_override:expr) => {
-            let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
+            let encoding = encoding::Encoding::for_label($label_override.as_bytes()).unwrap();
             let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
             let path = base_path.join(format!("{}_in.txt", $label));
             let ref_path = base_path.join(format!("{}_in_ref.txt", $label));
@@ -1138,7 +1153,7 @@ mod test {
 
     macro_rules! test_encode {
         ($label:expr, $label_override:expr) => {
-            let encoding = encoding_rs::Encoding::for_label($label_override.as_bytes()).unwrap();
+            let encoding = encoding::Encoding::for_label($label_override.as_bytes()).unwrap();
             let base_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/encoding");
             let path = base_path.join(format!("{}_out.txt", $label));
             let ref_path = base_path.join(format!("{}_out_ref.txt", $label));

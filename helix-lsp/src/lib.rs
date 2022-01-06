@@ -66,39 +66,26 @@ pub mod util {
         pos: lsp::Position,
         offset_encoding: OffsetEncoding,
     ) -> Option<usize> {
-        let max_line = doc.lines().count().saturating_sub(1);
         let pos_line = pos.line as usize;
-        let pos_line = if pos_line > max_line {
+        if pos_line > doc.len_lines() - 1 {
             return None;
-        } else {
-            pos_line
-        };
+        }
+
         match offset_encoding {
             OffsetEncoding::Utf8 => {
-                let max_char = doc
-                    .line_to_char(max_line)
-                    .checked_add(doc.line(max_line).len_chars())?;
                 let line = doc.line_to_char(pos_line);
                 let pos = line.checked_add(pos.character as usize)?;
-                if pos <= max_char {
+                if pos <= doc.len_chars() {
                     Some(pos)
                 } else {
                     None
                 }
             }
             OffsetEncoding::Utf16 => {
-                let max_char = doc
-                    .line_to_char(max_line)
-                    .checked_add(doc.line(max_line).len_chars())?;
-                let max_cu = doc.char_to_utf16_cu(max_char);
                 let line = doc.line_to_char(pos_line);
                 let line_start = doc.char_to_utf16_cu(line);
                 let pos = line_start.checked_add(pos.character as usize)?;
-                if pos <= max_cu {
-                    Some(doc.utf16_cu_to_char(pos))
-                } else {
-                    None
-                }
+                doc.try_utf16_cu_to_char(pos).ok()
             }
         }
     }
@@ -203,6 +190,7 @@ pub mod util {
 #[derive(Debug, PartialEq, Clone)]
 pub enum MethodCall {
     WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
+    ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
 }
 
 impl MethodCall {
@@ -214,6 +202,12 @@ impl MethodCall {
                     .parse()
                     .expect("Failed to parse WorkDoneCreate params");
                 Self::WorkDoneProgressCreate(params)
+            }
+            lsp::request::ApplyWorkspaceEdit::METHOD => {
+                let params: lsp::ApplyWorkspaceEditParams = params
+                    .parse()
+                    .expect("Failed to parse ApplyWorkspaceEdit params");
+                Self::ApplyWorkspaceEdit(params)
             }
             _ => {
                 log::warn!("unhandled lsp request: {}", method);
@@ -319,6 +313,7 @@ impl Registry {
                     &config.command,
                     &config.args,
                     language_config.config.clone(),
+                    language_config.roots.clone(),
                     id,
                 )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));

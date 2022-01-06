@@ -1,11 +1,11 @@
 use bitflags::bitflags;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 /// UNSTABLE
 pub enum CursorKind {

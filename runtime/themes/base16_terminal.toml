@@ -30,6 +30,10 @@
 "namespace" = "light-magenta"
 "ui.help" = { fg = "white", bg = "black" }
 
+"diff.plus" = "light-green"
+"diff.delta" = "yellow"
+"diff.minus" = "light-red"
+
 "diagnostic" = { modifiers = ["underlined"] }
 "ui.gutter" = { bg = "black" }
 "info" = "light-blue"
