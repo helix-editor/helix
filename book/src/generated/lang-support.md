@@ -16,6 +16,7 @@
 | git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
+| heex | ✓ |  |  |  |
 | html | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ |  |
