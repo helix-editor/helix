@@ -171,8 +171,9 @@ We use a similar set of scopes as
   - `bold`
   - `italic`
   - `link`
-    - `url`
-    - `label`
+    - `url` - urls pointed to by links
+    - `label` - non-url link references
+    - `text` - url and image descriptions in links
   - `quote`
   - `raw`
     - `inline`
