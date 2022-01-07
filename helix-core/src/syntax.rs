@@ -14,7 +14,7 @@ use slotmap::{DefaultKey as LayerId, HopSlotMap};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     fmt,
     path::Path,
     sync::Arc,
@@ -459,7 +459,6 @@ impl Syntax {
         source: &Rope,
         changeset: &ChangeSet,
     ) -> Result<(), Error> {
-        use std::collections::{HashSet, VecDeque};
         let mut queue = VecDeque::new();
         queue.push_back(self.root);
 
@@ -472,23 +471,84 @@ impl Syntax {
         };
 
         // HAXX: for now, clear all layers except root so they get re-parsed
-        self.layers.retain(|id, _| id == self.root);
+        // self.layers.retain(|id, _| id == self.root);
 
         // Convert the changeset into tree sitter edits.
         let edits = generate_edits(old_source, changeset);
 
         // TODO: use the edits to update all layers markers
         if !edits.is_empty() {
+            fn point_add(a: Point, b: Point) -> Point {
+                if b.row > 0 {
+                    Point::new(a.row.saturating_add(b.row), b.column)
+                } else {
+                    Point::new(0, a.column.saturating_add(b.column))
+                }
+            }
+            fn point_sub(a: Point, b: Point) -> Point {
+                if a.row > b.row {
+                    Point::new(a.row.saturating_sub(b.row), a.column)
+                } else {
+                    Point::new(0, a.column.saturating_sub(b.column))
+                }
+            }
+
             for layer in &mut self.layers.values_mut() {
                 for range in &mut layer.ranges {
-                    for edit in &edits {
+                    for edit in edits.iter().rev() {
+                        let is_pure_insertion = edit.old_end_byte == edit.start_byte;
+
                         // if edit is after range, skip
                         if edit.start_byte > range.end_byte {
+                            // TODO: || (is_noop && edit.start_byte == range.end_byte)
                             continue;
                         }
 
                         // if edit is before range, shift entire range by len
-                        if edit.old_end_byte < range.start_byte {}
+                        if edit.old_end_byte < range.start_byte {
+                            range.start_byte =
+                                edit.new_end_byte + (range.start_byte - edit.old_end_byte);
+                            range.start_point = point_add(
+                                edit.new_end_position,
+                                point_sub(range.start_point, edit.old_end_position),
+                            );
+
+                            range.end_byte = edit
+                                .new_end_byte
+                                .saturating_add(range.end_byte - edit.old_end_byte);
+                            range.end_point = point_add(
+                                edit.new_end_position,
+                                point_sub(range.end_point, edit.old_end_position),
+                            );
+                        }
+                        // if the edit starts in the space before and extends into the range
+                        else if edit.start_byte < range.start_byte {
+                            range.start_byte = edit.new_end_byte;
+                            range.start_point = edit.new_end_position;
+
+                            range.end_byte = range
+                                .end_byte
+                                .saturating_sub(edit.old_end_byte)
+                                .saturating_add(edit.new_end_byte);
+                            range.end_point = point_add(
+                                edit.new_end_position,
+                                point_sub(range.end_point, edit.old_end_position),
+                            );
+                        }
+                        // If the edit is an insertion at the start of the tree, shift
+                        else if edit.start_byte == range.start_byte && is_pure_insertion {
+                            range.start_byte = edit.new_end_byte;
+                            range.start_point = edit.new_end_position;
+                        } else {
+                            range.end_byte = range
+                                .end_byte
+                                .saturating_sub(edit.old_end_byte)
+                                .saturating_add(edit.new_end_byte);
+                            range.end_point = point_add(
+                                edit.new_end_position,
+                                point_sub(range.end_point, edit.old_end_position),
+                            );
+                        }
                     }
                 }
             }
@@ -506,6 +566,9 @@ impl Syntax {
             // TODO: we should be able to avoid editing & parsing layers with ranges earlier in the document before the edit
 
             while let Some(layer_id) = queue.pop_front() {
+                // Mark the layer as touched
+                touched.insert(layer_id);
+
                 let layer = &mut self.layers[layer_id];
 
                 // If a tree already exists, notify it of changes.
@@ -610,10 +673,14 @@ impl Syntax {
                             layer.depth == depth && // TODO: track parent id instead
                             layer.config.language == config.language && layer.ranges == ranges
                         })
-                        .map(|(id, _layer)| id);
+                        .map(|(id, _layer)| {
+                            log::info!("match! {:?}", id);
+                            id
+                        });
 
                     // ...or insert a new one.
                     let layer_id = layer.unwrap_or_else(|| {
+                        log::info!("miss! {:?}", ranges);
                         self.layers.insert(LanguageLayer {
                             tree: None,
                             config,
@@ -624,9 +691,6 @@ impl Syntax {
 
                     queue.push_back(layer_id);
                 }
-
-                // Mark the layer as touched
-                touched.insert(layer_id);
 
                 // TODO: pre-process local scopes at this time, rather than highlight?
                 // would solve problems with locals not working across boundaries
@@ -722,8 +786,6 @@ impl Syntax {
                 })
             })
             .collect::<Vec<_>>();
-
-        log::info!("--");
 
         // HAXX: arrange layers by byte range, with deeper layers positioned first
         layers.sort_by_key(|layer| {
