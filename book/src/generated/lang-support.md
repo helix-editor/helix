@@ -18,7 +18,7 @@
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |
 | java | ✓ |  |  |  |
-| javascript | ✓ |  | ✓ |  |
+| javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
