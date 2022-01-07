@@ -1,14 +1,14 @@
 # Themes
 
-First you'll need to place selected themes in your `themes` directory (i.e `~/.config/helix/themes`), the directory might have to be created beforehand.
-
-To use a custom theme add `theme = <name>` to your [`config.toml`](./configuration.md) or override it during runtime using `:theme <name>`.
-
-The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/runtime/themes). 
+To use a theme add `theme = "<name>"` to your [`config.toml`](./configuration.md) at the very top of the file before the first section or select it during runtime using `:theme <name>`.
 
 ## Creating a theme
 
-First create a file with the name of your theme as file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes`).
+Create a file with the name of your theme as file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes`). The directory might have to be created beforehand.
+
+The names "default" and "base16_default" are reserved for the builtin themes and cannot be overridden by user defined themes.
+
+The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/runtime/themes). 
 
 Each line in the theme file is specified as below:
 
