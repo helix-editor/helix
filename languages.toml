@@ -550,6 +550,7 @@ roots = []
 name = "git-config"
 scope = "source.gitconfig"
 roots = []
+# TODO: allow specifying file-types as a regex so we can read directory names (e.g. `.git/config`)
 file-types = [".gitmodules", ".gitconfig"]
 injection-regex = "git-config"
 comment-token = "#"
