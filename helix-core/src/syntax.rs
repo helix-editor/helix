@@ -308,8 +308,13 @@ impl Loader {
             .and_then(|n| n.to_str())
             .and_then(|file_name| self.language_config_ids_by_file_type.get(file_name))
             .or_else(|| {
-                path.extension()
-                    .and_then(|extension| extension.to_str())
+                // we can't use the `extension` methods here because it ignore
+                // empty file name with only an extension like `.bashrc`.
+                path.file_name()
+                    .map(|file_name| file_name.to_str())
+                    .flatten()
+                    .map(|file_name| file_name.rsplit('.').next())
+                    .flatten()
                     .and_then(|extension| self.language_config_ids_by_file_type.get(extension))
             });
 
