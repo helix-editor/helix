@@ -494,7 +494,13 @@ impl Syntax {
             }
 
             for layer in &mut self.layers.values_mut() {
+                // The root layer always covers the whole range (0..usize::MAX)
+                if layer.depth == 0 {
+                    continue;
+                }
+
                 for range in &mut layer.ranges {
+                    // Roughly based on https://github.com/tree-sitter/tree-sitter/blob/ddeaa0c7f534268b35b4f6cb39b52df082754413/lib/src/subtree.c#L691-L720
                     for edit in edits.iter().rev() {
                         let is_pure_insertion = edit.old_end_byte == edit.start_byte;
 
