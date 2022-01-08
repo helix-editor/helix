@@ -586,3 +586,10 @@ auto-format = true
 comment-token = "--"
 language-server = { command = "elm-language-server" }
 indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "iex"
+scope = "source.iex"
+injection-regex = "iex"
+file-types = ["iex"]
+roots = []
