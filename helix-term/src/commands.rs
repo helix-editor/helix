@@ -6217,7 +6217,7 @@ fn show_subtree(cx: &mut Context) {
 
     if let Some(syntax) = doc.syntax() {
         let primary_selection = doc.selection(view.id).primary();
-        let text = doc.text().slice(..);
+        let text = doc.text();
         let from = text.char_to_byte(primary_selection.from());
         let to = text.char_to_byte(primary_selection.to());
         if let Some(selected_node) = syntax
