@@ -555,3 +555,12 @@ file-types = [".gitmodules", ".gitconfig"]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
+
+[[language]]
+name = "hcl"
+scope = "source.hcl"
+injection-regex = "hcl"
+file-types = ["hcl", "tf"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
