@@ -470,13 +470,10 @@ impl Syntax {
                 })
         };
 
-        // HAXX: for now, clear all layers except root so they get re-parsed
-        // self.layers.retain(|id, _| id == self.root);
-
         // Convert the changeset into tree sitter edits.
         let edits = generate_edits(old_source, changeset);
 
-        // TODO: use the edits to update all layers markers
+        // Use the edits to update all layers markers
         if !edits.is_empty() {
             fn point_add(a: Point, b: Point) -> Point {
                 if b.row > 0 {
@@ -716,25 +713,6 @@ impl Syntax {
         self.layers[self.root].tree()
     }
 
-    // root: Tree
-    // injections: Vec<(Tree, Range marker)>
-
-    // handle updates that go over a part of the layer by truncating them to start/end appropriately
-
-    // injections tracked by marker:
-    // if marker areas match it's fine and update
-    // if not found add new layer
-    // if length 0 then area got removed, clean up the layer
-    //
-    // layer update:
-    // if range.len = 0 then remove the layer
-    // calculate affected range and update injections
-    // injection update:
-    // look for existing injections
-    // if present, range = (first injection start, last injection end)
-
-    // Highlighting
-
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
         &'a self,
@@ -813,8 +791,6 @@ impl Syntax {
         result.sort_layers();
         result
     }
-    // on_tokenize
-    // on_change_highlighting
 
     // Commenting
     // comment_strings_for_pos
@@ -826,12 +802,6 @@ impl Syntax {
     // indent_level_for_line
 
     // TODO: Folding
-
-    // Syntax APIs
-    // get_syntax_node_containing_range ->
-    // ...
-    // get_syntax_node_at_pos
-    // buffer_range_for_scope_at_pos
 }
 
 #[derive(Debug)]
@@ -937,12 +907,6 @@ pub(crate) fn generate_edits(
             Delete(_) => {
                 let (start_byte, start_position) = point_at_pos(old_text, old_pos);
                 let (old_end_byte, old_end_position) = point_at_pos(old_text, old_end);
-
-                // TODO: Position also needs to be byte based...
-                // let byte = char_to_byte(old_pos)
-                // let line = char_to_line(old_pos)
-                // let line_start_byte = line_to_byte()
-                // Position::new(line, line_start_byte - byte)
 
                 // deletion
                 edits.push(tree_sitter::InputEdit {
