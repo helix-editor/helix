@@ -462,12 +462,11 @@ impl Syntax {
         let mut queue = VecDeque::new();
         queue.push_back(self.root);
 
+        let scopes = self.loader.scopes.load();
         let injection_callback = |language: &str| {
             self.loader
                 .language_configuration_for_injection_string(language)
-                .and_then(|language_config| {
-                    language_config.highlight_config(&self.loader.scopes.load())
-                })
+                .and_then(|language_config| language_config.highlight_config(&scopes))
         };
 
         // Convert the changeset into tree sitter edits.
