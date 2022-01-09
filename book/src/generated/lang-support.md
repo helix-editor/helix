@@ -22,6 +22,7 @@
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
+| just | ✓ |  |  |  |
 | latex | ✓ |  |  |  |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |

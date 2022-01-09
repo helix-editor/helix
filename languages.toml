@@ -393,8 +393,15 @@ injection-regex = "cmake"
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "justfile", ".justfile"]
-roots =[]
+file-types = ["Makefile", "makefile"]
+roots = []
+comment-token = "#"
+
+[[language]]
+name = "just"
+scope = "source.just"
+file-types = ["justfile", ".justfile"]
+roots = []
 comment-token = "#"
 
 [[language]]
