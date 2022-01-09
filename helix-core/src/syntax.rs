@@ -560,6 +560,7 @@ impl Syntax {
             let ts_parser = &mut ts_parser.borrow_mut();
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
+            cursor.set_byte_range(0..usize::MAX);
 
             let source_slice = source.slice(..);
 
@@ -729,6 +730,9 @@ impl Syntax {
                     highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
                 });
 
+                // TODO: if range doesn't overlap layer range, skip it
+                // we can calculate intersection and use it later for set_byte_range
+
                 // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
                 // prevents them from being moved. But both of these values are really just
                 // pointers, so it's actually ok to move them.
@@ -737,8 +741,7 @@ impl Syntax {
 
                 // if reusing cursors & no range this resets to whole range
                 // TODO: handle intersect (range & layer.range)
-                // cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
-                cursor_ref.set_byte_range(0..usize::MAX);
+                cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
 
                 let mut captures = cursor_ref
                     .captures(
