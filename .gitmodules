@@ -204,5 +204,5 @@
 	shallow = true
 [submodule "helix-syntax/languages/tree-sitter-hcl"]
 	path = helix-syntax/languages/tree-sitter-hcl
-	url = git@github.com:MichaHoffmann/tree-sitter-hcl.git
+	url = https://github.com/mitchellh/tree-sitter-hcl.git
 	shallow = true
