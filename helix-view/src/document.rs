@@ -844,6 +844,19 @@ impl Document {
             .map(|language| language.scope.as_str())
     }
 
+    /// Language ID for the document. Either the `language-id` from the
+    // `language-server` configuration, or the document language if no
+    /// `language-id` has been specified.
+    pub fn language_id(&self) -> Option<&str> {
+        let fallback = self.language().and_then(|s| s.split('.').last());
+
+        self.language
+            .as_ref()
+            .and_then(|config| config.language_server.as_ref())
+            .and_then(|lsp_config| lsp_config.language_id.as_ref())
+            .map_or(fallback, |id| Some(id.as_str()))
+    }
+
     /// Corresponding [`LanguageConfiguration`].
     pub fn language_config(&self) -> Option<&LanguageConfiguration> {
         self.language.as_deref()

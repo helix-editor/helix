@@ -95,6 +95,7 @@ pub struct LanguageServerConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+    pub language_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
