@@ -723,7 +723,7 @@ impl Syntax {
         let mut layers = self
             .layers
             .iter()
-            .flat_map(|(_, layer)| {
+            .filter_map(|(_, layer)| {
                 // Reuse a cursor from the pool if available.
                 let mut cursor = PARSER.with(|ts_parser| {
                     let highlighter = &mut ts_parser.borrow_mut();
