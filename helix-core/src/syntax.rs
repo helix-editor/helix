@@ -584,7 +584,7 @@ impl Syntax {
                 }
 
                 // Re-parse the tree.
-                layer.parse(ts_parser, source)?;
+                layer.parse(&mut ts_parser.parser, source)?;
 
                 // Switch to an immutable borrow.
                 let layer = &self.layers[layer_id];
@@ -822,17 +822,15 @@ impl LanguageLayer {
         self.tree.as_ref().unwrap()
     }
 
-    fn parse(&mut self, ts_parser: &mut TsParser, source: &Rope) -> Result<(), Error> {
-        ts_parser.parser.set_included_ranges(&self.ranges).unwrap();
+    fn parse(&mut self, parser: &mut Parser, source: &Rope) -> Result<(), Error> {
+        parser.set_included_ranges(&self.ranges).unwrap();
 
-        ts_parser
-            .parser
+        parser
             .set_language(self.config.language)
             .map_err(|_| Error::InvalidLanguage)?;
 
         // unsafe { syntax.parser.set_cancellation_flag(cancellation_flag) };
-        let tree = ts_parser
-            .parser
+        let tree = parser
             .parse_with(
                 &mut |byte, _| {
                     if byte <= source.len_bytes() {
