@@ -12,7 +12,7 @@ pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection)
             .root_node()
             .descendant_for_byte_range(from, to)
             .and_then(|node| {
-                if node.child_count() == 0 || (node.start_byte() == from && node.end_byte() == to) {
+                if node.start_byte() == from && node.end_byte() == to {
                     node.parent()
                 } else {
                     Some(node)

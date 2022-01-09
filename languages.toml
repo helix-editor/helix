@@ -128,6 +128,7 @@ roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
 
+language-server = { command = "typescript-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -390,6 +391,13 @@ language-server = { command = "cmake-language-server" }
 injection-regex = "cmake"
 
 [[language]]
+name = "make"
+scope = "source.make"
+file-types = ["Makefile", "makefile", "justfile", ".justfile"]
+roots =[]
+comment-token = "#"
+
+[[language]]
 name = "glsl"
 scope = "source.glsl"
 file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
@@ -530,3 +538,10 @@ file-types = ["git-rebase-todo"]
 injection-regex = "git-rebase"
 comment-token = "#"
 indent = { tab-width = 2, unit = " " }
+
+[[language]]
+name = "regex"
+scope = "source.regex"
+injection-regex = "regex"
+file-types = ["regex"]
+roots = []

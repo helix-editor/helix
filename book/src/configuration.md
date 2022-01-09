@@ -58,7 +58,7 @@ of the terminal environment, only the primary cursor can change shape.
 [insert mode]: ./keymap.md#insert-mode
 [select mode]: ./keymap.md#select--extend-mode
 
-### `[editor.filepicker]` Section
+### `[editor.file-picker]` Section
 
 Sets options for file picker and global search. All but the last key listed in
 the default file-picker configuration below are IgnoreOptions: whether hidden

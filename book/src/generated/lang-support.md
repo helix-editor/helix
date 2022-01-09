@@ -18,7 +18,7 @@
 | go | ✓ | ✓ | ✓ | `gopls` |
 | html | ✓ |  |  |  |
 | java | ✓ |  |  |  |
-| javascript | ✓ |  | ✓ |  |
+| javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
@@ -27,6 +27,7 @@
 | llvm-mir | ✓ | ✓ | ✓ |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ |  | ✓ |  |
+| make | ✓ |  |  |  |
 | markdown | ✓ |  |  |  |
 | mint |  |  |  | `mint` |
 | nix | ✓ |  | ✓ | `rnix-lsp` |
@@ -38,6 +39,7 @@
 | protobuf | ✓ |  | ✓ |  |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | racket |  |  |  | `racket` |
+| regex | ✓ |  |  |  |
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
