@@ -5389,8 +5389,8 @@ fn hover(cx: &mut Context) {
                 // skip if contents empty
 
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("documentation", contents);
-                if let Some(doc_popup) = compositor.find_id("documentation") {
+                let popup = Popup::new("hover", contents);
+                if let Some(doc_popup) = compositor.find_id("hover") {
                     *doc_popup = popup;
                 } else {
                     compositor.push(Box::new(popup));
@@ -6230,8 +6230,8 @@ fn show_subtree(cx: &mut Context) {
             cx.callback = Some(Box::new(
                 move |compositor: &mut Compositor, cx: &mut compositor::Context| {
                     let contents = ui::Markdown::new(contents, cx.editor.syn_loader.clone());
-                    let popup = Popup::new("tree", contents);
-                    if let Some(doc_popup) = compositor.find_id("tree") {
+                    let popup = Popup::new("hover", contents);
+                    if let Some(doc_popup) = compositor.find_id("hover") {
                         *doc_popup = popup;
                     } else {
                         compositor.push(Box::new(popup));
