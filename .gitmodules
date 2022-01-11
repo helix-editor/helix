@@ -226,3 +226,7 @@
 	path = helix-syntax/languages/tree-sitter-rescript
 	url = https://github.com/jaredramirez/tree-sitter-rescript
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-sql"]
+	path = helix-syntax/languages/tree-sitter-sql
+	url = https://github.com/DerekStride/tree-sitter-sql
+	shallow = true
