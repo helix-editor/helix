@@ -252,15 +252,15 @@ impl<T: 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
-            _ => return self.picker.handle_event(event, ctx),
+            _ => return self.picker.handle_event(event, cx),
         };
 
         let mut filter = |d| {
             self.picker.options.retain(|item| {
-                (self.file_fn)(ctx.editor, item)
+                (self.file_fn)(cx.editor, item)
                     .map(|fl| fl.0.starts_with(d))
                     .unwrap_or(false)
             });
@@ -276,12 +276,12 @@ impl<T: 'static> Component for FilePicker<T> {
                 EventResult::Consumed(None)
             }
             ctrl!('f') => {
-                if let Some(cwd) = doc!(ctx.editor).path().and_then(|p| p.parent()) {
+                if let Some(cwd) = doc!(cx.editor).path().and_then(|p| p.parent()) {
                     filter(cwd);
                 }
                 EventResult::Consumed(None)
             }
-            _ => self.picker.handle_event(event, ctx),
+            _ => self.picker.handle_event(event, cx),
         }
         // TODO: keybinds for scrolling preview
     }
