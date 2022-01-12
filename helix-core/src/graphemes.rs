@@ -120,11 +120,55 @@ pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -
     chunk_char_idx + tmp
 }
 
+#[must_use]
+pub fn nth_next_grapheme_boundary_byte(slice: RopeSlice, mut byte_idx: usize, n: usize) -> usize {
+    // Bounds check
+    debug_assert!(byte_idx <= slice.len_bytes());
+
+    // Get the chunk with our byte index in it.
+    let (mut chunk, mut chunk_byte_idx, mut _chunk_char_idx, _) = slice.chunk_at_byte(byte_idx);
+
+    // Set up the grapheme cursor.
+    let mut gc = GraphemeCursor::new(byte_idx, slice.len_bytes(), true);
+
+    // Find the nth next grapheme cluster boundary.
+    for _ in 0..n {
+        loop {
+            match gc.next_boundary(chunk, chunk_byte_idx) {
+                Ok(None) => return slice.len_bytes(),
+                Ok(Some(n)) => {
+                    byte_idx = n;
+                    break;
+                }
+                Err(GraphemeIncomplete::NextChunk) => {
+                    chunk_byte_idx += chunk.len();
+                    let (a, _, _c, _) = slice.chunk_at_byte(chunk_byte_idx);
+                    chunk = a;
+                    // chunk_char_idx = c;
+                }
+                Err(GraphemeIncomplete::PreContext(n)) => {
+                    let ctx_chunk = slice.chunk_at_byte(n - 1).0;
+                    gc.provide_context(ctx_chunk, n - ctx_chunk.len());
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+    byte_idx
+}
+
 /// Finds the next grapheme boundary after the given char position.
 #[must_use]
 #[inline(always)]
 pub fn next_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> usize {
     nth_next_grapheme_boundary(slice, char_idx, 1)
+}
+
+/// Finds the next grapheme boundary after the given byte position.
+#[must_use]
+#[inline(always)]
+pub fn next_grapheme_boundary_byte(slice: RopeSlice, byte_idx: usize) -> usize {
+    nth_next_grapheme_boundary_byte(slice, byte_idx, 1)
 }
 
 /// Returns the passed char index if it's already a grapheme boundary,
@@ -148,6 +192,18 @@ pub fn ensure_grapheme_boundary_prev(slice: RopeSlice, char_idx: usize) -> usize
         char_idx
     } else {
         prev_grapheme_boundary(slice, char_idx + 1)
+    }
+}
+
+/// Returns the passed byte index if it's already a grapheme boundary,
+/// or the next grapheme boundary byte index if not.
+#[must_use]
+#[inline]
+pub fn ensure_grapheme_boundary_next_byte(slice: RopeSlice, byte_idx: usize) -> usize {
+    if byte_idx == 0 {
+        byte_idx
+    } else {
+        next_grapheme_boundary_byte(slice, byte_idx - 1)
     }
 }
 

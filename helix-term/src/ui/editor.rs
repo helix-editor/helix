@@ -8,7 +8,9 @@ use crate::{
 
 use helix_core::{
     coords_at_pos, encoding,
-    graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
+    graphemes::{
+        ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
+    },
     movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
@@ -154,8 +156,8 @@ impl EditorView {
         .map(move |event| match event {
             // convert byte offsets to char offset
             HighlightEvent::Source { start, end } => {
-                let start = ensure_grapheme_boundary_next(text, text.byte_to_char(start));
-                let end = ensure_grapheme_boundary_next(text, text.byte_to_char(end));
+                let start = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
+                let end = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
                 HighlightEvent::Source { start, end }
             }
             event => event,
