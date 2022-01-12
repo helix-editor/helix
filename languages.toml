@@ -270,7 +270,7 @@ name = "java"
 scope = "source.java"
 injection-regex = "java"
 file-types = ["java"]
-roots = []
+roots = ["pom.xml"]
 indent = { tab-width = 4, unit = "    " }
 
 [[language]]
@@ -497,7 +497,7 @@ indent = { tab-width = 2, unit = "  " }
 [[language]]
 name = "scala"
 scope = "source.scala"
-roots = ["build.sbt"]
+roots = ["build.sbt", "pom.xml"]
 file-types = ["scala", "sbt"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
