@@ -578,7 +578,6 @@ comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
-<<<<<<< HEAD
 name = "graphql"
 scope = "source.graphql"
 injection-regex = "graphql"
@@ -622,4 +621,4 @@ roots = []
 file-types = ["sql"]
 injection-regex = "sql"
 comment-token = "--"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 2, unit = " " }

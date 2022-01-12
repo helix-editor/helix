@@ -50,6 +50,7 @@
 | ruby | ✓ |  | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | scala | ✓ |  | ✓ | `metals` |
+| sql | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | toml | ✓ |  |  |  |
