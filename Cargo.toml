@@ -18,3 +18,4 @@ split-debuginfo = "unpacked"
 
 [profile.release]
 lto = "thin"
+# debug = true
