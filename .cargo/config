@@ -1,2 +1,4 @@
 [alias]
 xtask = "run --package xtask --"
+b = "build --workspace --exclude xtask"
+c = "check --workspace --exclude xtask"
