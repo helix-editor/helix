@@ -1,4 +1,5 @@
 use crate::{Range, RopeSlice, Selection, Syntax};
+use tree_sitter::Node;
 
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
     let tree = syntax.tree();
@@ -58,4 +59,68 @@ pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection)
             Range::new(from, to)
         }
     })
+}
+
+pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+    let tree = syntax.tree();
+
+    selection.clone().transform(|range| {
+        let from = text.char_to_byte(range.from());
+        let to = text.char_to_byte(range.to());
+
+        let sibling = match tree
+            .root_node()
+            .descendant_for_byte_range(from, to)
+            .and_then(find_next_sibling)
+        {
+            Some(sibling) => sibling,
+            None => return range,
+        };
+
+        let from = text.byte_to_char(sibling.start_byte());
+        let to = text.byte_to_char(sibling.end_byte());
+
+        if range.head < range.anchor {
+            Range::new(to, from)
+        } else {
+            Range::new(from, to)
+        }
+    })
+}
+
+fn find_next_sibling(node: Node) -> Option<Node> {
+    node.next_sibling()
+        .or_else(|| node.parent().and_then(find_next_sibling))
+}
+
+pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+    let tree = syntax.tree();
+
+    selection.clone().transform(|range| {
+        let from = text.char_to_byte(range.from());
+        let to = text.char_to_byte(range.to());
+
+        let sibling = match tree
+            .root_node()
+            .descendant_for_byte_range(from, to)
+            .and_then(find_prev_sibling)
+        {
+            Some(sibling) => sibling,
+            None => return range,
+        };
+
+        let from = text.byte_to_char(sibling.start_byte());
+        let to = text.byte_to_char(sibling.end_byte());
+
+        if range.head < range.anchor {
+            Range::new(to, from)
+        } else {
+            Range::new(from, to)
+        }
+    })
+}
+
+fn find_prev_sibling(node: Node) -> Option<Node> {
+    node.prev_sibling()
+        .or_else(|| node.parent().and_then(find_prev_sibling))
 }

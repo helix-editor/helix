@@ -363,6 +363,8 @@ impl MappableCommand {
         rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
+        select_next_sibling, "Select the next sibling in the syntax tree",
+        select_prev_sibling, "Select the previous sibling in the syntax tree",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save the current selection to the jumplist",
@@ -5517,6 +5519,40 @@ fn shrink_selection(cx: &mut Context) {
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let selection = object::shrink_selection(syntax, text, current_selection);
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn select_next_sibling(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+
+            let current_selection = doc.selection(view.id);
+
+            let selection = object::select_next_sibling(syntax, text, current_selection);
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn select_prev_sibling(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+
+            let current_selection = doc.selection(view.id);
+
+            let selection = object::select_prev_sibling(syntax, text, current_selection);
             doc.set_selection(view.id, selection);
         }
     };
