@@ -270,6 +270,10 @@ impl EditorView {
 
         let text_style = theme.get("ui.text");
 
+        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
+        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
+        let text = text.slice(..);
+
         'outer: for event in highlights {
             match event {
                 HighlightEvent::HighlightStart(span) => {
