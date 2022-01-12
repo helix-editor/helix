@@ -25,6 +25,7 @@
 | `f`         | Find next char                                     | `find_next_char`            |
 | `T`         | Find 'till previous char                           | `till_prev_char`            |
 | `F`         | Find previous char                                 | `find_prev_char`            |
+| `G`         | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`     | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
 | `Home`      | Move to the start of the line                      | `goto_line_start`           |
 | `End`       | Move to the end of the line                        | `goto_line_end`             |
