@@ -559,7 +559,7 @@ indent = { tab-width = 4, unit = "\t" }
 [[language]]
 name = "hcl"
 scope = "source.hcl"
-injection-regex = "hcl"
+injection-regex = "(hcl|tf)"
 file-types = ["hcl", "tf"]
 roots = []
 comment-token = "#"
