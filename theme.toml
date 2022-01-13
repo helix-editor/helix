@@ -32,6 +32,7 @@ label = "honey"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.link.url" = { fg = "silver", modifiers = ["underlined"] }
+"markup.link.text" = "almond"
 "markup.raw" = "almond"
 
 "diff.plus" = "#35bf86"

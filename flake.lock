@@ -2,11 +2,11 @@
   "nodes": {
     "devshell": {
       "locked": {
-        "lastModified": 1639692811,
-        "narHash": "sha256-wOOBH0fVsfNqw/5ZWRoKspyesoXBgiwEOUBH4c7JKEo=",
+        "lastModified": 1640301433,
+        "narHash": "sha256-eplae8ZNiEmxbOgwUn9IihaJfEUxoUilkwciRPGskYE=",
         "owner": "numtide",
         "repo": "devshell",
-        "rev": "d3a1f5bec3632b33346865b1c165bf2420bb2f52",
+        "rev": "f87fb932740abe1c1b46f6edd8a36ade17881666",
         "type": "github"
       },
       "original": {
@@ -41,11 +41,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1639807801,
-        "narHash": "sha256-y32tMq1LTRVbMW3QN5i98iOQjQt2QSsif3ayUkD1o3g=",
+        "lastModified": 1641449444,
+        "narHash": "sha256-InqsyCVafPqXmK7YqUfFVpb6eVYJWUWbYXEvey0J+3c=",
         "owner": "yusdacra",
         "repo": "nix-cargo-integration",
-        "rev": "b5bbaa4f5239e6f0619846f9a5380f07baa853d3",
+        "rev": "d1aa15a832db331a97082b7f8c7da737a6789c77",
         "type": "github"
       },
       "original": {

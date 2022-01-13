@@ -362,6 +362,7 @@ impl MappableCommand {
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
+        shrink_selection, "Shrink selection to previously expanded syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save the current selection to the jumplist",
@@ -1282,16 +1283,23 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         .max(view.offset.row + scrolloff)
         .min(last_line.saturating_sub(scrolloff));
 
-    let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
+    // If cursor needs moving, replace primary selection
+    if line != cursor.row {
+        let head = pos_at_coords(text, Position::new(line, cursor.col), true); // this func will properly truncate to line end
 
-    let anchor = if doc.mode == Mode::Select {
-        range.anchor
-    } else {
-        head
-    };
+        let anchor = if doc.mode == Mode::Select {
+            range.anchor
+        } else {
+            head
+        };
 
-    // TODO: only manipulate main selection
-    doc.set_selection(view.id, Selection::single(anchor, head));
+        // replace primary selection with an empty selection at cursor pos
+        let prim_sel = Range::new(anchor, head);
+        let mut sel = doc.selection(view.id).clone();
+        let idx = sel.primary_index();
+        sel = sel.replace(idx, prim_sel);
+        doc.set_selection(view.id, sel);
+    }
 }
 
 fn page_up(cx: &mut Context) {
@@ -1545,7 +1553,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let scrolloff = cx.editor.config.scrolloff;
 
-    let (_, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
 
     // TODO: could probably share with select_on_matches?
 
@@ -1632,7 +1640,7 @@ fn search_selection(cx: &mut Context) {
     let query = doc.selection(view.id).primary().fragment(contents);
     let regex = regex::escape(&query);
     cx.editor.registers.get_mut('/').push(regex);
-    let msg = format!("register '{}' set to '{}'", '\\', query);
+    let msg = format!("register '{}' set to '{}'", '/', query);
     cx.editor.set_status(msg);
 }
 
@@ -2046,7 +2054,7 @@ pub mod cmd {
 
     fn write_impl(cx: &mut compositor::Context, path: Option<&Cow<str>>) -> anyhow::Result<()> {
         let jobs = &mut cx.jobs;
-        let (_, doc) = current!(cx.editor);
+        let doc = doc_mut!(cx.editor);
 
         if let Some(ref path) = path {
             doc.set_path(Some(path.as_ref().as_ref()))
@@ -2099,8 +2107,7 @@ pub mod cmd {
         _args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
-
+        let doc = doc!(cx.editor);
         if let Some(format) = doc.format() {
             let callback =
                 make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
@@ -2323,12 +2330,7 @@ pub mod cmd {
         write_all_impl(cx, args, event, true, true)
     }
 
-    fn quit_all_impl(
-        editor: &mut Editor,
-        _args: &[Cow<str>],
-        _event: PromptEvent,
-        force: bool,
-    ) -> anyhow::Result<()> {
+    fn quit_all_impl(editor: &mut Editor, force: bool) -> anyhow::Result<()> {
         if !force {
             buffers_remaining_impl(editor)?;
         }
@@ -2344,18 +2346,18 @@ pub mod cmd {
 
     fn quit_all(
         cx: &mut compositor::Context,
-        args: &[Cow<str>],
-        event: PromptEvent,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(cx.editor, args, event, false)
+        quit_all_impl(cx.editor, false)
     }
 
     fn force_quit_all(
         cx: &mut compositor::Context,
-        args: &[Cow<str>],
-        event: PromptEvent,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        quit_all_impl(cx.editor, args, event, true)
+        quit_all_impl(cx.editor, true)
     }
 
     fn cquit(
@@ -2369,12 +2371,21 @@ pub mod cmd {
             .unwrap_or(1);
         cx.editor.exit_code = exit_code;
 
-        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
-        for view_id in views {
-            cx.editor.close(view_id);
-        }
+        quit_all_impl(cx.editor, false)
+    }
 
-        Ok(())
+    fn force_cquit(
+        cx: &mut compositor::Context,
+        args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let exit_code = args
+            .first()
+            .and_then(|code| code.parse::<i32>().ok())
+            .unwrap_or(1);
+        cx.editor.exit_code = exit_code;
+
+        quit_all_impl(cx.editor, true)
     }
 
     fn theme(
@@ -2409,7 +2420,7 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let doc = doc!(cx.editor);
         let default_sep = Cow::Borrowed(doc.line_ending.as_str());
         let separator = args.first().unwrap_or(&default_sep);
         yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Clipboard)
@@ -2428,7 +2439,7 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let doc = doc!(cx.editor);
         let default_sep = Cow::Borrowed(doc.line_ending.as_str());
         let separator = args.first().unwrap_or(&default_sep);
         yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Selection)
@@ -2555,7 +2566,7 @@ pub mod cmd {
         args: &[Cow<str>],
         _event: PromptEvent,
     ) -> anyhow::Result<()> {
-        let (_, doc) = current!(cx.editor);
+        let doc = doc_mut!(cx.editor);
         if let Some(label) = args.first() {
             doc.set_encoding(label)
         } else {
@@ -2879,6 +2890,13 @@ pub mod cmd {
             completer: None,
         },
         TypableCommand {
+            name: "cquit!",
+            aliases: &["cq!"],
+            doc: "Quit with exit code (default 1) forcefully (ignoring unsaved changes). Accepts an optional integer exit code (:cq! 2).",
+            fun: force_cquit,
+            completer: None,
+        },
+        TypableCommand {
             name: "theme",
             aliases: &[],
             doc: "Change the editor theme.",
@@ -3130,7 +3148,16 @@ fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = cmd::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = shellwords::shellwords(input);
+                let args = if cfg!(unix) {
+                    shellwords::shellwords(input)
+                } else {
+                    // Windows doesn't support POSIX, so fallback for now
+                    parts
+                        .into_iter()
+                        .map(|part| part.into())
+                        .collect::<Vec<_>>()
+                };
+
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
@@ -3247,7 +3274,7 @@ fn symbol_picker(cx: &mut Context) {
             nested_to_flat(list, file, child);
         }
     }
-    let (_, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
 
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
@@ -3268,7 +3295,7 @@ fn symbol_picker(cx: &mut Context) {
                 let symbols = match symbols {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
-                        let (_view, doc) = current!(editor);
+                        let doc = doc!(editor);
                         let mut flat_symbols = Vec::new();
                         for symbol in symbols {
                             nested_to_flat(&mut flat_symbols, &doc.identifier(), symbol)
@@ -3310,17 +3337,15 @@ fn symbol_picker(cx: &mut Context) {
 }
 
 fn workspace_symbol_picker(cx: &mut Context) {
-    let (_, doc) = current!(cx.editor);
-
+    let doc = doc!(cx.editor);
+    let current_path = doc.path().cloned();
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
     let offset_encoding = language_server.offset_encoding();
-
     let future = language_server.workspace_symbols("".to_string());
 
-    let current_path = doc_mut!(cx.editor).path().cloned();
     cx.callback(
         future,
         move |_editor: &mut Editor,
@@ -3430,8 +3455,7 @@ pub fn code_action(cx: &mut Context) {
 }
 
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
-    let (_view, doc) = current!(editor);
-
+    let doc = doc!(editor);
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
@@ -3693,22 +3717,22 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let line = range.cursor_line(text);
+        let cursor_line = range.cursor_line(text);
 
-        let line = match open {
+        let new_line = match open {
             // adjust position to the end of the line (next line - 1)
-            Open::Below => line + 1,
+            Open::Below => cursor_line + 1,
             // adjust position to the end of the previous line (current line - 1)
-            Open::Above => line,
+            Open::Above => cursor_line,
         };
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
-        let (line_end_index, line_end_offset_width) = if line == 0 {
+        let (line_end_index, line_end_offset_width) = if new_line == 0 {
             (0, 0)
         } else {
             (
-                line_end_char_index(&doc.text().slice(..), line.saturating_sub(1)),
+                line_end_char_index(&doc.text().slice(..), new_line.saturating_sub(1)),
                 doc.line_ending.len_chars(),
             )
         };
@@ -3719,8 +3743,10 @@ fn open(cx: &mut Context, open: Open) {
             doc.syntax(),
             text,
             line_end_index,
+            new_line.saturating_sub(1),
             true,
-        );
+        )
+        .unwrap_or_else(|| indent::indent_level_for_line(text.line(cursor_line), doc.tab_width()));
         let indent = doc.indent_unit().repeat(indent_level);
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
@@ -4185,27 +4211,21 @@ fn goto_pos(editor: &mut Editor, pos: usize) {
 }
 
 fn goto_first_diag(cx: &mut Context) {
-    let editor = &mut cx.editor;
-    let (_, doc) = current!(editor);
-
+    let doc = doc!(cx.editor);
     let pos = match doc.diagnostics().first() {
         Some(diag) => diag.range.start,
         None => return,
     };
-
-    goto_pos(editor, pos);
+    goto_pos(cx.editor, pos);
 }
 
 fn goto_last_diag(cx: &mut Context) {
-    let editor = &mut cx.editor;
-    let (_, doc) = current!(editor);
-
+    let doc = doc!(cx.editor);
     let pos = match doc.diagnostics().last() {
         Some(diag) => diag.range.start,
         None => return,
     };
-
-    goto_pos(editor, pos);
+    goto_pos(cx.editor, pos);
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -4461,48 +4481,48 @@ pub mod insert {
             };
             let curr = contents.get_char(pos).unwrap_or(' ');
 
-            // TODO: offset range.head by 1? when calculating?
+            let current_line = text.char_to_line(pos);
             let indent_level = indent::suggested_indent_for_pos(
                 doc.language_config(),
                 doc.syntax(),
                 text,
-                pos.saturating_sub(1),
+                pos,
+                current_line,
                 true,
-            );
-            let indent = doc.indent_unit().repeat(indent_level);
-            let mut text = String::with_capacity(1 + indent.len());
-            text.push_str(doc.line_ending.as_str());
-            text.push_str(&indent);
+            )
+            .unwrap_or_else(|| {
+                indent::indent_level_for_line(text.line(current_line), doc.tab_width())
+            });
 
-            let head = pos + offs + text.chars().count();
+            let indent = doc.indent_unit().repeat(indent_level);
+            let mut text = String::new();
+            // If we are between pairs (such as brackets), we want to insert an additional line which is indented one level more and place the cursor there
+            let new_head_pos = if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
+                let inner_indent = doc.indent_unit().repeat(indent_level + 1);
+                text.reserve_exact(2 + indent.len() + inner_indent.len());
+                text.push_str(doc.line_ending.as_str());
+                text.push_str(&inner_indent);
+                let new_head_pos = pos + offs + text.chars().count();
+                text.push_str(doc.line_ending.as_str());
+                text.push_str(&indent);
+                new_head_pos
+            } else {
+                text.reserve_exact(1 + indent.len());
+                text.push_str(doc.line_ending.as_str());
+                text.push_str(&indent);
+                pos + offs + text.chars().count()
+            };
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
-            ranges.push(Range::new(
-                if range.is_empty() {
-                    head
-                } else {
-                    range.anchor + offs
-                },
-                head,
-            ));
-
-            // if between a bracket pair
-            if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
-                // another newline, indent the end bracket one level less
-                let indent = doc.indent_unit().repeat(indent_level.saturating_sub(1));
-                text.push_str(doc.line_ending.as_str());
-                text.push_str(&indent);
-            }
-
+            ranges.push(Range::new(new_head_pos, new_head_pos));
             offs += text.chars().count();
 
             (pos, pos, Some(text.into()))
         });
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
-        //
 
         doc.apply(&transaction, view.id);
     }
@@ -5270,7 +5290,7 @@ pub fn completion(cx: &mut Context) {
         move |editor: &mut Editor,
               compositor: &mut Compositor,
               response: Option<lsp::CompletionResponse>| {
-            let (_, doc) = current!(editor);
+            let doc = doc!(editor);
             if doc.mode() != Mode::Insert {
                 // we're not in insert mode anymore
                 return;
@@ -5448,6 +5468,7 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view.id);
 }
+
 fn rotate_selection_contents_forward(cx: &mut Context) {
     rotate_selection_contents(cx, Direction::Forward)
 }
@@ -5463,7 +5484,39 @@ fn expand_selection(cx: &mut Context) {
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::expand_selection(syntax, text, doc.selection(view.id));
+
+            let current_selection = doc.selection(view.id);
+
+            // save current selection so it can be restored using shrink_selection
+            view.object_selections.push(current_selection.clone());
+
+            let selection = object::expand_selection(syntax, text, current_selection);
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn shrink_selection(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let current_selection = doc.selection(view.id);
+        // try to restore previous selection
+        if let Some(prev_selection) = view.object_selections.pop() {
+            if current_selection.contains(&prev_selection) {
+                // allow shrinking the selection only if current selection contains the previous object selection
+                doc.set_selection(view.id, prev_selection);
+                return;
+            } else {
+                // clear existing selection as they can't be shrinked to anyway
+                view.object_selections.clear();
+            }
+        }
+        // if not previous selection, shrink to first child
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let selection = object::shrink_selection(syntax, text, current_selection);
             doc.set_selection(view.id, selection);
         }
     };

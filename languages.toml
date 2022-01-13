@@ -128,6 +128,7 @@ roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
 
+language-server = { command = "typescript-language-server", args = ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -345,6 +346,7 @@ file-types = ["yml", "yaml"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+injection-regex = "yml|yaml"
 
 # [[language]]
 # name = "haskell"
@@ -397,6 +399,14 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "cmake-language-server" }
+injection-regex = "cmake"
+
+[[language]]
+name = "make"
+scope = "source.make"
+file-types = ["Makefile", "makefile", "justfile", ".justfile"]
+roots =[]
+comment-token = "#"
 
 [[language]]
 name = "glsl"
@@ -405,6 +415,7 @@ file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
+injection-regex = "glsl"
 
 [[language]]
 name = "perl"
@@ -446,6 +457,34 @@ roots = []
 file-types = ["ll"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+injection-regex = "llvm"
+
+[[language]]
+name = "llvm-mir"
+scope = "source.llvm_mir"
+roots = []
+file-types = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "mir"
+
+[[language]]
+name = "llvm-mir-yaml"
+tree-sitter-library = "yaml"
+scope = "source.yaml"
+roots = []
+file-types = ["mir"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "tablegen"
+scope = "source.tablegen"
+roots = []
+file-types = ["td"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "tablegen"
 
 [[language]]
 name = "markdown"
@@ -510,3 +549,20 @@ file-types = ["git-rebase-todo"]
 injection-regex = "git-rebase"
 comment-token = "#"
 indent = { tab-width = 2, unit = " " }
+
+[[language]]
+name = "regex"
+scope = "source.regex"
+injection-regex = "regex"
+file-types = ["regex"]
+roots = []
+
+[[language]]
+name = "git-config"
+scope = "source.gitconfig"
+roots = []
+# TODO: allow specifying file-types as a regex so we can read directory names (e.g. `.git/config`)
+file-types = [".gitmodules", ".gitconfig"]
+injection-regex = "git-config"
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }

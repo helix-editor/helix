@@ -473,7 +473,7 @@ impl Component for Prompt {
                 }
             }
             key!(Enter) => {
-                if self.selection.is_some() && self.line.ends_with('/') {
+                if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.completion = (self.completion_fn)(&self.line);
                     self.exit_selection();
                 } else {
