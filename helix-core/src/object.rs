@@ -2,115 +2,69 @@ use crate::{Range, RopeSlice, Selection, Syntax};
 use tree_sitter::Node;
 
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
-    let tree = syntax.tree();
-
-    selection.clone().transform(|range| {
-        let from = text.char_to_byte(range.from());
-        let to = text.char_to_byte(range.to());
-
-        // find parent of a descendant that matches the range
-        let parent = match tree
-            .root_node()
-            .descendant_for_byte_range(from, to)
-            .and_then(|node| {
-                if node.start_byte() == from && node.end_byte() == to {
-                    node.parent()
-                } else {
-                    Some(node)
-                }
-            }) {
-            Some(parent) => parent,
-            None => return range,
-        };
-
-        let from = text.byte_to_char(parent.start_byte());
-        let to = text.byte_to_char(parent.end_byte());
-
-        if range.head < range.anchor {
-            Range::new(to, from)
+    select_node_impl(syntax, text, selection, |descendant, from, to| {
+        if descendant.start_byte() == from && descendant.end_byte() == to {
+            descendant.parent()
         } else {
-            Range::new(from, to)
+            Some(descendant)
         }
     })
 }
 
 pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
-    let tree = syntax.tree();
-
-    selection.clone().transform(|range| {
-        let from = text.char_to_byte(range.from());
-        let to = text.char_to_byte(range.to());
-
-        let descendant = match tree.root_node().descendant_for_byte_range(from, to) {
-            // find first child, if not possible, fallback to the node that contains selection
-            Some(descendant) => match descendant.child(0) {
-                Some(child) => child,
-                None => descendant,
-            },
-            None => return range,
-        };
-
-        let from = text.byte_to_char(descendant.start_byte());
-        let to = text.byte_to_char(descendant.end_byte());
-
-        if range.head < range.anchor {
-            Range::new(to, from)
-        } else {
-            Range::new(from, to)
-        }
+    select_node_impl(syntax, text, selection, |descendant, _from, _to| {
+        descendant.child(0).or_else(|| Some(descendant))
     })
 }
 
 pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
-    let tree = syntax.tree();
-
-    selection.clone().transform(|range| {
-        let from = text.char_to_byte(range.from());
-        let to = text.char_to_byte(range.to());
-
-        let sibling = match tree
-            .root_node()
-            .descendant_for_byte_range(from, to)
-            .and_then(find_next_sibling)
-        {
-            Some(sibling) => sibling,
-            None => return range,
-        };
-
-        let from = text.byte_to_char(sibling.start_byte());
-        let to = text.byte_to_char(sibling.end_byte());
-
-        if range.head < range.anchor {
-            Range::new(to, from)
-        } else {
-            Range::new(from, to)
-        }
+    select_node_impl(syntax, text, selection, |descendant, _from, _to| {
+        find_sibling_recursive(descendant, |node| node.next_sibling())
     })
-}
-
-fn find_next_sibling(node: Node) -> Option<Node> {
-    node.next_sibling()
-        .or_else(|| node.parent().and_then(find_next_sibling))
 }
 
 pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+    select_node_impl(syntax, text, selection, |descendant, _from, _to| {
+        find_sibling_recursive(descendant, |node| node.prev_sibling())
+    })
+}
+
+fn find_sibling_recursive<F>(node: Node, sibling_fn: F) -> Option<Node>
+where
+    F: Fn(Node) -> Option<Node>,
+{
+    sibling_fn(node).or_else(|| {
+        node.parent()
+            .and_then(|node| find_sibling_recursive(node, sibling_fn))
+    })
+}
+
+fn select_node_impl<F>(
+    syntax: &Syntax,
+    text: RopeSlice,
+    selection: &Selection,
+    select_fn: F,
+) -> Selection
+where
+    F: Fn(Node, usize, usize) -> Option<Node>,
+{
     let tree = syntax.tree();
 
     selection.clone().transform(|range| {
         let from = text.char_to_byte(range.from());
         let to = text.char_to_byte(range.to());
 
-        let sibling = match tree
+        let node = match tree
             .root_node()
             .descendant_for_byte_range(from, to)
-            .and_then(find_prev_sibling)
+            .and_then(|node| select_fn(node, from, to))
         {
-            Some(sibling) => sibling,
+            Some(node) => node,
             None => return range,
         };
 
-        let from = text.byte_to_char(sibling.start_byte());
-        let to = text.byte_to_char(sibling.end_byte());
+        let from = text.byte_to_char(node.start_byte());
+        let to = text.byte_to_char(node.end_byte());
 
         if range.head < range.anchor {
             Range::new(to, from)
@@ -118,9 +72,4 @@ pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: &Selecti
             Range::new(from, to)
         }
     })
-}
-
-fn find_prev_sibling(node: Node) -> Option<Node> {
-    node.prev_sibling()
-        .or_else(|| node.parent().and_then(find_prev_sibling))
 }
