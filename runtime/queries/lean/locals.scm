@@ -1,3 +1,5 @@
-(module) @scope
-(namespace) @scope
-(section) @scope
+[
+  (module)
+  (namespace)
+  (section)
+] @local.scope
