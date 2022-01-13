@@ -5,9 +5,6 @@
 (section
   name: (identifier) @namespace)
 
-; Variables
-(identifier) @variable
-
 ;; Identifier naming conventions
 ((identifier) @type
  (#match? @type "^[A-Z]"))
@@ -215,3 +212,6 @@
 
 ;; Error
 (ERROR) @error
+
+; Variables
+(identifier) @variable
