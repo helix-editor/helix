@@ -1,2 +1,2 @@
-((comment) @markdown
-  (#offset! @markdown 0 3 0 -2))
+((comment) @injection.content
+ (#set! injection.language "markdown"))
