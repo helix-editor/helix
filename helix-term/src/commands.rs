@@ -3239,8 +3239,8 @@ fn buffer_picker(cx: &mut Context) {
             .map(|(_, doc)| new_meta(doc))
             .collect(),
         BufferMeta::format,
-        |editor: &mut Editor, meta, _action| {
-            editor.switch(meta.id, Action::Replace);
+        |editor: &mut Editor, meta, action| {
+            editor.switch(meta.id, action);
         },
         |editor, meta| {
             let doc = &editor.documents.get(&meta.id)?;
