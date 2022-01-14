@@ -158,7 +158,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "css"
 scope = "source.css"
 injection-regex = "css"
-file-types = ["css"]
+file-types = ["css", "scss"]
 roots = []
 
 indent = { tab-width = 2, unit = "  " }
