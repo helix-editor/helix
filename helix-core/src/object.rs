@@ -1,7 +1,7 @@
 use crate::{Range, RopeSlice, Selection, Syntax};
 use tree_sitter::Node;
 
-pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     select_node_impl(syntax, text, selection, |descendant, from, to| {
         if descendant.start_byte() == from && descendant.end_byte() == to {
             descendant.parent()
@@ -11,19 +11,19 @@ pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection)
     })
 }
 
-pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     select_node_impl(syntax, text, selection, |descendant, _from, _to| {
         descendant.child(0).or(Some(descendant))
     })
 }
 
-pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     select_node_impl(syntax, text, selection, |descendant, _from, _to| {
         find_sibling_recursive(descendant, |node| node.next_sibling())
     })
 }
 
-pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: &Selection) -> Selection {
+pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     select_node_impl(syntax, text, selection, |descendant, _from, _to| {
         find_sibling_recursive(descendant, |node| node.prev_sibling())
     })
@@ -42,7 +42,7 @@ where
 fn select_node_impl<F>(
     syntax: &Syntax,
     text: RopeSlice,
-    selection: &Selection,
+    selection: Selection,
     select_fn: F,
 ) -> Selection
 where
@@ -50,7 +50,7 @@ where
 {
     let tree = syntax.tree();
 
-    selection.clone().transform(|range| {
+    selection.transform(|range| {
         let from = text.char_to_byte(range.from());
         let to = text.char_to_byte(range.to());
 

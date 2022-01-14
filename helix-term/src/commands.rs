@@ -5492,7 +5492,7 @@ fn expand_selection(cx: &mut Context) {
             // save current selection so it can be restored using shrink_selection
             view.object_selections.push(current_selection.clone());
 
-            let selection = object::expand_selection(syntax, text, current_selection);
+            let selection = object::expand_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5518,7 +5518,7 @@ fn shrink_selection(cx: &mut Context) {
         // if not previous selection, shrink to first child
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection);
+            let selection = object::shrink_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5532,10 +5532,8 @@ fn select_next_sibling(cx: &mut Context) {
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-
             let current_selection = doc.selection(view.id);
-
-            let selection = object::select_next_sibling(syntax, text, current_selection);
+            let selection = object::select_next_sibling(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5549,10 +5547,8 @@ fn select_prev_sibling(cx: &mut Context) {
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-
             let current_selection = doc.selection(view.id);
-
-            let selection = object::select_prev_sibling(syntax, text, current_selection);
+            let selection = object::select_prev_sibling(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
