@@ -570,12 +570,14 @@ impl Default for Keymaps {
                 "D" => goto_first_diag,
                 "space" => add_newline_above,
                 "o" => shrink_selection,
+                "s" => prev_sibling_selection,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
                 "space" => add_newline_below,
                 "o" => expand_selection,
+                "s" => next_sibling_selection,
             },
 
             "/" => search,

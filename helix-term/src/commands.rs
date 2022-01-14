@@ -363,6 +363,8 @@ impl MappableCommand {
         rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
+        next_sibling_selection, "Move selection to next sibling syntax node",
+        prev_sibling_selection, "Move selection to previous sibling syntax node",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save the current selection to the jumplist",
@@ -5490,7 +5492,7 @@ fn expand_selection(cx: &mut Context) {
             // save current selection so it can be restored using shrink_selection
             view.object_selections.push(current_selection.clone());
 
-            let selection = object::expand_selection(syntax, text, current_selection);
+            let selection = object::expand_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5516,7 +5518,37 @@ fn shrink_selection(cx: &mut Context) {
         // if not previous selection, shrink to first child
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection);
+            let selection = object::shrink_selection(syntax, text, current_selection.clone());
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn next_sibling_selection(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let current_selection = doc.selection(view.id);
+            let selection = object::next_sibling_selection(syntax, text, current_selection.clone());
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn prev_sibling_selection(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let current_selection = doc.selection(view.id);
+            let selection = object::prev_sibling_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
