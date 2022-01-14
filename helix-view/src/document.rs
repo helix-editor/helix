@@ -845,7 +845,7 @@ impl Document {
     }
 
     /// Language ID for the document. Either the `language-id` from the
-    // `language-server` configuration, or the document language if no
+    /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
         let fallback = self.language().and_then(|s| s.split('.').last());
