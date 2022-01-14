@@ -15,12 +15,12 @@ pub enum BorderType {
 }
 
 impl BorderType {
-    pub fn line_symbols(border_type: BorderType) -> line::Set {
+    pub fn line_symbols(border_type: Self) -> line::Set {
         match border_type {
-            BorderType::Plain => line::NORMAL,
-            BorderType::Rounded => line::ROUNDED,
-            BorderType::Double => line::DOUBLE,
-            BorderType::Thick => line::THICK,
+            Self::Plain => line::NORMAL,
+            Self::Rounded => line::ROUNDED,
+            Self::Double => line::DOUBLE,
+            Self::Thick => line::THICK,
         }
     }
 }

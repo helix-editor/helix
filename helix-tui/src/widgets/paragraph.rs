@@ -166,7 +166,7 @@ impl<'a> Widget for Paragraph<'a> {
             Box::new(WordWrapper::new(&mut styled, text_area.width, trim))
         } else {
             let mut line_composer = Box::new(LineTruncator::new(&mut styled, text_area.width));
-            if let Alignment::Left = self.alignment {
+            if self.alignment == Alignment::Left {
                 line_composer.set_horizontal_offset(self.scroll.1);
             }
             line_composer

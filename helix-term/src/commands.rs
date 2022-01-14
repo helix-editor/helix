@@ -173,7 +173,7 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
-            MappableCommand::Typable { name, args, doc: _ } => {
+            Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = cmd::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
@@ -186,21 +186,21 @@ impl MappableCommand {
                     }
                 }
             }
-            MappableCommand::Static { fun, .. } => (fun)(cx),
+            Self::Static { fun, .. } => (fun)(cx),
         }
     }
 
     pub fn name(&self) -> &str {
         match &self {
-            MappableCommand::Typable { name, .. } => name,
-            MappableCommand::Static { name, .. } => name,
+            Self::Typable { name, .. } => name,
+            Self::Static { name, .. } => name,
         }
     }
 
     pub fn doc(&self) -> &str {
         match &self {
-            MappableCommand::Typable { doc, .. } => doc,
-            MappableCommand::Static { doc, .. } => doc,
+            Self::Typable { doc, .. } => doc,
+            Self::Static { doc, .. } => doc,
         }
     }
 
@@ -3494,11 +3494,9 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     match op {
         ResourceOp::Create(op) => {
             let path = op.uri.to_file_path().unwrap();
-            let ignore_if_exists = if let Some(options) = &op.options {
+            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                 !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            } else {
-                false
-            };
+            });
             if ignore_if_exists && path.exists() {
                 Ok(())
             } else {
@@ -3508,11 +3506,12 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
         ResourceOp::Delete(op) => {
             let path = op.uri.to_file_path().unwrap();
             if path.is_dir() {
-                let recursive = if let Some(options) = &op.options {
-                    options.recursive.unwrap_or(false)
-                } else {
-                    false
-                };
+                let recursive = op
+                    .options
+                    .as_ref()
+                    .and_then(|options| options.recursive)
+                    .unwrap_or(false);
+
                 if recursive {
                     fs::remove_dir_all(&path)
                 } else {
@@ -3527,11 +3526,9 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
         ResourceOp::Rename(op) => {
             let from = op.old_uri.to_file_path().unwrap();
             let to = op.new_uri.to_file_path().unwrap();
-            let ignore_if_exists = if let Some(options) = &op.options {
+            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                 !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            } else {
-                false
-            };
+            });
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
