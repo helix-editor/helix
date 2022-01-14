@@ -848,13 +848,18 @@ impl Document {
     /// `language-server` configuration, or the document language if no
     /// `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        let fallback = self.language().and_then(|s| s.split('.').last());
-
         self.language
             .as_ref()
             .and_then(|config| config.language_server.as_ref())
             .and_then(|lsp_config| lsp_config.language_id.as_ref())
-            .map_or(fallback, |id| Some(id.as_str()))
+            .map_or_else(
+                || {
+                    self.language()
+                        .and_then(|s| s.rsplit_once('.'))
+                        .map(|(_, language_id)| language_id)
+                },
+                |language_id| Some(language_id.as_str()),
+            )
     }
 
     /// Corresponding [`LanguageConfiguration`].
