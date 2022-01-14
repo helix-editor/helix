@@ -203,7 +203,12 @@ pub fn ensure_grapheme_boundary_next_byte(slice: RopeSlice, byte_idx: usize) -> 
     if byte_idx == 0 {
         byte_idx
     } else {
-        next_grapheme_boundary_byte(slice, byte_idx - 1)
+        // TODO: optimize so we're not constructing grapheme cursor twice
+        if is_grapheme_boundary_byte(slice, byte_idx) {
+            byte_idx
+        } else {
+            next_grapheme_boundary_byte(slice, byte_idx)
+        }
     }
 }
 
@@ -215,6 +220,31 @@ pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
 
     // We work with bytes for this, so convert.
     let byte_idx = slice.char_to_byte(char_idx);
+
+    // Get the chunk with our byte index in it.
+    let (chunk, chunk_byte_idx, _, _) = slice.chunk_at_byte(byte_idx);
+
+    // Set up the grapheme cursor.
+    let mut gc = GraphemeCursor::new(byte_idx, slice.len_bytes(), true);
+
+    // Determine if the given position is a grapheme cluster boundary.
+    loop {
+        match gc.is_boundary(chunk, chunk_byte_idx) {
+            Ok(n) => return n,
+            Err(GraphemeIncomplete::PreContext(n)) => {
+                let (ctx_chunk, ctx_byte_start, _, _) = slice.chunk_at_byte(n - 1);
+                gc.provide_context(ctx_chunk, ctx_byte_start);
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+}
+
+/// Returns whether the given byte position is a grapheme boundary.
+#[must_use]
+pub fn is_grapheme_boundary_byte(slice: RopeSlice, byte_idx: usize) -> bool {
+    // Bounds check
+    debug_assert!(byte_idx <= slice.len_bytes());
 
     // Get the chunk with our byte index in it.
     let (chunk, chunk_byte_idx, _, _) = slice.chunk_at_byte(byte_idx);
