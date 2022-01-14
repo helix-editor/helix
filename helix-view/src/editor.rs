@@ -107,6 +107,16 @@ pub struct Config {
     pub file_picker: FilePickerConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
+    /// Search configuration.
+    #[serde(default)]
+    pub search: SearchConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SearchConfig {
+    /// Whether the search should wrap after depleting the matches. Default to true.
+    pub wrap_around: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,7 +162,14 @@ impl Default for Config {
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             true_color: false,
+            search: SearchConfig::default(),
         }
+    }
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        Self { wrap_around: true }
     }
 }
 

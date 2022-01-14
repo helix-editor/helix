@@ -1465,6 +1465,7 @@ fn search_impl(
     movement: Movement,
     direction: Direction,
     scrolloff: usize,
+    wrap_around: bool,
 ) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
@@ -1490,16 +1491,22 @@ fn search_impl(
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mat = match direction {
-        Direction::Forward => regex
-            .find_at(contents, start)
-            .or_else(|| regex.find(contents)),
-        Direction::Backward => regex.find_iter(&contents[..start]).last().or_else(|| {
-            offset = start;
-            regex.find_iter(&contents[start..]).last()
-        }),
+    let mut mat = match direction {
+        Direction::Forward => regex.find_at(contents, start),
+        Direction::Backward => regex.find_iter(&contents[..start]).last(),
     };
-    // TODO: message on wraparound
+
+    if wrap_around && mat.is_none() {
+        mat = match direction {
+            Direction::Forward => regex.find(contents),
+            Direction::Backward => {
+                offset = start;
+                regex.find_iter(&contents[start..]).last()
+            }
+        }
+        // TODO: message on wraparound
+    }
+
     if let Some(mat) = mat {
         let start = text.byte_to_char(mat.start() + offset);
         let end = text.byte_to_char(mat.end() + offset);
@@ -1552,6 +1559,7 @@ fn rsearch(cx: &mut Context) {
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let scrolloff = cx.editor.config.scrolloff;
+    let wrap_around = cx.editor.config.search.wrap_around;
 
     let doc = doc!(cx.editor);
 
@@ -1585,6 +1593,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 Movement::Move,
                 direction,
                 scrolloff,
+                wrap_around,
             );
         },
     );
@@ -1604,11 +1613,21 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
         } else {
             false
         };
+        let wrap_around = cx.editor.config.search.wrap_around;
         if let Ok(regex) = RegexBuilder::new(query)
             .case_insensitive(case_insensitive)
             .build()
         {
-            search_impl(doc, view, &contents, &regex, movement, direction, scrolloff);
+            search_impl(
+                doc,
+                view,
+                &contents,
+                &regex,
+                movement,
+                direction,
+                scrolloff,
+                wrap_around,
+            );
         } else {
             // get around warning `mutable_borrow_reservation_conflict`
             // which will be a hard error in the future
