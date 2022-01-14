@@ -555,3 +555,14 @@ file-types = [".gitmodules", ".gitconfig"]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
+
+[[language]]
+name = "elm"
+scope = "source.elm"
+injection-regex = "elm"
+file-types = ["elm"]
+roots = ["elm.json"]
+auto-format = true
+comment-token = "--"
+language-server = { command = "elm-language-server" }
+indent = { tab-width = 4, unit = "    " }

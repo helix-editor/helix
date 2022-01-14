@@ -202,3 +202,7 @@
 	path = helix-syntax/languages/tree-sitter-git-config
 	url = https://github.com/the-mikedavis/tree-sitter-git-config.git
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-elm"]
+	path = helix-syntax/languages/tree-sitter-elm
+	url = https://github.com/elm-tooling/tree-sitter-elm
+	shallow = true
