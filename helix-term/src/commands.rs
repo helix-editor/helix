@@ -1608,12 +1608,13 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     if let Some(query) = registers.read('/') {
         let query = query.last().unwrap();
         let contents = doc.text().slice(..).to_string();
-        let case_insensitive = if cx.editor.config.smart_case {
+        let search_config = &cx.editor.config.search;
+        let case_insensitive = if search_config.smart_case {
             !query.chars().any(char::is_uppercase)
         } else {
             false
         };
-        let wrap_around = cx.editor.config.search.wrap_around;
+        let wrap_around = search_config.wrap_around;
         if let Ok(regex) = RegexBuilder::new(query)
             .case_insensitive(case_insensitive)
             .build()
@@ -1666,7 +1667,7 @@ fn search_selection(cx: &mut Context) {
 fn global_search(cx: &mut Context) {
     let (all_matches_sx, all_matches_rx) =
         tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
-    let smart_case = cx.editor.config.smart_case;
+    let smart_case = cx.editor.config.search.smart_case;
     let file_picker_config = cx.editor.config.file_picker.clone();
 
     let completions = search_completions(cx, None);
@@ -2705,12 +2706,13 @@ pub mod cmd {
             "mouse" => runtime_config.mouse = arg.parse()?,
             "line-number" => runtime_config.line_number = arg.parse()?,
             "middle-click_paste" => runtime_config.middle_click_paste = arg.parse()?,
-            "smart-case" => runtime_config.smart_case = arg.parse()?,
             "auto-pairs" => runtime_config.auto_pairs = arg.parse()?,
             "auto-completion" => runtime_config.auto_completion = arg.parse()?,
             "completion-trigger-len" => runtime_config.completion_trigger_len = arg.parse()?,
             "auto-info" => runtime_config.auto_info = arg.parse()?,
             "true-color" => runtime_config.true_color = arg.parse()?,
+            "search.smart-case" => runtime_config.search.smart_case = arg.parse()?,
+            "search.wrap-around" => runtime_config.search.wrap_around = arg.parse()?,
             _ => anyhow::bail!("Unknown key `{}`.", args[0]),
         }
 

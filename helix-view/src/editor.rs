@@ -92,8 +92,6 @@ pub struct Config {
     pub line_number: LineNumber,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
-    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
-    pub smart_case: bool,
     /// Automatic insertion of pairs to parentheses, brackets, etc. Defaults to true.
     pub auto_pairs: bool,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
@@ -115,6 +113,8 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
+    /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
+    pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
 }
@@ -154,7 +154,6 @@ impl Default for Config {
             },
             line_number: LineNumber::Absolute,
             middle_click_paste: true,
-            smart_case: true,
             auto_pairs: true,
             auto_completion: true,
             idle_timeout: Duration::from_millis(400),
@@ -169,7 +168,10 @@ impl Default for Config {
 
 impl Default for SearchConfig {
     fn default() -> Self {
-        Self { wrap_around: true }
+        Self {
+            wrap_around: true,
+            smart_case: true,
+        }
     }
 }
 
