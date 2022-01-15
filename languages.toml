@@ -128,7 +128,7 @@ roots = []
 comment-token = "//"
 # TODO: highlights-jsx, highlights-params
 
-language-server = { command = "typescript-language-server", args = ["--stdio"] }
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascript" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -140,7 +140,7 @@ shebangs = []
 roots = []
 # TODO: highlights-jsx, highlights-params
 
-language-server = { command = "typescript-language-server", args = ["--stdio"] }
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescript"}
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -151,7 +151,7 @@ file-types = ["tsx"]
 roots = []
 # TODO: highlights-jsx, highlights-params
 
-language-server = { command = "typescript-language-server", args = ["--stdio"] }
+language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescriptreact" }
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
