@@ -13,7 +13,7 @@
 ] @keyword
 
 ((identifier) @variable.builtin
- (#match? @variable.builtin "^(__currentSystem|__currentTime|__nixPath|__nixVersion|__storeDir|builtins|false|null|true)$")
+ (#match? @variable.builtin "^(__currentSystem|__currentTime|__nixPath|__nixVersion|__storeDir|builtins)$")
  (#is-not? local))
 
 ((identifier) @function.builtin
@@ -32,6 +32,11 @@
 ] @string.special.path
 
 (uri) @string.special.uri
+
+; boolean
+((identifier) @constant.builtin.boolean (#match? @constant.builtin.boolean "^(true|false)$")) @constant.builtin.boolean
+; null
+((identifier) @constant.builtin (#eq? @constant.builtin "null")) @constant.builtin
 
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float

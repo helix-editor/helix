@@ -283,7 +283,7 @@ pub mod completers {
         let is_tilde = input.starts_with('~') && input.len() == 1;
         let path = helix_core::path::expand_tilde(Path::new(input));
 
-        let (dir, file_name) = if input.ends_with('/') {
+        let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
         } else {
             let file_name = path
@@ -313,7 +313,7 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+                    //let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
@@ -331,12 +331,7 @@ pub mod completers {
                         path.push("");
                     }
 
-                    let path = if cfg!(windows) && is_dir {
-                        // Convert Windows style path separator to Unix style
-                        path.to_str().unwrap().replace("\\", "/")
-                    } else {
-                        path.to_str().unwrap().to_owned()
-                    };
+                    let path = path.to_str().unwrap().to_owned();
                     Some((end.clone(), Cow::from(path)))
                 })
             }) // TODO: unwrap or skip

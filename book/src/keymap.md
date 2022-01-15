@@ -25,6 +25,7 @@
 | `f`         | Find next char                                     | `find_next_char`            |
 | `T`         | Find 'till previous char                           | `till_prev_char`            |
 | `F`         | Find previous char                                 | `find_prev_char`            |
+| `G`         | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`     | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
 | `Home`      | Move to the start of the line                      | `goto_line_start`           |
 | `End`       | Move to the end of the line                        | `goto_line_end`             |
@@ -261,6 +262,8 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`    |
 | `[space` | Add newline above                            | `add_newline_above` |
 | `]space` | Add newline below                            | `add_newline_below` |
+| `]o`     | Expand syntax tree object selection.         | `expand_selection`  |
+| `[o`     | Shrink syntax tree object selection.         | `shrink_selection`  |
 
 ## Insert Mode
 

@@ -324,11 +324,8 @@ impl Editor {
                 if let Some(language_server) = doc.language_server() {
                     tokio::spawn(language_server.text_document_did_close(doc.identifier()));
                 }
-                let language_id = doc
-                    .language()
-                    .and_then(|s| s.split('.').last()) // source.rust
-                    .map(ToOwned::to_owned)
-                    .unwrap_or_default();
+
+                let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
