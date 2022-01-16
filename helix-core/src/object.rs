@@ -17,15 +17,17 @@ pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) 
     })
 }
 
-pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+pub fn select_sibling<F>(
+    syntax: &Syntax,
+    text: RopeSlice,
+    selection: Selection,
+    sibling_fn: &F,
+) -> Selection
+where
+    F: Fn(Node) -> Option<Node>,
+{
     select_node_impl(syntax, text, selection, |descendant, _from, _to| {
-        find_sibling_recursive(descendant, |node| node.next_sibling())
-    })
-}
-
-pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
-    select_node_impl(syntax, text, selection, |descendant, _from, _to| {
-        find_sibling_recursive(descendant, |node| node.prev_sibling())
+        find_sibling_recursive(descendant, sibling_fn)
     })
 }
 

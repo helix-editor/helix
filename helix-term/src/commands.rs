@@ -5526,14 +5526,18 @@ fn shrink_selection(cx: &mut Context) {
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
-fn select_next_sibling(cx: &mut Context) {
+fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
+where
+    F: Fn(helix_core::tree_sitter::Node) -> Option<helix_core::tree_sitter::Node>,
+{
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let current_selection = doc.selection(view.id);
-            let selection = object::select_next_sibling(syntax, text, current_selection.clone());
+            let selection =
+                object::select_sibling(syntax, text, current_selection.clone(), sibling_fn);
             doc.set_selection(view.id, selection);
         }
     };
@@ -5541,19 +5545,16 @@ fn select_next_sibling(cx: &mut Context) {
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
-fn select_prev_sibling(cx: &mut Context) {
-    let motion = |editor: &mut Editor| {
-        let (view, doc) = current!(editor);
+fn select_next_sibling(cx: &mut Context) {
+    select_sibling_impl(cx, &|node| {
+        helix_core::tree_sitter::Node::next_sibling(&node)
+    })
+}
 
-        if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
-            let current_selection = doc.selection(view.id);
-            let selection = object::select_prev_sibling(syntax, text, current_selection.clone());
-            doc.set_selection(view.id, selection);
-        }
-    };
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+fn select_prev_sibling(cx: &mut Context) {
+    select_sibling_impl(cx, &|node| {
+        helix_core::tree_sitter::Node::prev_sibling(&node)
+    })
 }
 
 fn match_brackets(cx: &mut Context) {
