@@ -30,6 +30,15 @@
 "namespace" = "light-magenta"
 "ui.help" = { fg = "white", bg = "black" }
 
+"markup.heading" = "light-blue"
+"markup.list" = "light-red"
+"markup.bold" = { fg = "light-yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "light-magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "light-red"
+"markup.quote" = "light-cyan"
+"markup.raw" = "light-green"
+
 "diff.plus" = "light-green"
 "diff.delta" = "yellow"
 "diff.minus" = "light-red"
