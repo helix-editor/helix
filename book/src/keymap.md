@@ -118,6 +118,10 @@
 | `Alt-K`  | Remove selections matching the regex                              | `remove_selections`                  |
 | `$`      | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 | `Ctrl-c` | Comment/uncomment the selections                                  | `toggle_comments`                    |
+| `Alt-k`  | Expand selection to parent syntax node                            | `expand_selection`                   |
+| `Alt-j`  | Shrink syntax tree object selection                               | `shrink_selection`                   |
+| `Alt-h`  | Select previous sibling node in syntax tree                       | `select_prev_sibling`                |
+| `Alt-l`  | Select next sibling node in syntax tree                           | `select_next_sibling`                |
 
 ### Search
 
@@ -261,8 +265,6 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`    |
 | `[space` | Add newline above                            | `add_newline_above` |
 | `]space` | Add newline below                            | `add_newline_below` |
-| `]o`     | Expand syntax tree object selection.         | `expand_selection`  |
-| `[o`     | Shrink syntax tree object selection.         | `shrink_selection`  |
 
 ## Insert Mode
 
