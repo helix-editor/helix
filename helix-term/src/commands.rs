@@ -11,6 +11,7 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     search, selection, shellwords, surround, textobject,
+    tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
     Transaction,
@@ -5528,7 +5529,7 @@ fn shrink_selection(cx: &mut Context) {
 
 fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
 where
-    F: Fn(helix_core::tree_sitter::Node) -> Option<helix_core::tree_sitter::Node>,
+    F: Fn(Node) -> Option<Node>,
 {
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
@@ -5546,15 +5547,11 @@ where
 }
 
 fn select_next_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, &|node| {
-        helix_core::tree_sitter::Node::next_sibling(&node)
-    })
+    select_sibling_impl(cx, &|node| Node::next_sibling(&node))
 }
 
 fn select_prev_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, &|node| {
-        helix_core::tree_sitter::Node::prev_sibling(&node)
-    })
+    select_sibling_impl(cx, &|node| Node::prev_sibling(&node))
 }
 
 fn match_brackets(cx: &mut Context) {
