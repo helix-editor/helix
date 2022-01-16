@@ -337,15 +337,15 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 injection-regex = "yml|yaml"
 
-# [[language]]
-# name = "haskell"
-# scope = "source.haskell"
-# injection-regex = "haskell"
-# file-types = ["hs"]
-# roots = []
-# comment-token = "--"
-#
-# indent = { tab-width = 2, unit = "  " }
+[[language]]
+name = "haskell"
+scope = "source.haskell"
+injection-regex = "haskell"
+file-types = ["hs"]
+roots = []
+comment-token = "--"
+
+indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "zig"
