@@ -42,6 +42,7 @@ pub struct Cell<'a> {
 
 impl<'a> Cell<'a> {
     /// Set the `Style` of this cell.
+    #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.style = style;
         self
@@ -104,6 +105,7 @@ impl<'a> Row<'a> {
 
     /// Set the fixed height of the [`Row`]. Any [`Cell`] whose content has more lines than this
     /// height will see its content truncated.
+    #[must_use]
     pub fn height(mut self, height: u16) -> Self {
         self.height = height;
         self
@@ -111,12 +113,14 @@ impl<'a> Row<'a> {
 
     /// Set the [`Style`] of the entire row. This [`Style`] can be overriden by the [`Style`] of a
     /// any individual [`Cell`] or event by their [`Text`] content.
+    #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.style = style;
         self
     }
 
     /// Set the bottom margin. By default, the bottom margin is `0`.
+    #[must_use]
     pub fn bottom_margin(mut self, margin: u16) -> Self {
         self.bottom_margin = margin;
         self
@@ -216,16 +220,19 @@ impl<'a> Table<'a> {
         }
     }
 
+    #[must_use]
     pub fn block(mut self, block: Block<'a>) -> Self {
         self.block = Some(block);
         self
     }
 
+    #[must_use]
     pub fn header(mut self, header: Row<'a>) -> Self {
         self.header = Some(header);
         self
     }
 
+    #[must_use]
     pub fn widths(mut self, widths: &'a [Constraint]) -> Self {
         let between_0_and_100 = |&w| match w {
             Constraint::Percentage(p) => p <= 100,
@@ -239,21 +246,25 @@ impl<'a> Table<'a> {
         self
     }
 
+    #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.style = style;
         self
     }
 
+    #[must_use]
     pub fn highlight_symbol(mut self, highlight_symbol: &'a str) -> Self {
         self.highlight_symbol = Some(highlight_symbol);
         self
     }
 
+    #[must_use]
     pub fn highlight_style(mut self, highlight_style: Style) -> Self {
         self.highlight_style = highlight_style;
         self
     }
 
+    #[must_use]
     pub fn column_spacing(mut self, spacing: u16) -> Self {
         self.column_spacing = spacing;
         self

@@ -23,6 +23,7 @@ impl Position {
     }
 
     // TODO: generalize
+    #[must_use]
     pub fn traverse(self, text: &crate::Tendril) -> Self {
         let Self { mut row, mut col } = self;
         // TODO: there should be a better way here

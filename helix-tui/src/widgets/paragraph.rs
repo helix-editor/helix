@@ -106,26 +106,31 @@ impl<'a> Paragraph<'a> {
         }
     }
 
+    #[must_use]
     pub fn block(mut self, block: Block<'a>) -> Paragraph<'a> {
         self.block = Some(block);
         self
     }
 
+    #[must_use]
     pub fn style(mut self, style: Style) -> Paragraph<'a> {
         self.style = style;
         self
     }
 
+    #[must_use]
     pub fn wrap(mut self, wrap: Wrap) -> Paragraph<'a> {
         self.wrap = Some(wrap);
         self
     }
 
+    #[must_use]
     pub fn scroll(mut self, offset: (u16, u16)) -> Paragraph<'a> {
         self.scroll = offset;
         self
     }
 
+    #[must_use]
     pub fn alignment(mut self, alignment: Alignment) -> Paragraph<'a> {
         self.alignment = alignment;
         self

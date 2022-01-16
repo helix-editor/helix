@@ -78,6 +78,7 @@ impl Default for Layout {
 }
 
 impl Layout {
+    #[must_use]
     pub fn constraints<C>(mut self, constraints: C) -> Layout
     where
         C: Into<Vec<Constraint>>,
@@ -86,6 +87,7 @@ impl Layout {
         self
     }
 
+    #[must_use]
     pub fn margin(mut self, margin: u16) -> Layout {
         self.margin = Margin {
             horizontal: margin,
@@ -94,16 +96,19 @@ impl Layout {
         self
     }
 
+    #[must_use]
     pub fn horizontal_margin(mut self, horizontal: u16) -> Layout {
         self.margin.horizontal = horizontal;
         self
     }
 
+    #[must_use]
     pub fn vertical_margin(mut self, vertical: u16) -> Layout {
         self.margin.vertical = vertical;
         self
     }
 
+    #[must_use]
     pub fn direction(mut self, direction: Direction) -> Layout {
         self.direction = direction;
         self

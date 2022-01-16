@@ -123,6 +123,7 @@ impl Range {
     }
 
     // flips the direction of the selection
+    #[must_use]
     pub fn flip(&self) -> Self {
         Self {
             anchor: self.head,
@@ -151,6 +152,7 @@ impl Range {
 
     /// Map a range through a set of changes. Returns a new range representing the same position
     /// after the changes are applied.
+    #[must_use]
     pub fn map(self, changes: &ChangeSet) -> Self {
         use std::cmp::Ordering;
         let (anchor, head) = match self.anchor.cmp(&self.head) {
@@ -376,6 +378,7 @@ impl Selection {
     }
 
     /// Ensure selection containing only the primary selection.
+    #[must_use]
     pub fn into_single(self) -> Self {
         if self.ranges.len() == 1 {
             self
@@ -388,6 +391,7 @@ impl Selection {
     }
 
     /// Adds a new range to the selection and makes it the primary range.
+    #[must_use]
     pub fn push(mut self, range: Range) -> Self {
         self.ranges.push(range);
         self.set_primary_index(self.ranges().len() - 1);
@@ -395,6 +399,7 @@ impl Selection {
     }
 
     /// Removes a range from the selection.
+    #[must_use]
     pub fn remove(mut self, index: usize) -> Self {
         assert!(
             self.ranges.len() > 1,
@@ -409,6 +414,7 @@ impl Selection {
     }
 
     /// Replace a range in the selection with a new range.
+    #[must_use]
     pub fn replace(mut self, index: usize, range: Range) -> Self {
         self.ranges[index] = range;
         self.normalize()
@@ -416,6 +422,7 @@ impl Selection {
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after
     /// applying changes to a document.
+    #[must_use]
     pub fn map(self, changes: &ChangeSet) -> Self {
         if changes.is_empty() {
             return self;
@@ -509,6 +516,7 @@ impl Selection {
     }
 
     /// Takes a closure and maps each `Range` over the closure.
+    #[must_use]
     pub fn transform<F>(mut self, f: F) -> Self
     where
         F: Fn(Range) -> Range,
@@ -525,6 +533,7 @@ impl Selection {
     //    very end of the document.
     // 3. Ranges are non-overlapping.
     // 4. Ranges are sorted by their position in the text.
+    #[must_use]
     pub fn ensure_invariants(self, text: RopeSlice) -> Self {
         self.transform(|r| r.min_width_1(text).grapheme_aligned(text))
             .normalize()
@@ -532,6 +541,7 @@ impl Selection {
 
     /// Transforms the selection into all of the left-side head positions,
     /// using block-cursor semantics.
+    #[must_use]
     pub fn cursors(self, text: RopeSlice) -> Self {
         self.transform(|range| Range::point(range.cursor(text)))
     }

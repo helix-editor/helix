@@ -36,7 +36,7 @@ pub struct Rect {
 impl Rect {
     /// Creates a new rect, with width and height limited to keep the area under max u16.
     /// If clipped, aspect ratio will be preserved.
-    pub fn new(x: u16, y: u16, width: u16, height: u16) -> Rect {
+    pub fn new(x: u16, y: u16, width: u16, height: u16) -> Self {
         let max_area = u16::max_value();
         let (clipped_width, clipped_height) =
             if u32::from(width) * u32::from(height) > u32::from(max_area) {
@@ -48,7 +48,7 @@ impl Rect {
             } else {
                 (width, height)
             };
-        Rect {
+        Self {
             x,
             y,
             width: clipped_width,
@@ -84,9 +84,10 @@ impl Rect {
     // Returns a new Rect with width reduced from the left side.
     // This changes the `x` coordinate and clamps it to the right
     // edge of the original Rect.
-    pub fn clip_left(self, width: u16) -> Rect {
+    #[must_use]
+    pub fn clip_left(self, width: u16) -> Self {
         let width = std::cmp::min(width, self.width);
-        Rect {
+        Self {
             x: self.x.saturating_add(width),
             width: self.width.saturating_sub(width),
             ..self
@@ -95,8 +96,9 @@ impl Rect {
 
     // Returns a new Rect with width reduced from the right side.
     // This does _not_ change the `x` coordinate.
-    pub fn clip_right(self, width: u16) -> Rect {
-        Rect {
+    #[must_use]
+    pub fn clip_right(self, width: u16) -> Self {
+        Self {
             width: self.width.saturating_sub(width),
             ..self
         }
@@ -105,9 +107,10 @@ impl Rect {
     // Returns a new Rect with height reduced from the top.
     // This changes the `y` coordinate and clamps it to the bottom
     // edge of the original Rect.
-    pub fn clip_top(self, height: u16) -> Rect {
+    #[must_use]
+    pub fn clip_top(self, height: u16) -> Self {
         let height = std::cmp::min(height, self.height);
-        Rect {
+        Self {
             y: self.y.saturating_add(height),
             height: self.height.saturating_sub(height),
             ..self
@@ -116,27 +119,31 @@ impl Rect {
 
     // Returns a new Rect with height reduced from the bottom.
     // This does _not_ change the `y` coordinate.
-    pub fn clip_bottom(self, height: u16) -> Rect {
-        Rect {
+    #[must_use]
+    pub fn clip_bottom(self, height: u16) -> Self {
+        Self {
             height: self.height.saturating_sub(height),
             ..self
         }
     }
 
-    pub fn with_height(self, height: u16) -> Rect {
+    #[must_use]
+    pub fn with_height(self, height: u16) -> Self {
         // new height may make area > u16::max_value, so use new()
         Self::new(self.x, self.y, self.width, height)
     }
 
-    pub fn with_width(self, width: u16) -> Rect {
+    #[must_use]
+    pub fn with_width(self, width: u16) -> Self {
         Self::new(self.x, self.y, width, self.height)
     }
 
-    pub fn inner(self, margin: &Margin) -> Rect {
+    #[must_use]
+    pub fn inner(self, margin: &Margin) -> Self {
         if self.width < 2 * margin.horizontal || self.height < 2 * margin.vertical {
-            Rect::default()
+            Self::default()
         } else {
-            Rect {
+            Self {
                 x: self.x + margin.horizontal,
                 y: self.y + margin.vertical,
                 width: self.width - 2 * margin.horizontal,
@@ -146,7 +153,8 @@ impl Rect {
     }
 
     /// Calculate the union between two [`Rect`]s.
-    pub fn union(self, other: Rect) -> Rect {
+    #[must_use]
+    pub fn union(self, other: Self) -> Self {
         // Example:
         //
         // If `Rect` A is positioned at `(0, 0)` with a width and height of `5`,
@@ -161,7 +169,7 @@ impl Rect {
         let y1 = min(self.y, other.y);
         let x2 = max(self.x + self.width, other.x + other.width);
         let y2 = max(self.y + self.height, other.y + other.height);
-        Rect {
+        Self {
             x: x1,
             y: y1,
             width: x2 - x1,
@@ -170,7 +178,8 @@ impl Rect {
     }
 
     /// Calculate the intersection between two [`Rect`]s.
-    pub fn intersection(self, other: Rect) -> Rect {
+    #[must_use]
+    pub fn intersection(self, other: Self) -> Self {
         // Example:
         //
         // If `Rect` A is positioned at `(0, 0)` with a width and height of `5`,
@@ -185,7 +194,7 @@ impl Rect {
         let y1 = max(self.y, other.y);
         let x2 = min(self.x + self.width, other.x + other.width);
         let y2 = min(self.y + self.height, other.y + other.height);
-        Rect {
+        Self {
             x: x1,
             y: y1,
             width: x2 - x1,
@@ -193,7 +202,7 @@ impl Rect {
         }
     }
 
-    pub fn intersects(self, other: Rect) -> bool {
+    pub fn intersects(self, other: Self) -> bool {
         self.x < other.x + other.width
             && self.x + self.width > other.x
             && self.y < other.y + other.height
@@ -391,6 +400,7 @@ impl Style {
         }
     }
 
+    #[must_use]
     /// Changes the foreground color.
     ///
     /// ## Examples
@@ -401,11 +411,12 @@ impl Style {
     /// let diff = Style::default().fg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().fg(Color::Red));
     /// ```
-    pub fn fg(mut self, color: Color) -> Style {
+    pub fn fg(mut self, color: Color) -> Self {
         self.fg = Some(color);
         self
     }
 
+    #[must_use]
     /// Changes the background color.
     ///
     /// ## Examples
@@ -416,11 +427,12 @@ impl Style {
     /// let diff = Style::default().bg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().bg(Color::Red));
     /// ```
-    pub fn bg(mut self, color: Color) -> Style {
+    pub fn bg(mut self, color: Color) -> Self {
         self.bg = Some(color);
         self
     }
 
+    #[must_use]
     /// Changes the text emphasis.
     ///
     /// When applied, it adds the given modifier to the `Style` modifiers.
@@ -435,12 +447,13 @@ impl Style {
     /// assert_eq!(patched.add_modifier, Modifier::BOLD | Modifier::ITALIC);
     /// assert_eq!(patched.sub_modifier, Modifier::empty());
     /// ```
-    pub fn add_modifier(mut self, modifier: Modifier) -> Style {
+    pub fn add_modifier(mut self, modifier: Modifier) -> Self {
         self.sub_modifier.remove(modifier);
         self.add_modifier.insert(modifier);
         self
     }
 
+    #[must_use]
     /// Changes the text emphasis.
     ///
     /// When applied, it removes the given modifier from the `Style` modifiers.
@@ -455,12 +468,13 @@ impl Style {
     /// assert_eq!(patched.add_modifier, Modifier::BOLD);
     /// assert_eq!(patched.sub_modifier, Modifier::ITALIC);
     /// ```
-    pub fn remove_modifier(mut self, modifier: Modifier) -> Style {
+    pub fn remove_modifier(mut self, modifier: Modifier) -> Self {
         self.add_modifier.remove(modifier);
         self.sub_modifier.insert(modifier);
         self
     }
 
+    #[must_use]
     /// Results in a combined style that is equivalent to applying the two individual styles to
     /// a style one after the other.
     ///
@@ -474,7 +488,7 @@ impl Style {
     ///     Style::default().patch(style_1).patch(style_2),
     ///     Style::default().patch(combined));
     /// ```
-    pub fn patch(mut self, other: Style) -> Style {
+    pub fn patch(mut self, other: Style) -> Self {
         self.fg = other.fg.or(self.fg);
         self.bg = other.bg.or(self.bg);
 

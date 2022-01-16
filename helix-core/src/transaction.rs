@@ -114,6 +114,7 @@ impl ChangeSet {
     /// Combine two changesets together.
     /// In other words,  If `this` goes `docA` → `docB` and `other` represents `docB` → `docC`, the
     /// returned value will represent the change `docA` → `docC`.
+    #[must_use]
     pub fn compose(self, other: Self) -> Self {
         assert!(self.len_after == other.len);
 
@@ -255,12 +256,14 @@ impl ChangeSet {
     /// provides a basic form of [operational
     /// transformation](https://en.wikipedia.org/wiki/Operational_transformation),
     /// and can be used for collaborative editing.
+    #[must_use]
     pub fn map(self, _other: Self) -> Self {
         unimplemented!()
     }
 
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
     /// The document parameter expects the original document before this change was applied.
+    #[must_use]
     pub fn invert(&self, original_doc: &Rope) -> Self {
         assert!(original_doc.len_chars() == self.len);
 
@@ -449,6 +452,7 @@ impl Transaction {
     }
 
     /// Generate a transaction that reverts this one.
+    #[must_use]
     pub fn invert(&self, original: &Rope) -> Self {
         let changes = self.changes.invert(original);
 
@@ -458,6 +462,7 @@ impl Transaction {
         }
     }
 
+    #[must_use]
     pub fn compose(mut self, other: Self) -> Self {
         self.changes = self.changes.compose(other.changes);
         // Other selection takes precedence
@@ -465,6 +470,7 @@ impl Transaction {
         self
     }
 
+    #[must_use]
     pub fn with_selection(mut self, selection: Selection) -> Self {
         self.selection = Some(selection);
         self

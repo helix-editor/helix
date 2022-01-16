@@ -68,6 +68,7 @@ impl<'a> Default for Block<'a> {
 }
 
 impl<'a> Block<'a> {
+    #[must_use]
     pub fn title<T>(mut self, title: T) -> Block<'a>
     where
         T: Into<Spans<'a>>,
@@ -80,6 +81,7 @@ impl<'a> Block<'a> {
         since = "0.10.0",
         note = "You should use styling capabilities of `text::Spans` given as argument of the `title` method to apply styling to the title."
     )]
+    #[must_use]
     pub fn title_style(mut self, style: Style) -> Block<'a> {
         if let Some(t) = self.title {
             let title = String::from(t);
@@ -88,21 +90,25 @@ impl<'a> Block<'a> {
         self
     }
 
+    #[must_use]
     pub fn border_style(mut self, style: Style) -> Block<'a> {
         self.border_style = style;
         self
     }
 
+    #[must_use]
     pub fn style(mut self, style: Style) -> Block<'a> {
         self.style = style;
         self
     }
 
+    #[must_use]
     pub fn borders(mut self, flag: Borders) -> Block<'a> {
         self.borders = flag;
         self
     }
 
+    #[must_use]
     pub fn border_type(mut self, border_type: BorderType) -> Block<'a> {
         self.border_type = border_type;
         self
