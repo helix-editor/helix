@@ -173,7 +173,7 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
-            MappableCommand::Typable { name, args, doc: _ } => {
+            Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = cmd::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
@@ -186,21 +186,21 @@ impl MappableCommand {
                     }
                 }
             }
-            MappableCommand::Static { fun, .. } => (fun)(cx),
+            Self::Static { fun, .. } => (fun)(cx),
         }
     }
 
     pub fn name(&self) -> &str {
         match &self {
-            MappableCommand::Typable { name, .. } => name,
-            MappableCommand::Static { name, .. } => name,
+            Self::Typable { name, .. } => name,
+            Self::Static { name, .. } => name,
         }
     }
 
     pub fn doc(&self) -> &str {
         match &self {
-            MappableCommand::Typable { doc, .. } => doc,
-            MappableCommand::Static { doc, .. } => doc,
+            Self::Typable { doc, .. } => doc,
+            Self::Static { doc, .. } => doc,
         }
     }
 
@@ -400,6 +400,7 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        show_subtree, "Show tree-sitter subtree under primary selection",
     );
 }
 
@@ -2278,7 +2279,7 @@ pub mod cmd {
         force: bool,
     ) -> anyhow::Result<()> {
         let mut errors = String::new();
-
+        let jobs = &mut cx.jobs;
         // save all documents
         for doc in &mut cx.editor.documents.values_mut() {
             if doc.path().is_none() {
@@ -2286,9 +2287,23 @@ pub mod cmd {
                 continue;
             }
 
-            // TODO: handle error.
-            let handle = doc.save();
-            cx.jobs.add(Job::new(handle).wait_before_exiting());
+            if !doc.is_modified() {
+                continue;
+            }
+
+            let fmt = doc.auto_format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            });
+            let future = doc.format_and_save(fmt);
+            jobs.add(Job::new(future).wait_before_exiting());
         }
 
         if quit {
@@ -3479,11 +3494,9 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     match op {
         ResourceOp::Create(op) => {
             let path = op.uri.to_file_path().unwrap();
-            let ignore_if_exists = if let Some(options) = &op.options {
+            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                 !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            } else {
-                false
-            };
+            });
             if ignore_if_exists && path.exists() {
                 Ok(())
             } else {
@@ -3493,11 +3506,12 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
         ResourceOp::Delete(op) => {
             let path = op.uri.to_file_path().unwrap();
             if path.is_dir() {
-                let recursive = if let Some(options) = &op.options {
-                    options.recursive.unwrap_or(false)
-                } else {
-                    false
-                };
+                let recursive = op
+                    .options
+                    .as_ref()
+                    .and_then(|options| options.recursive)
+                    .unwrap_or(false);
+
                 if recursive {
                     fs::remove_dir_all(&path)
                 } else {
@@ -3512,11 +3526,9 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
         ResourceOp::Rename(op) => {
             let from = op.old_uri.to_file_path().unwrap();
             let to = op.new_uri.to_file_path().unwrap();
-            let ignore_if_exists = if let Some(options) = &op.options {
+            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                 !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            } else {
-                false
-            };
+            });
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
@@ -5388,8 +5400,8 @@ fn hover(cx: &mut Context) {
                 // skip if contents empty
 
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("documentation", contents);
-                if let Some(doc_popup) = compositor.find_id("documentation") {
+                let popup = Popup::new("hover", contents);
+                if let Some(doc_popup) = compositor.find_id("hover") {
                     *doc_popup = popup;
                 } else {
                     compositor.push(Box::new(popup));
@@ -6209,4 +6221,34 @@ fn replay_macro(cx: &mut Context) {
             }
         },
     ));
+}
+
+fn show_subtree(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if let Some(syntax) = doc.syntax() {
+        let primary_selection = doc.selection(view.id).primary();
+        let text = doc.text();
+        let from = text.char_to_byte(primary_selection.from());
+        let to = text.char_to_byte(primary_selection.to());
+        if let Some(selected_node) = syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(from, to)
+        {
+            let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
+
+            cx.callback = Some(Box::new(
+                move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+                    let contents = ui::Markdown::new(contents, cx.editor.syn_loader.clone());
+                    let popup = Popup::new("hover", contents);
+                    if let Some(doc_popup) = compositor.find_id("hover") {
+                        *doc_popup = popup;
+                    } else {
+                        compositor.push(Box::new(popup));
+                    }
+                },
+            ));
+        }
+    }
 }

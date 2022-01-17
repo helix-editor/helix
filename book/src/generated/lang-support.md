@@ -18,12 +18,14 @@
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |
+| haskell | ✓ |  |  |  |
 | html | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
+| lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |

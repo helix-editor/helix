@@ -158,7 +158,7 @@ impl Completion {
                     let resolved_additional_text_edits = if item.additional_text_edits.is_some() {
                         None
                     } else {
-                        Completion::resolve_completion_item(doc, item.clone())
+                        Self::resolve_completion_item(doc, item.clone())
                             .and_then(|item| item.additional_text_edits)
                     };
 

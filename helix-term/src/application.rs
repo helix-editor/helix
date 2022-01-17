@@ -358,12 +358,8 @@ impl Application {
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
-                            // TODO: extract and share with editor.open
-                            let language_id = doc
-                                .language()
-                                .and_then(|s| s.split('.').last()) // source.rust
-                                .map(ToOwned::to_owned)
-                                .unwrap_or_default();
+                            let language_id =
+                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
                             tokio::spawn(language_server.text_document_did_open(
                                 doc.url().unwrap(),

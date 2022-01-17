@@ -159,6 +159,7 @@ impl<T: 'static> Component for FilePicker<T> {
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
+
         let render_preview = area.width > MIN_SCREEN_WIDTH_FOR_PREVIEW;
         let area = inner_rect(area);
         // -- Render the frame:
@@ -492,10 +493,9 @@ impl<T: 'static> Component for Picker<T> {
         let sep_style = Style::default().fg(Color::Rgb(90, 89, 119));
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
-            surface
-                .get_mut(x, inner.y + 1)
-                .set_symbol(borders.horizontal)
-                .set_style(sep_style);
+            if let Some(cell) = surface.get_mut(x, inner.y + 1) {
+                cell.set_symbol(borders.horizontal).set_style(sep_style);
+            }
         }
 
         // -- Render the contents:
@@ -505,7 +505,7 @@ impl<T: 'static> Component for Picker<T> {
         let selected = cx.editor.theme.get("ui.text.focus");
 
         let rows = inner.height;
-        let offset = self.cursor / (rows as usize) * (rows as usize);
+        let offset = self.cursor / std::cmp::max(1, (rows as usize) * (rows as usize));
 
         let files = self.matches.iter().skip(offset).map(|(index, _score)| {
             (index, self.options.get(*index).unwrap()) // get_unchecked
@@ -513,7 +513,7 @@ impl<T: 'static> Component for Picker<T> {
 
         for (i, (_index, option)) in files.take(rows as usize).enumerate() {
             if i == (self.cursor - offset) {
-                surface.set_string(inner.x - 2, inner.y + i as u16, ">", selected);
+                surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
 
             surface.set_string_truncated(
