@@ -45,3 +45,4 @@
 | `:set-option`, `:set` | Set a config option at runtime |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
+| `:show-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
