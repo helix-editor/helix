@@ -242,6 +242,17 @@ comment-token = "%"
 indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
+name = "lean"
+scope = "source.lean"
+injection-regex = "lean"
+file-types = ["lean"]
+roots = [ "lakefile.lean" ]
+comment-token = "--"
+language-server = { command = "lean", args = [ "--server" ] }
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "julia"
 scope = "source.julia"
 injection-regex = "julia"
