@@ -32,15 +32,14 @@
 (operator_identifier) @keyword.operator
 (eq) @keyword.operator.assignment
 
-
-"(" @punctuation.braces
-")" @punctuation.braces
-
-"[" @punctuation.braces
-"]" @punctuation.braces
-
-"{" @punctuation.braces
-"}" @punctuation.braces
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
 
 "|" @keyword
 "," @punctuation.delimiter
@@ -50,7 +49,7 @@
 ] @keyword
 
 
-(import) @keyword.other
+(import) @keyword.contol.import
 (module) @keyword.other
 
 (number_constant_expr) @constant.numeric
@@ -74,7 +73,7 @@
 (block_comment) @comment
 
 ; strings
-(string_escape) @constant.character
+(string_escape) @constant.character.escape
 
 (open_quote) @string
 (close_quote) @string
@@ -82,7 +81,3 @@
 
 (open_char) @constant.character
 (close_char) @constant.character
-
-
-; glsl
-(glsl_content) @source.glsl
