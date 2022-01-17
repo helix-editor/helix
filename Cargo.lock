@@ -862,10 +862,10 @@ checksum = "8c31b5c4033f8fdde8700e4657be2c497e7288f01515be52168c631e2e4d4086"
 [[package]]
 name = "ropey"
 version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6b9aa65bcd9f308d37c7158b4a1afaaa32b8450213e20c9b98e7d5b3cc2fec3"
+source = "git+https://github.com/cessen/ropey#38531e083f8cf5c5b1aeb328361895fb5a9b867c"
 dependencies = [
  "smallvec",
+ "str_indices",
 ]
 
 [[package]]
@@ -1030,6 +1030,12 @@ name = "str-buf"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d44a3643b4ff9caf57abcee9c2c621d6c03d9135e0d8b589bd9afb5992cb176a"
+
+[[package]]
+name = "str_indices"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "283baa48c486e4c5e27b4d92c435db9eaceac236a74dab5e3293570e2c3fa4aa"
 
 [[package]]
 name = "syn"
