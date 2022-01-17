@@ -2763,6 +2763,46 @@ pub mod cmd {
         Ok(())
     }
 
+    fn show_subtree_typable(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let primary_selection = doc.selection(view.id).primary();
+            let text = doc.text();
+            let from = text.char_to_byte(primary_selection.from());
+            let to = text.char_to_byte(primary_selection.to());
+            if let Some(selected_node) = syntax
+                .tree()
+                .root_node()
+                .descendant_for_byte_range(from, to)
+            {
+                let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
+
+                let callback = async move {
+                    let call: job::Callback =
+                        Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                            let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                            let popup = Popup::new("hover", contents);
+                            if let Some(doc_popup) = compositor.find_id("hover") {
+                                *doc_popup = popup;
+                            } else {
+                                compositor.push(Box::new(popup));
+                            }
+                        });
+                    Ok(call)
+                };
+
+                cx.jobs.callback(callback);
+            }
+        }
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -3077,6 +3117,13 @@ pub mod cmd {
             aliases: &[],
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
+            completer: None,
+        },
+        TypableCommand {
+            name: "show-subtree",
+            aliases: &[],
+            doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
+            fun: show_subtree_typable,
             completer: None,
         },
     ];
