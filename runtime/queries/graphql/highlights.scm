@@ -52,21 +52,21 @@
 ;-----------
 
 (field
-  (name) @label)
+  (name) @variable.other.member)
 
 (field
   (alias
-    (name) @label))
+    (name) @variable.other.member))
 
 (field_definition
-  (name) @label)
+  (name) @variable.other.member)
 
 (object_value
   (object_field
-    (name) @label))
+    (name) @variable.other.member))
 
 (enum_value
-  (name) @label)
+  (name) @variable.other.member)
 
 ; Variable Definitions and Arguments 
 ;-----------------------------------
