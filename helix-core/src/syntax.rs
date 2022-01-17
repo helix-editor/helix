@@ -209,12 +209,9 @@ impl LanguageConfiguration {
                 &highlights_query,
                 &injections_query,
                 &locals_query,
-            );
+            )
+            .unwrap(); // TODO: avoid panic
 
-            let config = match config {
-                Ok(config) => config,
-                Err(err) => panic!("{}", err),
-            }; // TODO: avoid panic
             config.configure(scopes);
             Some(Arc::new(config))
         }
@@ -392,12 +389,6 @@ pub struct TsParser {
     cursors: Vec<QueryCursor>,
 }
 
-impl fmt::Debug for TsParser {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TsParser").finish()
-    }
-}
-
 // could also just use a pool, or a single instance?
 thread_local! {
     pub static PARSER: RefCell<TsParser> = RefCell::new(TsParser {
@@ -433,14 +424,12 @@ impl Syntax {
             }],
         };
 
-        // track markers of injections
         // track scope_descriptor: a Vec of scopes for item in tree
 
         let mut layers = HopSlotMap::default();
         let root = layers.insert(root_layer);
 
         let mut syntax = Self {
-            // grammar,
             root,
             layers,
             loader,
@@ -724,14 +713,14 @@ impl Syntax {
             .layers
             .iter()
             .filter_map(|(_, layer)| {
+                // TODO: if range doesn't overlap layer range, skip it
+                // we can calculate intersection and use it later for set_byte_range
+
                 // Reuse a cursor from the pool if available.
                 let mut cursor = PARSER.with(|ts_parser| {
                     let highlighter = &mut ts_parser.borrow_mut();
                     highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
                 });
-
-                // TODO: if range doesn't overlap layer range, skip it
-                // we can calculate intersection and use it later for set_byte_range
 
                 // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
                 // prevents them from being moved. But both of these values are really just
@@ -783,7 +772,7 @@ impl Syntax {
 
         let mut result = HighlightIter {
             source,
-            byte_offset: range.map_or(0, |r| r.start), // TODO: simplify
+            byte_offset: range.map_or(0, |r| r.start),
             cancellation_flag,
             iter_count: 0,
             layers,
