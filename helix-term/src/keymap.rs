@@ -677,7 +677,6 @@ impl Default for Keymaps {
                 "R" => replace_selections_with_clipboard,
                 "/" => global_search,
                 "k" => hover,
-                "t" => show_subtree,
                 "r" => rename_symbol,
             },
             "z" => { "View"
