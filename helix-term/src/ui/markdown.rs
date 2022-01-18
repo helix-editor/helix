@@ -77,7 +77,9 @@ fn parse<'a>(
             Event::End(tag) => {
                 tags.pop();
                 match tag {
-                    Tag::Heading(_) | Tag::Paragraph | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
+                    Tag::Heading(_, _, _)
+                    | Tag::Paragraph
+                    | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
                         // whenever code block or paragraph closes, new line
                         let spans = std::mem::take(&mut spans);
                         if !spans.is_empty() {
@@ -158,7 +160,7 @@ fn parse<'a>(
                             lines.push(Spans::from(span));
                         }
                     }
-                } else if let Some(Tag::Heading(_)) = tags.last() {
+                } else if let Some(Tag::Heading(_, _, _)) = tags.last() {
                     let mut span = to_span(text);
                     span.style = heading_style;
                     spans.push(span);
