@@ -769,6 +769,7 @@ impl Editor {
         Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
     }
 
+    // ???
     pub fn open(&mut self, path: PathBuf, action: Action) -> Result<DocumentId, Error> {
         let path = helix_core::path::get_canonicalized_path(&path)?;
         let id = self.document_by_path(&path).map(|doc| doc.id);

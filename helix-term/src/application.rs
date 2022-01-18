@@ -187,13 +187,21 @@ impl Application {
     }
 
     fn render(&mut self) {
-        let mut cx = crate::compositor::Context {
-            editor: &mut self.editor,
-            jobs: &mut self.jobs,
-            scroll: None,
-        };
+        #[cfg(feature = "integration")]
+        return;
 
-        // self.compositor.render(&mut cx);
+        #[allow(unreachable_code)]
+        {
+            let compositor = &mut self.compositor;
+
+            let mut cx = crate::compositor::Context {
+                editor: &mut self.editor,
+                jobs: &mut self.jobs,
+                scroll: None,
+            };
+
+            compositor.render(&mut cx);
+        }
     }
 
     pub async fn event_loop(&mut self) {
