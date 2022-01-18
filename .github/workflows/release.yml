@@ -107,9 +107,46 @@ jobs:
           name: bins-${{ matrix.build }}
           path: dist
 
+  source:
+    name: Create Source tarball
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update -qq -y
+          sudo apt-get install -qq -y python3-pip python3
+          sudo pip3 install git-archive-all
+
+      - name: Calculate tag name
+        shell: bash
+        run: |
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+          echo ::set-output name=val::$name
+          echo TAG=$name >> $GITHUB_ENV
+        id: tagname
+
+      - name: Build archive
+        shell: bash
+        run: |
+          git-archive-all --prefix=helix-$TAG helix-$TAG.tar.gz
+
+      - uses: actions/upload-artifact@v2.3.1
+        with:
+          name: helix-source
+          path: helix-*.tar.gz
+
   publish:
     name: Publish
-    needs: [dist]
+    needs: [dist, source]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -121,7 +158,9 @@ jobs:
         # with:
         #   path: dist
       # - run: ls -al ./dist
-      - run: ls -al bins-*
+      - run: |
+          ls -al bins-*
+          ls -la helix-source
 
       - name: Calculate tag name
         run: |
@@ -160,6 +199,7 @@ jobs:
                   (cd tmp && 7z a -r ../dist/$pkgname.zip $pkgname)
               fi
           done
+          mv helix-source/helix-$TAG.tar.gz dist/
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
