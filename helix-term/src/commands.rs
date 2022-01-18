@@ -400,7 +400,6 @@ impl MappableCommand {
         decrement, "Decrement",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
-        show_subtree, "Show tree-sitter subtree under primary selection",
     );
 }
 
@@ -2763,7 +2762,7 @@ pub mod cmd {
         Ok(())
     }
 
-    fn show_subtree_typable(
+    fn show_subtree(
         cx: &mut compositor::Context,
         _args: &[Cow<str>],
         _event: PromptEvent,
@@ -3123,7 +3122,7 @@ pub mod cmd {
             name: "show-subtree",
             aliases: &[],
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
-            fun: show_subtree_typable,
+            fun: show_subtree,
             completer: None,
         },
     ];
@@ -6271,34 +6270,4 @@ fn replay_macro(cx: &mut Context) {
             }
         },
     ));
-}
-
-fn show_subtree(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    if let Some(syntax) = doc.syntax() {
-        let primary_selection = doc.selection(view.id).primary();
-        let text = doc.text();
-        let from = text.char_to_byte(primary_selection.from());
-        let to = text.char_to_byte(primary_selection.to());
-        if let Some(selected_node) = syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(from, to)
-        {
-            let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
-
-            cx.callback = Some(Box::new(
-                move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-                    let contents = ui::Markdown::new(contents, cx.editor.syn_loader.clone());
-                    let popup = Popup::new("hover", contents);
-                    if let Some(doc_popup) = compositor.find_id("hover") {
-                        *doc_popup = popup;
-                    } else {
-                        compositor.push(Box::new(popup));
-                    }
-                },
-            ));
-        }
-    }
 }
