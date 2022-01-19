@@ -286,6 +286,8 @@ pub struct Picker<T> {
 
     format_fn: Box<dyn Fn(&T) -> Cow<str>>,
     callback_fn: Box<dyn Fn(&mut Editor, &T, Action)>,
+
+    rows: usize,
 }
 
 impl<T> Picker<T> {
@@ -315,6 +317,7 @@ impl<T> Picker<T> {
             truncate_start: true,
             format_fn: Box::new(format_fn),
             callback_fn: Box::new(callback_fn),
+            rows: 0,
         };
 
         // TODO: scoring on empty input should just use a fastpath
@@ -351,21 +354,21 @@ impl<T> Picker<T> {
         self.cursor = 0;
     }
 
-    pub fn move_up(&mut self) {
+    pub fn move_up(&mut self, n: usize) {
         if self.matches.is_empty() {
             return;
         }
         let len = self.matches.len();
-        let pos = ((self.cursor + len.saturating_sub(1)) % len) % len;
+        let pos = ((self.cursor + len.saturating_sub(n)) % len) % len;
         self.cursor = pos;
     }
 
-    pub fn move_down(&mut self) {
+    pub fn move_down(&mut self, n: usize) {
         if self.matches.is_empty() {
             return;
         }
         let len = self.matches.len();
-        let pos = (self.cursor + 1) % len;
+        let pos = (self.cursor + n) % len;
         self.cursor = pos;
     }
 
@@ -412,10 +415,22 @@ impl<T: 'static> Component for Picker<T> {
 
         match key_event.into() {
             shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
-                self.move_up();
+                self.move_up(1);
             }
             key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
-                self.move_down();
+                self.move_down(1);
+            }
+            ctrl!('u') => {
+                self.move_up(self.rows / 2);
+            }
+            ctrl!('d') => {
+                self.move_down(self.rows / 2);
+            }
+            key!(PageUp) | ctrl!('b') => {
+                self.move_up(self.rows);
+            }
+            key!(PageDown) | ctrl!('f') => {
+                self.move_down(self.rows);
             }
             key!(Esc) | ctrl!('c') => {
                 return close_fn;
@@ -504,14 +519,14 @@ impl<T: 'static> Component for Picker<T> {
 
         let selected = cx.editor.theme.get("ui.text.focus");
 
-        let rows = inner.height;
-        let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
+        self.rows = inner.height as usize;
+        let offset = self.cursor - (self.cursor % std::cmp::max(1, self.rows));
 
         let files = self.matches.iter().skip(offset).map(|(index, _score)| {
             (index, self.options.get(*index).unwrap()) // get_unchecked
         });
 
-        for (i, (_index, option)) in files.take(rows as usize).enumerate() {
+        for (i, (_index, option)) in files.take(self.rows).enumerate() {
             if i == (self.cursor - offset) {
                 surface.set_string(inner.x.saturating_sub(2), inner.y + i as u16, ">", selected);
             }
