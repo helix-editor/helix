@@ -323,7 +323,7 @@ impl FromStr for Modifier {
 /// ];
 /// let mut buffer = Buffer::empty(Rect::new(0, 0, 1, 1));
 /// for style in &styles {
-///   buffer.get_mut(0, 0).set_style(*style);
+///   buffer[(0, 0)].set_style(*style);
 /// }
 /// assert_eq!(
 ///     Style {
@@ -332,7 +332,7 @@ impl FromStr for Modifier {
 ///         add_modifier: Modifier::BOLD,
 ///         sub_modifier: Modifier::empty(),
 ///     },
-///     buffer.get(0, 0).style(),
+///     buffer[(0, 0)].style(),
 /// );
 /// ```
 ///
@@ -348,7 +348,7 @@ impl FromStr for Modifier {
 /// ];
 /// let mut buffer = Buffer::empty(Rect::new(0, 0, 1, 1));
 /// for style in &styles {
-///   buffer.get_mut(0, 0).set_style(*style);
+///   buffer[(0, 0)].set_style(*style);
 /// }
 /// assert_eq!(
 ///     Style {
@@ -357,7 +357,7 @@ impl FromStr for Modifier {
 ///         add_modifier: Modifier::empty(),
 ///         sub_modifier: Modifier::empty(),
 ///     },
-///     buffer.get(0, 0).style(),
+///     buffer[(0, 0)].style(),
 /// );
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq)]

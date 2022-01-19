@@ -242,6 +242,17 @@ comment-token = "%"
 indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
+name = "lean"
+scope = "source.lean"
+injection-regex = "lean"
+file-types = ["lean"]
+roots = [ "lakefile.lean" ]
+comment-token = "--"
+language-server = { command = "lean", args = [ "--server" ] }
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "julia"
 scope = "source.julia"
 injection-regex = "julia"
@@ -337,15 +348,15 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 injection-regex = "yml|yaml"
 
-# [[language]]
-# name = "haskell"
-# scope = "source.haskell"
-# injection-regex = "haskell"
-# file-types = ["hs"]
-# roots = []
-# comment-token = "--"
-#
-# indent = { tab-width = 2, unit = "  " }
+[[language]]
+name = "haskell"
+scope = "source.haskell"
+injection-regex = "haskell"
+file-types = ["hs"]
+roots = []
+comment-token = "--"
+
+indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "zig"
@@ -378,6 +389,7 @@ scope = "source.tsq"
 file-types = ["scm"]
 roots = []
 comment-token = ";"
+injection-regex = "tsq"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]

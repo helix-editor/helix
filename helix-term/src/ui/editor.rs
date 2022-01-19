@@ -97,8 +97,7 @@ impl EditorView {
             let x = area.right();
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
-                surface
-                    .get_mut(x, y)
+                surface[(x, y)]
                     .set_symbol(tui::symbols::line::VERTICAL)
                     //.set_symbol(" ")
                     .set_style(border_style);
@@ -401,8 +400,7 @@ impl EditorView {
                             .add_modifier(Modifier::DIM)
                     });
 
-                    surface
-                        .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
+                    surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
                         .set_style(style);
                 }
             }
