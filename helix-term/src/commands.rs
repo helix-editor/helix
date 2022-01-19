@@ -41,7 +41,7 @@ use crate::{
 };
 
 use crate::job::{self, Job, Jobs};
-use futures_util::{FutureExt, StreamExt};
+use futures_util::FutureExt;
 use std::{collections::HashSet, num::NonZeroUsize};
 use std::{fmt, future::Future};
 
@@ -56,7 +56,6 @@ use serde::de::{self, Deserialize, Deserializer};
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct Context<'a> {
     pub register: Option<char>,
@@ -1646,8 +1645,8 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
-    let (all_matches_sx, all_matches_rx) =
-        tokio::sync::mpsc::unbounded_channel::<(usize, PathBuf)>();
+    let (regex_sx, mut regex_rx) = tokio::sync::mpsc::channel(1);
+
     let smart_case = cx.editor.config.smart_case;
     let file_picker_config = cx.editor.config.file_picker.clone();
 
@@ -1668,6 +1667,22 @@ fn global_search(cx: &mut Context) {
                 return;
             }
 
+            match block_on(regex_sx.send(regex)) {
+                Ok(_) => {}
+                Err(e) => {
+                    // most likely because regex_rx has been dropped
+                    log::error!("Global search error: {}", e);
+                }
+            };
+        },
+    );
+
+    cx.push_layer(Box::new(prompt));
+
+    let current_path = doc_mut!(cx.editor).path().cloned();
+    let show_picker = async move {
+        let regex = regex_rx.recv().await;
+        if let Some(regex) = regex {
             if let Ok(matcher) = RegexMatcherBuilder::new()
                 .case_smart(smart_case)
                 .build(regex.as_str())
@@ -1678,116 +1693,128 @@ fn global_search(cx: &mut Context) {
 
                 let search_root = std::env::current_dir()
                     .expect("Global search error: Failed to get current dir");
-                WalkBuilder::new(search_root)
-                    .hidden(file_picker_config.hidden)
-                    .parents(file_picker_config.parents)
-                    .ignore(file_picker_config.ignore)
-                    .git_ignore(file_picker_config.git_ignore)
-                    .git_global(file_picker_config.git_global)
-                    .git_exclude(file_picker_config.git_exclude)
-                    .max_depth(file_picker_config.max_depth)
-                    .build_parallel()
-                    .run(|| {
-                        let mut searcher_cl = searcher.clone();
-                        let matcher_cl = matcher.clone();
-                        let all_matches_sx_cl = all_matches_sx.clone();
-                        Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
-                            let dent = match dent {
-                                Ok(dent) => dent,
-                                Err(_) => return WalkState::Continue,
-                            };
 
-                            match dent.file_type() {
-                                Some(fi) => {
-                                    if !fi.is_file() {
-                                        return WalkState::Continue;
+                let search_task = tokio::task::spawn_blocking(move || -> Vec<(usize, PathBuf)> {
+                    // We're in the background thread now so std::sync::mpsc::channel should suffice
+                    let (all_matches_sx, all_matches_rx) = std::sync::mpsc::channel();
+                    WalkBuilder::new(search_root)
+                        .hidden(file_picker_config.hidden)
+                        .parents(file_picker_config.parents)
+                        .ignore(file_picker_config.ignore)
+                        .git_ignore(file_picker_config.git_ignore)
+                        .git_global(file_picker_config.git_global)
+                        .git_exclude(file_picker_config.git_exclude)
+                        .max_depth(file_picker_config.max_depth)
+                        .build_parallel()
+                        .run(|| {
+                            let mut searcher_cl = searcher.clone();
+                            let matcher_cl = matcher.clone();
+                            let all_matches_sx_cl = all_matches_sx.clone();
+                            Box::new(move |dent: Result<DirEntry, ignore::Error>| -> WalkState {
+                                let dent = match dent {
+                                    Ok(dent) => dent,
+                                    Err(_) => return WalkState::Continue,
+                                };
+
+                                match dent.file_type() {
+                                    Some(fi) => {
+                                        if !fi.is_file() {
+                                            return WalkState::Continue;
+                                        }
                                     }
+                                    None => return WalkState::Continue,
                                 }
-                                None => return WalkState::Continue,
-                            }
 
-                            let result_sink = sinks::UTF8(|line_num, _| {
-                                match all_matches_sx_cl
-                                    .send((line_num as usize - 1, dent.path().to_path_buf()))
-                                {
-                                    Ok(_) => Ok(true),
-                                    Err(_) => Ok(false),
+                                let result_sink =
+                                    sinks::UTF8(|line_num, _| {
+                                        match all_matches_sx_cl.send((
+                                            line_num as usize - 1,
+                                            dent.path().to_path_buf(),
+                                        )) {
+                                            Ok(_) => Ok(true),
+                                            Err(_) => Ok(false),
+                                        }
+                                    });
+                                let result =
+                                    searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
+
+                                if let Err(err) = result {
+                                    log::error!(
+                                        "Global search error: {}, {}",
+                                        dent.path().display(),
+                                        err
+                                    );
                                 }
-                            });
-                            let result =
-                                searcher_cl.search_path(&matcher_cl, dent.path(), result_sink);
+                                WalkState::Continue
+                            })
+                        });
 
-                            if let Err(err) = result {
-                                log::error!(
-                                    "Global search error: {}, {}",
-                                    dent.path().display(),
-                                    err
+                    all_matches_rx.try_iter().collect()
+                });
+                match search_task.await {
+                    Ok(all_matches) => {
+                        let call: job::Callback =
+                            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                                if all_matches.is_empty() {
+                                    editor.set_status("No matches found".to_string());
+                                    return;
+                                }
+
+                                let picker = FilePicker::new(
+                                    all_matches,
+                                    move |(_line_num, path)| {
+                                        let relative_path =
+                                            helix_core::path::get_relative_path(path)
+                                                .to_str()
+                                                .unwrap()
+                                                .to_owned();
+                                        if current_path.as_ref().map(|p| p == path).unwrap_or(false)
+                                        {
+                                            format!("{} (*)", relative_path).into()
+                                        } else {
+                                            relative_path.into()
+                                        }
+                                    },
+                                    move |editor: &mut Editor, (line_num, path), action| {
+                                        match editor.open(path.into(), action) {
+                                            Ok(_) => {}
+                                            Err(e) => {
+                                                editor.set_error(format!(
+                                                    "Failed to open file '{}': {}",
+                                                    path.display(),
+                                                    e
+                                                ));
+                                                return;
+                                            }
+                                        }
+
+                                        let line_num = *line_num;
+                                        let (view, doc) = current!(editor);
+                                        let text = doc.text();
+                                        let start = text.line_to_char(line_num);
+                                        let end =
+                                            text.line_to_char((line_num + 1).min(text.len_lines()));
+
+                                        doc.set_selection(view.id, Selection::single(start, end));
+                                        align_view(doc, view, Align::Center);
+                                    },
+                                    |_editor, (line_num, path)| {
+                                        Some((path.clone(), Some((*line_num, *line_num))))
+                                    },
                                 );
-                            }
-                            WalkState::Continue
-                        })
-                    });
-            } else {
-                // Otherwise do nothing
-                // log::warn!("Global Search Invalid Pattern")
+                                compositor.push(Box::new(picker));
+                            });
+                        return Ok(call);
+                    }
+                    Err(e) => {
+                        log::error!("Global search error: {}", e);
+                    }
+                };
             }
-        },
-    );
+        }
 
-    cx.push_layer(Box::new(prompt));
-
-    let current_path = doc_mut!(cx.editor).path().cloned();
-
-    let show_picker = async move {
-        let all_matches: Vec<(usize, PathBuf)> =
-            UnboundedReceiverStream::new(all_matches_rx).collect().await;
-        let call: job::Callback =
-            Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
-                if all_matches.is_empty() {
-                    editor.set_status("No matches found".to_string());
-                    return;
-                }
-
-                let picker = FilePicker::new(
-                    all_matches,
-                    move |(_line_num, path)| {
-                        let relative_path = helix_core::path::get_relative_path(path)
-                            .to_str()
-                            .unwrap()
-                            .to_owned();
-                        if current_path.as_ref().map(|p| p == path).unwrap_or(false) {
-                            format!("{} (*)", relative_path).into()
-                        } else {
-                            relative_path.into()
-                        }
-                    },
-                    move |editor: &mut Editor, (line_num, path), action| {
-                        match editor.open(path.into(), action) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                editor.set_error(format!(
-                                    "Failed to open file '{}': {}",
-                                    path.display(),
-                                    e
-                                ));
-                                return;
-                            }
-                        }
-
-                        let line_num = *line_num;
-                        let (view, doc) = current!(editor);
-                        let text = doc.text();
-                        let start = text.line_to_char(line_num);
-                        let end = text.line_to_char((line_num + 1).min(text.len_lines()));
-
-                        doc.set_selection(view.id, Selection::single(start, end));
-                        align_view(doc, view, Align::Center);
-                    },
-                    |_editor, (line_num, path)| Some((path.clone(), Some((*line_num, *line_num)))),
-                );
-                compositor.push(Box::new(picker));
-            });
-        Ok(call)
+        let empty_call: job::Callback = Box::new(|_, _| {});
+        Ok(empty_call)
     };
     cx.jobs.callback(show_picker);
 }

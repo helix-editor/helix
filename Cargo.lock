@@ -446,7 +446,6 @@ dependencies = [
  "signal-hook",
  "signal-hook-tokio",
  "tokio",
- "tokio-stream",
  "toml",
 ]
 
