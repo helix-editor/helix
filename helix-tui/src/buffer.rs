@@ -535,9 +535,10 @@ impl Buffer {
                 updates.push((x, y, &next_buffer[i]));
             }
 
-            to_skip = current.symbol.width().saturating_sub(1);
+            let current_width = current.symbol.width();
+            to_skip = current_width.saturating_sub(1);
 
-            let affected_width = std::cmp::max(current.symbol.width(), previous.symbol.width());
+            let affected_width = std::cmp::max(current_width, previous.symbol.width());
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
         }
         updates
