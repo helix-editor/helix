@@ -575,3 +575,14 @@ injection-regex = "graphql"
 file-types = ["gql", "graphql"]
 roots = []
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "elm"
+scope = "source.elm"
+injection-regex = "elm"
+file-types = ["elm"]
+roots = ["elm.json"]
+auto-format = true
+comment-token = "--"
+language-server = { command = "elm-language-server" }
+indent = { tab-width = 4, unit = "    " }
