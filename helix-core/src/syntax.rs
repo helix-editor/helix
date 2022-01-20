@@ -107,14 +107,85 @@ pub struct IndentationConfiguration {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum IndentQueryNode {
+    // A node given just by its name
+    SimpleNode(String),
+}
+impl IndentQueryNode {
+    pub fn name<'a>(&'a self) -> Option<&'a str> {
+        match self {
+            IndentQueryNode::SimpleNode(n) => Some(&n),
+        }
+    }
+}
+impl PartialEq for IndentQueryNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.name().eq(&other.name())
+    }
+}
+impl Eq for IndentQueryNode {}
+impl PartialOrd for IndentQueryNode {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for IndentQueryNode {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name().cmp(&other.name())
+    }
+}
+
+#[derive(Default, Debug, Serialize)]
+pub struct IndentQueryScopes {
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub all: Vec<IndentQueryNode>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tail: Vec<IndentQueryNode>,
+}
+
+impl IndentQueryScopes {
+    pub fn sort_nodes(&mut self) {}
+}
+
+impl<'de> Deserialize<'de> for IndentQueryScopes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Derived {
+            #[serde(default)]
+            pub all: Vec<IndentQueryNode>,
+            #[serde(default)]
+            pub tail: Vec<IndentQueryNode>,
+        }
+        let derived = Derived::deserialize(deserializer)?;
+        let mut result = IndentQueryScopes {
+            all: derived.all,
+            tail: derived.tail,
+        };
+        result.all.sort_unstable();
+        result.tail.sort_unstable();
+        Ok(result)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentQuery {
+    //    #[serde(default)]
+    //    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    //    pub indent: HashSet<String>,
+    //    #[serde(default)]
+    //    #[serde(skip_serializing_if = "HashSet::is_empty")]
+    //    pub outdent: HashSet<String>,
     #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub indent: HashSet<String>,
+    pub indent: IndentQueryScopes,
     #[serde(default)]
-    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    pub outdent: HashSet<String>,
+    pub outdent: IndentQueryScopes,
 }
 
 #[derive(Debug)]

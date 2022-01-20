@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "import_declaration",
   "const_declaration",
   #"var_declaration",
@@ -22,7 +22,7 @@ indent = [
   "block",
 ]
 
-outdent = [
+outdent.all = [
  "case",
  "}",
  "]",

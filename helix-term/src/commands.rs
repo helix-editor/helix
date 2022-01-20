@@ -3805,17 +3805,16 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        // TODO: share logic with insert_newline for indentation
-        let indent_level = indent::suggested_indent_for_pos(
+        let indent = indent::indent_for_newline(
             doc.language_config(),
             doc.syntax(),
+            &doc.indent_style,
+            doc.tab_width(),
             text,
-            line_end_index,
             new_line.saturating_sub(1),
-            true,
-        )
-        .unwrap_or_else(|| indent::indent_level_for_line(text.line(cursor_line), doc.tab_width()));
-        let indent = doc.indent_unit().repeat(indent_level);
+            line_end_index,
+            cursor_line,
+        );
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
@@ -4550,23 +4549,20 @@ pub mod insert {
             let curr = contents.get_char(pos).unwrap_or(' ');
 
             let current_line = text.char_to_line(pos);
-            let indent_level = indent::suggested_indent_for_pos(
+            let indent = indent::indent_for_newline(
                 doc.language_config(),
                 doc.syntax(),
+                &doc.indent_style,
+                doc.tab_width(),
                 text,
+                current_line,
                 pos,
                 current_line,
-                true,
-            )
-            .unwrap_or_else(|| {
-                indent::indent_level_for_line(text.line(current_line), doc.tab_width())
-            });
-
-            let indent = doc.indent_unit().repeat(indent_level);
+            );
             let mut text = String::new();
             // If we are between pairs (such as brackets), we want to insert an additional line which is indented one level more and place the cursor there
             let new_head_pos = if helix_core::auto_pairs::PAIRS.contains(&(prev, curr)) {
-                let inner_indent = doc.indent_unit().repeat(indent_level + 1);
+                let inner_indent = indent.clone() + doc.indent_style.as_str();
                 text.reserve_exact(2 + indent.len() + inner_indent.len());
                 text.push_str(doc.line_ending.as_str());
                 text.push_str(&inner_indent);

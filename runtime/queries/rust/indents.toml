@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
  "use_list",
  "block",
  "match_block",
@@ -20,7 +20,7 @@ indent = [
  "macro_invocation"
 ]
 
-outdent = [
+outdent.all = [
  "where",
  "}",
  "]",
