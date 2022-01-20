@@ -344,6 +344,10 @@ currently have the query file implemented. Contributions are welcome !</p>
 <tr><td><code>Alt-K</code></td><td>Remove selections matching the regex</td><td><code>remove_selections</code></td></tr>
 <tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
 <tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td><td><code>toggle_comments</code></td></tr>
+<tr><td><code>Alt-k</code></td><td>Expand selection to parent syntax node</td><td><code>expand_selection</code></td></tr>
+<tr><td><code>Alt-j</code></td><td>Shrink syntax tree object selection</td><td><code>shrink_selection</code></td></tr>
+<tr><td><code>Alt-h</code></td><td>Select previous sibling node in syntax tree</td><td><code>select_prev_sibling</code></td></tr>
+<tr><td><code>Alt-l</code></td><td>Select next sibling node in syntax tree</td><td><code>select_next_sibling</code></td></tr>
 </tbody></table>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -459,8 +463,6 @@ and <a href="./usage.html#textobject">textobject</a> usage.</p>
 <tr><td><code>]D</code></td><td>Go to last diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_last_diag</code></td></tr>
 <tr><td><code>[space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
 <tr><td><code>]space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
-<tr><td><code>]o</code></td><td>Expand syntax tree object selection.</td><td><code>expand_selection</code></td></tr>
-<tr><td><code>[o</code></td><td>Shrink syntax tree object selection.</td><td><code>shrink_selection</code></td></tr>
 </tbody></table>
 <h2 id="insert-mode"><a class="header" href="#insert-mode">Insert Mode</a></h2>
 <table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
