@@ -2762,7 +2762,7 @@ pub mod cmd {
         Ok(())
     }
 
-    fn show_subtree(
+    fn tree_sitter_subtree(
         cx: &mut compositor::Context,
         _args: &[Cow<str>],
         _event: PromptEvent,
@@ -3119,10 +3119,10 @@ pub mod cmd {
             completer: None,
         },
         TypableCommand {
-            name: "show-subtree",
-            aliases: &[],
+            name: "tree-sitter-subtree",
+            aliases: &["ts-subtree"],
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
-            fun: show_subtree,
+            fun: tree_sitter_subtree,
             completer: None,
         },
     ];
