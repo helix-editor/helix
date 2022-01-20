@@ -271,13 +271,6 @@ impl Completion {
 
 impl Component for Completion {
     fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
-        // let the Editor handle Esc instead
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Esc, ..
-        }) = event
-        {
-            return EventResult::Ignored;
-        }
         self.popup.handle_event(event, cx)
     }
 
