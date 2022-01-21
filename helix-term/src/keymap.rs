@@ -552,6 +552,11 @@ impl Default for Keymaps {
             "S" => split_selection,
             ";" => collapse_selection,
             "A-;" => flip_selections,
+            "A-k" => expand_selection,
+            "A-j" => shrink_selection,
+            "A-h" => select_prev_sibling,
+            "A-l" => select_next_sibling,
+
             "%" => select_all,
             "x" => extend_line,
             "X" => extend_to_line_bounds,
@@ -569,13 +574,11 @@ impl Default for Keymaps {
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
                 "space" => add_newline_above,
-                "o" => shrink_selection,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
                 "space" => add_newline_below,
-                "o" => expand_selection,
             },
 
             "/" => search,

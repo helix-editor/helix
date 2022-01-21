@@ -10,6 +10,7 @@
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
+| elm | ✓ |  |  | `elm-language-server` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
@@ -24,6 +25,7 @@
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
+| lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |

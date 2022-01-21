@@ -11,6 +11,7 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     search, selection, shellwords, surround, textobject,
+    tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
     Transaction,
@@ -363,6 +364,8 @@ impl MappableCommand {
         rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
+        select_next_sibling, "Select the next sibling in the syntax tree",
+        select_prev_sibling, "Select the previous sibling in the syntax tree",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save the current selection to the jumplist",
@@ -5502,7 +5505,7 @@ fn expand_selection(cx: &mut Context) {
             // save current selection so it can be restored using shrink_selection
             view.object_selections.push(current_selection.clone());
 
-            let selection = object::expand_selection(syntax, text, current_selection);
+            let selection = object::expand_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5528,12 +5531,39 @@ fn shrink_selection(cx: &mut Context) {
         // if not previous selection, shrink to first child
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection);
+            let selection = object::shrink_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
+where
+    F: Fn(Node) -> Option<Node>,
+{
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let current_selection = doc.selection(view.id);
+            let selection =
+                object::select_sibling(syntax, text, current_selection.clone(), sibling_fn);
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn select_next_sibling(cx: &mut Context) {
+    select_sibling_impl(cx, &|node| Node::next_sibling(&node))
+}
+
+fn select_prev_sibling(cx: &mut Context) {
+    select_sibling_impl(cx, &|node| Node::prev_sibling(&node))
 }
 
 fn match_brackets(cx: &mut Context) {
