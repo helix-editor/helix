@@ -34,17 +34,7 @@
 "markup.list" = { fg = "red" }
 "markup.quote" = { fg = "yellow" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"]}
-"markup.link.label" = { fg = "purple" }
-
-# TODO
-"markup.heading" = "blue"
-"markup.list" = "red"
-"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
-"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
-"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
-"markup.link.text" = "red"
-"markup.quote" = "cyan"
-"markup.raw" = "green"
+"markup.link.text" = { fg = "purple" }
 
 "diff.plus" = "green"
 "diff.delta" = "gold"
