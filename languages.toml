@@ -569,6 +569,14 @@ comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
 
 [[language]]
+name = "graphql"
+scope = "source.graphql"
+injection-regex = "graphql"
+file-types = ["gql", "graphql"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "elm"
 scope = "source.elm"
 injection-regex = "elm"
