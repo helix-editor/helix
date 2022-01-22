@@ -18,14 +18,14 @@ print_usage_and_exit() {
 
 ensure_grammar_fetched() {
   local remote_url="$1"
-  local grammar_dir="$GRAMMARS_DIR/$(basename $1)"
+  local grammar_dir="${GRAMMARS_DIR}/$(basename $1)"
   # trim trailing whitespace from the revision
   local revision="$(echo -e "$2" | tr -d '[:space:]')"
 
-  mkdir -p "$grammar_dir"
+  mkdir -p "${grammar_dir}"
 
   (
-    cd $grammar_dir
+    cd "${grammar_dir}"
 
     if [[ ! -d .git ]]; then
       git init
@@ -33,19 +33,19 @@ ensure_grammar_fetched() {
 
     local current_remote_url="$(git remote get-url "$REMOTE_NAME" 2>/dev/null || echo -n "")"
 
-    if [[ "$current_remote_url" != "$remote_url" ]]; then
-      git remote set-url "$REMOTE_NAME" "$remote_url" 2>/dev/null || \
-        git remote add "$REMOTE_NAME" "$remote_url"
+    if [[ "${current_remote_url}" != "${remote_url}" ]]; then
+      git remote set-url "${REMOTE_NAME}" "${remote_url}" 2>/dev/null || \
+        git remote add "${REMOTE_NAME}" "${remote_url}"
     fi
 
     local current_revision="$(git rev-parse HEAD 2>/dev/null)"
 
-    if [[ "$current_revision" != "$revision" ]]; then
+    if [[ "${current_revision}" != "${revision}" ]]; then
       # shallow clone at exact revision,
       # supported in git on the server-side since 2.5.0 (July of 2015), enabled
       # on GitHub by default
-      git fetch "$REMOTE_NAME" "$revision" --depth=1
-      git checkout "$revision"
+      git fetch "${REMOTE_NAME}" "${revision}" --depth=1
+      git checkout "${revision}"
     fi
   )
 }
@@ -68,8 +68,8 @@ if [[ $# -eq 0 ]]; then
   print_usage_and_exit
 fi
 
-while ((${#})); do
-  __opt="${1}"
+while (($#)); do
+  __opt="$1"
   shift
   case "${__opt}" in
     sync)
