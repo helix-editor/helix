@@ -1,0 +1,87 @@
+#! /usr/bin/env bash
+
+set -e
+
+GRAMMARS_DIR="$(dirname $0)/../helix-syntax/languages"
+REMOTE_NAME="helix-origin"
+
+print_usage_and_exit() {
+  echo "Usage: $0 <command>"
+  echo ""
+  echo "Commands:"
+  echo ""
+  echo "  sync    Ensures all grammars are cloned at the revisions in revisions.txt"
+  echo "  clean   Removes all grammars from the grammars directory"
+  echo ""
+  exit 1
+}
+
+ensure_grammar_fetched() {
+  local remote_url="$1"
+  local grammar_dir="$GRAMMARS_DIR/$(basename $1)"
+  # trim trailing whitespace from the revision
+  local revision="$(echo -e "$2" | tr -d '[:space:]')"
+
+  mkdir -p "$grammar_dir"
+
+  (
+    cd $grammar_dir
+
+    if [[ ! -d .git ]]; then
+      git init
+    fi
+
+    local current_remote_url="$(git remote get-url "$REMOTE_NAME" 2>/dev/null || echo -n "")"
+
+    if [[ "$current_remote_url" != "$remote_url" ]]; then
+      git remote set-url "$REMOTE_NAME" "$remote_url" 2>/dev/null || \
+        git remote add "$REMOTE_NAME" "$remote_url"
+    fi
+
+    # shallow clone at exact revision,
+    # supported in git on the server-side since 2.5.0, enabled on
+    # GitHub by default
+    local current_revision="$(git rev-parse HEAD 2>/dev/null)"
+
+    if [[ "$current_revision" != "$revision" ]]; then
+      git fetch "$REMOTE_NAME" "$revision" --depth=1
+      git checkout "$revision"
+    fi
+  )
+}
+
+sync_grammars() {
+  # revisions.txt has grammars separated by lines
+  while read -r line; do
+    # split each line on the space character
+    readarray -d " " -t grammar <<< "$line"
+    # element 0 is the remote URL, element 1 is the revision
+    ensure_grammar_fetched "${grammar[0]}" "${grammar[1]}"
+  done <"$(dirname $0)/./revisions.txt"
+}
+
+remove_all_grammars() {
+  rm -rf $GRAMMARS_DIR/tree-sitter-*
+}
+
+if [[ $# -eq 0 ]]; then
+  print_usage_and_exit
+fi
+
+while ((${#})); do
+  __opt="${1}"
+  shift
+  case "${__opt}" in
+    sync)
+      sync_grammars
+      ;;
+
+    clean)
+      remove_all_grammars
+      ;;
+
+    *)
+      print_usage_and_exit
+      ;;
+  esac
+done
