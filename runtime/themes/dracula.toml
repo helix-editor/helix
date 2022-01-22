@@ -15,16 +15,6 @@
 "variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
 "variable.parameter" = { fg ="orange", modifiers = ["italic"] }
 
-# TODO
-"markup.heading" = "blue"
-"markup.list" = "red"
-"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
-"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
-"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
-"markup.link.text" = "red"
-"markup.quote" = "cyan"
-"markup.raw" = "green"
-
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }
 "diff.minus" = { fg = "red" }
