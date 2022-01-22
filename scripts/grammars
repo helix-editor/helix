@@ -54,7 +54,7 @@ sync_grammars() {
   # revisions.txt has grammars separated by lines
   while read -r line; do
     # split each line on the space character
-    readarray -d " " -t grammar <<< "$line"
+    local grammar=(${line})
     # element 0 is the remote URL, element 1 is the revision
     ensure_grammar_fetched "${grammar[0]}" "${grammar[1]}"
   done <"$(dirname $0)/./revisions.txt"
