@@ -460,30 +460,6 @@ pub fn indent_for_newline(
     indent_style.as_str().repeat(indent_level)
 }
 
-// TODO: two usecases: if we are triggering this for a new, blank line:
-// - it should return 0 when mass indenting stuff
-// - it should look up the wrapper node and count it too when we press o/O
-//pub fn suggested_indent_for_pos(
-//    language_config: Option<&LanguageConfiguration>,
-//    syntax: Option<&Syntax>,
-//    text: RopeSlice,
-//    pos: usize,
-//    line: usize,
-//    new_line: bool,
-//) -> Option<String> {
-//    if let (Some(query), Some(syntax)) = (
-//        language_config.and_then(|config| config.indent_query()),
-//        syntax,
-//    ) {
-//        let byte_start = text.char_to_byte(pos);
-//        // TODO: special case for comments
-//        // TODO: if preserve_leading_whitespace
-//        treesitter_indent_for_pos(query, syntax, text, byte_start, line, new_line)
-//    } else {
-//        None
-//    }
-//}
-
 pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&'static str> {
     let mut scopes = Vec::new();
     if let Some(syntax) = syntax {
@@ -681,21 +657,6 @@ where
                     line.slice(..line.len_chars()-1),
                     suggested_indent,
                 );
-                //let indent = indent_level_for_line(line, tab_width);
-                //assert_eq!(
-                //    suggested_indent_for_pos(
-                //        Some(&language_config),
-                //        Some(&syntax),
-                //        text,
-                //        text.line_to_char(i) + pos,
-                //        i,
-                //        false
-                //    ),
-                //    Some(indent),
-                //    "line {}: \"{}\"",
-                //    i,
-                //    line
-                //);
             }
         }
     }

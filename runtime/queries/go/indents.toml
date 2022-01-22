@@ -20,6 +20,8 @@ indent.tail = [
   "argument_list",
   "field_declaration_list",
   "block",
+  "type_switch_statement",
+  "expression_switch_statement"
 ]
 
 outdent.all = [

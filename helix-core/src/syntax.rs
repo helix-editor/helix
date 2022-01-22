@@ -183,12 +183,6 @@ impl<'de> Deserialize<'de> for IndentQueryScopes {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentQuery {
-    //    #[serde(default)]
-    //    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    //    pub indent: HashSet<String>,
-    //    #[serde(default)]
-    //    #[serde(skip_serializing_if = "HashSet::is_empty")]
-    //    pub outdent: HashSet<String>,
     #[serde(default)]
     pub indent: IndentQueryScopes,
     #[serde(default)]
