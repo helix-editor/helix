@@ -322,7 +322,7 @@ mod test {
     use super::*;
     use smallvec::smallvec;
 
-    const LINE_END: &'static str = crate::DEFAULT_LINE_ENDING.as_str();
+    const LINE_END: &str = crate::DEFAULT_LINE_ENDING.as_str();
 
     fn differing_pairs() -> impl Iterator<Item = &'static (char, char)> {
         PAIRS.iter().filter(|(open, close)| open != close)
@@ -339,7 +339,7 @@ mod test {
         expected_doc: &Rope,
         expected_sel: &Selection,
     ) {
-        let trans = hook(&in_doc, &in_sel, ch).unwrap();
+        let trans = hook(in_doc, in_sel, ch).unwrap();
         let mut actual_doc = in_doc.clone();
         assert!(trans.apply(&mut actual_doc));
         assert_eq!(expected_doc, &actual_doc);
