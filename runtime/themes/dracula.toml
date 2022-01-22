@@ -40,6 +40,15 @@
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
 
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.list" = "cyan"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.link.url" = "cyan"
+"markup.link.text" = "pink"
+"markup.quote" = { fg = "yellow", modifiers = ["italic"] }
+"markup.raw" = { fg = "foreground" }
+
 [palette]
 background = "#282a36"
 background_dark = "#21222c"
