@@ -1,4 +1,9 @@
-indent.tail = [
+[indent]
+all = [
+ { parent_kind_in = ["assignment_expression", "compound_assignment_expr"], field_name = "right"},
+ { parent_kind_in = ["let_declaration"], field_name = "value" }
+]
+tail = [
  "use_list",
  "block",
  "match_block",
@@ -20,7 +25,8 @@ indent.tail = [
  "macro_invocation"
 ]
 
-outdent.all = [
+[outdent]
+all = [
  "where",
  "}",
  "]",

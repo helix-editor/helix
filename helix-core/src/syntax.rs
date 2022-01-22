@@ -109,19 +109,26 @@ pub struct IndentationConfiguration {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum IndentQueryNode {
-    // A node given just by its name
+    // A node given just by its kind
     SimpleNode(String),
+    // A node given by a list of characteristics which must all be fulfilled in order to match
+    ComplexNode {
+        kind: Option<String>,
+        field_name: Option<String>,
+        parent_kind_in: Option<Vec<String>>,
+    },
 }
 impl IndentQueryNode {
-    pub fn name<'a>(&'a self) -> Option<&'a str> {
+    pub fn kind(&self) -> Option<&str> {
         match self {
-            IndentQueryNode::SimpleNode(n) => Some(&n),
+            IndentQueryNode::SimpleNode(n) => Some(n),
+            IndentQueryNode::ComplexNode { kind, .. } => kind.as_ref().map(|k| k.as_str()),
         }
     }
 }
 impl PartialEq for IndentQueryNode {
     fn eq(&self, other: &Self) -> bool {
-        self.name().eq(&other.name())
+        self.kind().eq(&other.kind())
     }
 }
 impl Eq for IndentQueryNode {}
@@ -132,7 +139,7 @@ impl PartialOrd for IndentQueryNode {
 }
 impl Ord for IndentQueryNode {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.name().cmp(&other.name())
+        self.kind().cmp(&other.kind())
     }
 }
 

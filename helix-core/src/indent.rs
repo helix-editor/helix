@@ -1,3 +1,5 @@
+use tree_sitter::TreeCursor;
+
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
     syntax::{IndentQuery, IndentQueryNode, IndentQueryScopes, LanguageConfiguration, Syntax},
@@ -212,10 +214,8 @@ impl IndentResult {
     }
     fn add(&mut self, added: &AddedIndent) {
         if added.indent && !added.outdent {
-            eprintln!("Indent result");
             self.indent += 1;
         } else if added.outdent && !added.indent {
-            eprintln!("Outdent result");
             self.indent = self.indent.saturating_sub(1);
         }
     }
@@ -227,7 +227,7 @@ impl IndentResult {
 }
 
 // Get the node where to start the indent query (this is usually just the lowest node containing byte_pos)
-fn get_lowest_node<'a>(root: Node<'a>, query: &IndentQuery, byte_pos: usize) -> Option<Node<'a>> {
+fn get_lowest_node<'a>(root: Node<'a>, _query: &IndentQuery, byte_pos: usize) -> Option<Node<'a>> {
     root.descendant_for_byte_range(byte_pos, byte_pos)
     // TODO Special handling for languages like python
 }
@@ -268,41 +268,86 @@ fn get_first_in_line(mut node: Node, byte_pos: usize, new_line: bool) -> Vec<boo
 }
 
 // This assumes that the name matches and checks for all the other conditions
-fn matches(query_node: &IndentQueryNode, node: Node) -> bool {
+fn matches<'a>(query_node: &IndentQueryNode, node: Node<'a>, cursor: &mut TreeCursor<'a>) -> bool {
     match query_node {
         IndentQueryNode::SimpleNode(_) => true,
+        IndentQueryNode::ComplexNode {
+            kind: _,
+            field_name,
+            parent_kind_in,
+        } => {
+            if let Some(parent_kind_in) = parent_kind_in {
+                let parent_matches = node.parent().map_or(false, |p| {
+                    parent_kind_in.iter().any(|kind| kind.as_str() == p.kind())
+                });
+                if !parent_matches {
+                    return false;
+                }
+            }
+            if let Some(field_name) = field_name {
+                let parent = match node.parent() {
+                    None => {
+                        return false;
+                    }
+                    Some(p) => p,
+                };
+                let mut found_child = false;
+                for child in parent.children_by_field_name(field_name, cursor) {
+                    if child == node {
+                        found_child = true;
+                        break;
+                    }
+                }
+                if !found_child {
+                    return false;
+                }
+            }
+            true
+        }
     }
 }
 
-fn contains_match(scope: &[IndentQueryNode], node: Node) -> bool {
-    for unnamed_node in scope.iter().take_while(|n| n.name().is_none()) {
-        if matches(unnamed_node, node) {
+fn contains_match<'a>(
+    scope: &[IndentQueryNode],
+    node: Node<'a>,
+    cursor: &mut TreeCursor<'a>,
+) -> bool {
+    let current_kind = node.kind();
+    let first = scope.partition_point(|n| n.kind() < Some(current_kind));
+    for named_node in scope[first..]
+        .iter()
+        .take_while(|n| n.kind() == Some(current_kind))
+    {
+        if matches(named_node, node, cursor) {
             return true;
         }
     }
-    let current_kind = node.kind();
-    let first = scope.partition_point(|n| n.name() < Some(current_kind));
-    for named_node in scope[first..]
-        .iter()
-        .take_while(|n| n.name() == Some(current_kind))
-    {
-        if matches(named_node, node) {
+    for unnamed_node in scope.iter().take_while(|n| n.kind().is_none()) {
+        if matches(unnamed_node, node, cursor) {
             return true;
         }
     }
     false
 }
 
-fn scopes_contain_match(scopes: &IndentQueryScopes, node: Node) -> (bool, bool) {
-    let match_for_line = contains_match(&scopes.all, node);
-    let match_for_next = contains_match(&scopes.tail, node);
+fn scopes_contain_match<'a>(
+    scopes: &IndentQueryScopes,
+    node: Node<'a>,
+    cursor: &mut TreeCursor<'a>,
+) -> (bool, bool) {
+    let match_for_line = contains_match(&scopes.all, node, cursor);
+    let match_for_next = contains_match(&scopes.tail, node, cursor);
     (match_for_line, match_for_next)
 }
 
 // The added indent for the line of the node and the next line
-fn added_indent(query: &IndentQuery, node: Node) -> (AddedIndent, AddedIndent) {
-    let (indent, next_indent) = scopes_contain_match(&query.indent, node);
-    let (outdent, next_outdent) = scopes_contain_match(&query.outdent, node);
+fn added_indent<'a>(
+    query: &IndentQuery,
+    node: Node<'a>,
+    cursor: &mut TreeCursor<'a>,
+) -> (AddedIndent, AddedIndent) {
+    let (indent, next_indent) = scopes_contain_match(&query.indent, node, cursor);
+    let (outdent, next_outdent) = scopes_contain_match(&query.outdent, node, cursor);
     let line = AddedIndent { indent, outdent };
     let next = AddedIndent {
         indent: next_indent,
@@ -320,6 +365,7 @@ fn treesitter_indent_for_pos(
     pos: usize,
     new_line: bool,
 ) -> Option<String> {
+    let mut cursor = syntax.tree().walk();
     let byte_pos = text.char_to_byte(pos);
     let mut node = match get_lowest_node(syntax.tree().root_node(), query, byte_pos) {
         Some(n) => n,
@@ -334,10 +380,8 @@ fn treesitter_indent_for_pos(
     // even if there are multiple "indent" nodes on the same line
     let mut indent_for_line = AddedIndent::new();
     let mut indent_for_line_below = AddedIndent::new();
-    eprintln!("START INDENT");
     loop {
-        eprintln!("Node {}", node.kind());
-        let node_indents = added_indent(query, node);
+        let node_indents = added_indent(query, node, &mut cursor);
         if *first_in_line.last().unwrap() {
             indent_for_line.combine_with(&node_indents.0);
         } else {
@@ -360,18 +404,15 @@ fn treesitter_indent_for_pos(
             if node_line != parent_line {
                 if node_line < line + (new_line as usize) {
                     // Don't add indent for the line below the line of the query
-                    eprintln!("Add line below");
                     result.add(&indent_for_line_below);
                 }
                 if node_line == parent_line + 1 {
                     indent_for_line_below = indent_for_line;
-                    indent_for_line = AddedIndent::new();
                 } else {
-                    eprintln!("Add line");
                     result.add(&indent_for_line);
                     indent_for_line_below = AddedIndent::new();
-                    indent_for_line = AddedIndent::new();
                 }
+                indent_for_line = AddedIndent::new();
             }
 
             node = parent;
@@ -387,6 +428,7 @@ fn treesitter_indent_for_pos(
 
 // Returns the indentation for a new line.
 // This is done either using treesitter, or if that's not available by copying the indentation from the current line
+#[allow(clippy::too_many_arguments)]
 pub fn indent_for_newline(
     language_config: Option<&LanguageConfiguration>,
     syntax: Option<&Syntax>,
@@ -499,6 +541,13 @@ mod test {
         1 + 1;
 
         let does_indentation_work = 1;
+
+        let mut really_long_variable_name_using_up_the_line =
+            really_long_fn_that_should_definitely_go_on_the_next_line();
+        really_long_variable_name_using_up_the_line =
+            really_long_fn_that_should_definitely_go_on_the_next_line();
+        really_long_variable_name_using_up_the_line |=
+            really_long_fn_that_should_definitely_go_on_the_next_line();
 
         let test_function = function_with_param(this_param,
             that_param
