@@ -18,6 +18,7 @@
 | git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
+| graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  |  |
 | html | ✓ |  |  |  |
 | java | ✓ |  |  |  |
