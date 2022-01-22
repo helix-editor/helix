@@ -2,7 +2,7 @@
 
 set -e
 
-GRAMMARS_DIR="$(dirname $0)/../helix-syntax/languages"
+GRAMMARS_DIR="$(dirname "$0")/../helix-syntax/languages"
 REMOTE_NAME="helix-origin"
 
 print_usage_and_exit() {
@@ -17,29 +17,34 @@ print_usage_and_exit() {
 }
 
 ensure_grammar_fetched() {
-  local remote_url="$1"
-  local grammar_dir="${GRAMMARS_DIR}/$(basename $1)"
+  local remote_url
+  local grammar_dir
+  local revision
+  local current_remote_url
+  local current_revision
+
+  remote_url="$1"
+  grammar_dir="${GRAMMARS_DIR}/$(basename "$1")"
   # trim trailing whitespace from the revision
-  local revision="$(echo -e "$2" | tr -d '[:space:]')"
+  revision="$(echo -e "$2" | tr -d '[:space:]')"
 
   mkdir -p "${grammar_dir}"
 
   (
+    set +e
     cd "${grammar_dir}"
 
     if [[ ! -d .git ]]; then
       git init
     fi
 
-    local current_remote_url="$(git remote get-url "$REMOTE_NAME" 2>/dev/null || echo -n "")"
-
+    current_remote_url="$(git remote get-url "$REMOTE_NAME" 2>/dev/null || echo -n "")"
     if [[ "${current_remote_url}" != "${remote_url}" ]]; then
       git remote set-url "${REMOTE_NAME}" "${remote_url}" 2>/dev/null || \
         git remote add "${REMOTE_NAME}" "${remote_url}"
     fi
 
-    local current_revision="$(git rev-parse HEAD 2>/dev/null)"
-
+    current_revision="$(git rev-parse HEAD 2>/dev/null)"
     if [[ "${current_revision}" != "${revision}" ]]; then
       # shallow clone at exact revision,
       # supported in git on the server-side since 2.5.0 (July of 2015), enabled
@@ -48,20 +53,22 @@ ensure_grammar_fetched() {
       git checkout "${revision}"
     fi
   )
+  set -e
 }
 
 sync_grammars() {
+  local grammar
   # revisions.txt has grammars separated by lines
   while read -r line; do
     # split each line on the space character
-    local grammar=(${line})
+    IFS=' ' read -ra grammar <<< "${line}"
     # element 0 is the remote URL, element 1 is the revision
     ensure_grammar_fetched "${grammar[0]}" "${grammar[1]}"
-  done <"$(dirname $0)/./revisions.txt"
+  done <"$(dirname "$0")/./revisions.txt"
 }
 
 remove_all_grammars() {
-  rm -rf $GRAMMARS_DIR/tree-sitter-*
+  rm -rf "${GRAMMARS_DIR}"/tree-sitter-*
 }
 
 if [[ $# -eq 0 ]]; then
