@@ -38,12 +38,12 @@ ensure_grammar_fetched() {
         git remote add "$REMOTE_NAME" "$remote_url"
     fi
 
-    # shallow clone at exact revision,
-    # supported in git on the server-side since 2.5.0, enabled on
-    # GitHub by default
     local current_revision="$(git rev-parse HEAD 2>/dev/null)"
 
     if [[ "$current_revision" != "$revision" ]]; then
+      # shallow clone at exact revision,
+      # supported in git on the server-side since 2.5.0 (July of 2015), enabled
+      # on GitHub by default
       git fetch "$REMOTE_NAME" "$revision" --depth=1
       git checkout "$revision"
     fi
