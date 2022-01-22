@@ -19,6 +19,7 @@
 "function" = { fg = "green1", modifiers = ["bold"] }
 "function.macro" = "aqua1"
 "function.builtin" = "yellow1"
+"tag" = "red1"
 "comment" = { fg = "gray1", modifiers = ["italic"]  }
 "constant" = { fg = "purple1" }
 "constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
