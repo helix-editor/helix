@@ -1,5 +1,5 @@
 
-indent = [
+indent.tail = [
  "block",
  "arguments",
  "parameter",
@@ -16,7 +16,7 @@ indent = [
  "match_expression"
 ]
 
-outdent = [
+outdent.all = [
  "}",
  "]",
  ")"

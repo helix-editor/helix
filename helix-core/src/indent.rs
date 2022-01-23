@@ -267,39 +267,54 @@ fn get_first_in_line(mut node: Node, byte_pos: usize, new_line: bool) -> Vec<boo
     result
 }
 
-// This assumes that the name matches and checks for all the other conditions
+// This assumes that the kind matches and checks for all the other conditions
 fn matches<'a>(query_node: &IndentQueryNode, node: Node<'a>, cursor: &mut TreeCursor<'a>) -> bool {
     match query_node {
         IndentQueryNode::SimpleNode(_) => true,
         IndentQueryNode::ComplexNode {
             kind: _,
-            field_name,
+            kind_not_in,
             parent_kind_in,
+            field_name_in,
         } => {
+            if let Some(kind_not_in) = kind_not_in {
+                let kind = node.kind();
+                if kind_not_in.iter().any(|k| k == kind) {
+                    return false;
+                }
+            }
             if let Some(parent_kind_in) = parent_kind_in {
                 let parent_matches = node.parent().map_or(false, |p| {
-                    parent_kind_in.iter().any(|kind| kind.as_str() == p.kind())
+                    let parent_kind = p.kind();
+                    parent_kind_in
+                        .iter()
+                        .any(|kind| kind.as_str() == parent_kind)
                 });
                 if !parent_matches {
                     return false;
                 }
             }
-            if let Some(field_name) = field_name {
+            if let Some(field_name_in) = field_name_in {
                 let parent = match node.parent() {
                     None => {
                         return false;
                     }
                     Some(p) => p,
                 };
-                let mut found_child = false;
-                for child in parent.children_by_field_name(field_name, cursor) {
-                    if child == node {
-                        found_child = true;
+                cursor.reset(parent);
+                debug_assert!(cursor.goto_first_child());
+                loop {
+                    if cursor.node() == node {
+                        if let Some(cursor_name) = cursor.field_name() {
+                            if !field_name_in.iter().any(|n| n == cursor_name) {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
                         break;
                     }
-                }
-                if !found_child {
-                    return false;
+                    debug_assert!(cursor.goto_next_sibling());
                 }
             }
             true
@@ -524,6 +539,25 @@ mod test {
             really_long_fn_that_should_definitely_go_on_the_next_line();
         really_long_variable_name_using_up_the_line |=
             really_long_fn_that_should_definitely_go_on_the_next_line();
+
+        let (
+            a_long_variable_name_in_this_tuple,
+            b_long_variable_name_in_this_tuple,
+            c_long_variable_name_in_this_tuple,
+            d_long_variable_name_in_this_tuple,
+            e_long_variable_name_in_this_tuple,
+        ): (usize, usize, usize, usize, usize) =
+            if really_long_fn_that_should_definitely_go_on_the_next_line() {
+                (
+                    03294239434,
+                    1213412342314,
+                    21231234134,
+                    834534234549898789,
+                    9879234234543853457,
+                )
+            } else {
+                (0, 1, 2, 3, 4)
+            };
 
         let test_function = function_with_param(this_param,
             that_param

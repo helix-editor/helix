@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "function_definition",
   "while_statement",
   "for_statement",
@@ -7,6 +7,6 @@ indent = [
   "switch_statement",
 ]
 
-outdent = [
+outdent.all = [
   "end"
 ]

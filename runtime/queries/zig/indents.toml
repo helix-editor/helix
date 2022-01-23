@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
  "Block",
  "BlockExpr",
  "ContainerDecl",
@@ -9,7 +9,7 @@ indent = [
  "InitList"
 ]
 
-outdent = [
+outdent.all = [
  "}",
  "]",
  ")"

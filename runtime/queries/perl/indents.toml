@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "function",
   "identifier",
   "method_invocation",
@@ -12,6 +12,6 @@ indent = [
   "word_list_qw"
 ]
 
-outdent = [
+outdent.all = [
  "}"
 ]

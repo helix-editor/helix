@@ -114,8 +114,9 @@ pub enum IndentQueryNode {
     // A node given by a list of characteristics which must all be fulfilled in order to match
     ComplexNode {
         kind: Option<String>,
-        field_name: Option<String>,
+        kind_not_in: Option<Vec<String>>,
         parent_kind_in: Option<Vec<String>>,
+        field_name_in: Option<Vec<String>>,
     },
 }
 impl IndentQueryNode {

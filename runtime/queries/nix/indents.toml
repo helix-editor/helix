@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
  # "function",
  "bind",
  "assert",
@@ -12,7 +12,7 @@ indent = [
  "parenthesized",
 ]
 
-outdent = [
+outdent.all = [
   "}",
   "]",
 ]

@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "if_condition",
   "foreach_loop",
   "while_loop",
@@ -7,6 +7,6 @@ indent = [
   "normal_command",
 ]
 
-outdent = [
+outdent.all = [
   ")"
 ]

@@ -1,8 +1,8 @@
-indent = [
+indent.tail = [
  "function_body",
  "instruction",
 ]
 
-outdent = [
+outdent.all = [
  "}",
 ]

@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "messageBody",
   "enumBody",
   "oneofBody",
@@ -7,6 +7,6 @@ indent = [
   "msgLit",
 ]
 
-outdent = [
+outdent.all = [
   "}",
 ]

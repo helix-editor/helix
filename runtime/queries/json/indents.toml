@@ -1,9 +1,9 @@
-indent = [
+indent.tail = [
   "object",
   "array"
 ]
 
-outdent = [
+outdent.all = [
   "]",
   "}"
 ]

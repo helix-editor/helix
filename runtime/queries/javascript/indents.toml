@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
  "array",
  "object",
  "arguments",
@@ -21,7 +21,7 @@ indent = [
  "object_type",
 ]
 
-outdent = [
+outdent.all = [
  "}",
  "]",
  ")"

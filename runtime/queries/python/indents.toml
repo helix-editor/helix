@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "list",
   "tuple",
   "dictionary",
@@ -27,7 +27,7 @@ indent = [
   "class_definition",
 ]
 
-outdent = [
+outdent.all = [
   ")",
   "]",
   "}",

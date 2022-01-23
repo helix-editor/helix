@@ -1,7 +1,7 @@
 [indent]
 all = [
- { parent_kind_in = ["assignment_expression", "compound_assignment_expr"], field_name = "right"},
- { parent_kind_in = ["let_declaration"], field_name = "value" }
+ { parent_kind_in = ["assignment_expression", "compound_assignment_expr"], field_name_in = ["right"]},
+ { parent_kind_in = ["let_declaration"], field_name_in = ["value"] }
 ]
 tail = [
  "use_list",

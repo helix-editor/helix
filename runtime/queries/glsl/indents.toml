@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "init_declarator",
   "compound_statement",
   "preproc_arg",
@@ -10,7 +10,7 @@ indent = [
   "compound_literal_expression"
 ]
 
-outdent = [
+outdent.all = [
   "#define",
   "#ifdef",
   "#endif",

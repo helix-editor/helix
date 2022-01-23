@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "array_creation_expression",
   "arguments",
   "formal_parameters",

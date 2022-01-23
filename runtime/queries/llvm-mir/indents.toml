@@ -1,7 +1,7 @@
-indent = [
+indent.tail = [
   "basic_block",
 ]
 
-outdent = [
+outdent.all = [
   "label",
 ]

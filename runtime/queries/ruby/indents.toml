@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "argument_list",
   "array",
   "begin",
@@ -16,7 +16,7 @@ indent = [
   "singleton_method",
 ]
 
-outdent = [
+outdent.all = [
   ")",
   "}",
   "]",

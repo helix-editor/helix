@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "class_body",
   "function_body",
   "function_expression_body",
@@ -13,7 +13,7 @@ indent = [
   "arguments"
 ]
 
-outdent = [
+outdent.all = [
  "}",
  "]",
  ")"

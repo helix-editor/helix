@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
   "function_definition",
   "variable_declaration",
   "local_variable_declaration",

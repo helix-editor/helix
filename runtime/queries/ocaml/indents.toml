@@ -1,4 +1,4 @@
-indent = [
+indent.tail = [
     "let_binding",
     "type_binding",
     "structure",
@@ -8,6 +8,6 @@ indent = [
     "match_case",
 ]
 
-outdent = [
+outdent.all = [
     "}",
 ]
