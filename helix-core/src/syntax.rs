@@ -665,14 +665,10 @@ impl Syntax {
                             layer.depth == depth && // TODO: track parent id instead
                             layer.config.language == config.language && layer.ranges == ranges
                         })
-                        .map(|(id, _layer)| {
-                            log::info!("match! {:?}", id);
-                            id
-                        });
+                        .map(|(id, _layer)| id);
 
                     // ...or insert a new one.
                     let layer_id = layer.unwrap_or_else(|| {
-                        log::info!("miss! {:?}", ranges);
                         self.layers.insert(LanguageLayer {
                             tree: None,
                             config,
@@ -714,7 +710,6 @@ impl Syntax {
             .iter()
             .filter_map(|(_, layer)| {
                 // TODO: if range doesn't overlap layer range, skip it
-                // we can calculate intersection and use it later for set_byte_range
 
                 // Reuse a cursor from the pool if available.
                 let mut cursor = PARSER.with(|ts_parser| {
@@ -729,7 +724,6 @@ impl Syntax {
                     unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
 
                 // if reusing cursors & no range this resets to whole range
-                // TODO: handle intersect (range & layer.range)
                 cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
 
                 let mut captures = cursor_ref
