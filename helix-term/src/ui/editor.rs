@@ -19,6 +19,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
+    editor::CursorShapeConfig,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -80,7 +81,7 @@ impl EditorView {
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme),
+                Self::doc_selection_highlights(doc, view, theme, &config.cursor_shape),
             ))
         } else {
             Box::new(highlights)
@@ -195,10 +196,15 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
+        cursor_shape_config: &CursorShapeConfig,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
+
+        let mode = doc.mode();
+        let cursorkind = cursor_shape_config.from_mode(mode);
+        let cursor_is_block = cursorkind == CursorKind::Block;
 
         let selection_scope = theme
             .find_scope_index("ui.selection")
@@ -207,7 +213,7 @@ impl EditorView {
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
 
-        let cursor_scope = match doc.mode() {
+        let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
             Mode::Normal => Some(base_cursor_scope),
@@ -223,7 +229,8 @@ impl EditorView {
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
-            let (cursor_scope, selection_scope) = if i == primary_idx {
+            let selection_is_primary = i == primary_idx;
+            let (cursor_scope, selection_scope) = if selection_is_primary {
                 (primary_cursor_scope, primary_selection_scope)
             } else {
                 (cursor_scope, selection_scope)
@@ -231,7 +238,14 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                spans.push((cursor_scope, range.head..range.head + 1));
+                if !selection_is_primary || cursor_is_block {
+                    // Bar and underline cursors are drawn by the terminal
+                    // BUG: If the editor area loses focus while having a bar or
+                    // underline cursor (eg. when a regex prompt has focus) then
+                    // the primary cursor will be invisible. This doesn't happen
+                    // with block cursors since we manually draw *all* cursors.
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                }
                 continue;
             }
 
@@ -240,11 +254,15 @@ impl EditorView {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
                 spans.push((selection_scope, range.anchor..cursor_start));
-                spans.push((cursor_scope, cursor_start..range.head));
+                if !selection_is_primary || cursor_is_block {
+                    spans.push((cursor_scope, cursor_start..range.head));
+                }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                spans.push((cursor_scope, range.head..cursor_end));
+                if !selection_is_primary || cursor_is_block {
+                    spans.push((cursor_scope, range.head..cursor_end));
+                }
                 spans.push((selection_scope, cursor_end..range.anchor));
             }
         }
@@ -1141,11 +1159,11 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        // match view.doc.mode() {
-        //     Mode::Insert => write!(stdout, "\x1B[6 q"),
-        //     mode => write!(stdout, "\x1B[2 q"),
-        // };
-        editor.cursor()
+        match editor.cursor() {
+            // All block cursors are drawn manually
+            (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
+            cursor => cursor,
+        }
     }
 }
 

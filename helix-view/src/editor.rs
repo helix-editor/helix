@@ -1,6 +1,6 @@
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::SCRATCH_BUFFER_NAME,
+    document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::{CursorKind, Rect},
     input::KeyEvent,
     theme::{self, Theme},
@@ -10,7 +10,7 @@ use crate::{
 
 use futures_util::future;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     io::stdin,
     num::NonZeroUsize,
     path::{Path, PathBuf},
@@ -27,7 +27,7 @@ pub use helix_core::register::Registers;
 use helix_core::syntax;
 use helix_core::{Position, Selection};
 
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -105,8 +105,64 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Shape for cursor in each mode
+    pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
+}
+
+// Cursor shape is read and used on every rendered frame and so needs
+// to be fast. Therefore we avoid a hashmap and use an enum indexed array.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CursorShapeConfig([CursorKind; 3]);
+
+impl CursorShapeConfig {
+    pub fn from_mode(&self, mode: Mode) -> CursorKind {
+        self.get(mode as usize).copied().unwrap_or_default()
+    }
+}
+
+impl<'de> Deserialize<'de> for CursorShapeConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let m = HashMap::<Mode, CursorKind>::deserialize(deserializer)?;
+        let into_cursor = |mode: Mode| m.get(&mode).copied().unwrap_or_default();
+        Ok(CursorShapeConfig([
+            into_cursor(Mode::Normal),
+            into_cursor(Mode::Select),
+            into_cursor(Mode::Insert),
+        ]))
+    }
+}
+
+impl Serialize for CursorShapeConfig {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.len()))?;
+        let modes = [Mode::Normal, Mode::Select, Mode::Insert];
+        for mode in modes {
+            map.serialize_entry(&mode, &self.from_mode(mode))?;
+        }
+        map.end()
+    }
+}
+
+impl std::ops::Deref for CursorShapeConfig {
+    type Target = [CursorKind; 3];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Default for CursorShapeConfig {
+    fn default() -> Self {
+        Self([CursorKind::Block; 3])
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -114,7 +170,6 @@ pub struct Config {
 pub enum LineNumber {
     /// Show absolute line number
     Absolute,
-
     /// Show relative line number to the primary cursor
     Relative,
 }
@@ -151,6 +206,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            cursor_shape: CursorShapeConfig::default(),
             true_color: false,
         }
     }
@@ -614,9 +670,10 @@ impl Editor {
             let inner = view.inner_area();
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            (Some(pos), CursorKind::Hidden)
+            let cursorkind = self.config.cursor_shape.from_mode(doc.mode());
+            (Some(pos), cursorkind)
         } else {
-            (None, CursorKind::Hidden)
+            (None, CursorKind::default())
         }
     }
 

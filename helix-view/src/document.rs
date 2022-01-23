@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Error};
 use serde::de::{self, Deserialize, Deserializer};
+use serde::Serialize;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -30,9 +31,9 @@ pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
-    Normal,
-    Select,
-    Insert,
+    Normal = 0,
+    Select = 1,
+    Insert = 2,
 }
 
 impl Display for Mode {
@@ -66,6 +67,15 @@ impl<'de> Deserialize<'de> for Mode {
     {
         let s = String::deserialize(deserializer)?;
         s.parse().map_err(de::Error::custom)
+    }
+}
+
+impl Serialize for Mode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
     }
 }
 

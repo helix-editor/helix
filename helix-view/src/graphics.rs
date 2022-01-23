@@ -1,10 +1,12 @@
 use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 /// UNSTABLE
 pub enum CursorKind {
     /// █
@@ -15,6 +17,12 @@ pub enum CursorKind {
     Underline,
     /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
     Hidden,
+}
+
+impl Default for CursorKind {
+    fn default() -> Self {
+        Self::Block
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
