@@ -37,6 +37,7 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
+    args,
     compositor::{self, Component, Compositor},
     ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
@@ -113,13 +114,13 @@ impl<'a> Context<'a> {
     }
 }
 
-enum Align {
+pub(crate) enum Align {
     Top,
     Center,
     Bottom,
 }
 
-fn align_view(doc: &Document, view: &mut View, align: Align) {
+pub(crate) fn align_view(doc: &Document, view: &mut View, align: Align) {
     let pos = doc
         .selection(view.id)
         .primary()
@@ -2028,7 +2029,13 @@ pub mod cmd {
     ) -> anyhow::Result<()> {
         ensure!(!args.is_empty(), "wrong argument count");
         for arg in args {
-            let _ = cx.editor.open(arg.as_ref().into(), Action::Replace)?;
+            let (path, pos) = args::parse_file(arg);
+            let _ = cx.editor.open(path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
         }
         Ok(())
     }
