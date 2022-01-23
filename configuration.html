@@ -143,8 +143,23 @@
 <li>Linux and Mac: <code>~/.config/helix/config.toml</code></li>
 <li>Windows: <code>%AppData%\helix\config.toml</code></li>
 </ul>
+<p>Example config:</p>
+<pre><code class="language-toml">theme = &quot;onedark&quot;
+
+[editor]
+line-number = &quot;relative&quot;
+mouse = false
+
+[editor.cursor-shape]
+insert = &quot;bar&quot;
+normal = &quot;block&quot;
+select = &quot;underline&quot;
+
+[editor.file-picker]
+hidden = false
+</code></pre>
 <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
-<p><code>[editor]</code> section of the config.</p>
+<h3 id="editor-section"><a class="header" href="#editor-section"><code>[editor]</code> Section</a></h3>
 <table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>scrolloff</code></td><td>Number of lines of padding around the edge of the screen when scrolling.</td><td><code>3</code></td></tr>
 <tr><td><code>mouse</code></td><td>Enable mouse mode.</td><td><code>true</code></td></tr>
@@ -160,7 +175,20 @@
 <tr><td><code>auto-info</code></td><td>Whether to display infoboxes</td><td><code>true</code></td></tr>
 <tr><td><code>true-color</code></td><td>Set to <code>true</code> to override automatic detection of terminal truecolor support in the event of a false negative.</td><td><code>false</code></td></tr>
 </tbody></table>
-<p><code>[editor.file-picker]</code> section of the config. Sets options for file picker and global search. All but the last key listed in the default file-picker configuration below are IgnoreOptions: whether hidden files and files listed within ignore files are ignored by (not visible in) the helix file picker and global search. There is also one other key, <code>max-depth</code> available, which is not defined by default.</p>
+<h3 id="editorcursor-shape-section"><a class="header" href="#editorcursor-shape-section"><code>[editor.cursor-shape]</code> Section</a></h3>
+<p>Defines the shape of cursor in each mode. Note that due to limitations
+of the terminal environment, only the primary cursor can change shape.</p>
+<table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>normal</code></td><td>Cursor shape in <a href="./keymap.html#normal-mode">normal mode</a></td><td><code>block</code></td></tr>
+<tr><td><code>insert</code></td><td>Cursor shape in <a href="./keymap.html#insert-mode">insert mode</a></td><td><code>block</code></td></tr>
+<tr><td><code>select</code></td><td>Cursor shape in <a href="./keymap.html#select--extend-mode">select mode</a></td><td><code>block</code></td></tr>
+</tbody></table>
+<h3 id="editorfile-picker-section"><a class="header" href="#editorfile-picker-section"><code>[editor.file-picker]</code> Section</a></h3>
+<p>Sets options for file picker and global search. All but the last key listed in
+the default file-picker configuration below are IgnoreOptions: whether hidden
+files and files listed within ignore files are ignored by (not visible in) the
+helix file picker and global search. There is also one other key, <code>max-depth</code>
+available, which is not defined by default.</p>
 <table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>hidden</code></td><td>Enables ignoring hidden files.</td><td>true</td></tr>
 <tr><td><code>parents</code></td><td>Enables reading ignore files from parent directories.</td><td>true</td></tr>
