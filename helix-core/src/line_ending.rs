@@ -250,7 +250,7 @@ mod line_ending_tests {
         assert_eq!(get_line_ending_of_str(&text[..6]), Some(LineEnding::CR));
         assert_eq!(get_line_ending_of_str(&text[..12]), Some(LineEnding::LF));
         assert_eq!(get_line_ending_of_str(&text[..17]), Some(LineEnding::Crlf));
-        assert_eq!(get_line_ending_of_str(&text[..]), None);
+        assert_eq!(get_line_ending_of_str(text), None);
     }
 
     #[test]
