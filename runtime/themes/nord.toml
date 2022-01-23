@@ -84,6 +84,16 @@
 # nord15 - integer, floating point
 "constant.numeric" = "nord15"
 
+# TODO markup
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
 # vcs
 "diff.plus" = "nord14"
 "diff.delta" = "nord12"

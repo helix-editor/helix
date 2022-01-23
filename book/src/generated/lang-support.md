@@ -19,7 +19,7 @@
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | graphql | ✓ |  |  |  |
-| haskell | ✓ |  |  |  |
+| haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | html | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
