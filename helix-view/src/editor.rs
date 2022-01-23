@@ -456,11 +456,7 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(
-                &path,
-                None,
-                Some(self.syn_loader.clone()),
-            )?;
+            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
 

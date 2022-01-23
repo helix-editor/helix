@@ -436,7 +436,7 @@ impl Syntax {
         };
 
         syntax
-            .update(source, source, &ChangeSet::new(&source))
+            .update(source, source, &ChangeSet::new(source))
             .unwrap();
 
         syntax
@@ -735,9 +735,7 @@ impl Syntax {
                     .peekable();
 
                 // If there's no captures, skip the layer
-                if captures.peek().is_none() {
-                    return None;
-                }
+                captures.peek()?;
 
                 Some(HighlightIterLayer {
                     highlight_end_stack: Vec::new(),
