@@ -213,7 +213,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "bash"
 scope = "source.bash"
 injection-regex = "bash"
-file-types = ["sh", "bash", ".bashrc", ".zshrc"]
+file-types = ["sh", "bash", ".bash_profile", ".bashrc", ".zshrc"]
 shebangs = ["sh", "bash", "dash"]
 roots = []
 comment-token = "#"
