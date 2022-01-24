@@ -115,12 +115,9 @@ pub enum LineNumber {
     /// Show absolute line number
     Absolute,
 
-    /// Show relative line number to the primary cursor
-    Relative,
-
     /// Show relative line number if focused and in normal/select mode.
     /// Show absolute line number if unfocused or in insert mode.
-    Dynamic,
+    Relative,
 }
 
 impl std::str::FromStr for LineNumber {

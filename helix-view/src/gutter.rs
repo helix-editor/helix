@@ -66,12 +66,13 @@ pub fn line_number<'doc>(
             Some(linenr)
         } else {
             use crate::{document::Mode, editor::LineNumber};
-            let use_relative = match config {
-                LineNumber::Absolute => false,
-                LineNumber::Relative => current_line != line,
-                LineNumber::Dynamic => current_line != line && is_focused && mode != Mode::Insert,
-            };
-            let line = if use_relative {
+
+            let relative = config == LineNumber::Relative
+                && mode != Mode::Insert
+                && is_focused
+                && current_line != line;
+
+            let display_num = if relative {
                 abs_diff(current_line, line)
             } else {
                 line + 1
@@ -81,7 +82,7 @@ pub fn line_number<'doc>(
             } else {
                 linenr
             };
-            write!(out, "{:>1$}", line, width).unwrap();
+            write!(out, "{:>1$}", display_num, width).unwrap();
             Some(style)
         }
     })

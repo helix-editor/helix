@@ -16,7 +16,7 @@ To override global configuration parameters, create a `config.toml` file located
 | `middle-click-paste` | Middle click paste support. | `true` |
 | `scroll-lines` | Number of lines to scroll per scroll wheel step. | `3` |
 | `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
-| `line-number` | Line number display: `absolute` simply shows each line's number, `relative` shows the distance from the current line, and `dynamic` switches between the two based on whether the editor is unfocused or in insert mode. | `absolute` |
+| `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
 | `auto-pairs` | Enable automatic insertion of pairs to parenthese, brackets, etc. | `true` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
