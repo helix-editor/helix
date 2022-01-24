@@ -21,6 +21,7 @@
 | graphql | ✓ |  |  |  |
 | haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | html | ✓ |  |  |  |
+| iex | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
