@@ -190,6 +190,18 @@ We use a similar set of scopes as
 
 These scopes are used for theming the editor interface.
 
+- `markup`
+  - `normal`
+    - `completion` - for completion doc popup ui
+    - `hover` - for hover popup ui
+  - `heading`
+    - `completion` - for completion doc popup ui
+    - `hover` - for hover popup ui
+  - `raw`
+    - `inline`
+      - `completion` - for completion doc popup ui
+      - `hover` - for hover popup ui
+
 
 | Key                      | Notes                               |
 | ---                      | ---                                 |
