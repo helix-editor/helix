@@ -188,6 +188,8 @@ pub fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
     len / tab_width
 }
 
+/// The indent that is added for a single tree-sitter node/a single line.
+/// This is different from the total indent ([IndentResult]) because multiple indents/outdents on the same line don't stack.
 struct AddedIndent {
     indent: bool,
     outdent: bool,
@@ -205,7 +207,11 @@ impl AddedIndent {
     }
 }
 
+/// The total indent for some line of code.
+/// This is usually constructed by successively adding instances of [AddedIndent]
 struct IndentResult {
+    /// The total indent (the number of indent levels).
+    /// The string that this results in depends on the indent style (spaces or tabs, etc.)
     indent: i32,
 }
 impl IndentResult {
@@ -277,13 +283,13 @@ fn matches<'a>(query_node: &IndentQueryNode, node: Node<'a>, cursor: &mut TreeCu
             parent_kind_in,
             field_name_in,
         } => {
-            if let Some(kind_not_in) = kind_not_in {
+            if !kind_not_in.is_empty() {
                 let kind = node.kind();
                 if kind_not_in.iter().any(|k| k == kind) {
                     return false;
                 }
             }
-            if let Some(parent_kind_in) = parent_kind_in {
+            if !parent_kind_in.is_empty() {
                 let parent_matches = node.parent().map_or(false, |p| {
                     let parent_kind = p.kind();
                     parent_kind_in
@@ -294,7 +300,7 @@ fn matches<'a>(query_node: &IndentQueryNode, node: Node<'a>, cursor: &mut TreeCu
                     return false;
                 }
             }
-            if let Some(field_name_in) = field_name_in {
+            if !field_name_in.is_empty() {
                 let parent = match node.parent() {
                     None => {
                         return false;
@@ -345,6 +351,7 @@ fn contains_match<'a>(
     false
 }
 
+/// Returns whether the given scopes contain a match for this line and/or for the next
 fn scopes_contain_match<'a>(
     scopes: &IndentQueryScopes,
     node: Node<'a>,
@@ -355,7 +362,7 @@ fn scopes_contain_match<'a>(
     (match_for_line, match_for_next)
 }
 
-// The added indent for the line of the node and the next line
+/// The added indent for the line of the node and the next line
 fn added_indent<'a>(
     query: &IndentQuery,
     node: Node<'a>,
@@ -441,8 +448,8 @@ fn treesitter_indent_for_pos(
     Some(result.as_string(indent_style))
 }
 
-// Returns the indentation for a new line.
-// This is done either using treesitter, or if that's not available by copying the indentation from the current line
+/// Returns the indentation for a new line.
+/// This is done either using treesitter, or if that's not available by copying the indentation from the current line
 #[allow(clippy::too_many_arguments)]
 pub fn indent_for_newline(
     language_config: Option<&LanguageConfiguration>,

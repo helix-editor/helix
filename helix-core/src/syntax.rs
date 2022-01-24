@@ -114,9 +114,15 @@ pub enum IndentQueryNode {
     // A node given by a list of characteristics which must all be fulfilled in order to match
     ComplexNode {
         kind: Option<String>,
-        kind_not_in: Option<Vec<String>>,
-        parent_kind_in: Option<Vec<String>>,
-        field_name_in: Option<Vec<String>>,
+        #[serde(default)]
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        kind_not_in: Vec<String>,
+        #[serde(default)]
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        parent_kind_in: Vec<String>,
+        #[serde(default)]
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        field_name_in: Vec<String>,
     },
 }
 impl IndentQueryNode {
@@ -152,10 +158,6 @@ pub struct IndentQueryScopes {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tail: Vec<IndentQueryNode>,
-}
-
-impl IndentQueryScopes {
-    pub fn sort_nodes(&mut self) {}
 }
 
 impl<'de> Deserialize<'de> for IndentQueryScopes {
