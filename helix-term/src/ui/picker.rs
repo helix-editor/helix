@@ -275,7 +275,7 @@ impl<T: 'static> Component for FilePicker<T> {
                 }
                 EventResult::Consumed(None)
             }
-            ctrl!('f') => {
+            ctrl!('l') => {
                 if let Some(cwd) = doc!(cx.editor).path().and_then(|p| p.parent()) {
                     filter(cwd);
                 }
