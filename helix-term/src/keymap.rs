@@ -344,7 +344,7 @@ pub struct Keymap {
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Keymap {
+        Self {
             root,
             state: Vec::new(),
             sticky: None,
@@ -368,7 +368,7 @@ impl Keymap {
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
     pub fn get(&mut self, key: KeyEvent) -> KeymapResult {
-        if let key!(Esc) = key {
+        if key!(Esc) == key {
             if !self.state.is_empty() {
                 return KeymapResult::new(
                     // Note that Esc is not included here
@@ -477,7 +477,7 @@ impl DerefMut for Keymaps {
 }
 
 impl Default for Keymaps {
-    fn default() -> Keymaps {
+    fn default() -> Self {
         let normal = keymap!({ "Normal mode"
             "h" | "left" => move_char_left,
             "j" | "down" => move_line_down,
@@ -552,6 +552,11 @@ impl Default for Keymaps {
             "S" => split_selection,
             ";" => collapse_selection,
             "A-;" => flip_selections,
+            "A-k" => expand_selection,
+            "A-j" => shrink_selection,
+            "A-h" => select_prev_sibling,
+            "A-l" => select_next_sibling,
+
             "%" => select_all,
             "x" => extend_line,
             "X" => extend_to_line_bounds,
@@ -569,13 +574,11 @@ impl Default for Keymaps {
                 "d" => goto_prev_diag,
                 "D" => goto_first_diag,
                 "space" => add_newline_above,
-                "o" => shrink_selection,
             },
             "]" => { "Right bracket"
                 "d" => goto_next_diag,
                 "D" => goto_last_diag,
                 "space" => add_newline_below,
-                "o" => expand_selection,
             },
 
             "/" => search,
@@ -751,8 +754,10 @@ impl Default for Keymaps {
             "del" => delete_char_forward,
             "C-d" => delete_char_forward,
             "ret" => insert_newline,
+            "C-j" => insert_newline,
             "tab" => insert_tab,
             "C-w" => delete_word_backward,
+            "A-backspace" => delete_word_backward,
             "A-d" => delete_word_forward,
 
             "left" => move_char_left,
@@ -767,6 +772,8 @@ impl Default for Keymaps {
             "A-left" => move_prev_word_end,
             "A-f" => move_next_word_start,
             "A-right" => move_next_word_start,
+            "A-<" => goto_file_start,
+            "A->" => goto_file_end,
             "pageup" => page_up,
             "pagedown" => page_down,
             "home" => goto_line_start,
@@ -780,7 +787,7 @@ impl Default for Keymaps {
             "C-x" => completion,
             "C-r" => insert_register,
         });
-        Keymaps(hashmap!(
+        Self(hashmap!(
             Mode::Normal => Keymap::new(normal),
             Mode::Select => Keymap::new(select),
             Mode::Insert => Keymap::new(insert),

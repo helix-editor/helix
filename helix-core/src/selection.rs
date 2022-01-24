@@ -766,16 +766,16 @@ mod test {
     fn test_contains() {
         let range = Range::new(10, 12);
 
-        assert_eq!(range.contains(9), false);
-        assert_eq!(range.contains(10), true);
-        assert_eq!(range.contains(11), true);
-        assert_eq!(range.contains(12), false);
-        assert_eq!(range.contains(13), false);
+        assert!(!range.contains(9));
+        assert!(range.contains(10));
+        assert!(range.contains(11));
+        assert!(!range.contains(12));
+        assert!(!range.contains(13));
 
         let range = Range::new(9, 6);
-        assert_eq!(range.contains(9), false);
-        assert_eq!(range.contains(7), true);
-        assert_eq!(range.contains(6), true);
+        assert!(!range.contains(9));
+        assert!(range.contains(7));
+        assert!(range.contains(6));
     }
 
     #[test]

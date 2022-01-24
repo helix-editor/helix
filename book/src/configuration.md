@@ -5,9 +5,27 @@ To override global configuration parameters, create a `config.toml` file located
 * Linux and Mac: `~/.config/helix/config.toml`
 * Windows: `%AppData%\helix\config.toml`
 
+Example config:
+
+```toml
+theme = "onedark"
+
+[editor]
+line-number = "relative"
+mouse = false
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+
+[editor.file-picker]
+hidden = false
+```
+
 ## Editor
 
-`[editor]` section of the config.
+### `[editor]` Section
 
 | Key | Description | Default |
 |--|--|---------|
@@ -25,7 +43,28 @@ To override global configuration parameters, create a `config.toml` file located
 | `auto-info` | Whether to display infoboxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
 
-`[editor.file-picker]` section of the config. Sets options for file picker and global search. All but the last key listed in the default file-picker configuration below are IgnoreOptions: whether hidden files and files listed within ignore files are ignored by (not visible in) the helix file picker and global search. There is also one other key, `max-depth` available, which is not defined by default.
+### `[editor.cursor-shape]` Section
+
+Defines the shape of cursor in each mode. Note that due to limitations
+of the terminal environment, only the primary cursor can change shape.
+
+| Key      | Description                                | Default |
+| ---      | -----------                                | ------- |
+| `normal` | Cursor shape in [normal mode][normal mode] | `block` |
+| `insert` | Cursor shape in [insert mode][insert mode] | `block` |
+| `select` | Cursor shape in [select mode][select mode] | `block` |
+
+[normal mode]: ./keymap.md#normal-mode
+[insert mode]: ./keymap.md#insert-mode
+[select mode]: ./keymap.md#select--extend-mode
+
+### `[editor.file-picker]` Section
+
+Sets options for file picker and global search. All but the last key listed in
+the default file-picker configuration below are IgnoreOptions: whether hidden
+files and files listed within ignore files are ignored by (not visible in) the
+helix file picker and global search. There is also one other key, `max-depth`
+available, which is not defined by default.
 
 | Key | Description | Default |
 |--|--|---------|

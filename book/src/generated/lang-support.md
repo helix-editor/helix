@@ -10,6 +10,7 @@
 | dart | ✓ |  | ✓ | `dart` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | elixir | ✓ |  |  | `elixir-ls` |
+| elm | ✓ |  |  | `elm-language-server` |
 | fish | ✓ | ✓ | ✓ |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
@@ -17,12 +18,15 @@
 | git-rebase | ✓ |  |  |  |
 | glsl | ✓ |  | ✓ |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
+| graphql | ✓ |  |  |  |
+| haskell | ✓ |  |  | `haskell-language-server-wrapper` |
 | html | ✓ |  |  |  |
 | java | ✓ |  |  |  |
 | javascript | ✓ |  | ✓ | `typescript-language-server` |
 | json | ✓ |  | ✓ |  |
 | julia | ✓ |  |  | `julia` |
 | latex | ✓ |  |  |  |
+| lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |

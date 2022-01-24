@@ -213,7 +213,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "bash"
 scope = "source.bash"
 injection-regex = "bash"
-file-types = ["sh", "bash"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc"]
 shebangs = ["sh", "bash", "dash"]
 roots = []
 comment-token = "#"
@@ -240,6 +240,17 @@ roots = []
 comment-token = "%"
 
 indent = { tab-width = 4, unit = "\t" }
+
+[[language]]
+name = "lean"
+scope = "source.lean"
+injection-regex = "lean"
+file-types = ["lean"]
+roots = [ "lakefile.lean" ]
+comment-token = "--"
+language-server = { command = "lean", args = [ "--server" ] }
+
+indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "julia"
@@ -337,15 +348,15 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 injection-regex = "yml|yaml"
 
-# [[language]]
-# name = "haskell"
-# scope = "source.haskell"
-# injection-regex = "haskell"
-# file-types = ["hs"]
-# roots = []
-# comment-token = "--"
-#
-# indent = { tab-width = 2, unit = "  " }
+[[language]]
+name = "haskell"
+scope = "source.haskell"
+injection-regex = "haskell"
+file-types = ["hs"]
+roots = []
+comment-token = "--"
+language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
+indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "zig"
@@ -378,6 +389,7 @@ scope = "source.tsq"
 file-types = ["scm"]
 roots = []
 comment-token = ";"
+injection-regex = "tsq"
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -555,3 +567,22 @@ file-types = [".gitmodules", ".gitconfig"]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
+
+[[language]]
+name = "graphql"
+scope = "source.graphql"
+injection-regex = "graphql"
+file-types = ["gql", "graphql"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "elm"
+scope = "source.elm"
+injection-regex = "elm"
+file-types = ["elm"]
+roots = ["elm.json"]
+auto-format = true
+comment-token = "--"
+language-server = { command = "elm-language-server" }
+indent = { tab-width = 4, unit = "    " }

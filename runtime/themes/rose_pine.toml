@@ -55,7 +55,7 @@
 "markup.list" = { fg = "love" }
 "markup.quote" = { fg = "rose" }
 "markup.link.url" = { fg = "pine", modifiers = ["underlined"]}
-"markup.link.label" = { fg = "foam" }
+"markup.link.text" = { fg = "foam" }
 
 [palette]
 base     = "#191724" 

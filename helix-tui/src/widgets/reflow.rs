@@ -404,8 +404,8 @@ mod test {
         let text = "コンピュータ上で文字を扱う場合、典型的には文字による通信を行う場合にその両端点\
                     では、";
         let (word_wrapper, word_wrapper_width) =
-            run_composer(Composer::WordWrapper { trim: true }, &text, width);
-        let (line_truncator, _) = run_composer(Composer::LineTruncator, &text, width);
+            run_composer(Composer::WordWrapper { trim: true }, text, width);
+        let (line_truncator, _) = run_composer(Composer::LineTruncator, text, width);
         assert_eq!(line_truncator, vec!["コンピュータ上で文字"]);
         let wrapped = vec![
             "コンピュータ上で文字",

@@ -58,7 +58,7 @@ mod tests {
             let mut old = Rope::from(a);
             let new = Rope::from(b);
             compare_ropes(&old, &new).apply(&mut old);
-            old.to_string() == new.to_string()
+            old == new
         }
     }
 }

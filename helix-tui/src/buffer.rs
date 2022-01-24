@@ -90,17 +90,17 @@ impl Default for Cell {
 /// use helix_view::graphics::{Rect, Color, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
-/// buf.get_mut(0, 2).set_symbol("x");
-/// assert_eq!(buf.get(0, 2).symbol, "x");
+/// buf[(0, 2)].set_symbol("x");
+/// assert_eq!(buf[(0, 2)].symbol, "x");
 /// buf.set_string(3, 0, "string", Style::default().fg(Color::Red).bg(Color::White));
-/// assert_eq!(buf.get(5, 0), &Cell{
+/// assert_eq!(buf[(5, 0)], Cell{
 ///     symbol: String::from("r"),
 ///     fg: Color::Red,
 ///     bg: Color::White,
 ///     modifier: Modifier::empty()
 /// });
-/// buf.get_mut(5, 0).set_char('x');
-/// assert_eq!(buf.get(5, 0).symbol, "x");
+/// buf[(5, 0)].set_char('x');
+/// assert_eq!(buf[(5, 0)].symbol, "x");
 /// ```
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Buffer {
@@ -162,15 +162,38 @@ impl Buffer {
     }
 
     /// Returns a reference to Cell at the given coordinates
-    pub fn get(&self, x: u16, y: u16) -> &Cell {
-        let i = self.index_of(x, y);
-        &self.content[i]
+    pub fn get(&self, x: u16, y: u16) -> Option<&Cell> {
+        self.index_of_opt(x, y).map(|i| &self.content[i])
     }
 
     /// Returns a mutable reference to Cell at the given coordinates
-    pub fn get_mut(&mut self, x: u16, y: u16) -> &mut Cell {
-        let i = self.index_of(x, y);
-        &mut self.content[i]
+    pub fn get_mut(&mut self, x: u16, y: u16) -> Option<&mut Cell> {
+        self.index_of_opt(x, y).map(|i| &mut self.content[i])
+    }
+
+    /// Tells whether the global (x, y) coordinates are inside the Buffer's area.
+    ///
+    /// Global coordinates are offset by the Buffer's area offset (`x`/`y`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use helix_tui::buffer::Buffer;
+    /// # use helix_view::graphics::Rect;
+    /// let rect = Rect::new(200, 100, 10, 10);
+    /// let buffer = Buffer::empty(rect);
+    /// // Global coordinates inside the Buffer's area
+    /// assert!(buffer.in_bounds(209, 100));
+    /// // Global coordinates outside the Buffer's area
+    /// assert!(!buffer.in_bounds(210, 100));
+    /// ```
+    ///
+    /// Global coordinates are offset by the Buffer's area offset (`x`/`y`).
+    pub fn in_bounds(&self, x: u16, y: u16) -> bool {
+        x >= self.area.left()
+            && x < self.area.right()
+            && y >= self.area.top()
+            && y < self.area.bottom()
     }
 
     /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates.
@@ -184,7 +207,7 @@ impl Buffer {
     /// # use helix_view::graphics::Rect;
     /// let rect = Rect::new(200, 100, 10, 10);
     /// let buffer = Buffer::empty(rect);
-    /// // Global coordinates to the top corner of this buffer's area
+    /// // Global coordinates to the top corner of this Buffer's area
     /// assert_eq!(buffer.index_of(200, 100), 0);
     /// ```
     ///
@@ -193,16 +216,23 @@ impl Buffer {
     /// Panics when given an coordinate that is outside of this Buffer's area.
     pub fn index_of(&self, x: u16, y: u16) -> usize {
         debug_assert!(
-            x >= self.area.left()
-                && x < self.area.right()
-                && y >= self.area.top()
-                && y < self.area.bottom(),
+            self.in_bounds(x, y),
             "Trying to access position outside the buffer: x={}, y={}, area={:?}",
             x,
             y,
             self.area
         );
         ((y - self.area.y) * self.area.width + (x - self.area.x)) as usize
+    }
+
+    /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates,
+    /// or `None` if the coordinates are outside the buffer's area.
+    fn index_of_opt(&self, x: u16, y: u16) -> Option<usize> {
+        if self.in_bounds(x, y) {
+            Some(self.index_of(x, y))
+        } else {
+            None
+        }
     }
 
     /// Returns the (global) coordinates of a cell given its index
@@ -278,6 +308,11 @@ impl Buffer {
     where
         S: AsRef<str>,
     {
+        // prevent panic if out of range
+        if !self.in_bounds(x, y) || width == 0 {
+            return (x, y);
+        }
+
         let mut index = self.index_of(x, y);
         let mut x_offset = x as usize;
         let width = if ellipsis { width - 1 } else { width };
@@ -372,7 +407,7 @@ impl Buffer {
     pub fn set_background(&mut self, area: Rect, color: Color) {
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
-                self.get_mut(x, y).set_bg(color);
+                self[(x, y)].set_bg(color);
             }
         }
     }
@@ -380,7 +415,7 @@ impl Buffer {
     pub fn set_style(&mut self, area: Rect, style: Style) {
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
-                self.get_mut(x, y).set_style(style);
+                self[(x, y)].set_style(style);
             }
         }
     }
@@ -408,7 +443,7 @@ impl Buffer {
     pub fn clear(&mut self, area: Rect) {
         for x in area.left()..area.right() {
             for y in area.top()..area.bottom() {
-                self.get_mut(x, y).reset();
+                self[(x, y)].reset();
             }
         }
     }
@@ -417,7 +452,7 @@ impl Buffer {
     pub fn clear_with(&mut self, area: Rect, style: Style) {
         for x in area.left()..area.right() {
             for y in area.top()..area.bottom() {
-                let cell = self.get_mut(x, y);
+                let cell = &mut self[(x, y)];
                 cell.reset();
                 cell.set_style(style);
             }
@@ -500,12 +535,29 @@ impl Buffer {
                 updates.push((x, y, &next_buffer[i]));
             }
 
-            to_skip = current.symbol.width().saturating_sub(1);
+            let current_width = current.symbol.width();
+            to_skip = current_width.saturating_sub(1);
 
-            let affected_width = std::cmp::max(current.symbol.width(), previous.symbol.width());
+            let affected_width = std::cmp::max(current_width, previous.symbol.width());
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
         }
         updates
+    }
+}
+
+impl std::ops::Index<(u16, u16)> for Buffer {
+    type Output = Cell;
+
+    fn index(&self, (x, y): (u16, u16)) -> &Self::Output {
+        let i = self.index_of(x, y);
+        &self.content[i]
+    }
+}
+
+impl std::ops::IndexMut<(u16, u16)> for Buffer {
+    fn index_mut(&mut self, (x, y): (u16, u16)) -> &mut Self::Output {
+        let i = self.index_of(x, y);
+        &mut self.content[i]
     }
 }
 

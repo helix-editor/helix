@@ -356,7 +356,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 
@@ -389,7 +389,7 @@ mod tests {
         let text = rope.slice(..);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET + 0, 4),
+            view.text_pos_at_screen_coords(&text, 40, 40 + OFFSET, 4),
             Some(0)
         );
 

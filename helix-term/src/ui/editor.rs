@@ -8,7 +8,9 @@ use crate::{
 
 use helix_core::{
     coords_at_pos, encoding,
-    graphemes::{ensure_grapheme_boundary_next, next_grapheme_boundary, prev_grapheme_boundary},
+    graphemes::{
+        ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
+    },
     movement::Direction,
     syntax::{self, HighlightEvent},
     unicode::segmentation::UnicodeSegmentation,
@@ -17,6 +19,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
+    editor::CursorShapeConfig,
     graphics::{CursorKind, Modifier, Rect, Style},
     info::Info,
     input::KeyEvent,
@@ -68,18 +71,17 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         is_focused: bool,
-        loader: &syntax::Loader,
         config: &helix_view::editor::Config,
     ) {
         let inner = view.inner_area();
         let area = view.area;
 
-        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme, loader);
+        let highlights = Self::doc_syntax_highlights(doc, view.offset, inner.height, theme);
         let highlights = syntax::merge(highlights, Self::doc_diagnostics_highlights(doc, theme));
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             Box::new(syntax::merge(
                 highlights,
-                Self::doc_selection_highlights(doc, view, theme),
+                Self::doc_selection_highlights(doc, view, theme, &config.cursor_shape),
             ))
         } else {
             Box::new(highlights)
@@ -97,8 +99,7 @@ impl EditorView {
             let x = area.right();
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
-                surface
-                    .get_mut(x, y)
+                surface[(x, y)]
                     .set_symbol(tui::symbols::line::VERTICAL)
                     //.set_symbol(" ")
                     .set_style(border_style);
@@ -122,8 +123,7 @@ impl EditorView {
         doc: &'doc Document,
         offset: Position,
         height: u16,
-        theme: &Theme,
-        loader: &syntax::Loader,
+        _theme: &Theme,
     ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
         let text = doc.text().slice(..);
         let last_line = std::cmp::min(
@@ -143,25 +143,8 @@ impl EditorView {
         // TODO: range doesn't actually restrict source, just highlight range
         let highlights = match doc.syntax() {
             Some(syntax) => {
-                let scopes = theme.scopes();
                 syntax
-                    .highlight_iter(text.slice(..), Some(range), None, |language| {
-                        loader.language_configuration_for_injection_string(language)
-                            .and_then(|language_config| {
-                                let config = language_config.highlight_config(scopes)?;
-                                let config_ref = config.as_ref();
-                                // SAFETY: the referenced `HighlightConfiguration` behind
-                                // the `Arc` is guaranteed to remain valid throughout the
-                                // duration of the highlight.
-                                let config_ref = unsafe {
-                                    std::mem::transmute::<
-                                        _,
-                                        &'static syntax::HighlightConfiguration,
-                                    >(config_ref)
-                                };
-                                Some(config_ref)
-                            })
-                    })
+                    .highlight_iter(text.slice(..), Some(range), None)
                     .map(|event| event.unwrap())
                     .collect() // TODO: we collect here to avoid holding the lock, fix later
             }
@@ -174,8 +157,8 @@ impl EditorView {
         .map(move |event| match event {
             // convert byte offsets to char offset
             HighlightEvent::Source { start, end } => {
-                let start = ensure_grapheme_boundary_next(text, text.byte_to_char(start));
-                let end = ensure_grapheme_boundary_next(text, text.byte_to_char(end));
+                let start = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
+                let end = text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
                 HighlightEvent::Source { start, end }
             }
             event => event,
@@ -213,10 +196,15 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
+        cursor_shape_config: &CursorShapeConfig,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
+
+        let mode = doc.mode();
+        let cursorkind = cursor_shape_config.from_mode(mode);
+        let cursor_is_block = cursorkind == CursorKind::Block;
 
         let selection_scope = theme
             .find_scope_index("ui.selection")
@@ -225,7 +213,7 @@ impl EditorView {
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
 
-        let cursor_scope = match doc.mode() {
+        let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
             Mode::Normal => Some(base_cursor_scope),
@@ -241,7 +229,8 @@ impl EditorView {
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
-            let (cursor_scope, selection_scope) = if i == primary_idx {
+            let selection_is_primary = i == primary_idx;
+            let (cursor_scope, selection_scope) = if selection_is_primary {
                 (primary_cursor_scope, primary_selection_scope)
             } else {
                 (cursor_scope, selection_scope)
@@ -249,7 +238,14 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                spans.push((cursor_scope, range.head..range.head + 1));
+                if !selection_is_primary || cursor_is_block {
+                    // Bar and underline cursors are drawn by the terminal
+                    // BUG: If the editor area loses focus while having a bar or
+                    // underline cursor (eg. when a regex prompt has focus) then
+                    // the primary cursor will be invisible. This doesn't happen
+                    // with block cursors since we manually draw *all* cursors.
+                    spans.push((cursor_scope, range.head..range.head + 1));
+                }
                 continue;
             }
 
@@ -258,11 +254,15 @@ impl EditorView {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
                 spans.push((selection_scope, range.anchor..cursor_start));
-                spans.push((cursor_scope, cursor_start..range.head));
+                if !selection_is_primary || cursor_is_block {
+                    spans.push((cursor_scope, cursor_start..range.head));
+                }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                spans.push((cursor_scope, range.head..cursor_end));
+                if !selection_is_primary || cursor_is_block {
+                    spans.push((cursor_scope, range.head..cursor_end));
+                }
                 spans.push((selection_scope, cursor_end..range.anchor));
             }
         }
@@ -287,6 +287,10 @@ impl EditorView {
         let tab = " ".repeat(tab_width);
 
         let text_style = theme.get("ui.text");
+
+        // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
+        // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
+        let text = text.slice(..);
 
         'outer: for event in highlights {
             match event {
@@ -393,8 +397,7 @@ impl EditorView {
                             .add_modifier(Modifier::DIM)
                     });
 
-                    surface
-                        .get_mut(viewport.x + pos.col as u16, viewport.y + pos.row as u16)
+                    surface[(viewport.x + pos.col as u16, viewport.y + pos.row as u16)]
                         .set_style(style);
                 }
             }
@@ -1072,7 +1075,6 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            let loader = &cx.editor.syn_loader;
             self.render_view(
                 doc,
                 view,
@@ -1080,7 +1082,6 @@ impl Component for EditorView {
                 surface,
                 &cx.editor.theme,
                 is_focused,
-                loader,
                 &cx.editor.config,
             );
         }
@@ -1158,11 +1159,11 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        // match view.doc.mode() {
-        //     Mode::Insert => write!(stdout, "\x1B[6 q"),
-        //     mode => write!(stdout, "\x1B[2 q"),
-        // };
-        editor.cursor()
+        match editor.cursor() {
+            // All block cursors are drawn manually
+            (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
+            cursor => cursor,
+        }
     }
 }
 

@@ -11,6 +11,7 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     search, selection, shellwords, surround, textobject,
+    tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
     LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection, SmallVec, Tendril,
     Transaction,
@@ -36,6 +37,7 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
+    args,
     compositor::{self, Component, Compositor},
     ui::{self, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
@@ -112,13 +114,13 @@ impl<'a> Context<'a> {
     }
 }
 
-enum Align {
+pub(crate) enum Align {
     Top,
     Center,
     Bottom,
 }
 
-fn align_view(doc: &Document, view: &mut View, align: Align) {
+pub(crate) fn align_view(doc: &Document, view: &mut View, align: Align) {
     let pos = doc
         .selection(view.id)
         .primary()
@@ -173,7 +175,7 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
-            MappableCommand::Typable { name, args, doc: _ } => {
+            Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = cmd::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
@@ -186,21 +188,21 @@ impl MappableCommand {
                     }
                 }
             }
-            MappableCommand::Static { fun, .. } => (fun)(cx),
+            Self::Static { fun, .. } => (fun)(cx),
         }
     }
 
     pub fn name(&self) -> &str {
         match &self {
-            MappableCommand::Typable { name, .. } => name,
-            MappableCommand::Static { name, .. } => name,
+            Self::Typable { name, .. } => name,
+            Self::Static { name, .. } => name,
         }
     }
 
     pub fn doc(&self) -> &str {
         match &self {
-            MappableCommand::Typable { doc, .. } => doc,
-            MappableCommand::Static { doc, .. } => doc,
+            Self::Typable { doc, .. } => doc,
+            Self::Static { doc, .. } => doc,
         }
     }
 
@@ -363,6 +365,8 @@ impl MappableCommand {
         rotate_selection_contents_backward, "Rotate selections contents backward",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
+        select_next_sibling, "Select the next sibling in the syntax tree",
+        select_prev_sibling, "Select the previous sibling in the syntax tree",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save the current selection to the jumplist",
@@ -2025,7 +2029,13 @@ pub mod cmd {
     ) -> anyhow::Result<()> {
         ensure!(!args.is_empty(), "wrong argument count");
         for arg in args {
-            let _ = cx.editor.open(arg.as_ref().into(), Action::Replace)?;
+            let (path, pos) = args::parse_file(arg);
+            let _ = cx.editor.open(path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
         }
         Ok(())
     }
@@ -2278,7 +2288,7 @@ pub mod cmd {
         force: bool,
     ) -> anyhow::Result<()> {
         let mut errors = String::new();
-
+        let jobs = &mut cx.jobs;
         // save all documents
         for doc in &mut cx.editor.documents.values_mut() {
             if doc.path().is_none() {
@@ -2286,9 +2296,23 @@ pub mod cmd {
                 continue;
             }
 
-            // TODO: handle error.
-            let handle = doc.save();
-            cx.jobs.add(Job::new(handle).wait_before_exiting());
+            if !doc.is_modified() {
+                continue;
+            }
+
+            let fmt = doc.auto_format().map(|fmt| {
+                let shared = fmt.shared();
+                let callback = make_format_callback(
+                    doc.id(),
+                    doc.version(),
+                    Modified::SetUnmodified,
+                    shared.clone(),
+                );
+                jobs.callback(callback);
+                shared
+            });
+            let future = doc.format_and_save(fmt);
+            jobs.add(Job::new(future).wait_before_exiting());
         }
 
         if quit {
@@ -2748,6 +2772,46 @@ pub mod cmd {
         Ok(())
     }
 
+    fn tree_sitter_subtree(
+        cx: &mut compositor::Context,
+        _args: &[Cow<str>],
+        _event: PromptEvent,
+    ) -> anyhow::Result<()> {
+        let (view, doc) = current!(cx.editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let primary_selection = doc.selection(view.id).primary();
+            let text = doc.text();
+            let from = text.char_to_byte(primary_selection.from());
+            let to = text.char_to_byte(primary_selection.to());
+            if let Some(selected_node) = syntax
+                .tree()
+                .root_node()
+                .descendant_for_byte_range(from, to)
+            {
+                let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
+
+                let callback = async move {
+                    let call: job::Callback =
+                        Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                            let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                            let popup = Popup::new("hover", contents);
+                            if let Some(doc_popup) = compositor.find_id("hover") {
+                                *doc_popup = popup;
+                            } else {
+                                compositor.push(Box::new(popup));
+                            }
+                        });
+                    Ok(call)
+                };
+
+                cx.jobs.callback(callback);
+            }
+        }
+
+        Ok(())
+    }
+
     pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -3062,6 +3126,13 @@ pub mod cmd {
             aliases: &[],
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
+            completer: None,
+        },
+        TypableCommand {
+            name: "tree-sitter-subtree",
+            aliases: &["ts-subtree"],
+            doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
+            fun: tree_sitter_subtree,
             completer: None,
         },
     ];
@@ -3479,11 +3550,9 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     match op {
         ResourceOp::Create(op) => {
             let path = op.uri.to_file_path().unwrap();
-            let ignore_if_exists = if let Some(options) = &op.options {
+            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                 !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            } else {
-                false
-            };
+            });
             if ignore_if_exists && path.exists() {
                 Ok(())
             } else {
@@ -3493,11 +3562,12 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
         ResourceOp::Delete(op) => {
             let path = op.uri.to_file_path().unwrap();
             if path.is_dir() {
-                let recursive = if let Some(options) = &op.options {
-                    options.recursive.unwrap_or(false)
-                } else {
-                    false
-                };
+                let recursive = op
+                    .options
+                    .as_ref()
+                    .and_then(|options| options.recursive)
+                    .unwrap_or(false);
+
                 if recursive {
                     fs::remove_dir_all(&path)
                 } else {
@@ -3512,11 +3582,9 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
         ResourceOp::Rename(op) => {
             let from = op.old_uri.to_file_path().unwrap();
             let to = op.new_uri.to_file_path().unwrap();
-            let ignore_if_exists = if let Some(options) = &op.options {
+            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                 !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            } else {
-                false
-            };
+            });
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
@@ -5387,9 +5455,10 @@ fn hover(cx: &mut Context) {
 
                 // skip if contents empty
 
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("documentation", contents);
-                if let Some(doc_popup) = compositor.find_id("documentation") {
+                let contents =
+                    ui::Markdown::new(contents, editor.syn_loader.clone()).style_group("hover");
+                let popup = Popup::new("hover", contents);
+                if let Some(doc_popup) = compositor.find_id("hover") {
                     *doc_popup = popup;
                 } else {
                     compositor.push(Box::new(popup));
@@ -5490,7 +5559,7 @@ fn expand_selection(cx: &mut Context) {
             // save current selection so it can be restored using shrink_selection
             view.object_selections.push(current_selection.clone());
 
-            let selection = object::expand_selection(syntax, text, current_selection);
+            let selection = object::expand_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5516,12 +5585,39 @@ fn shrink_selection(cx: &mut Context) {
         // if not previous selection, shrink to first child
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection);
+            let selection = object::shrink_selection(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
+where
+    F: Fn(Node) -> Option<Node>,
+{
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let current_selection = doc.selection(view.id);
+            let selection =
+                object::select_sibling(syntax, text, current_selection.clone(), sibling_fn);
+            doc.set_selection(view.id, selection);
+        }
+    };
+    motion(cx.editor);
+    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+fn select_next_sibling(cx: &mut Context) {
+    select_sibling_impl(cx, &|node| Node::next_sibling(&node))
+}
+
+fn select_prev_sibling(cx: &mut Context) {
+    select_sibling_impl(cx, &|node| Node::prev_sibling(&node))
 }
 
 fn match_brackets(cx: &mut Context) {

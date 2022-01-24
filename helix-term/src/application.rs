@@ -1,10 +1,14 @@
-use helix_core::{merge_toml_values, syntax};
+use helix_core::{merge_toml_values, pos_at_coords, syntax, Selection};
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{theme, Editor};
 use serde_json::json;
 
 use crate::{
-    args::Args, commands::apply_workspace_edit, compositor::Compositor, config::Config, job::Jobs,
+    args::Args,
+    commands::{align_view, apply_workspace_edit, Align},
+    compositor::Compositor,
+    config::Config,
+    job::Jobs,
     ui,
 };
 
@@ -130,7 +134,7 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
         } else if !args.files.is_empty() {
-            let first = &args.files[0]; // we know it's not empty
+            let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
                 std::env::set_current_dir(&first)?;
                 editor.new_file(Action::VerticalSplit);
@@ -138,16 +142,25 @@ impl Application {
             } else {
                 let nr_of_files = args.files.len();
                 editor.open(first.to_path_buf(), Action::VerticalSplit)?;
-                for file in args.files {
+                for (file, pos) in args.files {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
                         ));
                     } else {
-                        editor.open(file.to_path_buf(), Action::Load)?;
+                        let doc_id = editor.open(file, Action::Load)?;
+                        // with Action::Load all documents have the same view
+                        let view_id = editor.tree.focus;
+                        let doc = editor.document_mut(doc_id).unwrap();
+                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                        doc.set_selection(view_id, pos);
                     }
                 }
                 editor.set_status(format!("Loaded {} files.", nr_of_files));
+                // align the view to center after all files are loaded,
+                // does not affect views without pos since it is at the top
+                let (view, doc) = current!(editor);
+                align_view(doc, view, Align::Center);
             }
         } else if stdin().is_tty() {
             editor.new_file(Action::VerticalSplit);
