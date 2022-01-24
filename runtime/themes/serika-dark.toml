@@ -35,8 +35,8 @@
 
 "ui.background" = { bg = "bg0" }
 "ui.cursor" = { fg = "bg0", bg = "fg" }
-"ui.cursor.match" = { fg = "grey3", bg = "bg_yellow" }
-"ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
+"ui.cursor.match" = { fg = "grey3", bg = "grey2" }
+"ui.cursor.insert" = { fg = "bg0", bg = "bg_yellow" }
 "ui.cursor.select" = { fg = "bg0", bg = "bg_yellow" }
 "ui.linenr" = "yellow"
 "ui.linenr.selected" = { fg = "fg", modifiers = ["bold", "underlined"] }
@@ -54,9 +54,21 @@
 "hint" = "blue"
 "info" = "aqua"
 "warning" = "yellow"
-"error" = "red"
-"diagnostic" = { modifiers = ["underlined"] }
+"error" = "nasty-red"
+"diagnostic" = { fg = "dark-red", Modifiers = ["underlined"] }
 
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "orange" }
+"diff.minus" = { fg = "red" }
+
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.list" = "cyan"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.link.url" = "cyan"
+"markup.link.text" = "pink"
+"markup.quote" = { fg = "yellow", modifiers = ["italic"] }
+"markup.raw" = { fg = "foreground" }
 
 [palette]
 
@@ -74,6 +86,8 @@ bg_yellow = "#e2b714"
 
 fg = "#d1d0c5"
 red = "#f9ebed"
+nasty-red = "#ca4754"
+dark-red = "#7e2a33"
 orange = "#dd8a3c"
 yellow = "#e2b714"
 green = "#e5eae1"
