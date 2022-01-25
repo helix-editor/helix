@@ -170,7 +170,9 @@ impl Default for CursorShapeConfig {
 pub enum LineNumber {
     /// Show absolute line number
     Absolute,
-    /// Show relative line number to the primary cursor
+
+    /// If focused and in normal/select mode, show relative line number to the primary cursor.
+    /// If unfocused or in insert mode, show absolute line number.
     Relative,
 }
 
