@@ -801,7 +801,6 @@ fn align_selections(cx: &mut Context) {
     });
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn align_fragment_to_width(fragment: &str, width: usize, align_style: usize) -> String {
@@ -1204,7 +1203,6 @@ fn replace(cx: &mut Context) {
             });
 
             doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view.id);
         }
     })
 }
@@ -1222,7 +1220,6 @@ where
     });
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn switch_case(cx: &mut Context) {
@@ -1862,7 +1859,6 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 
     match op {
         Operation::Delete => {
-            doc.append_changes_to_history(view.id);
             // exit select mode, if currently in select mode
             exit_select_mode(cx);
         }
@@ -3861,7 +3857,6 @@ fn normal_mode(cx: &mut Context) {
     doc.mode = Mode::Normal;
 
     try_restore_indent(doc, view.id);
-    doc.append_changes_to_history(view.id);
 
     // if leaving append mode, move cursor back by 1
     if doc.restore_cursor {
@@ -4383,7 +4378,6 @@ fn signature_help(cx: &mut Context) {
     );
 }
 
-// NOTE: Transactions in this module get appended to history when we switch back to normal mode.
 pub mod insert {
     use super::*;
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
@@ -4998,7 +4992,6 @@ fn replace_with_yanked(cx: &mut Context) {
             });
 
             doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view.id);
         }
     }
 }
@@ -5048,7 +5041,6 @@ fn paste_after(cx: &mut Context) {
         .and_then(|values| paste_impl(values, doc, view, Paste::After, count))
     {
         doc.apply(&transaction, view.id);
-        doc.append_changes_to_history(view.id);
     }
 }
 
@@ -5063,7 +5055,6 @@ fn paste_before(cx: &mut Context) {
         .and_then(|values| paste_impl(values, doc, view, Paste::Before, count))
     {
         doc.apply(&transaction, view.id);
-        doc.append_changes_to_history(view.id);
     }
 }
 
@@ -5099,7 +5090,6 @@ fn indent(cx: &mut Context) {
         }),
     );
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn unindent(cx: &mut Context) {
@@ -5139,7 +5129,6 @@ fn unindent(cx: &mut Context) {
     let transaction = Transaction::change(doc.text(), changes.into_iter());
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn format_selections(cx: &mut Context) {
@@ -5186,8 +5175,6 @@ fn format_selections(cx: &mut Context) {
 
         // doc.apply(&transaction, view.id);
     }
-
-    doc.append_changes_to_history(view.id);
 }
 
 fn join_selections(cx: &mut Context) {
@@ -5230,7 +5217,6 @@ fn join_selections(cx: &mut Context) {
     // .with_selection(selection);
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
@@ -5478,7 +5464,6 @@ fn toggle_comments(cx: &mut Context) {
     let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
     exit_select_mode(cx);
 }
 
@@ -5535,7 +5520,6 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
     );
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
@@ -5875,7 +5859,6 @@ fn surround_add(cx: &mut Context) {
 
             let transaction = Transaction::change(doc.text(), changes.into_iter());
             doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view.id);
         }
     })
 }
@@ -5908,7 +5891,6 @@ fn surround_replace(cx: &mut Context) {
                         }),
                     );
                     doc.apply(&transaction, view.id);
-                    doc.append_changes_to_history(view.id);
                 }
             });
         }
@@ -5931,7 +5913,6 @@ fn surround_delete(cx: &mut Context) {
             let transaction =
                 Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
             doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view.id);
         }
     })
 }
@@ -6102,7 +6083,6 @@ fn shell(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
             if behavior != ShellBehavior::Ignore {
                 let transaction = Transaction::change(doc.text(), changes.into_iter());
                 doc.apply(&transaction, view.id);
-                doc.append_changes_to_history(view.id);
             }
 
             // after replace cursor may be out of bounds, do this to
@@ -6150,7 +6130,6 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 
     let transaction = Transaction::change(text, changes);
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
 }
 
 fn rename_symbol(cx: &mut Context) {
@@ -6250,7 +6229,6 @@ fn increment_impl(cx: &mut Context, amount: i64) {
         let transaction = transaction.with_selection(selection.clone());
 
         doc.apply(&transaction, view.id);
-        doc.append_changes_to_history(view.id);
     }
 }
 

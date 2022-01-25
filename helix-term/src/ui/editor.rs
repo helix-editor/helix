@@ -1035,6 +1035,12 @@ impl Component for EditorView {
                 let (view, doc) = current!(cx.editor);
                 view.ensure_cursor_in_view(doc, cx.editor.config.scrolloff);
 
+                // Store a history state if not in insert mode. This also takes care of
+                // commiting changes when leaving insert mode.
+                if doc.mode() != Mode::Insert {
+                    doc.append_changes_to_history(view.id);
+                }
+
                 // mode transitions
                 match (mode, doc.mode()) {
                     (Mode::Normal, Mode::Insert) => {
