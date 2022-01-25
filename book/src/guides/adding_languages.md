@@ -1,22 +1,15 @@
 # Adding languages
 
-## Submodules
+## Grammars manifest
 
-To add a new language, you should first add a tree-sitter submodule. To do this,
-you can run the command
+To add a new language, add a new line to `scripts/revisions.txt` with the
+name of the remote and the revision. Then run
+
 ```sh
-git submodule add -f <repository> helix-syntax/languages/tree-sitter-<name>
-```
-For example, to add tree-sitter-ocaml you would run
-```sh
-git submodule add -f https://github.com/tree-sitter/tree-sitter-ocaml helix-syntax/languages/tree-sitter-ocaml
-```
-Make sure the submodule is shallow by doing
-```sh
-git config -f .gitmodules submodule.helix-syntax/languages/tree-sitter-<name>.shallow true
+./scripts/grammars sync
 ```
 
-or you can manually add `shallow = true` to `.gitmodules`.
+To download the new grammar.
 
 ## languages.toml
 
@@ -56,14 +49,14 @@ the last matching query supercedes the ones before it. See
 
 ## Common Issues
 
-- If you get errors when building after switching branches, you may have to remove or update tree-sitter submodules. You can update submodules by running
+- If you get errors when building after switching branches, you may have to sync your grammars. You can sync grammars by running
     ```sh
-    git submodule sync; git submodule update --init
+    ./scripts/grammars sync
     ```
-- Make sure to not use the `--remote` flag. To remove submodules look inside the `.gitmodules` and remove directories that are not present inside of it.
-
-- If a parser is segfaulting or you want to remove the parser, make sure to remove the submodule *and* the compiled parser in `runtime/grammar/<name>.so`
-
+- If a parser is segfaulting or you want to remove the parser, make sure to remove the grammar repository *and* the compiled parser in `runtime/grammar/<name>.so`. You can remove the grammar repository by running
+    ```sh
+    ./scripts/grammars clean
+    ```
 - The indents query is `indents.toml`, *not* `indents.scm`. See [this](https://github.com/helix-editor/helix/issues/114) issue for more information.
 
 [treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection

@@ -39,7 +39,8 @@ sudo dnf install helix
 ## Build from source
 
 ```
-git clone --recurse-submodules --shallow-submodules -j8 https://github.com/helix-editor/helix
+git clone https://github.com/helix-editor/helix
+./scripts/grammars sync
 cd helix
 cargo install --path helix-term
 ```
