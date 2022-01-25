@@ -10,6 +10,7 @@ print_usage_and_exit() {
   echo ""
   echo "Commands:"
   echo ""
+  echo "  status  Checks that each grammar is checked out at the revision in revisions.txt"
   echo "  sync    Ensures all grammars are cloned at the revisions in revisions.txt"
   echo "  clean   Removes all grammars from the grammars directory"
   echo ""
@@ -71,6 +72,36 @@ remove_all_grammars() {
   rm -rf "${GRAMMARS_DIR}"/tree-sitter-*
 }
 
+show_grammar_status() {
+  local current_revision
+  local grammar_name
+  local are_any_out_of_date
+
+  are_any_out_of_date=false
+
+  set +e
+  while read -r line; do
+    IFS=' ' read -ra grammar <<< "${line}"
+    grammar_name="$(basename "${grammar[0]}")"
+
+    current_revision="$(
+      cd "${GRAMMARS_DIR}/${grammar_name}"
+      git rev-parse HEAD 2>/dev/null || echo -n ""
+    )"
+
+    if [[ "${current_revision}" != "${grammar[1]}" ]]; then
+      are_any_out_of_date=true
+      echo "${grammar_name} is out of date."
+    fi
+  done <"$(dirname "$0")/./revisions.txt"
+
+  if [ "${are_any_out_of_date}" = "false" ]; then
+    echo "All grammars are up to date."
+  fi
+
+  set -e
+}
+
 if [[ $# -eq 0 ]]; then
   print_usage_and_exit
 fi
@@ -85,6 +116,10 @@ while (($#)); do
 
     clean)
       remove_all_grammars
+      ;;
+
+    status)
+      show_grammar_status
       ;;
 
     *)
