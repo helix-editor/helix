@@ -55,8 +55,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Fetch grammars
-        run: ./scripts/grammars sync
+      - name: Fetch grammars (Windows)
+        if: startsWith(matrix.os, 'windows')
+        run: scripts/grammars.cmd sync
+
+      - name: Fetch grammars (Unix)
+        if: startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'ubuntu')
+        run: scripts/grammars sync
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
