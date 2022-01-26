@@ -118,7 +118,6 @@ impl EditorView {
     /// Get syntax highlights for a document in a view represented by the first line
     /// and column (`offset`) and the last line. This is done instead of using a view
     /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
-    #[allow(clippy::too_many_arguments)]
     pub fn doc_syntax_highlights<'doc>(
         doc: &'doc Document,
         offset: Position,
@@ -404,7 +403,6 @@ impl EditorView {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_gutter(
         doc: &Document,
         view: &View,
@@ -509,7 +507,6 @@ impl EditorView {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render_statusline(
         &self,
         doc: &Document,
