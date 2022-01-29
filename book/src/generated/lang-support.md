@@ -54,6 +54,7 @@
 | toml | ✓ |  |  |  |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ |  |  | `typescript-language-server` |
+| twig | ✓ |  |  |  |
 | typescript | ✓ |  | ✓ | `typescript-language-server` |
 | vue | ✓ |  |  |  |
 | wgsl | ✓ |  |  |  |
