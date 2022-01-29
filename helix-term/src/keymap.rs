@@ -674,6 +674,7 @@ impl Default for Keymaps {
                     "C-l" | "l" | "right" => jump_view_right,
                 },
                 "y" => yank_joined_to_clipboard,
+                "A-y" => yank_joined,
                 "Y" => yank_main_selection_to_clipboard,
                 "p" => paste_clipboard_after,
                 "P" => paste_clipboard_before,

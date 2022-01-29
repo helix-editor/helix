@@ -334,6 +334,7 @@ impl MappableCommand {
         earlier, "Move backward in history",
         later, "Move forward in history",
         yank, "Yank selection",
+        yank_joined, "Join and yank selections",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
@@ -4776,6 +4777,33 @@ fn yank(cx: &mut Context) {
     cx.editor
         .registers
         .write(cx.register.unwrap_or('"'), values);
+
+    cx.editor.set_status(msg);
+    exit_select_mode(cx);
+}
+
+fn yank_joined(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
+
+    let values: Vec<String> = doc
+        .selection(view.id)
+        .fragments(text)
+        .map(Cow::into_owned)
+        .collect();
+
+    let msg = format!(
+        "joined and yanked {} selection(s) to register {}",
+        values.len(),
+        cx.register.unwrap_or('"')
+    );
+
+    let joined = values.join(&default_sep);
+
+    cx.editor
+        .registers
+        .write(cx.register.unwrap_or('"'), vec![joined]);
 
     cx.editor.set_status(msg);
     exit_select_mode(cx);
