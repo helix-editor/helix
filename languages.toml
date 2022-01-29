@@ -232,6 +232,15 @@ roots = []
 indent = { tab-width = 4, unit = "    " }
 
 [[language]]
+name = "twig"
+scope = "source.twig"
+injection-regex = "twig"
+file-types = ["twig"]
+roots = []
+
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "latex"
 scope = "source.tex"
 injection-regex = "tex"

@@ -218,3 +218,7 @@
 	path = helix-syntax/languages/tree-sitter-iex
 	url = https://github.com/elixir-lang/tree-sitter-iex
 	shallow = true
+[submodule "helix-syntax/languages/tree-sitter-twig"]
+	path = helix-syntax/languages/tree-sitter-twig
+	url = https://github.com/eirabben/tree-sitter-twig.git
+	shallow = true
